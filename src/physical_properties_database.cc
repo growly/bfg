@@ -9,6 +9,8 @@ namespace bfg {
 
 namespace {
 
+using geometry::Layer;
+
 std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
     const Layer &lhs, const Layer &rhs) {
   const Layer &first = lhs <= rhs ? lhs : rhs;

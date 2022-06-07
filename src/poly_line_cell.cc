@@ -9,6 +9,9 @@
 
 namespace bfg {
 
+using geometry::Point;
+using geometry::PolyLine;
+
 void PolyLineCell::AddPolyLine(const PolyLine &poly_line) {
   poly_lines_.emplace_back(new PolyLine(poly_line));
 }

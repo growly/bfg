@@ -11,6 +11,7 @@
 #include "via.h"
 
 namespace bfg {
+namespace geometry {
 
 class PolyLine : public Shape {
  public:
@@ -80,6 +81,7 @@ class PolyLine : public Shape {
   std::vector<LineSegment> segments_;
 };
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // POLY_LINE_H_

@@ -8,6 +8,7 @@
 #include "point.h"
 
 namespace bfg {
+namespace geometry {
 
 class AbstractShape {
  public:
@@ -29,6 +30,7 @@ class AbstractShape {
   std::string net_;
 };
 
-}   // namespace bfg
+}  // namespace geometry
+}  // namespace bfg
 
 #endif  // ABSTRACT_SHAPE_H_

@@ -6,6 +6,7 @@
 #include "rectangle.h"
 
 namespace bfg {
+namespace geometry {
 
 // TODO(aryap): Is a port an abstract shape or not?
 class Port : public Rectangle {
@@ -27,6 +28,7 @@ class Port : public Rectangle {
     : Rectangle(lower_left, upper_right, layer, net) {}
 };
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // PORT_H_

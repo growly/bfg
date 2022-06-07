@@ -4,6 +4,7 @@
 #include "point.h"
 
 namespace bfg {
+namespace geometry {
 
 enum LineOrientation {
   kOther,
@@ -27,6 +28,7 @@ struct LineSegment {
   AnchorPosition growth_anchor;
 };
 
-}   // namespace bfg
+}  // namespace geometry
+}  // namespace bfg
 
 #endif  // LINE_SEGMENT_H_

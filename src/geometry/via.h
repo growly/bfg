@@ -9,6 +9,7 @@
 #include "point.h"
 
 namespace bfg {
+namespace geometry {
 
 // Abstract representation of a via.
 class Via {
@@ -31,6 +32,7 @@ class Via {
 
 std::ostream &operator<<(std::ostream &os, const Via &via);
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // VIA_H_

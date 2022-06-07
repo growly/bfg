@@ -1,6 +1,7 @@
 #include "via.h"
 
 namespace bfg {
+namespace geometry {
 
 std::ostream &operator<<(std::ostream &os, const Via &via) {
   os << "[Via " << via.centre() << " between " << via.bottom_layer()
@@ -8,4 +9,5 @@ std::ostream &operator<<(std::ostream &os, const Via &via) {
   return os;
 }
 
-}   // namespace bfg
+}  // namespace geometry
+}  // namespace bfg

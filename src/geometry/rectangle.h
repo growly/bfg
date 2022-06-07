@@ -7,6 +7,7 @@
 #include "point.h"
 
 namespace bfg {
+namespace geometry {
 
 // TODO(aryap): Do we need to have separate classes for a "rectangle", the
 // object on a layer with connected nets and such, and a generic notion of a
@@ -60,6 +61,7 @@ class Rectangle : public Shape {
 
 std::ostream &operator<<(std::ostream &os, const Rectangle &rectangle);
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // RECTANGLE_H_

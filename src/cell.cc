@@ -4,6 +4,8 @@
 
 namespace bfg {
 
+using geometry::Point;
+
 const std::pair<Point, Point> Cell::GetBoundingBox() const {
   Point start;
   if (!polygons_.empty()) {

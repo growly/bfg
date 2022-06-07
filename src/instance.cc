@@ -5,8 +5,11 @@
 #include <glog/logging.h>
 
 #include "cell.h"
+#include "geometry/point.h"
 
 namespace bfg {
+
+using geometry::Point;
 
 const std::pair<Point, Point> Instance::GetBoundingBox() const {
   LOG_IF(FATAL, template_cell_ == nullptr)

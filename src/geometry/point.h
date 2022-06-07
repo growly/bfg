@@ -6,6 +6,7 @@
 #include <vector>
 
 namespace bfg {
+namespace geometry {
 
 class Point {
  public:
@@ -33,6 +34,7 @@ Point operator-(const Point &lhs, const Point &rhs);
 
 bool operator==(const Point &lhs, const Point &rhs);
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // POINT_H_

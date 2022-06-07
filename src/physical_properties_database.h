@@ -16,8 +16,8 @@ enum RoutingTrackDirection {
 };
 
 struct RoutingLayerInfo {
-  Layer layer;
-  Rectangle area;
+  geometry::Layer layer;
+  geometry::Rectangle area;
   int64_t wire_width;
   int64_t offset;
   RoutingTrackDirection direction;
@@ -26,7 +26,7 @@ struct RoutingLayerInfo {
 
 struct ViaInfo {
   // Vias have their own layer.
-  Layer layer;
+  geometry::Layer layer;
   // Need some measure of cost for connecting between these two layers. Maybe
   // a function that describes the cost based on something (like length,
   // sheet resistance).
@@ -66,24 +66,26 @@ class PhysicalPropertiesDatabase {
   }
 
   void AddLayer(const RoutingLayerInfo &info);
-  const RoutingLayerInfo &GetLayerInfo(const Layer &layer) const;
+  const RoutingLayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
 
-  void AddViaInfo(const Layer &lhs, const Layer &rhs, const ViaInfo &info);
+  void AddViaInfo(const geometry::Layer &lhs,
+                  const geometry::Layer &rhs,
+                  const ViaInfo &info);
 
-  const ViaInfo &GetViaInfo(const Via &via) {
+  const ViaInfo &GetViaInfo(const geometry::Via &via) {
     return GetViaInfo(via.bottom_layer(), via.top_layer());
   }
-  const ViaInfo &GetViaInfo(const Layer &lhs, const Layer &rhs);
+  const ViaInfo &GetViaInfo(const geometry::Layer &lhs, const geometry::Layer &rhs);
 
  private:
   double internal_units_per_external_;
 
-  std::map<Layer, RoutingLayerInfo> layer_infos_;
+  std::map<geometry::Layer, RoutingLayerInfo> layer_infos_;
 
   // Stores the connection info between the ith (first index) and jth (second
   // index) layers. The "lesser" layer (std::less) should always be used to
   // index first, so that half of the matrix can be avoided.
-  std::map<Layer, std::map<Layer, ViaInfo>> via_infos_;
+  std::map<geometry::Layer, std::map<geometry::Layer, ViaInfo>> via_infos_;
 };
 
 std::ostream &operator<<(std::ostream &os,

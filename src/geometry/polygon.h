@@ -9,6 +9,7 @@
 #include "shape.h"
 
 namespace bfg {
+namespace geometry {
 
 class Polygon : public Shape {
  public:
@@ -33,6 +34,7 @@ class Polygon : public Shape {
 
 std::ostream &operator<<(std::ostream &os, const Polygon &polygon);
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // POLYGON_H_

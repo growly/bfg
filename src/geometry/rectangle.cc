@@ -4,6 +4,7 @@
 #include <glog/logging.h>
 
 namespace bfg {
+namespace geometry {
 
 bool Rectangle::Overlaps(const Rectangle &other) const {
   if (other.upper_right().x() < lower_left_.x() ||
@@ -32,4 +33,5 @@ std::ostream &operator<<(std::ostream &os, const Rectangle &rectangle) {
   return os;
 }
 
-}   // namespace bfg
+}  // namespace geometry
+}  // namespace bfg

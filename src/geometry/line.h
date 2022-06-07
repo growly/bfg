@@ -6,6 +6,7 @@
 #include "point.h"
 
 namespace bfg {
+namespace geometry {
 
 // This is a line as defined by two points. It's actually a vector, and is
 // sometimes treated as such, and sometimes we take the extension of the line
@@ -62,6 +63,7 @@ class Line {
 
 std::ostream &operator<<(std::ostream &os, const Line &point);
 
-}   // namespace bfg
+}  // namespace geometry
+}  // namespace bfg
 
 #endif  // LINE_H_

@@ -3,6 +3,7 @@
 #include <ostream>
 
 namespace bfg {
+namespace geometry {
 
 std::ostream &operator<<(std::ostream &os, const Polygon &polygon) {
   for (size_t i = 0; i < polygon.vertices().size(); ++i) {
@@ -32,4 +33,5 @@ const std::pair<Point, Point> Polygon::GetBoundingBox() const {
   return std::make_pair(lower_left, upper_right);
 }
 
+}  // namespace geometry
 }  // namespace bfg

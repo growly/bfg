@@ -9,6 +9,7 @@
 #include "point.h"
 
 namespace bfg {
+namespace geometry {
 
 // Shapes are AbstractShapes with more complete layout information.
 class Shape : public AbstractShape {
@@ -24,6 +25,7 @@ class Shape : public AbstractShape {
   virtual const std::pair<Point, Point> GetBoundingBox() const = 0;
 };
 
-}   // namespace bfg
+}  // namespace geometry
+}  // namespace bfg
 
 #endif  // SHAPE_H_

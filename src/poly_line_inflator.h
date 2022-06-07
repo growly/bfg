@@ -25,19 +25,20 @@ class PolyLineInflator {
   // Return a laid-out version of the poly_line diagram.
   Cell Inflate(const PolyLineCell &poly_line_cell);
 
-  void InflateVia(const Via &via, Rectangle *rectangle);
-  void InflatePolyLine(const PolyLine &line, Polygon *polygon);
+  void InflateVia(const geometry::Via &via, geometry::Rectangle *rectangle);
+  void InflatePolyLine(const geometry::PolyLine &line,
+                       geometry::Polygon *polygon);
 
  private:
   // Shift the given line consistently (relative to its bearing) by half the
   // 'width' amount. Add 'extension_source' to the start and 'extension_source'
   // to end of the line's length.
-  Line *GenerateShiftedLine(
-      const Line &source, double width,
+  geometry::Line *GenerateShiftedLine(
+      const geometry::Line &source, double width,
       double extension_source, double extension_end);
 
-  Line *GenerateShiftedLine(
-      const Line &source, double width) {
+  geometry::Line *GenerateShiftedLine(
+      const geometry::Line &source, double width) {
     return GenerateShiftedLine(source, width, 0.0, 0.0);
   }
 
@@ -45,9 +46,9 @@ class PolyLineInflator {
   // of the new line with *last_shifted_line to polygon. Returns the newly
   // shifted line. If last_shifted_line is nullptr, the start of next_source is
   // used.
-  std::unique_ptr<Line> ShiftAndAppendIntersection(
-    const Line &next_source, double width, Line *last_shifted_line,
-    Polygon *polygon);
+  std::unique_ptr<geometry::Line> ShiftAndAppendIntersection(
+    const geometry::Line &next_source, double width,
+    geometry::Line *last_shifted_line, geometry::Polygon *polygon);
 
   // Provides some defaults and rules.
   PhysicalPropertiesDatabase physical_db_;

@@ -14,6 +14,14 @@
 
 namespace bfg {
 
+using geometry::Line;
+using geometry::LineSegment;
+using geometry::PolyLine;
+using geometry::Polygon;
+using geometry::Point;
+using geometry::Rectangle;
+using geometry::Via;
+
 Cell PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
   Cell cell;
   for (const auto &poly_line : poly_line_cell.poly_lines()) {

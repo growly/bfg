@@ -17,22 +17,22 @@ namespace bfg {
 // polygons. They are deliberately not stored as such.
 class PolyLineCell {
  public:
-  void AddPolyLine(const PolyLine &poly_line);
-  PolyLine *AddPolyLine();
+  void AddPolyLine(const geometry::PolyLine &poly_line);
+  geometry::PolyLine *AddPolyLine();
 
-  const std::vector<std::unique_ptr<PolyLine>> &poly_lines() const {
+  const std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() const {
     return poly_lines_;
   }
-  const std::vector<std::unique_ptr<Via>> &vias() const { return vias_; }
+  const std::vector<std::unique_ptr<geometry::Via>> &vias() const { return vias_; }
 
-  std::vector<std::unique_ptr<PolyLine>> &poly_lines() { return poly_lines_; }
-  std::vector<std::unique_ptr<Via>> &vias() { return vias_; }
+  std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() { return poly_lines_; }
+  std::vector<std::unique_ptr<geometry::Via>> &vias() { return vias_; }
 
-  const std::pair<Point, Point> GetBoundingBox() const;
+  const std::pair<geometry::Point, geometry::Point> GetBoundingBox() const;
 
  private:
-  std::vector<std::unique_ptr<PolyLine>> poly_lines_;
-  std::vector<std::unique_ptr<Via>> vias_;
+  std::vector<std::unique_ptr<geometry::PolyLine>> poly_lines_;
+  std::vector<std::unique_ptr<geometry::Via>> vias_;
 };
 
 }  // namespace bfg

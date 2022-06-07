@@ -5,6 +5,7 @@
 #include "point.h"
 
 namespace bfg {
+namespace geometry {
 
 double Line::kPi = std::acos(-1);
 
@@ -134,4 +135,5 @@ std::ostream &operator<<(std::ostream &os, const Line &point) {
   return os;
 }
 
-} // namespace bfg
+}  // namespace geometry
+}  // namespace bfg

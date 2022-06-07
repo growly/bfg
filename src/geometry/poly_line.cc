@@ -6,6 +6,7 @@
 #include <vector>
 
 namespace bfg {
+namespace geometry {
 
 const std::pair<Point, Point> PolyLine::GetBoundingBox() const {
   int64_t min_x = start_.x();
@@ -33,4 +34,5 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
   segments_.push_back(LineSegment{to, width});
 }
 
-}   // namespace bfg
+}  // namespace geometry
+}  // namespace bfg
