@@ -25,7 +25,9 @@ class PolyLineCell {
   }
   const std::vector<std::unique_ptr<geometry::Via>> &vias() const { return vias_; }
 
-  std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() { return poly_lines_; }
+  std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() {
+    return poly_lines_;
+  }
   std::vector<std::unique_ptr<geometry::Via>> &vias() { return vias_; }
 
   const std::pair<geometry::Point, geometry::Point> GetBoundingBox() const;
