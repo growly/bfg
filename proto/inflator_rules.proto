@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package boralago;
+
+message LayerRules {
+  uint64 layer = 1;
+
+  // What are the units? They should be in terms of our abstract internal
+  // model.  Later, there is a conversion from this model to physical units. Or
+  // maybe it's better to store physical units everywhere a human has to deal
+  // with them?
+  uint64 default_width = 100;
+}
+
+message InflatorRules {
+  repeated LayerRules layer_rules = 1;
+}

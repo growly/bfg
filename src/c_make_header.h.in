@@ -1,0 +1,8 @@
+// The configured options and settings for bfg.
+#define bfg_VERSION_MAJOR @bfg_VERSION_MAJOR@
+#define bfg_VERSION_MINOR @bfg_VERSION_MINOR@
+#define protobuf_VERSION @Protobuf_VERSION@
+
+// https://gcc.gnu.org/onlinedocs/gcc-4.8.5/cpp/Stringification.html
+#define xstr(s) str(s)
+#define str(s) #s
