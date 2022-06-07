@@ -1,5 +1,5 @@
-#ifndef LINE_H_
-#define LINE_H_
+#ifndef GEOMETRY_LINE_H_
+#define GEOMETRY_LINE_H_
 
 #include <utility>
 
@@ -66,4 +66,4 @@ std::ostream &operator<<(std::ostream &os, const Line &point);
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // LINE_H_
+#endif  // GEOMETRY_LINE_H_

@@ -1,5 +1,5 @@
-#ifndef PORT_H_
-#define PORT_H_
+#ifndef GEOMETRY_PORT_H_
+#define GEOMETRY_PORT_H_
 
 #include "layer.h"
 #include "point.h"
@@ -31,4 +31,4 @@ class Port : public Rectangle {
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // PORT_H_
+#endif  // GEOMETRY_PORT_H_

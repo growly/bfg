@@ -1,5 +1,5 @@
-#ifndef POLYGON_H_
-#define POLYGON_H_
+#ifndef GEOMETRY_POLYGON_H_
+#define GEOMETRY_POLYGON_H_
 
 #include <glog/logging.h>
 #include <ostream>
@@ -37,4 +37,4 @@ std::ostream &operator<<(std::ostream &os, const Polygon &polygon);
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // POLYGON_H_
+#endif  // GEOMETRY_POLYGON_H_

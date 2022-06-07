@@ -1,5 +1,5 @@
-#ifndef POINT_H_
-#define POINT_H_
+#ifndef GEOMETRY_POINT_H_
+#define GEOMETRY_POINT_H_
 
 #include <ostream>
 #include <cstdint>
@@ -37,4 +37,4 @@ bool operator==(const Point &lhs, const Point &rhs);
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // POINT_H_
+#endif  // GEOMETRY_POINT_H_

@@ -32,7 +32,8 @@ Cell PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
     polygon.set_layer(poly_line->layer());
 
     auto bb = polygon.GetBoundingBox();
-    LOG(INFO) << polygon << " bounded by ll= " << bb.first << " ur= " << bb.second;
+    LOG(INFO) << polygon << " bounded by ll= " << bb.first
+              << " ur= " << bb.second;
     cell.AddPolygon(polygon);
   }
   for (const auto &via : poly_line_cell.vias()) {
@@ -57,9 +58,9 @@ void PolyLineInflator::InflateVia(const Via &via, Rectangle *rectangle) {
   rectangle->set_layer(via_info.layer);
 }
 
-// So, you could do this in one pass by inflating every central poly_line into its
-// bounding lines, but that would create two problems when joining one segment
-// to its immediate neighbour:
+// So, you could do this in one pass by inflating every central poly_line into
+// its bounding lines, but that would create two problems when joining one
+// segment to its immediate neighbour:
 //                         1) deciding which two lines to intersect;
 //                         2) finding their intersection.
 //
@@ -106,7 +107,8 @@ void PolyLineInflator::InflateVia(const Via &via, Rectangle *rectangle) {
 //                        |
 //                        original vector, reversed
 //
-void PolyLineInflator::InflatePolyLine(const PolyLine &polyline, Polygon *polygon) {
+void PolyLineInflator::InflatePolyLine(
+    const PolyLine &polyline, Polygon *polygon) {
   LOG_IF(FATAL, polyline.segments().empty()) << "Inflating empty PolyLine";
 
   std::vector<Line> line_stack;

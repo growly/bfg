@@ -1,5 +1,5 @@
-#ifndef ABSTRACT_SHAPE_H_
-#define ABSTRACT_SHAPE_H_
+#ifndef GEOMETRY_ABSTRACT_SHAPE_H_
+#define GEOMETRY_ABSTRACT_SHAPE_H_
 
 #include <string>
 #include <utility>
@@ -33,4 +33,4 @@ class AbstractShape {
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // ABSTRACT_SHAPE_H_
+#endif  // GEOMETRY_ABSTRACT_SHAPE_H_

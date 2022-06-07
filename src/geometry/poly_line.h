@@ -1,5 +1,5 @@
-#ifndef POLY_LINE_H_
-#define POLY_LINE_H_
+#ifndef GEOMETRY_POLY_LINE_H_
+#define GEOMETRY_POLY_LINE_H_
 
 #include <cstdint>
 #include <memory>
@@ -84,4 +84,4 @@ class PolyLine : public Shape {
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // POLY_LINE_H_
+#endif  // GEOMETRY_POLY_LINE_H_

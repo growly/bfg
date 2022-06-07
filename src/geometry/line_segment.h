@@ -1,5 +1,5 @@
-#ifndef LINE_SEGMENT_H_
-#define LINE_SEGMENT_H_
+#ifndef GEOMETRY_LINE_SEGMENT_H_
+#define GEOMETRY_LINE_SEGMENT_H_
 
 #include "point.h"
 
@@ -31,4 +31,4 @@ struct LineSegment {
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // LINE_SEGMENT_H_
+#endif  // GEOMETRY_LINE_SEGMENT_H_

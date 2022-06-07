@@ -23,7 +23,9 @@ class PolyLineCell {
   const std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() const {
     return poly_lines_;
   }
-  const std::vector<std::unique_ptr<geometry::Via>> &vias() const { return vias_; }
+  const std::vector<std::unique_ptr<geometry::Via>> &vias() const {
+    return vias_;
+  }
 
   std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() {
     return poly_lines_;

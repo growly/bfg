@@ -1,5 +1,5 @@
-#ifndef RECTANGLE_H_
-#define RECTANGLE_H_
+#ifndef GEOMETRY_RECTANGLE_H_
+#define GEOMETRY_RECTANGLE_H_
 
 #include <ostream>
 
@@ -64,4 +64,4 @@ std::ostream &operator<<(std::ostream &os, const Rectangle &rectangle);
 }  // namespace geometry
 }  // namespace bfg
 
-#endif  // RECTANGLE_H_
+#endif  // GEOMETRY_RECTANGLE_H_
