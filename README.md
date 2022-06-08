@@ -13,6 +13,16 @@ Libraries
   sudo apt install -y clang ninja-build python
 ```
 
+[google/googletest](https://github.com/google/googletest)
+
+  ```
+  git clone git@github.com:google/googletest
+  cd googletest
+  mkdir build && cd build
+  cmake ../
+  make -j $(nproc) && sudo make install
+  ```
+
 [gperftools/tcmalloc](https://github.com/gperftools/gperftools)
   ```
   git clone git@github.com:gperftools/gperftools

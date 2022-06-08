@@ -22,8 +22,10 @@ bool Line::Intersect(const Line &lhs, const Line &rhs, Point *point) {
     if (lhs.start().x() == rhs.start().x()) {
       // The intersection of these lines is each other, so we'll just return
       // the point between their starts and ends:
-      double lhs_mid_y = (lhs.end().y() - lhs.start().y())/2.0 + lhs.start().y();
-      double rhs_mid_y = (rhs.end().y() - rhs.start().y())/2.0 + rhs.start().y();
+      double lhs_mid_y 
+          = (lhs.end().y() - lhs.start().y())/2.0 + lhs.start().y();
+      double rhs_mid_y 
+          = (rhs.end().y() - rhs.start().y())/2.0 + rhs.start().y();
       double lhs_rhs_mid_y = (lhs_mid_y + rhs_mid_y) / 2.0;
       *point = Point(lhs.start().x(), lhs_rhs_mid_y);
       // TODO(aryap): This intersection point is arbitrary, so we can choose it

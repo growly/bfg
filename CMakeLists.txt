@@ -1,13 +1,22 @@
-cmake_minimum_required(VERSION 3.10)
-
-set(CMAKE_BUILD_TYPE Debug)
+cmake_minimum_required(VERSION 3.14)
 
 project(bfg VERSION 0.1)
+
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
+
+# For googletest on Windows.
+#set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 find_package(gflags REQUIRED)
 find_package(glog 0.5.0 REQUIRED)
 find_package(absl REQUIRED)
 find_package(Protobuf REQUIRED)
+find_package(GTest REQUIRED)
+find_package(Threads REQUIRED)
+
+include_directories(${GTEST_INCLUDE_DIR})
 
 set(PROTO_SRC
   ${PROJECT_SOURCE_DIR}/proto/inflator_rules.proto)
@@ -57,10 +66,7 @@ add_executable(bfg
                 ${PROTO_HDRS})
 
 target_include_directories(bfg PUBLIC
-                           "${PROJECT_BINARY_DIR}/src"
-                           ${Skia_BUILD_DIR}
-                           ${Skia_BUILD_DIR}/include
-                           )
+                           "${PROJECT_BINARY_DIR}/src")
 
 find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
 message(STATUS ${tcmalloc_lib})
@@ -69,10 +75,20 @@ target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
                                       gflags
                                       glog::glog
                                       absl::strings
-                                      ${Skia_LIBRARY}
                                       ${Protobuf_LIBRARIES})
 
 configure_file(src/c_make_header.h.in src/c_make_header.h)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED true)
+# Tests.
+
+set(GEOMETRY_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/geometry/line_test.cc
+)
+
+enable_testing()
+add_executable(bfg_test
+                ${GEOMETRY_TEST_SRC})
+target_link_libraries(bfg_test Threads::Threads gtest gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(bfg_test)
