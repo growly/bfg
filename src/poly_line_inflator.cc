@@ -128,7 +128,8 @@ void PolyLineInflator::InflatePolyLine(
     // policy:
     if (i == 0) {
       if (polyline.start_via() != nullptr) {
-        const ViaInfo &via_info = physical_db_.GetViaInfo(*polyline.start_via());
+        const ViaInfo &via_info = physical_db_.GetViaInfo(
+            *polyline.start_via());
         // TODO(aryap): This depends on the orientation of the starting segment.
         uint64_t via_length = std::max(via_info.width, via_info.height);
         line.StretchStart(via_length / 2 + via_info.overhang);
@@ -165,13 +166,14 @@ void PolyLineInflator::InflatePolyLine(
     //   growth_anchor = AnchorPosition::kCenterHorizontal;
     // }
 
-    // growth_anchor = segment.growth_anchor == AnchorPosition::kCenterAutomatic ?
-    //     growth_anchor : segment.growth_anchor;
+    // growth_anchor = segment.growth_anchor == AnchorPosition::kCenterAutomatic
+    //   ? growth_anchor : segment.growth_anchor;
 
-    double width = segment.width == 0 ? 100 : static_cast<double>(segment.width);
+    double width = segment.width == 0 ?
+        100 : static_cast<double>(segment.width);
 
-    last_shifted_line = std::move(
-        ShiftAndAppendIntersection(line, width, last_shifted_line.get(), polygon));
+    last_shifted_line = std::move(ShiftAndAppendIntersection(
+          line, width, last_shifted_line.get(), polygon));
     start = segment.end;
   }
   polygon->AddVertex(last_shifted_line->end());
@@ -188,10 +190,11 @@ void PolyLineInflator::InflatePolyLine(
     }
 
     const LineSegment &segment = polyline.segments().at(i);
-    double width = segment.width == 0 ? 100 : static_cast<double>(segment.width);
+    double width = segment.width == 0 
+        ? 100 : static_cast<double>(segment.width);
 
-    last_shifted_line = std::move(
-        ShiftAndAppendIntersection(line, width, last_shifted_line.get(), polygon));
+    last_shifted_line = std::move(ShiftAndAppendIntersection(
+        line, width, last_shifted_line.get(), polygon));
   }
   // We flipped all the lines on the way back, so the last point is the 'end'
   // position of the first line in the list.
