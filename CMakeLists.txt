@@ -13,16 +13,22 @@ set(PROTO_SRC
   ${PROJECT_SOURCE_DIR}/proto/inflator_rules.proto)
 
 set(VLSIR_SRC
-  ${PROJECT_SOURCE_DIR}/vlsir/raw.proto
   ${PROJECT_SOURCE_DIR}/vlsir/circuit.proto
-  ${PROJECT_SOURCE_DIR}/vlsir/utils.proto)
+  ${PROJECT_SOURCE_DIR}/vlsir/raw.proto
+  ${PROJECT_SOURCE_DIR}/vlsir/utils.proto
+)
 
 set(SRC
-  ${PROJECT_SOURCE_DIR}/src/instance.cc
   ${PROJECT_SOURCE_DIR}/src/cell.cc
+  ${PROJECT_SOURCE_DIR}/src/instance.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
+  ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
-  ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc)
+)
+
+#set(CIRCUIT_SRC
+#  ${PROJECT_SOURCE_DIR}/src/circuit/port.cc
+#  ${PROJECT_SOURCE_DIR}/src/circuit/signal.cc)
 
 set(GEOMETRY_SRC 
   ${PROJECT_SOURCE_DIR}/src/geometry/line.cc
