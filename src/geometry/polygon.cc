@@ -5,16 +5,6 @@
 namespace bfg {
 namespace geometry {
 
-std::ostream &operator<<(std::ostream &os, const Polygon &polygon) {
-  for (size_t i = 0; i < polygon.vertices().size(); ++i) {
-    os << polygon.vertices().at(i);
-    if (i != polygon.vertices().size() - 1) {
-      os << ", ";
-    }
-  }
-  return os;
-}
-
 const std::pair<Point, Point> Polygon::GetBoundingBox() const {
   Point lower_left;
   Point upper_right;
@@ -34,4 +24,15 @@ const std::pair<Point, Point> Polygon::GetBoundingBox() const {
 }
 
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Polygon &polygon) {
+  for (size_t i = 0; i < polygon.vertices().size(); ++i) {
+    os << polygon.vertices().at(i);
+    if (i != polygon.vertices().size() - 1) {
+      os << ", ";
+    }
+  }
+  return os;
+}
+
 }  // namespace bfg

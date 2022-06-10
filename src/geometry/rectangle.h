@@ -59,9 +59,12 @@ class Rectangle : public Shape {
   Point upper_right_;
 };
 
-std::ostream &operator<<(std::ostream &os, const Rectangle &rectangle);
-
 }  // namespace geometry
+
+std::ostream &operator<<(
+    std::ostream &os,
+    const geometry::Rectangle &rectangle);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_RECTANGLE_H_

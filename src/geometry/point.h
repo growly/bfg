@@ -26,15 +26,19 @@ class Point {
   int64_t y_;
 };
 
-std::ostream &operator<<(std::ostream &os, const Point &point);
+}  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Point &point);
 
 // Treat the point as a vector from the origin, then add element-wise.
-Point operator+(const Point &lhs, const Point &rhs);
-Point operator-(const Point &lhs, const Point &rhs);
+geometry::Point operator+(
+    const geometry::Point &lhs, const geometry::Point &rhs);
+geometry::Point operator-(
+    const geometry::Point &lhs, const geometry::Point &rhs);
 
-bool operator==(const Point &lhs, const Point &rhs);
+bool operator==(
+    const geometry::Point &lhs, const geometry::Point &rhs);
 
-}  // namespace geometry
 }  // namespace bfg
 
 #endif  // GEOMETRY_POINT_H_

@@ -5,22 +5,26 @@
 namespace bfg {
 namespace geometry {
 
-std::ostream &operator<<(std::ostream &os, const Point &point) {
+}  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Point &point) {
   os << "(" << point.x() << ", " << point.y() << ")";
   return os;
 }
 
-Point operator+(const Point &lhs, const Point &rhs) {
-  return Point(lhs.x() + rhs.x(), lhs.y() + rhs.y());
+geometry::Point operator+(
+    const geometry::Point &lhs, const geometry::Point &rhs) {
+  return geometry::Point(lhs.x() + rhs.x(), lhs.y() + rhs.y());
 }
 
-Point operator-(const Point &lhs, const Point &rhs) {
-  return Point(lhs.x() - rhs.x(), lhs.y() - rhs.y());
+geometry::Point operator-(
+    const geometry::Point &lhs, const geometry::Point &rhs) {
+  return geometry::Point(lhs.x() - rhs.x(), lhs.y() - rhs.y());
 }
 
-bool operator==(const Point &lhs, const Point &rhs) {
+bool operator==(
+    const geometry::Point &lhs, const geometry::Point &rhs) {
   return lhs.x() == rhs.x() && lhs.y() == rhs.y();
 }
 
-}  // namespace geometry
 }  // namespace bfg

@@ -132,10 +132,11 @@ double Line::AngleToHorizon() const {
   return theta;
 }
 
-std::ostream &operator<<(std::ostream &os, const Line &point) {
+}  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Line &point) {
   os << point.start() << " -> " << point.end();
   return os;
 }
 
-}  // namespace geometry
 }  // namespace bfg

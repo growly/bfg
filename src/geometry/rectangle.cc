@@ -27,11 +27,14 @@ const Rectangle Rectangle::OverlapWith(const Rectangle &other) const {
   return Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
 
-std::ostream &operator<<(std::ostream &os, const Rectangle &rectangle) {
+}  // namespace geometry
+
+std::ostream &operator<<(
+    std::ostream &os,
+    const geometry::Rectangle &rectangle) {
   os << "[Rectangle " << rectangle.lower_left()
      << " " << rectangle.upper_right() << "]";
   return os;
 }
 
-}  // namespace geometry
 }  // namespace bfg

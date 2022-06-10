@@ -30,9 +30,10 @@ class Via {
   Layer top_layer_;
 };
 
-std::ostream &operator<<(std::ostream &os, const Via &via);
-
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Via &via);
+
 }  // namespace bfg
 
 #endif  // VIA_H_

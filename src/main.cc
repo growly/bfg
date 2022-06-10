@@ -10,6 +10,9 @@
 #include <glog/logging.h>
 #include <absl/strings/str_join.h>
 
+#include "physical_properties_database.h"
+#include "atoms/sky130_buf.h"
+
 #include "c_make_header.h"
 
 DEFINE_string(example_flag, "default", "for later");
@@ -18,9 +21,42 @@ int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  std::string version = "BFG v" xstr(bfg_VERSION_MAJOR) "." xstr(bfg_VERSION_MINOR);
+  std::string version =
+      "BFG v" xstr(bfg_VERSION_MAJOR) "." xstr(bfg_VERSION_MINOR);
   std::cout << version << std::endl;
-  LOG(INFO) << version << " entry";
+  LOG(INFO) << version << " start";
+
+  // Some process "properties".
+  bfg::RoutingLayerInfo layer_1;
+  layer_1.layer = 4;
+  layer_1.area = bfg::geometry::Rectangle(bfg::geometry::Point(0, 0), 1000, 1000);
+  layer_1.wire_width = 50;
+  layer_1.offset = 50;
+  layer_1.pitch = 100;
+  layer_1.direction = bfg::RoutingTrackDirection::kTrackVertical;
+
+  bfg::RoutingLayerInfo layer_2;
+  layer_2.layer = 5;
+  layer_2.area = bfg::geometry::Rectangle(bfg::geometry::Point(0, 0), 1000, 1000);
+  layer_2.wire_width = 50;
+  layer_2.offset = 50;
+  layer_2.pitch = 100;
+  layer_2.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+
+  bfg::ViaInfo layer_1_2;
+  layer_1_2.layer = 6;
+  layer_1_2.cost = 1.0;
+  layer_1_2.width = 30;
+  layer_1_2.height = 30;
+  layer_1_2.overhang = 10;
+
+  bfg::PhysicalPropertiesDatabase physical_db;
+  physical_db.AddLayer(layer_1);
+  physical_db.AddLayer(layer_2);
+  physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
+
+  bfg::atoms::Sky130Buf buf(physical_db);
+  buf.Generate();
 
   return EXIT_SUCCESS;
 }

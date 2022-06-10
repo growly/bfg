@@ -37,7 +37,12 @@ set(SRC
 
 #set(CIRCUIT_SRC
 #  ${PROJECT_SOURCE_DIR}/src/circuit/port.cc
-#  ${PROJECT_SOURCE_DIR}/src/circuit/signal.cc)
+#  ${PROJECT_SOURCE_DIR}/src/circuit/signal.cc
+#)
+
+set(ATOMS_SRC
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
+)
 
 set(GEOMETRY_SRC 
   ${PROJECT_SOURCE_DIR}/src/geometry/line.cc
@@ -58,12 +63,19 @@ protobuf_generate_cpp(GENERATED_PROTO_SRCS
                       ${PROTO_SRC}
                       ${VLSIR_SRC})
 
+# TODO(aryap): Make this a library that both the main and the test
+# binaries can link against, instead of compiling twice:
+set(EXEC_SRC
+  ${SRC}
+  ${ATOMS_SRC}
+  ${GEOMETRY_SRC}
+  ${GENERATED_PROTO_SRCS}
+  ${PROTO_HDRS}
+)
+
 add_executable(bfg
-                src/main.cc
-                ${SRC}
-                ${GEOMETRY_SRC}
-                ${GENERATED_PROTO_SRCS}
-                ${PROTO_HDRS})
+  src/main.cc
+  ${EXEC_SRC})
 
 target_include_directories(bfg PUBLIC
                            "${PROJECT_BINARY_DIR}/src")
@@ -83,12 +95,25 @@ configure_file(src/c_make_header.h.in src/c_make_header.h)
 
 set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/line_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/rectangle_test.cc
+)
+
+set(TEST_SRC
+  ${GEOMETRY_TEST_SRC}
 )
 
 enable_testing()
-add_executable(bfg_test
-                ${GEOMETRY_TEST_SRC})
-target_link_libraries(bfg_test Threads::Threads gtest gtest_main)
+add_executable(bfg_test ${TEST_SRC} ${EXEC_SRC})
+target_link_libraries(bfg_test
+  Threads::Threads
+  gtest
+  gtest_main
+  ${tcmalloc_lib}
+  gflags
+  glog::glog
+  absl::strings
+  ${Protobuf_LIBRARIES}
+)
 
 include(GoogleTest)
 gtest_discover_tests(bfg_test)

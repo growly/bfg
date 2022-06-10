@@ -32,9 +32,10 @@ class Polygon : public Shape {
   std::vector<Point> vertices_;
 };
 
-std::ostream &operator<<(std::ostream &os, const Polygon &polygon);
-
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Polygon &polygon);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_POLYGON_H_
