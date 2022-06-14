@@ -26,6 +26,8 @@ class Cell {
   void AddInstance(const Instance &instance) { instances_.push_back(instance); }
   void AddPort(const geometry::Port &port) { ports_.push_back(port); }
 
+  std::string Describe() const;
+
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 

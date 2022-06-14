@@ -29,7 +29,8 @@ int main(int argc, char **argv) {
   // Some process "properties".
   bfg::RoutingLayerInfo layer_1;
   layer_1.layer = 4;
-  layer_1.area = bfg::geometry::Rectangle(bfg::geometry::Point(0, 0), 1000, 1000);
+  layer_1.area = bfg::geometry::Rectangle(
+      bfg::geometry::Point(0, 0), 1000, 1000);
   layer_1.wire_width = 50;
   layer_1.offset = 50;
   layer_1.pitch = 100;
@@ -37,7 +38,8 @@ int main(int argc, char **argv) {
 
   bfg::RoutingLayerInfo layer_2;
   layer_2.layer = 5;
-  layer_2.area = bfg::geometry::Rectangle(bfg::geometry::Point(0, 0), 1000, 1000);
+  layer_2.area = bfg::geometry::Rectangle(
+      bfg::geometry::Point(0, 0), 1000, 1000);
   layer_2.wire_width = 50;
   layer_2.offset = 50;
   layer_2.pitch = 100;
@@ -55,8 +57,13 @@ int main(int argc, char **argv) {
   physical_db.AddLayer(layer_2);
   physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
 
-  bfg::atoms::Sky130Buf buf(physical_db);
-  buf.Generate();
+  bfg::atoms::Sky130Buf::Parameters buf_params = {
+    .width = 1380,
+    .height = 2720
+  };
+  bfg::atoms::Sky130Buf buf(physical_db, buf_params);
+  std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());
+  std::cout << buf_cell->Describe();
 
   return EXIT_SUCCESS;
 }

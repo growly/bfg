@@ -1,5 +1,7 @@
 #include "cell.h"
 
+#include <sstream>
+
 #include "geometry/point.h"
 
 namespace bfg {
@@ -45,5 +47,27 @@ const std::pair<Point, Point> Cell::GetBoundingBox() const {
   return std::make_pair(Point(min_x, min_y), Point(max_x, max_y));
 }
 
+std::string Cell::Describe() const {
+  std::stringstream ss;
+
+  ss << "cell \"" << name_ << "\": " << rectangles_.size() << " rectangles "
+     << std::endl;
+  for (const geometry::Rectangle &rectangle : rectangles_) {
+    ss << "rect " << rectangle.lower_left().x() << " "
+       << rectangle.lower_left().y() << " "
+       << rectangle.upper_right().x() << " "
+       << rectangle.upper_right().y() << std::endl;
+  }
+
+  for (const geometry::Polygon &poly : polygons_) {
+    ss << "polygon ";
+    for (const geometry::Point &point : poly.vertices()) {
+      ss << "(" << point.x() << ", " << point.y() << ") ";
+    }
+    ss << std::endl;
+  }
+
+  return ss.str();
+}
 
 }  // namespace bfg
