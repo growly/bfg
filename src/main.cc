@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     .height = 2720
   };
   bfg::atoms::Sky130Buf buf(physical_db, buf_params);
-  std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());
+  std::unique_ptr<bfg::Layout> buf_cell(buf.Generate());
   std::cout << buf_cell->Describe();
 
   return EXIT_SUCCESS;

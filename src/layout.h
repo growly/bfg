@@ -1,5 +1,5 @@
-#ifndef CELL_H_
-#define CELL_H_
+#ifndef LAYOUT_H_
+#define LAYOUT_H_
 
 #include <string>
 #include <vector>
@@ -12,10 +12,10 @@
 
 namespace bfg {
 
-class Cell {
+class Layout {
  public:
-  Cell() = default;
-  Cell(const std::string &name) : name_(name) {}
+  Layout() = default;
+  Layout(const std::string &name) : name_(name) {}
 
   void AddRectangle(const geometry::Rectangle &rectangle) {
     rectangles_.push_back(rectangle);
@@ -53,4 +53,4 @@ class Cell {
 
 }  // namespace bfg
 
-#endif  // CELL_H_
+#endif  // LAYOUT_H_

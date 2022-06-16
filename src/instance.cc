@@ -4,7 +4,7 @@
 
 #include <glog/logging.h>
 
-#include "cell.h"
+#include "layout.h"
 #include "geometry/point.h"
 
 namespace bfg {

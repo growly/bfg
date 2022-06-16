@@ -1,11 +1,11 @@
 #include <cstdint>
 
 #include "atom.h"
-#include "../cell.h"
+#include "../layout.h"
 
 namespace bfg {
 
-class Cell;
+class Layout;
 
 namespace atoms {
 
@@ -22,7 +22,7 @@ class Sky130Buf: public Atom {
         parameters_(parameters) {}
 
   // Caller takes ownership!
-  bfg::Cell *Generate() override;
+  bfg::Layout *Generate() override;
 
  private:
   Parameters parameters_;

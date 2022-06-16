@@ -1,4 +1,4 @@
-#include "cell.h"
+#include "layout.h"
 
 #include <sstream>
 
@@ -8,14 +8,14 @@ namespace bfg {
 
 using geometry::Point;
 
-const std::pair<Point, Point> Cell::GetBoundingBox() const {
+const std::pair<Point, Point> Layout::GetBoundingBox() const {
   Point start;
   if (!polygons_.empty()) {
     start = polygons_.front().GetBoundingBox().first;
   } else if (!instances_.empty()) {
     start = instances_.front().GetBoundingBox().first;
   } else {
-    // Cell is empty.
+    // Layout is empty.
     return std::make_pair(Point(0, 0), Point(0, 0));
   }
 
@@ -47,7 +47,7 @@ const std::pair<Point, Point> Cell::GetBoundingBox() const {
   return std::make_pair(Point(min_x, min_y), Point(max_x, max_y));
 }
 
-std::string Cell::Describe() const {
+std::string Layout::Describe() const {
   std::stringstream ss;
 
   ss << "cell \"" << name_ << "\": " << rectangles_.size() << " rectangles "

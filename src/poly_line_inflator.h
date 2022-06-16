@@ -6,7 +6,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "cell.h"
+#include "layout.h"
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
 #include "geometry/line.h"
@@ -23,7 +23,7 @@ class PolyLineInflator {
       : physical_db_(physical_db) {}
 
   // Return a laid-out version of the poly_line diagram.
-  Cell Inflate(const PolyLineCell &poly_line_cell);
+  Layout Inflate(const PolyLineCell &poly_line_cell);
 
   void InflateVia(const geometry::Via &via, geometry::Rectangle *rectangle);
   void InflatePolyLine(const geometry::PolyLine &line,

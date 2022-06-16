@@ -5,22 +5,22 @@
 
 namespace bfg {
 
-class Cell;
+class Layout;
 
 class Instance {
  public:
-  Instance(Cell *template_cell,
+  Instance(Layout *template_cell,
            const geometry::Point &lower_left)
       : template_cell_(template_cell), lower_left_(lower_left) {}
 
   const std::pair<geometry::Point, geometry::Point> GetBoundingBox() const;
 
-  Cell *template_cell() const { return template_cell_; }
+  Layout *template_cell() const { return template_cell_; }
   const geometry::Point &lower_left() const { return lower_left_; }
 
  private:
   // This is the template cell.
-  Cell *template_cell_;
+  Layout *template_cell_;
 
   geometry::Point lower_left_;
 };

@@ -28,7 +28,7 @@ set(VLSIR_SRC
 )
 
 set(SRC
-  ${PROJECT_SOURCE_DIR}/src/cell.cc
+  ${PROJECT_SOURCE_DIR}/src/layout.cc
   ${PROJECT_SOURCE_DIR}/src/instance.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc

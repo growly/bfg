@@ -4,7 +4,7 @@
 #include <cmath>
 #include <memory>
 
-#include "cell.h"
+#include "layout.h"
 #include "poly_line_cell.h"
 #include "geometry/point.h"
 #include "geometry/line.h"
@@ -22,8 +22,8 @@ using geometry::Point;
 using geometry::Rectangle;
 using geometry::Via;
 
-Cell PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
-  Cell cell;
+Layout PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
+  Layout layout;
   for (const auto &poly_line : poly_line_cell.poly_lines()) {
     LOG_IF(FATAL, !poly_line) << "poly_line is nullptr?!";
 
@@ -34,14 +34,14 @@ Cell PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
     auto bb = polygon.GetBoundingBox();
     LOG(INFO) << polygon << " bounded by ll= " << bb.first
               << " ur= " << bb.second;
-    cell.AddPolygon(polygon);
+    layout.AddPolygon(polygon);
   }
   for (const auto &via : poly_line_cell.vias()) {
     Rectangle rectangle;
     InflateVia(*via, &rectangle);
-    cell.AddRectangle(rectangle);
+    layout.AddRectangle(rectangle);
   }
-  return cell;
+  return layout;
 }
 
 void PolyLineInflator::InflateVia(const Via &via, Rectangle *rectangle) {
