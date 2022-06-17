@@ -6,10 +6,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "parameter.h"
+#include "../parameter.h"
 #include "qualified_name.h"
 
 namespace bfg {
+
+class Circuit;
+
 namespace circuit {
 
 class Instance {
@@ -22,8 +25,9 @@ class Instance {
  private:
   std::string name_;
 
-  // The "master", or "template", circuit object.
-  Module *module_;
+  // The "master", or "template", circuit object. This could also be called a
+  // "Module".
+  Circuit *module_;
 
   std::unordered_map<std::string, Parameter> parameters_;
 };

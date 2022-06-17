@@ -4,12 +4,12 @@
 
 #include <glog/logging.h>
 
-#include "layout.h"
-#include "geometry/point.h"
+#include "../layout.h"
+#include "point.h"
 
 namespace bfg {
 
-using geometry::Point;
+namespace geometry {
 
 const std::pair<Point, Point> Instance::GetBoundingBox() const {
   LOG_IF(FATAL, template_cell_ == nullptr)
@@ -20,4 +20,5 @@ const std::pair<Point, Point> Instance::GetBoundingBox() const {
                         template_bb.second + lower_left_);
 }
 
-} // namespace bfg
+}  // namespace geometry
+}  // namespace bfg

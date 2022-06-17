@@ -7,7 +7,7 @@
 
 namespace bfg {
 
-class Layout;
+class Cell;
 
 namespace atoms {
 
@@ -15,7 +15,7 @@ class Atom {
  public:
   Atom(const PhysicalPropertiesDatabase &physical_db)
       : physical_db_(physical_db) {}
-  virtual bfg::Layout *Generate() = 0;
+  virtual bfg::Cell *Generate() = 0;
 
  protected:
   const PhysicalPropertiesDatabase &physical_db_;

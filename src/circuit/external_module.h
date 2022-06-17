@@ -14,7 +14,7 @@ namespace circuit {
 
 class ExternalModule {
  public:
-  Module() = default;
+  ExternalModule() = default;
 
   const std::string &name() const { return name_; }
   void set_name(const std::string &name) { name_ = name; }
@@ -25,7 +25,7 @@ class ExternalModule {
 
   std::vector<std::unique_ptr<Port>> ports_;
 
-  std::unordered_map<std::string, Parameter> parameters_;
+  std::unordered_map<std::string, bfg::Parameter> parameters_;
 };
 
 }  // namespace circuit

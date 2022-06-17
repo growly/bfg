@@ -18,7 +18,7 @@ class Port {
   Signal *signal() const { return signal_; }
   void set_signal(Signal *signal) { signal_ = signal; }
 
-  const PortDirection &direction { return direction_; }
+  const PortDirection &direction() const { return direction_; }
   void set_direction(const PortDirection &direction) { direction_ = direction; }
 
  private:

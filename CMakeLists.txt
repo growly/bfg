@@ -28,8 +28,8 @@ set(VLSIR_SRC
 )
 
 set(SRC
+  ${PROJECT_SOURCE_DIR}/src/circuit.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
-  ${PROJECT_SOURCE_DIR}/src/instance.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
@@ -45,6 +45,7 @@ set(ATOMS_SRC
 )
 
 set(GEOMETRY_SRC 
+  ${PROJECT_SOURCE_DIR}/src/geometry/instance.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/point.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line.cc

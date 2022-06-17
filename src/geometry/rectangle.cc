@@ -11,7 +11,6 @@ bool Rectangle::Overlaps(const Rectangle &other) const {
       other.upper_right().y() < lower_left_.y() ||
       upper_right_.x() < other.lower_left().x() ||
       upper_right_.y() < other.lower_left().y()) {
-    LOG(INFO) << "No overlap";
     return false;
   }
   return true;

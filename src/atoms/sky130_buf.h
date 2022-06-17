@@ -5,6 +5,8 @@
 
 namespace bfg {
 
+class Cell;
+class Circuit;
 class Layout;
 
 namespace atoms {
@@ -22,9 +24,12 @@ class Sky130Buf: public Atom {
         parameters_(parameters) {}
 
   // Caller takes ownership!
-  bfg::Layout *Generate() override;
+  bfg::Cell *Generate() override;
 
  private:
+  Layout *GenerateLayout();
+  Circuit *GenerateCircuit();
+
   Parameters parameters_;
 };
 

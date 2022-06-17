@@ -11,6 +11,8 @@
 #include <absl/strings/str_join.h>
 
 #include "physical_properties_database.h"
+#include "cell.h"
+#include "layout.h"
 #include "atoms/sky130_buf.h"
 
 #include "c_make_header.h"
@@ -62,8 +64,8 @@ int main(int argc, char **argv) {
     .height = 2720
   };
   bfg::atoms::Sky130Buf buf(physical_db, buf_params);
-  std::unique_ptr<bfg::Layout> buf_cell(buf.Generate());
-  std::cout << buf_cell->Describe();
+  std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());
+  std::cout << buf_cell->layout()->Describe();
 
   return EXIT_SUCCESS;
 }

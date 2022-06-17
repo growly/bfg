@@ -5,6 +5,7 @@
 #include <string>
 
 #include "atom.h"
+#include "../cell.h"
 #include "../layout.h"
 
 namespace bfg {
@@ -15,8 +16,21 @@ using ::bfg::geometry::Point;
 using ::bfg::geometry::Polygon;
 using ::bfg::geometry::Rectangle;
 
-bfg::Layout *Sky130Buf::Generate() {
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout("sky130_buf"));
+
+bfg::Cell *Sky130Buf::Generate() {
+  std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_buf"));
+  cell->set_layout(GenerateLayout());
+
+  // TODO(growly): std::move?
+  return cell.release();
+}
+
+bfg::Circuit *Sky130Buf::GenerateCircuit() {
+  return nullptr;
+}
+
+bfg::Layout *Sky130Buf::GenerateLayout() {
+  std::unique_ptr<bfg::Layout> layout(new bfg::Layout());
 
   // areaid.standardc 81/4
   // Boundary for tiling; when abutting to others, this cannot be overlapped.
@@ -128,9 +142,8 @@ bfg::Layout *Sky130Buf::Generate() {
 
   // diff.drawing 65/20
   // Diffusion. Intersection with gate material layer defines gate size.
-
-  // TODO(growly): We need to associate the 'width' parameter of the circuit
-  // elements which these transistors are with the actual width used here.
+  
+  
 
   // nwell.pin 64/16
   // nwell.drawing 64/20
