@@ -60,8 +60,12 @@ int main(int argc, char **argv) {
   physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
 
   bfg::atoms::Sky130Buf::Parameters buf_params = {
-    .width = 1380,
-    .height = 2720
+    .width_nm = 1380,
+    .height_nm = 2720,
+    .x0_width_nm = 520,
+    .x1_width_nm = 790,
+    .x2_width_nm = 520,
+    .x3_width_nm = 790
   };
   bfg::atoms::Sky130Buf buf(physical_db, buf_params);
   std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());

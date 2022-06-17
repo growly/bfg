@@ -50,7 +50,8 @@ const std::pair<Point, Point> Layout::GetBoundingBox() const {
 std::string Layout::Describe() const {
   std::stringstream ss;
 
-  ss << "cell \"" << name_ << "\": " << rectangles_.size() << " rectangles "
+  ss << "layout: " << rectangles_.size() << " rectangles, "
+     << polygons_.size() << " polygons, "
      << std::endl;
   for (const geometry::Rectangle &rectangle : rectangles_) {
     ss << "rect " << rectangle.lower_left().x() << " "

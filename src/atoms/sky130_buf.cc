@@ -44,21 +44,20 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
 bfg::Layout *Sky130Buf::GenerateLayout() {
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout());
 
+  uint64_t width =
+      internal_units_per_nm_ * static_cast<double>(parameters_.width_nm);
+  uint64_t height =
+      internal_units_per_nm_ * static_cast<double>(parameters_.height_nm);
+
   // areaid.standardc 81/4
   // Boundary for tiling; when abutting to others, this cannot be overlapped.
-  layout->AddRectangle(Rectangle(Point(0, 0),
-                                 parameters_.width,
-                                 parameters_.height));
+  layout->AddRectangle(Rectangle(Point(0, 0), width, height));
 
   // met1.drawing 68/20
   // The second "metal" layer.
-  layout->AddRectangle(Rectangle(Point(0, -240),
-                                 parameters_.width,
-                                 480));
+  layout->AddRectangle(Rectangle(Point(0, -240), width, 480));
 
-  layout->AddRectangle(Rectangle(Point(0, parameters_.height - 240),
-                                 parameters_.width,
-                                 480));
+  layout->AddRectangle(Rectangle(Point(0, height - 240), width, 480));
 
   // li1.drawing 67/20
   // The first "metal" layer.
@@ -68,8 +67,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(525, 465),
                               Point(855, 465),
                               Point(855, 85),
-                              Point(parameters_.width, 85),
-                              Point(parameters_.width, -85) }));
+                              Point(width, 85),
+                              Point(width, -85) }));
 
   layout->AddPolygon(Polygon({Point(175, 255),     // metal width 170 or 180
                               Point(175, 805),     // 255 is 170 to nearest wire
@@ -154,8 +153,27 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
 
   // diff.drawing 65/20
   // Diffusion. Intersection with gate material layer defines gate size.
-  
-  
+
+  // X0
+  uint64_t x0_width =
+      internal_units_per_nm_ * static_cast<double>(parameters_.x0_width_nm);
+  layout->AddRectangle(Rectangle(Point(135, 235),
+                                 Point(135 + 410 + 145, 235 + x0_width)));
+  // X2
+  uint64_t x2_width =
+      internal_units_per_nm_ * static_cast<double>(parameters_.x2_width_nm);
+  layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 235),
+                                 Point(1245, 235 + x2_width)));
+  // X1
+  uint64_t x1_width =
+      internal_units_per_nm_ * static_cast<double>(parameters_.x1_width_nm);
+  layout->AddRectangle(Rectangle(Point(135, 1695),
+                                 Point(135 + 410 + 145, 1695 + x1_width)));
+  // X3
+  uint64_t x3_width =
+      internal_units_per_nm_ * static_cast<double>(parameters_.x3_width_nm);
+  layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 1695),
+                                 Point(1245, 1695 + x3_width)));
 
   // nwell.pin 64/16
   // nwell.drawing 64/20
