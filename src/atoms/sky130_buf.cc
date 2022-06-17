@@ -25,10 +25,10 @@ bfg::Cell *Sky130Buf::Generate() {
   //      +o|_ X1   +o|_  X3
   //      |   |     |   |
   //   ---+   +-----+   +---
-  //      |   |     |  _|
+  //      |  _|     |  _|
   //      +-|_ X0   +-|_  X2
   //          |         |
-  //          v         v
+  //          V         V
 
   std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_buf"));
   cell->set_layout(GenerateLayout());
