@@ -18,6 +18,18 @@ using ::bfg::geometry::Rectangle;
 
 
 bfg::Cell *Sky130Buf::Generate() {
+  // A buffer is two back-to-back inverters:
+  //
+  //          /         /
+  //         _|        _|
+  //      +o|_ X1   +o|_  X3
+  //      |   |     |   |
+  //   ---+   +-----+   +---
+  //      |   |     |  _|
+  //      +-|_ X0   +-|_  X2
+  //          |         |
+  //          v         v
+
   std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_buf"));
   cell->set_layout(GenerateLayout());
 

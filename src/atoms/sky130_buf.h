@@ -14,8 +14,17 @@ namespace atoms {
 class Sky130Buf: public Atom {
  public:
   struct Parameters {
+    // In internal units:
     uint64_t width;
     uint64_t height;
+
+    double internal_units_per_nm;
+
+    // In real units (e.g. nm = nanometres):
+    double x0_width_nm;
+    double x1_width_nm;
+    double x2_width_nm;
+    double x3_width_nm;
   };
 
   Sky130Buf(const PhysicalPropertiesDatabase &physical_db,
