@@ -46,6 +46,7 @@ set(ATOMS_SRC
 
 set(GEOMETRY_SRC 
   ${PROJECT_SOURCE_DIR}/src/geometry/instance.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/label.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/point.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line.cc
