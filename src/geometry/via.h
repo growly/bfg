@@ -1,5 +1,5 @@
-#ifndef VIA_H_
-#define VIA_H_
+#ifndef GEOMETRY_VIA_H_
+#define GEOMETRY_VIA_H_
 
 #include <algorithm>
 #include <ostream>
@@ -36,4 +36,4 @@ std::ostream &operator<<(std::ostream &os, const geometry::Via &via);
 
 }  // namespace bfg
 
-#endif  // VIA_H_
+#endif  // GEOMETRY_VIA_H_

@@ -1,7 +1,6 @@
-#ifndef LABEL_H_
-#define LABEL_H_
+#ifndef GEOMETRY_LABEL_H_
+#define GEOMETRY_LABEL_H_
 
-#include <algorithm>
 #include <ostream>
 #include <string>
 
@@ -36,4 +35,4 @@ std::ostream &operator<<(std::ostream &os, const geometry::Label &label);
 
 }  // namespace bfg
 
-#endif  // LABEL_H_
+#endif  // GEOMETRY_LABEL_H_
