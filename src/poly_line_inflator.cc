@@ -20,10 +20,9 @@ using geometry::PolyLine;
 using geometry::Polygon;
 using geometry::Point;
 using geometry::Rectangle;
-using geometry::Via;
 
 Layout PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
-  Layout layout;
+  Layout layout(physical_db_);
   for (const auto &poly_line : poly_line_cell.poly_lines()) {
     LOG_IF(FATAL, !poly_line) << "poly_line is nullptr?!";
 
@@ -44,7 +43,8 @@ Layout PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
   return layout;
 }
 
-void PolyLineInflator::InflateVia(const Via &via, Rectangle *rectangle) {
+void PolyLineInflator::InflateVia(
+    const AbstractVia &via, Rectangle *rectangle) {
   LOG(INFO) << via;
   const ViaInfo &via_info = physical_db_.GetViaInfo(via);
   LOG_IF(FATAL, via_info.width == 0) << "Cannot create 0-width via.";

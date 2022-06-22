@@ -15,7 +15,7 @@ namespace atoms {
 using ::bfg::geometry::Point;
 using ::bfg::geometry::Polygon;
 using ::bfg::geometry::Rectangle;
-
+using ::bfg::geometry::Layer;
 
 bfg::Cell *Sky130Buf::Generate() {
   // A buffer is two back-to-back inverters:
@@ -42,7 +42,7 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
 }
 
 bfg::Layout *Sky130Buf::GenerateLayout() {
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout());
+  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(physical_db_));
 
   uint64_t width =
       internal_units_per_nm_ * static_cast<double>(parameters_.width_nm);
@@ -50,17 +50,20 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
       internal_units_per_nm_ * static_cast<double>(parameters_.height_nm);
 
   // areaid.standardc 81/4
+  layout->SetActiveLayerByName("areaid.standardc");
   // Boundary for tiling; when abutting to others, this cannot be overlapped.
   layout->AddRectangle(Rectangle(Point(0, 0), width, height));
 
   // met1.drawing 68/20
   // The second "metal" layer.
+  layout->SetActiveLayerByName("met1.drawing");
   layout->AddRectangle(Rectangle(Point(0, -240), width, 480));
 
   layout->AddRectangle(Rectangle(Point(0, height - 240), width, 480));
 
   // li1.drawing 67/20
   // The first "metal" layer.
+  layout->SetActiveLayerByName("li1.drawing");
   layout->AddPolygon(Polygon({Point(0, -85),
                               Point(0, 85),
                               Point(525, 85),
@@ -108,16 +111,24 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(855, 2635),
                               Point(855, 1875)}));
 
-  // npc.drawing 95/20
-  // What is this?
-
   // licon1.drawing 66/44
   // Contacts from li1 layer to diffusion.
+  layout->SetActiveLayerByName("licon1.drawing");
+  layout->AddRectangle(Rectangle(Point(0, 1380), Point(975, 1410)));
+                 
+
+  // npc.drawing 95/20
+  // "The SKY130 process requires an 'NPC' layer to enclose all poly contacts."
+  //  - tok on https://codeberg.org/tok/librecell/issues/11
+  // There are "minium size, spacing and enclosure" rules.
+  layout->SetActiveLayerByName("npc.drawing");
+  layout->AddRectangle(Rectangle(Point(0, 975), Point(1380, 1410)));
 
   // hvtp.drawing 78/44
 
   // poly.drawing 66/20
   // Polysilicon, more generally gate material.
+  layout->SetActiveLayerByName("poly.drawing");
   layout->AddPolygon(Polygon({Point(395, 105),
                               Point(395, 830),
                               Point(365, 830),
@@ -153,7 +164,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
 
   // diff.drawing 65/20
   // Diffusion. Intersection with gate material layer defines gate size.
-
+  // nsdm/psdm define N/P-type diffusion.
+  layout->SetActiveLayoutByName("diff.drawing");
   // X0
   uint64_t x0_width =
       internal_units_per_nm_ * static_cast<double>(parameters_.x0_width_nm);

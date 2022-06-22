@@ -55,8 +55,8 @@ int main(int argc, char **argv) {
   layer_1_2.overhang = 10;
 
   bfg::PhysicalPropertiesDatabase physical_db;
-  physical_db.AddLayer(layer_1);
-  physical_db.AddLayer(layer_2);
+  physical_db.AddRoutingLayerInfo(layer_1);
+  physical_db.AddRoutingLayerInfo(layer_2);
   physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
 
   bfg::atoms::Sky130Buf::Parameters buf_params = {

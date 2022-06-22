@@ -8,10 +8,13 @@
 #include "point.h"
 #include "port.h"
 #include "shape.h"
-#include "via.h"
+#include "../abstract_via.h"
 
 namespace bfg {
+
 namespace geometry {
+
+using ::bfg::AbstractVia;
 
 class PolyLine : public Shape {
  public:
@@ -43,10 +46,10 @@ class PolyLine : public Shape {
   uint64_t overhang_end() const { return overhang_end_; }
   void set_overhang_end(uint64_t overhang) { overhang_end_ = overhang; }
 
-  Via *start_via() const { return start_via_; }
-  void set_start_via(Via *via) { start_via_ = via; }
-  Via *end_via() const { return end_via_; }
-  void set_end_via(Via *via) { end_via_ = via; }
+  AbstractVia *start_via() const { return start_via_; }
+  void set_start_via(AbstractVia *via) { start_via_ = via; }
+  AbstractVia *end_via() const { return end_via_; }
+  void set_end_via(AbstractVia *via) { end_via_ = via; }
 
   const Port *start_port() const { return start_port_; }
   void set_start_port(const Port *port) { start_port_ = port; }
@@ -68,8 +71,8 @@ class PolyLine : public Shape {
   // be avoided. At the very least, though, we need some way of making sure
   // that the inflated PolyLine satisfies the layout constraints of connecting
   // to vias at the start or end.
-  Via *start_via_;
-  Via *end_via_;
+  AbstractVia *start_via_;
+  AbstractVia *end_via_;
 
   // TODO(aryap): Same with ports. The PolyLine might not connect between vias,
   // but there will be special rules to make sure it connects to a port,

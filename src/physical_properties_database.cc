@@ -7,9 +7,9 @@
 
 namespace bfg {
 
-namespace {
-
 using geometry::Layer;
+
+namespace {
 
 std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
     const Layer &lhs, const Layer &rhs) {
@@ -20,21 +20,51 @@ std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
 
 }   // namespace
 
-void PhysicalPropertiesDatabase::AddLayer(
+void PhysicalPropertiesDatabase::AddRoutingLayerInfo(
     const RoutingLayerInfo &info) {
   const Layer &layer = info.layer;
-  auto layer_info_it = layer_infos_.find(layer);
-  LOG_IF(FATAL, layer_info_it != layer_infos_.end())
-      << "Duplicate layer: " << layer;
-  layer_infos_.insert({layer, info});
+  auto layer_info_it = routing_layer_infos_.find(layer);
+  LOG_IF(FATAL, layer_info_it != routing_layer_infos_.end())
+      << "Duplicate routing layer info: " << layer;
+  routing_layer_infos_.insert({layer, info});
 }
 
-const RoutingLayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
+const RoutingLayerInfo &PhysicalPropertiesDatabase::GetRoutingLayerInfo(
     const Layer &layer) const {
-  auto lhs_info_it = layer_infos_.find(layer);
-  LOG_IF(FATAL, lhs_info_it == layer_infos_.end())
-      << "Could not find info for layer: " << layer;
+  auto lhs_info_it = routing_layer_infos_.find(layer);
+  LOG_IF(FATAL, lhs_info_it == routing_layer_infos_.end())
+      << "Could not find routing info for layer: " << layer;
   return lhs_info_it->second;
+}
+
+void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
+  // Add to mapping by layer number.
+  const Layer &layer = info.internal_layer;
+  auto number_iterator = layer_infos_.find(layer);
+  LOG_IF(FATAL, number_iterator != layer_infos_.end())
+      << "Duplicate layer info: " << layer;
+  layer_infos_.insert({layer, info});
+
+  auto name_iterator = layer_infos_by_name_.find(info.name);
+  LOG_IF(FATAL, name_iterator != layer_infos_by_name_.end())
+      << "Duplicate layer name when adding layer info: " << info.name;
+  layer_infos_by_name_.insert({info.name, layer});
+}
+
+const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
+    const Layer &layer) const {
+  auto iterator = layer_infos_.find(layer);
+  LOG_IF(FATAL, iterator == layer_infos_.end())
+      << "Layer info not found: " << layer;
+  return iterator->second;
+}
+
+const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
+    const std::string &layer_name) const {
+  auto iterator = layer_infos_by_name_.find(layer_name);
+  LOG_IF(FATAL, iterator == layer_infos_by_name_.end())
+      << "Layer info not found by name: " << layer_name;
+  return GetLayerInfo(iterator->second);
 }
 
 void PhysicalPropertiesDatabase::AddViaInfo(
@@ -55,18 +85,18 @@ void PhysicalPropertiesDatabase::AddViaInfo(
 }
 
 const ViaInfo &PhysicalPropertiesDatabase::GetViaInfo(
-    const Layer &lhs, const Layer &rhs) {
+    const Layer &lhs, const Layer &rhs) const {
   std::pair<const Layer&, const Layer&> ordered_layers =
       OrderFirstAndSecondLayers(lhs, rhs);
   const Layer &first = ordered_layers.first;
   const Layer &second = ordered_layers.second;
 
-  auto first_it = via_infos_.find(first);
+  const auto first_it = via_infos_.find(first);
   LOG_IF(FATAL, first_it == via_infos_.end())
       << "No known connectiion between layer " << first
       << " and layer " << second;
-  std::map<Layer, ViaInfo> &inner_map = first_it->second;
-  auto second_it = inner_map.find(second);
+  const std::map<Layer, ViaInfo> &inner_map = first_it->second;
+  const auto second_it = inner_map.find(second);
   LOG_IF(FATAL, second_it == inner_map.end())
       << "No known connectiion between layer " << first
       << " and layer " << second;

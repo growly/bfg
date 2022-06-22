@@ -4,7 +4,7 @@
 #include <vector>
 #include <memory>
 
-#include "geometry/via.h"
+#include "abstract_via.h"
 #include "geometry/point.h"
 #include "geometry/poly_line.h"
 
@@ -23,20 +23,20 @@ class PolyLineCell {
   const std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() const {
     return poly_lines_;
   }
-  const std::vector<std::unique_ptr<geometry::Via>> &vias() const {
+  const std::vector<std::unique_ptr<AbstractVia>> &vias() const {
     return vias_;
   }
 
   std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() {
     return poly_lines_;
   }
-  std::vector<std::unique_ptr<geometry::Via>> &vias() { return vias_; }
+  std::vector<std::unique_ptr<AbstractVia>> &vias() { return vias_; }
 
   const std::pair<geometry::Point, geometry::Point> GetBoundingBox() const;
 
  private:
   std::vector<std::unique_ptr<geometry::PolyLine>> poly_lines_;
-  std::vector<std::unique_ptr<geometry::Via>> vias_;
+  std::vector<std::unique_ptr<AbstractVia>> vias_;
 };
 
 }  // namespace bfg

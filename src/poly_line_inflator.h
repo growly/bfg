@@ -13,7 +13,7 @@
 #include "geometry/point.h"
 #include "geometry/poly_line.h"
 #include "geometry/polygon.h"
-#include "geometry/via.h"
+#include "abstract_via.h"
 
 namespace bfg {
 
@@ -25,7 +25,7 @@ class PolyLineInflator {
   // Return a laid-out version of the poly_line diagram.
   Layout Inflate(const PolyLineCell &poly_line_cell);
 
-  void InflateVia(const geometry::Via &via, geometry::Rectangle *rectangle);
+  void InflateVia(const AbstractVia &via, geometry::Rectangle *rectangle);
   void InflatePolyLine(const geometry::PolyLine &line,
                        geometry::Polygon *polygon);
 
@@ -51,7 +51,7 @@ class PolyLineInflator {
     geometry::Line *last_shifted_line, geometry::Polygon *polygon);
 
   // Provides some defaults and rules.
-  PhysicalPropertiesDatabase physical_db_;
+  const PhysicalPropertiesDatabase &physical_db_;
 };
 
 }  // namespace bfg

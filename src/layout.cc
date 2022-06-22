@@ -71,4 +71,8 @@ std::string Layout::Describe() const {
   return ss.str();
 }
 
+void Layout::SetActiveLayerByName(const std::string &name) {
+  set_active_layer(physical_db_.GetLayerInfo(name).internal_layer);
+}
+
 }  // namespace bfg

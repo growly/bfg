@@ -33,6 +33,8 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
+  #${PROJECT_SOURCE_DIR}/src/routing_grid.cc
+  ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
 )
 
 #set(CIRCUIT_SRC
@@ -52,7 +54,6 @@ set(GEOMETRY_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle.cc
-  ${PROJECT_SOURCE_DIR}/src/geometry/via.cc
 )
 
 # protobuf configuration

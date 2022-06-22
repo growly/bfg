@@ -4,7 +4,7 @@
 #include <map>
 #include <ostream>
 
-#include "geometry/via.h"
+#include "abstract_via.h"
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
 
@@ -38,6 +38,13 @@ struct ViaInfo {
   int64_t overhang;
 };
 
+struct LayerInfo {
+  geometry::Layer internal_layer;
+  std::string name;
+  uint16_t gds_layer;
+  uint16_t gds_datatype;
+};
+
 
 // Manages information about physical layout constraints.
 //
@@ -65,27 +72,40 @@ class PhysicalPropertiesDatabase {
     return internal_value / internal_units_per_external_;
   }
 
-  void AddLayer(const RoutingLayerInfo &info);
-  const RoutingLayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
+  void AddRoutingLayerInfo(const RoutingLayerInfo &info);
+  const RoutingLayerInfo &GetRoutingLayerInfo(
+      const geometry::Layer &layer) const;
+
+  void AddLayerInfo(const LayerInfo &info);
+  const LayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
+  const LayerInfo &GetLayerInfo(const std::string &layer_name) const;
 
   void AddViaInfo(const geometry::Layer &lhs,
                   const geometry::Layer &rhs,
                   const ViaInfo &info);
 
-  const ViaInfo &GetViaInfo(const geometry::Via &via) {
+  const ViaInfo &GetViaInfo(const AbstractVia &via) const {
     return GetViaInfo(via.bottom_layer(), via.top_layer());
   }
-  const ViaInfo &GetViaInfo(const geometry::Layer &lhs, const geometry::Layer &rhs);
+  const ViaInfo &GetViaInfo(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
  private:
   double internal_units_per_external_;
 
-  std::map<geometry::Layer, RoutingLayerInfo> layer_infos_;
+  // Store routing information per layer, keyed by internal layer number.
+  std::map<geometry::Layer, RoutingLayerInfo> routing_layer_infos_;
 
   // Stores the connection info between the ith (first index) and jth (second
   // index) layers. The "lesser" layer (std::less) should always be used to
   // index first, so that half of the matrix can be avoided.
   std::map<geometry::Layer, std::map<geometry::Layer, ViaInfo>> via_infos_;
+
+  // Store a mapping of internal layer number to layer information.
+  std::map<geometry::Layer, LayerInfo> layer_infos_;
+
+  // Store a mapping of layer name to internal layer number.
+  std::map<std::string, geometry::Layer> layer_infos_by_name_;
 };
 
 std::ostream &operator<<(std::ostream &os,
