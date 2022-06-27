@@ -2,6 +2,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <stdlib.h>
 #include <string>
 #include <unordered_map>
@@ -14,6 +16,10 @@
 #include "cell.h"
 #include "layout.h"
 #include "atoms/sky130_buf.h"
+
+#include "layer_info.pb.h"
+#include "raw.pb.h"
+#include <google/protobuf/text_format.h>
 
 #include "c_make_header.h"
 
@@ -54,7 +60,19 @@ int main(int argc, char **argv) {
   layer_1_2.height = 30;
   layer_1_2.overhang = 10;
 
+  bfg::proto::PDKInfo sky130_pb;
+
+  std::string pdk_info_file_name = "../sky130.pdk_info.pb.txt";
+  std::ifstream pdk_info_file(pdk_info_file_name);
+  LOG_IF(FATAL, !pdk_info_file.is_open())
+      << "Could not open PDK info file: " << pdk_info_file_name;
+  std::ostringstream ss;
+  ss << pdk_info_file.rdbuf();
+  google::protobuf::TextFormat::ParseFromString(ss.str(), &sky130_pb);
+
   bfg::PhysicalPropertiesDatabase physical_db;
+  physical_db.LoadPDKInfo(sky130_pb);
+
   physical_db.AddRoutingLayerInfo(layer_1);
   physical_db.AddRoutingLayerInfo(layer_2);
   physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
@@ -69,7 +87,15 @@ int main(int argc, char **argv) {
   };
   bfg::atoms::Sky130Buf buf(physical_db, buf_params);
   std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());
+
   std::cout << buf_cell->layout()->Describe();
+
+  std::unique_ptr<::vlsir::raw::Layout> buf_cell_layout(
+      buf_cell->layout()->ToVLSIRLayout());
+
+  std::string text_format;
+  google::protobuf::TextFormat::PrintToString(*buf_cell_layout, &text_format);
+  std::cout << text_format;
 
   return EXIT_SUCCESS;
 }

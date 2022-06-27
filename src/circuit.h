@@ -18,6 +18,13 @@ class Circuit {
  public:
   Circuit() = default;
 
+  circuit::Signal *AddSignal(const std::string &name) {
+    signals_.emplace_back(name);
+    return &signals_.back();
+  }
+
+  std::vector<circuit::Signal> &signals() { return signals_; }
+
   std::string Describe() const;
 
  private:
@@ -26,6 +33,11 @@ class Circuit {
   std::vector<circuit::Port> ports_;
   std::vector<circuit::Signal> signals_;
   std::vector<circuit::Instance> instances_;
+
+  // Pointers to signals that should be treated as power and ground,
+  // respectively.
+  std::vector<circuit::Signal*> power_signals_;
+  std::vector<circuit::Signal*> ground_signals_;
 
   std::unordered_map<std::string, Parameter> parameters_;
 };

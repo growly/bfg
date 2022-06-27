@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package bfg.proto;
+
+message LayerInfo {
+  uint64 internal_layer = 1;
+  string name = 2;
+  string description = 3;
+
+  uint32 gds_layer = 10;
+  uint32 gds_datatype = 11;
+}
+
+message PDKInfo {
+  repeated LayerInfo layer_infos = 1;
+}

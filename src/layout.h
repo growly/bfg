@@ -12,6 +12,8 @@
 #include "geometry/port.h"
 #include "geometry/rectangle.h"
 
+#include "raw.pb.h"
+
 namespace bfg {
 
 class Layout {
@@ -40,6 +42,8 @@ class Layout {
 
   std::string Describe() const;
 
+  ::vlsir::raw::Layout *ToVLSIRLayout() const;
+
   void SetActiveLayerByName(const std::string &name);
   void set_active_layer(const geometry::Layer &active_layer) {
     active_layer_ = active_layer;
@@ -58,6 +62,10 @@ class Layout {
   const std::pair<geometry::Point, geometry::Point> GetBoundingBox() const;
 
  private:
+  ::vlsir::raw::LayerShapes *GetOrInsertLayerShapes(
+      const geometry::Layer &layer,
+      std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> *shapes) const;
+
   const PhysicalPropertiesDatabase &physical_db_;
 
   geometry::Layer active_layer_;

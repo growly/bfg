@@ -1,14 +1,10 @@
 #include <cstdint>
 
 #include "atom.h"
+#include "../circuit.h"
 #include "../layout.h"
 
 namespace bfg {
-
-class Cell;
-class Circuit;
-class Layout;
-
 namespace atoms {
 
 // Generates a non-inverting buffer (from two inverters) for Sky130.
@@ -42,8 +38,8 @@ class Sky130Buf: public Atom {
   bfg::Cell *Generate() override;
 
  private:
-  Layout *GenerateLayout();
-  Circuit *GenerateCircuit();
+  bfg::Layout *GenerateLayout();
+  bfg::Circuit *GenerateCircuit();
 
   Parameters parameters_;
 

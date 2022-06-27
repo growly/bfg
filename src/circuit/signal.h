@@ -9,6 +9,7 @@ namespace circuit {
 class Signal {
  public:
   Signal() = default;
+  Signal(const std::string &name) { name_ = name; }
 
   const std::string &name() const { return name_; }
   void set_name(const std::string &name) { name_ = name; }

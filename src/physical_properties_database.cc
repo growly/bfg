@@ -1,9 +1,10 @@
-#include <utility>
+#include "physical_properties_database.h"
 
+#include <utility>
 #include <glog/logging.h>
 
 #include "geometry/layer.h"
-#include "physical_properties_database.h"
+#include "layer_info.pb.h"
 
 namespace bfg {
 
@@ -19,6 +20,28 @@ std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
 }
 
 }   // namespace
+
+void PhysicalPropertiesDatabase::LoadPDKInfo(const proto::PDKInfo &pdk) {
+  geometry::Layer internal_layer = 0;
+  for (const auto &layer_info : pdk.layer_infos()) {
+    // Find a free internal layer number:
+    while (layer_infos_.find(internal_layer) != layer_infos_.end()) {
+      internal_layer++;
+      LOG_IF(FATAL, internal_layer == 0)
+          << "Ran out of internal layer numbers!";
+    }
+
+    LOG(INFO) << "Loading layer " << internal_layer << ": \""
+              << layer_info.name() << "\"";
+    LayerInfo info {
+        .internal_layer = internal_layer,
+        .name = layer_info.name(),
+        .gds_layer = static_cast<uint16_t>(layer_info.gds_layer()),
+        .gds_datatype = static_cast<uint16_t>(layer_info.gds_datatype())
+    };
+    AddLayerInfo(info);
+  }
+}
 
 void PhysicalPropertiesDatabase::AddRoutingLayerInfo(
     const RoutingLayerInfo &info) {

@@ -3,6 +3,9 @@
 #include <sstream>
 
 #include "geometry/point.h"
+#include "geometry/layer.h"
+
+#include "raw.pb.h"
 
 namespace bfg {
 
@@ -73,6 +76,58 @@ std::string Layout::Describe() const {
 
 void Layout::SetActiveLayerByName(const std::string &name) {
   set_active_layer(physical_db_.GetLayerInfo(name).internal_layer);
+}
+
+::vlsir::raw::Layout *Layout::ToVLSIRLayout() const {
+  std::unique_ptr<::vlsir::raw::Layout> layout_pb(
+      new ::vlsir::raw::Layout());
+
+  std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> shapes;
+
+  // Collect shapes by layer.
+  for (const auto &rect : rectangles_) {
+    ::vlsir::raw::LayerShapes *layer_shapes_pb =
+        GetOrInsertLayerShapes(rect.layer(), &shapes);
+    ::vlsir::raw::Rectangle *rect_pb = layer_shapes_pb->add_rectangles();
+    rect_pb->mutable_lower_left()->set_x(rect.lower_left().x());
+    rect_pb->mutable_lower_left()->set_y(rect.lower_left().y());
+    rect_pb->set_width(rect.upper_right().x() - rect.lower_left().x());
+    rect_pb->set_height(rect.upper_right().y() - rect.lower_left().y());
+  }
+  for (const auto &poly : polygons_) {
+    ::vlsir::raw::LayerShapes *layer_shapes_pb =
+        GetOrInsertLayerShapes(poly.layer(), &shapes);
+    ::vlsir::raw::Polygon *poly_pb = layer_shapes_pb->add_polygons();
+    for (const auto &point : poly.vertices()) {
+      ::vlsir::raw::Point *point_pb = poly_pb->add_vertices();
+      point_pb->set_x(point.x());
+      point_pb->set_y(point.y());
+    }
+  }
+  LOG_IF(FATAL, !ports_.empty()) << "ports not yet written";
+  LOG_IF(FATAL, !instances_.empty()) << "instances not yet written";
+
+  for (const auto pair : shapes) {
+    *layout_pb->add_shapes() = *pair.second;
+  }
+
+  return layout_pb.release();
+};
+
+::vlsir::raw::LayerShapes *Layout::GetOrInsertLayerShapes(
+    const geometry::Layer &layer,
+    std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> *shapes) const {
+  auto shapes_it = shapes->find(layer);
+  if (shapes_it != shapes->end()) {
+    return shapes_it->second;
+  }
+  ::vlsir::raw::LayerShapes *layer_shapes_pb =
+      new ::vlsir::raw::LayerShapes();
+  const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
+  layer_shapes_pb->mutable_layer()->set_number(layer_info.gds_layer);
+  layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
+  shapes->insert({layer, layer_shapes_pb});
+  return layer_shapes_pb;
 }
 
 }  // namespace bfg

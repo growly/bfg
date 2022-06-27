@@ -7,6 +7,7 @@
 #include "abstract_via.h"
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
+#include "layer_info.pb.h"
 
 namespace bfg {
 
@@ -59,6 +60,8 @@ class PhysicalPropertiesDatabase {
  public:
   PhysicalPropertiesDatabase()
       : internal_units_per_external_(0.001) {}
+
+  void LoadPDKInfo(const proto::PDKInfo &pdk);
 
   // Internally, all positions and lengths are computed in integer units.
   // Externally to this program, the user probably expects real units, like

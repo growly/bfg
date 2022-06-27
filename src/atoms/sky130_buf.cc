@@ -38,7 +38,25 @@ bfg::Cell *Sky130Buf::Generate() {
 }
 
 bfg::Circuit *Sky130Buf::GenerateCircuit() {
-  return nullptr;
+  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+
+  //  X   ,
+  //  A   ,
+  //  VPWR,
+  //  VGND,
+  //  VPB ,
+  //  VNB
+
+  circuit::Signal *X = circuit->AddSignal("X");
+  circuit::Signal *A = circuit->AddSignal("A");
+  circuit::Signal *VPWR = circuit->AddSignal("VPWR");
+  circuit::Signal *VGND = circuit->AddSignal("VGND");
+  circuit::Signal *VPB = circuit->AddSignal("VGND");
+  circuit::Signal *VNB = circuit->AddSignal("VNB");
+
+  // We need handles to the Sky130 P/N fets.
+
+  return circuit.release();
 }
 
 bfg::Layout *Sky130Buf::GenerateLayout() {
@@ -125,6 +143,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   layout->AddRectangle(Rectangle(Point(0, 975), Point(1380, 1410)));
 
   // hvtp.drawing 78/44
+  layout->SetActiveLayerByName("hvtp.drawing");
+  layout->AddRectangle(Rectangle(Point(0, 1250), Point(1380, 2720)));
 
   // poly.drawing 66/20
   // Polysilicon, more generally gate material.
@@ -160,12 +180,17 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(985, 105)}));
 
   // nsdm.drawing 93/44
+  layout->SetActiveLayerByName("nsdm.drawing");
+  layout->AddRectangle({{0, 1420}, {1380, 2910}});
+
   // psdm.drawing 94/20
+  layout->SetActiveLayerByName("psdm.drawing");
+  layout->AddRectangle({{0, -190}, {1380, 1015}});
 
   // diff.drawing 65/20
   // Diffusion. Intersection with gate material layer defines gate size.
   // nsdm/psdm define N/P-type diffusion.
-  layout->SetActiveLayoutByName("diff.drawing");
+  layout->SetActiveLayerByName("diff.drawing");
   // X0
   uint64_t x0_width =
       internal_units_per_nm_ * static_cast<double>(parameters_.x0_width_nm);
@@ -188,8 +213,16 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                                  Point(1245, 1695 + x3_width)));
 
   // nwell.pin 64/16
+  layout->SetActiveLayerByName("nwell.pin");
+  layout->AddRectangle({{145, 2635}, {315, 2805}});
+
   // nwell.drawing 64/20
+  layout->SetActiveLayerByName("nwell.drawing");
+  layout->AddRectangle({{-190, 1305}, {1570 , 2910}});
+
   // pwell.pin 122/16
+  layout->SetActiveLayerByName("pwell.pin");
+  layout->AddRectangle({{155, -85}, {325 , 85}});
 
   return layout.release();
 }

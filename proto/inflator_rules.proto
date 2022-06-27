@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package boralago;
+package bfg.proto;
 
 message LayerRules {
   uint64 layer = 1;
