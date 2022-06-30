@@ -1,7 +1,9 @@
 #ifndef CIRCUIT_H_
 #define CIRCUIT_H_
 
+#include <glog/logging.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "parameter.h"
@@ -19,8 +21,13 @@ class Circuit {
   Circuit() = default;
 
   circuit::Signal *AddSignal(const std::string &name) {
+    auto name_it = signals_by_name_.find(name);
+    LOG_IF(FATAL, name_it != signals_by_name_.end())
+        << "Duplicate signal name: " << name;
     signals_.emplace_back(name);
-    return &signals_.back();
+    circuit::Signal *signal = &signals_.back();
+    signals_by_name_.insert({name, signal});
+    return signal;
   }
 
   std::vector<circuit::Signal> &signals() { return signals_; }
@@ -38,6 +45,8 @@ class Circuit {
   // respectively.
   std::vector<circuit::Signal*> power_signals_;
   std::vector<circuit::Signal*> ground_signals_;
+
+  std::unordered_map<std::string, circuit::Signal*> signals_by_name_;
 
   std::unordered_map<std::string, Parameter> parameters_;
 };

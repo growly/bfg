@@ -56,6 +56,16 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
 
   // We need handles to the Sky130 P/N fets.
 
+  // TODO(aryap): Define circuit primitives within the Circuit schema per PDK.
+  // We need models of different transistors and capacitors, resistors, etc.
+  // I think this should be a part of the PDKInfo proto message, but only
+  // references to VLSIR parts. e.g. the PDKInfo should contain a list of
+  // of primitive modules by name, perhaps some overriding parameters.
+  // Independently we need a collection of Modules defined for the PDK fed to
+  // us. Then maybe a higher-level PDKDatabase or something tracks both
+  // Physical (layout) and circuit properties, and can give us a handle to the
+  // appropriate Object by name (e.g. "nmos_rvt").
+
   return circuit.release();
 }
 

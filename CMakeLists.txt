@@ -19,13 +19,13 @@ find_package(Threads REQUIRED)
 include_directories(${GTEST_INCLUDE_DIR})
 
 set(PROTO_SRC
-  ${PROJECT_SOURCE_DIR}/proto/inflator_rules.proto
-  ${PROJECT_SOURCE_DIR}/proto/layer_info.proto)
+  ${PROJECT_SOURCE_DIR}/proto/inflator_rules.proto)
 
 set(VLSIR_SRC
   ${PROJECT_SOURCE_DIR}/vlsir/circuit.proto
   ${PROJECT_SOURCE_DIR}/vlsir/raw.proto
   ${PROJECT_SOURCE_DIR}/vlsir/utils.proto
+  ${PROJECT_SOURCE_DIR}/vlsir/pdk.proto
 )
 
 set(SRC

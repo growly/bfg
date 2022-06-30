@@ -1,10 +1,14 @@
 #include "physical_properties_database.h"
 
+#include <map>
+#include <unordered_map>
+#include <ostream>
 #include <utility>
 #include <glog/logging.h>
+#include <absl/strings/str_split.h>
 
 #include "geometry/layer.h"
-#include "layer_info.pb.h"
+#include "pdk.pb.h"
 
 namespace bfg {
 
@@ -21,9 +25,9 @@ std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
 
 }   // namespace
 
-void PhysicalPropertiesDatabase::LoadPDKInfo(const proto::PDKInfo &pdk) {
+void PhysicalPropertiesDatabase::LoadPDK(const vlsir::pdk::PDK &pdk) {
   geometry::Layer internal_layer = 0;
-  for (const auto &layer_info : pdk.layer_infos()) {
+  for (const auto &layer_info : pdk.layers()) {
     // Find a free internal layer number:
     while (layer_infos_.find(internal_layer) != layer_infos_.end()) {
       internal_layer++;
@@ -36,8 +40,9 @@ void PhysicalPropertiesDatabase::LoadPDKInfo(const proto::PDKInfo &pdk) {
     LayerInfo info {
         .internal_layer = internal_layer,
         .name = layer_info.name(),
-        .gds_layer = static_cast<uint16_t>(layer_info.gds_layer()),
-        .gds_datatype = static_cast<uint16_t>(layer_info.gds_datatype())
+        .purpose = layer_info.purpose(),
+        .gds_layer = static_cast<uint16_t>(layer_info.index()),
+        .gds_datatype = static_cast<uint16_t>(layer_info.sub_index())
     };
     AddLayerInfo(info);
   }
@@ -69,9 +74,23 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
   layer_infos_.insert({layer, info});
 
   auto name_iterator = layer_infos_by_name_.find(info.name);
-  LOG_IF(FATAL, name_iterator != layer_infos_by_name_.end())
-      << "Duplicate layer name when adding layer info: " << info.name;
-  layer_infos_by_name_.insert({info.name, layer});
+  if (name_iterator == layer_infos_by_name_.end()) {
+    auto insertion_result = layer_infos_by_name_.insert({info.name,
+        std::unordered_map<std::string, geometry::Layer>()});
+    LOG_IF(FATAL, !insertion_result.second)
+        << "Could not create sub-map for layer: (" << info.name
+        << ", " << info.purpose << ")";
+    name_iterator = insertion_result.first;
+  }
+
+  std::unordered_map<
+      std::string, geometry::Layer> &sub_map = name_iterator->second;
+
+  auto sub_it = sub_map.find(info.purpose);
+  LOG_IF(FATAL, sub_it != sub_map.end())
+      << "Duplicate layer name when adding layer info: (" << info.name
+      << ", " << info.purpose << ")";
+  sub_map.insert({info.purpose, layer});
 }
 
 const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
@@ -83,11 +102,27 @@ const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
 }
 
 const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
-    const std::string &layer_name) const {
-  auto iterator = layer_infos_by_name_.find(layer_name);
-  LOG_IF(FATAL, iterator == layer_infos_by_name_.end())
-      << "Layer info not found by name: " << layer_name;
-  return GetLayerInfo(iterator->second);
+    const std::string &layer_name_and_purpose) const {
+  std::vector<std::string> name_parts =
+      absl::StrSplit(layer_name_and_purpose, ".");
+
+  LOG_IF(FATAL, name_parts.size() != 2)
+      << "GetLayerInfo by name requires a layer in the form name.purpose.";
+
+  std::string &name = name_parts.front();
+  std::string &purpose = name_parts.back();
+
+  auto name_it = layer_infos_by_name_.find(name);
+  LOG_IF(FATAL, name_it == layer_infos_by_name_.end())
+      << "No match for named layer: " << name;
+
+  const std::unordered_map<std::string, geometry::Layer> &sub_map =
+      name_it->second;
+  auto sub_it = sub_map.find(purpose);
+  LOG_IF(FATAL, sub_it == sub_map.end())
+      << "No match for named layer (\"" <<  name << "\") purpose: " << purpose;
+
+  return GetLayerInfo(sub_it->second);
 }
 
 void PhysicalPropertiesDatabase::AddViaInfo(

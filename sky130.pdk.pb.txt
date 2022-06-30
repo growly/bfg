@@ -1,0 +1,376 @@
+layers {
+  name: "nwell"
+  purpose: "drawing"
+  index: 64
+  sub_index: 20
+}
+layers {
+  name: "DNWELL"
+  index: 64
+  sub_index: 18
+}
+layers {
+  name: "diff"
+  purpose: "drawing"
+  index: 65
+  sub_index: 20
+}
+layers {
+  name: "TAP"
+  index: 65
+  sub_index: 44
+}
+layers {
+  name: "LVTN"
+  index: 125
+  sub_index: 44
+}
+layers {
+  name: "hvtp"
+  purpose: "drawing"
+  index: 78
+  sub_index: 44
+}
+layers {
+  name: "HVI"
+  index: 75
+  sub_index: 20
+}
+layers {
+  name: "TUNM"
+  index: 80
+  sub_index: 20
+}
+layers {
+  name: "poly"
+  purpose: "drawing"
+  index: 66
+  sub_index: 20
+}
+layers {
+  name: "npc"
+  purpose: "drawing"
+  index: 95
+  sub_index: 20
+}
+layers {
+  name: "psdm"
+  purpose: "drawing"
+  index: 94
+  sub_index: 20
+}
+layers {
+  name: "nsdm"
+  purpose: "drawing"
+  index: 93
+  sub_index: 44
+}
+layers {
+  name: "licon1"
+  purpose: "drawing"
+  index: 66
+  sub_index: 44
+}
+layers {
+  name: "li1"
+  purpose: "drawing"
+  index: 67
+  sub_index: 20
+}
+layers {
+  name: "li1"
+  purpose: "pin"
+  index: 67
+  sub_index: 16
+}
+layers {
+  name: "li1"
+  purpose: "label"
+  index: 67
+  sub_index: 5
+}
+layers {
+  name: "mcon"
+  purpose: "drawing"
+  index: 67
+  sub_index: 44
+}
+layers {
+  name: "met1"
+  purpose: "drawing"
+  index: 68
+  sub_index: 20
+}
+layers {
+  name: "met1"
+  purpose: "pin"
+  index: 68
+  sub_index: 16
+}
+layers {
+  name: "met1"
+  purpose: "label"
+  index: 68
+  sub_index: 5
+}
+layers {
+  name: "VIA1"
+  index: 68
+  sub_index: 44
+}
+layers {
+  name: "MET2"
+  index: 69
+  sub_index: 20
+}
+layers {
+  name: "MET2T"
+  index: 69
+  sub_index: 16
+}
+layers {
+  name: "MET2P"
+  index: 69
+  sub_index: 5
+}
+layers {
+  name: "VIA2"
+  index: 69
+  sub_index: 44
+}
+layers {
+  name: "MET3"
+  index: 70
+  sub_index: 20
+}
+layers {
+  name: "MET3T"
+  index: 70
+  sub_index: 16
+}
+layers {
+  name: "MET3P"
+  index: 70
+  sub_index: 5
+}
+layers {
+  name: "VIA3"
+  index: 70
+  sub_index: 44
+}
+layers {
+  name: "MET4"
+  index: 71
+  sub_index: 20
+}
+layers {
+  name: "MET4T"
+  index: 71
+  sub_index: 16
+}
+layers {
+  name: "MET4P"
+  index: 71
+  sub_index: 5
+}
+layers {
+  name: "VIA4"
+  index: 71
+  sub_index: 44
+}
+layers {
+  name: "MET5"
+  index: 72
+  sub_index: 20
+}
+layers {
+  name: "MET5T"
+  index: 72
+  sub_index: 16
+}
+layers {
+  name: "MET5P"
+  index: 72
+  sub_index: 5
+}
+layers {
+  name: "PAD"
+  index: 76
+  sub_index: 20
+}
+layers {
+  name: "PADT"
+  index: 76
+  sub_index: 16
+}
+layers {
+  name: "PADP"
+  index: 76
+  sub_index: 5
+}
+layers {
+  name: "areaid"
+  purpose: "standardc"
+  index: 81
+  sub_index: 4
+}
+layers {
+  name: "text"
+  purpose: "drawing"
+  index: 83
+  sub_index: 44
+}
+layers {
+  name: "HVTR"
+  index: 18
+  sub_index: 20
+}
+layers {
+  name: "NCM"
+  index: 92
+  sub_index: 44
+}
+layers {
+  name: "RPM"
+  index: 86
+  sub_index: 20
+}
+layers {
+  name: "NSM"
+  index: 61
+  sub_index: 20
+}
+layers {
+  name: "RDL"
+  index: 74
+  sub_index: 20
+}
+layers {
+  name: "VHVI"
+  index: 74
+  sub_index: 21
+}
+layers {
+  name: "LDNTM"
+  index: 11
+  sub_index: 44
+}
+layers {
+  name: "HVNTM"
+  index: 125
+  sub_index: 20
+}
+layers {
+  name: "PMM"
+  index: 85
+  sub_index: 44
+}
+layers {
+  name: "PNP"
+  index: 82
+  sub_index: 44
+}
+layers {
+  name: "CAP"
+  index: 82
+  sub_index: 64
+}
+layers {
+  name: "IND"
+  index: 82
+  sub_index: 24
+}
+layers {
+  name: "PWRES"
+  index: 64
+  sub_index: 13
+}
+layers {
+  name: "POLYRES"
+  index: 66
+  sub_index: 13
+}
+layers {
+  name: "DIFFRES"
+  index: 65
+  sub_index: 13
+}
+layers {
+  name: "DIODE"
+  index: 81
+  sub_index: 23
+}
+layers {
+  name: "POLYM"
+  index: 66
+  sub_index: 83
+}
+layers {
+  name: "COREID"
+  index: 81
+  sub_index: 2
+}
+layers {
+  name: "nwell"
+  purpose: "pin"
+  index: 64
+  sub_index: 16
+}
+layers {
+  name: "pwell"
+  purpose: "pin"
+  index: 122
+  sub_index: 16
+}
+layers {
+  name: "nwell"
+  purpose: "label"
+  index: 64
+  sub_index: 5
+}
+layers {
+  name: "POLYP"
+  index: 66
+  sub_index: 5
+}
+layers {
+  name: "pwell"
+  purpose: "label"
+  index: 64
+  sub_index: 59
+}
+layers {
+  name: "CFOMDROP"
+  index: 22
+  sub_index: 22
+}
+layers {
+  name: "CLI1MADD"
+  index: 115
+  sub_index: 43
+}
+layers {
+  name: "CNTMADD"
+  index: 22
+  sub_index: 21
+}
+layers {
+  name: "CP1MADD"
+  index: 33
+  sub_index: 43
+}
+layers {
+  name: "BOUND"
+  index: 235
+  sub_index: 4
+}
+layers {
+  name: "POLYT"
+  index: 66
+  sub_index: 16
+}
+layers {
+  name: "RERAM"
+  index: 201
+  sub_index: 20
+}

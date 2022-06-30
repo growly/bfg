@@ -17,7 +17,7 @@
 #include "layout.h"
 #include "atoms/sky130_buf.h"
 
-#include "layer_info.pb.h"
+#include "pdk.pb.h"
 #include "raw.pb.h"
 #include <google/protobuf/text_format.h>
 
@@ -60,18 +60,18 @@ int main(int argc, char **argv) {
   layer_1_2.height = 30;
   layer_1_2.overhang = 10;
 
-  bfg::proto::PDKInfo sky130_pb;
+  vlsir::pdk::PDK sky130_pb;
 
-  std::string pdk_info_file_name = "../sky130.pdk_info.pb.txt";
-  std::ifstream pdk_info_file(pdk_info_file_name);
-  LOG_IF(FATAL, !pdk_info_file.is_open())
-      << "Could not open PDK info file: " << pdk_info_file_name;
+  std::string pdk_file_name = "../sky130.pdk.pb.txt";
+  std::ifstream pdk_file(pdk_file_name);
+  LOG_IF(FATAL, !pdk_file.is_open())
+      << "Could not open PDK descriptor file: " << pdk_file_name;
   std::ostringstream ss;
-  ss << pdk_info_file.rdbuf();
+  ss << pdk_file.rdbuf();
   google::protobuf::TextFormat::ParseFromString(ss.str(), &sky130_pb);
 
   bfg::PhysicalPropertiesDatabase physical_db;
-  physical_db.LoadPDKInfo(sky130_pb);
+  physical_db.LoadPDK(sky130_pb);
 
   physical_db.AddRoutingLayerInfo(layer_1);
   physical_db.AddRoutingLayerInfo(layer_2);

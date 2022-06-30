@@ -2,12 +2,13 @@
 #define PHYSICAL_PROPERTIES_DATABASE_H_
 
 #include <map>
+#include <unordered_map>
 #include <ostream>
 
 #include "abstract_via.h"
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
-#include "layer_info.pb.h"
+#include "pdk.pb.h"
 
 namespace bfg {
 
@@ -41,7 +42,11 @@ struct ViaInfo {
 
 struct LayerInfo {
   geometry::Layer internal_layer;
+  // Shorthand name, e.g. "met1".
   std::string name;
+  // Shorthand purpose, e.g. "drawing".
+  std::string purpose;
+
   uint16_t gds_layer;
   uint16_t gds_datatype;
 };
@@ -61,7 +66,7 @@ class PhysicalPropertiesDatabase {
   PhysicalPropertiesDatabase()
       : internal_units_per_external_(0.001) {}
 
-  void LoadPDKInfo(const proto::PDKInfo &pdk);
+  void LoadPDK(const vlsir::pdk::PDK &pdk);
 
   // Internally, all positions and lengths are computed in integer units.
   // Externally to this program, the user probably expects real units, like
@@ -81,7 +86,8 @@ class PhysicalPropertiesDatabase {
 
   void AddLayerInfo(const LayerInfo &info);
   const LayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
-  const LayerInfo &GetLayerInfo(const std::string &layer_name) const;
+  const LayerInfo &GetLayerInfo(
+      const std::string &layer_name_and_purpose) const;
 
   void AddViaInfo(const geometry::Layer &lhs,
                   const geometry::Layer &rhs,
@@ -108,7 +114,8 @@ class PhysicalPropertiesDatabase {
   std::map<geometry::Layer, LayerInfo> layer_infos_;
 
   // Store a mapping of layer name to internal layer number.
-  std::map<std::string, geometry::Layer> layer_infos_by_name_;
+  std::unordered_map<std::string, std::unordered_map<
+      std::string, geometry::Layer>> layer_infos_by_name_;
 };
 
 std::ostream &operator<<(std::ostream &os,
