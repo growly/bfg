@@ -9,17 +9,19 @@ namespace circuit {
 class Signal {
  public:
   Signal() = default;
-  Signal(const std::string &name) { name_ = name; }
+  Signal(const std::string &name, uint64_t width)
+      : name_(name),
+        width_(width) {}
 
   const std::string &name() const { return name_; }
   void set_name(const std::string &name) { name_ = name; }
 
-  int64_t width() const { return width_; }
-  void set_width(const int64_t width) { width_ = width; }
+  uint64_t width() const { return width_; }
+  void set_width(const uint64_t width) { width_ = width; }
 
  private:
   std::string name_;
-  int64_t width_;
+  uint64_t width_;
 };
 
 }  // namespace circuit

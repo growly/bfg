@@ -19,7 +19,8 @@ find_package(Threads REQUIRED)
 include_directories(${GTEST_INCLUDE_DIR})
 
 set(PROTO_SRC
-  ${PROJECT_SOURCE_DIR}/proto/inflator_rules.proto)
+  ${PROJECT_SOURCE_DIR}/proto/inflator_rules.proto
+)
 
 set(VLSIR_SRC
   ${PROJECT_SOURCE_DIR}/vlsir/circuit.proto
@@ -30,6 +31,7 @@ set(VLSIR_SRC
 
 set(SRC
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
@@ -57,6 +59,10 @@ set(GEOMETRY_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle.cc
 )
 
+set(CIRCUIT_SRC
+  ${PROJECT_SOURCE_DIR}/src/circuit/instance.cc
+)
+
 # protobuf configuration
 include_directories(${Protobuf_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -73,6 +79,7 @@ set(EXEC_SRC
   ${SRC}
   ${ATOMS_SRC}
   ${GEOMETRY_SRC}
+  ${CIRCUIT_SRC}
   ${GENERATED_PROTO_SRCS}
   ${PROTO_HDRS}
 )

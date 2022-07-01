@@ -10,6 +10,7 @@
 #include "circuit/instance.h"
 #include "circuit/signal.h"
 #include "circuit/port.h"
+#include "circuit/wire.h"
 
 namespace bfg {
 
@@ -20,26 +21,27 @@ class Circuit {
  public:
   Circuit() = default;
 
-  circuit::Signal *AddSignal(const std::string &name) {
-    auto name_it = signals_by_name_.find(name);
-    LOG_IF(FATAL, name_it != signals_by_name_.end())
-        << "Duplicate signal name: " << name;
-    signals_.emplace_back(name);
-    circuit::Signal *signal = &signals_.back();
-    signals_by_name_.insert({name, signal});
-    return signal;
-  }
+  // Convenient: Add a width=1 signal and return a wire indexing it. Wires are
+  // designed to be ephemeral.
+  // TODO(aryap): How to avoid a copy here? Copy elision works?
+  circuit::Wire AddSignal(const std::string &name);
 
-  std::vector<circuit::Signal> &signals() { return signals_; }
+  circuit::Signal *AddSignal(const std::string &name, uint64_t width);
+  circuit::Instance *AddInstance(
+    const std::string &name, const Circuit *template_module);
+
+  std::vector<std::unique_ptr<circuit::Signal>> &signals() { return signals_; }
 
   std::string Describe() const;
 
  private:
   std::string description_;
 
-  std::vector<circuit::Port> ports_;
-  std::vector<circuit::Signal> signals_;
-  std::vector<circuit::Instance> instances_;
+  // We own these objects but we don't want their address to change when the
+  // vectors resize (right?).
+  std::vector<std::unique_ptr<circuit::Signal>> signals_;
+  std::vector<std::unique_ptr<circuit::Port>> ports_;
+  std::vector<std::unique_ptr<circuit::Instance>> instances_;
 
   // Pointers to signals that should be treated as power and ground,
   // respectively.
@@ -47,6 +49,7 @@ class Circuit {
   std::vector<circuit::Signal*> ground_signals_;
 
   std::unordered_map<std::string, circuit::Signal*> signals_by_name_;
+  std::unordered_map<std::string, circuit::Instance*> instances_by_name_;
 
   std::unordered_map<std::string, Parameter> parameters_;
 };

@@ -1,25 +1,52 @@
 #ifndef CIRCUIT_CONNECTION_H_
 #define CIRCUIT_CONNECTION_H_
 
+#include "slice.h"
+
 namespace bfg {
 namespace circuit {
 
-enum ConnectionType {
-  SIGNAL,
-  SLICE,
-  CONCATENATION
-}
+class Signal;
 
 class Connection {
- private:
+ public:
+  enum ConnectionType {
+    SIGNAL,
+    SLICE,
+    CONCATENATION
+  };
+
   Connection() = default;
 
- public:
+  Connection(const Connection &other)
+      : connection_type_(other.connection_type_),
+        signal_(other.signal_),
+        slice_(other.slice_ ? new Slice(*other.slice_) : nullptr) {}
+
+  Connection &operator=(const Connection &other) {
+    *this = Connection(other);
+    return *this;
+  }
+
+  void set_signal(Signal *signal) {
+    connection_type_ = SIGNAL;
+    signal_ = signal;
+  }
+
+  void set_slice(const Slice &slice) {
+    connection_type_ = SLICE;
+    slice_.reset(new Slice(slice));
+  }
+
+ private:
   ConnectionType connection_type_;
 
+  // Signals are owned by the Circuit.
   Signal *signal_;
-  // Slice *slice_;
-  // Concatenation *concatenation_;
+
+  // Slices, Connections, Wires ephemeral so we keep a copy.
+  std::unique_ptr<Slice> slice_;
+  // Concatenation concatenation_;
 };
 
 }  // namespace circuit

@@ -5,6 +5,7 @@
 #include <string>
 
 #include "atom.h"
+#include "../circuit/wire.h"
 #include "../cell.h"
 #include "../layout.h"
 
@@ -32,6 +33,7 @@ bfg::Cell *Sky130Buf::Generate() {
 
   std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_buf"));
   cell->set_layout(GenerateLayout());
+  cell->set_circuit(GenerateCircuit());
 
   // TODO(growly): std::move?
   return cell.release();
@@ -47,24 +49,28 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   //  VPB ,
   //  VNB
 
-  circuit::Signal *X = circuit->AddSignal("X");
-  circuit::Signal *A = circuit->AddSignal("A");
-  circuit::Signal *VPWR = circuit->AddSignal("VPWR");
-  circuit::Signal *VGND = circuit->AddSignal("VGND");
-  circuit::Signal *VPB = circuit->AddSignal("VGND");
-  circuit::Signal *VNB = circuit->AddSignal("VNB");
+  circuit::Wire X = circuit->AddSignal("X");
+  circuit::Wire A = circuit->AddSignal("A");
+  circuit::Wire VPWR = circuit->AddSignal("VPWR");
+  circuit::Wire VGND = circuit->AddSignal("VGND");
+  circuit::Wire VPB = circuit->AddSignal("VPB");
+  circuit::Wire VNB = circuit->AddSignal("VNB");
 
   // We need handles to the Sky130 P/N fets.
 
   // TODO(aryap): Define circuit primitives within the Circuit schema per PDK.
   // We need models of different transistors and capacitors, resistors, etc.
-  // I think this should be a part of the PDKInfo proto message, but only
-  // references to VLSIR parts. e.g. the PDKInfo should contain a list of
+  // I think this should be a part of the PDK proto message, but only
+  // references to VLSIR parts. e.g. the PDK should contain a list of
   // of primitive modules by name, perhaps some overriding parameters.
   // Independently we need a collection of Modules defined for the PDK fed to
   // us. Then maybe a higher-level PDKDatabase or something tracks both
   // Physical (layout) and circuit properties, and can give us a handle to the
   // appropriate Object by name (e.g. "nmos_rvt").
+
+  circuit::Instance *X0 = circuit->AddInstance("X0", nullptr);
+
+  X0->Connect("THIS_IS_A_TRANSISITOR_TERMINAL", X);
 
   return circuit.release();
 }
