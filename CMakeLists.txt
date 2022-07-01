@@ -26,7 +26,7 @@ set(VLSIR_SRC
   ${PROJECT_SOURCE_DIR}/vlsir/circuit.proto
   ${PROJECT_SOURCE_DIR}/vlsir/raw.proto
   ${PROJECT_SOURCE_DIR}/vlsir/utils.proto
-  ${PROJECT_SOURCE_DIR}/vlsir/pdk.proto
+  ${PROJECT_SOURCE_DIR}/vlsir/tech.proto
 )
 
 set(SRC

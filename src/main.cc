@@ -60,9 +60,9 @@ int main(int argc, char **argv) {
   layer_1_2.height = 30;
   layer_1_2.overhang = 10;
 
-  vlsir::pdk::PDK sky130_pb;
+  vlsir::tech::Technology sky130_pb;
 
-  std::string pdk_file_name = "../sky130.pdk.pb.txt";
+  std::string pdk_file_name = "../sky130.technology.pb.txt";
   std::ifstream pdk_file(pdk_file_name);
   LOG_IF(FATAL, !pdk_file.is_open())
       << "Could not open PDK descriptor file: " << pdk_file_name;
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   google::protobuf::TextFormat::ParseFromString(ss.str(), &sky130_pb);
 
   bfg::PhysicalPropertiesDatabase physical_db;
-  physical_db.LoadPDK(sky130_pb);
+  physical_db.LoadTechnology(sky130_pb);
 
   physical_db.AddRoutingLayerInfo(layer_1);
   physical_db.AddRoutingLayerInfo(layer_2);

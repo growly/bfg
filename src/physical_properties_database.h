@@ -8,7 +8,7 @@
 #include "abstract_via.h"
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
-#include "pdk.pb.h"
+#include "tech.pb.h"
 
 namespace bfg {
 
@@ -66,7 +66,7 @@ class PhysicalPropertiesDatabase {
   PhysicalPropertiesDatabase()
       : internal_units_per_external_(0.001) {}
 
-  void LoadPDK(const vlsir::pdk::PDK &pdk);
+  void LoadTechnology(const vlsir::tech::Technology &pdk);
 
   // Internally, all positions and lengths are computed in integer units.
   // Externally to this program, the user probably expects real units, like

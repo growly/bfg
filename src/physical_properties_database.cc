@@ -8,7 +8,7 @@
 #include <absl/strings/str_split.h>
 
 #include "geometry/layer.h"
-#include "pdk.pb.h"
+#include "tech.pb.h"
 
 namespace bfg {
 
@@ -25,7 +25,8 @@ std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
 
 }   // namespace
 
-void PhysicalPropertiesDatabase::LoadPDK(const vlsir::pdk::PDK &pdk) {
+void PhysicalPropertiesDatabase::LoadTechnology(
+    const vlsir::tech::Technology &pdk) {
   geometry::Layer internal_layer = 0;
   for (const auto &layer_info : pdk.layers()) {
     // Find a free internal layer number:
