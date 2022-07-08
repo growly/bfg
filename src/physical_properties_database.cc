@@ -8,7 +8,7 @@
 #include <absl/strings/str_split.h>
 
 #include "geometry/layer.h"
-#include "tech.pb.h"
+#include "vlsir/tech.pb.h"
 
 namespace bfg {
 

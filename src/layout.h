@@ -12,7 +12,7 @@
 #include "geometry/port.h"
 #include "geometry/rectangle.h"
 
-#include "raw.pb.h"
+#include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
 

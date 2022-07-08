@@ -17,8 +17,8 @@
 #include "layout.h"
 #include "atoms/sky130_buf.h"
 
-#include "pdk.pb.h"
-#include "raw.pb.h"
+#include "vlsir/tech.pb.h"
+#include "vlsir/layout/raw.pb.h"
 #include <google/protobuf/text_format.h>
 
 #include "c_make_header.h"

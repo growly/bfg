@@ -5,7 +5,7 @@
 #include "geometry/point.h"
 #include "geometry/layer.h"
 
-#include "raw.pb.h"
+#include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
 
