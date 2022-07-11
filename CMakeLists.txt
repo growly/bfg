@@ -24,13 +24,13 @@ set(PROTO_SRC
 )
 
 set(VLSIR_SRC_DIR ${PROJECT_SOURCE_DIR}/vlsir)
-#file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
-set(VLSIR_SRC
-  ${VLSIR_SRC_DIR}/circuit.proto
-  ${VLSIR_SRC_DIR}/layout/raw.proto
-  ${VLSIR_SRC_DIR}/utils.proto
-  ${VLSIR_SRC_DIR}/tech.proto
-)
+file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
+#set(VLSIR_SRC
+#  ${VLSIR_SRC_DIR}/circuit.proto
+#  ${VLSIR_SRC_DIR}/layout/raw.proto
+#  ${VLSIR_SRC_DIR}/utils.proto
+#  ${VLSIR_SRC_DIR}/tech.proto
+#)
 
 set(SRC
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
@@ -199,6 +199,7 @@ configure_file(src/c_make_header.h.in src/c_make_header.h)
 add_executable(bfg_bin
   src/main.cc
   ${BFG_LIB_SRC})
+set_target_properties(bfg_bin PROPERTIES OUTPUT_NAME bfg)
 
 target_include_directories(bfg_bin PUBLIC
                            "${PROJECT_BINARY_DIR}/src"
