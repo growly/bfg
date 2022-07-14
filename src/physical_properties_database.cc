@@ -41,7 +41,7 @@ void PhysicalPropertiesDatabase::LoadTechnology(
     LayerInfo info {
         .internal_layer = internal_layer,
         .name = layer_info.name(),
-        .purpose = layer_info.purpose(),
+        .purpose = layer_info.purpose().description(),
         .gds_layer = static_cast<uint16_t>(layer_info.index()),
         .gds_datatype = static_cast<uint16_t>(layer_info.sub_index())
     };

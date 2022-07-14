@@ -95,9 +95,9 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
 
   layout->AddRectangle(Rectangle(Point(0, height - 240), width, 480));
 
-  // li1.drawing 67/20
+  // li.drawing 67/20
   // The first "metal" layer.
-  layout->SetActiveLayerByName("li1.drawing");
+  layout->SetActiveLayerByName("li.drawing");
   layout->AddPolygon(Polygon({Point(0, -85),
                               Point(0, 85),
                               Point(525, 85),
@@ -145,9 +145,9 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(855, 2635),
                               Point(855, 1875)}));
 
-  // licon1.drawing 66/44
-  // Contacts from li1 layer to diffusion.
-  layout->SetActiveLayerByName("licon1.drawing");
+  // licon.drawing 66/44
+  // Contacts from li layer to diffusion.
+  layout->SetActiveLayerByName("licon.drawing");
   layout->AddRectangle(Rectangle(Point(0, 1380), Point(975, 1410)));
                  
 

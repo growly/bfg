@@ -28,6 +28,7 @@ DEFINE_string(example_flag, "default", "for later");
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   std::string version =
       "BFG v" xstr(bfg_VERSION_MAJOR) "." xstr(bfg_VERSION_MINOR);
@@ -93,9 +94,19 @@ int main(int argc, char **argv) {
   std::unique_ptr<::vlsir::raw::Layout> buf_cell_layout(
       buf_cell->layout()->ToVLSIRLayout());
 
+  ::vlsir::raw::Library library;
+  library.set_units(::vlsir::raw::Units::NANO);
+  library.add_cells()->mutable_layout()->CopyFrom(*buf_cell_layout);
+
   std::string text_format;
-  google::protobuf::TextFormat::PrintToString(*buf_cell_layout, &text_format);
+  google::protobuf::TextFormat::PrintToString(library, &text_format);
   std::cout << text_format;
+
+  std::fstream output(
+      "out.pb", std::ios::out | std::ios::trunc | std::ios::binary);
+  if (!library.SerializeToOstream(&output)) {
+    LOG(ERROR) << "Failed to write output";
+  }
 
   return EXIT_SUCCESS;
 }
