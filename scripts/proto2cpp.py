@@ -22,10 +22,17 @@ def name_from_layer_info(layer_info: tech_pb2.LayerInfo) -> str:
     purpose = layer_info.purpose
     if purpose.description:
         name += f'.{layer_info.purpose.description}'
+    return name
+
+
+def comment_from_layer_info(layer_info: tech_pb2.LayerInfo) -> str:
+    comment = name_from_layer_info(layer_info)
+    purpose = layer_info.purpose
     if purpose.type != (
         tech_pb2.LayerPurposeType.UNKNOWN):
-        name += f' [{tech_pb2.LayerPurposeType.Name(purpose.type)}]'
-    return name
+        comment += f' [{tech_pb2.LayerPurposeType.Name(purpose.type)}]'
+    comment += f' {layer_info.index}/{layer_info.sub_index}'
+    return comment
 
 
 def main():
@@ -42,15 +49,14 @@ def main():
         raise NotImplementedError(
             'Currently assume all numbers in the input are nanometres')
 
-    # Look up layer names by layer_names[index][sub_index].
-    layer_names = collections.defaultdict(dict)
+    # Look up layer names by layer_infos[index][sub_index].
+    layer_infos = collections.defaultdict(dict)
     if args.tech:
         tech = tech_pb2.Technology()
         with open(args.tech, 'rb') as f:
             tech.ParseFromString(f.read())
         for layer_info in tech.layers:
-            name = name_from_layer_info(layer_info)
-            layer_names[layer_info.index][layer_info.sub_index] = name
+            layer_infos[layer_info.index][layer_info.sub_index] = layer_info
             #print(f'{layer_info.index}/{layer_info.sub_index}: {name}')
 
 
@@ -70,11 +76,14 @@ def main():
             index = shapes.layer.number
             sub_index = shapes.layer.purpose
             try:
-                layer_name = layer_names[index][sub_index]
+                layer_info = layer_infos[index][sub_index]
             except KeyError:
-                layer_name = f'unknown (reference to layer {index}/{sub_index})'
+                layer_info = None
 
-            print(f'// {layer_name}')
+            if layer_info is not None:
+                print(f'// {comment_from_layer_info(layer_info)}')
+                print('layout->SetActiveLayerByName("'
+                      f'{name_from_layer_info(layer_info)}")')
 
             for rect_pb in shapes.rectangles:
                 ll = rect_pb.lower_left
