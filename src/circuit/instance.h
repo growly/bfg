@@ -1,6 +1,7 @@
 #ifndef CIRCUIT_INSTANCE_H_
 #define CIRCUIT_INSTANCE_H_
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -33,6 +34,17 @@ class Instance {
 
   // Connects the port named "port_name" to the given signal.
   void Connect(const std::string &port_name, const Wire &wire);
+
+  // Accepts repeating pairs of (port_name, wire) to invoke Connect on.
+  // TODO(aryap): Compare variadic arguments, variadic templates, and
+  // std::initializer_list for this:
+  // TODO(aryap): How to use temporaries without a copy in the std::pair?
+  void Connect(std::initializer_list<
+      std::pair<const std::string, const Wire&>>  connect);
+
+  void SetParameter(const std::string &name, const Parameter &value) {
+    parameters_[name] = value;
+  }
 
  private:
   std::string name_;

@@ -22,5 +22,12 @@ void Instance::Connect(
   connections_.insert({port_name, connection});
 }
 
+void Instance::Connect(
+    std::initializer_list<std::pair<const std::string, const Wire&>> connect) {
+  for (const auto &entry : connect) {
+    Connect(entry.first, entry.second);
+  }
+}
+
 }  // namespace circuit
 }  // namespace bfg

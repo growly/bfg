@@ -25,9 +25,9 @@ bfg::Cell *Sky130Buf::Generate() {
   //         _|        _|
   //      +o|_ X1   +o|_  X3
   //      |   |     |   |
-  //   ---+   +-----+   +---
+  // A ---+   +--P--+   +--- X
   //      |  _|     |  _|
-  //      +-|_ X0   +-|_  X2
+  //      +-|_ X2   +-|_  X0
   //          |         |
   //          V         V
 
@@ -50,6 +50,7 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   //  VNB
 
   circuit::Wire X = circuit->AddSignal("X");
+  circuit::Wire P = circuit->AddSignal("P");
   circuit::Wire A = circuit->AddSignal("A");
   circuit::Wire VPWR = circuit->AddSignal("VPWR");
   circuit::Wire VGND = circuit->AddSignal("VGND");
@@ -68,9 +69,40 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   // Physical (layout) and circuit properties, and can give us a handle to the
   // appropriate Object by name (e.g. "nmos_rvt").
 
+  // The spice netlist in the PDK is:
+  // ~/src/skywater-pdk/libraries/sky130_fd_sc_hd/latest/cells/buf/sky130_fd_sc_hd__buf_1.spice
+  //
+  //  .subckt sky130_fd_sc_hd__buf_1 A VGND VNB VPB VPWR X
+  //  X0 VGND a_27_47# X VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
+  //  X1 a_27_47# A VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
+  //  X2 a_27_47# A VGND VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
+  //  X3 VPWR a_27_47# X VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
+  //  .ends
+  //
+  // Model sky130_fd_pr__nfet_01v8__model has ports "d g s b":
+  //  drain, gate, source, substrate bias
   circuit::Instance *X0 = circuit->AddInstance("X0", nullptr);
+  circuit::Instance *X1 = circuit->AddInstance("X1", nullptr);
+  circuit::Instance *X2 = circuit->AddInstance("X2", nullptr);
+  circuit::Instance *X3 = circuit->AddInstance("X3", nullptr);
 
-  X0->Connect("THIS_IS_A_TRANSISITOR_TERMINAL", X);
+  X0->Connect("d", VGND);
+  X0->Connect("g", P);
+  X0->Connect("s", X);
+  X0->Connect("b", VNB);
+  //X0->SetParameter("l", Parameter {
+
+  X3->Connect("d", X);
+  X3->Connect("g", P);
+  X3->Connect("s", VPWR);
+  X3->Connect("b", VPB);
+
+  X2->Connect("d", P);
+  X2->Connect("g", A);
+  X2->Connect("s", VGND);
+  X2->Connect("b", VNB);
+
+  X1->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
 
   return circuit.release();
 }
