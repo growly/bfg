@@ -196,9 +196,7 @@ configure_file(src/c_make_header.h.in src/c_make_header.h)
 # bfg executable
 # --------------
 
-add_executable(bfg_bin
-  src/main.cc
-  ${BFG_LIB_SRC})
+add_executable(bfg_bin src/main.cc)
 set_target_properties(bfg_bin PROPERTIES OUTPUT_NAME bfg)
 
 target_include_directories(bfg_bin PUBLIC
