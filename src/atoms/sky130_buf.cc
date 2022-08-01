@@ -92,15 +92,9 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   X0->Connect("b", VNB);
   //X0->SetParameter("l", Parameter {
 
-  X3->Connect("d", X);
-  X3->Connect("g", P);
-  X3->Connect("s", VPWR);
-  X3->Connect("b", VPB);
+  X3->Connect({{"d", X}, {"g", P}, {"s", VPWR}, {"b", VPB}});
 
-  X2->Connect("d", P);
-  X2->Connect("g", A);
-  X2->Connect("s", VGND);
-  X2->Connect("b", VNB);
+  X2->Connect({{"d", P}, {"g", A}, {"s", VGND}, {"b", VNB}});
 
   X1->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
 

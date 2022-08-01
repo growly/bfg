@@ -12,6 +12,8 @@
 #include "circuit/port.h"
 #include "circuit/wire.h"
 
+#include "vlsir/circuit.pb.h"
+
 namespace bfg {
 
 // A "Circuit" is the same thing as a "Module" in the VLSIR schema. It collects
@@ -34,7 +36,12 @@ class Circuit {
 
   std::string Describe() const;
 
+  ::vlsir::circuit::Module ToVLSIRCircuit() const;
+
+  const std::string &name() const { return name_; }
+  void set_name(const std::string &name) { name_ = name; }
  private:
+  std::string name_;
   std::string description_;
 
   // We own these objects but we don't want their address to change when the

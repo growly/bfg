@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "vlsir/circuit.pb.h"
+
 #include "../parameter.h"
 #include "connection.h"
 #include "qualified_name.h"
@@ -45,6 +47,8 @@ class Instance {
   void SetParameter(const std::string &name, const Parameter &value) {
     parameters_[name] = value;
   }
+
+  ::vlsir::circuit::Instance ToVLSIRInstance() const;
 
  private:
   std::string name_;

@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "vlsir/circuit.pb.h"
+
 namespace bfg {
 namespace circuit {
 
@@ -19,6 +21,7 @@ class Signal {
   uint64_t width() const { return width_; }
   void set_width(const uint64_t width) { width_ = width; }
 
+  ::vlsir::circuit::Signal ToVLSIRSignal() const;
  private:
   std::string name_;
   uint64_t width_;

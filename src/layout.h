@@ -42,7 +42,7 @@ class Layout {
 
   std::string Describe() const;
 
-  ::vlsir::raw::Layout *ToVLSIRLayout() const;
+  ::vlsir::raw::Layout ToVLSIRLayout() const;
 
   void SetActiveLayerByName(const std::string &name);
   void set_active_layer(const geometry::Layer &active_layer) {

@@ -4,6 +4,8 @@
 #include "circuit/signal.h"
 #include "circuit/wire.h"
 
+#include "vlsir/circuit.pb.h"
+
 #include <sstream>
 
 namespace bfg {
@@ -36,9 +38,30 @@ circuit::Instance *Circuit::AddInstance(
 std::string Circuit::Describe() const {
   std::stringstream ss;
 
-  ss << "circuit" << std::endl;
+  ss << "circuit: " << signals_.size() << " signals, "
+                    << ports_.size() << " ports, "
+                    << instances_.size() << " instances" << std::endl;
 
   return ss.str();
 };
+
+::vlsir::circuit::Module Circuit::ToVLSIRCircuit() const {
+  ::vlsir::circuit::Module mod_pb;
+  mod_pb.set_name(name_);
+
+  for (const auto &signal : signals_) {
+    *mod_pb.add_signals() = signal->ToVLSIRSignal();
+  }
+
+  for (const auto &port : ports_) {
+    *mod_pb.add_ports() = port->ToVLSIRPort();
+  }
+
+  for (const auto &instance : instances_) {
+    *mod_pb.add_instances() = instance->ToVLSIRInstance();
+  }
+
+  return mod_pb;
+}
 
 }  // namespace bfg

@@ -2,6 +2,7 @@
 #define CIRCUIT_CONNECTION_H_
 
 #include "slice.h"
+#include "vlsir/circuit.pb.h"
 
 namespace bfg {
 namespace circuit {
@@ -37,6 +38,8 @@ class Connection {
     connection_type_ = SLICE;
     slice_.reset(new Slice(slice));
   }
+
+  ::vlsir::circuit::ConnectionTarget ToVLSIRConnection() const;
 
  private:
   ConnectionType connection_type_;

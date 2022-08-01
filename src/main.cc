@@ -23,7 +23,36 @@
 
 #include "c_make_header.h"
 
-DEFINE_string(example_flag, "default", "for later");
+DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
+DEFINE_bool(text_format, true, "Also write text format protobufs");
+
+void WriteLibrary(const bfg::Cell &cell) {
+  ::vlsir::raw::Library library;
+  library.set_units(::vlsir::raw::Units::NANO);
+
+  ::vlsir::raw::Cell *cell_pb = library.add_cells();
+  *cell_pb->mutable_layout() = cell.layout()->ToVLSIRLayout();
+  *cell_pb->mutable_module() = cell.circuit()->ToVLSIRCircuit();
+
+  if (FLAGS_text_format) {
+    std::string text_format;
+    google::protobuf::TextFormat::PrintToString(library, &text_format);
+
+    std::fstream text_format_output(
+        FLAGS_output_library + ".txt",
+        std::ios::out | std::ios::trunc | std::ios::binary);
+    text_format_output << text_format;
+    text_format_output.close();
+  }
+
+  std::fstream output_file(
+      FLAGS_output_library, std::ios::out | std::ios::trunc | std::ios::binary);
+  if (!library.SerializeToOstream(&output_file)) {
+    LOG(ERROR) << "Failed to write library";
+  } else {
+    LOG(INFO) << "Wrote library to " << FLAGS_output_library;
+  }
+}
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -89,24 +118,11 @@ int main(int argc, char **argv) {
   bfg::atoms::Sky130Buf buf(physical_db, buf_params);
   std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());
 
+  WriteLibrary(*buf_cell);
+
   std::cout << buf_cell->layout()->Describe();
 
-  std::unique_ptr<::vlsir::raw::Layout> buf_cell_layout(
-      buf_cell->layout()->ToVLSIRLayout());
-
-  ::vlsir::raw::Library library;
-  library.set_units(::vlsir::raw::Units::NANO);
-  library.add_cells()->mutable_layout()->CopyFrom(*buf_cell_layout);
-
-  std::string text_format;
-  google::protobuf::TextFormat::PrintToString(library, &text_format);
-  std::cout << text_format;
-
-  std::fstream output(
-      "out.pb", std::ios::out | std::ios::trunc | std::ios::binary);
-  if (!library.SerializeToOstream(&output)) {
-    LOG(ERROR) << "Failed to write output";
-  }
+  google::protobuf::ShutdownProtobufLibrary();
 
   return EXIT_SUCCESS;
 }

@@ -57,10 +57,8 @@ def main():
             tech.ParseFromString(f.read())
         for layer_info in tech.layers:
             layer_infos[layer_info.index][layer_info.sub_index] = layer_info
-            #print(f'{layer_info.index}/{layer_info.sub_index}: {name}')
 
-
-    add_polygon_start = 'layout->AddRectangle(Polygon({'
+    add_polygon_start = 'layout->AddPolygon(Polygon({'
     indents = ' ' * len(add_polygon_start)
 
     for cell in library.cells:
@@ -83,7 +81,7 @@ def main():
             if layer_info is not None:
                 print(f'// {comment_from_layer_info(layer_info)}')
                 print('layout->SetActiveLayerByName("'
-                      f'{name_from_layer_info(layer_info)}")')
+                      f'{name_from_layer_info(layer_info)}");')
 
             for rect_pb in shapes.rectangles:
                 ll = rect_pb.lower_left

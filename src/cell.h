@@ -16,8 +16,11 @@ class Cell {
 
   void set_layout(Layout *layout) { layout_.reset(layout); }
   Layout *layout() { return layout_.get(); }
+  Layout *const layout() const { return layout_.get(); }
+
   void set_circuit(Circuit *circuit) { circuit_.reset(circuit); }
   Circuit *circuit() { return circuit_.get(); }
+  Circuit *const circuit() const { return circuit_.get(); }
 
  private:
   std::string name_;

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "signal.h"
+#include "vlsir/circuit.pb.h"
 
 namespace bfg {
 namespace circuit {
@@ -24,6 +25,14 @@ class Slice {
   //   *this = Slice(other);
   //   return *this;
   // }
+
+  ::vlsir::circuit::Slice ToVLSIRSlice() const {
+    ::vlsir::circuit::Slice slice_pb;
+    slice_pb.set_signal(signal_.name());
+    slice_pb.set_bot(low_index_);
+    slice_pb.set_top(high_index_);
+    return slice_pb;
+  }
 
  private:
   const Signal &signal_;

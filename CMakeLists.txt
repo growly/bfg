@@ -43,13 +43,13 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
 )
 
-#set(CIRCUIT_SRC
-#  ${PROJECT_SOURCE_DIR}/src/circuit/port.cc
-#  ${PROJECT_SOURCE_DIR}/src/circuit/signal.cc
-#)
+set(TILES_SRC
+  ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
+)
 
 set(ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
 )
 
 set(GEOMETRY_SRC 
@@ -64,7 +64,11 @@ set(GEOMETRY_SRC
 
 set(CIRCUIT_SRC
   ${PROJECT_SOURCE_DIR}/src/circuit/instance.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/port.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/signal.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/connection.cc
 )
+
 
 # protobuf configuration
 include_directories(${Protobuf_INCLUDE_DIRS})
@@ -171,6 +175,8 @@ set(PROTO_GENERATED_SRCS ${GENERATED_PROTO_SRCS})
 set(BFG_LIB_SRC
   ${SRC}
   ${ATOMS_SRC}
+  ${TILES_SRC}
+  ${CIRCUIT_SRC}
   ${GEOMETRY_SRC}
   ${CIRCUIT_SRC}
   ${PROTO_GENERATED_SRCS}

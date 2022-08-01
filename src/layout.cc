@@ -78,9 +78,8 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   set_active_layer(physical_db_.GetLayerInfo(name).internal_layer);
 }
 
-::vlsir::raw::Layout *Layout::ToVLSIRLayout() const {
-  std::unique_ptr<::vlsir::raw::Layout> layout_pb(
-      new ::vlsir::raw::Layout());
+::vlsir::raw::Layout Layout::ToVLSIRLayout() const {
+  ::vlsir::raw::Layout layout_pb;
 
   std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> shapes;
 
@@ -108,10 +107,11 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   LOG_IF(FATAL, !instances_.empty()) << "instances not yet written";
 
   for (const auto pair : shapes) {
-    *layout_pb->add_shapes() = *pair.second;
+    *layout_pb.add_shapes() = *pair.second;
+    delete pair.second;
   }
 
-  return layout_pb.release();
+  return layout_pb;
 };
 
 ::vlsir::raw::LayerShapes *Layout::GetOrInsertLayerShapes(
