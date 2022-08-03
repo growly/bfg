@@ -13,10 +13,10 @@ class Sky130Dfxtp: public Atom {
     uint64_t width_nm;
     uint64_t height_nm;
 
-    uint64_t x0_width_nm;
-    uint64_t x1_width_nm;
-    uint64_t x2_width_nm;
-    uint64_t x3_width_nm;
+//    uint64_t x0_width_nm;
+//    uint64_t x1_width_nm;
+//    uint64_t x2_width_nm;
+//    uint64_t x3_width_nm;
   };
 
   Sky130Dfxtp(const PhysicalPropertiesDatabase &physical_db,

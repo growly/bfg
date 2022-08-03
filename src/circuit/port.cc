@@ -8,7 +8,7 @@ namespace circuit {
 
 ::vlsir::circuit::Port Port::ToVLSIRPort() const {
   ::vlsir::circuit::Port port_pb;
-  port_pb.set_signal(signal_->name());
+  port_pb.set_signal(signal_.name());
   port_pb.set_direction(VLSIRPortDirection());
   return port_pb;
 }

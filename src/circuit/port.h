@@ -17,19 +17,17 @@ class Port {
     NONE
   };
 
-  Port() = default;
+  Port(const Signal &signal, const PortDirection &direction)
+      : signal_(signal), direction_(direction) {}
 
-  Signal *signal() const { return signal_; }
-  void set_signal(Signal *signal) { signal_ = signal; }
-
+  const Signal &signal() const { return signal_; }
   const PortDirection &direction() const { return direction_; }
-  void set_direction(const PortDirection &direction) { direction_ = direction; }
 
   ::vlsir::circuit::Port ToVLSIRPort() const;
   ::vlsir::circuit::Port::Direction VLSIRPortDirection() const;
 
  private:
-  Signal *signal_;
+  const Signal &signal_;
   PortDirection direction_;
 };
 

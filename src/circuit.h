@@ -31,6 +31,12 @@ class Circuit {
   circuit::Signal *AddSignal(const std::string &name, uint64_t width);
   circuit::Instance *AddInstance(
     const std::string &name, const Circuit *template_module);
+  circuit::Port *AddPort(
+      const circuit::Signal &signal,
+      const circuit::Port::PortDirection &direction = circuit::Port::NONE);
+  circuit::Port *AddPort(
+      const circuit::Wire &wire,
+      const circuit::Port::PortDirection &direction = circuit::Port::NONE);
 
   std::vector<std::unique_ptr<circuit::Signal>> &signals() { return signals_; }
 

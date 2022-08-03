@@ -34,6 +34,8 @@ class Slice {
     return slice_pb;
   }
 
+  const Signal &signal() const { return signal_; }
+
  private:
   const Signal &signal_;
   uint64_t low_index_;

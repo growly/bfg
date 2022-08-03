@@ -35,6 +35,21 @@ circuit::Instance *Circuit::AddInstance(
   return instance;
 }
 
+circuit::Port *Circuit::AddPort(
+    const circuit::Wire &wire,
+    const circuit::Port::PortDirection &direction) {
+  return AddPort(wire.signal(), direction);
+}
+
+circuit::Port *Circuit::AddPort(
+    const circuit::Signal &signal,
+    const circuit::Port::PortDirection &direction) {
+  // Ports map 1-1 to signals?
+  circuit::Port *port = new circuit::Port(signal, direction);
+  ports_.emplace_back(port);
+  return port;
+}
+
 std::string Circuit::Describe() const {
   std::stringstream ss;
 

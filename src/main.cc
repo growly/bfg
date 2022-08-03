@@ -16,6 +16,7 @@
 #include "cell.h"
 #include "layout.h"
 #include "atoms/sky130_buf.h"
+#include "atoms/sky130_dfxtp.h"
 
 #include "vlsir/tech.pb.h"
 #include "vlsir/layout/raw.pb.h"
@@ -107,20 +108,24 @@ int main(int argc, char **argv) {
   physical_db.AddRoutingLayerInfo(layer_2);
   physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
 
-  bfg::atoms::Sky130Buf::Parameters buf_params = {
-    .width_nm = 1380,
-    .height_nm = 2720,
-    .x0_width_nm = 520,
-    .x1_width_nm = 790,
-    .x2_width_nm = 520,
-    .x3_width_nm = 790
-  };
-  bfg::atoms::Sky130Buf buf(physical_db, buf_params);
-  std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());
+  //bfg::atoms::Sky130Buf::Parameters buf_params = {
+  //  .width_nm = 1380,
+  //  .height_nm = 2720,
+  //  .x0_width_nm = 520,
+  //  .x1_width_nm = 790,
+  //  .x2_width_nm = 520,
+  //  .x3_width_nm = 790
+  //};
+  //bfg::atoms::Sky130Buf buf(physical_db, buf_params);
+  //std::unique_ptr<bfg::Cell> buf_cell(buf.Generate());
+  //WriteLibrary(*buf_cell);
+  //std::cout << buf_cell->layout()->Describe();
 
-  WriteLibrary(*buf_cell);
-
-  std::cout << buf_cell->layout()->Describe();
+  bfg::atoms::Sky130Dfxtp::Parameters params;
+  bfg::atoms::Sky130Dfxtp generator(physical_db, params);
+  std::unique_ptr<bfg::Cell> cell(generator.Generate());
+  WriteLibrary(*cell);
+  std::cout << cell->layout()->Describe();
 
   google::protobuf::ShutdownProtobufLibrary();
 

@@ -30,573 +30,556 @@ bfg::Cell *Sky130Dfxtp::Generate() {
 }
 
 bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
-  return nullptr;
+  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+
+  // This is the input buffer that we initially discard:
+  //          /          /
+  //         _|         _|
+  //      +o|_ X1    +o|_  X3
+  //      |   |      |   |
+  // CLK -+   +-~CLK-+   +--- CLK
+  //      |  _|      |  _|
+  //      +-|_ X2    +-|_  X0
+  //          |          |
+  //          V          V
+
+  circuit::Wire D = circuit->AddSignal("D");
+  circuit::Wire CLK = circuit->AddSignal("CLK");
+  circuit::Wire CLKI = circuit->AddSignal("CLKI");
+  circuit::Wire Q = circuit->AddSignal("Q");
+
+  circuit::Wire VPWR = circuit->AddSignal("VPWR");
+  circuit::Wire VGND = circuit->AddSignal("VGND");
+  circuit::Wire VPB = circuit->AddSignal("VPB");
+  circuit::Wire VNB = circuit->AddSignal("VNB");
+
+  circuit->AddPort(D);
+  circuit->AddPort(CLK);
+  circuit->AddPort(CLKI);
+  circuit->AddPort(Q);
+  circuit->AddPort(VPWR);
+  circuit->AddPort(VGND);
+  circuit->AddPort(VPB);
+  circuit->AddPort(VNB);
+
+  // 18 transistors in flip-flop, 2 in output buffer.
+
+  // These are all sky130_fd_pr__nfet_01v8_hvt:
+  circuit::Instance *nfet_0 = circuit->AddInstance("nfet_0", nullptr);
+  circuit::Instance *nfet_1 = circuit->AddInstance("nfet_1", nullptr);
+  circuit::Instance *nfet_2 = circuit->AddInstance("nfet_2", nullptr);
+  circuit::Instance *nfet_3 = circuit->AddInstance("nfet_3", nullptr);
+  circuit::Instance *nfet_4 = circuit->AddInstance("nfet_4", nullptr);
+  circuit::Instance *nfet_5 = circuit->AddInstance("nfet_5", nullptr);
+  circuit::Instance *nfet_6 = circuit->AddInstance("nfet_6", nullptr);
+  circuit::Instance *nfet_7 = circuit->AddInstance("nfet_7", nullptr);
+  circuit::Instance *nfet_8 = circuit->AddInstance("nfet_8", nullptr);
+  circuit::Instance *nfet_9 = circuit->AddInstance("nfet_9", nullptr);
+
+  // These are all sky130_fd_pr__pfet_01v8_hvt:
+  circuit::Instance *pfet_0 = circuit->AddInstance("pfet_0", nullptr);
+  circuit::Instance *pfet_1 = circuit->AddInstance("pfet_1", nullptr);
+  circuit::Instance *pfet_2 = circuit->AddInstance("pfet_2", nullptr);
+  circuit::Instance *pfet_3 = circuit->AddInstance("pfet_3", nullptr);
+  circuit::Instance *pfet_4 = circuit->AddInstance("pfet_4", nullptr);
+  circuit::Instance *pfet_5 = circuit->AddInstance("pfet_5", nullptr);
+  circuit::Instance *pfet_6 = circuit->AddInstance("pfet_6", nullptr);
+  circuit::Instance *pfet_7 = circuit->AddInstance("pfet_7", nullptr);
+  circuit::Instance *pfet_8 = circuit->AddInstance("pfet_8", nullptr);
+  circuit::Instance *pfet_9 = circuit->AddInstance("pfet_9", nullptr);
+
+  circuit::Wire a = circuit->AddSignal("a");
+  circuit::Wire b = circuit->AddSignal("b");
+
+  nfet_0->Connect({{"d", a}, {"g", D}, {"s", VGND}, {"b", VNB}});
+  pfet_0->Connect({{"d", a}, {"g", D}, {"s", VPWR}, {"b", VPB}});
+  nfet_1->Connect({{"d", b}, {"g", CLK}, {"s", a}, {"b", VNB}});
+  pfet_1->Connect({{"d", b}, {"g", CLKI}, {"s", a}, {"b", VPB}});
+
+  circuit::Wire c = circuit->AddSignal("c");
+
+  return circuit.release();
 }
 
 bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(physical_db_));
 
-  layout->AddRectangle(Rectangle(Point(0, 0), Point(7360, 2720)));
+layout->AddRectangle(Rectangle(Point(0, 0), Point(6000, 2720)));
 
-  // mcon.drawing [DRAWING] 67/44
-  layout->SetActiveLayerByName("mcon.drawing");
-  layout->AddRectangle(Rectangle(Point(2905, -85), Point(3075, 85)));
-  layout->AddRectangle(Rectangle(Point(3825, -85), Point(3995, 85)));
-  layout->AddRectangle(Rectangle(Point(3365, -85), Point(3535, 85)));
-  layout->AddRectangle(Rectangle(Point(4285, 2635), Point(4455, 2805)));
-  layout->AddRectangle(Rectangle(Point(4285, -85), Point(4455, 85)));
-  layout->AddRectangle(Rectangle(Point(4300, 1785), Point(4470, 1955)));
-  layout->AddRectangle(Rectangle(Point(4735, 1445), Point(4905, 1615)));
-  layout->AddRectangle(Rectangle(Point(4745, 2635), Point(4915, 2805)));
-  layout->AddRectangle(Rectangle(Point(4745, -85), Point(4915, 85)));
-  layout->AddRectangle(Rectangle(Point(5205, 2635), Point(5375, 2805)));
-  layout->AddRectangle(Rectangle(Point(5205, -85), Point(5375, 85)));
-  layout->AddRectangle(Rectangle(Point(5665, 2635), Point(5835, 2805)));
-  layout->AddRectangle(Rectangle(Point(5665, -85), Point(5835, 85)));
-  layout->AddRectangle(Rectangle(Point(6125, 2635), Point(6295, 2805)));
-  layout->AddRectangle(Rectangle(Point(6125, -85), Point(6295, 85)));
-  layout->AddRectangle(Rectangle(Point(6585, 2635), Point(6755, 2805)));
-  layout->AddRectangle(Rectangle(Point(6585, -85), Point(6755, 85)));
-  layout->AddRectangle(Rectangle(Point(7045, 2635), Point(7215, 2805)));
-  layout->AddRectangle(Rectangle(Point(7045, -85), Point(7215, 85)));
-  layout->AddRectangle(Rectangle(Point(145, 2635), Point(315, 2805)));
-  layout->AddRectangle(Rectangle(Point(145, -85), Point(315, 85)));
-  layout->AddRectangle(Rectangle(Point(605, 2635), Point(775, 2805)));
-  layout->AddRectangle(Rectangle(Point(605, -85), Point(775, 85)));
-  layout->AddRectangle(Rectangle(Point(630, 1785), Point(800, 1955)));
-  layout->AddRectangle(Rectangle(Point(1025, 1445), Point(1195, 1615)));
-  layout->AddRectangle(Rectangle(Point(1065, -85), Point(1235, 85)));
-  layout->AddRectangle(Rectangle(Point(1525, 2635), Point(1695, 2805)));
-  layout->AddRectangle(Rectangle(Point(1985, 2635), Point(2155, 2805)));
-  layout->AddRectangle(Rectangle(Point(1985, -85), Point(2155, 85)));
-  layout->AddRectangle(Rectangle(Point(2445, 2635), Point(2615, 2805)));
-  layout->AddRectangle(Rectangle(Point(2730, 1785), Point(2900, 1955)));
-  layout->AddRectangle(Rectangle(Point(1065, 2635), Point(1235, 2805)));
-  layout->AddRectangle(Rectangle(Point(1525, -85), Point(1695, 85)));
-  layout->AddRectangle(Rectangle(Point(2215, 1445), Point(2385, 1615)));
-  layout->AddRectangle(Rectangle(Point(2445, -85), Point(2615, 85)));
-  layout->AddRectangle(Rectangle(Point(2905, 2635), Point(3075, 2805)));
-  layout->AddRectangle(Rectangle(Point(3825, 2635), Point(3995, 2805)));
-  layout->AddRectangle(Rectangle(Point(3365, 2635), Point(3535, 2805)));
+// mcon.drawing [DRAWING] 67/44
+layout->SetActiveLayerByName("mcon.drawing");
+layout->AddRectangle(Rectangle(Point(1545, -85), Point(1715, 85)));
+layout->AddRectangle(Rectangle(Point(2465, -85), Point(2635, 85)));
+layout->AddRectangle(Rectangle(Point(2005, -85), Point(2175, 85)));
+layout->AddRectangle(Rectangle(Point(2925, 2635), Point(3095, 2805)));
+layout->AddRectangle(Rectangle(Point(2925, -85), Point(3095, 85)));
+layout->AddRectangle(Rectangle(Point(2940, 1785), Point(3110, 1955)));
+layout->AddRectangle(Rectangle(Point(3375, 1445), Point(3545, 1615)));
+layout->AddRectangle(Rectangle(Point(3385, 2635), Point(3555, 2805)));
+layout->AddRectangle(Rectangle(Point(3385, -85), Point(3555, 85)));
+layout->AddRectangle(Rectangle(Point(3845, 2635), Point(4015, 2805)));
+layout->AddRectangle(Rectangle(Point(3845, -85), Point(4015, 85)));
+layout->AddRectangle(Rectangle(Point(4305, 2635), Point(4475, 2805)));
+layout->AddRectangle(Rectangle(Point(4305, -85), Point(4475, 85)));
+layout->AddRectangle(Rectangle(Point(4765, 2635), Point(4935, 2805)));
+layout->AddRectangle(Rectangle(Point(4765, -85), Point(4935, 85)));
+layout->AddRectangle(Rectangle(Point(5225, 2635), Point(5395, 2805)));
+layout->AddRectangle(Rectangle(Point(5225, -85), Point(5395, 85)));
+layout->AddRectangle(Rectangle(Point(5685, 2635), Point(5855, 2805)));
+layout->AddRectangle(Rectangle(Point(5685, -85), Point(5855, 85)));
+layout->AddRectangle(Rectangle(Point(165, 2635), Point(335, 2805)));
+layout->AddRectangle(Rectangle(Point(625, 2635), Point(795, 2805)));
+layout->AddRectangle(Rectangle(Point(625, -85), Point(795, 85)));
+layout->AddRectangle(Rectangle(Point(1085, 2635), Point(1255, 2805)));
+layout->AddRectangle(Rectangle(Point(1370, 1785), Point(1540, 1955)));
+layout->AddRectangle(Rectangle(Point(165, -85), Point(335, 85)));
+layout->AddRectangle(Rectangle(Point(855, 1445), Point(1025, 1615)));
+layout->AddRectangle(Rectangle(Point(1085, -85), Point(1255, 85)));
+layout->AddRectangle(Rectangle(Point(1545, 2635), Point(1715, 2805)));
+layout->AddRectangle(Rectangle(Point(2465, 2635), Point(2635, 2805)));
+layout->AddRectangle(Rectangle(Point(2005, 2635), Point(2175, 2805)));
 
-  // met1.drawing [DRAWING] 68/20
-  layout->SetActiveLayerByName("met1.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 2480), Point(7360, 2960)));
-  layout->AddRectangle(Rectangle(Point(0, -240), Point(7360, 240)));
-  layout->AddPolygon(Polygon({Point(4530, 1985),
-                              Point(4240, 1985),
-                              Point(4240, 1940),
-                              Point(2960, 1940),
-                              Point(2960, 1985),
-                              Point(2670, 1985),
-                              Point(2670, 1940),
-                              Point(860, 1940),
-                              Point(860, 1985),
-                              Point(570, 1985),
-                              Point(570, 1755),
-                              Point(860, 1755),
-                              Point(860, 1800),
-                              Point(2670, 1800),
-                              Point(2670, 1755),
-                              Point(2960, 1755),
-                              Point(2960, 1800),
-                              Point(4240, 1800),
-                              Point(4240, 1755),
-                              Point(4530, 1755)}));
-  layout->AddPolygon(Polygon({Point(4965, 1645),
-                              Point(4675, 1645),
-                              Point(4675, 1600),
-                              Point(2445, 1600),
-                              Point(2445, 1645),
-                              Point(2155, 1645),
-                              Point(2155, 1600),
-                              Point(1255, 1600),
-                              Point(1255, 1645),
-                              Point(965, 1645),
-                              Point(965, 1415),
-                              Point(1255, 1415),
-                              Point(1255, 1460),
-                              Point(2155, 1460),
-                              Point(2155, 1415),
-                              Point(2445, 1415),
-                              Point(2445, 1460),
-                              Point(4675, 1460),
-                              Point(4675, 1415),
-                              Point(4965, 1415)}));
+// met1.drawing [DRAWING] 68/20
+layout->SetActiveLayerByName("met1.drawing");
+layout->AddRectangle(Rectangle(Point(0, 2480), Point(6000, 2960)));
+layout->AddRectangle(Rectangle(Point(0, -240), Point(6000, 240)));
+layout->AddPolygon(Polygon({Point(0, 1800),
+                            Point(1310, 1800),
+                            Point(1310, 1755),
+                            Point(1600, 1755),
+                            Point(1600, 1800),
+                            Point(2880, 1800),
+                            Point(2880, 1755),
+                            Point(3170, 1755),
+                            Point(3170, 1985),
+                            Point(2880, 1985),
+                            Point(2880, 1940),
+                            Point(1600, 1940),
+                            Point(1600, 1985),
+                            Point(1310, 1985),
+                            Point(1310, 1940),
+                            Point(0, 1940)}));
+layout->AddPolygon(Polygon({Point(0, 1460),
+                            Point(795, 1460),
+                            Point(795, 1415),
+                            Point(1085, 1415),
+                            Point(1085, 1460),
+                            Point(3315, 1460),
+                            Point(3315, 1415),
+                            Point(3605, 1415),
+                            Point(3605, 1645),
+                            Point(3315, 1645),
+                            Point(3315, 1600),
+                            Point(1085, 1600),
+                            Point(1085, 1645),
+                            Point(795, 1645),
+                            Point(795, 1600),
+                            Point(0, 1600)}));
 
-  // diff.drawing [DRAWING] 65/20
-  layout->SetActiveLayerByName("diff.drawing");
-  layout->AddRectangle(Rectangle(Point(6075, 1485), Point(7175, 2485)));
-  layout->AddRectangle(Rectangle(Point(135, 1815), Point(1225, 2455)));
-  layout->AddRectangle(Rectangle(Point(135, 235), Point(1225, 655)));
-  layout->AddRectangle(Rectangle(Point(6095, 235), Point(7185, 885)));
-  layout->AddPolygon(Polygon({Point(5710, 2485),
-                              Point(1495, 2485),
-                              Point(1495, 2065),
-                              Point(3395, 2065),
-                              Point(3395, 1735),
-                              Point(4230, 1735),
-                              Point(4230, 2065),
-                              Point(5710, 2065)}));
-  layout->AddPolygon(Polygon({Point(5820, 655),
-                              Point(5160, 655),
-                              Point(5160, 595),
-                              Point(4300, 595),
-                              Point(4300, 875),
-                              Point(3650, 875),
-                              Point(3650, 655),
-                              Point(3055, 655),
-                              Point(3055, 595),
-                              Point(2155, 595),
-                              Point(2155, 655),
-                              Point(1495, 655),
-                              Point(1495, 235),
-                              Point(5820, 235)}));
+// diff.drawing [DRAWING] 65/20
+layout->SetActiveLayerByName("diff.drawing");
+layout->AddRectangle(Rectangle(Point(4715, 1485), Point(5815, 2485)));
+layout->AddRectangle(Rectangle(Point(4735, 235), Point(5825, 885)));
+layout->AddPolygon(Polygon({Point(135, 2065),
+                            Point(2035, 2065),
+                            Point(2035, 1735),
+                            Point(2870, 1735),
+                            Point(2870, 2065),
+                            Point(4350, 2065),
+                            Point(4350, 2485),
+                            Point(135, 2485)}));
+layout->AddPolygon(Polygon({Point(135, 235),
+                            Point(4460, 235),
+                            Point(4460, 655),
+                            Point(3800, 655),
+                            Point(3800, 595),
+                            Point(2940, 595),
+                            Point(2940, 875),
+                            Point(2290, 875),
+                            Point(2290, 655),
+                            Point(1695, 655),
+                            Point(1695, 595),
+                            Point(795, 595),
+                            Point(795, 655),
+                            Point(135, 655)}));
 
-  // licon.drawing [DRAWING] 66/44
-  layout->SetActiveLayerByName("licon.drawing");
-  layout->AddRectangle(Rectangle(Point(160, 1075), Point(330, 1245)));
-  layout->AddRectangle(Rectangle(Point(1960, 365), Point(2130, 535)));
-  layout->AddRectangle(Rectangle(Point(2195, 1265), Point(2365, 1435)));
-  layout->AddRectangle(Rectangle(Point(2295, 785), Point(2465, 955)));
-  layout->AddRectangle(Rectangle(Point(2415, 2190), Point(2585, 2360)));
-  layout->AddRectangle(Rectangle(Point(2515, 365), Point(2685, 535)));
-  layout->AddRectangle(Rectangle(Point(2740, 1655), Point(2910, 1825)));
-  layout->AddRectangle(Rectangle(Point(3290, 845), Point(3460, 1015)));
-  layout->AddRectangle(Rectangle(Point(3510, 335), Point(3680, 505)));
-  layout->AddRectangle(Rectangle(Point(3610, 2255), Point(3780, 2425)));
-  layout->AddRectangle(Rectangle(Point(3610, 1915), Point(3780, 2085)));
-  layout->AddRectangle(Rectangle(Point(3610, 1325), Point(3780, 1495)));
-  layout->AddRectangle(Rectangle(Point(4030, 2215), Point(4200, 2385)));
-  layout->AddRectangle(Rectangle(Point(6555, 445), Point(6725, 615)));
-  layout->AddRectangle(Rectangle(Point(6765, 1075), Point(6935, 1245)));
-  layout->AddRectangle(Rectangle(Point(6115, 1545), Point(6285, 1715)));
-  layout->AddRectangle(Rectangle(Point(6965, 2225), Point(7135, 2395)));
-  layout->AddRectangle(Rectangle(Point(6135, 640), Point(6305, 810)));
-  layout->AddRectangle(Rectangle(Point(6135, 300), Point(6305, 470)));
-  layout->AddRectangle(Rectangle(Point(6545, 2105), Point(6715, 2275)));
-  layout->AddRectangle(Rectangle(Point(6965, 1885), Point(7135, 2055)));
-  layout->AddRectangle(Rectangle(Point(6965, 1545), Point(7135, 1715)));
-  layout->AddRectangle(Rectangle(Point(6975, 650), Point(7145, 820)));
-  layout->AddRectangle(Rectangle(Point(4105, 365), Point(4275, 535)));
-  layout->AddRectangle(Rectangle(Point(4290, 1325), Point(4460, 1495)));
-  layout->AddRectangle(Rectangle(Point(4505, 2165), Point(4675, 2335)));
-  layout->AddRectangle(Rectangle(Point(4505, 785), Point(4675, 955)));
-  layout->AddRectangle(Rectangle(Point(4620, 365), Point(4790, 535)));
-  layout->AddRectangle(Rectangle(Point(4800, 1655), Point(4970, 1825)));
-  layout->AddRectangle(Rectangle(Point(5480, 1655), Point(5650, 1825)));
-  layout->AddRectangle(Rectangle(Point(6975, 310), Point(7145, 480)));
-  layout->AddRectangle(Rectangle(Point(5500, 2215), Point(5670, 2385)));
-  layout->AddRectangle(Rectangle(Point(6115, 1900), Point(6285, 2070)));
-  layout->AddRectangle(Rectangle(Point(175, 2215), Point(345, 2385)));
-  layout->AddRectangle(Rectangle(Point(6545, 1705), Point(6715, 1875)));
-  layout->AddRectangle(Rectangle(Point(1015, 425), Point(1185, 595)));
-  layout->AddRectangle(Rectangle(Point(1535, 295), Point(1705, 465)));
-  layout->AddRectangle(Rectangle(Point(595, 2135), Point(765, 2305)));
-  layout->AddRectangle(Rectangle(Point(175, 425), Point(345, 595)));
-  layout->AddRectangle(Rectangle(Point(5610, 365), Point(5780, 535)));
-  layout->AddRectangle(Rectangle(Point(1480, 1415), Point(1650, 1585)));
-  layout->AddRectangle(Rectangle(Point(670, 1150), Point(840, 1320)));
-  layout->AddRectangle(Rectangle(Point(5845, 1075), Point(6015, 1245)));
-  layout->AddRectangle(Rectangle(Point(1015, 2215), Point(1185, 2385)));
-  layout->AddRectangle(Rectangle(Point(595, 295), Point(765, 465)));
-  layout->AddRectangle(Rectangle(Point(1955, 2215), Point(2125, 2385)));
-  layout->AddRectangle(Rectangle(Point(6115, 2255), Point(6285, 2425)));
-  layout->AddRectangle(Rectangle(Point(1015, 1875), Point(1185, 2045)));
-  layout->AddRectangle(Rectangle(Point(1535, 2255), Point(1705, 2425)));
-  layout->AddRectangle(Rectangle(Point(175, 1875), Point(345, 2045)));
+// licon.drawing [DRAWING] 66/44
+layout->SetActiveLayerByName("licon.drawing");
+layout->AddRectangle(Rectangle(Point(600, 365), Point(770, 535)));
+layout->AddRectangle(Rectangle(Point(835, 1265), Point(1005, 1435)));
+layout->AddRectangle(Rectangle(Point(935, 785), Point(1105, 955)));
+layout->AddRectangle(Rectangle(Point(1055, 2190), Point(1225, 2360)));
+layout->AddRectangle(Rectangle(Point(1155, 365), Point(1325, 535)));
+layout->AddRectangle(Rectangle(Point(1380, 1655), Point(1550, 1825)));
+layout->AddRectangle(Rectangle(Point(1930, 845), Point(2100, 1015)));
+layout->AddRectangle(Rectangle(Point(2150, 335), Point(2320, 505)));
+layout->AddRectangle(Rectangle(Point(2250, 2255), Point(2420, 2425)));
+layout->AddRectangle(Rectangle(Point(2250, 1915), Point(2420, 2085)));
+layout->AddRectangle(Rectangle(Point(2250, 1325), Point(2420, 1495)));
+layout->AddRectangle(Rectangle(Point(2670, 2215), Point(2840, 2385)));
+layout->AddRectangle(Rectangle(Point(5195, 445), Point(5365, 615)));
+layout->AddRectangle(Rectangle(Point(5405, 1075), Point(5575, 1245)));
+layout->AddRectangle(Rectangle(Point(4755, 1545), Point(4925, 1715)));
+layout->AddRectangle(Rectangle(Point(5605, 2225), Point(5775, 2395)));
+layout->AddRectangle(Rectangle(Point(4775, 640), Point(4945, 810)));
+layout->AddRectangle(Rectangle(Point(4775, 300), Point(4945, 470)));
+layout->AddRectangle(Rectangle(Point(5185, 2105), Point(5355, 2275)));
+layout->AddRectangle(Rectangle(Point(5605, 1885), Point(5775, 2055)));
+layout->AddRectangle(Rectangle(Point(5605, 1545), Point(5775, 1715)));
+layout->AddRectangle(Rectangle(Point(5615, 650), Point(5785, 820)));
+layout->AddRectangle(Rectangle(Point(2745, 365), Point(2915, 535)));
+layout->AddRectangle(Rectangle(Point(2930, 1325), Point(3100, 1495)));
+layout->AddRectangle(Rectangle(Point(3145, 2165), Point(3315, 2335)));
+layout->AddRectangle(Rectangle(Point(3145, 785), Point(3315, 955)));
+layout->AddRectangle(Rectangle(Point(3260, 365), Point(3430, 535)));
+layout->AddRectangle(Rectangle(Point(3440, 1655), Point(3610, 1825)));
+layout->AddRectangle(Rectangle(Point(4120, 1655), Point(4290, 1825)));
+layout->AddRectangle(Rectangle(Point(5615, 310), Point(5785, 480)));
+layout->AddRectangle(Rectangle(Point(4140, 2215), Point(4310, 2385)));
+layout->AddRectangle(Rectangle(Point(4755, 1900), Point(4925, 2070)));
+layout->AddRectangle(Rectangle(Point(5185, 1705), Point(5355, 1875)));
+layout->AddRectangle(Rectangle(Point(175, 295), Point(345, 465)));
+layout->AddRectangle(Rectangle(Point(4250, 365), Point(4420, 535)));
+layout->AddRectangle(Rectangle(Point(120, 1415), Point(290, 1585)));
+layout->AddRectangle(Rectangle(Point(4485, 1075), Point(4655, 1245)));
+layout->AddRectangle(Rectangle(Point(595, 2215), Point(765, 2385)));
+layout->AddRectangle(Rectangle(Point(4755, 2255), Point(4925, 2425)));
+layout->AddRectangle(Rectangle(Point(175, 2255), Point(345, 2425)));
 
-  // li.drawing [DRAWING] 67/20
-  layout->SetActiveLayerByName("li.drawing");
-  layout->AddRectangle(Rectangle(Point(1015, 345), Point(1200, 2465)));
-  layout->AddRectangle(Rectangle(Point(1370, 715), Point(1650, 1665)));
-  layout->AddRectangle(Rectangle(Point(90, 975), Point(440, 1625)));
-  layout->AddRectangle(Rectangle(Point(2160, 1125), Point(2400, 1720)));
-  layout->AddRectangle(Rectangle(Point(4290, 1245), Point(4480, 1965)));
-  layout->AddPolygon(Polygon({Point(6015, 1325),
-                              Point(5310, 1325),
-                              Point(5310, 2335),
-                              Point(4425, 2335),
-                              Point(4425, 2165),
-                              Point(5140, 2165),
-                              Point(5140, 535),
-                              Point(4525, 535),
-                              Point(4525, 365),
-                              Point(5310, 365),
-                              Point(5310, 995),
-                              Point(6015, 995)}));
-  layout->AddPolygon(Polygon({Point(6935, 1325),
-                              Point(6375, 1325),
-                              Point(6375, 2465),
-                              Point(6035, 2465),
-                              Point(6035, 1905),
-                              Point(5480, 1905),
-                              Point(5480, 1530),
-                              Point(6185, 1530),
-                              Point(6185, 825),
-                              Point(6055, 825),
-                              Point(6055, 300),
-                              Point(6385, 300),
-                              Point(6385, 995),
-                              Point(6935, 995)}));
-  layout->AddPolygon(Polygon({Point(7275, 1575),
-                              Point(7215, 1575),
-                              Point(7215, 2420),
-                              Point(6885, 2420),
-                              Point(6885, 1495),
-                              Point(7060, 1495),
-                              Point(7060, 1445),
-                              Point(7105, 1445),
-                              Point(7105, 865),
-                              Point(7050, 865),
-                              Point(7050, 825),
-                              Point(6895, 825),
-                              Point(6895, 305),
-                              Point(7225, 305),
-                              Point(7225, 740),
-                              Point(7275, 740)}));
-  layout->AddPolygon(Polygon({Point(4970, 1995),
-                              Point(4650, 1995),
-                              Point(4650, 1035),
-                              Point(4505, 1035),
-                              Point(4505, 705),
-                              Point(4970, 705)}));
-  layout->AddPolygon(Polygon({Point(840, 1965),
-                              Point(345, 1965),
-                              Point(345, 2465),
-                              Point(175, 2465),
-                              Point(175, 1795),
-                              Point(610, 1795),
-                              Point(610, 805),
-                              Point(175, 805),
-                              Point(175, 345),
-                              Point(345, 345),
-                              Point(345, 635),
-                              Point(840, 635)}));
-  layout->AddPolygon(Polygon({Point(7360, 2805),
-                              Point(0, 2805),
-                              Point(0, 2635),
-                              Point(515, 2635),
-                              Point(515, 2135),
-                              Point(845, 2135),
-                              Point(845, 2635),
-                              Point(1440, 2635),
-                              Point(1440, 2175),
-                              Point(1705, 2175),
-                              Point(1705, 2635),
-                              Point(3610, 2635),
-                              Point(3610, 1835),
-                              Point(3780, 1835),
-                              Point(3780, 2635),
-                              Point(5490, 2635),
-                              Point(5490, 2135),
-                              Point(5805, 2135),
-                              Point(5805, 2635),
-                              Point(6545, 2635),
-                              Point(6545, 1625),
-                              Point(6715, 1625),
-                              Point(6715, 2635),
-                              Point(7360, 2635)}));
-  layout->AddPolygon(Polygon({Point(7360, 85),
-                              Point(6725, 85),
-                              Point(6725, 695),
-                              Point(6555, 695),
-                              Point(6555, 85),
-                              Point(5795, 85),
-                              Point(5795, 615),
-                              Point(5585, 615),
-                              Point(5585, 85),
-                              Point(3770, 85),
-                              Point(3770, 585),
-                              Point(3400, 585),
-                              Point(3400, 85),
-                              Point(1705, 85),
-                              Point(1705, 545),
-                              Point(1455, 545),
-                              Point(1455, 85),
-                              Point(845, 85),
-                              Point(845, 465),
-                              Point(515, 465),
-                              Point(515, 85),
-                              Point(0, 85),
-                              Point(0, -85),
-                              Point(7360, -85)}));
-  layout->AddPolygon(Polygon({Point(2210, 535),
-                              Point(2045, 535),
-                              Point(2045, 805),
-                              Point(1990, 805),
-                              Point(1990, 1910),
-                              Point(2125, 1910),
-                              Point(2125, 2465),
-                              Point(1875, 2465),
-                              Point(1875, 2040),
-                              Point(1820, 2040),
-                              Point(1820, 675),
-                              Point(1875, 675),
-                              Point(1875, 365),
-                              Point(2210, 365)}));
-  layout->AddPolygon(Polygon({Point(3100, 2020),
-                              Point(2570, 2020),
-                              Point(2570, 955),
-                              Point(2215, 955),
-                              Point(2215, 735),
-                              Point(2740, 735),
-                              Point(2740, 1655),
-                              Point(3100, 1655)}));
-  layout->AddPolygon(Polygon({Point(3780, 1575),
-                              Point(3440, 1575),
-                              Point(3440, 2360),
-                              Point(2335, 2360),
-                              Point(2335, 2190),
-                              Point(3270, 2190),
-                              Point(3270, 1485),
-                              Point(2910, 1485),
-                              Point(2910, 535),
-                              Point(2405, 535),
-                              Point(2405, 365),
-                              Point(3080, 365),
-                              Point(3080, 1315),
-                              Point(3610, 1315),
-                              Point(3610, 1245),
-                              Point(3780, 1245)}));
-  layout->AddPolygon(Polygon({Point(4355, 535),
-                              Point(4120, 535),
-                              Point(4120, 2135),
-                              Point(4200, 2135),
-                              Point(4200, 2465),
-                              Point(3950, 2465),
-                              Point(3950, 1065),
-                              Point(3490, 1065),
-                              Point(3490, 1095),
-                              Point(3290, 1095),
-                              Point(3290, 765),
-                              Point(3950, 765),
-                              Point(3950, 365),
-                              Point(4355, 365)}));
+// li.drawing [DRAWING] 67/20
+layout->SetActiveLayerByName("li.drawing");
+layout->AddRectangle(Rectangle(Point(10, 715), Point(290, 1665)));
+layout->AddRectangle(Rectangle(Point(800, 1125), Point(1040, 1720)));
+layout->AddRectangle(Rectangle(Point(2930, 1245), Point(3120, 1965)));
+layout->AddPolygon(Polygon({Point(3165, 365),
+                            Point(3950, 365),
+                            Point(3950, 995),
+                            Point(4655, 995),
+                            Point(4655, 1325),
+                            Point(3950, 1325),
+                            Point(3950, 2335),
+                            Point(3065, 2335),
+                            Point(3065, 2165),
+                            Point(3780, 2165),
+                            Point(3780, 535),
+                            Point(3165, 535)}));
+layout->AddPolygon(Polygon({Point(4695, 300),
+                            Point(5025, 300),
+                            Point(5025, 995),
+                            Point(5575, 995),
+                            Point(5575, 1325),
+                            Point(5015, 1325),
+                            Point(5015, 2465),
+                            Point(4675, 2465),
+                            Point(4675, 1905),
+                            Point(4120, 1905),
+                            Point(4120, 1530),
+                            Point(4825, 1530),
+                            Point(4825, 825),
+                            Point(4695, 825)}));
+layout->AddPolygon(Polygon({Point(5525, 1495),
+                            Point(5700, 1495),
+                            Point(5700, 1445),
+                            Point(5745, 1445),
+                            Point(5745, 865),
+                            Point(5690, 865),
+                            Point(5690, 825),
+                            Point(5535, 825),
+                            Point(5535, 305),
+                            Point(5865, 305),
+                            Point(5865, 740),
+                            Point(5915, 740),
+                            Point(5915, 1575),
+                            Point(5855, 1575),
+                            Point(5855, 2420),
+                            Point(5525, 2420)}));
+layout->AddPolygon(Polygon({Point(3145, 705),
+                            Point(3610, 705),
+                            Point(3610, 1995),
+                            Point(3290, 1995),
+                            Point(3290, 1035),
+                            Point(3145, 1035)}));
+layout->AddPolygon(Polygon({Point(0, 2635),
+                            Point(80, 2635),
+                            Point(80, 2175),
+                            Point(345, 2175),
+                            Point(345, 2635),
+                            Point(2250, 2635),
+                            Point(2250, 1835),
+                            Point(2420, 1835),
+                            Point(2420, 2635),
+                            Point(4130, 2635),
+                            Point(4130, 2135),
+                            Point(4445, 2135),
+                            Point(4445, 2635),
+                            Point(5185, 2635),
+                            Point(5185, 1625),
+                            Point(5355, 1625),
+                            Point(5355, 2635),
+                            Point(6000, 2635),
+                            Point(6000, 2805),
+                            Point(0, 2805)}));
+layout->AddPolygon(Polygon({Point(0, -85),
+                            Point(6000, -85),
+                            Point(6000, 85),
+                            Point(5365, 85),
+                            Point(5365, 695),
+                            Point(5195, 695),
+                            Point(5195, 85),
+                            Point(4435, 85),
+                            Point(4435, 615),
+                            Point(4225, 615),
+                            Point(4225, 85),
+                            Point(2410, 85),
+                            Point(2410, 585),
+                            Point(2040, 585),
+                            Point(2040, 85),
+                            Point(345, 85),
+                            Point(345, 545),
+                            Point(95, 545),
+                            Point(95, 85),
+                            Point(0, 85)}));
+layout->AddPolygon(Polygon({Point(515, 365),
+                            Point(850, 365),
+                            Point(850, 535),
+                            Point(685, 535),
+                            Point(685, 805),
+                            Point(630, 805),
+                            Point(630, 1910),
+                            Point(765, 1910),
+                            Point(765, 2465),
+                            Point(515, 2465),
+                            Point(515, 2040),
+                            Point(460, 2040),
+                            Point(460, 675),
+                            Point(515, 675)}));
+layout->AddPolygon(Polygon({Point(855, 735),
+                            Point(1380, 735),
+                            Point(1380, 1655),
+                            Point(1740, 1655),
+                            Point(1740, 2020),
+                            Point(1210, 2020),
+                            Point(1210, 955),
+                            Point(855, 955)}));
+layout->AddPolygon(Polygon({Point(1045, 365),
+                            Point(1720, 365),
+                            Point(1720, 1315),
+                            Point(2250, 1315),
+                            Point(2250, 1245),
+                            Point(2420, 1245),
+                            Point(2420, 1575),
+                            Point(2080, 1575),
+                            Point(2080, 2360),
+                            Point(975, 2360),
+                            Point(975, 2190),
+                            Point(1910, 2190),
+                            Point(1910, 1485),
+                            Point(1550, 1485),
+                            Point(1550, 535),
+                            Point(1045, 535)}));
+layout->AddPolygon(Polygon({Point(2590, 365),
+                            Point(2995, 365),
+                            Point(2995, 535),
+                            Point(2760, 535),
+                            Point(2760, 2135),
+                            Point(2840, 2135),
+                            Point(2840, 2465),
+                            Point(2590, 2465),
+                            Point(2590, 1065),
+                            Point(2130, 1065),
+                            Point(2130, 1095),
+                            Point(1930, 1095),
+                            Point(1930, 765),
+                            Point(2590, 765)}));
 
-  // poly.drawing [DRAWING] 66/20
-  layout->SetActiveLayerByName("poly.drawing");
-  layout->AddPolygon(Polygon({Point(3540, 1065),
-                              Point(3320, 1065),
-                              Point(3320, 2615),
-                              Point(3170, 2615),
-                              Point(3170, 795),
-                              Point(3305, 795),
-                              Point(3305, 105),
-                              Point(3455, 105),
-                              Point(3455, 795),
-                              Point(3540, 795)}));
-  layout->AddPolygon(Polygon({Point(2545, 1005),
-                              Point(2215, 1005),
-                              Point(2215, 735),
-                              Point(2315, 735),
-                              Point(2315, 105),
-                              Point(2465, 105),
-                              Point(2465, 735),
-                              Point(2545, 735)}));
-  layout->AddPolygon(Polygon({Point(1905, 2615),
-                              Point(1755, 2615),
-                              Point(1755, 1665),
-                              Point(1430, 1665),
-                              Point(1430, 1335),
-                              Point(1755, 1335),
-                              Point(1755, 105),
-                              Point(1905, 105)}));
-  layout->AddPolygon(Polygon({Point(2960, 1365),
-                              Point(2445, 1365),
-                              Point(2445, 1485),
-                              Point(2330, 1485),
-                              Point(2330, 2615),
-                              Point(2180, 2615),
-                              Point(2180, 1485),
-                              Point(2115, 1485),
-                              Point(2115, 1215),
-                              Point(2810, 1215),
-                              Point(2810, 105),
-                              Point(2960, 105)}));
-  layout->AddPolygon(Polygon({Point(2960, 1905),
-                              Point(2805, 1905),
-                              Point(2805, 2615),
-                              Point(2655, 2615),
-                              Point(2655, 1575),
-                              Point(2960, 1575)}));
-  layout->AddPolygon(Polygon({Point(5700, 1905),
-                              Point(5445, 1905),
-                              Point(5445, 2615),
-                              Point(5295, 2615),
-                              Point(5295, 1575),
-                              Point(5410, 1575),
-                              Point(5410, 105),
-                              Point(5560, 105),
-                              Point(5560, 1575),
-                              Point(5700, 1575)}));
-  layout->AddPolygon(Polygon({Point(5050, 1875),
-                              Point(4875, 1875),
-                              Point(4875, 2615),
-                              Point(4725, 2615),
-                              Point(4725, 1875),
-                              Point(4720, 1875),
-                              Point(4720, 1605),
-                              Point(5050, 1605)}));
-  layout->AddPolygon(Polygon({Point(965, 2585),
-                              Point(815, 2585),
-                              Point(815, 1370),
-                              Point(590, 1370),
-                              Point(590, 1100),
-                              Point(815, 1100),
-                              Point(815, 105),
-                              Point(965, 105)}));
-  layout->AddPolygon(Polygon({Point(5085, 1395),
-                              Point(4510, 1395),
-                              Point(4510, 1575),
-                              Point(4455, 1575),
-                              Point(4455, 2615),
-                              Point(4305, 2615),
-                              Point(4305, 1575),
-                              Point(4240, 1575),
-                              Point(4240, 1245),
-                              Point(4935, 1245),
-                              Point(4935, 105),
-                              Point(5085, 105)}));
-  layout->AddPolygon(Polygon({Point(545, 880),
-                              Point(380, 880),
-                              Point(380, 1590),
-                              Point(545, 1590),
-                              Point(545, 2585),
-                              Point(395, 2585),
-                              Point(395, 1740),
-                              Point(230, 1740),
-                              Point(230, 1325),
-                              Point(110, 1325),
-                              Point(110, 995),
-                              Point(230, 995),
-                              Point(230, 730),
-                              Point(395, 730),
-                              Point(395, 105),
-                              Point(545, 105)}));
-  layout->AddPolygon(Polygon({Point(6985, 1325),
-                              Point(6915, 1325),
-                              Point(6915, 2615),
-                              Point(6765, 2615),
-                              Point(6765, 1325),
-                              Point(6715, 1325),
-                              Point(6715, 995),
-                              Point(6775, 995),
-                              Point(6775, 105),
-                              Point(6925, 105),
-                              Point(6925, 995),
-                              Point(6985, 995)}));
-  layout->AddPolygon(Polygon({Point(6505, 1325),
-                              Point(6495, 1325),
-                              Point(6495, 2615),
-                              Point(6345, 2615),
-                              Point(6345, 1325),
-                              Point(5795, 1325),
-                              Point(5795, 995),
-                              Point(6355, 995),
-                              Point(6355, 105),
-                              Point(6505, 105)}));
-  layout->AddPolygon(Polygon({Point(4725, 1035),
-                              Point(4405, 1035),
-                              Point(4405, 105),
-                              Point(4555, 105),
-                              Point(4555, 705),
-                              Point(4725, 705)}));
-  layout->AddPolygon(Polygon({Point(4050, 1100),
-                              Point(3980, 1100),
-                              Point(3980, 2615),
-                              Point(3830, 2615),
-                              Point(3830, 1545),
-                              Point(3530, 1545),
-                              Point(3530, 1275),
-                              Point(3830, 1275),
-                              Point(3830, 950),
-                              Point(3900, 950),
-                              Point(3900, 105),
-                              Point(4050, 105)}));
+// poly.drawing [DRAWING] 66/20
+layout->SetActiveLayerByName("poly.drawing");
+layout->AddPolygon(Polygon({Point(1810, 795),
+                            Point(1945, 795),
+                            Point(1945, 105),
+                            Point(2095, 105),
+                            Point(2095, 795),
+                            Point(2180, 795),
+                            Point(2180, 1065),
+                            Point(1960, 1065),
+                            Point(1960, 2615),
+                            Point(1810, 2615)}));
+layout->AddPolygon(Polygon({Point(855, 735),
+                            Point(955, 735),
+                            Point(955, 105),
+                            Point(1105, 105),
+                            Point(1105, 735),
+                            Point(1185, 735),
+                            Point(1185, 1005),
+                            Point(855, 1005)}));
+layout->AddPolygon(Polygon({Point(70, 1335),
+                            Point(395, 1335),
+                            Point(395, 105),
+                            Point(545, 105),
+                            Point(545, 2615),
+                            Point(395, 2615),
+                            Point(395, 1665),
+                            Point(70, 1665)}));
+layout->AddPolygon(Polygon({Point(755, 1215),
+                            Point(1450, 1215),
+                            Point(1450, 105),
+                            Point(1600, 105),
+                            Point(1600, 1365),
+                            Point(1085, 1365),
+                            Point(1085, 1485),
+                            Point(970, 1485),
+                            Point(970, 2615),
+                            Point(820, 2615),
+                            Point(820, 1485),
+                            Point(755, 1485)}));
+layout->AddPolygon(Polygon({Point(1295, 1575),
+                            Point(1600, 1575),
+                            Point(1600, 1905),
+                            Point(1445, 1905),
+                            Point(1445, 2615),
+                            Point(1295, 2615)}));
+layout->AddPolygon(Polygon({Point(3935, 1575),
+                            Point(4050, 1575),
+                            Point(4050, 105),
+                            Point(4200, 105),
+                            Point(4200, 1575),
+                            Point(4340, 1575),
+                            Point(4340, 1905),
+                            Point(4085, 1905),
+                            Point(4085, 2615),
+                            Point(3935, 2615)}));
+layout->AddPolygon(Polygon({Point(3360, 1605),
+                            Point(3690, 1605),
+                            Point(3690, 1875),
+                            Point(3515, 1875),
+                            Point(3515, 2615),
+                            Point(3365, 2615),
+                            Point(3365, 1875),
+                            Point(3360, 1875)}));
+layout->AddPolygon(Polygon({Point(2880, 1245),
+                            Point(3575, 1245),
+                            Point(3575, 105),
+                            Point(3725, 105),
+                            Point(3725, 1395),
+                            Point(3150, 1395),
+                            Point(3150, 1575),
+                            Point(3095, 1575),
+                            Point(3095, 2615),
+                            Point(2945, 2615),
+                            Point(2945, 1575),
+                            Point(2880, 1575)}));
+layout->AddPolygon(Polygon({Point(5355, 995),
+                            Point(5415, 995),
+                            Point(5415, 105),
+                            Point(5565, 105),
+                            Point(5565, 995),
+                            Point(5625, 995),
+                            Point(5625, 1325),
+                            Point(5555, 1325),
+                            Point(5555, 2615),
+                            Point(5405, 2615),
+                            Point(5405, 1325),
+                            Point(5355, 1325)}));
+layout->AddPolygon(Polygon({Point(4435, 995),
+                            Point(4995, 995),
+                            Point(4995, 105),
+                            Point(5145, 105),
+                            Point(5145, 1325),
+                            Point(5135, 1325),
+                            Point(5135, 2615),
+                            Point(4985, 2615),
+                            Point(4985, 1325),
+                            Point(4435, 1325)}));
+layout->AddPolygon(Polygon({Point(3045, 105),
+                            Point(3195, 105),
+                            Point(3195, 705),
+                            Point(3365, 705),
+                            Point(3365, 1035),
+                            Point(3045, 1035)}));
+layout->AddPolygon(Polygon({Point(2470, 950),
+                            Point(2540, 950),
+                            Point(2540, 105),
+                            Point(2690, 105),
+                            Point(2690, 1100),
+                            Point(2620, 1100),
+                            Point(2620, 2615),
+                            Point(2470, 2615),
+                            Point(2470, 1545),
+                            Point(2170, 1545),
+                            Point(2170, 1275),
+                            Point(2470, 1275)}));
 
-  // nwell.drawing [DRAWING] 64/20
-  layout->SetActiveLayerByName("nwell.drawing");
-  layout->AddRectangle(Rectangle(Point(-190, 1305), Point(7550, 2910)));
+// nwell.drawing [DRAWING] 64/20
+layout->SetActiveLayerByName("nwell.drawing");
+layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
 
-  // npc.drawing [DRAWING] 95/20
-  layout->SetActiveLayerByName("npc.drawing");
-  layout->AddPolygon(Polygon({Point(7360, 1345),
-                              Point(5910, 1345),
-                              Point(5910, 1925),
-                              Point(4675, 1925),
-                              Point(4675, 1595),
-                              Point(3085, 1595),
-                              Point(3085, 1925),
-                              Point(2095, 1925),
-                              Point(2095, 1685),
-                              Point(1380, 1685),
-                              Point(1380, 1420),
-                              Point(565, 1420),
-                              Point(565, 1345),
-                              Point(0, 1345),
-                              Point(0, 975),
-                              Point(2195, 975),
-                              Point(2195, 685),
-                              Point(2905, 685),
-                              Point(2905, 745),
-                              Point(3590, 745),
-                              Point(3590, 975),
-                              Point(4320, 975),
-                              Point(4320, 685),
-                              Point(4775, 685),
-                              Point(4775, 795),
-                              Point(5675, 795),
-                              Point(5675, 975),
-                              Point(7360, 975)}));
+// npc.drawing [DRAWING] 95/20
+layout->SetActiveLayerByName("npc.drawing");
+layout->AddPolygon(Polygon({Point(0, 975),
+                            Point(835, 975),
+                            Point(835, 685),
+                            Point(1545, 685),
+                            Point(1545, 745),
+                            Point(2230, 745),
+                            Point(2230, 975),
+                            Point(2960, 975),
+                            Point(2960, 685),
+                            Point(3415, 685),
+                            Point(3415, 795),
+                            Point(4315, 795),
+                            Point(4315, 975),
+                            Point(6000, 975),
+                            Point(6000, 1345),
+                            Point(4550, 1345),
+                            Point(4550, 1925),
+                            Point(3315, 1925),
+                            Point(3315, 1595),
+                            Point(1725, 1595),
+                            Point(1725, 1925),
+                            Point(735, 1925),
+                            Point(735, 1685),
+                            Point(20, 1685),
+                            Point(20, 1420),
+                            Point(0, 1420)}));
 
-  // nsdm.drawing [DRAWING] 93/44
-  layout->SetActiveLayerByName("nsdm.drawing");
-  layout->AddRectangle(Rectangle(Point(0, -190), Point(7360, 1015)));
+// nsdm.drawing [DRAWING] 93/44
+layout->SetActiveLayerByName("nsdm.drawing");
+layout->AddRectangle(Rectangle(Point(0, -190), Point(6000, 1015)));
 
-  // hvtp.drawing [DRAWING] 78/44
-  layout->SetActiveLayerByName("hvtp.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 1250), Point(7360, 2720)));
+// hvtp.drawing [DRAWING] 78/44
+layout->SetActiveLayerByName("hvtp.drawing");
+layout->AddRectangle(Rectangle(Point(0, 1250), Point(6000, 2720)));
 
-  // areaid.standardc 81/4
-  layout->SetActiveLayerByName("areaid.standardc");
-  layout->AddRectangle(Rectangle(Point(0, 0), Point(7360, 2720)));
+// areaid.standardc 81/4
+layout->SetActiveLayerByName("areaid.standardc");
+layout->AddRectangle(Rectangle(Point(0, 0), Point(6000, 2720)));
 
-  // psdm.drawing [DRAWING] 94/20
-  layout->SetActiveLayerByName("psdm.drawing");
-  layout->AddPolygon(Polygon({Point(7360, 2910),
-                              Point(0, 2910),
-                              Point(0, 1685),
-                              Point(1350, 1685),
-                              Point(1350, 1935),
-                              Point(3240, 1935),
-                              Point(3240, 1605),
-                              Point(4665, 1605),
-                              Point(4665, 1935),
-                              Point(5930, 1935),
-                              Point(5930, 1355),
-                              Point(7360, 1355)}));
+// psdm.drawing [DRAWING] 94/20
+layout->SetActiveLayerByName("psdm.drawing");
+layout->AddPolygon(Polygon({Point(0, 1935),
+                            Point(1880, 1935),
+                            Point(1880, 1605),
+                            Point(3305, 1605),
+                            Point(3305, 1935),
+                            Point(4570, 1935),
+                            Point(4570, 1355),
+                            Point(6000, 1355),
+                            Point(6000, 2910),
+                            Point(0, 2910)}));
 
-  // li.pin [PIN] 67/16
-  layout->SetActiveLayerByName("li.pin");
-  layout->AddRectangle(Rectangle(Point(145, 1105), Point(315, 1275)));
-  layout->AddRectangle(Rectangle(Point(1445, 1105), Point(1615, 1275)));
-  layout->AddRectangle(Rectangle(Point(6950, 425), Point(7120, 595)));
+// li.pin [PIN] 67/16
+layout->SetActiveLayerByName("li.pin");
+layout->AddRectangle(Rectangle(Point(85, 1105), Point(255, 1275)));
+layout->AddRectangle(Rectangle(Point(5590, 425), Point(5760, 595)));
 
-  // nwell.pin [PIN] 64/16
-  layout->SetActiveLayerByName("nwell.pin");
-  layout->AddRectangle(Rectangle(Point(145, 2635), Point(315, 2805)));
-  layout->AddRectangle(Rectangle(Point(145, 2635), Point(315, 2805)));
+// nwell.pin [PIN] 64/16
+layout->SetActiveLayerByName("nwell.pin");
 
-  // pwell.pin [PIN] 122/16
-  layout->SetActiveLayerByName("pwell.pin");
-  layout->AddRectangle(Rectangle(Point(145, -85), Point(315, 85)));
-  layout->AddRectangle(Rectangle(Point(145, -85), Point(315, 85)));
+// pwell.pin [PIN] 122/16
+layout->SetActiveLayerByName("pwell.pin");
 
-  // met1.pin [PIN] 68/16
-  layout->SetActiveLayerByName("met1.pin");
-  layout->AddRectangle(Rectangle(Point(145, 2635), Point(315, 2805)));
-  layout->AddRectangle(Rectangle(Point(145, -85), Point(315, 85)));
+// met1.pin [PIN] 68/16
+layout->SetActiveLayerByName("met1.pin");
 
   return layout.release();
 }
