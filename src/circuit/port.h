@@ -17,6 +17,11 @@ class Port {
     NONE
   };
 
+  static PortDirection FromVLSIRPortDirection(
+      const ::vlsir::circuit::Port::Direction &direction_pb);
+  static ::vlsir::circuit::Port::Direction ToVLSIRPortDirection(
+      const PortDirection &direction);
+
   Port(const Signal &signal, const PortDirection &direction)
       : signal_(signal), direction_(direction) {}
 
@@ -24,7 +29,6 @@ class Port {
   const PortDirection &direction() const { return direction_; }
 
   ::vlsir::circuit::Port ToVLSIRPort() const;
-  ::vlsir::circuit::Port::Direction VLSIRPortDirection() const;
 
  private:
   const Signal &signal_;

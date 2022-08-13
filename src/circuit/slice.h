@@ -7,10 +7,16 @@
 #include "vlsir/circuit.pb.h"
 
 namespace bfg {
+
+class Circuit;
+
 namespace circuit {
 
 class Slice {
  public:
+  static Slice FromVLSIRSlice(
+      const Circuit &circuit,
+      const vlsir::circuit::Slice &slice_pb);
   Slice(const Signal &signal, uint64_t low_index, uint64_t high_index)
       : signal_(signal),
         low_index_(low_index),
@@ -34,7 +40,11 @@ class Slice {
     return slice_pb;
   }
 
+  uint64_t Width() const { return high_index_ - low_index_ + 1; }
+
   const Signal &signal() const { return signal_; }
+  uint64_t low_index() const { return low_index_; }
+  uint64_t high_index() const { return high_index_; }
 
  private:
   const Signal &signal_;

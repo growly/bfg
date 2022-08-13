@@ -10,6 +10,33 @@
 
 namespace bfg {
 
+Circuit *Circuit::FromVLSIRModule(const vlsir::circuit::Module &module_pb) {
+  std::unique_ptr<Circuit> circuit(new Circuit());
+
+  circuit->set_name(module_pb.name());
+
+  for (const auto &signal_pb : module_pb.signals()) {
+    circuit->AddSignal(signal_pb.name(), signal_pb.width());
+  }
+  for (const auto &port_pb : module_pb.ports()) {
+    const circuit::Signal *signal = circuit->GetSignal(port_pb.signal());
+    if (signal == nullptr) {
+      LOG(WARNING) << "Port references unknown signal: \""
+                   << port_pb.signal() << "\"";
+      continue;
+    }
+    circuit->AddPort(
+        *signal, circuit::Port::FromVLSIRPortDirection(port_pb.direction()));
+  }
+  for (const auto &instance_pb : module_pb.instances()) {
+  }
+  for (const auto &param_pb : module_pb.parameters()) {
+    Parameter parameter = Parameter::FromVLSIRParameter(param_pb);
+    circuit->parameters_.insert({parameter.name, parameter});
+  }
+  return circuit.release();
+}
+
 circuit::Wire Circuit::AddSignal(const std::string &name) {
   circuit::Signal *signal = AddSignal(name, 1);
   return bfg::circuit::Wire(*signal, 0);

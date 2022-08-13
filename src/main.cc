@@ -13,6 +13,7 @@
 #include <absl/strings/str_join.h>
 
 #include "physical_properties_database.h"
+#include "design_database.h"
 #include "cell.h"
 #include "layout.h"
 #include "atoms/sky130_buf.h"
@@ -24,8 +25,11 @@
 
 #include "c_make_header.h"
 
+DEFINE_string(technology, "technology.pb", "Path to binary technology proto");
+DEFINE_string(external_circuits, "", "Path to binary circuits proto");
 DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
-DEFINE_bool(text_format, true, "Also write text format protobufs");
+//DEFINE_bool(read_text_format, true, "Expect input protobufs in text format");
+DEFINE_bool(write_text_format, true, "Also write text format protobufs");
 
 void WriteLibrary(const bfg::Cell &cell) {
   ::vlsir::raw::Library library;
@@ -35,7 +39,7 @@ void WriteLibrary(const bfg::Cell &cell) {
   *cell_pb->mutable_layout() = cell.layout()->ToVLSIRLayout();
   *cell_pb->mutable_module() = cell.circuit()->ToVLSIRCircuit();
 
-  if (FLAGS_text_format) {
+  if (FLAGS_write_text_format) {
     std::string text_format;
     google::protobuf::TextFormat::PrintToString(library, &text_format);
 
@@ -91,22 +95,45 @@ int main(int argc, char **argv) {
   layer_1_2.height = 30;
   layer_1_2.overhang = 10;
 
-  vlsir::tech::Technology sky130_pb;
+  vlsir::tech::Technology tech_pb;
+  // std::string pdk_file_name = "../sky130.technology.pb.txt";
+  // std::ifstream pdk_file(pdk_file_name);
+  // LOG_IF(FATAL, !pdk_file.is_open())
+  //     << "Could not open PDK descriptor file: " << pdk_file_name;
+  // std::ostringstream ss;
+  // ss << pdk_file.rdbuf();
+  // google::protobuf::TextFormat::ParseFromString(ss.str(), &tech_pb);
 
-  std::string pdk_file_name = "../sky130.technology.pb.txt";
-  std::ifstream pdk_file(pdk_file_name);
-  LOG_IF(FATAL, !pdk_file.is_open())
-      << "Could not open PDK descriptor file: " << pdk_file_name;
-  std::ostringstream ss;
-  ss << pdk_file.rdbuf();
-  google::protobuf::TextFormat::ParseFromString(ss.str(), &sky130_pb);
+  std::fstream technology_input(
+      FLAGS_technology, std::ios::in | std::ios::binary);
+  LOG_IF(FATAL, !technology_input)
+      << "Could not open technology protobuf, "
+      << FLAGS_technology;
+  if (!tech_pb.ParseFromIstream(&technology_input)) {
+    LOG(FATAL) << "Could not parse technology protobuf, "
+               << FLAGS_technology;
+  }
 
-  bfg::PhysicalPropertiesDatabase physical_db;
-  physical_db.LoadTechnology(sky130_pb);
+  bfg::DesignDatabase design_db;
+  design_db.physical_db().LoadTechnology(tech_pb);
 
-  physical_db.AddRoutingLayerInfo(layer_1);
-  physical_db.AddRoutingLayerInfo(layer_2);
-  physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
+  design_db.physical_db().AddRoutingLayerInfo(layer_1);
+  design_db.physical_db().AddRoutingLayerInfo(layer_2);
+  design_db.physical_db().AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
+
+  if (FLAGS_external_circuits != "") {
+    vlsir::circuit::Package external_circuits_pb;
+    std::fstream external_circuits_input(
+        FLAGS_external_circuits, std::ios::in | std::ios::binary);
+    LOG_IF(FATAL, !external_circuits_input)
+        << "Could not open external circuits protobuf, "
+        << FLAGS_external_circuits;
+    if (!external_circuits_pb.ParseFromIstream(&external_circuits_input)) {
+      LOG(FATAL) << "Could not parse external circuits protobuf, "
+                 << FLAGS_external_circuits;
+    }
+    design_db.LoadPackage(external_circuits_pb);
+  }
 
   //bfg::atoms::Sky130Buf::Parameters buf_params = {
   //  .width_nm = 1380,
@@ -122,7 +149,7 @@ int main(int argc, char **argv) {
   //std::cout << buf_cell->layout()->Describe();
 
   bfg::atoms::Sky130Dfxtp::Parameters params;
-  bfg::atoms::Sky130Dfxtp generator(physical_db, params);
+  bfg::atoms::Sky130Dfxtp generator(design_db.physical_db(), params);
   std::unique_ptr<bfg::Cell> cell(generator.Generate());
   WriteLibrary(*cell);
   std::cout << cell->layout()->Describe();

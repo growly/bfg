@@ -36,8 +36,8 @@ void PhysicalPropertiesDatabase::LoadTechnology(
           << "Ran out of internal layer numbers!";
     }
 
-    LOG(INFO) << "Loading layer " << internal_layer << ": \""
-              << layer_info.name() << "\"";
+    VLOG(2) << "Loading layer " << internal_layer << ": \"" << layer_info.name()
+            << "\"";
     LayerInfo info {
         .internal_layer = internal_layer,
         .name = layer_info.name(),

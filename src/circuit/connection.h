@@ -5,6 +5,9 @@
 #include "vlsir/circuit.pb.h"
 
 namespace bfg {
+
+class Circuit;
+
 namespace circuit {
 
 class Signal;
@@ -16,6 +19,10 @@ class Connection {
     SLICE,
     CONCATENATION
   };
+
+  static Connection FromVLSIRConnection(
+      const Circuit &circuit,
+      const vlsir::circuit::Connection &conn_pb);
 
   Connection() = default;
 
@@ -29,7 +36,7 @@ class Connection {
     return *this;
   }
 
-  void set_signal(Signal *signal) {
+  void set_signal(const Signal *signal) {
     connection_type_ = SIGNAL;
     signal_ = signal;
   }
@@ -45,7 +52,7 @@ class Connection {
   ConnectionType connection_type_;
 
   // Signals are owned by the Circuit.
-  Signal *signal_;
+  const Signal *signal_;
 
   // Slices, Connections, Wires ephemeral so we keep a copy.
   std::unique_ptr<Slice> slice_;

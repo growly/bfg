@@ -9,6 +9,7 @@
 
 #include "vlsir/circuit.pb.h"
 
+#include "../cell_reference.h"
 #include "../parameter.h"
 #include "connection.h"
 #include "qualified_name.h"
@@ -24,18 +25,16 @@ class Instance {
  public:
   Instance() = default;
 
-  const std::string &name() const { return name_; }
-  void set_name(const std::string &name) { name_ = name; }
-
-  void set_module(Circuit *template_module) { module_ = template_module; }
-  Circuit *const module() const { return module_; }
+  static Instance *FromVLSIRInstance(
+      const Circuit &context,
+      const vlsir::circuit::Instance &instance_pb);
 
   // Disconnects the port named "port_name". Returns true iff the port was
   // connected and is no longer.
   bool Disconnect(const std::string &port_name);
 
   // Connects the port named "port_name" to the given signal.
-  void Connect(const std::string &port_name, const Wire &wire);
+  void Connect(const std::string &port_name, const Slice &slice);
 
   // Accepts repeating pairs of (port_name, wire) to invoke Connect on.
   // TODO(aryap): Compare variadic arguments, variadic templates, and
@@ -50,8 +49,21 @@ class Instance {
 
   ::vlsir::circuit::Instance ToVLSIRInstance() const;
 
+  const std::string &name() const { return name_; }
+  void set_name(const std::string &name) { name_ = name; }
+
+  const CellReference &reference() const { return reference_; }
+  void set_reference(const CellReference &reference) { reference_ = reference; }
+
+  void set_module(Circuit *template_module) { module_ = template_module; }
+  Circuit *const module() const { return module_; }
+
  private:
   std::string name_;
+
+  // A (possibly qualified) string reference to the Cell describing the Module
+  // pointed to below. Used for bookeeping at import/export.
+  CellReference reference_;
 
   // The template circuit object. Other databases call this "Master" or
   // "Module".

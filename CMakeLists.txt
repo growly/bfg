@@ -36,7 +36,9 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
   ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
+  ${PROJECT_SOURCE_DIR}/src/design_database.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
+  ${PROJECT_SOURCE_DIR}/src/parameter.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
   #${PROJECT_SOURCE_DIR}/src/routing_grid.cc
@@ -66,6 +68,7 @@ set(CIRCUIT_SRC
   ${PROJECT_SOURCE_DIR}/src/circuit/instance.cc
   ${PROJECT_SOURCE_DIR}/src/circuit/port.cc
   ${PROJECT_SOURCE_DIR}/src/circuit/signal.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/slice.cc
   ${PROJECT_SOURCE_DIR}/src/circuit/connection.cc
 )
 

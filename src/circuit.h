@@ -21,6 +21,14 @@ namespace bfg {
 // be instantiated elsehwere.
 class Circuit {
  public:
+  enum Type {
+    INTERNAL,
+    EXTERNAL
+  };
+
+  // Makes a new Circuit from a VLSIR Module message. Caller takes ownership.
+  static Circuit *FromVLSIRModule(const vlsir::circuit::Module &module_pb);
+
   Circuit() = default;
 
   // Convenient: Add a width=1 signal and return a wire indexing it. Wires are
@@ -38,6 +46,14 @@ class Circuit {
       const circuit::Wire &wire,
       const circuit::Port::PortDirection &direction = circuit::Port::NONE);
 
+  const circuit::Signal *GetSignal(const std::string &name) const {
+    auto signals_it = signals_by_name_.find(name);
+    if (signals_it == signals_by_name_.end()) {
+      return nullptr;
+    }
+    return signals_it->second;
+  }
+
   std::vector<std::unique_ptr<circuit::Signal>> &signals() { return signals_; }
 
   std::string Describe() const;
@@ -47,6 +63,8 @@ class Circuit {
   const std::string &name() const { return name_; }
   void set_name(const std::string &name) { name_ = name; }
  private:
+  Type type_;
+
   std::string name_;
   std::string description_;
 

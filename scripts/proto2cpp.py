@@ -7,9 +7,10 @@ from typing import Any, Optional
 # We have to do this because import paths in generated python proto files follow
 # the paths of the original .proto sources, which means that they are are
 # relative to the root of the proto schema directory. By putting the generated
-# filed in the "vlsir" subdirectory, we break them. We could dump them in the
+# files in the "vlsir" subdirectory, we break them. We could dump them in the
 # same folder as this script, or we could hack it like in
-# https://github.com/growly/Vlsir/blob/main/scripts/primitives.py
+# https://github.com/growly/Vlsir/blob/main/scripts/primitives.py (which is what
+# we do).
 
 here = pathlib.Path(__file__).parent.absolute()
 pybindings = here / "vlsir"

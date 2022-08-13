@@ -12,17 +12,42 @@
 namespace bfg {
 namespace circuit {
 
+Instance *Instance::FromVLSIRInstance(
+    const Circuit &context,
+    const vlsir::circuit::Instance &instance_pb) {
+  std::unique_ptr<Instance> instance(new Instance());
+  instance->set_name(instance_pb.name());
+  instance->set_reference(
+      CellReference::FromVLSIRReference(instance_pb.module()));
+  for (const auto &param_pb : instance_pb.parameters()) {
+    Parameter parameter = Parameter::FromVLSIRParameter(param_pb);
+    instance->parameters_.insert({parameter.name, parameter});
+  }
+  for (const auto &connection_pb : instance_pb.connections()) {
+    //Connection connection = 
+  }
+  return instance.release();
+}
+
 bool Instance::Disconnect(const std::string &port_name) {
   return connections_.erase(port_name) == 1;
 }
 
 void Instance::Connect(
-    const std::string &port_name, const Wire &wire) {
+    const std::string &port_name, const Slice &slice) {
   LOG_IF(FATAL, Disconnect(port_name))
       << "Instance \"" << name_ << "\" port \"" << port_name
       << "\" was already connected when trying to Connect.";
+
   Connection connection;
-  connection.set_slice(wire);
+
+  // Special case: if the slice references the entire signal, just connect to
+  // the signal instead and discard the Slice adapter.
+  if (slice.Width() == slice.signal().width()) {
+    connection.set_signal(&slice.signal());
+  } else {
+    connection.set_slice(slice);
+  }
   connections_.insert({port_name, connection});
 }
 
