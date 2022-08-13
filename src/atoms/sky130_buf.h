@@ -5,6 +5,9 @@
 #include "../layout.h"
 
 namespace bfg {
+
+class DesignDatabase;
+
 namespace atoms {
 
 // Generates a non-inverting buffer (from two inverters) for Sky130.
@@ -29,9 +32,9 @@ class Sky130Buf: public Atom {
     uint64_t x3_width_nm;
   };
 
-  Sky130Buf(const PhysicalPropertiesDatabase &physical_db,
+  Sky130Buf(const DesignDatabase &design_db,
             const Parameters &parameters)
-      : Atom(physical_db),
+      : Atom(design_db),
         parameters_(parameters),
         internal_units_per_nm_(1.0) {}
 

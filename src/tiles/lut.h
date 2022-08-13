@@ -4,7 +4,7 @@
 #include <utility>
 
 #include "tile.h"
-#include "../physical_properties_database.h"
+#include "../design_database.h"
 
 namespace bfg {
 
@@ -16,8 +16,8 @@ namespace tiles {
 
 class Lut : public Tile {
  public:
-  Lut(const PhysicalPropertiesDatabase &physical_db)
-      : Tile(physical_db) {}
+  Lut(const DesignDatabase &design_db)
+      : Tile(design_db) {}
 
   virtual bfg::Cell *Generate();
 

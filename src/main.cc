@@ -12,7 +12,6 @@
 #include <glog/logging.h>
 #include <absl/strings/str_join.h>
 
-#include "physical_properties_database.h"
 #include "design_database.h"
 #include "cell.h"
 #include "layout.h"
@@ -149,7 +148,7 @@ int main(int argc, char **argv) {
   //std::cout << buf_cell->layout()->Describe();
 
   bfg::atoms::Sky130Dfxtp::Parameters params;
-  bfg::atoms::Sky130Dfxtp generator(design_db.physical_db(), params);
+  bfg::atoms::Sky130Dfxtp generator(design_db, params);
   std::unique_ptr<bfg::Cell> cell(generator.Generate());
   WriteLibrary(*cell);
   std::cout << cell->layout()->Describe();

@@ -5,6 +5,9 @@
 #include "../layout.h"
 
 namespace bfg {
+
+class DesignDatabase;
+
 namespace atoms {
 
 class Sky130Dfxtp: public Atom {
@@ -58,9 +61,9 @@ class Sky130Dfxtp: public Atom {
     uint64_t nfet_9_length_nm = 150;
   };
 
-  Sky130Dfxtp(const PhysicalPropertiesDatabase &physical_db,
+  Sky130Dfxtp(const DesignDatabase &design_db,
               const Parameters &parameters)
-      : Atom(physical_db),
+      : Atom(design_db),
         parameters_(parameters),
         internal_units_per_nm_(1.0) {}
 

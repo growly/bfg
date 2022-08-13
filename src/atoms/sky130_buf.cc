@@ -100,7 +100,7 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
 }
 
 bfg::Layout *Sky130Buf::GenerateLayout() {
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(physical_db_));
+  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(design_db_.physical_db()));
 
   uint64_t width =
       internal_units_per_nm_ * static_cast<double>(parameters_.width_nm);

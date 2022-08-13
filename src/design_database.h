@@ -6,6 +6,7 @@
 #include <ostream>
 
 #include "abstract_via.h"
+#include "cell.h"
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
 #include "physical_properties_database.h"
@@ -13,8 +14,6 @@
 #include "vlsir/tech.pb.h"
 
 namespace bfg {
-
-class Cell;
 
 // Stores (probably external) circuit and layout available to generators in BFG.
 class DesignDatabase {

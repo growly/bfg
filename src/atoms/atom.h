@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "../physical_properties_database.h"
+#include "../design_database.h"
 #include "../tiles/tile.h"
 
 namespace bfg {
@@ -14,8 +14,8 @@ namespace atoms {
 
 class Atom : public tiles::Tile {
  public:
-  Atom(const PhysicalPropertiesDatabase &physical_db)
-      : Tile(physical_db) {}
+  Atom(const DesignDatabase &design_db)
+      : Tile(design_db) {}
 };
 
 }  // namespace atoms

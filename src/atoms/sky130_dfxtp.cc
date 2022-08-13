@@ -179,7 +179,8 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 }
 
 bfg::Layout *Sky130Dfxtp::GenerateLayout() {
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(physical_db_));
+  std::unique_ptr<bfg::Layout> layout(
+      new bfg::Layout(design_db_.physical_db()));
 
   // TODO(aryap): The layout below must be parameterised according to the
   // parameters in our Parameters struct. At the very least, the pertinent ones
