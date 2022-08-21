@@ -24,7 +24,10 @@ class DesignDatabase {
   void LoadPackage(const vlsir::circuit::Package &package);
 
   // TODO(growly): Add the cell, and take ownership?
-  void AddCell(const bfg::Cell &cell);
+  void AddCell(bfg::Cell *cell);
+
+  const std::unordered_map<
+      std::string, std::unique_ptr<bfg::Cell>> &cells() const { return cells_; }
 
   PhysicalPropertiesDatabase &physical_db() { return physical_db_; }
   const PhysicalPropertiesDatabase &physical_db() const { return physical_db_; }

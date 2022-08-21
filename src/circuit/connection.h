@@ -36,6 +36,8 @@ class Connection {
     return *this;
   }
 
+  ::vlsir::circuit::ConnectionTarget ToVLSIRConnection() const;
+
   void set_signal(const Signal *signal) {
     connection_type_ = SIGNAL;
     signal_ = signal;
@@ -46,7 +48,9 @@ class Connection {
     slice_.reset(new Slice(slice));
   }
 
-  ::vlsir::circuit::ConnectionTarget ToVLSIRConnection() const;
+  const ConnectionType &connection_type() const { return connection_type_; }
+  const Signal *signal() const { return signal_; }
+  Slice *slice() const { return slice_.get(); }
 
  private:
   ConnectionType connection_type_;

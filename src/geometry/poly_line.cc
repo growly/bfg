@@ -5,10 +5,12 @@
 #include <glog/logging.h>
 #include <vector>
 
+#include "rectangle.h"
+
 namespace bfg {
 namespace geometry {
 
-const std::pair<Point, Point> PolyLine::GetBoundingBox() const {
+const Rectangle PolyLine::GetBoundingBox() const {
   int64_t min_x = start_.x();
   int64_t max_x = start_.x();
   int64_t min_y = start_.y();
@@ -21,7 +23,7 @@ const std::pair<Point, Point> PolyLine::GetBoundingBox() const {
     max_y = std::max(segment.end.y(), max_y);
   }
 
-  return std::make_pair(Point(min_x, min_y), Point(max_x, max_y));
+  return Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 };
 
 void PolyLine::AddSegment(const Point &to, const uint64_t width) {

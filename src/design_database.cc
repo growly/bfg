@@ -36,13 +36,22 @@ void DesignDatabase::LoadModule(const vlsir::circuit::Module &module_pb) {
     cells_.insert({module_pb.name(), std::unique_ptr<bfg::Cell>(cell)});
   }
 
-  cell->set_circuit(Circuit::FromVLSIRModule(module_pb));
+  cell->SetCircuit(Circuit::FromVLSIRModule(module_pb));
   VLOG(2) << "Loaded module \"" << module_pb.name() << "\"";
 }
 
 void DesignDatabase::LoadExternalModule(
     const vlsir::circuit::ExternalModule &module_pb) {
+  LOG(WARNING) << "TODO: External module not loaded: "
+               << module_pb.name().domain() << " "
+               << module_pb.name().name();
+}
 
+void DesignDatabase::AddCell(bfg::Cell *cell) {
+  auto it = cells_.find(cell->name());
+  LOG_IF(FATAL, it != cells_.end())
+      << "Cell " << cell->name() << " already exists in the design database.";
+  cells_.insert({cell->name(), std::unique_ptr<bfg::Cell>(cell)});
 }
 
 }  // namespace bfg

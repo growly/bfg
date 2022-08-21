@@ -16,14 +16,12 @@ namespace tiles {
 
 class Lut : public Tile {
  public:
-  Lut(const DesignDatabase &design_db)
+  Lut(DesignDatabase *design_db)
       : Tile(design_db) {}
 
-  virtual bfg::Cell *Generate();
+  virtual bfg::Cell *GenerateIntoDatabase();
 
  protected:
-  bfg::Layout *GenerateLayout();
-  bfg::Circuit *GenerateCircuit();
 };
 
 }  // namespace atoms

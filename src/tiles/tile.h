@@ -13,12 +13,12 @@ namespace tiles {
 
 class Tile {
  public:
-  Tile(const DesignDatabase &design_db)
+  Tile(DesignDatabase *design_db)
       : design_db_(design_db) {}
-  virtual bfg::Cell *Generate() = 0;
+  virtual bfg::Cell *GenerateIntoDatabase() = 0;
 
  protected:
-  const DesignDatabase &design_db_;
+  DesignDatabase *design_db_;
 };
 
 //std::ostream &operator<<(std::ostream &os, const Line &point);

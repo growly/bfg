@@ -2,8 +2,10 @@
 
 #include <sstream>
 
-#include "geometry/point.h"
+#include "cell.h"
 #include "geometry/layer.h"
+#include "geometry/point.h"
+#include "geometry/rectangle.h"
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -11,15 +13,15 @@ namespace bfg {
 
 using geometry::Point;
 
-const std::pair<Point, Point> Layout::GetBoundingBox() const {
+const geometry::Rectangle Layout::GetBoundingBox() const {
   Point start;
   if (!polygons_.empty()) {
-    start = polygons_.front().GetBoundingBox().first;
+    start = polygons_.front().GetBoundingBox().lower_left();
   } else if (!instances_.empty()) {
-    start = instances_.front().GetBoundingBox().first;
+    start = instances_.front().GetBoundingBox().lower_left();
   } else {
     // Layout is empty.
-    return std::make_pair(Point(0, 0), Point(0, 0));
+    return geometry::Rectangle(Point(0, 0), Point(0, 0));
   }
 
   int64_t min_x = start.x();
@@ -28,9 +30,9 @@ const std::pair<Point, Point> Layout::GetBoundingBox() const {
   int64_t max_y = start.y();
 
   for (const auto &polygon : polygons_) {
-    std::pair<Point, Point> bounding_box = polygon.GetBoundingBox();
-    const Point &lower_left = bounding_box.first;
-    const Point &upper_right = bounding_box.second;
+    geometry::Rectangle bounding_box = polygon.GetBoundingBox();
+    const Point &lower_left = bounding_box.lower_left();
+    const Point &upper_right = bounding_box.upper_right();
     min_x = std::min(lower_left.x(), min_x);
     min_y = std::min(lower_left.y(), min_y);
     max_x = std::max(upper_right.x(), max_x);
@@ -38,16 +40,16 @@ const std::pair<Point, Point> Layout::GetBoundingBox() const {
   }
 
   for (const auto &instance : instances_) {
-    std::pair<Point, Point> bounding_box = instance.GetBoundingBox();
-    const Point &lower_left = bounding_box.first;
-    const Point &upper_right = bounding_box.second;
+    geometry::Rectangle bounding_box = instance.GetBoundingBox();
+    const Point &lower_left = bounding_box.lower_left();
+    const Point &upper_right = bounding_box.upper_right();
     min_x = std::min(lower_left.x(), min_x);
     min_y = std::min(lower_left.y(), min_y);
     max_x = std::max(upper_right.x(), max_x);
     max_y = std::max(upper_right.y(), max_y);
   }
 
-  return std::make_pair(Point(min_x, min_y), Point(max_x, max_y));
+  return geometry::Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
 
 std::string Layout::Describe() const {
@@ -104,7 +106,19 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     }
   }
   LOG_IF(FATAL, !ports_.empty()) << "ports not yet written";
-  LOG_IF(FATAL, !instances_.empty()) << "instances not yet written";
+  for (const auto &instance : instances_) {
+    ::vlsir::raw::Instance *instance_pb = layout_pb.add_instances();
+    instance_pb->set_name(instance.name());
+    ::vlsir::utils::Reference cell_reference;
+    cell_reference.set_local(
+        instance.template_layout()->parent_cell()->name());
+    *instance_pb->mutable_cell() = cell_reference;
+    *instance_pb->mutable_origin_location() =
+        instance.lower_left().ToVLSIRPoint();
+    instance_pb->set_reflect_vert(instance.reflect_vertical());
+    instance_pb->set_rotation_clockwise_degrees(
+        instance.rotation_clockwise_degrees());
+  }
 
   for (const auto pair : shapes) {
     *layout_pb.add_shapes() = *pair.second;

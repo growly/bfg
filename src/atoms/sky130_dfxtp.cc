@@ -23,8 +23,8 @@ bfg::Cell *Sky130Dfxtp::Generate() {
   // A flip-flop is two back-to-back latches.
 
   std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_dfxtp"));
-  cell->set_layout(GenerateLayout());
-  cell->set_circuit(GenerateCircuit());
+  cell->SetLayout(GenerateLayout());
+  cell->SetCircuit(GenerateCircuit());
 
   return cell.release();
 }
@@ -180,7 +180,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
 bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   std::unique_ptr<bfg::Layout> layout(
-      new bfg::Layout(design_db_.physical_db()));
+      new bfg::Layout(design_db_->physical_db()));
 
   // TODO(aryap): The layout below must be parameterised according to the
   // parameters in our Parameters struct. At the very least, the pertinent ones
