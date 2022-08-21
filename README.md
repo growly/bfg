@@ -57,8 +57,8 @@ Libraries
   git clone git@github.com:abseil/abseil-cpp.git
   cd abseil-cpp
   mkdir build && cd build
-  cmake .. -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17
-  cmake --build . --target all
+  cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 ../
+  make -j $(nproc)
   sudo make install
   ```
 
