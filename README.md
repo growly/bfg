@@ -65,14 +65,20 @@ Libraries
 [protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src)
 
   ```
-  git clone https://github.com/protocolbuffers/protobuf.git
-  cd protobuf
-  git submodule update --init --recursive
-  cmake .
-  cmake --build . -j $(nproc)
+  wget https://github.com/protocolbuffers/protobuf/releases/download/v21.5/protobuf-all-21.5.tar.gz
+  tar xf protobuf-all-21.5.tar.gz
+  cd protobuf-all-21.5
+  ./autogen.sh
+  ./configure
+  make -j $(nproc)
   sudo make install
   sudo ldconfig # refresh shared library cache.
   ```
+
+Note: when I compile and build protocol buffers from [HEAD on
+GitHub](https://github.com/protocolbuffers/protobuf), I get compilation errors
+because the file `port_def.inc` doesn't get installed. Compiling and installing
+from a release tarball, it seems fine.
 
 <!---
 [skia](https://skia.org/user/build#quick)
