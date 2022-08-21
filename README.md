@@ -68,10 +68,8 @@ Libraries
   git clone https://github.com/protocolbuffers/protobuf.git
   cd protobuf
   git submodule update --init --recursive
-  ./autogen.sh
-  ./configure
-  make
-  make check
+  cmake .
+  cmake --build . -j $(nproc)
   sudo make install
   sudo ldconfig # refresh shared library cache.
   ```
@@ -97,8 +95,8 @@ Libraries
 ## Building
 
   ```
-  git clone git@github.com:growly/boralago
-  cd boralago
+  git clone git@github.com:growly/bfg
+  cd bfg
   git submodule update --init --recursive
   mkdir build && cd build
   cmake ../
