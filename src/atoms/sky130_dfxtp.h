@@ -61,8 +61,8 @@ class Sky130Dfxtp: public Atom {
     uint64_t nfet_9_length_nm = 150;
   };
 
-  Sky130Dfxtp(const DesignDatabase &design_db,
-              const Parameters &parameters)
+  Sky130Dfxtp(const Parameters &parameters,
+              DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters),
         internal_units_per_nm_(1.0) {}

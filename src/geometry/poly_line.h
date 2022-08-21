@@ -29,7 +29,7 @@ class PolyLine : public Shape {
     }
   }
 
-  const std::pair<Point, Point> GetBoundingBox() const override;
+  const Rectangle GetBoundingBox() const override;
 
   void AddSegment(const Point &point) {
     AddSegment(point, 0);

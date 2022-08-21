@@ -7,6 +7,8 @@
 #include "circuit.h"
 #include "layout.h"
 
+#include "vlsir/layout/raw.pb.h"
+
 namespace bfg {
 
 class Cell {
@@ -14,13 +16,24 @@ class Cell {
   Cell() = default;
   Cell(const std::string &name) : name_(name) {}
 
-  void set_layout(Layout *layout) { layout_.reset(layout); }
+  void set_name(const std::string &name) { name_ = name; }
+  const std::string &name() const { return name_; }
+
+  void SetLayout(Layout *layout) {
+    layout_.reset(layout);
+    layout->set_parent_cell(this);
+  }
   Layout *layout() { return layout_.get(); }
   Layout *const layout() const { return layout_.get(); }
 
-  void set_circuit(Circuit *circuit) { circuit_.reset(circuit); }
+  void SetCircuit(Circuit *circuit) {
+    circuit_.reset(circuit);
+    circuit->set_parent_cell(this);
+  }
   Circuit *circuit() { return circuit_.get(); }
   Circuit *const circuit() const { return circuit_.get(); }
+
+  ::vlsir::raw::Cell ToVLSIRCell() const;
 
  private:
   std::string name_;

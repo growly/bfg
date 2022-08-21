@@ -2,10 +2,12 @@
 
 #include <ostream>
 
+#include "rectangle.h"
+
 namespace bfg {
 namespace geometry {
 
-const std::pair<Point, Point> Polygon::GetBoundingBox() const {
+const Rectangle Polygon::GetBoundingBox() const {
   Point lower_left;
   Point upper_right;
 
@@ -20,7 +22,7 @@ const std::pair<Point, Point> Polygon::GetBoundingBox() const {
     }
   }
 
-  return std::make_pair(lower_left, upper_right);
+  return Rectangle(lower_left, upper_right);
 }
 
 }  // namespace geometry

@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "geometry/point.h"
+#include "geometry/rectangle.h"
 
 namespace bfg {
 
@@ -22,14 +23,14 @@ PolyLine *PolyLineCell::AddPolyLine() {
   return poly_line;
 }
 
-const std::pair<Point, Point> PolyLineCell::GetBoundingBox() const {
+const geometry::Rectangle PolyLineCell::GetBoundingBox() const {
   if (poly_lines_.empty()) {
     return std::make_pair(Point(0, 0), Point(0, 0));
   }
 
   auto &first_box = poly_lines_.front()->GetBoundingBox();
-  const Point &lower_left = first_box.first;
-  const Point &upper_right = first_box.second;
+  const Point &lower_left = first_box.lower_left();
+  const Point &upper_right = first_box.upper_right();
   int64_t min_x = lower_left.x();
   int64_t min_y = lower_left.y();
   int64_t max_x = upper_right.x();
@@ -37,8 +38,8 @@ const std::pair<Point, Point> PolyLineCell::GetBoundingBox() const {
 
   for (size_t i = 2; i < poly_lines_.size(); ++i) {
     auto &bounds = poly_lines_[i]->GetBoundingBox();
-    const Point &lower_left = bounds.first;
-    const Point &upper_right = bounds.second;
+    const Point &lower_left = bounds.lower_left();
+    const Point &upper_right = bounds.upper_right();
     min_x = std::min(lower_left.x(), min_x);
     min_y = std::min(lower_left.y(), min_y);
     max_x = std::max(upper_right.x(), max_x);

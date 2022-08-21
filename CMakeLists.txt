@@ -33,6 +33,7 @@ file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
 #)
 
 set(SRC
+  ${PROJECT_SOURCE_DIR}/src/cell.cc
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
   ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
@@ -197,6 +198,7 @@ target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
                                       gflags
                                       glog::glog
                                       absl::strings
+                                      absl::str_format
                                       vlsir_lib
                                       ${Protobuf_LIBRARIES})
 

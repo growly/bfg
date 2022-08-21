@@ -31,8 +31,8 @@ Layout PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
     polygon.set_layer(poly_line->layer());
 
     auto bb = polygon.GetBoundingBox();
-    LOG(INFO) << polygon << " bounded by ll= " << bb.first
-              << " ur= " << bb.second;
+    LOG(INFO) << polygon << " bounded by ll= " << bb.lower_left()
+              << " ur= " << bb.upper_right();
     layout.AddPolygon(polygon);
   }
   for (const auto &via : poly_line_cell.vias()) {

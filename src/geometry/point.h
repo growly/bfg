@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "vlsir/layout/raw.pb.h"
+
 namespace bfg {
 namespace geometry {
 
@@ -20,6 +22,13 @@ class Point {
 
   void set_x(const int64_t &x) { x_ = x; }
   void set_y(const int64_t &y) { y_ = y; }
+
+  ::vlsir::raw::Point ToVLSIRPoint() const {
+    ::vlsir::raw::Point point_pb;
+    point_pb.set_x(x_);
+    point_pb.set_y(y_);
+    return point_pb;
+  }
 
  private:
   int64_t x_;

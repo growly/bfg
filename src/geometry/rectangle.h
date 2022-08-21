@@ -31,6 +31,10 @@ class Rectangle : public Shape {
       : lower_left_(lower_left),
         upper_right_(upper_right),
         Shape(layer, net) {}
+  Rectangle(const std::pair<Point, Point> &ll_ur)
+      : lower_left_(ll_ur.first),
+        upper_right_(ll_ur.second),
+        Shape(0, "") {}
 
   bool Overlaps(const Rectangle &other) const;
   const Rectangle OverlapWith(const Rectangle &other) const;
@@ -44,7 +48,7 @@ class Rectangle : public Shape {
                  (lower_left_.y() + upper_right_.y()) / 2);
   }
 
-  const std::pair<Point, Point> GetBoundingBox() const override {
+  const Rectangle GetBoundingBox() const override {
     return std::make_pair(lower_left_, upper_right_);
   }
 

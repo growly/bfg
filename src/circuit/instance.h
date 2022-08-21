@@ -43,6 +43,8 @@ class Instance {
   void Connect(std::initializer_list<
       std::pair<const std::string, const Wire&>>  connect);
 
+  void Connect(const std::string &port_name, const Signal &signal);
+
   void SetParameter(const std::string &name, const Parameter &value) {
     parameters_[name] = value;
   }
@@ -57,6 +59,11 @@ class Instance {
 
   void set_module(Circuit *template_module) { module_ = template_module; }
   Circuit *const module() const { return module_; }
+
+  const std::unordered_map<std::string, Parameter> &parameters() const {
+    return parameters_; }
+  const std::unordered_map<std::string, Connection> &connections() const {
+    return connections_; }
 
  private:
   std::string name_;

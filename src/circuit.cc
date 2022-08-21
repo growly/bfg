@@ -1,12 +1,14 @@
 #include "circuit.h"
 
+#include <sstream>
+#include <string>
+#include <absl/strings/str_cat.h>
+
 #include "circuit/instance.h"
 #include "circuit/signal.h"
 #include "circuit/wire.h"
 
 #include "vlsir/circuit.pb.h"
-
-#include <sstream>
 
 namespace bfg {
 
@@ -29,6 +31,7 @@ Circuit *Circuit::FromVLSIRModule(const vlsir::circuit::Module &module_pb) {
         *signal, circuit::Port::FromVLSIRPortDirection(port_pb.direction()));
   }
   for (const auto &instance_pb : module_pb.instances()) {
+    // FIXME(growly): This is missing.
   }
   for (const auto &param_pb : module_pb.parameters()) {
     Parameter parameter = Parameter::FromVLSIRParameter(param_pb);
@@ -37,9 +40,121 @@ Circuit *Circuit::FromVLSIRModule(const vlsir::circuit::Module &module_pb) {
   return circuit.release();
 }
 
+void Circuit::MergeCircuit(const Circuit &other, const std::string &prefix) {
+  for (circuit::Signal *other_signal : other.power_signals_) {
+    circuit::Signal *signal = GetOrAddSignal(
+        other_signal->name(), other_signal->width());
+    power_signals_.insert(signal);
+  }
+
+  for (circuit::Signal *other_signal : other.ground_signals_) {
+    circuit::Signal *signal = GetOrAddSignal(
+        other_signal->name(), other_signal->width());
+    ground_signals_.insert(signal);
+  }
+
+  for (const auto &other_signal : other.signals_) {
+    if (power_signals_.find(other_signal.get()) != power_signals_.end()) {
+      continue;
+    }
+    if (ground_signals_.find(other_signal.get()) != ground_signals_.end()) {
+      continue;
+    }
+    circuit::Signal *signal = AddSignal(
+        absl::StrCat(prefix, other_signal->name()),
+        other_signal->width());
+  }
+
+  for (const auto &other_port : other.ports_) {
+    std::string signal_name = other.IsPowerOrGround(other_port->signal()) ?
+        other_port->signal().name() :
+        absl::StrCat(prefix, other_port->signal().name());
+    circuit::Signal *signal = GetSignal(signal_name);
+    LOG_IF(FATAL, signal == nullptr)
+      << "Should be able to find signal " << signal_name << "for other port; "
+      << "signals should have been added already.";
+     AddPort(*signal, other_port->direction()); 
+  }
+
+  for (const auto &other_instance : other.instances_) {
+    std::string instance_name = absl::StrCat(
+        prefix, other_instance->name());
+    circuit::Instance *instance = AddInstance(
+        instance_name, other_instance->module());
+    instance->set_reference(other_instance->reference());
+
+    for (const auto &entry : other_instance->parameters()) {
+      instance->SetParameter(entry.first, entry.second);
+    }
+
+    for (const auto &entry : other_instance->connections()) {
+      // We have to prefix the connected port name and the connected signal.
+      const circuit::Connection &other_connection = entry.second;
+      switch (other_connection.connection_type()) {
+        case circuit::Connection::SIGNAL: {
+          const circuit::Signal &other_signal = *other_connection.signal();
+          std::string merged_name = other.IsPowerOrGround(other_signal) ?
+              other_signal.name() : absl::StrCat(prefix, other_signal.name());
+          std::string port_name = other.IsPowerOrGround(other_signal) ?
+              entry.first : absl::StrCat(prefix, entry.first);
+          circuit::Signal *signal = GetSignal(merged_name);
+          LOG_IF(FATAL, !signal) << "Signal " << merged_name << " not found.";
+          instance->Connect(port_name, *signal);
+          break;
+        }
+        case circuit::Connection::SLICE: {
+          const circuit::Slice &other_slice = *other_connection.slice();
+          const circuit::Signal &other_signal = other_slice.signal();
+          std::string merged_name = other.IsPowerOrGround(other_signal) ?
+              other_signal.name() : absl::StrCat(prefix, other_signal.name());
+          std::string port_name = other.IsPowerOrGround(other_signal) ?
+              entry.first : absl::StrCat(prefix, entry.first);
+          circuit::Signal *signal = GetSignal(merged_name);
+          LOG_IF(FATAL, !signal) << "Signal " << merged_name << " not found.";
+          circuit::Slice slice(*signal,
+                               other_slice.low_index(),
+                               other_slice.high_index());
+          instance->Connect(port_name, slice);
+          break;
+        }
+        case circuit::Connection::CONCATENATION:
+        default:
+          LOG(FATAL) << "Unknown Connection type: "
+                     << other_connection.connection_type();
+      }
+    }
+  }
+}
+
+bool Circuit::IsPowerOrGround(const circuit::Signal &signal) const {
+  circuit::Signal *ptr = const_cast<circuit::Signal*>(&signal);
+  if (power_signals_.find(ptr) != power_signals_.end())
+    return true;
+  if (ground_signals_.find(ptr) !=ground_signals_.end())
+    return true;
+  return false;
+}
+
 circuit::Wire Circuit::AddSignal(const std::string &name) {
   circuit::Signal *signal = AddSignal(name, 1);
   return bfg::circuit::Wire(*signal, 0);
+}
+
+circuit::Signal *Circuit::GetOrAddSignal(
+  const std::string &name, uint64_t width) {
+  auto it = signals_by_name_.find(name);
+  if (it == signals_by_name_.end()) {
+    return AddSignal(name, width);
+  }
+  return it->second;
+}
+
+circuit::Signal *Circuit::GetSignal(const std::string &name) {
+  auto it = signals_by_name_.find(name);
+  if (it == signals_by_name_.end()) {
+    return nullptr;
+  }
+  return it->second;
 }
 
 circuit::Signal *Circuit::AddSignal(const std::string &name, uint64_t width) {

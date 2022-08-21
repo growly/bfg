@@ -11,6 +11,8 @@
 namespace bfg {
 namespace geometry {
 
+class Rectangle;
+
 // Shapes are AbstractShapes with more complete layout information.
 class Shape : public AbstractShape {
  public:
@@ -22,7 +24,7 @@ class Shape : public AbstractShape {
 
   // Return the lower-left and upper-right points defining the bounding box
   // around this shape.
-  virtual const std::pair<Point, Point> GetBoundingBox() const = 0;
+  virtual const Rectangle GetBoundingBox() const = 0;
 };
 
 }  // namespace geometry

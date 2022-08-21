@@ -32,8 +32,8 @@ bfg::Cell *Sky130Buf::Generate() {
   //          V         V
 
   std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_buf"));
-  cell->set_layout(GenerateLayout());
-  cell->set_circuit(GenerateCircuit());
+  cell->SetLayout(GenerateLayout());
+  cell->SetCircuit(GenerateCircuit());
 
   // TODO(growly): std::move?
   return cell.release();
@@ -100,7 +100,7 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
 }
 
 bfg::Layout *Sky130Buf::GenerateLayout() {
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(design_db_.physical_db()));
+  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(design_db_->physical_db()));
 
   uint64_t width =
       internal_units_per_nm_ * static_cast<double>(parameters_.width_nm);

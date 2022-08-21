@@ -32,8 +32,7 @@ class Sky130Buf: public Atom {
     uint64_t x3_width_nm;
   };
 
-  Sky130Buf(const DesignDatabase &design_db,
-            const Parameters &parameters)
+  Sky130Buf(const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters),
         internal_units_per_nm_(1.0) {}

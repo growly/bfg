@@ -15,8 +15,7 @@
 #include "design_database.h"
 #include "cell.h"
 #include "layout.h"
-#include "atoms/sky130_buf.h"
-#include "atoms/sky130_dfxtp.h"
+#include "tiles/lut.h"
 
 #include "vlsir/tech.pb.h"
 #include "vlsir/layout/raw.pb.h"
@@ -30,13 +29,14 @@ DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
 //DEFINE_bool(read_text_format, true, "Expect input protobufs in text format");
 DEFINE_bool(write_text_format, true, "Also write text format protobufs");
 
-void WriteLibrary(const bfg::Cell &cell) {
+void WriteLibrary(const bfg::DesignDatabase &design_db) {
   ::vlsir::raw::Library library;
   library.set_units(::vlsir::raw::Units::NANO);
 
-  ::vlsir::raw::Cell *cell_pb = library.add_cells();
-  *cell_pb->mutable_layout() = cell.layout()->ToVLSIRLayout();
-  *cell_pb->mutable_module() = cell.circuit()->ToVLSIRCircuit();
+  for (const auto &entry : design_db.cells()) {
+    bfg::Cell *cell = entry.second.get();
+    *library.add_cells() = cell->ToVLSIRCell();
+  }
 
   if (FLAGS_write_text_format) {
     std::string text_format;
@@ -57,6 +57,7 @@ void WriteLibrary(const bfg::Cell &cell) {
     LOG(INFO) << "Wrote library to " << FLAGS_output_library;
   }
 }
+
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -147,11 +148,16 @@ int main(int argc, char **argv) {
   //WriteLibrary(*buf_cell);
   //std::cout << buf_cell->layout()->Describe();
 
-  bfg::atoms::Sky130Dfxtp::Parameters params;
-  bfg::atoms::Sky130Dfxtp generator(design_db, params);
-  std::unique_ptr<bfg::Cell> cell(generator.Generate());
-  WriteLibrary(*cell);
-  std::cout << cell->layout()->Describe();
+  // bfg::atoms::Sky130Dfxtp::Parameters params;
+  // bfg::atoms::Sky130Dfxtp generator(design_db, params);
+  // std::unique_ptr<bfg::Cell> cell(generator.Generate());
+  // WriteLibrary(*cell);
+  // std::cout << cell->layout()->Describe();
+
+  bfg::tiles::Lut generator(&design_db);
+  generator.GenerateIntoDatabase();
+
+  WriteLibrary(design_db);
 
   google::protobuf::ShutdownProtobufLibrary();
 

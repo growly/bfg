@@ -16,6 +16,8 @@
 
 namespace bfg {
 
+class Cell;
+
 class Layout {
  public:
   Layout() = delete;
@@ -44,6 +46,11 @@ class Layout {
 
   ::vlsir::raw::Layout ToVLSIRLayout() const;
 
+  const geometry::Rectangle GetBoundingBox() const;
+
+  void set_parent_cell(bfg::Cell *cell) { parent_cell_ = cell; }
+  bfg::Cell *parent_cell() const { return parent_cell_; }
+
   void SetActiveLayerByName(const std::string &name);
   void set_active_layer(const geometry::Layer &active_layer) {
     active_layer_ = active_layer;
@@ -59,9 +66,9 @@ class Layout {
   }
   const std::vector<geometry::Port> &ports() const { return ports_; }
 
-  const std::pair<geometry::Point, geometry::Point> GetBoundingBox() const;
-
  private:
+  bfg::Cell *parent_cell_;
+
   ::vlsir::raw::LayerShapes *GetOrInsertLayerShapes(
       const geometry::Layer &layer,
       std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> *shapes) const;

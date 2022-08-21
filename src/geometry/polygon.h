@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "point.h"
+#include "rectangle.h"
 #include "shape.h"
 
 namespace bfg {
@@ -24,7 +25,7 @@ class Polygon : public Shape {
     vertices_.push_back(point);
   }
 
-  const std::pair<Point, Point> GetBoundingBox() const override;
+  const Rectangle GetBoundingBox() const override;
 
   const std::vector<Point> &vertices() const { return vertices_; }
 

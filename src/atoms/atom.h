@@ -14,8 +14,11 @@ namespace atoms {
 
 class Atom : public tiles::Tile {
  public:
-  Atom(const DesignDatabase &design_db)
+  Atom(DesignDatabase *design_db)
       : Tile(design_db) {}
+
+  bfg::Cell *GenerateIntoDatabase() override { return nullptr; }
+  virtual bfg::Cell *Generate() = 0;
 };
 
 }  // namespace atoms

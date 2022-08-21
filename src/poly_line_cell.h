@@ -32,7 +32,7 @@ class PolyLineCell {
   }
   std::vector<std::unique_ptr<AbstractVia>> &vias() { return vias_; }
 
-  const std::pair<geometry::Point, geometry::Point> GetBoundingBox() const;
+  const geometry::Rectangle GetBoundingBox() const;
 
  private:
   std::vector<std::unique_ptr<geometry::PolyLine>> poly_lines_;
