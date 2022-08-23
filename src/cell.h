@@ -19,6 +19,8 @@ class Cell {
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 
+  std::set<Cell*> DirectAncestors() const;
+
   void SetLayout(Layout *layout) {
     layout_.reset(layout);
     layout->set_parent_cell(this);

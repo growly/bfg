@@ -58,6 +58,9 @@ class Instance {
   void set_reference(const CellReference &reference) { reference_ = reference; }
 
   void set_module(Circuit *template_module) { module_ = template_module; }
+  void set_module(const Circuit *template_module) {
+    module_ = const_cast<Circuit*>(template_module);
+  }
   Circuit *const module() const { return module_; }
 
   const std::unordered_map<std::string, Parameter> &parameters() const {

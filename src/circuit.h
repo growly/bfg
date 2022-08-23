@@ -64,6 +64,7 @@ class Circuit {
   }
 
   void set_parent_cell(bfg::Cell *cell) { parent_cell_ = cell; }
+  bfg::Cell *parent_cell() const { return parent_cell_; }
 
   std::vector<std::unique_ptr<circuit::Signal>> &signals() { return signals_; }
 
@@ -71,8 +72,14 @@ class Circuit {
 
   ::vlsir::circuit::Module ToVLSIRCircuit() const;
 
+  const std::string &NameOrParentName() const;
+
   const std::string &name() const { return name_; }
   void set_name(const std::string &name) { name_ = name; }
+
+  const std::vector<std::unique_ptr<circuit::Instance>> &instances() const {
+    return instances_;
+  };
 
  protected:
   bool IsPowerOrGround(const circuit::Signal &signal) const;

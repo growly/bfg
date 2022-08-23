@@ -15,7 +15,7 @@ class Tile {
  public:
   Tile(DesignDatabase *design_db)
       : design_db_(design_db) {}
-  virtual bfg::Cell *GenerateIntoDatabase() = 0;
+  virtual bfg::Cell *GenerateIntoDatabase(const std::string &name) = 0;
 
  protected:
   DesignDatabase *design_db_;

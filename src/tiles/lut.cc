@@ -9,7 +9,7 @@
 namespace bfg {
 namespace tiles {
 
-bfg::Cell *Lut::GenerateIntoDatabase() {
+bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   std::unique_ptr<bfg::Cell> lut_cell(new bfg::Cell("lut"));
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
@@ -23,9 +23,11 @@ bfg::Cell *Lut::GenerateIntoDatabase() {
       bfg::atoms::Sky130Dfxtp generator(params, design_db_);
       bfg::Cell *cell = generator.Generate();
       cell->set_name(instance_name);
-      design_db_->AddCell(cell);
+      design_db_->ConsumeCell(cell);
       circuit->AddInstance(instance_name, cell->circuit());
-      geometry::Rectangle bounding_box = layout->GetBoundingBox();
+      geometry::Rectangle bounding_box = cell->layout()->GetBoundingBox();
+      LOG(INFO) << "bb width: " << bounding_box.Width()
+                << " height: " << bounding_box.Height();
       int64_t x_pos = static_cast<int64_t>(i * bounding_box.Width());
       int64_t y_pos = static_cast<int64_t>(j * bounding_box.Height());
       geometry::Instance geo_instance(
@@ -38,7 +40,8 @@ bfg::Cell *Lut::GenerateIntoDatabase() {
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());
   bfg::Cell *cell = lut_cell.release();
-  design_db_->AddCell(cell);
+  cell->set_name(name);
+  design_db_->ConsumeCell(cell);
   return cell;
 }
 

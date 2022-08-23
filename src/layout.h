@@ -48,6 +48,11 @@ class Layout {
 
   const geometry::Rectangle GetBoundingBox() const;
 
+  const std::string &NameOrParentName() const;
+
+  const std::string &name() const { return name_; }
+  void set_name(const std::string &name) { name_ = name; }
+
   void set_parent_cell(bfg::Cell *cell) { parent_cell_ = cell; }
   bfg::Cell *parent_cell() const { return parent_cell_; }
 
@@ -68,6 +73,8 @@ class Layout {
 
  private:
   bfg::Cell *parent_cell_;
+
+  std::string name_;
 
   ::vlsir::raw::LayerShapes *GetOrInsertLayerShapes(
       const geometry::Layer &layer,

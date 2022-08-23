@@ -17,7 +17,7 @@ class Atom : public tiles::Tile {
   Atom(DesignDatabase *design_db)
       : Tile(design_db) {}
 
-  bfg::Cell *GenerateIntoDatabase() override { return nullptr; }
+  bfg::Cell *GenerateIntoDatabase(const std::string &name) override { return nullptr; }
   virtual bfg::Cell *Generate() = 0;
 };
 

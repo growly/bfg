@@ -55,29 +55,33 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   // 18 transistors in flip-flop, 2 in output buffer.
 
-  // These are all sky130_fd_pr__nfet_01v8_hvt:
-  circuit::Instance *nfet_0 = circuit->AddInstance("nfet_0", nullptr);
-  circuit::Instance *nfet_1 = circuit->AddInstance("nfet_1", nullptr);
-  circuit::Instance *nfet_2 = circuit->AddInstance("nfet_2", nullptr);
-  circuit::Instance *nfet_3 = circuit->AddInstance("nfet_3", nullptr);
-  circuit::Instance *nfet_4 = circuit->AddInstance("nfet_4", nullptr);
-  circuit::Instance *nfet_5 = circuit->AddInstance("nfet_5", nullptr);
-  circuit::Instance *nfet_6 = circuit->AddInstance("nfet_6", nullptr);
-  circuit::Instance *nfet_7 = circuit->AddInstance("nfet_7", nullptr);
-  circuit::Instance *nfet_8 = circuit->AddInstance("nfet_8", nullptr);
-  circuit::Instance *nfet_9 = circuit->AddInstance("nfet_9", nullptr);
+  // These are all sky130_fd_pr__nfet_01v8:
+  Circuit *nfet_01v8 = design_db_->FindCellOrDie(
+      "sky130_fd_pr__nfet_01v8")->circuit();
+  circuit::Instance *nfet_0 = circuit->AddInstance("nfet_0", nfet_01v8);
+  circuit::Instance *nfet_1 = circuit->AddInstance("nfet_1", nfet_01v8);
+  circuit::Instance *nfet_2 = circuit->AddInstance("nfet_2", nfet_01v8);
+  circuit::Instance *nfet_3 = circuit->AddInstance("nfet_3", nfet_01v8);
+  circuit::Instance *nfet_4 = circuit->AddInstance("nfet_4", nfet_01v8);
+  circuit::Instance *nfet_5 = circuit->AddInstance("nfet_5", nfet_01v8);
+  circuit::Instance *nfet_6 = circuit->AddInstance("nfet_6", nfet_01v8);
+  circuit::Instance *nfet_7 = circuit->AddInstance("nfet_7", nfet_01v8);
+  circuit::Instance *nfet_8 = circuit->AddInstance("nfet_8", nfet_01v8);
+  circuit::Instance *nfet_9 = circuit->AddInstance("nfet_9", nfet_01v8);
 
   // These are all sky130_fd_pr__pfet_01v8_hvt:
-  circuit::Instance *pfet_0 = circuit->AddInstance("pfet_0", nullptr);
-  circuit::Instance *pfet_1 = circuit->AddInstance("pfet_1", nullptr);
-  circuit::Instance *pfet_2 = circuit->AddInstance("pfet_2", nullptr);
-  circuit::Instance *pfet_3 = circuit->AddInstance("pfet_3", nullptr);
-  circuit::Instance *pfet_4 = circuit->AddInstance("pfet_4", nullptr);
-  circuit::Instance *pfet_5 = circuit->AddInstance("pfet_5", nullptr);
-  circuit::Instance *pfet_6 = circuit->AddInstance("pfet_6", nullptr);
-  circuit::Instance *pfet_7 = circuit->AddInstance("pfet_7", nullptr);
-  circuit::Instance *pfet_8 = circuit->AddInstance("pfet_8", nullptr);
-  circuit::Instance *pfet_9 = circuit->AddInstance("pfet_9", nullptr);
+  Circuit *pfet_01v8_hvt = design_db_->FindCellOrDie(
+      "sky130_fd_pr__pfet_01v8_hvt")->circuit();
+  circuit::Instance *pfet_0 = circuit->AddInstance("pfet_0", pfet_01v8_hvt);
+  circuit::Instance *pfet_1 = circuit->AddInstance("pfet_1", pfet_01v8_hvt);
+  circuit::Instance *pfet_2 = circuit->AddInstance("pfet_2", pfet_01v8_hvt);
+  circuit::Instance *pfet_3 = circuit->AddInstance("pfet_3", pfet_01v8_hvt);
+  circuit::Instance *pfet_4 = circuit->AddInstance("pfet_4", pfet_01v8_hvt);
+  circuit::Instance *pfet_5 = circuit->AddInstance("pfet_5", pfet_01v8_hvt);
+  circuit::Instance *pfet_6 = circuit->AddInstance("pfet_6", pfet_01v8_hvt);
+  circuit::Instance *pfet_7 = circuit->AddInstance("pfet_7", pfet_01v8_hvt);
+  circuit::Instance *pfet_8 = circuit->AddInstance("pfet_8", pfet_01v8_hvt);
+  circuit::Instance *pfet_9 = circuit->AddInstance("pfet_9", pfet_01v8_hvt);
 
   //                    /                    /
   //                   _|                   _|

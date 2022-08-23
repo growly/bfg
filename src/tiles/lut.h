@@ -19,7 +19,7 @@ class Lut : public Tile {
   Lut(DesignDatabase *design_db)
       : Tile(design_db) {}
 
-  virtual bfg::Cell *GenerateIntoDatabase();
+  bfg::Cell *GenerateIntoDatabase(const std::string &name) override;
 
  protected:
 };

@@ -74,7 +74,7 @@ void Instance::Connect(
   
   // TODO(aryap): This is where externally-referenced modules are recorded.
   if (module_) {
-    instance_pb.mutable_module()->set_local(module_->name());
+    instance_pb.mutable_module()->set_local(module_->NameOrParentName());
   }
 
   for (const auto &entry : connections_) {

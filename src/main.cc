@@ -2,7 +2,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 #include <sstream>
 #include <stdlib.h>
 #include <string>
@@ -11,6 +10,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <absl/strings/str_join.h>
+#include <google/protobuf/text_format.h>
 
 #include "design_database.h"
 #include "cell.h"
@@ -19,7 +19,6 @@
 
 #include "vlsir/tech.pb.h"
 #include "vlsir/layout/raw.pb.h"
-#include <google/protobuf/text_format.h>
 
 #include "c_make_header.h"
 
@@ -28,35 +27,6 @@ DEFINE_string(external_circuits, "", "Path to binary circuits proto");
 DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
 //DEFINE_bool(read_text_format, true, "Expect input protobufs in text format");
 DEFINE_bool(write_text_format, true, "Also write text format protobufs");
-
-void WriteLibrary(const bfg::DesignDatabase &design_db) {
-  ::vlsir::raw::Library library;
-  library.set_units(::vlsir::raw::Units::NANO);
-
-  for (const auto &entry : design_db.cells()) {
-    bfg::Cell *cell = entry.second.get();
-    *library.add_cells() = cell->ToVLSIRCell();
-  }
-
-  if (FLAGS_write_text_format) {
-    std::string text_format;
-    google::protobuf::TextFormat::PrintToString(library, &text_format);
-
-    std::fstream text_format_output(
-        FLAGS_output_library + ".txt",
-        std::ios::out | std::ios::trunc | std::ios::binary);
-    text_format_output << text_format;
-    text_format_output.close();
-  }
-
-  std::fstream output_file(
-      FLAGS_output_library, std::ios::out | std::ios::trunc | std::ios::binary);
-  if (!library.SerializeToOstream(&output_file)) {
-    LOG(ERROR) << "Failed to write library";
-  } else {
-    LOG(INFO) << "Wrote library to " << FLAGS_output_library;
-  }
-}
 
 
 int main(int argc, char **argv) {
@@ -154,10 +124,12 @@ int main(int argc, char **argv) {
   // WriteLibrary(*cell);
   // std::cout << cell->layout()->Describe();
 
+  std::string top_name = "lut";
   bfg::tiles::Lut generator(&design_db);
-  generator.GenerateIntoDatabase();
+  bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
-  WriteLibrary(design_db);
+  design_db.WriteTop(
+      *top, FLAGS_output_library, FLAGS_write_text_format);
 
   google::protobuf::ShutdownProtobufLibrary();
 

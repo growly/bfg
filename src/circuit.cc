@@ -4,6 +4,7 @@
 #include <string>
 #include <absl/strings/str_cat.h>
 
+#include "cell.h"
 #include "circuit/instance.h"
 #include "circuit/signal.h"
 #include "circuit/wire.h"
@@ -38,6 +39,13 @@ Circuit *Circuit::FromVLSIRModule(const vlsir::circuit::Module &module_pb) {
     circuit->parameters_.insert({parameter.name, parameter});
   }
   return circuit.release();
+}
+
+const std::string &Circuit::NameOrParentName() const {
+  if (name_ == "" && parent_cell_ != nullptr) {
+    return parent_cell_->name();
+  }
+  return name_;
 }
 
 void Circuit::MergeCircuit(const Circuit &other, const std::string &prefix) {
@@ -172,6 +180,7 @@ circuit::Instance *Circuit::AddInstance(
       << "Duplicate instance name: " << name;
   circuit::Instance *instance = new circuit::Instance();
   instance->set_name(name);
+  instance->set_module(template_module);
   instances_.emplace_back(instance);
   instances_by_name_.insert({name, instance});
   return instance;

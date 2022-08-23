@@ -13,6 +13,13 @@ namespace bfg {
 
 using geometry::Point;
 
+const std::string &Layout::NameOrParentName() const {
+  if (name_ == "" && parent_cell_ != nullptr) {
+    return parent_cell_->name();
+  }
+  return name_;
+}
+
 const geometry::Rectangle Layout::GetBoundingBox() const {
   Point start;
   if (!polygons_.empty()) {
@@ -111,7 +118,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     instance_pb->set_name(instance.name());
     ::vlsir::utils::Reference cell_reference;
     cell_reference.set_local(
-        instance.template_layout()->parent_cell()->name());
+        instance.template_layout()->NameOrParentName());
     *instance_pb->mutable_cell() = cell_reference;
     *instance_pb->mutable_origin_location() =
         instance.lower_left().ToVLSIRPoint();
