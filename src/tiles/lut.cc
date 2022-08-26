@@ -1,5 +1,6 @@
 #include "lut.h"
 
+#include <absl/strings/str_cat.h>
 #include <absl/strings/str_format.h>
 
 #include "../layout.h"
@@ -19,15 +20,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   for (size_t i = 0; i < 4; i++) {
     for (size_t j = 0; j < 4; j++) {
       std::string instance_name = absl::StrFormat("lut_dfxtp_%d_%d", i, j);
+      std::string cell_name = absl::StrCat(instance_name, "_template");
       bfg::atoms::Sky130Dfxtp::Parameters params;
       bfg::atoms::Sky130Dfxtp generator(params, design_db_);
       bfg::Cell *cell = generator.Generate();
-      cell->set_name(instance_name);
+      cell->set_name(cell_name);
       design_db_->ConsumeCell(cell);
       circuit->AddInstance(instance_name, cell->circuit());
       geometry::Rectangle bounding_box = cell->layout()->GetBoundingBox();
-      LOG(INFO) << "bb width: " << bounding_box.Width()
-                << " height: " << bounding_box.Height();
       int64_t x_pos = static_cast<int64_t>(i * bounding_box.Width());
       int64_t y_pos = static_cast<int64_t>(j * bounding_box.Height());
       geometry::Instance geo_instance(

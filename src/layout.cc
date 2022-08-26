@@ -92,6 +92,8 @@ void Layout::SetActiveLayerByName(const std::string &name) {
 
   std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> shapes;
 
+  layout_pb.set_name(parent_cell_->name());
+
   // Collect shapes by layer.
   for (const auto &rect : rectangles_) {
     ::vlsir::raw::LayerShapes *layer_shapes_pb =
