@@ -19,7 +19,7 @@ class Cell {
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 
-  std::set<Cell*> DirectAncestors() const;
+  std::set<Cell*> DirectAncestors(bool layout_only = true) const;
 
   void SetLayout(Layout *layout) {
     layout_.reset(layout);

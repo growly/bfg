@@ -154,7 +154,8 @@ void DesignDatabase::WriteTop(
   while (!to_visit.empty()) {
     Cell *cell = to_visit.front();
     to_visit.pop_front();
-    std::set<Cell*> direct_ancestors = cell->DirectAncestors();
+    std::set<Cell*> direct_ancestors = cell->DirectAncestors(
+        true);
     for (Cell *ancestor : direct_ancestors) {
       if (ancestors.find(ancestor) != ancestors.end())
         continue;

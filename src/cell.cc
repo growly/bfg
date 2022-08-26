@@ -17,9 +17,9 @@ namespace bfg {
   return cell_pb;
 }
 
-std::set<Cell*> Cell::DirectAncestors() const {
+std::set<Cell*> Cell::DirectAncestors(bool layout_only) const {
   std::set<Cell*> ancestors;
-  if (circuit_) {
+  if (circuit_ && !layout_only) {
     for (const auto &instance : circuit_->instances()) {
       if (!instance->module()) {
         LOG(WARNING) << "Circuit instance " << instance->name()
