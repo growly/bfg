@@ -1,7 +1,0 @@
-/home/arya/src/bfg/watch_build/CMakeFiles/rebuild_cache.dir
-/home/arya/src/bfg/watch_build/CMakeFiles/edit_cache.dir
-/home/arya/src/bfg/watch_build/CMakeFiles/test.dir
-/home/arya/src/bfg/watch_build/CMakeFiles/bfg_test.dir
-/home/arya/src/bfg/watch_build/CMakeFiles/bfg_bin.dir
-/home/arya/src/bfg/watch_build/CMakeFiles/bfg.dir
-/home/arya/src/bfg/watch_build/CMakeFiles/vlsir_lib.dir
