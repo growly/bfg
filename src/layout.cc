@@ -23,9 +23,9 @@ const std::string &Layout::NameOrParentName() const {
 const geometry::Rectangle Layout::GetBoundingBox() const {
   Point start;
   if (!polygons_.empty()) {
-    start = polygons_.front().GetBoundingBox().lower_left();
+    start = polygons_.front()->GetBoundingBox().lower_left();
   } else if (!instances_.empty()) {
-    start = instances_.front().GetBoundingBox().lower_left();
+    start = instances_.front()->GetBoundingBox().lower_left();
   } else {
     // Layout is empty.
     return geometry::Rectangle(Point(0, 0), Point(0, 0));
@@ -37,7 +37,7 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
   int64_t max_y = start.y();
 
   for (const auto &polygon : polygons_) {
-    geometry::Rectangle bounding_box = polygon.GetBoundingBox();
+    geometry::Rectangle bounding_box = polygon->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
     const Point &upper_right = bounding_box.upper_right();
     min_x = std::min(lower_left.x(), min_x);
@@ -47,7 +47,7 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
   }
 
   for (const auto &instance : instances_) {
-    geometry::Rectangle bounding_box = instance.GetBoundingBox();
+    geometry::Rectangle bounding_box = instance->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
     const Point &upper_right = bounding_box.upper_right();
     min_x = std::min(lower_left.x(), min_x);
@@ -65,16 +65,16 @@ std::string Layout::Describe() const {
   ss << "layout: " << rectangles_.size() << " rectangles, "
      << polygons_.size() << " polygons, "
      << std::endl;
-  for (const geometry::Rectangle &rectangle : rectangles_) {
-    ss << "rect " << rectangle.lower_left().x() << " "
-       << rectangle.lower_left().y() << " "
-       << rectangle.upper_right().x() << " "
-       << rectangle.upper_right().y() << std::endl;
+  for (const auto &rectangle : rectangles_) {
+    ss << "rect " << rectangle->lower_left().x() << " "
+       << rectangle->lower_left().y() << " "
+       << rectangle->upper_right().x() << " "
+       << rectangle->upper_right().y() << std::endl;
   }
 
-  for (const geometry::Polygon &poly : polygons_) {
+  for (const auto &poly : polygons_) {
     ss << "polygon ";
-    for (const geometry::Point &point : poly.vertices()) {
+    for (const geometry::Point &point : poly->vertices()) {
       ss << "(" << point.x() << ", " << point.y() << ") ";
     }
     ss << std::endl;
@@ -97,18 +97,18 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   // Collect shapes by layer.
   for (const auto &rect : rectangles_) {
     ::vlsir::raw::LayerShapes *layer_shapes_pb =
-        GetOrInsertLayerShapes(rect.layer(), &shapes);
+        GetOrInsertLayerShapes(rect->layer(), &shapes);
     ::vlsir::raw::Rectangle *rect_pb = layer_shapes_pb->add_rectangles();
-    rect_pb->mutable_lower_left()->set_x(rect.lower_left().x());
-    rect_pb->mutable_lower_left()->set_y(rect.lower_left().y());
-    rect_pb->set_width(rect.upper_right().x() - rect.lower_left().x());
-    rect_pb->set_height(rect.upper_right().y() - rect.lower_left().y());
+    rect_pb->mutable_lower_left()->set_x(rect->lower_left().x());
+    rect_pb->mutable_lower_left()->set_y(rect->lower_left().y());
+    rect_pb->set_width(rect->upper_right().x() - rect->lower_left().x());
+    rect_pb->set_height(rect->upper_right().y() - rect->lower_left().y());
   }
   for (const auto &poly : polygons_) {
     ::vlsir::raw::LayerShapes *layer_shapes_pb =
-        GetOrInsertLayerShapes(poly.layer(), &shapes);
+        GetOrInsertLayerShapes(poly->layer(), &shapes);
     ::vlsir::raw::Polygon *poly_pb = layer_shapes_pb->add_polygons();
-    for (const auto &point : poly.vertices()) {
+    for (const auto &point : poly->vertices()) {
       ::vlsir::raw::Point *point_pb = poly_pb->add_vertices();
       point_pb->set_x(point.x());
       point_pb->set_y(point.y());
@@ -117,16 +117,16 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   LOG_IF(FATAL, !ports_.empty()) << "ports not yet written";
   for (const auto &instance : instances_) {
     ::vlsir::raw::Instance *instance_pb = layout_pb.add_instances();
-    instance_pb->set_name(instance.name());
+    instance_pb->set_name(instance->name());
     ::vlsir::utils::Reference cell_reference;
     cell_reference.set_local(
-        instance.template_layout()->NameOrParentName());
+        instance->template_layout()->NameOrParentName());
     *instance_pb->mutable_cell() = cell_reference;
     *instance_pb->mutable_origin_location() =
-        instance.lower_left().ToVLSIRPoint();
-    instance_pb->set_reflect_vert(instance.reflect_vertical());
+        instance->lower_left().ToVLSIRPoint();
+    instance_pb->set_reflect_vert(instance->reflect_vertical());
     instance_pb->set_rotation_clockwise_degrees(
-        instance.rotation_clockwise_degrees());
+        instance->rotation_clockwise_degrees());
   }
 
   for (const auto pair : shapes) {
@@ -151,6 +151,21 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
   shapes->insert({layer, layer_shapes_pb});
   return layer_shapes_pb;
+}
+
+void Layout::AddLayout(const Layout &other) {
+  for (const auto &rectangle : other.rectangles_) {
+    rectangles_.emplace_back(new geometry::Rectangle(*rectangle));
+  }
+  for (const auto &polygon : other.polygons_) {
+    polygons_.emplace_back(new geometry::Polygon(*polygon));
+  }
+  for (const auto &port : other.ports_) {
+    ports_.emplace_back(new geometry::Port(*port));
+  }
+  for (const auto &instance : other.instances_) {
+    instances_.emplace_back(new geometry::Instance(*instance));
+  }
 }
 
 }  // namespace bfg

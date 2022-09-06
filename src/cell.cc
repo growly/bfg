@@ -35,16 +35,16 @@ std::set<Cell*> Cell::DirectAncestors(bool layout_only) const {
   }
   if (layout_) {
     for (const auto &instance : layout_->instances()) {
-      if (!instance.template_layout()) {
-        LOG(WARNING) << "Circuit instance " << instance.name()
+      if (!instance->template_layout()) {
+        LOG(WARNING) << "Circuit instance " << instance->name()
                      << " has no parent layout template";
         continue;
       }
-      if (!instance.template_layout()->parent_cell()) {
-        LOG(WARNING) << "Instance " << instance.name()
+      if (!instance->template_layout()->parent_cell()) {
+        LOG(WARNING) << "Instance " << instance->name()
                      << " is of layout with no parent cell";
       }
-      ancestors.insert(instance.template_layout()->parent_cell());
+      ancestors.insert(instance->template_layout()->parent_cell());
     }
   }
   return ancestors;

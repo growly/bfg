@@ -30,6 +30,8 @@ class Point {
     return point_pb;
   }
 
+  Point &operator+=(const Point &other);
+
  private:
   int64_t x_;
   int64_t y_;
@@ -44,6 +46,7 @@ geometry::Point operator+(
     const geometry::Point &lhs, const geometry::Point &rhs);
 geometry::Point operator-(
     const geometry::Point &lhs, const geometry::Point &rhs);
+geometry::Point operator-(const geometry::Point &rhs);
 
 bool operator==(
     const geometry::Point &lhs, const geometry::Point &rhs);

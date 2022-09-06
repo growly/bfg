@@ -10,6 +10,8 @@
 namespace bfg {
 namespace geometry {
 
+// This isn't actually an abstract class, it's an abstract (as in concept)
+// shape. Which is confusing. Oh well.
 class AbstractShape {
  public:
   AbstractShape() = default;

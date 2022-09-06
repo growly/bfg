@@ -7,6 +7,30 @@
 namespace bfg {
 namespace geometry {
 
+void Polygon::FlipHorizontal() {
+  for (Point &point : vertices_) {
+    point.set_x(-point.x());
+  }
+}
+
+void Polygon::FlipVertical() {
+  for (Point &point : vertices_) {
+    point.set_y(-point.y());
+  }
+}
+
+void Polygon::Translate(const Point &offset) {
+  Rectangle bounding_box = GetBoundingBox();
+  for (Point &point : vertices_) {
+    point += offset;
+  }
+}
+
+void Polygon::ResetOrigin() {
+  Rectangle bounding_box = GetBoundingBox();
+  Translate(-bounding_box.lower_left());
+}
+
 const Rectangle Polygon::GetBoundingBox() const {
   Point lower_left;
   Point upper_right;

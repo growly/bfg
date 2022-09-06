@@ -1,0 +1,60 @@
+Performing C SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /home/arya/src/bfg/watch_build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake cmTC_ac470/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_ac470.dir/build.make CMakeFiles/cmTC_ac470.dir/build
+gmake[1]: Entering directory '/home/arya/src/bfg/watch_build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_ac470.dir/src.c.o
+/usr/bin/cc   -DCMAKE_HAVE_LIBC_PTHREAD -o CMakeFiles/cmTC_ac470.dir/src.c.o -c /home/arya/src/bfg/watch_build/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_ac470
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ac470.dir/link.txt --verbose=1
+/usr/bin/cc  -DCMAKE_HAVE_LIBC_PTHREAD CMakeFiles/cmTC_ac470.dir/src.c.o -o cmTC_ac470 
+/usr/bin/ld: CMakeFiles/cmTC_ac470.dir/src.c.o: in function `main':
+src.c:(.text+0x2f): undefined reference to `pthread_create'
+/usr/bin/ld: src.c:(.text+0x3b): undefined reference to `pthread_detach'
+/usr/bin/ld: src.c:(.text+0x47): undefined reference to `pthread_cancel'
+/usr/bin/ld: src.c:(.text+0x58): undefined reference to `pthread_join'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_ac470.dir/build.make:106: cmTC_ac470] Error 1
+gmake[1]: Leaving directory '/home/arya/src/bfg/watch_build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:140: cmTC_ac470/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_cancel(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/arya/src/bfg/watch_build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake cmTC_28c0b/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_28c0b.dir/build.make CMakeFiles/cmTC_28c0b.dir/build
+gmake[1]: Entering directory '/home/arya/src/bfg/watch_build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_28c0b.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create -o CMakeFiles/cmTC_28c0b.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.18/Modules/CheckFunctionExists.c
+Linking C executable cmTC_28c0b
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_28c0b.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create CMakeFiles/cmTC_28c0b.dir/CheckFunctionExists.c.o -o cmTC_28c0b  -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_28c0b.dir/build.make:106: cmTC_28c0b] Error 1
+gmake[1]: Leaving directory '/home/arya/src/bfg/watch_build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:140: cmTC_28c0b/fast] Error 2
+
+
+

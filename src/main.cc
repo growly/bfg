@@ -15,6 +15,7 @@
 #include "design_database.h"
 #include "cell.h"
 #include "layout.h"
+#include "atoms/sky130_mux.h"
 #include "tiles/lut.h"
 
 #include "vlsir/tech.pb.h"
@@ -127,6 +128,10 @@ int main(int argc, char **argv) {
   std::string top_name = "lut";
   bfg::tiles::Lut generator(&design_db);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
+
+  bfg::atoms::Sky130Mux::Parameters mux_params;
+  bfg::atoms::Sky130Mux mux(mux_params, &design_db);
+  top = mux.GenerateIntoDatabase(top_name);
 
   design_db.WriteTop(
       *top, FLAGS_output_library, FLAGS_write_text_format);

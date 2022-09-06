@@ -1,0 +1,8 @@
+# Hashes of file build rules.
+6527e162b6371140e5abc33ed9c045d1 inflator_rules.pb.h
+ac0de2b3b8c8179b9c76f8ea2a33ff3a vlsir/circuit.pb.h
+54dd23a5a6656994659adc5f5e2fa125 vlsir/layout/raw.pb.h
+e93c058caa5ee6317e7bfb35c1b3d5ec vlsir/layout/tetris.pb.h
+b270234fe90ff33ada9be964cf0666b3 vlsir/spice.pb.h
+59d71c1f2540c2a6cb37aa80af2d6862 vlsir/tech.pb.h
+b40e83cbeb6b14548a87808507290157 vlsir/utils.pb.h

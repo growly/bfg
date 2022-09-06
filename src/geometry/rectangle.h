@@ -31,6 +31,7 @@ class Rectangle : public Shape {
       : lower_left_(lower_left),
         upper_right_(upper_right),
         Shape(layer, net) {}
+
   Rectangle(const std::pair<Point, Point> &ll_ur)
       : lower_left_(ll_ur.first),
         upper_right_(ll_ur.second),
@@ -42,7 +43,13 @@ class Rectangle : public Shape {
   uint64_t Width() const { return upper_right_.x() - lower_left_.x(); }
   uint64_t Height() const { return upper_right_.y() - lower_left_.y(); }
 
+  void FlipHorizontal() override;
+  void FlipVertical() override;
+  void Translate(const Point &offset) override;
+  void ResetOrigin() override;
+
   // TODO(aryap): Hmmm. Not a double. Truncating. Hmmm.
+  // TODO(aryap): Rename Centre().
   Point centre() const {
     return Point((lower_left_.x() + upper_right_.x()) / 2,
                  (lower_left_.y() + upper_right_.y()) / 2);
@@ -57,6 +64,13 @@ class Rectangle : public Shape {
 
   const Point &upper_right() const { return upper_right_; }
   void set_upper_right(const Point &upper_right) { upper_right_ = upper_right; }
+
+  const Point UpperLeft() const {
+    return Point(lower_left_.x(), upper_right_.y());
+  }
+  const Point LowerRight() const {
+    return Point(upper_right_.x(), lower_left_.x());
+  }
 
  protected:
   Point lower_left_;

@@ -10,6 +10,20 @@
 namespace bfg {
 namespace geometry {
 
+void PolyLine::FlipHorizontal() {
+  start_.set_x(-start_.x());
+  for (LineSegment &segment : segments_) {
+    segment.end.set_x(-segment.end.x());
+  }
+}
+
+void PolyLine::FlipVertical() {
+  start_.set_y(-start_.y());
+  for (LineSegment &segment : segments_) {
+    segment.end.set_y(-segment.end.y());
+  }
+}
+
 const Rectangle PolyLine::GetBoundingBox() const {
   int64_t min_x = start_.x();
   int64_t max_x = start_.x();

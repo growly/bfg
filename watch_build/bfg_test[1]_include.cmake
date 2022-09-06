@@ -1,0 +1,5 @@
+if(EXISTS "/home/arya/src/bfg/watch_build/bfg_test[1]_tests.cmake")
+  include("/home/arya/src/bfg/watch_build/bfg_test[1]_tests.cmake")
+else()
+  add_test(bfg_test_NOT_BUILT bfg_test_NOT_BUILT)
+endif()

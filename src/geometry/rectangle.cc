@@ -26,6 +26,30 @@ const Rectangle Rectangle::OverlapWith(const Rectangle &other) const {
   return Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
 
+void Rectangle::FlipHorizontal() {
+  Point new_upper_right(-lower_left_.x(), upper_right_.y());
+  Point new_lower_left(-upper_right_.x(), lower_left_.y());
+  lower_left_ = new_lower_left;
+  upper_right_ = new_upper_right;
+}
+
+void Rectangle::FlipVertical() {
+  Point new_upper_right(upper_right_.x(), -lower_left_.y());
+  Point new_lower_left(lower_left_.x(), -upper_right_.y());
+  lower_left_ = new_lower_left;
+  upper_right_ = new_upper_right;
+}
+
+void Rectangle::Translate(const Point &offset) {
+  lower_left_ = lower_left_ + offset;
+  upper_right_ = upper_right_ + offset;
+}
+
+void Rectangle::ResetOrigin() {
+  Rectangle bounding_box = GetBoundingBox();
+  Translate(-bounding_box.lower_left());
+}
+
 }  // namespace geometry
 
 std::ostream &operator<<(

@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g -shared -Wl,-soname,libvlsir_lib.so.0.1 -o libvlsir_lib.so.0.1 CMakeFiles/vlsir_lib.dir/vlsir/circuit.pb.cc.o CMakeFiles/vlsir_lib.dir/vlsir/layout/raw.pb.cc.o CMakeFiles/vlsir_lib.dir/vlsir/layout/tetris.pb.cc.o CMakeFiles/vlsir_lib.dir/vlsir/spice.pb.cc.o CMakeFiles/vlsir_lib.dir/vlsir/tech.pb.cc.o CMakeFiles/vlsir_lib.dir/vlsir/utils.pb.cc.o 

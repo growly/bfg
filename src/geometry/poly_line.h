@@ -29,6 +29,9 @@ class PolyLine : public Shape {
     }
   }
 
+  void FlipHorizontal() override;
+  void FlipVertical() override;
+
   const Rectangle GetBoundingBox() const override;
 
   void AddSegment(const Point &point) {

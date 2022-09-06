@@ -1,3 +1,6 @@
+#ifndef ATOMS_SKY130_DFXTP_H_
+#define ATOMS_SKY130_DFXTP_H_
+
 #include <cstdint>
 
 #include "atom.h"
@@ -81,3 +84,5 @@ class Sky130Dfxtp: public Atom {
 
 }  // namespace atoms
 }  // namespace bfg
+
+#endif  // ATOMS_SKY130_DFXTP_H_

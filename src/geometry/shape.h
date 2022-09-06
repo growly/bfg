@@ -25,6 +25,22 @@ class Shape : public AbstractShape {
   // Return the lower-left and upper-right points defining the bounding box
   // around this shape.
   virtual const Rectangle GetBoundingBox() const = 0;
+
+  // Mirror in the y axis.
+  virtual void FlipHorizontal() = 0;
+
+  // Mirror in the x axis.
+  virtual void FlipVertical() = 0;
+
+  virtual void Translate(const Point &offset) {}
+
+  virtual void MoveLowerLeftTo(const Point &point) {
+    ResetOrigin();
+    Translate(point);
+  }
+
+  // Make the lower-left point of the bounding box the origin.
+  virtual void ResetOrigin() {}
 };
 
 }  // namespace geometry

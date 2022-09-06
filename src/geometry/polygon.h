@@ -15,6 +15,7 @@ namespace geometry {
 class Polygon : public Shape {
  public:
   Polygon() = default;
+
   Polygon(const std::vector<Point> &vertices) {
     for (const auto &vertex : vertices) {
       vertices_.push_back(vertex);
@@ -24,6 +25,11 @@ class Polygon : public Shape {
   void AddVertex(const Point &point) {
     vertices_.push_back(point);
   }
+
+  void FlipHorizontal() override;
+  void FlipVertical() override;
+  void Translate(const Point &offset) override;
+  void ResetOrigin() override;
 
   const Rectangle GetBoundingBox() const override;
 

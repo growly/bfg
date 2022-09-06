@@ -26,21 +26,36 @@ class Layout {
         active_layer_(0) {
   }
 
-  void AddRectangle(const geometry::Rectangle &rectangle) {
-    rectangles_.push_back(rectangle);
-    rectangles_.back().set_layer(active_layer_);
+  geometry::Rectangle *AddRectangle(const geometry::Rectangle &rectangle) {
+    geometry::Rectangle *copy = new geometry::Rectangle(rectangle);
+    rectangles_.emplace_back(copy);
+    copy->set_layer(active_layer_);
+    return copy;
   }
-  void AddPolygon(const geometry::Polygon &polygon) {
-    polygons_.push_back(polygon);
-    polygons_.back().set_layer(active_layer_);
+  geometry::Rectangle *AddSquare(
+      const geometry::Point &centre, uint64_t side_width) {
+    return AddRectangle(geometry::Rectangle(
+        geometry::Point(centre.x() - side_width / 2,
+                        centre.y() - side_width / 2),
+        side_width,
+        side_width));
+  }
+  geometry::Polygon *AddPolygon(const geometry::Polygon &polygon) {
+    geometry::Polygon *copy = new geometry::Polygon(polygon);
+    copy->set_layer(active_layer_);
+    polygons_.emplace_back(copy);
+    return copy;
   }
   void AddInstance(const geometry::Instance &instance) {
-    instances_.push_back(instance);
+    geometry::Instance *copy = new geometry::Instance(instance);
+    instances_.emplace_back(copy);
   }
   void AddPort(const geometry::Port &port) {
-    ports_.push_back(port);
-    ports_.back().set_layer(active_layer_);
+    geometry::Port *copy = new geometry::Port(port);
+    ports_.emplace_back(copy);
+    copy->set_layer(active_layer_);
   }
+  void AddLayout(const Layout &other);
 
   std::string Describe() const;
 
@@ -62,14 +77,14 @@ class Layout {
   };
   const geometry::Layer &active_layer() const { return active_layer_; }
 
-  const std::vector<geometry::Rectangle> &rectangles() const {
+  const std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() const {
     return rectangles_;
   }
-  const std::vector<geometry::Polygon> &polygons() const { return polygons_; }
-  const std::vector<geometry::Instance> &instances() const {
+  const std::vector<std::unique_ptr<geometry::Polygon>> &polygons() const { return polygons_; }
+  const std::vector<std::unique_ptr<geometry::Instance>> &instances() const {
     return instances_;
   }
-  const std::vector<geometry::Port> &ports() const { return ports_; }
+  const std::vector<std::unique_ptr<geometry::Port>> &ports() const { return ports_; }
 
  private:
   bfg::Cell *parent_cell_;
@@ -83,11 +98,11 @@ class Layout {
   const PhysicalPropertiesDatabase &physical_db_;
 
   geometry::Layer active_layer_;
-  std::vector<geometry::Rectangle> rectangles_;
-  std::vector<geometry::Polygon> polygons_;
-  std::vector<geometry::Port> ports_;
+  std::vector<std::unique_ptr<geometry::Rectangle>> rectangles_;
+  std::vector<std::unique_ptr<geometry::Polygon>> polygons_;
+  std::vector<std::unique_ptr<geometry::Port>> ports_;
 
-  std::vector<geometry::Instance> instances_;
+  std::vector<std::unique_ptr<geometry::Instance>> instances_;
 };
 
 }  // namespace bfg
