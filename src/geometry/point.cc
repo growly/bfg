@@ -5,11 +5,25 @@
 namespace bfg {
 namespace geometry {
 
-Point &Point::operator+=(const Point &other){
+Point &Point::operator+=(const Point &other) {
   x_ = x_ + other.x_;
   y_ = y_ + other.y_;
   return *this;
 }
+
+void Point::FlipHorizontal() {
+  x_ = -x_;
+}
+
+void Point::FlipVertical() {
+  y_ = -y_;
+}
+
+void Point::Translate(const Point &offset) {
+  x_ += offset.x_;
+  y_ += offset.y_;
+}
+
 
 }  // namespace geometry
 

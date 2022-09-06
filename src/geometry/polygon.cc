@@ -9,13 +9,13 @@ namespace geometry {
 
 void Polygon::FlipHorizontal() {
   for (Point &point : vertices_) {
-    point.set_x(-point.x());
+    point.FlipHorizontal();
   }
 }
 
 void Polygon::FlipVertical() {
   for (Point &point : vertices_) {
-    point.set_y(-point.y());
+    point.FlipVertical();
   }
 }
 

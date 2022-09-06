@@ -18,6 +18,14 @@ namespace bfg {
 
 class Cell;
 
+// TODO(growly): Do we want this facility?
+struct LayoutPadding {
+  int64_t left;
+  int64_t top;
+  int64_t bottom;
+  int64_t right;
+};
+
 class Layout {
  public:
   Layout() = delete;
@@ -60,6 +68,17 @@ class Layout {
   std::string Describe() const;
 
   ::vlsir::raw::Layout ToVLSIRLayout() const;
+
+  // Mirror in the y axis.
+  virtual void FlipHorizontal();
+  // Mirror in the x axis.
+  virtual void FlipVertical();
+  virtual void ResetOrigin();
+  virtual void Translate(const geometry::Point &offset);
+  virtual void MoveLowerLeftTo(const geometry::Point &point) {
+    ResetOrigin();
+    Translate(point);
+  }
 
   const geometry::Rectangle GetBoundingBox() const;
 

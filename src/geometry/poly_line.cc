@@ -5,6 +5,7 @@
 #include <glog/logging.h>
 #include <vector>
 
+#include "line_segment.h"
 #include "rectangle.h"
 
 namespace bfg {
@@ -48,6 +49,12 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
                << "x == last_x or y == last_y.";
   }
   segments_.push_back(LineSegment{to, width});
+}
+
+void PolyLine::SetWidth(const uint64_t width) {
+  for (LineSegment &segment : segments_) {
+    segment.width = width;
+  }
 }
 
 }  // namespace geometry

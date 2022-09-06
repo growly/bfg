@@ -95,7 +95,10 @@ CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o
  /home/arya/src/bfg/src/geometry/abstract_shape.h
  /home/arya/src/bfg/src/geometry/instance.h
  /home/arya/src/bfg/src/geometry/layer.h
+ /home/arya/src/bfg/src/geometry/line.h
+ /home/arya/src/bfg/src/geometry/line_segment.h
  /home/arya/src/bfg/src/geometry/point.h
+ /home/arya/src/bfg/src/geometry/poly_line.h
  /home/arya/src/bfg/src/geometry/polygon.h
  /home/arya/src/bfg/src/geometry/port.h
  /home/arya/src/bfg/src/geometry/rectangle.h
@@ -103,6 +106,8 @@ CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o
  /home/arya/src/bfg/src/layout.h
  /home/arya/src/bfg/src/parameter.h
  /home/arya/src/bfg/src/physical_properties_database.h
+ /home/arya/src/bfg/src/poly_line_cell.h
+ /home/arya/src/bfg/src/poly_line_inflator.h
  /home/arya/src/bfg/src/tiles/tile.h
  vlsir/circuit.pb.h
  vlsir/layout/raw.pb.h

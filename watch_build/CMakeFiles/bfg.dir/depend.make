@@ -94,7 +94,10 @@ CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/design_database.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/abstract_shape.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/instance.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/layer.h
+CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/line.h
+CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/line_segment.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/point.h
+CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/poly_line.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/polygon.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/port.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/rectangle.h
@@ -102,6 +105,8 @@ CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/geometry/shape.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/layout.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/parameter.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/physical_properties_database.h
+CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/poly_line_cell.h
+CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/poly_line_inflator.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: ../src/tiles/tile.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: vlsir/circuit.pb.h
 CMakeFiles/bfg.dir/src/atoms/sky130_mux.cc.o: vlsir/layout/raw.pb.h

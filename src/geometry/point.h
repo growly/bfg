@@ -30,6 +30,10 @@ class Point {
     return point_pb;
   }
 
+  void FlipHorizontal();
+  void FlipVertical();
+  void Translate(const Point &offset);
+
   Point &operator+=(const Point &other);
 
  private:

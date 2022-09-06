@@ -69,7 +69,7 @@ class Rectangle : public Shape {
     return Point(lower_left_.x(), upper_right_.y());
   }
   const Point LowerRight() const {
-    return Point(upper_right_.x(), lower_left_.x());
+    return Point(upper_right_.x(), lower_left_.y());
   }
 
  protected:

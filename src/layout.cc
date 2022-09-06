@@ -20,6 +20,32 @@ const std::string &Layout::NameOrParentName() const {
   return name_;
 }
 
+void Layout::FlipHorizontal() {
+  for (const auto &rectangle : rectangles_) { rectangle->FlipHorizontal(); }
+  for (const auto &polygon : polygons_) { polygon->FlipHorizontal(); }
+  for (const auto &port : ports_) { port->FlipHorizontal(); }
+  for (const auto &instance : instances_) { instance->FlipHorizontal(); }
+}
+
+void Layout::FlipVertical() {
+  for (const auto &rectangle : rectangles_) { rectangle->FlipVertical(); }
+  for (const auto &polygon : polygons_) { polygon->FlipVertical(); }
+  for (const auto &port : ports_) { port->FlipVertical(); }
+  for (const auto &instance : instances_) { instance->FlipVertical(); }
+}
+
+void Layout::Translate(const Point &offset) {
+  for (const auto &rectangle : rectangles_) { rectangle->Translate(offset); }
+  for (const auto &polygon : polygons_) { polygon->Translate(offset); }
+  for (const auto &port : ports_) { port->Translate(offset); }
+  for (const auto &instance : instances_) { instance->Translate(offset); }
+}
+
+void Layout::ResetOrigin() {
+  geometry::Rectangle bounding_box = GetBoundingBox();
+  Translate(-bounding_box.lower_left());
+}
+
 const geometry::Rectangle Layout::GetBoundingBox() const {
   Point start;
   if (!polygons_.empty()) {
@@ -154,6 +180,9 @@ void Layout::SetActiveLayerByName(const std::string &name) {
 }
 
 void Layout::AddLayout(const Layout &other) {
+  // To be able to support this we'd need to make a temporary copy of all the
+  // containers:
+  LOG_IF(FATAL, this == &other) << "Can't add layout to itself.";
   for (const auto &rectangle : other.rectangles_) {
     rectangles_.emplace_back(new geometry::Rectangle(*rectangle));
   }

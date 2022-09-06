@@ -21,6 +21,10 @@ class Instance {
         reflect_vertical_(false),
         rotation_clockwise_degrees_(0) {}
 
+  void FlipHorizontal();
+  void FlipVertical();
+  void Translate(const Point &offset);
+
   const Rectangle GetBoundingBox() const;
 
   void set_name(const std::string &name) { name_ = name; }

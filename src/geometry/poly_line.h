@@ -20,7 +20,10 @@ class PolyLine : public Shape {
  public:
   PolyLine() = default;
 
-  PolyLine(const std::vector<Point> &points) {
+  PolyLine(const std::vector<Point> &points)
+      : start_({0, 0}), overhang_start_(0), overhang_end_(0),
+        start_via_(nullptr), end_via_(nullptr),
+        start_port_(nullptr), end_port_(nullptr) {
     if (points.empty()) return;
 
     start_ = points.front();
@@ -39,6 +42,8 @@ class PolyLine : public Shape {
   }
 
   void AddSegment(const Point &to, const uint64_t width);
+
+  void SetWidth(const uint64_t width);
 
   void set_start(const Point &start) { start_ = start; }
   const Point &start() const { return start_; }
