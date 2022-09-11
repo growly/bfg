@@ -57,5 +57,13 @@ void PolyLine::SetWidth(const uint64_t width) {
   }
 }
 
+const std::vector<Point> PolyLine::Vertices() const {
+  std::vector<Point> points = {start_};
+  for (const auto &segment : segments_) {
+    points.push_back(segment.end);
+  }
+  return points;
+}
+
 }  // namespace geometry
 }  // namespace bfg

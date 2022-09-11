@@ -44,6 +44,7 @@ class PolyLine : public Shape {
   void AddSegment(const Point &to, const uint64_t width);
 
   void SetWidth(const uint64_t width);
+  const std::vector<Point> Vertices() const;
 
   void set_start(const Point &start) { start_ = start; }
   const Point &start() const { return start_; }
