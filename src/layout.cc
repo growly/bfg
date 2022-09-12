@@ -1,6 +1,7 @@
 #include "layout.h"
 
 #include <sstream>
+#include <absl/strings/str_cat.h>
 
 #include "cell.h"
 #include "geometry/layer.h"
@@ -25,6 +26,7 @@ void Layout::MirrorY() {
   for (const auto &polygon : polygons_) { polygon->MirrorY(); }
   for (const auto &port : ports_) { port->MirrorY(); }
   for (const auto &instance : instances_) { instance->MirrorY(); }
+  for (auto &entry : named_points_) { entry.second.MirrorY(); }
 }
 
 void Layout::MirrorX() {
@@ -32,6 +34,7 @@ void Layout::MirrorX() {
   for (const auto &polygon : polygons_) { polygon->MirrorX(); }
   for (const auto &port : ports_) { port->MirrorX(); }
   for (const auto &instance : instances_) { instance->MirrorX(); }
+  for (auto &entry : named_points_) { entry.second.MirrorX(); }
 }
 
 void Layout::FlipHorizontal() {
@@ -51,6 +54,7 @@ void Layout::Translate(const Point &offset) {
   for (const auto &polygon : polygons_) { polygon->Translate(offset); }
   for (const auto &port : ports_) { port->Translate(offset); }
   for (const auto &instance : instances_) { instance->Translate(offset); }
+  for (auto &entry : named_points_) { entry.second.Translate(offset); }
 }
 
 void Layout::ResetOrigin() {
@@ -107,6 +111,8 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
     max_x = std::max(port->upper_right().x(), max_x);
     max_y = std::max(port->upper_right().y(), max_y);
   }
+
+  // TODO(growly): Include saved points in bounds? No...?
 
   return geometry::Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
@@ -205,7 +211,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   return layer_shapes_pb;
 }
 
-void Layout::AddLayout(const Layout &other) {
+void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   // To be able to support this we'd need to make a temporary copy of all the
   // containers:
   LOG_IF(FATAL, this == &other) << "Can't add layout to itself.";
@@ -221,6 +227,23 @@ void Layout::AddLayout(const Layout &other) {
   for (const auto &instance : other.instances_) {
     instances_.emplace_back(new geometry::Instance(*instance));
   }
+  for (auto &entry : named_points_) {
+    std::string prefixed = absl::StrCat(name_prefix, entry.first);
+    SavePoint(prefixed, entry.second);
+  }
+}
+
+void Layout::SavePoint(const std::string &name, const geometry::Point &point) {
+  auto it = named_points_.find(name);
+  LOG_IF(WARNING, it != named_points_.end())
+      << "Saving " << name << " overrides an existing point " << it->second;
+  named_points_[name] = point;
+}
+
+geometry::Point Layout::GetPoint(const std::string &name) const {
+  auto it = named_points_.find(name);
+  LOG_IF(FATAL, it == named_points_.end()) << "Point " << name << " not found";
+  return it->second;
 }
 
 }  // namespace bfg

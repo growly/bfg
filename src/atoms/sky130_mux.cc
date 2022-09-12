@@ -72,7 +72,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout());
   mux2_layout->ResetOrigin();
-  mux4_layout->AddLayout(*mux2_layout);
+  mux4_layout->AddLayout(*mux2_layout, "structure0");
 
   Rectangle mux2_bounding_box = mux2_layout->GetBoundingBox();
   int64_t intra_spacing = db.Rules("li.drawing").min_separation;
@@ -80,15 +80,32 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   mux2_layout->FlipHorizontal();
   mux2_layout->ResetOrigin();
   mux2_layout->Translate(Point(
-        mux2_bounding_box.Width() + intra_spacing, 0));
-  mux4_layout->AddLayout(*mux2_layout);
-  layout->AddLayout(*mux4_layout);
+        mux2_bounding_box.Width() , 0));
+  mux4_layout->AddLayout(*mux2_layout, "structure1");
+  layout->AddLayout(*mux4_layout, "structure2");
 
   mux4_layout->MirrorX();
   mux4_layout->ResetOrigin();
   mux4_layout->Translate(Point(
-      0, -(mux4_layout->GetBoundingBox().Height() + intra_spacing)));
-  layout->AddLayout(*mux4_layout);
+      0, -(mux4_layout->GetBoundingBox().Height())));
+  layout->AddLayout(*mux4_layout, "");
+
+  layout->ResetOrigin();
+
+  Rectangle bounding_box = layout->GetBoundingBox();
+  const IntraLayerConstraints &met1_rules = db.Rules("met1.drawing");
+
+  {
+    // Add vertical selector connections.
+    int64_t offset_x = 50;
+    int64_t pitch = met1_rules.min_width + met1_rules.min_separation;
+    int64_t width = static_cast<int64_t>(bounding_box.Width());
+    int64_t height = static_cast<int64_t>(bounding_box.Height());
+    layout->SetActiveLayerByName("met1.drawing");
+    for (int64_t x = offset_x; x < width; x += pitch) {
+      layout->AddRectangle({{x, 0}, {x + met1_rules.min_width, height}});
+    }
+  }
 
   return layout.release();
 }

@@ -115,6 +115,11 @@ int main(int argc, char **argv) {
     .min_pitch = 500,
   };
   physical_db.AddRules("poly.drawing", intra_constraints);
+  intra_constraints = {
+    .min_separation = 200,
+    .min_width = 140,
+  };
+  physical_db.AddRules("met1.drawing", intra_constraints);
 
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = 50,
@@ -127,6 +132,8 @@ int main(int argc, char **argv) {
     .via_overhang = 40,
   };
   physical_db.AddRules("diff.drawing", "licon.drawing", inter_constraints);
+  // TODO(growly): Need to alias these layer names so that they apply to any
+  // process.
 
   if (FLAGS_external_circuits != "") {
     vlsir::circuit::Package external_circuits_pb;
