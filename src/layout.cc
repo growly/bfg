@@ -20,18 +20,30 @@ const std::string &Layout::NameOrParentName() const {
   return name_;
 }
 
+void Layout::MirrorY() {
+  for (const auto &rectangle : rectangles_) { rectangle->MirrorY(); }
+  for (const auto &polygon : polygons_) { polygon->MirrorY(); }
+  for (const auto &port : ports_) { port->MirrorY(); }
+  for (const auto &instance : instances_) { instance->MirrorY(); }
+}
+
+void Layout::MirrorX() {
+  for (const auto &rectangle : rectangles_) { rectangle->MirrorX(); }
+  for (const auto &polygon : polygons_) { polygon->MirrorX(); }
+  for (const auto &port : ports_) { port->MirrorX(); }
+  for (const auto &instance : instances_) { instance->MirrorX(); }
+}
+
 void Layout::FlipHorizontal() {
-  for (const auto &rectangle : rectangles_) { rectangle->FlipHorizontal(); }
-  for (const auto &polygon : polygons_) { polygon->FlipHorizontal(); }
-  for (const auto &port : ports_) { port->FlipHorizontal(); }
-  for (const auto &instance : instances_) { instance->FlipHorizontal(); }
+  geometry::Rectangle bounding_box = GetBoundingBox();
+  MirrorY();
+  Translate(Point(bounding_box.Width() * 2, 0));
 }
 
 void Layout::FlipVertical() {
-  for (const auto &rectangle : rectangles_) { rectangle->FlipVertical(); }
-  for (const auto &polygon : polygons_) { polygon->FlipVertical(); }
-  for (const auto &port : ports_) { port->FlipVertical(); }
-  for (const auto &instance : instances_) { instance->FlipVertical(); }
+  geometry::Rectangle bounding_box = GetBoundingBox();
+  MirrorX();
+  Translate(Point(0, bounding_box.Height() * 2));
 }
 
 void Layout::Translate(const Point &offset) {
@@ -62,6 +74,13 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
   int64_t min_y = start.y();
   int64_t max_y = start.y();
 
+  for (const auto &rectangle : rectangles_) {
+    min_x = std::min(rectangle->lower_left().x(), min_x);
+    min_y = std::min(rectangle->lower_left().y(), min_y);
+    max_x = std::max(rectangle->upper_right().x(), max_x);
+    max_y = std::max(rectangle->upper_right().y(), max_y);
+  }
+
   for (const auto &polygon : polygons_) {
     geometry::Rectangle bounding_box = polygon->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
@@ -80,6 +99,13 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
     min_y = std::min(lower_left.y(), min_y);
     max_x = std::max(upper_right.x(), max_x);
     max_y = std::max(upper_right.y(), max_y);
+  }
+
+  for (const auto &port : ports_) {
+    min_x = std::min(port->lower_left().x(), min_x);
+    min_y = std::min(port->lower_left().y(), min_y);
+    max_x = std::max(port->upper_right().x(), max_x);
+    max_y = std::max(port->upper_right().y(), max_y);
   }
 
   return geometry::Rectangle(Point(min_x, min_y), Point(max_x, max_y));

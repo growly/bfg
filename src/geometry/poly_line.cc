@@ -11,17 +11,44 @@
 namespace bfg {
 namespace geometry {
 
-void PolyLine::FlipHorizontal() {
+void PolyLine::MirrorY() {
   start_.set_x(-start_.x());
   for (LineSegment &segment : segments_) {
     segment.end.set_x(-segment.end.x());
   }
 }
 
-void PolyLine::FlipVertical() {
+void PolyLine::MirrorX() {
   start_.set_y(-start_.y());
   for (LineSegment &segment : segments_) {
     segment.end.set_y(-segment.end.y());
+  }
+}
+
+void PolyLine::FlipHorizontal() {
+  Rectangle bounding_box = GetBoundingBox();
+  int64_t left_x = bounding_box.lower_left().x();
+  int64_t right_x = bounding_box.upper_right().x();
+  start_.set_x(right_x - (start_.x() - left_x));
+  for (LineSegment &segment : segments_) {
+    segment.end.set_x(right_x - (segment.end.x() - left_x));
+  }
+}
+
+void PolyLine::FlipVertical() {
+  Rectangle bounding_box = GetBoundingBox();
+  int64_t upper_y = bounding_box.upper_right().y();
+  int64_t lower_y = bounding_box.lower_left().y();
+  start_.set_y(upper_y - (start_.y() - lower_y));
+  for (LineSegment &segment : segments_) {
+    segment.end.set_y(upper_y - (segment.end.y() - lower_y));
+  }
+}
+
+void PolyLine::Translate(const Point &offset) {
+  start_ += offset;
+  for (LineSegment &segment : segments_) {
+    segment.end += offset;
   }
 }
 

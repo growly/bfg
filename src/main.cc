@@ -13,6 +13,7 @@
 #include <google/protobuf/text_format.h>
 
 #include "design_database.h"
+#include "physical_properties_database.h"
 #include "cell.h"
 #include "layout.h"
 #include "atoms/sky130_mux.h"
@@ -86,11 +87,46 @@ int main(int argc, char **argv) {
   }
 
   bfg::DesignDatabase design_db;
-  design_db.physical_db().LoadTechnology(tech_pb);
+  bfg::PhysicalPropertiesDatabase &physical_db = design_db.physical_db();
+  physical_db.LoadTechnology(tech_pb);
 
-  design_db.physical_db().AddRoutingLayerInfo(layer_1);
-  design_db.physical_db().AddRoutingLayerInfo(layer_2);
-  design_db.physical_db().AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
+  physical_db.AddRoutingLayerInfo(layer_1);
+  physical_db.AddRoutingLayerInfo(layer_2);
+  physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
+
+  bfg::IntraLayerConstraints intra_constraints = {
+    .min_separation = 270,
+  };
+  physical_db.AddRules("diff.drawing", intra_constraints);
+
+  intra_constraints = {
+    .min_separation = 170,
+    .min_width = 170,
+  };
+  physical_db.AddRules("li.drawing", intra_constraints);
+  physical_db.AddRules("diff.drawing", intra_constraints);
+  intra_constraints = {
+    .min_width = 170,
+    .via_width = 170,
+  };
+  physical_db.AddRules("licon.drawing", intra_constraints);
+  intra_constraints = {
+    .min_width = 170,
+    .min_pitch = 500,
+  };
+  physical_db.AddRules("poly.drawing", intra_constraints);
+
+  bfg::InterLayerConstraints inter_constraints = {
+    .min_separation = 50,
+    .via_overhang = 80,
+  };
+  physical_db.AddRules("li.drawing", "licon.drawing", inter_constraints);
+  physical_db.AddRules("poly.drawing", "licon.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = 40,
+    .via_overhang = 40,
+  };
+  physical_db.AddRules("diff.drawing", "licon.drawing", inter_constraints);
 
   if (FLAGS_external_circuits != "") {
     vlsir::circuit::Package external_circuits_pb;

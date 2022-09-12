@@ -62,6 +62,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
 }
 
 bfg::Layout *Sky130Mux::GenerateLayout() {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
 
@@ -73,33 +75,35 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   mux4_layout->AddLayout(*mux2_layout);
 
   Rectangle mux2_bounding_box = mux2_layout->GetBoundingBox();
-  int64_t intra_padding = 100;
+  int64_t intra_spacing = db.Rules("li.drawing").min_separation;
 
   mux2_layout->FlipHorizontal();
   mux2_layout->ResetOrigin();
-  mux2_layout->Translate(Point(mux2_bounding_box.Width() + 100, 0));
+  mux2_layout->Translate(Point(
+        mux2_bounding_box.Width() + intra_spacing, 0));
   mux4_layout->AddLayout(*mux2_layout);
   layout->AddLayout(*mux4_layout);
 
-  mux4_layout->FlipVertical();
+  mux4_layout->MirrorX();
   mux4_layout->ResetOrigin();
-  mux4_layout->Translate(Point(0, -(mux4_layout->GetBoundingBox().Height() + 100)));
+  mux4_layout->Translate(Point(
+      0, -(mux4_layout->GetBoundingBox().Height() + intra_spacing)));
   layout->AddLayout(*mux4_layout);
 
   return layout.release();
 }
 
-//
-// met1
-// mcon
-// li
-// licon
-// poly | diff
+// Stack up for our purposes:
+//  top    - met1
+//         - mcon
+//         - li
+//         - licon
+//  bottom - poly | diff
 bfg::Layout *Sky130Mux::GenerateMux2Layout() {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
-
-  constexpr int64_t poly_pitch = 500;
 
   // To avoid C++'s automatic arithmetic type conversions, make these all the
   // same int64_t type:
@@ -110,26 +114,33 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
   int64_t pfet_4_width = 640;
   int64_t pfet_5_width = 640;
 
-  int64_t diffusion_min_distance = 270;
+  const IntraLayerConstraints &diff_rules = db.Rules("diff.drawing");
+  int64_t diffusion_min_distance = diff_rules.min_separation;
+  const IntraLayerConstraints &licon_rules = db.Rules("licon.drawing");
+  int64_t via_side = licon_rules.via_width;
 
-  int64_t via_side = 170;
+  const IntraLayerConstraints &li_rules = db.Rules("li.drawing");
+  const IntraLayerConstraints &poly_rules = db.Rules("poly.drawing");
 
-  // This is li1 in Sky130.
-  int64_t met_0_min_separation = 170;
-  int64_t met_0_via_overhang = 80;
-  // = rules["poly.drawing"]["licon.drawing"].min_separation
-  int64_t met_0_via_poly_separation = 50;
-  int64_t met_0_via_diff_padding = 40;
-  int64_t met_0_min_width = 170;
+  const InterLayerConstraints &li_licon_rules = db.Rules(
+      "li.drawing", "licon.drawing");
+  const InterLayerConstraints &poly_licon_rules = db.Rules(
+      "poly.drawing", "licon.drawing");
+  const InterLayerConstraints &diff_licon_rules = db.Rules(
+      "diff.drawing", "licon.drawing");
 
+  int64_t poly_pitch = poly_rules.min_pitch;
   int64_t start_x = poly_pitch / 2;
   int64_t height = std::max(pfet_0_width, pfet_2_width) +
-     diffusion_min_distance + std::max(pfet_1_width, pfet_3_width) + 100;
-  int64_t poly_width = 170;
+     diffusion_min_distance + std::max(pfet_1_width, pfet_3_width) +
+     li_rules.min_separation;
+  int64_t poly_width = poly_rules.min_width;
   int64_t poly_gap = poly_pitch - poly_width;
-  int64_t poly_overhang = 130;
-  int64_t diff_wing = via_side + met_0_via_poly_separation +
-      met_0_via_diff_padding;
+  int64_t diff_wing = via_side + poly_licon_rules.min_separation +
+      diff_licon_rules.min_separation;
+
+  // TODO: This is the distance diffusion extends from poly. Is it a DRC rule?
+  int64_t poly_overhang = li_rules.min_width + li_rules.min_separation;
 
   layout->SetActiveLayerByName("poly.drawing");
   int64_t column_0_x = start_x;
@@ -187,7 +198,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
 
   // diff/met0 vias
   layout->SetActiveLayerByName("licon.drawing");
-  int64_t via_column_0_x = via_side / 2 + met_0_via_diff_padding;
+  int64_t via_column_0_x = via_side / 2 + diff_licon_rules.min_separation;
   int64_t via_row_0_y = pfet_0_width / 2;
   Rectangle *via_0_0 = layout->AddSquare(
       Point(via_column_0_x, via_row_0_y), via_side);
@@ -222,13 +233,14 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
   {
     // Input 2 metal.
     layout->SetActiveLayerByName("li.drawing"); 
-    int64_t metal_width = met_0_min_width;
+    int64_t metal_width = li_rules.min_width;
 
     Point p_0 = via_0_0->centre();
-    Point p_1 = Point(-100, p_0.y());
-    PolyLine input_2_line = PolyLine({p_0, p_1});
-    input_2_line.SetWidth(2 * met_0_min_width);
-    input_2_line.set_overhang_start(via_side / 2 + met_0_via_overhang);
+    Point p_1 = p_0 + Point(0, 4 * li_licon_rules.via_overhang);
+    Point p_2 = Point(0, p_1.y());
+    PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
+    input_2_line.SetWidth(li_rules.min_width);
+    input_2_line.set_overhang_start(via_side / 2 + li_licon_rules.via_overhang);
     input_2_line.set_overhang_end(0);
     Polygon input_2_template;
     inflator.InflatePolyLine(input_2_line, &input_2_template);
@@ -236,16 +248,16 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     input_2_met_0 = layout->AddPolygon(input_2_template);
 
     layout->SetActiveLayerByName("li.pin");
-    layout->AddSquare(p_1 + Point(via_side / 2, 0), via_side);
+    layout->AddSquare(p_1, via_side);
   }
 
   Polygon *input_3_met_0;
   {
     // Input 3 metal.
     layout->SetActiveLayerByName("li.drawing");
-    int64_t metal_width = met_0_min_width;
+    int64_t metal_width = li_rules.min_width;
     int64_t lower_left_y = input_2_met_0->GetBoundingBox().lower_left().y() -
-                           (metal_width / 2) - met_0_min_separation;
+                           (metal_width / 2) - li_rules.min_separation;
 
     Point p_0 = Point(0, lower_left_y);
     Point p_2 = via_2_0->centre();
@@ -253,7 +265,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     PolyLine input_3_line = PolyLine({p_0, p_1, p_2});
     input_3_line.SetWidth(metal_width);
     input_3_line.set_overhang_start(0);
-    input_3_line.set_overhang_end(via_side / 2 + met_0_via_overhang);
+    input_3_line.set_overhang_end(via_side / 2 + li_licon_rules.via_overhang);
 
     Polygon input_3_template;
     inflator.InflatePolyLine(input_3_line, &input_3_template);
@@ -267,29 +279,26 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     // Input 0 metal.
     layout->SetActiveLayerByName("li.drawing");
     Polygon *input_0_met_0 = layout->AddPolygon(*input_2_met_0);
-    input_0_met_0->FlipVertical();
+    input_0_met_0->MirrorX();
     Point via_relative_to_corner =
         input_2_met_0->GetBoundingBox().UpperLeft() - via_0_0->centre();
-    via_relative_to_corner.FlipVertical();
+    via_relative_to_corner.MirrorX();
     input_0_met_0->MoveLowerLeftTo(via_0_1->centre() + via_relative_to_corner);
 
     layout->SetActiveLayerByName("li.pin");
-    //layout->AddSquare(
-    //    input_0_met_0->GetBoundingBox().LowerRight() - Point(
-    //        via_side / 2, -via_side / 2), via_side);
     layout->AddSquare(
-        input_0_met_0->GetBoundingBox().lower_left() + Point(via_side/2, via_side / 2),
-        via_side);
+        input_0_met_0->GetBoundingBox().LowerRight() - Point(
+            via_side / 2, -via_side / 2), via_side);
   }
 
   {
     // Input 1 metal.
     layout->SetActiveLayerByName("li.drawing");
     Polygon *input_1_met_0 = layout->AddPolygon(*input_3_met_0);
-    input_1_met_0->FlipVertical();
+    input_1_met_0->MirrorX();
     Point via_relative_to_corner =
         input_3_met_0->GetBoundingBox().UpperLeft() - via_1_0->centre();
-    via_relative_to_corner.FlipVertical();
+    via_relative_to_corner.MirrorX();
     input_1_met_0->MoveLowerLeftTo(via_1_1->centre() + via_relative_to_corner);
 
     // Since we constructed input_3_met_0 in this order, and then flipped the
@@ -305,14 +314,14 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     layout->SetActiveLayerByName("li.drawing");
     Point p_0 = via_1_1->centre();
     int64_t line_y =  via_2_1->centre().y() - (
-        (via_side / 2) + met_0_via_overhang + met_0_min_separation);
+        (via_side / 2) + li_licon_rules.via_overhang + li_rules.min_separation);
     Point p_1 = Point(p_0.x(), line_y);
     Point p_2 = Point(via_3_1->centre().x(), p_1.y());
     Point p_3 = via_3_1->centre();
     PolyLine input_0_1_line = PolyLine({p_0, p_1, p_2, p_3});
-    input_0_1_line.SetWidth(met_0_min_width);
-    input_0_1_line.set_overhang_start(via_side / 2 + met_0_via_overhang);
-    input_0_1_line.set_overhang_end(via_side / 2 + met_0_via_overhang);
+    input_0_1_line.SetWidth(li_rules.min_width);
+    input_0_1_line.set_overhang_start(via_side / 2 + li_licon_rules.via_overhang);
+    input_0_1_line.set_overhang_end(via_side / 2 + li_licon_rules.via_overhang);
     PolyLineInflator inflator(design_db_->physical_db());
     Polygon input_0_1;
     inflator.InflatePolyLine(input_0_1_line, &input_0_1);
@@ -323,20 +332,18 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     layout->SetActiveLayerByName("li.drawing");
     Point p_0 = via_1_0->centre();
     int64_t line_y =  via_2_0->centre().y() + (
-        (via_side / 2) + met_0_via_overhang + met_0_min_separation);
+        (via_side / 2) + li_licon_rules.via_overhang + li_rules.min_separation);
     Point p_1 = Point(p_0.x(), line_y);
     Point p_2 = Point(via_4_1->centre().x(), p_1.y());
     Point p_3 = via_4_1->centre();
     PolyLine input_2_3_line = PolyLine({p_0, p_1, p_2, p_3});
-    input_2_3_line.SetWidth(met_0_min_width);
-    input_2_3_line.set_overhang_start(via_side / 2 + met_0_via_overhang);
-    input_2_3_line.set_overhang_end(via_side / 2 + met_0_via_overhang);
+    input_2_3_line.SetWidth(li_rules.min_width);
+    input_2_3_line.set_overhang_start(via_side / 2 + li_licon_rules.via_overhang);
+    input_2_3_line.set_overhang_end(via_side / 2 + li_licon_rules.via_overhang);
     Polygon input_2_3;
     inflator.InflatePolyLine(input_2_3_line, &input_2_3);
     layout->AddPolygon(input_2_3);
   }
-
-  // 
 
   return layout.release();
 }

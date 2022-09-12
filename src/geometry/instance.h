@@ -12,7 +12,7 @@ class Layout;
 
 namespace geometry {
 
-class Instance {
+class Instance : public Manipulable {
  public:
   Instance(bfg::Layout *template_layout,
            const Point &lower_left)
@@ -21,9 +21,12 @@ class Instance {
         reflect_vertical_(false),
         rotation_clockwise_degrees_(0) {}
 
-  void FlipHorizontal();
-  void FlipVertical();
-  void Translate(const Point &offset);
+  void MirrorY() override;
+  void MirrorX() override;
+  void FlipHorizontal() override;
+  void FlipVertical() override;
+  void Translate(const Point &offset) override;
+  void ResetOrigin() override;
 
   const Rectangle GetBoundingBox() const;
 

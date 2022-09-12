@@ -1,5 +1,6 @@
 #include "physical_properties_database.h"
 
+#include <algorithm>
 #include <map>
 #include <unordered_map>
 #include <ostream>
@@ -27,7 +28,7 @@ std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
 
 void PhysicalPropertiesDatabase::LoadTechnology(
     const vlsir::tech::Technology &pdk) {
-  geometry::Layer internal_layer = 0;
+  Layer internal_layer = 0;
   for (const auto &layer_info : pdk.layers()) {
     // Find a free internal layer number:
     while (layer_infos_.find(internal_layer) != layer_infos_.end()) {
@@ -36,7 +37,7 @@ void PhysicalPropertiesDatabase::LoadTechnology(
           << "Ran out of internal layer numbers!";
     }
 
-    VLOG(2) << "Loading layer " << internal_layer << ": \"" << layer_info.name()
+    VLOG(3) << "Loading layer " << internal_layer << ": \"" << layer_info.name()
             << "\"";
     LayerInfo info {
         .internal_layer = internal_layer,
@@ -66,6 +67,28 @@ const RoutingLayerInfo &PhysicalPropertiesDatabase::GetRoutingLayerInfo(
   return lhs_info_it->second;
 }
 
+const Layer PhysicalPropertiesDatabase::GetLayer(
+    const std::string  &name_and_purpose) const {
+  std::vector<std::string> name_parts = absl::StrSplit(name_and_purpose, ".");
+
+  LOG_IF(FATAL, name_parts.size() != 2)
+      << "GetLayerInfo by name requires a layer in the form name.purpose.";
+
+  std::string &name = name_parts.front();
+  std::string &purpose = name_parts.back();
+
+  auto name_it = layer_infos_by_name_.find(name);
+  LOG_IF(FATAL, name_it == layer_infos_by_name_.end())
+      << "No match for named layer: " << name;
+
+  const std::unordered_map<std::string, Layer> &sub_map =
+      name_it->second;
+  auto sub_it = sub_map.find(purpose);
+  LOG_IF(FATAL, sub_it == sub_map.end())
+      << "No match for named layer (\"" <<  name << "\") purpose: " << purpose;
+  return sub_it->second;
+}
+
 void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
   // Add to mapping by layer number.
   const Layer &layer = info.internal_layer;
@@ -77,7 +100,7 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
   auto name_iterator = layer_infos_by_name_.find(info.name);
   if (name_iterator == layer_infos_by_name_.end()) {
     auto insertion_result = layer_infos_by_name_.insert({info.name,
-        std::unordered_map<std::string, geometry::Layer>()});
+        std::unordered_map<std::string, Layer>()});
     LOG_IF(FATAL, !insertion_result.second)
         << "Could not create sub-map for layer: (" << info.name
         << ", " << info.purpose << ")";
@@ -85,7 +108,7 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
   }
 
   std::unordered_map<
-      std::string, geometry::Layer> &sub_map = name_iterator->second;
+      std::string, Layer> &sub_map = name_iterator->second;
 
   auto sub_it = sub_map.find(info.purpose);
   LOG_IF(FATAL, sub_it != sub_map.end())
@@ -104,26 +127,8 @@ const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
 
 const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
     const std::string &layer_name_and_purpose) const {
-  std::vector<std::string> name_parts =
-      absl::StrSplit(layer_name_and_purpose, ".");
-
-  LOG_IF(FATAL, name_parts.size() != 2)
-      << "GetLayerInfo by name requires a layer in the form name.purpose.";
-
-  std::string &name = name_parts.front();
-  std::string &purpose = name_parts.back();
-
-  auto name_it = layer_infos_by_name_.find(name);
-  LOG_IF(FATAL, name_it == layer_infos_by_name_.end())
-      << "No match for named layer: " << name;
-
-  const std::unordered_map<std::string, geometry::Layer> &sub_map =
-      name_it->second;
-  auto sub_it = sub_map.find(purpose);
-  LOG_IF(FATAL, sub_it == sub_map.end())
-      << "No match for named layer (\"" <<  name << "\") purpose: " << purpose;
-
-  return GetLayerInfo(sub_it->second);
+  const Layer layer = GetLayer(layer_name_and_purpose);
+  return GetLayerInfo(layer);
 }
 
 void PhysicalPropertiesDatabase::AddViaInfo(
@@ -160,6 +165,53 @@ const ViaInfo &PhysicalPropertiesDatabase::GetViaInfo(
       << "No known connectiion between layer " << first
       << " and layer " << second;
   return second_it->second;
+}
+
+void PhysicalPropertiesDatabase::AddRules(
+    const std::string &first_layer,
+    const std::string &second_layer,
+    const InterLayerConstraints &constraints) {
+  const auto layers = GetTwoLayersAndSort(first_layer, second_layer);
+  inter_layer_constraints_[layers.first][layers.second] = constraints;
+}
+
+const InterLayerConstraints &PhysicalPropertiesDatabase::Rules(
+    const std::string &left, const std::string &right) const {
+  const auto layers = GetTwoLayersAndSort(left, right);
+  const auto first_it = inter_layer_constraints_.find(layers.first);
+  LOG_IF(FATAL, first_it == inter_layer_constraints_.end())
+      << "No inter-layer constraints for " << left << "/" << right;
+  const auto second_it = first_it->second.find(layers.second);
+  LOG_IF(FATAL, second_it == first_it->second.end())
+      << "No inter-layer constraints for " << left << "/" << right;
+  return second_it->second;
+}
+
+void PhysicalPropertiesDatabase::AddRules(
+    const std::string &layer_name,
+    const IntraLayerConstraints &constraints) {
+  const Layer &layer = GetLayer(layer_name);
+  intra_layer_constraints_[layer] = constraints;
+}
+
+const IntraLayerConstraints &PhysicalPropertiesDatabase::Rules(
+    const std::string &layer_name) const {
+  const auto layer = GetLayer(layer_name);
+  const auto map_it = intra_layer_constraints_.find(layer);
+  LOG_IF(FATAL, map_it == intra_layer_constraints_.end())
+      << "No intra-layer constraints for " << layer_name;
+  return map_it->second;
+}
+
+const std::pair<Layer, Layer>
+PhysicalPropertiesDatabase::GetTwoLayersAndSort(
+    const std::string &left, const std::string &right) const {
+  Layer first = GetLayer(left);
+  Layer second = GetLayer(right);
+  if (second < first) {
+    std::swap(first, second);
+  }
+  return {first, second};
 }
 
 std::ostream &operator<<(std::ostream &os,

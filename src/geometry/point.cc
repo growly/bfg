@@ -11,11 +11,11 @@ Point &Point::operator+=(const Point &other) {
   return *this;
 }
 
-void Point::FlipHorizontal() {
+void Point::MirrorY() {
   x_ = -x_;
 }
 
-void Point::FlipVertical() {
+void Point::MirrorX() {
   y_ = -y_;
 }
 

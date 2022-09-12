@@ -26,6 +26,8 @@ class Polygon : public Shape {
     vertices_.push_back(point);
   }
 
+  void MirrorY() override;
+  void MirrorX() override;
   void FlipHorizontal() override;
   void FlipVertical() override;
   void Translate(const Point &offset) override;

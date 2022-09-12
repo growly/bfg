@@ -48,7 +48,7 @@ void DesignDatabase::LoadModule(const vlsir::circuit::Module &module_pb) {
   }
 
   cell->SetCircuit(Circuit::FromVLSIRModule(module_pb));
-  VLOG(2) << "Loaded module \"" << module_pb.name() << "\"";
+  VLOG(3) << "Loaded module \"" << module_pb.name() << "\"";
 }
 
 void DesignDatabase::LoadExternalModule(

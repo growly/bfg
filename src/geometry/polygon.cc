@@ -7,16 +7,28 @@
 namespace bfg {
 namespace geometry {
 
-void Polygon::FlipHorizontal() {
+void Polygon::MirrorY() {
   for (Point &point : vertices_) {
-    point.FlipHorizontal();
+    point.MirrorY();
   }
 }
 
-void Polygon::FlipVertical() {
+void Polygon::MirrorX() {
   for (Point &point : vertices_) {
-    point.FlipVertical();
+    point.MirrorX();
   }
+}
+
+void Polygon::FlipHorizontal() {
+  Point lower_left = GetBoundingBox().lower_left();
+  MirrorY();
+  MoveLowerLeftTo(lower_left);
+}
+
+void Polygon::FlipVertical() {
+  Point lower_left = GetBoundingBox().lower_left();
+  MirrorX();
+  MoveLowerLeftTo(lower_left);
 }
 
 void Polygon::Translate(const Point &offset) {

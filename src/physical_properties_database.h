@@ -51,6 +51,21 @@ struct LayerInfo {
   uint16_t gds_datatype;
 };
 
+struct IntraLayerConstraints {
+  uint64_t min_separation;
+  uint64_t min_width;
+  uint64_t min_pitch;
+  uint64_t min_area;
+
+  uint64_t via_width;
+  uint64_t via_height;
+};
+
+struct InterLayerConstraints {
+  uint64_t min_separation;
+  uint64_t via_overhang;
+};
+
 
 // Manages information about physical layout constraints.
 //
@@ -84,6 +99,8 @@ class PhysicalPropertiesDatabase {
   const RoutingLayerInfo &GetRoutingLayerInfo(
       const geometry::Layer &layer) const;
 
+  const geometry::Layer GetLayer(const std::string &name_and_purpose) const;
+
   void AddLayerInfo(const LayerInfo &info);
   const LayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
   const LayerInfo &GetLayerInfo(
@@ -98,6 +115,18 @@ class PhysicalPropertiesDatabase {
   }
   const ViaInfo &GetViaInfo(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
+  void AddRules(const std::string &first_layer,
+                const std::string &second_layer,
+                const InterLayerConstraints &constraints);
+
+  void AddRules(const std::string &layer_name,
+                const IntraLayerConstraints &constraints);
+
+  const InterLayerConstraints &Rules(
+      const std::string &left, const std::string &right) const;
+  const IntraLayerConstraints &Rules(
+      const std::string &layer_name) const;
 
  private:
   double internal_units_per_external_;
@@ -116,6 +145,16 @@ class PhysicalPropertiesDatabase {
   // Store a mapping of layer name to internal layer number.
   std::unordered_map<std::string, std::unordered_map<
       std::string, geometry::Layer>> layer_infos_by_name_;
+
+  std::unordered_map<geometry::Layer,
+      std::unordered_map<geometry::Layer, InterLayerConstraints>>
+      inter_layer_constraints_;
+
+  std::unordered_map<geometry::Layer, IntraLayerConstraints>
+      intra_layer_constraints_;
+
+  const std::pair<geometry::Layer, geometry::Layer> GetTwoLayersAndSort(
+      const std::string &left, const std::string &right) const;
 };
 
 std::ostream &operator<<(std::ostream &os,

@@ -43,10 +43,13 @@ class Rectangle : public Shape {
   uint64_t Width() const { return upper_right_.x() - lower_left_.x(); }
   uint64_t Height() const { return upper_right_.y() - lower_left_.y(); }
 
-  void FlipHorizontal() override;
-  void FlipVertical() override;
+  void MirrorY() override;
+  void MirrorX() override;
   void Translate(const Point &offset) override;
   void ResetOrigin() override;
+  void FlipHorizontal() override {}   // No-op for a rectangle.
+  void FlipVertical() override {}   // No-op for rectangle.
+  void MoveLowerLeftTo(const Point &point) override { Translate(point); }
 
   // TODO(aryap): Hmmm. Not a double. Truncating. Hmmm.
   // TODO(aryap): Rename Centre().

@@ -240,7 +240,7 @@ std::unique_ptr<Line> PolyLineInflator::ShiftAndAppendIntersection(
     Polygon *polygon) {
 
   std::unique_ptr<Line> shifted_line(GenerateShiftedLine(next_source, width));
-  LOG(INFO) << "Shifted " << next_source << " to " << *shifted_line;
+  VLOG(3) << "Shifted " << next_source << " to " << *shifted_line;
   
   if (last_shifted_line == nullptr) {
     // Set the starting point.

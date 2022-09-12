@@ -7,6 +7,7 @@
 #include "physical_properties_database.h"
 #include "geometry/instance.h"
 #include "geometry/layer.h"
+#include "geometry/manipulable.h"
 #include "geometry/point.h"
 #include "geometry/polygon.h"
 #include "geometry/port.h"
@@ -26,7 +27,7 @@ struct LayoutPadding {
   int64_t right;
 };
 
-class Layout {
+class Layout : public geometry::Manipulable {
  public:
   Layout() = delete;
   Layout(const PhysicalPropertiesDatabase &physical_db)
@@ -69,16 +70,12 @@ class Layout {
 
   ::vlsir::raw::Layout ToVLSIRLayout() const;
 
-  // Mirror in the y axis.
-  virtual void FlipHorizontal();
-  // Mirror in the x axis.
-  virtual void FlipVertical();
-  virtual void ResetOrigin();
-  virtual void Translate(const geometry::Point &offset);
-  virtual void MoveLowerLeftTo(const geometry::Point &point) {
-    ResetOrigin();
-    Translate(point);
-  }
+  void MirrorY() override;
+  void MirrorX() override;
+  void FlipHorizontal() override;
+  void FlipVertical() override;
+  void ResetOrigin() override;
+  void Translate(const geometry::Point &offset) override;
 
   const geometry::Rectangle GetBoundingBox() const;
 

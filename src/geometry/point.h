@@ -5,12 +5,13 @@
 #include <cstdint>
 #include <vector>
 
+#include "manipulable.h"
 #include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
 namespace geometry {
 
-class Point {
+class Point : public Manipulable {
  public:
   Point() = default;
   Point(const int64_t x, const int64_t y)
@@ -30,9 +31,12 @@ class Point {
     return point_pb;
   }
 
-  void FlipHorizontal();
-  void FlipVertical();
-  void Translate(const Point &offset);
+  void MirrorY() override;
+  void MirrorX() override;
+  void FlipHorizontal() override {}   // No-op for a point.
+  void FlipVertical() override {}   // No-op for a point.
+  void Translate(const Point &offset) override;
+  void ResetOrigin() override {}    // No-op for a point.
 
   Point &operator+=(const Point &other);
 
