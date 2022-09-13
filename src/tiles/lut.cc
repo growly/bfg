@@ -6,6 +6,7 @@
 #include "../layout.h"
 #include "../geometry/rectangle.h"
 #include "../atoms/sky130_dfxtp.h"
+#include "../atoms/sky130_mux.h"
 
 namespace bfg {
 namespace tiles {
@@ -36,6 +37,20 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       layout->AddInstance(geo_instance);
     }
   }
+
+  bfg::atoms::Sky130Mux::Parameters mux_params;
+  bfg::atoms::Sky130Mux mux(mux_params, design_db_);
+  bfg::Cell *mux_cell = mux.GenerateIntoDatabase("mux_template");
+
+  //circuit->AddInstance("mux", mux_cell->circuit());
+  geometry::Rectangle bounding_box = layout->GetBoundingBox();
+  int64_t x_pos = static_cast<int64_t>(bounding_box.Width());
+  int64_t y_pos = static_cast<int64_t>(bounding_box.Height());
+  geometry::Instance geo_instance(
+      mux_cell->layout(), geometry::Point { x_pos + 500, 0 });
+  geo_instance.set_name("mux");
+  layout->AddInstance(geo_instance);
+
 
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());

@@ -138,6 +138,12 @@ std::string Layout::Describe() const {
     ss << std::endl;
   }
 
+  if (!named_points_.empty()) {
+    for (const auto &entry : named_points_) {
+      ss << "named point " << entry.first << ": " << entry.second << std::endl;
+    }
+  }
+
   return ss.str();
 }
 
@@ -227,9 +233,12 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   for (const auto &instance : other.instances_) {
     instances_.emplace_back(new geometry::Instance(*instance));
   }
-  for (auto &entry : named_points_) {
-    std::string prefixed = absl::StrCat(name_prefix, entry.first);
-    SavePoint(prefixed, entry.second);
+  for (auto &entry : other.named_points_) {
+    std::string name = entry.first;
+    if (name_prefix != "") {
+      name = absl::StrCat(name_prefix, ".", entry.first);
+    }
+    SavePoint(name, entry.second);
   }
 }
 

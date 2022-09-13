@@ -110,6 +110,7 @@ int main(int argc, char **argv) {
     .via_width = 170,
   };
   physical_db.AddRules("licon.drawing", intra_constraints);
+  physical_db.AddRules("mcon.drawing", intra_constraints);
   intra_constraints = {
     .min_width = 170,
     .min_pitch = 500,
@@ -126,6 +127,7 @@ int main(int argc, char **argv) {
     .via_overhang = 80,
   };
   physical_db.AddRules("li.drawing", "licon.drawing", inter_constraints);
+  physical_db.AddRules("li.drawing", "mcon.drawing", inter_constraints);
   physical_db.AddRules("poly.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 40,
@@ -172,9 +174,9 @@ int main(int argc, char **argv) {
   bfg::tiles::Lut generator(&design_db);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
-  bfg::atoms::Sky130Mux::Parameters mux_params;
-  bfg::atoms::Sky130Mux mux(mux_params, &design_db);
-  top = mux.GenerateIntoDatabase(top_name);
+  //bfg::atoms::Sky130Mux::Parameters mux_params;
+  //bfg::atoms::Sky130Mux mux(mux_params, &design_db);
+  //top = mux.GenerateIntoDatabase(top_name);
 
   design_db.WriteTop(
       *top, FLAGS_output_library, FLAGS_write_text_format);

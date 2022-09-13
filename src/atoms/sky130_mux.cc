@@ -61,9 +61,54 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   return circuit.release();
 }
 
+namespace {
+
+void ConnectPolyToMet1(
+    const PhysicalPropertiesDatabase &db,
+    const Point &poly_point,
+    const Point &met1_point,
+    bfg::Layout *layout) {
+  PolyLineInflator inflator(db);
+
+  const IntraLayerConstraints &li_rules = db.Rules("li.drawing");
+  const IntraLayerConstraints &licon_rules = db.Rules("licon.drawing");
+  const IntraLayerConstraints &mcon_rules = db.Rules("mcon.drawing");
+  const InterLayerConstraints &li_licon_rules = db.Rules("li.drawing", "licon.drawing");
+  const InterLayerConstraints &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
+
+  layout->SetActiveLayerByName("licon.drawing");
+  layout->AddSquare(poly_point, db.Rules("licon.drawing").via_width);
+
+  layout->SetActiveLayerByName("li.drawing");
+  PolyLine li_pour_line = PolyLine({poly_point, met1_point});
+  li_pour_line.SetWidth(li_rules.min_width);
+  li_pour_line.set_overhang_start(
+      db.Rules("licon.drawing").via_width / 2 + li_licon_rules.via_overhang);
+  li_pour_line.set_overhang_end(
+      db.Rules("mcon.drawing").via_width/ 2 + li_mcon_rules.via_overhang);
+  Polygon li_pour_template;
+  inflator.InflatePolyLine(li_pour_line, &li_pour_template);
+  layout->AddPolygon(li_pour_template);
+
+  layout->SetActiveLayerByName("mcon.drawing");
+  layout->AddSquare(met1_point, mcon_rules.via_width);
+}
+
+void ConnectNamedPointsToColumn(
+    const PhysicalPropertiesDatabase &db,
+    const std::vector<std::string> named_points,
+    const Rectangle &rectangle,
+    bfg::Layout *layout) {
+  for (const std::string &name : named_points) {
+    Point source = layout->GetPoint(name);
+    ConnectPolyToMet1(db, source, Point(rectangle.centre().x(), source.y()), layout);
+  }
+}
+
+}
+
 bfg::Layout *Sky130Mux::GenerateLayout() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
 
@@ -72,40 +117,102 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout());
   mux2_layout->ResetOrigin();
-  mux4_layout->AddLayout(*mux2_layout, "structure0");
+  layout->AddLayout(*mux2_layout, "upper_left");
+  const IntraLayerConstraints &poly_rules = db.Rules("poly.drawing");
 
   Rectangle mux2_bounding_box = mux2_layout->GetBoundingBox();
-  int64_t intra_spacing = db.Rules("li.drawing").min_separation;
+  int64_t mux2_width =
+      (1 + mux2_bounding_box.Width() / poly_rules.min_pitch) * poly_rules.min_pitch;
+  LOG(INFO) << mux2_width;
+  int64_t mux2_height = mux2_bounding_box.Height();
+  int64_t intra_spacing = 0; //db.Rules("li.drawing").min_separation;
 
   mux2_layout->FlipHorizontal();
-  mux2_layout->ResetOrigin();
-  mux2_layout->Translate(Point(
-        mux2_bounding_box.Width() , 0));
-  mux4_layout->AddLayout(*mux2_layout, "structure1");
-  layout->AddLayout(*mux4_layout, "structure2");
+  mux2_layout->MoveLowerLeftTo(Point(mux2_width + intra_spacing, 0));
+  layout->AddLayout(*mux2_layout, "upper_right");
 
-  mux4_layout->MirrorX();
-  mux4_layout->ResetOrigin();
-  mux4_layout->Translate(Point(
-      0, -(mux4_layout->GetBoundingBox().Height())));
-  layout->AddLayout(*mux4_layout, "");
+  mux2_layout->FlipVertical();
+  mux2_layout->MoveLowerLeftTo(Point(mux2_width + intra_spacing, -mux2_height));
+  layout->AddLayout(*mux2_layout, "lower_right");
+
+  mux2_layout->FlipHorizontal();
+  mux2_layout->MoveLowerLeftTo(Point(0, -mux2_height));
+  layout->AddLayout(*mux2_layout, "lower_left");
 
   layout->ResetOrigin();
 
   Rectangle bounding_box = layout->GetBoundingBox();
   const IntraLayerConstraints &met1_rules = db.Rules("met1.drawing");
 
+  std::vector<int64_t> column_ordinals = {0, 3, 4, 6, 7, 9, 10, 12, 13, 16};
+  std::vector<Rectangle*> met1_columns;
   {
     // Add vertical selector connections.
     int64_t offset_x = 50;
     int64_t pitch = met1_rules.min_width + met1_rules.min_separation;
     int64_t width = static_cast<int64_t>(bounding_box.Width());
     int64_t height = static_cast<int64_t>(bounding_box.Height());
+    int64_t extension = 150;
     layout->SetActiveLayerByName("met1.drawing");
-    for (int64_t x = offset_x; x < width; x += pitch) {
-      layout->AddRectangle({{x, 0}, {x + met1_rules.min_width, height}});
+
+    for (const auto &k : column_ordinals) {
+      met1_columns.push_back(layout->AddRectangle(
+          {{offset_x + (k * pitch), -extension},
+          {(k * pitch) + met1_rules.min_width + offset_x, height + extension}}));
     }
+    //for (int64_t x = offset_x; x < width; x += pitch) {
+    //  layout->AddRectangle({{x, 0}, {x + met1_rules.min_width, height}});
+    //}
   }
+
+  const IntraLayerConstraints &li_rules = db.Rules("li.drawing");
+  const IntraLayerConstraints &mcon_rules = db.Rules("mcon.drawing");
+  const InterLayerConstraints &li_licon_rules = db.Rules("li.drawing", "licon.drawing");
+  const InterLayerConstraints &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
+
+  ConnectNamedPointsToColumn(
+      db,
+      {"lower_left.column_0_bottom", "lower_left.column_0_top",
+       "upper_left.column_0_top"},
+      *met1_columns[0],
+      layout.get());
+
+
+  ConnectNamedPointsToColumn(
+      db,
+      {"lower_left.column_1_bottom", "lower_left.column_1_top",
+       "upper_left.column_1_top"},
+      *met1_columns[1],
+      layout.get());
+
+  ConnectNamedPointsToColumn(
+      db,
+      {"upper_left.column_2_top", "lower_left.column_2_top"},
+      *met1_columns[2],
+      layout.get());
+
+
+  ConnectNamedPointsToColumn(
+      db,
+      {"upper_right.column_0_bottom", "upper_right.column_0_top",
+       "lower_right.column_0_top"},
+      *met1_columns[9],
+      layout.get());
+
+  ConnectNamedPointsToColumn(
+      db,
+      {"upper_right.column_1_bottom", "upper_right.column_1_top",
+       "lower_right.column_1_top"},
+      *met1_columns[8],
+      layout.get());
+
+  ConnectNamedPointsToColumn(
+      db,
+      {"upper_right.column_2_top", "lower_right.column_2_top"},
+      *met1_columns[7],
+      layout.get());
+           
+  //LOG(INFO) << layout->Describe();
 
   return layout.release();
 }
@@ -165,15 +272,30 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
       Point(column_0_x, -poly_overhang),
       Point(column_0_x + poly_width, height + poly_overhang)));
 
+  layout->SavePoint("column_0_bottom", Point(
+      column_0->centre().x(), column_0->lower_left().y()));
+  layout->SavePoint("column_0_top", Point(
+      column_0->centre().x(), column_0->upper_right().y()));
+
   int64_t column_1_x = column_0_x + poly_pitch;
   Rectangle *column_1 = layout->AddRectangle(Rectangle(
       Point(column_1_x, -poly_overhang),
       Point(column_1_x + poly_width, height + poly_overhang)));
 
+  layout->SavePoint("column_1_bottom", Point(
+      column_1->centre().x(), column_1->lower_left().y()));
+  layout->SavePoint("column_1_top", Point(
+      column_1->centre().x(), column_1->upper_right().y()));
+
   int64_t column_2_x = column_1_x + 2 * poly_pitch;
   Rectangle *column_2 = layout->AddRectangle(Rectangle(
       Point(column_2_x, height - pfet_4_width - poly_overhang),
       Point(column_2_x + poly_width, height + poly_overhang)));
+
+  layout->SavePoint("column_2_bottom", Point(
+      column_2->centre().x(), column_2->lower_left().y()));
+  layout->SavePoint("column_2_top", Point(
+      column_2->centre().x(), column_2->upper_right().y()));
 
   int64_t column_3_x = column_2_x + poly_pitch;
   Rectangle *column_3 = layout->AddRectangle(Rectangle(
