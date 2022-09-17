@@ -42,15 +42,21 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);
   bfg::Cell *mux_cell = mux.GenerateIntoDatabase("mux_template");
 
-  //circuit->AddInstance("mux", mux_cell->circuit());
   geometry::Rectangle bounding_box = layout->GetBoundingBox();
   int64_t x_pos = static_cast<int64_t>(bounding_box.Width());
   int64_t y_pos = static_cast<int64_t>(bounding_box.Height());
+
+  circuit->AddInstance("mux_0", mux_cell->circuit());
   geometry::Instance geo_instance(
       mux_cell->layout(), geometry::Point { x_pos + 500, 0 });
-  geo_instance.set_name("mux");
+  geo_instance.set_name("mux_0");
   layout->AddInstance(geo_instance);
 
+  circuit->AddInstance("mux_1", mux_cell->circuit());
+  geo_instance = geometry::Instance(
+      mux_cell->layout(), geometry::Point { x_pos + 500, y_pos / 2 });
+  geo_instance.set_name("mux_1");
+  layout->AddInstance(geo_instance);
 
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());
