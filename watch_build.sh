@@ -1,4 +1,6 @@
 #!/bin/bash
+# Example usage (from bfg root dir):
+# sudo inotifywait -r -e modify -m src | while read dir action file; do ./watch_build.sh; done
 
 BUILD_DIR=watch_build
 PID_FILE=klayout.pid
