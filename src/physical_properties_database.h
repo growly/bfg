@@ -52,18 +52,18 @@ struct LayerInfo {
 };
 
 struct IntraLayerConstraints {
-  uint64_t min_separation;
-  uint64_t min_width;
-  uint64_t min_pitch;
-  uint64_t min_area;
+  int64_t min_separation;
+  int64_t min_width;
+  int64_t min_pitch;
+  int64_t min_area;
 
-  uint64_t via_width;
-  uint64_t via_height;
+  int64_t via_width;
+  int64_t via_height;
 };
 
 struct InterLayerConstraints {
-  uint64_t min_separation;
-  uint64_t via_overhang;
+  int64_t min_separation;
+  int64_t via_overhang;
 };
 
 
