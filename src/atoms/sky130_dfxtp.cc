@@ -597,7 +597,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // nwell.drawing [DRAWING] 64/20
   layout->SetActiveLayerByName("nwell.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
+  //layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
+  layout->AddRectangle(Rectangle(Point(0, 1305), Point(6000, 2910)));
 
   // npc.drawing [DRAWING] 95/20
   layout->SetActiveLayerByName("npc.drawing");

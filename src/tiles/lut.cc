@@ -33,13 +33,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       int64_t width = static_cast<int64_t>(bounding_box.Width());
       int64_t x_pos = i * width;
       int64_t y_pos = j * height;
+      LOG(INFO) << "Placing " << instance_name;
       geometry::Instance geo_instance(
           cell->layout(), geometry::Point { x_pos, y_pos });
       geo_instance.set_name(instance_name);
-      //if (j % 2 != 0) {
-      //  geo_instance.set_rotation_clockwise_degrees(180);
-      //  geo_instance.Translate(geometry::Point(width, 0));
-      //}
+      if (j % 2 != 0) {
+        geo_instance.set_rotation_clockwise_degrees(180);
+        geo_instance.Translate(geometry::Point(width, 0));
+      }
       layout->AddInstance(geo_instance);
     }
   }

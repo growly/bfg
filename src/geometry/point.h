@@ -38,6 +38,9 @@ class Point : public Manipulable {
   void Translate(const Point &offset) override;
   void ResetOrigin() override {}    // No-op for a point.
 
+  void Rotate(double theta_radians);
+  void Rotate(int32_t degrees_counter_clockwise);
+
   Point &operator+=(const Point &other);
 
  private:

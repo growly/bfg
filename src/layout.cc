@@ -64,7 +64,9 @@ void Layout::ResetOrigin() {
 
 const geometry::Rectangle Layout::GetBoundingBox() const {
   Point start;
-  if (!polygons_.empty()) {
+  if (!rectangles_.empty()) {
+    start = rectangles_.front()->lower_left();
+  } else if (!polygons_.empty()) {
     start = polygons_.front()->GetBoundingBox().lower_left();
   } else if (!instances_.empty()) {
     start = instances_.front()->GetBoundingBox().lower_left();
@@ -96,6 +98,7 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
   }
 
   for (const auto &instance : instances_) {
+    LOG(INFO) << "computing bounding box for " << instance->name();
     geometry::Rectangle bounding_box = instance->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
     const Point &upper_right = bounding_box.upper_right();
