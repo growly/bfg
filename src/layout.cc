@@ -242,6 +242,14 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   }
 }
 
+void Layout::MakeVia(const std::string &layer_name, const geometry::Point &centre) {
+  geometry::Layer last_layer = active_layer_;
+  SetActiveLayerByName(layer_name);
+  int64_t via_side = physical_db_.Rules(layer_name).via_width;
+  AddSquare(centre, via_side);
+  active_layer_ = last_layer;
+}
+
 void Layout::SavePoint(const std::string &name, const geometry::Point &point) {
   auto it = named_points_.find(name);
   LOG_IF(WARNING, it != named_points_.end())

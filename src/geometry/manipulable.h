@@ -32,7 +32,7 @@ class Manipulable {
     Translate(point);
   }
 
-  // Make the lower-left point of the bounding box the origin.
+  // Make the lower-left point of the bounding box the origin (0, 0).
   virtual void ResetOrigin() {}
 };
 

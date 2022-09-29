@@ -66,6 +66,8 @@ class Layout : public geometry::Manipulable {
   }
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
 
+  void MakeVia(const std::string &layer_name, const geometry::Point &centre);
+
   std::string Describe() const;
 
   ::vlsir::raw::Layout ToVLSIRLayout() const;

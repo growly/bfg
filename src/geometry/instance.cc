@@ -33,7 +33,7 @@ void Instance::FlipVertical() {
 
 void Instance::Translate(const Point &offset) {
   lower_left_ += offset;
-}
+}u
 
 void Instance::ResetOrigin() {
   lower_left_ = Point(0, 0);
@@ -44,8 +44,10 @@ const Rectangle Instance::GetBoundingBox() const {
       << "Why does this Instance object have no template_layout set?";
   Rectangle template_bb = template_layout_->GetBoundingBox();
   
-  return Rectangle(template_bb.lower_left() + lower_left_,
-                   template_bb.upper_right() + lower_left_);
+  Rectangle unrotated = Rectangle(
+      template_bb.lower_left() + lower_left_,
+      template_bb.upper_right() + lower_left_);
+
 }
 
 }  // namespace geometry

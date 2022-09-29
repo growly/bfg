@@ -29,11 +29,17 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       design_db_->ConsumeCell(cell);
       circuit->AddInstance(instance_name, cell->circuit());
       geometry::Rectangle bounding_box = cell->layout()->GetBoundingBox();
-      int64_t x_pos = static_cast<int64_t>(i * bounding_box.Width());
-      int64_t y_pos = static_cast<int64_t>(j * bounding_box.Height());
+      int64_t height = static_cast<int64_t>(bounding_box.Height());
+      int64_t width = static_cast<int64_t>(bounding_box.Width());
+      int64_t x_pos = i * width;
+      int64_t y_pos = j * height;
       geometry::Instance geo_instance(
           cell->layout(), geometry::Point { x_pos, y_pos });
       geo_instance.set_name(instance_name);
+      //if (j % 2 != 0) {
+      //  geo_instance.set_rotation_clockwise_degrees(180);
+      //  geo_instance.Translate(geometry::Point(width, 0));
+      //}
       layout->AddInstance(geo_instance);
     }
   }
@@ -43,6 +49,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   bfg::Cell *mux_cell = mux.GenerateIntoDatabase("mux_template");
 
   geometry::Rectangle bounding_box = layout->GetBoundingBox();
+  LOG(INFO) << bounding_box;
   int64_t x_pos = static_cast<int64_t>(bounding_box.Width());
   int64_t y_pos = static_cast<int64_t>(bounding_box.Height());
 

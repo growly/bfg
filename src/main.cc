@@ -129,6 +129,8 @@ int main(int argc, char **argv) {
   };
   physical_db.AddRules("li.drawing", "licon.drawing", inter_constraints);
   physical_db.AddRules("li.drawing", "mcon.drawing", inter_constraints);
+  physical_db.AddRules("met1.drawing", "licon.drawing", inter_constraints);
+  physical_db.AddRules("met1.drawing", "mcon.drawing", inter_constraints);
   physical_db.AddRules("poly.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 40,
