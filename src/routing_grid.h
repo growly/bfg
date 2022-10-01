@@ -260,7 +260,8 @@ class RoutingTrack {
 
   int64_t ProjectOntoTrack(const Point &point) const;
 
-  RoutingTrackBlockage *CreateBlockage(const Point &one_end, const Point &other_end);
+  RoutingTrackBlockage *CreateBlockage(
+      const Point &one_end, const Point &other_end);
 
   void SortBlockages();
 
@@ -277,9 +278,9 @@ class RoutingTrack {
   // The x or y coordinate for this track.
   int64_t offset_;
 
-  // We want to keep a sorted list of blockages, but if we keep them as a std::set
-  // we can't mutate the objects (since then no resorting is performed).
-  // Instead we keep a vector and make sure to sort it ourselves.
+  // We want to keep a sorted list of blockages, but if we keep them as a
+  // std::set we can't mutate the objects (since then no resorting is
+  // performed). Instead we keep a vector and make sure to sort it ourselves.
   std::vector<RoutingTrackBlockage*> blockages_;
 };
 

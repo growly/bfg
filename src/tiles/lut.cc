@@ -3,6 +3,7 @@
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_format.h>
 
+#include "routing_grid.h"
 #include "../layout.h"
 #include "../geometry/rectangle.h"
 #include "../atoms/sky130_dfxtp.h"
@@ -44,6 +45,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       layout->AddInstance(geo_instance);
     }
   }
+
+  RoutingGrid 
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);

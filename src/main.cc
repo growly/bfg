@@ -41,32 +41,6 @@ int main(int argc, char **argv) {
   std::cout << version << std::endl;
   LOG(INFO) << version << " start";
 
-  // Some process "properties".
-  bfg::RoutingLayerInfo layer_1;
-  layer_1.layer = 4;
-  layer_1.area = bfg::geometry::Rectangle(
-      bfg::geometry::Point(0, 0), 1000, 1000);
-  layer_1.wire_width = 50;
-  layer_1.offset = 50;
-  layer_1.pitch = 100;
-  layer_1.direction = bfg::RoutingTrackDirection::kTrackVertical;
-
-  bfg::RoutingLayerInfo layer_2;
-  layer_2.layer = 5;
-  layer_2.area = bfg::geometry::Rectangle(
-      bfg::geometry::Point(0, 0), 1000, 1000);
-  layer_2.wire_width = 50;
-  layer_2.offset = 50;
-  layer_2.pitch = 100;
-  layer_2.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-
-  bfg::ViaInfo layer_1_2;
-  layer_1_2.layer = 6;
-  layer_1_2.cost = 1.0;
-  layer_1_2.width = 30;
-  layer_1_2.height = 30;
-  layer_1_2.overhang = 10;
-
   vlsir::tech::Technology tech_pb;
   // std::string pdk_file_name = "../sky130.technology.pb.txt";
   // std::ifstream pdk_file(pdk_file_name);
@@ -89,6 +63,32 @@ int main(int argc, char **argv) {
   bfg::DesignDatabase design_db;
   bfg::PhysicalPropertiesDatabase &physical_db = design_db.physical_db();
   physical_db.LoadTechnology(tech_pb);
+
+  // Some process "properties".
+  bfg::RoutingLayerInfo layer_1;
+  layer_1.layer = physical_db.GetLayer("met1.drawing");
+  layer_1.area = bfg::geometry::Rectangle(
+      bfg::geometry::Point(0, 0), 1000, 1000);
+  layer_1.wire_width = 50;
+  layer_1.offset = 50;
+  layer_1.pitch = 100;
+  layer_1.direction = bfg::RoutingTrackDirection::kTrackVertical;
+
+  bfg::RoutingLayerInfo layer_2;
+  layer_2.layer = physical_db.GetLayer("met2.drawing");
+  layer_2.area = bfg::geometry::Rectangle(
+      bfg::geometry::Point(0, 0), 1000, 1000);
+  layer_2.wire_width = 50;
+  layer_2.offset = 50;
+  layer_2.pitch = 100;
+  layer_2.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+
+  bfg::ViaInfo layer_1_2;
+  layer_1_2.layer = 6;
+  layer_1_2.cost = 1.0;
+  layer_1_2.width = 30;
+  layer_1_2.height = 30;
+  layer_1_2.overhang = 10;
 
   physical_db.AddRoutingLayerInfo(layer_1);
   physical_db.AddRoutingLayerInfo(layer_2);
