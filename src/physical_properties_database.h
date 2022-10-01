@@ -17,16 +17,7 @@ enum RoutingTrackDirection {
   kTrackVertical
 };
 
-struct RoutingLayerInfo {
-  geometry::Layer layer;
-  geometry::Rectangle area;
-  int64_t wire_width;
-  int64_t offset;
-  RoutingTrackDirection direction;
-  int64_t pitch;
-};
-
-struct ViaInfo {
+struct RoutingViaInfo {
   // Vias have their own layer.
   geometry::Layer layer;
   // Need some measure of cost for connecting between these two layers. Maybe
@@ -95,26 +86,12 @@ class PhysicalPropertiesDatabase {
     return internal_value / internal_units_per_external_;
   }
 
-  void AddRoutingLayerInfo(const RoutingLayerInfo &info);
-  const RoutingLayerInfo &GetRoutingLayerInfo(
-      const geometry::Layer &layer) const;
-
   const geometry::Layer GetLayer(const std::string &name_and_purpose) const;
 
   void AddLayerInfo(const LayerInfo &info);
   const LayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
   const LayerInfo &GetLayerInfo(
       const std::string &layer_name_and_purpose) const;
-
-  void AddViaInfo(const geometry::Layer &lhs,
-                  const geometry::Layer &rhs,
-                  const ViaInfo &info);
-
-  const ViaInfo &GetViaInfo(const AbstractVia &via) const {
-    return GetViaInfo(via.bottom_layer(), via.top_layer());
-  }
-  const ViaInfo &GetViaInfo(
-      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   void AddRules(const std::string &first_layer,
                 const std::string &second_layer,
@@ -130,14 +107,6 @@ class PhysicalPropertiesDatabase {
 
  private:
   double internal_units_per_external_;
-
-  // Store routing information per layer, keyed by internal layer number.
-  std::map<geometry::Layer, RoutingLayerInfo> routing_layer_infos_;
-
-  // Stores the connection info between the ith (first index) and jth (second
-  // index) layers. The "lesser" layer (std::less) should always be used to
-  // index first, so that half of the matrix can be avoided.
-  std::map<geometry::Layer, std::map<geometry::Layer, ViaInfo>> via_infos_;
 
   // Store a mapping of internal layer number to layer information.
   std::map<geometry::Layer, LayerInfo> layer_infos_;

@@ -42,7 +42,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/parameter.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
-  #${PROJECT_SOURCE_DIR}/src/routing_grid.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_grid.cc
   ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
 )
 

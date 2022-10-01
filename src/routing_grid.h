@@ -1,13 +1,13 @@
 #ifndef ROUTING_GRID_H_
 #define ROUTING_GRID_H_
 
-#include "layer.h"
+#include "geometry/layer.h"
 #include "physical_properties_database.h"
-#include "point.h"
-#include "poly_line.h"
+#include "geometry/point.h"
+#include "geometry/poly_line.h"
 #include "poly_line_cell.h"
-#include "port.h"
-#include "rectangle.h"
+#include "geometry/port.h"
+#include "geometry/rectangle.h"
 
 #include <map>
 #include <set>
@@ -16,12 +16,25 @@
 
 namespace bfg {
 
+using geometry::Layer;
+using geometry::PolyLine;
+
 class RoutingEdge;
 class RoutingTrack;
+class RoutingGrid;
+
+struct RoutingLayerInfo {
+  geometry::Layer layer;
+  geometry::Rectangle area;
+  int64_t wire_width;
+  int64_t offset;
+  RoutingTrackDirection direction;
+  int64_t pitch;
+};
 
 class RoutingVertex {
  public:
-  RoutingVertex(const Point &centre)
+  RoutingVertex(const geometry::Point &centre)
       : available_(true), horizontal_track_(nullptr), vertical_track_(nullptr),
         centre_(centre) {}
 
@@ -30,22 +43,22 @@ class RoutingVertex {
 
   //const std::set<RoutingEdge*> &edges() { return edges_; }
 
-  uint64_t L1DistanceTo(const Point &point);
+  uint64_t L1DistanceTo(const geometry::Point &point);
 
   // This is the cost of connecting through this vertex (i.e. a via).
   double cost() const { return 1.0; }
 
-  void AddConnectedLayer(const Layer &layer) {
+  void AddConnectedLayer(const geometry::Layer &layer) {
     connected_layers_.push_back(layer);
   }
-  const std::vector<Layer> &connected_layers() { return connected_layers_; }
+  const std::vector<geometry::Layer> &connected_layers() { return connected_layers_; }
 
   void set_contextual_index(size_t index) { contextual_index_ = index; }
   size_t contextual_index() const { return contextual_index_; }
 
   const std::set<RoutingEdge*> edges() const { return edges_; }
 
-  const Point &centre() const { return centre_; }
+  const geometry::Point &centre() const { return centre_; }
 
   void set_available(bool available) { available_ = available; }
   bool available() { return available_; }
@@ -65,8 +78,8 @@ class RoutingVertex {
   // RoutingVertex for the duration of whatever process requires it.
   size_t contextual_index_;
 
-  Point centre_;
-  std::vector<Layer> connected_layers_;
+  geometry::Point centre_;
+  std::vector<geometry::Layer> connected_layers_;
   std::set<RoutingEdge*> edges_;
 };
 
@@ -90,9 +103,9 @@ class RoutingEdge {
   void set_available(bool available) { available_ = available; }
   bool available() { return available_; }
 
-  void set_layer(const Layer &layer) { layer_ = layer; }
+  void set_layer(const geometry::Layer &layer) { layer_ = layer; }
 
-  const Layer &ExplicitOrTrackLayer() const;
+  const geometry::Layer &ExplicitOrTrackLayer() const;
 
   // Off-grid edges do not have tracks.
   void set_track(RoutingTrack *track);
@@ -104,7 +117,7 @@ class RoutingEdge {
   bool available_;
 
   RoutingTrack *track_;
-  Layer layer_;
+  geometry::Layer layer_;
 
   RoutingVertex *first_;
   RoutingVertex *second_;
@@ -141,16 +154,16 @@ class RoutingPath {
   }
 
   void ToPolyLinesAndVias(
-      const PhysicalPropertiesDatabase &physical_db,
+      const RoutingGrid &routing_grid,
       std::vector<std::unique_ptr<PolyLine>> *poly_lines,
-      std::vector<std::unique_ptr<Via>> *vias) const;
+      std::vector<std::unique_ptr<AbstractVia>> *vias) const;
 
   bool Empty() const { return edges_.empty(); }
 
-  const Port *start_port() const { return start_port_; }
-  void set_start_port(const Port *port) { start_port_ = port; }
-  const Port *end_port() const { return end_port_; }
-  void set_end_port(const Port *port) { end_port_ = port; }
+  const geometry::Port *start_port() const { return start_port_; }
+  void set_start_port(const geometry::Port *port) { start_port_ = port; }
+  const geometry::Port *end_port() const { return end_port_; }
+  void set_end_port(const geometry::Port *port) { end_port_ = port; }
 
   const std::vector<RoutingVertex*> vertices() const { return vertices_; }
   const std::vector<RoutingEdge*> edges() const { return edges_; }
@@ -158,8 +171,8 @@ class RoutingPath {
  private:
   // If these ports are provided, a via will be generated or the edge on the
   // given layer extended to correctly connect to them.
-  const Port *start_port_;
-  const Port *end_port_;
+  const geometry::Port *start_port_;
+  const geometry::Port *end_port_;
 
   // The ordered list of vertices making up the path. The edges alone, since
   // they are undirected, do not yield this directional information.
@@ -207,7 +220,7 @@ class RoutingTrackBlockage {
 // up.
 class RoutingTrack {
  public:
-  RoutingTrack(const Layer &layer,
+  RoutingTrack(const geometry::Layer &layer,
                const RoutingTrackDirection &direction,
                int64_t offset)
       : layer_(layer), direction_(direction), offset_(offset) {}
@@ -240,7 +253,7 @@ class RoutingTrack {
   // vertex is returned, otherwise nullptr. The return vertex is property of
   // the caller and any generated edge is property of the track.
   RoutingVertex *CreateNearestVertexAndConnect(
-      const Point &point,
+      const geometry::Point &point,
       RoutingVertex *target);
 
   void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out);
@@ -250,18 +263,18 @@ class RoutingTrack {
 
   const std::set<RoutingEdge*> &edges() const { return edges_; }
 
-  const Layer &layer() const { return layer_; }
+  const geometry::Layer &layer() const { return layer_; }
 
  private:
-  bool IsBlocked(const Point &point) const {
+  bool IsBlocked(const geometry::Point &point) const {
     return IsBlockedBetween(point, point);
   }
-  bool IsBlockedBetween(const Point &one_end, const Point &other_end) const;
+  bool IsBlockedBetween(const geometry::Point &one_end, const geometry::Point &other_end) const;
 
-  int64_t ProjectOntoTrack(const Point &point) const;
+  int64_t ProjectOntoTrack(const geometry::Point &point) const;
 
   RoutingTrackBlockage *CreateBlockage(
-      const Point &one_end, const Point &other_end);
+      const geometry::Point &one_end, const geometry::Point &other_end);
 
   void SortBlockages();
 
@@ -272,7 +285,7 @@ class RoutingTrack {
   // The vertices on this track. Vertices are NOT OWNED by RoutingTrack.
   std::set<RoutingVertex*> vertices_;
 
-  Layer layer_;
+  geometry::Layer layer_;
   RoutingTrackDirection direction_;
 
   // The x or y coordinate for this track.
@@ -306,10 +319,11 @@ class RoutingGrid {
   // can take between them; concretely, it creates a vertex every time a
   // horizontal and vertical routing line cross. (The two described layers must
   // be orthogonal in routing direction.)
-  void ConnectLayers(const Layer &first, const Layer &second);
+  void ConnectLayers(
+      const geometry::Layer &first, const geometry::Layer &second);
 
   bool AddRouteBetween(
-      const Port &begin, const Port &end);
+      const geometry::Port &begin, const geometry::Port &end);
 
   void AddVertex(RoutingVertex *vertex);
 
@@ -318,6 +332,19 @@ class RoutingGrid {
 
   // Caller takes ownership.
   PolyLineCell *CreatePolyLineCell() const;
+
+  void AddRoutingViaInfo(const geometry::Layer &lhs,
+                  const geometry::Layer &rhs,
+                  const RoutingViaInfo &info);
+
+  const RoutingViaInfo &GetRoutingViaInfo(const AbstractVia &via) const {
+    return GetRoutingViaInfo(via.bottom_layer(), via.top_layer());
+  }
+  const RoutingViaInfo &GetRoutingViaInfo(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
+  void AddRoutingLayerInfo(const RoutingLayerInfo &info);
+  const RoutingLayerInfo &GetRoutingLayerInfo(const geometry::Layer &layer) const;
 
   const std::vector<RoutingPath*> &paths() const { return paths_; }
   const std::set<RoutingEdge*> &off_grid_edges() const {
@@ -328,17 +355,15 @@ class RoutingGrid {
   const PhysicalPropertiesDatabase &physical_db() const { return physical_db_; }
 
  private:
-  RoutingLayerInfo *FindRoutingInfoOrDie(const Layer &layer);
-
   std::pair<std::reference_wrapper<const RoutingLayerInfo>,
             std::reference_wrapper<const RoutingLayerInfo>>
       PickHorizontalAndVertical(
-          const Layer &lhs, const Layer &rhs) const;
+          const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
-  std::vector<RoutingVertex*> &GetAvailableVertices(const Layer &layer);
+  std::vector<RoutingVertex*> &GetAvailableVertices(const geometry::Layer &layer);
 
   RoutingVertex *GenerateGridVertexForPoint(
-      const Point &point, const Layer &layer);
+      const geometry::Point &point, const geometry::Layer &layer);
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
@@ -349,7 +374,15 @@ class RoutingGrid {
   // as used.
   void InstallPath(RoutingPath *path);
 
-  void AddTrackToLayer(RoutingTrack *track, const Layer &layer);
+  void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
+
+  // Stores the connection info between the ith (first index) and jth (second
+  // index) layers. The "lesser" layer (std::less) should always be used to
+  // index first, so that half of the matrix can be avoided.
+  std::map<geometry::Layer, std::map<
+      geometry::Layer, RoutingViaInfo>> via_infos_;
+
+  std::map<geometry::Layer, RoutingLayerInfo> routing_layer_info_;
 
   // All installed paths (which we also own).
   std::vector<RoutingPath*> paths_;
@@ -362,10 +395,10 @@ class RoutingGrid {
   std::vector<RoutingVertex*> vertices_;
 
   // All routing tracks (we own these).
-  std::map<Layer, std::vector<RoutingTrack*>> tracks_by_layer_;
+  std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;
 
   // The list of all available vertices per layer.
-  std::map<Layer, std::vector<RoutingVertex*>> available_vertices_by_layer_;
+  std::map<geometry::Layer, std::vector<RoutingVertex*>> available_vertices_by_layer_;
 
   const PhysicalPropertiesDatabase &physical_db_;
 };

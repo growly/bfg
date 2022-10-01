@@ -6,6 +6,7 @@
 
 #include "layout.h"
 #include "poly_line_cell.h"
+#include "routing_grid.h"
 #include "geometry/point.h"
 #include "geometry/line.h"
 #include "geometry/poly_line.h"
@@ -21,7 +22,9 @@ using geometry::Polygon;
 using geometry::Point;
 using geometry::Rectangle;
 
-Layout PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
+Layout PolyLineInflator::Inflate(
+    const RoutingGrid &routing_grid,
+    const PolyLineCell &poly_line_cell) {
   Layout layout(physical_db_);
   for (const auto &poly_line : poly_line_cell.poly_lines()) {
     LOG_IF(FATAL, !poly_line) << "poly_line is nullptr?!";
@@ -37,25 +40,36 @@ Layout PolyLineInflator::Inflate(const PolyLineCell &poly_line_cell) {
   }
   for (const auto &via : poly_line_cell.vias()) {
     Rectangle rectangle;
-    InflateVia(*via, &rectangle);
+    InflateVia(
+        routing_grid.GetRoutingViaInfo(via->bottom_layer(), via->top_layer()),
+        *via,
+        &rectangle);
     layout.AddRectangle(rectangle);
   }
   return layout;
 }
 
-void PolyLineInflator::InflateVia(
-    const AbstractVia &via, Rectangle *rectangle) {
-  LOG(INFO) << via;
-  const ViaInfo &via_info = physical_db_.GetViaInfo(via);
-  LOG_IF(FATAL, via_info.width == 0) << "Cannot create 0-width via.";
-  LOG_IF(FATAL, via_info.height == 0) << "Cannot create 0-height via.";
+void PolyLineInflator::InflateVia(const RoutingViaInfo &info,
+                                  const AbstractVia &via,
+                                  Rectangle *rectangle) {
+  InflateVia(info.layer, info.width, info.height, via, rectangle);
+}
 
-  uint64_t half_width = via_info.width / 2;
-  uint64_t half_height = via_info.height / 2;
+void PolyLineInflator::InflateVia(const geometry::Layer layer,
+                                  int64_t width,
+                                  int64_t height,
+                                  const AbstractVia &via,
+                                  Rectangle *rectangle) {
+  LOG(INFO) << via;
+  LOG_IF(FATAL, width == 0) << "Cannot create 0-width via.";
+  LOG_IF(FATAL, height == 0) << "Cannot create 0-height via.";
+
+  uint64_t half_width = width / 2;
+  uint64_t half_height = height / 2;
   *rectangle = Rectangle(via.centre() - Point(half_width, half_height),
-                         via_info.width,
-                         via_info.height);
-  rectangle->set_layer(via_info.layer);
+                         width,
+                         height);
+  rectangle->set_layer(layer);
 }
 
 // So, you could do this in one pass by inflating every central poly_line into
@@ -127,31 +141,32 @@ void PolyLineInflator::InflatePolyLine(
     // Stretch the start of the start, or end of the end segments according to
     // policy:
     if (i == 0) {
-      if (polyline.start_via() != nullptr) {
-        const ViaInfo &via_info = physical_db_.GetViaInfo(
-            *polyline.start_via());
-        // TODO(aryap): This depends on the orientation of the starting segment.
-        uint64_t via_length = std::max(via_info.width, via_info.height);
-        line.StretchStart(via_length / 2 + via_info.overhang);
+      if (polyline.overhang_start() > 0) {
+        line.StretchStart(polyline.overhang_start());
+      //} else if (polyline.start_via() != nullptr) {
+      //  const ViaInfo &via_info = physical_db_.GetViaInfo(
+      //      *polyline.start_via());
+      //  // TODO(aryap): This depends on the orientation of the starting segment.
+      //  uint64_t via_length = std::max(via_info.width, via_info.height);
+      //  line.StretchStart(via_length / 2 + via_info.overhang);
       } else if (polyline.start_port() != nullptr) {
         uint64_t port_length = std::max(polyline.start_port()->Width(),
                                         polyline.start_port()->Height());
         line.StretchStart(port_length / 2);
-      } else if (polyline.overhang_start() > 0) {
-        line.StretchStart(polyline.overhang_start());
       }
     }
     if (i == polyline.segments().size() - 1) {
-      if (polyline.end_via() != nullptr) {
-        const ViaInfo &via_info = physical_db_.GetViaInfo(*polyline.end_via());
-        uint64_t via_length = std::max(via_info.width, via_info.height);
-        line.StretchEnd(via_length / 2 + via_info.overhang);
+      if (polyline.overhang_end() > 0) {
+        line.StretchEnd(polyline.overhang_end());
+      //} else if (polyline.end_via() != nullptr) {
+      //  const ViaInfo &via_info = physical_db_.GetViaInfo(*polyline.end_via());
+      //  uint64_t via_length = std::max(via_info.width, via_info.height);
+      //  line.StretchEnd(via_length / 2 + via_info.overhang);
       } else if (polyline.end_port() != nullptr) {
         uint64_t port_length = std::max(polyline.end_port()->Width(),
                                         polyline.end_port()->Height());
+        // uint64_t overhang = physical_db_.Rules(end_port()...
         line.StretchStart(port_length / 2);
-      } else if (polyline.overhang_end() > 0) {
-        line.StretchEnd(polyline.overhang_end());
       }
     }
 

@@ -17,15 +17,26 @@
 
 namespace bfg {
 
+class RoutingGrid;
+
 class PolyLineInflator {
  public:
   PolyLineInflator(const PhysicalPropertiesDatabase &physical_db)
       : physical_db_(physical_db) {}
 
   // Return a laid-out version of the poly_line diagram.
-  Layout Inflate(const PolyLineCell &poly_line_cell);
+  Layout Inflate(const RoutingGrid &routing_grid,
+                 const PolyLineCell &poly_line_cell);
 
-  void InflateVia(const AbstractVia &via, geometry::Rectangle *rectangle);
+  void InflateVia(const RoutingViaInfo &info,
+                  const AbstractVia &via,
+                  geometry::Rectangle *rectangle);
+  void InflateVia(const geometry::Layer layer,
+                  int64_t width,
+                  int64_t height,
+                  const AbstractVia &via,
+                  geometry::Rectangle *rectangle);
+
   void InflatePolyLine(const geometry::PolyLine &line,
                        geometry::Polygon *polygon);
 

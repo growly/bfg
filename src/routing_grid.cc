@@ -16,9 +16,9 @@
 #include <glog/logging.h>
 
 #include "physical_properties_database.h"
-#include "poly_line.h"
+#include "geometry/poly_line.h"
 #include "routing_grid.h"
-#include "rectangle.h"
+#include "geometry/rectangle.h"
 
 namespace bfg {
 
@@ -27,7 +27,7 @@ void RoutingEdge::set_track(RoutingTrack *track) {
   if (track_ != nullptr) set_layer(track_->layer());
 }
 
-const Layer &RoutingEdge::ExplicitOrTrackLayer() const {
+const geometry::Layer &RoutingEdge::ExplicitOrTrackLayer() const {
   if (track_ != nullptr)
     return track_->layer();
   return layer_;
@@ -52,9 +52,9 @@ RoutingPath::RoutingPath(
 }
 
 void RoutingPath::ToPolyLinesAndVias(
-    const PhysicalPropertiesDatabase &physical_db,
+    const RoutingGrid &routing_grid,
     std::vector<std::unique_ptr<PolyLine>> *polylines,
-    std::vector<std::unique_ptr<Via>> *vias) const {
+    std::vector<std::unique_ptr<AbstractVia>> *vias) const {
   if (Empty())
     return;
 
@@ -64,16 +64,16 @@ void RoutingPath::ToPolyLinesAndVias(
   for (size_t i = 0; i < vertices_.size() - 1; ++i) {
     RoutingVertex *current = vertices_.at(i);
     RoutingEdge *edge = edges_.at(i);
-    const Layer &layer = edge->ExplicitOrTrackLayer();
+    const geometry::Layer &layer = edge->ExplicitOrTrackLayer();
 
-    const RoutingLayerInfo &info = physical_db.GetLayerInfo(layer);
+    const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfo(layer);
 
     if (!last || last->layer() != layer) {
-      Via *via = nullptr;
+      AbstractVia *via = nullptr;
       if (last) {
         // This is a change in layer, so we finish the last line and store it.
         last->AddSegment(current->centre(), info.wire_width);
-        via = new Via(current->centre(), last->layer(), layer);
+        via = new AbstractVia(current->centre(), last->layer(), layer);
         vias->emplace_back(via);
         last->set_end_via(via);
         polylines->push_back(std::move(last));
@@ -210,16 +210,16 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge,
 }
 
 RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
-    const Point &point,
+    const geometry::Point &point,
     RoutingVertex *target) {
   // Candidate position:
-  Point candidate_centre;
+  geometry::Point candidate_centre;
   switch (direction_) {
     case RoutingTrackDirection::kTrackHorizontal:
-      candidate_centre = Point(point.x(), offset_);
+      candidate_centre = geometry::Point(point.x(), offset_);
       break;
     case RoutingTrackDirection::kTrackVertical:
-      candidate_centre = Point(offset_, point.y());
+      candidate_centre = geometry::Point(offset_, point.y());
       break;
     default:
       LOG(FATAL) << "This RoutingTrack has an unrecognised "
@@ -298,7 +298,7 @@ std::string RoutingTrack::Debug() const {
 }
 
 bool RoutingTrack::IsBlockedBetween(
-    const Point &one_end, const Point &other_end) const {
+    const geometry::Point &one_end, const geometry::Point &other_end) const {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
   if (low > high)
@@ -311,7 +311,7 @@ bool RoutingTrack::IsBlockedBetween(
   return false;
 }
 
-int64_t RoutingTrack::ProjectOntoTrack(const Point &point) const {
+int64_t RoutingTrack::ProjectOntoTrack(const geometry::Point &point) const {
   switch (direction_) {
     case RoutingTrackDirection::kTrackHorizontal:
       return point.x();
@@ -325,7 +325,7 @@ int64_t RoutingTrack::ProjectOntoTrack(const Point &point) const {
 }
 
 RoutingTrackBlockage *RoutingTrack::CreateBlockage(
-      const Point &one_end, const Point &other_end) {
+      const geometry::Point &one_end, const geometry::Point &other_end) {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
   if (low > high)
@@ -409,7 +409,7 @@ std::ostream &operator<<(std::ostream &os, const RoutingTrack &track) {
   return os;
 }
 
-uint64_t RoutingVertex::L1DistanceTo(const Point &point) {
+uint64_t RoutingVertex::L1DistanceTo(const geometry::Point &point) {
   // The L-1 norm, or Manhattan distance.
   int64_t dx = point.x() - centre_.x();
   int64_t dy = point.y() - centre_.y();
@@ -431,9 +431,9 @@ uint64_t RoutingVertex::L1DistanceTo(const Point &point) {
 std::pair<std::reference_wrapper<const RoutingLayerInfo>,
           std::reference_wrapper<const RoutingLayerInfo>>
     RoutingGrid::PickHorizontalAndVertical(
-        const Layer &lhs, const Layer &rhs) const {
-  const RoutingLayerInfo &lhs_info = physical_db_.GetLayerInfo(lhs);
-  const RoutingLayerInfo &rhs_info = physical_db_.GetLayerInfo(rhs);
+        const geometry::Layer &lhs, const geometry::Layer &rhs) const {
+  const RoutingLayerInfo &lhs_info = GetRoutingLayerInfo(lhs);
+  const RoutingLayerInfo &rhs_info = GetRoutingLayerInfo(rhs);
   if (lhs_info.direction == RoutingTrackDirection::kTrackHorizontal &&
       rhs_info.direction == RoutingTrackDirection::kTrackVertical) {
     return std::pair<const RoutingLayerInfo&, const RoutingLayerInfo&>(
@@ -450,7 +450,7 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
 }
 
 RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
-    const Point &point, const Layer &layer) {
+    const geometry::Point &point, const geometry::Layer &layer) {
   // A key function of this class is to determine an appropriate starting point
   // on the routing grid for routing to/from an arbitrary point.
   //
@@ -562,7 +562,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 }
 
 std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
-    const Layer &layer) {
+    const geometry::Layer &layer) {
   auto it = available_vertices_by_layer_.find(layer);
   if (it == available_vertices_by_layer_.end()) {
     auto insert_it = available_vertices_by_layer_.insert({layer, {}});
@@ -590,16 +590,17 @@ int64_t modulo(int64_t a, int64_t b) {
 }   // namespace
 
 void RoutingGrid::ConnectLayers(
-    const Layer &first, const Layer &second) {
+    const geometry::Layer &first, const geometry::Layer &second) {
   // One layer has to be horizontal, and one has to be vertical.
   auto split_directions = PickHorizontalAndVertical(first, second);
   const RoutingLayerInfo &horizontal_info = split_directions.first;
   const RoutingLayerInfo &vertical_info = split_directions.second;
 
   // Determine the area over which the grid is valid.
-  Rectangle overlap = horizontal_info.area.OverlapWith(vertical_info.area);
-  LOG(INFO) << "Drawing grid between layers " << horizontal_info.layer << ", "
-            << vertical_info.layer << " over " << overlap;
+  geometry:: Rectangle overlap =
+      horizontal_info.area.OverlapWith(vertical_info.area);
+  LOG(INFO) << "Drawing grid between layers " << horizontal_info.layer
+            << ", " << vertical_info.layer << " over " << overlap;
   
   //                      x_min v   v x_start
   //           |      |      |  +   |      |
@@ -610,14 +611,18 @@ void RoutingGrid::ConnectLayers(
   //  O -----> | ---> | ---> | -+-> | ---> |
   //    offset   pitch          ^ start of grid boundary
   //
-  int64_t x_offset = horizontal_info.offset;
-  int64_t x_pitch = horizontal_info.pitch;
+  int64_t x_offset = vertical_info.offset;
+  int64_t x_pitch = vertical_info.pitch;
+  LOG_IF(FATAL, x_pitch == 0)
+      << "Routing pitch for layer " << vertical_info.layer << " is 0";
   int64_t x_min = overlap.lower_left().x();
   int64_t x_start = x_min + (x_pitch - modulo(x_min - x_offset, x_pitch));
   int64_t x_max = overlap.upper_right().x();
   
   int64_t y_offset = vertical_info.offset;
   int64_t y_pitch = vertical_info.pitch;
+  LOG_IF(FATAL, y_pitch == 0)
+      << "Routing pitch for layer " << horizontal_info.layer << " is 0";
   int64_t y_min = overlap.lower_left().y();
   int64_t y_start = y_min + (y_pitch - modulo(y_min - y_offset, y_pitch));
   int64_t y_max = overlap.upper_right().y();
@@ -642,7 +647,8 @@ void RoutingGrid::ConnectLayers(
 
   for (int64_t y = y_start; y < y_max; y += y_pitch) {
     RoutingTrack *track = new RoutingTrack(
-        horizontal_info.layer, RoutingTrackDirection::kTrackHorizontal, y);
+        horizontal_info.layer,
+        RoutingTrackDirection::kTrackHorizontal, y);
     horizontal_tracks.insert({y, track});
     AddTrackToLayer(track, horizontal_info.layer);
   }
@@ -657,7 +663,7 @@ void RoutingGrid::ConnectLayers(
     for (int64_t y = y_start; y < y_max; y += y_pitch) {
       RoutingTrack *horizontal_track = horizontal_tracks.find(y)->second;
 
-      RoutingVertex *vertex = new RoutingVertex(Point(x, y));
+      RoutingVertex *vertex = new RoutingVertex(geometry::Point(x, y));
       vertex->set_horizontal_track(horizontal_track);
       vertex->set_vertical_track(vertical_track);
 
@@ -688,7 +694,7 @@ void RoutingGrid::ConnectLayers(
             << num_edges << " edges.";
 
   for (auto entry : tracks_by_layer_) {
-    const Layer &layer = entry.first;
+    const geometry::Layer &layer = entry.first;
     for (RoutingTrack *track : entry.second) {
       VLOG(10) << layer << " track: " << *track;
     }
@@ -696,14 +702,15 @@ void RoutingGrid::ConnectLayers(
 }
 
 void RoutingGrid::AddVertex(RoutingVertex *vertex) {
-  for (const Layer &layer : vertex->connected_layers()) {
+  for (const geometry::Layer &layer : vertex->connected_layers()) {
     std::vector<RoutingVertex*> &available = GetAvailableVertices(layer);
     available.push_back(vertex);
   }
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
-bool RoutingGrid::AddRouteBetween(const Port &begin, const Port &end) {
+bool RoutingGrid::AddRouteBetween(
+    const geometry::Port &begin, const geometry::Port &end) {
   RoutingVertex *begin_vertex = GenerateGridVertexForPoint(
       begin.centre(), begin.layer());
   if (!begin_vertex) {
@@ -745,7 +752,7 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
   if (vertex->vertical_track())
     vertex->vertical_track()->RemoveVertex(vertex);
 
-  for (const Layer &layer : vertex->connected_layers()) {
+  for (const geometry::Layer &layer : vertex->connected_layers()) {
     auto it = available_vertices_by_layer_.find(layer);
     if (it == available_vertices_by_layer_.end())
       continue;
@@ -897,7 +904,59 @@ RoutingPath *RoutingGrid::ShortestPath(
   return path;
 }
 
-void RoutingGrid::AddTrackToLayer(RoutingTrack *track, const Layer &layer) {
+void RoutingGrid::AddRoutingViaInfo(
+    const Layer &lhs,
+    const Layer &rhs,
+    const RoutingViaInfo &info) {
+  std::pair<const Layer&, const Layer&> ordered_layers =
+      geometry::OrderFirstAndSecondLayers(lhs, rhs);
+  // Order first and second.
+  const Layer &first = ordered_layers.first;
+  const Layer &second = ordered_layers.second;
+  LOG_IF(FATAL,
+      via_infos_.find(first) != via_infos_.end() &&
+      via_infos_[first].find(second) != via_infos_[first].end())
+      << "Attempt to specify RoutingViaInfo for layers " << first << " and "
+      << second << " again.";
+  via_infos_[first][second] = info;
+}
+
+const RoutingViaInfo &RoutingGrid::GetRoutingViaInfo(
+    const Layer &lhs, const Layer &rhs) const {
+  std::pair<const Layer&, const Layer&> ordered_layers =
+      geometry::OrderFirstAndSecondLayers(lhs, rhs);
+  const Layer &first = ordered_layers.first;
+  const Layer &second = ordered_layers.second;
+
+  const auto first_it = via_infos_.find(first);
+  LOG_IF(FATAL, first_it == via_infos_.end())
+      << "No known connectiion between layer " << first
+      << " and layer " << second;
+  const std::map<Layer, RoutingViaInfo> &inner_map = first_it->second;
+  const auto second_it = inner_map.find(second);
+  LOG_IF(FATAL, second_it == inner_map.end())
+      << "No known connectiion between layer " << first
+      << " and layer " << second;
+  return second_it->second;
+}
+
+void RoutingGrid::AddRoutingLayerInfo(const RoutingLayerInfo &info) {
+  const Layer &layer = info.layer;
+  auto layer_info_it = routing_layer_info_.find(layer);
+  LOG_IF(FATAL, layer_info_it != routing_layer_info_.end())
+      << "Duplicate routing layer info: " << layer;
+  routing_layer_info_.insert({layer, info});
+}
+
+const RoutingLayerInfo &RoutingGrid::GetRoutingLayerInfo(
+    const geometry::Layer &layer) const {
+  auto it = routing_layer_info_.find(layer);
+  LOG_IF(FATAL, it == routing_layer_info_.end())
+      << "Could not find routing information for layer " << layer;
+  return it->second;
+}
+
+void RoutingGrid::AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer) {
   // Create the first vector of tracks.
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end()) {
@@ -910,7 +969,7 @@ void RoutingGrid::AddTrackToLayer(RoutingTrack *track, const Layer &layer) {
 PolyLineCell *RoutingGrid::CreatePolyLineCell() const {
   std::unique_ptr<PolyLineCell> cell(new PolyLineCell());
   for (RoutingPath *path : paths_) {
-    path->ToPolyLinesAndVias(physical_db_, &cell->poly_lines(), &cell->vias());
+    path->ToPolyLinesAndVias(*this, &cell->poly_lines(), &cell->vias());
   }
   return cell.release();
 }

@@ -62,37 +62,8 @@ int main(int argc, char **argv) {
 
   bfg::DesignDatabase design_db;
   bfg::PhysicalPropertiesDatabase &physical_db = design_db.physical_db();
+
   physical_db.LoadTechnology(tech_pb);
-
-  // Some process "properties".
-  bfg::RoutingLayerInfo layer_1;
-  layer_1.layer = physical_db.GetLayer("met1.drawing");
-  layer_1.area = bfg::geometry::Rectangle(
-      bfg::geometry::Point(0, 0), 1000, 1000);
-  layer_1.wire_width = 50;
-  layer_1.offset = 50;
-  layer_1.pitch = 100;
-  layer_1.direction = bfg::RoutingTrackDirection::kTrackVertical;
-
-  bfg::RoutingLayerInfo layer_2;
-  layer_2.layer = physical_db.GetLayer("met2.drawing");
-  layer_2.area = bfg::geometry::Rectangle(
-      bfg::geometry::Point(0, 0), 1000, 1000);
-  layer_2.wire_width = 50;
-  layer_2.offset = 50;
-  layer_2.pitch = 100;
-  layer_2.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-
-  bfg::ViaInfo layer_1_2;
-  layer_1_2.layer = 6;
-  layer_1_2.cost = 1.0;
-  layer_1_2.width = 30;
-  layer_1_2.height = 30;
-  layer_1_2.overhang = 10;
-
-  physical_db.AddRoutingLayerInfo(layer_1);
-  physical_db.AddRoutingLayerInfo(layer_2);
-  physical_db.AddViaInfo(layer_1.layer, layer_2.layer, layer_1_2);
 
   bfg::IntraLayerConstraints intra_constraints = {
     .min_separation = 270,
@@ -120,8 +91,12 @@ int main(int argc, char **argv) {
   intra_constraints = {
     .min_separation = 200,
     .min_width = 140,
+    .min_pitch = 500,
   };
   physical_db.AddRules("met1.drawing", intra_constraints);
+  // Lazy:
+  physical_db.AddRules("met2.drawing", intra_constraints);
+  physical_db.AddRules("met3.drawing", intra_constraints);
 
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = 50,
@@ -132,6 +107,9 @@ int main(int argc, char **argv) {
   physical_db.AddRules("met1.drawing", "licon.drawing", inter_constraints);
   physical_db.AddRules("met1.drawing", "mcon.drawing", inter_constraints);
   physical_db.AddRules("poly.drawing", "licon.drawing", inter_constraints);
+  // Lazy but doesn't make sense:
+  physical_db.AddRules("met2.drawing", "mcon.drawing", inter_constraints);
+  physical_db.AddRules("met3.drawing", "mcon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 40,
     .via_overhang = 40,

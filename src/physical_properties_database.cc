@@ -15,17 +15,6 @@ namespace bfg {
 
 using geometry::Layer;
 
-namespace {
-
-std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
-    const Layer &lhs, const Layer &rhs) {
-  const Layer &first = lhs <= rhs ? lhs : rhs;
-  const Layer &second = rhs >= lhs ? rhs : lhs;
-  return std::pair<const Layer&, const Layer&>(first, second);
-}
-
-}   // namespace
-
 void PhysicalPropertiesDatabase::LoadTechnology(
     const vlsir::tech::Technology &pdk) {
   Layer internal_layer = 0;
@@ -50,25 +39,8 @@ void PhysicalPropertiesDatabase::LoadTechnology(
   }
 }
 
-void PhysicalPropertiesDatabase::AddRoutingLayerInfo(
-    const RoutingLayerInfo &info) {
-  const Layer &layer = info.layer;
-  auto layer_info_it = routing_layer_infos_.find(layer);
-  LOG_IF(FATAL, layer_info_it != routing_layer_infos_.end())
-      << "Duplicate routing layer info: " << layer;
-  routing_layer_infos_.insert({layer, info});
-}
-
-const RoutingLayerInfo &PhysicalPropertiesDatabase::GetRoutingLayerInfo(
-    const Layer &layer) const {
-  auto lhs_info_it = routing_layer_infos_.find(layer);
-  LOG_IF(FATAL, lhs_info_it == routing_layer_infos_.end())
-      << "Could not find routing info for layer: " << layer;
-  return lhs_info_it->second;
-}
-
 const Layer PhysicalPropertiesDatabase::GetLayer(
-    const std::string  &name_and_purpose) const {
+    const std::string &name_and_purpose) const {
   std::vector<std::string> name_parts = absl::StrSplit(name_and_purpose, ".");
 
   LOG_IF(FATAL, name_parts.size() != 2)
@@ -129,42 +101,6 @@ const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
     const std::string &layer_name_and_purpose) const {
   const Layer layer = GetLayer(layer_name_and_purpose);
   return GetLayerInfo(layer);
-}
-
-void PhysicalPropertiesDatabase::AddViaInfo(
-    const Layer &lhs,
-    const Layer &rhs,
-    const ViaInfo &info) {
-  std::pair<const Layer&, const Layer&> ordered_layers =
-      OrderFirstAndSecondLayers(lhs, rhs);
-  // Order first and second.
-  const Layer &first = ordered_layers.first;
-  const Layer &second = ordered_layers.second;
-  LOG_IF(FATAL,
-      via_infos_.find(first) != via_infos_.end() &&
-      via_infos_[first].find(second) != via_infos_[first].end())
-      << "Attempt to specify ViaInfo for layers " << first << " and "
-      << second << " again.";
-  via_infos_[first][second] = info;
-}
-
-const ViaInfo &PhysicalPropertiesDatabase::GetViaInfo(
-    const Layer &lhs, const Layer &rhs) const {
-  std::pair<const Layer&, const Layer&> ordered_layers =
-      OrderFirstAndSecondLayers(lhs, rhs);
-  const Layer &first = ordered_layers.first;
-  const Layer &second = ordered_layers.second;
-
-  const auto first_it = via_infos_.find(first);
-  LOG_IF(FATAL, first_it == via_infos_.end())
-      << "No known connectiion between layer " << first
-      << " and layer " << second;
-  const std::map<Layer, ViaInfo> &inner_map = first_it->second;
-  const auto second_it = inner_map.find(second);
-  LOG_IF(FATAL, second_it == inner_map.end())
-      << "No known connectiion between layer " << first
-      << " and layer " << second;
-  return second_it->second;
 }
 
 void PhysicalPropertiesDatabase::AddRules(
