@@ -33,9 +33,17 @@ const geometry::Layer &RoutingEdge::ExplicitOrTrackLayer() const {
   return layer_;
 }
 
+void RoutingEdge::PrepareForRemoval() {
+  if (first_)
+    first_->RemoveEdge(this);
+  if (second_)
+    second_->RemoveEdge(this);
+  track_ = nullptr;
+}
 
 bool RoutingVertex::RemoveEdge(RoutingEdge *edge) {
-  return edges_.erase(edge) > 0;
+  size_t erased = edges_.erase(edge) > 0;
+  return erased > 0;
 }
 
 RoutingPath::RoutingPath(
@@ -125,14 +133,17 @@ bool RoutingTrackBlockage::Blocks(int64_t low, int64_t high) {
   return Contains(low) || Contains(high) || (low <= start_ && high >= end_);
 }
 
+std::set<RoutingEdge*>::iterator RoutingTrack::RemoveEdge(
+    const std::set<RoutingEdge*>::iterator &pos) {
+  RoutingEdge *edge = *pos;
+  edge->PrepareForRemoval();
+  return edges_.erase(pos);
+}
+
 bool RoutingTrack::RemoveEdge(RoutingEdge *edge, bool and_delete) {
   if (edges_.erase(edge) == 0)
     return false;
 
-  // Remove the edge from the vertices on which it lands.
-  edge->first()->RemoveEdge(edge);
-  edge->second()->RemoveEdge(edge);
-  edge->set_track(nullptr);
   if (and_delete)
     delete edge;
   return true;
@@ -174,9 +185,17 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
     return false;
   }
 
-  for (RoutingEdge *edge : edges_) {
-    if (edge->first() == vertex || edge->second() == vertex)
-      RemoveEdge(edge, true);
+  for (auto it = edges_.begin(); it != edges_.end(); ) {
+    RoutingEdge *edge = *it;
+    if (edge->first() == vertex || edge->second() == vertex) {
+      VLOG(10) << "Removing edge " << edge
+               << " because it includes vertex " << vertex;
+      edge->PrepareForRemoval();
+      delete edge;
+      it = edges_.erase(it);
+    } else {
+      ++it;
+    }
   }
   return true;
 }
@@ -194,11 +213,14 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge,
   RemoveEdge(edge, false);
 
   // Remove other edges that are blocked by this.
-  for (RoutingEdge *edge : edges_) {
+  for (auto it = edges_.begin(); it != edges_.end(); ) {
+    RoutingEdge *edge = *it;
     if (IsBlockedBetween(edge->first()->centre(), edge->second()->centre())) {
       // Ownership of other blocked edges is not transferred; they are just
       // removed.
-      RemoveEdge(edge, true);
+      it = RemoveEdge(it);
+    } else {
+      ++it;
     }
   }
 
@@ -238,8 +260,8 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
 
   RoutingVertex *bridging_vertex = new RoutingVertex(candidate_centre);
   if (!AddVertex(bridging_vertex)) {
-    LOG(FATAL) << "I thought we made sure this couldn't happen already.";
     delete bridging_vertex;
+    LOG(FATAL) << "I thought we made sure this couldn't happen already.";
     return nullptr;
   }
 
@@ -659,9 +681,11 @@ void RoutingGrid::ConnectLayers(
     // This (and the horizontal one) must exist by now, so we can make this
     // fatal.
     RoutingTrack *vertical_track = vertical_tracks.find(x)->second;
+    LOG_IF(FATAL, !vertical_track) << "Vertical routing track is nullptr";
 
     for (int64_t y = y_start; y < y_max; y += y_pitch) {
       RoutingTrack *horizontal_track = horizontal_tracks.find(y)->second;
+      LOG_IF(FATAL, !horizontal_track) << "Horizontal routing track is nullptr";
 
       RoutingVertex *vertex = new RoutingVertex(geometry::Point(x, y));
       vertex->set_horizontal_track(horizontal_track);
@@ -752,6 +776,20 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
   if (vertex->vertical_track())
     vertex->vertical_track()->RemoveVertex(vertex);
 
+  // Check for instances of this vertex in off-grid edges:
+  for (auto it = off_grid_edges_.begin(); it != off_grid_edges_.end();) {
+    RoutingEdge *edge = *it;
+    if (edge->first() == vertex || edge->second() == vertex) {
+      VLOG(10) << "Removing off-grid edge " << edge
+               << " because it includes vertex " << vertex;
+      edge->PrepareForRemoval();
+      delete edge;
+      it = off_grid_edges_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     auto it = available_vertices_by_layer_.find(layer);
     if (it == available_vertices_by_layer_.end())
@@ -768,7 +806,7 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
   auto pos = std::find(vertices_.begin(), vertices_.end(), vertex);
   LOG_IF(FATAL, pos == vertices_.end())
       << "Did not find vertex we're removing in RoutingGrid list of "
-      << "vertices_: " << vertex;
+      << "vertices: " << vertex;
   vertices_.erase(pos);
   if (and_delete)
     delete vertex;

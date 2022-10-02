@@ -181,7 +181,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
       point_pb->set_y(point.y());
     }
   }
-  LOG_IF(FATAL, !ports_.empty()) << "ports not yet written";
+  LOG_IF(WARNING, !ports_.empty()) << "vlsir does not support ports yet";
   for (const auto &instance : instances_) {
     ::vlsir::raw::Instance *instance_pb = layout_pb.add_instances();
     instance_pb->set_name(instance->name());

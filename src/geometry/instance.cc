@@ -84,5 +84,14 @@ const Rectangle Instance::GetBoundingBox() const {
   return rotated;
 }
 
+void Instance::GeneratePorts() {
+  for (const auto &port : template_layout_->ports()) {
+    const std::string &net = port->net();
+    Port *instance_port = new Port(*port);
+    instance_port->Translate(lower_left_);
+    instance_ports_[net].reset(instance_port);
+  }
+}
+
 }  // namespace geometry
 }  // namespace bfg

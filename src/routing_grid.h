@@ -36,7 +36,7 @@ class RoutingVertex {
  public:
   RoutingVertex(const geometry::Point &centre)
       : available_(true), horizontal_track_(nullptr), vertical_track_(nullptr),
-        centre_(centre) {}
+        contextual_index_(-1), centre_(centre) {}
 
   void AddEdge(RoutingEdge *edge) { edges_.insert(edge); }
   bool RemoveEdge(RoutingEdge *edge);
@@ -93,6 +93,8 @@ class RoutingEdge {
       first_(first),
       second_(second),
       cost_(1.0) {}
+
+  void PrepareForRemoval();
 
   void set_cost(double cost) { cost_ = cost; }
   double cost() const { return cost_; }
@@ -234,6 +236,9 @@ class RoutingTrack {
   // successful and false if no edge could be added (it was blocked).
   bool MaybeAddEdgeBetween(RoutingVertex *one, RoutingVertex *the_other);
 
+  std::set<RoutingEdge*>::iterator RemoveEdge(
+      const std::set<RoutingEdge*>::iterator &pos);
+
   bool RemoveEdge(RoutingEdge *edge, bool and_delete);
 
   // Adds the given vertex to this track, but does not take ownership of it.
@@ -327,15 +332,14 @@ class RoutingGrid {
 
   void AddVertex(RoutingVertex *vertex);
 
-  void DeleteEdge(RoutingEdge *edge);
   bool RemoveVertex(RoutingVertex *vertex, bool and_delete);
 
   // Caller takes ownership.
   PolyLineCell *CreatePolyLineCell() const;
 
   void AddRoutingViaInfo(const geometry::Layer &lhs,
-                  const geometry::Layer &rhs,
-                  const RoutingViaInfo &info);
+                         const geometry::Layer &rhs,
+                         const RoutingViaInfo &info);
 
   const RoutingViaInfo &GetRoutingViaInfo(const AbstractVia &via) const {
     return GetRoutingViaInfo(via.bottom_layer(), via.top_layer());

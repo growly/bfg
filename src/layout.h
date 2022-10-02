@@ -55,9 +55,10 @@ class Layout : public geometry::Manipulable {
     polygons_.emplace_back(copy);
     return copy;
   }
-  void AddInstance(const geometry::Instance &instance) {
+  geometry::Instance *AddInstance(const geometry::Instance &instance) {
     geometry::Instance *copy = new geometry::Instance(instance);
     instances_.emplace_back(copy);
+    return copy;
   }
   void AddPort(const geometry::Port &port) {
     geometry::Port *copy = new geometry::Port(port);

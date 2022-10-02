@@ -19,6 +19,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
   // Let's assume N = 16 for now.
+  std::vector<geometry::Instance*> flip_flops;
   for (size_t i = 0; i < 4; i++) {
     for (size_t j = 0; j < 4; j++) {
       std::string instance_name = absl::StrFormat("lut_dfxtp_%d_%d", i, j);
@@ -34,7 +35,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       int64_t width = static_cast<int64_t>(bounding_box.Width());
       int64_t x_pos = i * width;
       int64_t y_pos = j * height;
-      LOG(INFO) << "Placing " << instance_name;
+      LOG(INFO) << "placing " << instance_name;
       geometry::Instance geo_instance(
           cell->layout(), geometry::Point { x_pos, y_pos });
       geo_instance.set_name(instance_name);
@@ -42,7 +43,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         geo_instance.set_rotation_clockwise_degrees(180);
         geo_instance.Translate(geometry::Point(width, 0));
       }
-      layout->AddInstance(geo_instance);
+      geometry::Instance *installed = layout->AddInstance(geo_instance);
+      flip_flops.push_back(installed);
     }
   }
 
@@ -51,7 +53,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   // Some process "properties".
   bfg::RoutingLayerInfo vertical_routing;
-  vertical_routing.layer = db.GetLayer("met2.drawing");
+  vertical_routing.layer = db.GetLayer("met1.drawing");
   const IntraLayerConstraints vertical_rules = db.Rules("met2.drawing");
   vertical_routing.area = ff_bounds;
   vertical_routing.wire_width = vertical_rules.min_width;
@@ -60,7 +62,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   vertical_routing.direction = bfg::RoutingTrackDirection::kTrackVertical;
 
   bfg::RoutingLayerInfo horizontal_routing;
-  horizontal_routing.layer = db.GetLayer("met3.drawing");
+  horizontal_routing.layer = db.GetLayer("met2.drawing");
   const IntraLayerConstraints horizontal_rules =
       db.Rules("met3.drawing");
   horizontal_routing.area = ff_bounds;
@@ -85,6 +87,21 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       vertical_routing.layer, horizontal_routing.layer, routing_via_info);
   routing_grid.ConnectLayers(vertical_routing.layer, horizontal_routing.layer);
 
+  for (size_t i = 0; i < flip_flops.size(); ++i) {
+    geometry::Instance *instance = flip_flops[i];
+    LOG(INFO) << "adding routes for flip flop " << i;
+    if (i == flip_flops.size() - 1)
+      continue;
+    geometry::Instance *next_in_chain = flip_flops[i+1];
+    geometry::Port *start = instance->GetInstancePort("Q");
+    // HACK HACK HACK
+    start->set_layer(db.GetLayer("met1.drawing"));
+    geometry::Port *end = next_in_chain->GetInstancePort("D");
+    end->set_layer(db.GetLayer("met1.drawing"));
+    routing_grid.AddRouteBetween(*start, *end);
+  }
+
+
   bfg::atoms::Sky130Mux::Parameters mux_params;
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);
   bfg::Cell *mux_cell = mux.GenerateIntoDatabase("mux_template");
@@ -93,16 +110,20 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   int64_t y_pos = static_cast<int64_t>(ff_bounds.Height());
 
   circuit->AddInstance("mux_0", mux_cell->circuit());
-  geometry::Instance geo_instance(
-      mux_cell->layout(), geometry::Point { x_pos + 500, 0 });
-  geo_instance.set_name("mux_0");
-  layout->AddInstance(geo_instance);
+  {
+    geometry::Instance geo_instance(
+        mux_cell->layout(), geometry::Point { x_pos + 500, 0 });
+    geo_instance.set_name("mux_0");
+    layout->AddInstance(geo_instance);
+  }
 
   circuit->AddInstance("mux_1", mux_cell->circuit());
-  geo_instance = geometry::Instance(
-      mux_cell->layout(), geometry::Point { x_pos + 500, y_pos / 2 });
-  geo_instance.set_name("mux_1");
-  layout->AddInstance(geo_instance);
+  {
+    geometry::Instance geo_instance(
+        mux_cell->layout(), geometry::Point { x_pos + 500, y_pos / 2 });
+    geo_instance.set_name("mux_1");
+    layout->AddInstance(geo_instance);
+  }
 
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());

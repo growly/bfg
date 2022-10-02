@@ -1,9 +1,13 @@
 #ifndef GEOMETRY_INSTANCE_H_
 #define GEOMETRY_INSTANCE_H_
 
+#include <unordered_map>
 #include <string>
 
+#include <glog/logging.h>
+
 #include "point.h"
+#include "port.h"
 #include "rectangle.h"
 
 namespace bfg {
@@ -19,7 +23,18 @@ class Instance : public Manipulable {
       : template_layout_(template_layout),
         lower_left_(lower_left),
         reflect_vertical_(false),
-        rotation_clockwise_degrees_(0) {}
+        rotation_clockwise_degrees_(0) {
+    GeneratePorts();
+  }
+
+  Instance(const Instance &other)
+      : name_(other.name_),
+        template_layout_(other.template_layout_),
+        lower_left_(other.lower_left_),
+        reflect_vertical_(other.reflect_vertical_),
+        rotation_clockwise_degrees_(other.rotation_clockwise_degrees_) {
+    GeneratePorts();
+  }
 
   void MirrorY() override;
   void MirrorX() override;
@@ -29,6 +44,14 @@ class Instance : public Manipulable {
   void ResetOrigin() override;
 
   const Rectangle GetBoundingBox() const;
+
+  Port *GetInstancePort(const std::string &name) {
+    auto it = instance_ports_.find(name);
+    LOG_IF(FATAL, it == instance_ports_.end())
+        << "No such instance port: " << name << " on instance "
+        << name_;
+    return it->second.get();
+  }
 
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
@@ -49,15 +72,24 @@ class Instance : public Manipulable {
     rotation_clockwise_degrees_;
   }
 
+  const std::unordered_map<
+      std::string, std::unique_ptr<Port>> &instance_ports() {
+    return instance_ports_;
+  }
+
  private:
+  void GeneratePorts();
+
   std::string name_;
 
   // This is the template cell.
-  bfg::Layout *template_layout_;
+  bfg::Layout *const template_layout_;
 
   Point lower_left_;
   bool reflect_vertical_;
   int32_t rotation_clockwise_degrees_;
+
+  std::unordered_map<std::string, std::unique_ptr<Port>> instance_ports_;
 };
 
 }  // namespace geometry
