@@ -53,11 +53,12 @@ void Rectangle::ResetOrigin() {
 }
 
 Rectangle Rectangle::BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) {
-  // LOG(INFO) << "unrotated bounding box: " << unrotated;
   Point lower_left = lower_left_ - about;
   Point upper_left = UpperLeft() - about;
   Point upper_right = upper_right_ - about;
   Point lower_right = LowerRight() - about;
+
+  LOG(INFO) << "unrotated: " << Rectangle(lower_left_, upper_right_);
 
   lower_left.Rotate(degrees_ccw);
   upper_left.Rotate(degrees_ccw);
@@ -76,7 +77,8 @@ Rectangle Rectangle::BoundingBoxIfRotated(const Point &about, int32_t degrees_cc
 
   Rectangle rotated = Rectangle(Point(min_x, min_y) + about,
                                 Point(max_x, max_y) + about);
-  // LOG(INFO) << "rotated bounding box: " << rotated;
+  LOG(INFO) << "rotation: " << degrees_ccw;
+  LOG(INFO) << "rotated: " << rotated;
   return rotated;
 }
 
@@ -89,5 +91,12 @@ std::ostream &operator<<(
      << " " << rectangle.upper_right() << "]";
   return os;
 }
+
+bool operator==(
+    const geometry::Rectangle &lhs, const geometry::Rectangle &rhs) {
+  return lhs.lower_left() == rhs.lower_left()
+      && lhs.upper_right() == rhs.upper_right();
+}
+
 
 }  // namespace bfg

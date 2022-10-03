@@ -32,6 +32,13 @@ TEST(RectangleTest, Centre) {
   // EXPECT_EQ(Point(250, 325), rect_a.centre());
 }
 
+TEST(Rectangle, BoundingBoxIfRotated) {
+  Rectangle initial(Point(1, 1), Point(2, 2));
+  Rectangle rotated = initial.BoundingBoxIfRotated(
+      Point(0, 0), 180);
+  EXPECT_TRUE(Rectangle(Point(-2, -2), Point(-1, -1)) == rotated);
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

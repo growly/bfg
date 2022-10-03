@@ -891,6 +891,7 @@ RoutingPath *RoutingGrid::ShortestPath(
   std::priority_queue<RoutingVertex*,
                       std::vector<RoutingVertex*>,
                       decltype(vertex_sort_fn)> queue(vertex_sort_fn);
+  bool seen[vertices_.size()];
 
   size_t begin_index = begin->contextual_index();
   size_t end_index = end->contextual_index();
@@ -906,9 +907,11 @@ RoutingPath *RoutingGrid::ShortestPath(
     if (i == begin_index)
       continue;
     cost[i] = std::numeric_limits<double>::max();
+    seen[i] = false;
   }
 
   queue.push(begin);
+  seen[begin_index] = true;
 
   while (!queue.empty()) {
     // TODO(aryap): CPU profiler says this is slow:
@@ -936,6 +939,10 @@ RoutingPath *RoutingGrid::ShortestPath(
           edge->first() == current ? edge->second() : edge->first();
 
       size_t next_index = next->contextual_index();
+
+      if (seen[next_index])
+        continue;
+
       double next_cost = cost[current_index] + edge->cost() + next->cost();
 
       if (next_cost < cost[next_index]) {
@@ -944,6 +951,7 @@ RoutingPath *RoutingGrid::ShortestPath(
 
         // Since we now have a faster way to get to this edge, we should visit it.
         queue.push(next);
+        seen[next_index] = true;
       }
     }
   }

@@ -20,22 +20,27 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
+  constexpr size_t kNumRows = 4;
+  constexpr size_t kNumColumns = 4;
+
   // Let's assume N = 16 for now.
   std::vector<geometry::Instance*> flip_flops;
-  for (size_t j = 0; j < 4; j++) {
-    for (size_t i = 0; i < 4; i++) {
+  for (size_t j = 0; j < kNumRows; j++) {
+    for (size_t i = 0; i < kNumColumns; i++) {
       std::string instance_name = absl::StrFormat("lut_dfxtp_%d_%d", i, j);
       std::string cell_name = absl::StrCat(instance_name, "_template");
       bfg::atoms::Sky130Dfxtp::Parameters params;
       bfg::atoms::Sky130Dfxtp generator(params, design_db_);
       bfg::Cell *cell = generator.Generate();
       cell->set_name(cell_name);
+      cell->layout()->ResetOrigin();
       design_db_->ConsumeCell(cell);
       circuit->AddInstance(instance_name, cell->circuit());
       geometry::Rectangle bounding_box = cell->layout()->GetBoundingBox();
       int64_t height = static_cast<int64_t>(bounding_box.Height());
       int64_t width = static_cast<int64_t>(bounding_box.Width());
-      int64_t x_pos = i * width;
+      // For every other row, place backwards from the end.
+      int64_t x_pos = (j % 2 != 0 ? kNumColumns - 1 - i : i) * width;
       int64_t y_pos = j * height;
       LOG(INFO) << "placing " << instance_name;
       geometry::Instance geo_instance(
@@ -43,7 +48,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       geo_instance.set_name(instance_name);
       if (j % 2 != 0) {
         geo_instance.set_rotation_clockwise_degrees(180);
-        geo_instance.Translate(geometry::Point(width, 0));
+        // FIXME(aryap): We want to move this so that the non-overlappable
+        // parts of the cell are tiled. There should be an optional
+        // non-overlappable bounding box that may be the same as the geometric
+        // bounding box but isn't necessarily so. (This coincides with the
+        // areaid.standardcell layer in sky130.)
+        geo_instance.Translate(geometry::Point(width, height));
       }
       geometry::Instance *installed = layout->AddInstance(geo_instance);
       flip_flops.push_back(installed);
@@ -56,7 +66,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   geometry::Rectangle ff_bounds = layout->GetBoundingBox();
   LOG(INFO) << ff_bounds;
 
-  // Some process "properties".
+  // Set every property the RoutingGrid needs. TODO(aryap): Probably need a
+  // simpler interface to this.
   bfg::RoutingLayerInfo vertical_routing;
   vertical_routing.layer = db.GetLayer("met1.drawing");
   const IntraLayerConstraints vertical_rules = db.Rules("met2.drawing");
@@ -102,8 +113,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // HACK HACK HACK
     start->set_layer(db.GetLayer("met1.drawing"));
     geometry::Port *end = next_in_chain->GetInstancePort("D");
+    // HACK HACK HACK
     end->set_layer(db.GetLayer("met1.drawing"));
     routing_grid.AddRouteBetween(*start, *end);
+    LOG(INFO) << i << " start port: " << *start << " end: " << *end;
   }
 
   std::unique_ptr<bfg::Layout> grid_layout(routing_grid.GenerateLayout());

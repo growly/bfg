@@ -93,6 +93,9 @@ std::ostream &operator<<(
     std::ostream &os,
     const geometry::Rectangle &rectangle);
 
+bool operator==(
+    const geometry::Rectangle &lhs, const geometry::Rectangle &rhs);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_RECTANGLE_H_

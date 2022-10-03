@@ -98,7 +98,7 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
   }
 
   for (const auto &instance : instances_) {
-    LOG(INFO) << "computing bounding box for " << instance->name();
+    LOG(INFO) << "Computing bounding box for " << instance->name();
     geometry::Rectangle bounding_box = instance->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
     const Point &upper_right = bounding_box.upper_right();
