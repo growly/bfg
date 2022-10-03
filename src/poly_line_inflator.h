@@ -25,8 +25,8 @@ class PolyLineInflator {
       : physical_db_(physical_db) {}
 
   // Return a laid-out version of the poly_line diagram.
-  Layout Inflate(const RoutingGrid &routing_grid,
-                 const PolyLineCell &poly_line_cell);
+  Layout *Inflate(const RoutingGrid &routing_grid,
+                  const PolyLineCell &poly_line_cell);
 
   void InflateVia(const RoutingViaInfo &info,
                   const AbstractVia &via,

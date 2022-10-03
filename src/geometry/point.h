@@ -41,6 +41,8 @@ class Point : public Manipulable {
   void Rotate(double theta_radians);
   void Rotate(int32_t degrees_counter_clockwise);
 
+  double L2DistanceTo(const geometry::Point &other) const;
+
   Point &operator+=(const Point &other);
 
  private:

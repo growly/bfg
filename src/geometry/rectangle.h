@@ -51,6 +51,8 @@ class Rectangle : public Shape {
   void FlipVertical() override {}   // No-op for rectangle.
   void MoveLowerLeftTo(const Point &point) override { Translate(point); }
 
+  Rectangle BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw);
+
   // TODO(aryap): To be able to reotate arbitrarily, we have to store the
   // upper_left and lower_right values explicitly OR store the rotation angle so
   // that we can compute these when asked.

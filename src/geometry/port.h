@@ -40,7 +40,7 @@ class Port : public Rectangle {
                 net) {}
 
   Port(const Point &lower_left, const Point &upper_right,
-         const Layer &layer, const std::string &net)
+       const Layer &layer, const std::string &net)
     : Rectangle(lower_left, upper_right, layer, net) {}
 
   Port(const Port &other)

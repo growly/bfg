@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
   intra_constraints = {
     .min_separation = 200,
     .min_width = 140,
-    .min_pitch = 500,
+    .min_pitch = 180,
   };
   physical_db.AddRules("met1.drawing", intra_constraints);
   // Lazy:

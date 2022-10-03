@@ -85,9 +85,17 @@ const Rectangle Instance::GetBoundingBox() const {
 }
 
 void Instance::GeneratePorts() {
+  int32_t rotation_ccw_degrees = (
+      360 - (rotation_clockwise_degrees_ % 360)) % 360;
+  instance_ports_.clear();
   for (const auto &port : template_layout_->ports()) {
     const std::string &net = port->net();
     Port *instance_port = new Port(*port);
+    Rectangle rotated_bounds =
+        instance_port->BoundingBoxIfRotated(Point(0, 0), rotation_ccw_degrees);
+    instance_port->set_lower_left(rotated_bounds.lower_left());
+    instance_port->set_upper_right(rotated_bounds.upper_right());
+    // Move to where the instance is supposed to sit:
     instance_port->Translate(lower_left_);
     instance_ports_[net].reset(instance_port);
   }

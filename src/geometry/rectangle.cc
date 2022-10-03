@@ -1,5 +1,7 @@
 #include "rectangle.h"
 
+#include "point.h"
+
 #include <algorithm>
 #include <glog/logging.h>
 
@@ -48,6 +50,34 @@ void Rectangle::Translate(const Point &offset) {
 void Rectangle::ResetOrigin() {
   Rectangle bounding_box = GetBoundingBox();
   Translate(-bounding_box.lower_left());
+}
+
+Rectangle Rectangle::BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) {
+  // LOG(INFO) << "unrotated bounding box: " << unrotated;
+  Point lower_left = lower_left_ - about;
+  Point upper_left = UpperLeft() - about;
+  Point upper_right = upper_right_ - about;
+  Point lower_right = LowerRight() - about;
+
+  lower_left.Rotate(degrees_ccw);
+  upper_left.Rotate(degrees_ccw);
+  upper_right.Rotate(degrees_ccw);
+  lower_right.Rotate(degrees_ccw);
+
+  std::vector x_points = {
+      lower_left.x(), upper_left.x(), upper_right.x(), lower_right.x() };
+  std::vector y_points = {
+      lower_left.y(), upper_left.y(), upper_right.y(), lower_right.y() };
+
+  int64_t min_x = *std::min_element(x_points.begin(), x_points.end());
+  int64_t max_x = *std::max_element(x_points.begin(), x_points.end());
+  int64_t min_y = *std::min_element(y_points.begin(), y_points.end());
+  int64_t max_y = *std::max_element(y_points.begin(), y_points.end());
+
+  Rectangle rotated = Rectangle(Point(min_x, min_y) + about,
+                                Point(max_x, max_y) + about);
+  // LOG(INFO) << "rotated bounding box: " << rotated;
+  return rotated;
 }
 
 }  // namespace geometry

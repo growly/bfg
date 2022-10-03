@@ -22,10 +22,10 @@ using geometry::Polygon;
 using geometry::Point;
 using geometry::Rectangle;
 
-Layout PolyLineInflator::Inflate(
+Layout *PolyLineInflator::Inflate(
     const RoutingGrid &routing_grid,
     const PolyLineCell &poly_line_cell) {
-  Layout layout(physical_db_);
+  std::unique_ptr<Layout> layout(new Layout(physical_db_));
   for (const auto &poly_line : poly_line_cell.poly_lines()) {
     LOG_IF(FATAL, !poly_line) << "poly_line is nullptr?!";
 
@@ -36,7 +36,8 @@ Layout PolyLineInflator::Inflate(
     auto bb = polygon.GetBoundingBox();
     LOG(INFO) << polygon << " bounded by ll= " << bb.lower_left()
               << " ur= " << bb.upper_right();
-    layout.AddPolygon(polygon);
+    layout->set_active_layer(poly_line->layer());
+    layout->AddPolygon(polygon);
   }
   for (const auto &via : poly_line_cell.vias()) {
     Rectangle rectangle;
@@ -44,9 +45,10 @@ Layout PolyLineInflator::Inflate(
         routing_grid.GetRoutingViaInfo(via->bottom_layer(), via->top_layer()),
         *via,
         &rectangle);
-    layout.AddRectangle(rectangle);
+    layout->set_active_layer(rectangle.layer());
+    layout->AddRectangle(rectangle);
   }
-  return layout;
+  return layout.release();
 }
 
 void PolyLineInflator::InflateVia(const RoutingViaInfo &info,

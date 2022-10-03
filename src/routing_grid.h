@@ -1,6 +1,7 @@
 #ifndef ROUTING_GRID_H_
 #define ROUTING_GRID_H_
 
+#include "layout.h"
 #include "geometry/layer.h"
 #include "physical_properties_database.h"
 #include "geometry/point.h"
@@ -89,10 +90,13 @@ class RoutingEdge {
   RoutingEdge(RoutingVertex *first, RoutingVertex *second)
     : available_(true),
       track_(nullptr),
-      layer_(0),
+      layer_(-1),
       first_(first),
       second_(second),
-      cost_(1.0) {}
+      cost_(-1.0) {
+    ApproximateCost();
+  }
+  ~RoutingEdge() {}
 
   void PrepareForRemoval();
 
@@ -116,6 +120,8 @@ class RoutingEdge {
   std::vector<RoutingVertex*> VertexList() const;
 
  private:
+  void ApproximateCost();
+
   bool available_;
 
   RoutingTrack *track_;
@@ -336,6 +342,8 @@ class RoutingGrid {
 
   // Caller takes ownership.
   PolyLineCell *CreatePolyLineCell() const;
+
+  Layout *GenerateLayout() const;
 
   void AddRoutingViaInfo(const geometry::Layer &lhs,
                          const geometry::Layer &rhs,

@@ -48,6 +48,12 @@ void Point::Rotate(double theta_radians) {
   y_ = std::llround(x * std::sin(theta_radians) + y * std::cos(theta_radians));
 }
 
+double Point::L2DistanceTo(const geometry::Point &other) const {
+  double dx = x_ - other.x_;
+  double dy = y_ - other.y_;
+  return std::pow(dx, 2.0) + std::pow(dy, 2.0);
+}
+
 }  // namespace geometry
 
 std::ostream &operator<<(std::ostream &os, const geometry::Point &point) {

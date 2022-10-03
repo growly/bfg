@@ -3,6 +3,8 @@
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_format.h>
 
+#include "../poly_line_cell.h"
+#include "../poly_line_inflator.h"
 #include "../routing_grid.h"
 #include "../layout.h"
 #include "../geometry/rectangle.h"
@@ -20,8 +22,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   // Let's assume N = 16 for now.
   std::vector<geometry::Instance*> flip_flops;
-  for (size_t i = 0; i < 4; i++) {
-    for (size_t j = 0; j < 4; j++) {
+  for (size_t j = 0; j < 4; j++) {
+    for (size_t i = 0; i < 4; i++) {
       std::string instance_name = absl::StrFormat("lut_dfxtp_%d_%d", i, j);
       std::string cell_name = absl::StrCat(instance_name, "_template");
       bfg::atoms::Sky130Dfxtp::Parameters params;
@@ -45,6 +47,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       }
       geometry::Instance *installed = layout->AddInstance(geo_instance);
       flip_flops.push_back(installed);
+
+      // TODO(aryap): Figure out where to put this so the API doesn't suck so much.
+      installed->GeneratePorts();
     }
   }
 
@@ -64,7 +69,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   bfg::RoutingLayerInfo horizontal_routing;
   horizontal_routing.layer = db.GetLayer("met2.drawing");
   const IntraLayerConstraints horizontal_rules =
-      db.Rules("met3.drawing");
+      db.Rules("met2.drawing");
   horizontal_routing.area = ff_bounds;
   horizontal_routing.wire_width = horizontal_rules.min_width;
   horizontal_routing.offset = 50;
@@ -101,6 +106,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     routing_grid.AddRouteBetween(*start, *end);
   }
 
+  std::unique_ptr<bfg::Layout> grid_layout(routing_grid.GenerateLayout());
+  layout->AddLayout(*grid_layout, "routing");
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);

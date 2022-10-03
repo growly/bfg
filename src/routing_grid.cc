@@ -9,12 +9,13 @@
 #include <ostream>
 #include <queue>
 #include <utility>
-#include <utility>
 #include <vector>
 
 #include <absl/strings/str_join.h>
 #include <glog/logging.h>
 
+#include "poly_line_cell.h"
+#include "poly_line_inflator.h"
 #include "physical_properties_database.h"
 #include "geometry/poly_line.h"
 #include "routing_grid.h"
@@ -39,6 +40,14 @@ void RoutingEdge::PrepareForRemoval() {
   if (second_)
     second_->RemoveEdge(this);
   track_ = nullptr;
+}
+
+// TODO(aryap): This is a pretty interesting problem to solve:
+void RoutingEdge::ApproximateCost() {
+  // Proportional to the square of the distance.
+  cost_ = std::log(first_->centre().L2DistanceTo(second_->centre()));
+  // LOG(INFO) << "edge " << first_->centre() << " to " << second_->centre()
+  //           << " cost is " << cost_;
 }
 
 bool RoutingVertex::RemoveEdge(RoutingEdge *edge) {
@@ -155,6 +164,7 @@ bool RoutingTrack::MaybeAddEdgeBetween(
     return false;
   RoutingEdge *edge = new RoutingEdge(one, the_other);
   edge->set_track(this);
+  edge->set_layer(layer_);
   edge->first()->AddEdge(edge);
   edge->second()->AddEdge(edge);
   edges_.insert(edge);
@@ -219,6 +229,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge,
       // Ownership of other blocked edges is not transferred; they are just
       // removed.
       it = RemoveEdge(it);
+      delete edge;
     } else {
       ++it;
     }
@@ -539,6 +550,17 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     RoutingVertex *candidate = costed_vertices.back().second;
     costed_vertices.pop_back();
 
+    if (candidate->vertical_track() == nullptr) {
+      // FIXME(aryap): Is this a problem?
+      VLOG(10) << "Cannot use vertex " << candidate
+               << " as candidate because vertical track is nullptr";
+      continue;
+    } else if (candidate->horizontal_track() == nullptr) {
+      VLOG(1) << "Cannot use vertex " << candidate
+              << " as candidate because horizontal track is nullptr";
+      continue;
+    }
+
     // Try putting it on the vertical track and then horizontal track.
     std::vector<RoutingTrack*> tracks = {
       candidate->vertical_track(), candidate->horizontal_track()};
@@ -784,6 +806,7 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
                << " because it includes vertex " << vertex;
       edge->PrepareForRemoval();
       delete edge;
+      LOG(INFO) << "deleted in routinggrid::removevertex";
       it = off_grid_edges_.erase(it);
     } else {
       ++it;
@@ -818,6 +841,12 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
   // Remove edges from the track which owns them.
   std::set<RoutingVertex*> unusable_vertices;
   for (RoutingEdge *edge : path->edges()) {
+    // Remove edges from the off-grid collection if they are contained there
+    // (they may not be!), since they are owned by the path now. If they are
+    // removed from that collection by RoutingGrid::RemoveVertex they will also
+    // be deleted, but we just want to transfer ownership.
+    off_grid_edges_.erase(edge);
+
     if (edge->track() != nullptr)
       edge->track()->MarkEdgeAsUsed(edge, &unusable_vertices);
   }
@@ -843,14 +872,25 @@ RoutingPath *RoutingGrid::ShortestPath(
   }
 
   std::vector<double> cost(vertices_.size());
+  // TODO(aryap): This is marginally faster?
+  //double cost[vertices_.size()];
 
   // Recording the edge to take back to the start that makes the shortest path,
   // as well as the vertex it leads to. If RoutingEdge* is nullptr then this is
   // invalid.
   std::vector<std::pair<size_t, RoutingEdge*>> prev(vertices_.size());
 
+  auto vertex_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
+    // We want the lowest value at the back of the array.
+    // But in a priority_queue, we want the highest value at the start of the
+    // collection so that the least element is popped first (because that's how
+    // priorit_queue works).
+    return cost[a->contextual_index()] > cost[b->contextual_index()];
+  };
   // All vertices sorted according to their cost.
-  std::vector<RoutingVertex*> queue;
+  std::priority_queue<RoutingVertex*,
+                      std::vector<RoutingVertex*>,
+                      decltype(vertex_sort_fn)> queue(vertex_sort_fn);
 
   size_t begin_index = begin->contextual_index();
   size_t end_index = end->contextual_index();
@@ -868,19 +908,19 @@ RoutingPath *RoutingGrid::ShortestPath(
     cost[i] = std::numeric_limits<double>::max();
   }
 
-  queue.push_back(begin);
+  queue.push(begin);
 
   while (!queue.empty()) {
-    // Have to resort the queue so that new cost changes take effect. (The
-    // queue is already mostly sorted so an insertion sort will be fast.)
-    std::sort(queue.begin(), queue.end(),
-              [&](RoutingVertex *a, RoutingVertex *b) {
-      // We want the lowest value at the back of the array.
-      return cost[a->contextual_index()] > cost[b->contextual_index()];
-    });
+    // TODO(aryap): CPU profiler says this is slow:
+    //  CPUPROFILE=bfg.prof LD_PRELOAD="/usr/local/lib/libprofiler.so" ./bfg
+    //  pprof --gv bfg bfg.prof
+    // 
+    // Have to re-sort the queue so that new cost changes take effect. (The
+    // queue is already mostly sorted so an insertion would be fast.)
+    // std::sort(queue.begin(), queue.end(), vertex_sort_fn);
 
-    RoutingVertex *current = queue.back();
-    queue.pop_back();
+    RoutingVertex *current = queue.top();
+    queue.pop();
     size_t current_index = current->contextual_index();
 
     if (current == end) {
@@ -903,7 +943,7 @@ RoutingPath *RoutingGrid::ShortestPath(
         prev[next_index] = std::make_pair(current_index, edge);
 
         // Since we now have a faster way to get to this edge, we should visit it.
-        queue.push_back(next);
+        queue.push(next);
       }
     }
   }
@@ -1010,6 +1050,14 @@ PolyLineCell *RoutingGrid::CreatePolyLineCell() const {
     path->ToPolyLinesAndVias(*this, &cell->poly_lines(), &cell->vias());
   }
   return cell.release();
+}
+
+Layout *RoutingGrid::GenerateLayout() const {
+  PolyLineInflator inflator(physical_db_);
+  std::unique_ptr<PolyLineCell> grid_lines(CreatePolyLineCell());
+  std::unique_ptr<bfg::Layout> grid_layout(
+      inflator.Inflate(*this, *grid_lines));
+  return grid_layout.release();
 }
 
 } // namespace bfg
