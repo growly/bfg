@@ -221,18 +221,19 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   std::set<int64_t> enabled_columns = {0, 2, 4, 7, 9, 12, 14, 16};
   std::map<int64_t, int64_t> met1_column_x_midpoints;
   std::map<int64_t, Rectangle*> enabled_column_geometries;
+  int64_t mux_top_y = static_cast<int64_t>(bounding_box.Height());
+  int64_t mux_bottom_y = 0;
   {
     // Add vertical selector connections.
     int64_t offset_x = 50;
     int64_t pitch = met1_rules.min_width + met1_rules.min_separation;
     int64_t width = static_cast<int64_t>(bounding_box.Width());
-    int64_t height = static_cast<int64_t>(bounding_box.Height());
     int64_t extension = 150;
     layout->SetActiveLayerByName("met1.drawing");
 
     for (int64_t x = offset_x, k = 0; x < width; x += pitch, ++k) {
       Point ll = {x, -extension};
-      Point ur = {x + met1_rules.min_width, height + extension};
+      Point ur = {x + met1_rules.min_width, mux_top_y + extension};
       met1_column_x_midpoints[k] = (ll.x() + ur.x()) / 2;
       if (enabled_columns.find(k) != enabled_columns.end()) {
         enabled_column_geometries[k] = layout->AddRectangle({ll, ur});
@@ -311,7 +312,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     Point diff_ll = Point(
         poly_ll.x() - diff_wing, diff_ur.y() - stage_2_mux_fet_0_width);
     layout->SetActiveLayerByName("poly.drawing");
-    layout->AddRectangle({poly_ll, poly_ur});
+    Rectangle *left_poly = layout->AddRectangle({poly_ll, poly_ur});
     layout->SetActiveLayerByName("diff.drawing");
     Rectangle *fet_0_diff = layout->AddRectangle({diff_ll, diff_ur});
     Point input_0 = Point(
@@ -328,7 +329,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     diff_ur = poly_ur + Point({diff_wing, -poly_overhang});
     diff_ll.set_y(diff_ur.y() - stage_2_mux_fet_1_width);
     layout->SetActiveLayerByName("poly.drawing");
-    layout->AddRectangle({poly_ll, poly_ur});
+    Rectangle *right_poly = layout->AddRectangle({poly_ll, poly_ur});
     layout->SetActiveLayerByName("diff.drawing");
     Rectangle *fet_1_diff = layout->AddRectangle({diff_ll, diff_ur});
     Point input_1 = Point(
@@ -344,9 +345,12 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     layout->MakeVia("licon.drawing", destination);
     int64_t via_side = li_rules.via_width;
     Point met1_connect_destination = Point(
-        met1_column_x_midpoints[5], poly_ur.y() - met1_rules.min_width / 2);
+        met1_column_x_midpoints[5],
+        layout->GetPoint("upper_left.li_corner_se_centre").y()
+            - (li_rules.min_width + li_rules.min_separation));
     Point met1_connect_source = Point(
         met1_column_x_midpoints[5], source.y());
+    Point output_mux_ul_elbow_connect = met1_connect_destination;
 
     layout->SetActiveLayerByName("li.drawing");
     AddElbowPathBetweenLayers(
@@ -374,7 +378,11 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     //  layout->GetPort("output").centre();
     // if it had been added as a port.
     met1_connect_destination = Point(
-        met1_column_x_midpoints[6], poly_ll.y() + met1_rules.min_width / 2);
+        met1_column_x_midpoints[6],
+        layout->GetPoint("lower_left.li_corner_se_centre").y()
+            + li_rules.min_width + li_rules.min_separation);
+    Point output_mux_lr_elbow_connect = met1_connect_destination;
+          
     met1_connect_source = Point(
         met1_column_x_midpoints[6], source.y());
     layout->SetActiveLayerByName("li.drawing");
@@ -393,6 +401,66 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
     layout->SetActiveLayerByName("li.drawing");
     ConnectPolyOrDiffToMet1(db, source, met1_connect_source, layout.get());
+
+    // Connect the signal that selects the output of the bottom-left mux
+    // structure.
+    met1_connect_source = Point(
+        met1_column_x_midpoints[6], mux_top_y);
+    Point lower_left_poly_connect = Point(
+        right_poly->centre().x(),
+        std::min(
+            right_poly->upper_right().y() - (via_side / 2
+                + poly_licon_rules.min_separation
+                + li_rules.min_width / 2),
+            output_mux_ul_elbow_connect.y() - li_rules.min_width
+                - li_rules.min_separation
+        ));
+    met1_connect_destination = Point(
+        met1_connect_source.x(), lower_left_poly_connect.y());
+    layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        met1_connect_source, met1_connect_destination,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        layout.get());
+
+    layout->SetActiveLayerByName("li.drawing");
+    ConnectPolyOrDiffToMet1(
+        db,
+        Point(right_poly->centre().x(),
+              met1_connect_destination.y()),
+        met1_connect_destination,
+        layout.get());
+
+    // Connect the signal that selects the output of the upper-left mux
+    // structure.
+    met1_connect_source = Point(
+        met1_column_x_midpoints[5], mux_bottom_y);
+    Point upper_left_poly_connect = Point(
+        left_poly->centre().x(),
+        std::min(
+            left_poly->upper_right().y() + (via_side / 2
+                + poly_licon_rules.min_separation
+                + li_rules.min_width / 2),
+            output_mux_lr_elbow_connect.y() + li_rules.min_width
+                + li_rules.min_separation
+        ));
+    met1_connect_destination = Point(
+        met1_connect_source.x(), upper_left_poly_connect.y());
+    layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        met1_connect_source, met1_connect_destination,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        layout.get());
+
+    layout->SetActiveLayerByName("li.drawing");
+    ConnectPolyOrDiffToMet1(
+        db,
+        Point(left_poly->centre().x(),
+              met1_connect_destination.y()),
+        met1_connect_destination,
+        layout.get());
   }
 
   return layout.release();
@@ -502,12 +570,12 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
       Point(column_0_1_mid_x, height)));
 
   // pfet 2
-  Rectangle *pfet_3_diff = layout->AddRectangle(Rectangle(
+  Rectangle *pfet_2_diff = layout->AddRectangle(Rectangle(
       Point(column_0_1_mid_x, 0),
       Point(column_1->upper_right().x() + diff_wing, fet_2_width)));
 
   // pfet 3
-  layout->AddRectangle(Rectangle(
+  Rectangle *pfet_3_diff = layout->AddRectangle(Rectangle(
       Point(column_0_1_mid_x, height - fet_3_width),
       Point(column_1->upper_right().x() + diff_wing, height)));
 
@@ -524,9 +592,18 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
 
   layout->SavePoint("output", Point(
         pfet_4_diff->upper_right().x(),
-        (pfet_4_diff->centre() + pfet_5_diff->centre()).y() / 2));
+        pfet_4_diff->upper_right().y() - (
+            licon_rules.via_width / 2 + diff_licon_rules.min_separation)));
 
   // diff/met0 vias
+  // Vias are named with indices according to their (column, row):
+  //
+  //   x (1, 0)   x (1, 1)   x (2, 1)   x (3, 1)
+  //
+  //   x (0, 0)   x (1, 0)
+  //
+  int64_t via_centre_to_diff_edge =
+      licon_rules.via_width / 2 + diff_licon_rules.min_separation;
   layout->SetActiveLayerByName("licon.drawing");
   int64_t via_column_0_x = via_side / 2 + diff_licon_rules.min_separation;
   int64_t via_row_0_y = fet_0_width / 2;
@@ -543,15 +620,21 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
   Rectangle *via_1_1 = layout->AddSquare(
       Point(via_column_1_x, via_row_1_y), via_side);
 
-  int64_t via_column_2_x = pfet_3_diff->upper_right().x() - via_side / 2;
+  int64_t via_column_2_x = pfet_2_diff->upper_right().x() - via_side / 2;
   Rectangle *via_2_0 = layout->AddSquare(
-      Point(via_column_2_x, via_row_0_y), via_side);
+      Point(via_column_2_x,
+            pfet_2_diff->lower_left().y() + via_centre_to_diff_edge), via_side);
   Rectangle *via_2_1 = layout->AddSquare(
-      Point(via_column_2_x, via_row_1_y), via_side);
+      Point(via_column_2_x,
+            pfet_3_diff->upper_right().y() - via_centre_to_diff_edge), via_side);
 
-  int64_t via_column_3_x = pfet_4_diff->lower_left().x() + via_side / 2;
+  int64_t via_column_3_x = column_2->lower_left().x() - (
+      poly_licon_rules.min_separation + licon_rules.via_width / 2);
   Rectangle *via_3_1 = layout->AddSquare(
-      Point(via_column_3_x, via_row_1_y), via_side);
+      Point(via_column_3_x,
+          pfet_4_diff->lower_left().y() + licon_rules.via_width / 2
+          + diff_licon_rules.min_separation),
+      via_side);
 
   int64_t via_column_4_x = pfet_5_diff->upper_right().x() - via_side / 2;
   Rectangle *via_4_1 = layout->AddSquare(
@@ -644,7 +727,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     layout->SetActiveLayerByName("li.drawing");
     Point p_0 = via_1_1->centre();
     int64_t line_y =  via_2_1->centre().y() - (
-        (via_side / 2) + li_licon_rules.via_overhang + li_rules.min_separation);
+        (via_side / 2) + li_licon_rules.via_overhang + li_rules.min_separation
+        + li_rules.min_width / 2);
     Point p_1 = Point(p_0.x(), line_y);
     Point p_2 = Point(via_3_1->centre().x(), p_1.y());
     Point p_3 = via_3_1->centre();
@@ -662,7 +746,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     layout->SetActiveLayerByName("li.drawing");
     Point p_0 = via_1_0->centre();
     int64_t line_y =  via_2_0->centre().y() + (
-        (via_side / 2) + li_licon_rules.via_overhang + li_rules.min_separation);
+        (via_side / 2) + li_licon_rules.via_overhang + li_rules.min_separation
+        + li_rules.min_width / 2);
     Point p_1 = Point(p_0.x(), line_y);
     Point p_2 = Point(via_4_1->centre().x(), p_1.y());
     Point p_3 = via_4_1->centre();
@@ -673,6 +758,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     Polygon input_2_3;
     inflator.InflatePolyLine(input_2_3_line, &input_2_3);
     layout->AddPolygon(input_2_3);
+    layout->SavePoint("li_corner_se_centre", p_2);
   }
 
   return layout.release();

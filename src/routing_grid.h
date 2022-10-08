@@ -198,7 +198,7 @@ class RoutingTrackBlockage {
  public:
   RoutingTrackBlockage(int64_t start, int64_t end)
       : start_(start), end_(end) {
-    LOG_IF(FATAL, end_ <= start_)
+    LOG_IF(FATAL, end_ < start_)
         << "RoutingTrackBlockage start must be before end.";
   }
 

@@ -639,7 +639,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // areaid.standardc 81/4
   layout->SetActiveLayerByName("areaid.standardc");
-  layout->AddRectangle(Rectangle(Point(0, 0), Point(6000, 2720)));
+  Rectangle *tiling_bounds = layout->AddRectangle(Rectangle(Point(0, 0), Point(6000, 2720)));
+  layout->SetTilingBounds(*tiling_bounds);
 
   // psdm.drawing [DRAWING] 94/20
   layout->SetActiveLayerByName("psdm.drawing");

@@ -33,10 +33,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       bfg::atoms::Sky130Dfxtp generator(params, design_db_);
       bfg::Cell *cell = generator.Generate();
       cell->set_name(cell_name);
-      cell->layout()->ResetOrigin();
+      //cell->layout()->ResetOrigin();
       design_db_->ConsumeCell(cell);
       circuit->AddInstance(instance_name, cell->circuit());
-      geometry::Rectangle bounding_box = cell->layout()->GetBoundingBox();
+      geometry::Rectangle bounding_box = cell->layout()->GetTilingBounds();
       int64_t height = static_cast<int64_t>(bounding_box.Height());
       int64_t width = static_cast<int64_t>(bounding_box.Width());
       // For every other row, place backwards from the end.
@@ -129,6 +129,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   int64_t x_pos = static_cast<int64_t>(ff_bounds.Width());
   int64_t y_pos = static_cast<int64_t>(ff_bounds.Height());
 
+  LOG(INFO) << ff_bounds;
+
   circuit->AddInstance("mux_0", mux_cell->circuit());
   {
     geometry::Instance geo_instance(
@@ -140,7 +142,11 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   circuit->AddInstance("mux_1", mux_cell->circuit());
   {
     geometry::Instance geo_instance(
-        mux_cell->layout(), geometry::Point { x_pos + 500, y_pos / 2 });
+        mux_cell->layout(),
+        geometry::Point {
+            x_pos + 500,
+            static_cast<int64_t>(mux_cell->layout()->GetBoundingBox().Height())
+        });
     geo_instance.set_name("mux_1");
     layout->AddInstance(geo_instance);
   }

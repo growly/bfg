@@ -81,6 +81,20 @@ class Layout : public geometry::Manipulable {
   void Translate(const geometry::Point &offset) override;
 
   const geometry::Rectangle GetBoundingBox() const;
+  const geometry::Rectangle GetTilingBounds() const {
+    if (tiling_bounds_) {
+      return *tiling_bounds_;
+    } else {
+      return GetBoundingBox();
+    }
+  }
+
+  void SetTilingBounds(const geometry::Rectangle &rectangle) {
+    tiling_bounds_.reset(new geometry::Rectangle(rectangle));
+  }
+  void UnsetTilingBounds() {
+    tiling_bounds_.reset();
+  }
 
   const std::string &NameOrParentName() const;
 
@@ -118,6 +132,8 @@ class Layout : public geometry::Manipulable {
       std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> *shapes) const;
 
   const PhysicalPropertiesDatabase &physical_db_;
+
+  std::unique_ptr<geometry::Rectangle> tiling_bounds_;
 
   geometry::Layer active_layer_;
   std::vector<std::unique_ptr<geometry::Rectangle>> rectangles_;

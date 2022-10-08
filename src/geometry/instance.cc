@@ -52,6 +52,7 @@ const Rectangle Instance::GetBoundingBox() const {
       360 - (rotation_clockwise_degrees_ % 360)) % 360;
 
   Rectangle rotated = template_bb.BoundingBoxIfRotated(Point(0, 0), degrees_ccw);
+  rotated.Translate(lower_left_);
   return rotated;
 }
 
