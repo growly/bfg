@@ -29,6 +29,12 @@ struct LayoutPadding {
 
 class Layout : public geometry::Manipulable {
  public:
+  struct ShapeCollection {
+    std::vector<std::unique_ptr<geometry::Rectangle>> rectangles;
+    std::vector<std::unique_ptr<geometry::Polygon>> polygons;
+    std::vector<std::unique_ptr<geometry::Port>> ports;
+  };
+
   Layout() = delete;
   Layout(const PhysicalPropertiesDatabase &physical_db)
       : physical_db_(physical_db),
@@ -37,8 +43,9 @@ class Layout : public geometry::Manipulable {
 
   geometry::Rectangle *AddRectangle(const geometry::Rectangle &rectangle) {
     geometry::Rectangle *copy = new geometry::Rectangle(rectangle);
-    rectangles_.emplace_back(copy);
     copy->set_layer(active_layer_);
+    ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
+    shape_collection->rectangles.emplace_back(copy);
     return copy;
   }
   geometry::Rectangle *AddSquare(
@@ -52,7 +59,8 @@ class Layout : public geometry::Manipulable {
   geometry::Polygon *AddPolygon(const geometry::Polygon &polygon) {
     geometry::Polygon *copy = new geometry::Polygon(polygon);
     copy->set_layer(active_layer_);
-    polygons_.emplace_back(copy);
+    ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
+    shape_collection->polygons.emplace_back(copy);
     return copy;
   }
   geometry::Instance *AddInstance(const geometry::Instance &instance) {
@@ -62,8 +70,9 @@ class Layout : public geometry::Manipulable {
   }
   void AddPort(const geometry::Port &port) {
     geometry::Port *copy = new geometry::Port(port);
-    ports_.emplace_back(copy);
     copy->set_layer(active_layer_);
+    ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
+    shape_collection->ports.emplace_back(copy);
   }
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
 
@@ -110,14 +119,15 @@ class Layout : public geometry::Manipulable {
   };
   const geometry::Layer &active_layer() const { return active_layer_; }
 
-  const std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() const {
-    return rectangles_;
-  }
-  const std::vector<std::unique_ptr<geometry::Polygon>> &polygons() const { return polygons_; }
+  //const std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() const {
+  //  return rectangles_;
+  //}
+  //const std::vector<std::unique_ptr<geometry::Polygon>> &polygons() const { return polygons_; }
+  //const std::vector<std::unique_ptr<geometry::Port>> &ports() const { return ports_; }
+  const std::set<geometry::Port*> Ports() const;
   const std::vector<std::unique_ptr<geometry::Instance>> &instances() const {
     return instances_;
   }
-  const std::vector<std::unique_ptr<geometry::Port>> &ports() const { return ports_; }
 
   void SavePoint(const std::string &name, const geometry::Point &point);
   geometry::Point GetPoint(const std::string &name) const;
@@ -127,19 +137,16 @@ class Layout : public geometry::Manipulable {
 
   std::string name_;
 
-  ::vlsir::raw::LayerShapes *GetOrInsertLayerShapes(
-      const geometry::Layer &layer,
-      std::map<geometry::Layer, ::vlsir::raw::LayerShapes*> *shapes) const;
+  ShapeCollection *GetOrInsertLayerShapes(const geometry::Layer &layer);
 
   const PhysicalPropertiesDatabase &physical_db_;
 
   std::unique_ptr<geometry::Rectangle> tiling_bounds_;
 
-  geometry::Layer active_layer_;
-  std::vector<std::unique_ptr<geometry::Rectangle>> rectangles_;
-  std::vector<std::unique_ptr<geometry::Polygon>> polygons_;
-  std::vector<std::unique_ptr<geometry::Port>> ports_;
   std::vector<std::unique_ptr<geometry::Instance>> instances_;
+
+  geometry::Layer active_layer_;
+  std::map<geometry::Layer, std::unique_ptr<ShapeCollection>> shapes_;
 
   std::unordered_map<std::string, geometry::Point> named_points_;
 };

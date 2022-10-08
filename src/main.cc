@@ -154,6 +154,7 @@ int main(int argc, char **argv) {
   std::string top_name = "lut";
   bfg::tiles::Lut generator(&design_db);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
+  //std::cout << top->layout()->Describe();
 
   //bfg::atoms::Sky130Mux::Parameters mux_params;
   //bfg::atoms::Sky130Mux mux(mux_params, &design_db);

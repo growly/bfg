@@ -60,7 +60,7 @@ void Instance::GeneratePorts() {
   int32_t rotation_ccw_degrees = (
       360 - (rotation_clockwise_degrees_ % 360)) % 360;
   instance_ports_.clear();
-  for (const auto &port : template_layout_->ports()) {
+  for (const auto &port : template_layout_->Ports()) {
     const std::string &net = port->net();
     Port *instance_port = new Port(*port);
     Rectangle rotated_bounds =

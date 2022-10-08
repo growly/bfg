@@ -58,8 +58,6 @@ Rectangle Rectangle::BoundingBoxIfRotated(const Point &about, int32_t degrees_cc
   Point upper_right = upper_right_ - about;
   Point lower_right = LowerRight() - about;
 
-  LOG(INFO) << "unrotated: " << Rectangle(lower_left_, upper_right_);
-
   lower_left.Rotate(degrees_ccw);
   upper_left.Rotate(degrees_ccw);
   upper_right.Rotate(degrees_ccw);
@@ -77,8 +75,6 @@ Rectangle Rectangle::BoundingBoxIfRotated(const Point &about, int32_t degrees_cc
 
   Rectangle rotated = Rectangle(Point(min_x, min_y) + about,
                                 Point(max_x, max_y) + about);
-  LOG(INFO) << "rotation: " << degrees_ccw;
-  LOG(INFO) << "rotated: " << rotated;
   return rotated;
 }
 
