@@ -557,6 +557,13 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
   layout->SavePoint("column_3_centre_top", Point(
       column_3->centre().x(), column_3->upper_right().y()));
 
+  // +---------+---------+   +---------+---------+
+  // | pfet 1  | pfet 3  |   | pfet 4  | pfet 5  |
+  // +---------+---------+   +---------+---------+
+  //
+  // +---------+---------+
+  // | pfet 0  | pfet 2  |
+  // +---------+---------+
   layout->SetActiveLayerByName("diff.drawing");
   // pfet 0
   int64_t column_0_1_mid_x = column_0->upper_right().x() + poly_gap / 2;
@@ -620,13 +627,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
   Rectangle *via_1_1 = layout->AddSquare(
       Point(via_column_1_x, via_row_1_y), via_side);
 
-  int64_t via_column_2_x = pfet_2_diff->upper_right().x() - via_side / 2;
+  int64_t via_column_2_x =
+      pfet_2_diff->upper_right().x() - via_centre_to_diff_edge;
   Rectangle *via_2_0 = layout->AddSquare(
       Point(via_column_2_x,
             pfet_2_diff->lower_left().y() + via_centre_to_diff_edge), via_side);
   Rectangle *via_2_1 = layout->AddSquare(
       Point(via_column_2_x,
-            pfet_3_diff->upper_right().y() - via_centre_to_diff_edge), via_side);
+            pfet_3_diff->upper_right().y() - via_centre_to_diff_edge),
+      via_side);
 
   int64_t via_column_3_x = column_2->lower_left().x() - (
       poly_licon_rules.min_separation + licon_rules.via_width / 2);
@@ -636,7 +645,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
           + diff_licon_rules.min_separation),
       via_side);
 
-  int64_t via_column_4_x = pfet_5_diff->upper_right().x() - via_side / 2;
+  int64_t via_column_4_x =
+      pfet_5_diff->upper_right().x() - via_centre_to_diff_edge;
   Rectangle *via_4_1 = layout->AddSquare(
       Point(via_column_4_x, via_row_1_y), via_side);
 
