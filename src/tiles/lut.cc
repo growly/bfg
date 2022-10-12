@@ -96,31 +96,31 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   routing_via_info.overhang = db.Rules(
       "mcon.drawing", "met2.drawing").via_overhang;
 
-  RoutingGrid routing_grid(db);
-  routing_grid.AddRoutingLayerInfo(vertical_routing);
-  routing_grid.AddRoutingLayerInfo(horizontal_routing);
-  routing_grid.AddRoutingViaInfo(
-      vertical_routing.layer, horizontal_routing.layer, routing_via_info);
-  routing_grid.ConnectLayers(vertical_routing.layer, horizontal_routing.layer);
+  // RoutingGrid routing_grid(db);
+  // routing_grid.AddRoutingLayerInfo(vertical_routing);
+  // routing_grid.AddRoutingLayerInfo(horizontal_routing);
+  // routing_grid.AddRoutingViaInfo(
+  //     vertical_routing.layer, horizontal_routing.layer, routing_via_info);
+  // routing_grid.ConnectLayers(vertical_routing.layer, horizontal_routing.layer);
 
-  for (size_t i = 0; i < flip_flops.size(); ++i) {
-    geometry::Instance *instance = flip_flops[i];
-    LOG(INFO) << "adding routes for flip flop " << i;
-    if (i == flip_flops.size() - 1)
-      continue;
-    geometry::Instance *next_in_chain = flip_flops[i+1];
-    geometry::Port *start = instance->GetInstancePort("Q");
-    // HACK HACK HACK
-    start->set_layer(db.GetLayer("met1.drawing"));
-    geometry::Port *end = next_in_chain->GetInstancePort("D");
-    // HACK HACK HACK
-    end->set_layer(db.GetLayer("met1.drawing"));
-    routing_grid.AddRouteBetween(*start, *end);
-    LOG(INFO) << i << " start port: " << *start << " end: " << *end;
-  }
+  // for (size_t i = 0; i < flip_flops.size(); ++i) {
+  //   geometry::Instance *instance = flip_flops[i];
+  //   LOG(INFO) << "adding routes for flip flop " << i;
+  //   if (i == flip_flops.size() - 1)
+  //     continue;
+  //   geometry::Instance *next_in_chain = flip_flops[i+1];
+  //   geometry::Port *start = instance->GetInstancePort("Q");
+  //   // HACK HACK HACK
+  //   start->set_layer(db.GetLayer("met1.drawing"));
+  //   geometry::Port *end = next_in_chain->GetInstancePort("D");
+  //   // HACK HACK HACK
+  //   end->set_layer(db.GetLayer("met1.drawing"));
+  //   routing_grid.AddRouteBetween(*start, *end);
+  //   LOG(INFO) << i << " start port: " << *start << " end: " << *end;
+  // }
 
-  std::unique_ptr<bfg::Layout> grid_layout(routing_grid.GenerateLayout());
-  layout->AddLayout(*grid_layout, "routing");
+  // std::unique_ptr<bfg::Layout> grid_layout(routing_grid.GenerateLayout());
+  // layout->AddLayout(*grid_layout, "routing");
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);

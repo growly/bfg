@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
     .via_width = 170,
   };
   physical_db.AddRules("licon.drawing", intra_constraints);
+  physical_db.AddRules("via1.drawing", intra_constraints);
   physical_db.AddRules("mcon.drawing", intra_constraints);
   intra_constraints = {
     .min_separation = 200,
@@ -104,8 +105,9 @@ int main(int argc, char **argv) {
   };
   physical_db.AddRules("li.drawing", "licon.drawing", inter_constraints);
   physical_db.AddRules("li.drawing", "mcon.drawing", inter_constraints);
-  physical_db.AddRules("met1.drawing", "licon.drawing", inter_constraints);
   physical_db.AddRules("met1.drawing", "mcon.drawing", inter_constraints);
+  physical_db.AddRules("met1.drawing", "via1.drawing", inter_constraints);
+  physical_db.AddRules("met2.drawing", "via1.drawing", inter_constraints);
   physical_db.AddRules("poly.drawing", "licon.drawing", inter_constraints);
   // Lazy but doesn't make sense:
   physical_db.AddRules("met2.drawing", "mcon.drawing", inter_constraints);

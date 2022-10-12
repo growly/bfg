@@ -237,6 +237,12 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     instance_pb->set_rotation_clockwise_degrees(
         instance->rotation_clockwise_degrees());
   }
+  for (const auto &entry : named_points_) {
+    ::vlsir::raw::TextElement *text = layout_pb.add_annotations();
+    text->set_string(entry.first);
+    text->mutable_loc()->set_x(entry.second.x());
+    text->mutable_loc()->set_y(entry.second.y());
+  }
 
   return layout_pb;
 };

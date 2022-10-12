@@ -4,7 +4,7 @@
 
 BUILD_DIR=watch_build
 PID_FILE=klayout.pid
-PROTO2GDS_BIN="/home/arya/src/Layout21/target/debug/proto2gds"
+PROTO2GDS_BIN="${HOME}/src/Layout21/target/debug/proto2gds"
 TOP=
 
 mkdir -p "${BUILD_DIR}" || exit 1
