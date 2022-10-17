@@ -330,6 +330,25 @@ std::string RoutingTrack::Debug() const {
   return ss.str();
 }
 
+geometry::Line RoutingTrack::AsLine() const {
+  geometry::Point start;
+  geometry::Point end;
+  switch (direction_) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      start = geometry::Point(0, offset_);
+      end = geometry::Point(1, offset_);
+      break;
+    case RoutingTrackDirection::kTrackVertical:
+      start = geometry::Point(offset_, 0);
+      end = geometry::Point(offset_, 1);
+      break;
+    default:
+      LOG(FATAL) << "RoutingTrack has unknown direction " << direction_;
+      break;
+  }
+  return geometry::Line(start, end);
+}
+
 bool RoutingTrack::IsBlockedBetween(
     const geometry::Point &one_end, const geometry::Point &other_end) const {
   int64_t low = ProjectOntoTrack(one_end);
@@ -388,6 +407,15 @@ RoutingTrackBlockage *RoutingTrack::CreateBlockage(
     return CreateBlockage(rectangle.lower_left(), rectangle.upper_right());
   }
   return nullptr;
+}
+
+void RoutingTrack::CreateBlockage(const geometry::Polygon &polygon) {
+  geometry::Line track = AsLine();
+  std::vector<std::pair<geometry::Point, geometry::Point>> intersections;
+  polygon.IntersectingPoints(track, &intersections);
+  for (const auto &pair : intersections) {
+    CreateBlockage(pair.first, pair.second);
+  }
 }
 
 RoutingTrackBlockage *RoutingTrack::CreateBlockage(
@@ -1028,17 +1056,29 @@ void RoutingGrid::AddBlockages(const geometry::ShapeCollection &shapes) {
   for (const auto &rectangle : shapes.rectangles) {
     AddBlockage(*rectangle);
   }
+  for (const auto &polygon : shapes.polygons) {
+    AddBlockage(*polygon);
+  }
+  for (const auto &port : shapes.ports) {
+    AddBlockage(*port);
+  }
 }
 
 void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle) {
   auto it = tracks_by_layer_.find(rectangle.layer());
-  if (it == tracks_by_layer_.end()) {
-    LOG(WARNING) << "No RoutingGrid tracks on blockage layer: "
-                 << rectangle.layer();
+  if (it == tracks_by_layer_.end())
     return;
-  }
   for (RoutingTrack *track : it->second) {
     track->CreateBlockage(rectangle);
+  }
+}
+
+void RoutingGrid::AddBlockage(const geometry::Polygon &polygon) {
+  auto it = tracks_by_layer_.find(polygon.layer());
+  if (it == tracks_by_layer_.end())
+    return;
+  for (RoutingTrack *track : it->second) {
+    track->CreateBlockage(polygon);
   }
 }
 

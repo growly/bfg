@@ -30,19 +30,16 @@ void Polygon::IntersectingPoints(
 
   std::vector<Point> intersections;
   std::vector<Line> segments;
-  const Point *next_point = nullptr;
+  const Point *point = nullptr;
   const Point *last_point = &*vertices_.begin();
   Line segment;
   Line last_segment = Line(vertices_.back(), vertices_.front());
   for (size_t i = 1; i < vertices_.size() + 1;
-       ++i, last_point = next_point, last_segment = segment) {
-    if (i < vertices_.size()) {
-      next_point = &vertices_[i];
-    } else {
-      next_point = &vertices_[0];
-    }
-    segment = Line(*last_point, *next_point);
-    DVLOG(12) << "Checking " << segment;
+       ++i, last_point = point, last_segment = segment) {
+    // Get next point, wrapping around to the front if we're at the end.
+    point = &vertices_[i % vertices_.size()];
+    segment = Line(*last_point, *point);
+    LOG(INFO) << "Checking " << segment;
     // NOTE(aryap): We don't need to check this because we check for
     // intersections in the line's bounds and our test for ingress/egress will
     // determine determine if the point should be de-duplicated.
@@ -52,10 +49,44 @@ void Polygon::IntersectingPoints(
     // }
     segments.push_back(segment);
     Point intersection;
-    if (!segment.IntersectsInBounds(line, &intersection)) {
+    bool incident;
+    if (!segment.IntersectsInBounds(line, &incident, &intersection)) {
       continue;
     }
-    DVLOG(12) << segment << " intersects " << line << " at " << intersection;
+    if (incident) {
+      LOG(INFO) << segment << " is incident on " << line;
+      // The line falls on a edge of the polygon directly, so skip the check
+      // for a corner and whether we ingress/egress. Because do.
+      intersections.push_back(segment.end());
+  
+      // When the line is incident on a segment, we have to check the previous
+      // and following segments to determine if it is an ingress/egress event.
+      //
+      //   |          |
+      //   v          v
+      //                  
+      //   +--      --+
+      //   |          |
+      // --+        --+
+      //  (a)        (b)
+      //
+      // (a) a single event
+      // (b) two events
+
+      const Point *next_point = &vertices_[(i + 1) % vertices_.size()];
+      Line next_segment = Line(*point, *next_point);
+      int64_t dot_product = last_segment.DotProduct(next_segment);
+      //  a . b = ||a|| ||b|| cos (theta)
+      //  a . b < 0 iff cos (theta) < 0 iff pi/2 <= theta <= 3*pi/2
+      if (dot_product < 0) {
+        // Skip the next segment.
+        segment = next_segment;
+        point = next_point;
+        ++i;
+      }
+      continue;
+    }
+    LOG(INFO) << segment << " intersects " << line << " at " << intersection;
     if (intersection == segment.start()) {
       // Since the line intersected with a segment boundary, we have to check
       // if the line has gone through the Polygon's hull. We do that by
@@ -63,38 +94,44 @@ void Polygon::IntersectingPoints(
       // line intersects that too.
       Line completion_line = Line(segment.end(), last_segment.start());
       Point completion_intersection;
-      if (!completion_line.IntersectsInBounds(line, &completion_intersection)) {
+      if (!completion_line.IntersectsInBounds(
+              line, &incident, &completion_intersection)) {
         // The line has not entered nor exited the polygon and should be
         // recorded twice (here and when the other segment encounters it),
         // since that indicates ingress or egress.
         intersections.push_back(intersection);
+      } else {
+        LOG(INFO) << "corner " << intersection << " is an ingress or egress";
       }
-      DVLOG(12) << "corner " << intersection << " is an ingress or egress";
       continue;
     }
     if (i < vertices_.size() &&
         !intersections.empty() && intersections.back() == intersection) {
       continue;
-    } else if (!intersections.empty() && intersections.front() == intersection) {
+    }
+    if (!intersections.empty() && intersections.front() == intersection) {
       intersections.insert(intersections.begin(), intersection);
     } else {
       intersections.push_back(intersection);
     }
   }
 
-  //LOG_IF(FATAL, intersections.size() % 2 != 0)
-  //    << "Expected pairs of intersecting points.";
+  for (const auto &point : intersections) {
+    LOG(INFO) << point;
+  }
+
+  LOG_IF(FATAL, intersections.size() % 2 != 0)
+      << "Expected pairs of intersecting points.";
 
   Point outside = GetBoundingBox().PointOnLineOutside(line);
-  DVLOG(12) << "Outside point: " << outside;
+  LOG(INFO) << "outside point: " << outside;
   std::sort(intersections.begin(), intersections.end(),
             [&](const Point &lhs, const Point &rhs) {
     return outside.L2SquaredDistanceTo(lhs) > outside.L2SquaredDistanceTo(rhs);
   });
 
-  for (const auto &point : intersections) {
-    LOG(INFO) << point;
-  }
+  if (intersections.empty())
+    return;
 
   for (size_t i = 0; i < intersections.size() - 1; i += 2) {
     points->push_back({intersections[i], intersections[i + 1]});

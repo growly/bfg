@@ -272,6 +272,9 @@ class RoutingTrack {
 
   bool Intersects(const geometry::Rectangle &rectangle) const;
   RoutingTrackBlockage *CreateBlockage(const geometry::Rectangle &retangle);
+  void CreateBlockage(const geometry::Polygon &polygon);
+
+  geometry::Line AsLine() const;
 
   std::string Debug() const;
 
@@ -354,6 +357,7 @@ class RoutingGrid {
 
   void AddBlockages(const geometry::ShapeCollection &shapes);
   void AddBlockage(const geometry::Rectangle &rectangle);
+  void AddBlockage(const geometry::Polygon &polygon);
 
   void AddRoutingViaInfo(const geometry::Layer &lhs,
                          const geometry::Layer &rhs,

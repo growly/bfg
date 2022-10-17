@@ -9,28 +9,22 @@ namespace geometry {
 
 double Line::kPi = std::acos(-1);
 
-bool Line::Intersect(const Line &lhs, const Line &rhs, Point *point) {
+bool Line::Intersect(
+    const Line &lhs, const Line &rhs, bool *incident, Point *point) {
   // (1) y1 = m1*x1 + c1
   // (2) y2 = m2*x2 + c2
   //
   // Set y's equal and solve for x:
   // xx = (c1 - c2)/(m2 - m1)
   // yy = m1*xx + c1
+  *incident = false;
 
   if (lhs.IsVertical() && rhs.IsVertical()) {
     // Both lines are vertical. Check if they are at the same x:
     if (lhs.start().x() == rhs.start().x()) {
-      // The intersection of these lines is each other, so we'll just return
-      // the point between their starts and ends:
-      double lhs_mid_y 
-          = (lhs.end().y() - lhs.start().y())/2.0 + lhs.start().y();
-      double rhs_mid_y 
-          = (rhs.end().y() - rhs.start().y())/2.0 + rhs.start().y();
-      double lhs_rhs_mid_y = (lhs_mid_y + rhs_mid_y) / 2.0;
-      *point = Point(lhs.start().x(), lhs_rhs_mid_y);
-      // TODO(aryap): This intersection point is arbitrary, so we can choose it
-      // to be something more useful or simply something faster (i.e. just take
-      // the end of the left-hand side).
+      // The intersection of these lines is each other, so indicate that they
+      // are incident on each other and do not store a specific point.
+      *incident = true;
       return true;
     }
     // Lines are vertical and parallel.
@@ -61,10 +55,13 @@ bool Line::Intersect(const Line &lhs, const Line &rhs, Point *point) {
   VLOG(11) << rhs.start() << " -> " << rhs.end()
            << ": y2 = " << m2 << "*x2 + " << c2;
 
-  // TODO(aryap): What if two overlapping horizontal lines are intersected?
-
   if (m1 == m2) {
-    // Line are parallel.
+    // Return true if the offsets are the same, since that means the two lines
+    // are the same.
+    if (c1 == c2) {
+      *incident = true;
+      return true;
+    }
     return false;
   }
 
@@ -91,10 +88,14 @@ bool Line::IsVertical() const {
   return start_.x() == end_.x();
 }
 
-bool Line::IntersectsInBounds(const Line &other, Point *point) const {
+bool Line::IntersectsInBounds(
+    const Line &other, bool *incident, Point *point) const {
   Point intersection;
-  if (!Intersects(other, &intersection))
+  if (!Intersects(other, incident, &intersection))
     return false;
+
+  if (*incident)
+    return true;
 
   int64_t max_y = std::max(start_.y(), end_.y());
   int64_t min_y = std::min(start_.y(), end_.y());
@@ -173,7 +174,16 @@ double Line::AngleToHorizon() const {
 //  / ) theta   a . b = ||a|| ||b|| cos (theta)
 // -----------
 double Line::AngleToLine(const Line &other) const {
+  LOG(FATAL) << "Not implemented.";
+  return 0.0;
+}
 
+int64_t Line::DotProduct(const Line &with) const {
+  // Turn the lines into vectors by subtracting the starting point from the end
+  // point:
+  Point a = end_ - start_;
+  Point b = with.end() - with.start();
+  return a.x() * b.x() + a.y() + b.y();
 }
 
 }  // namespace geometry

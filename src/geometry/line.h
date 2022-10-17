@@ -24,15 +24,16 @@ class Line {
   // Returns true if the lines defined by lhs and rhs intersect, and if so,
   // fills `point` with the intersection point. Returns false if the lines do
   // not intersect (are parallel).
-  static bool Intersect(const Line &lhs, const Line &rhs, Point *point);
+  static bool Intersect(
+      const Line &lhs, const Line &rhs, bool *incident, Point *point);
 
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
 
-  bool Intersects(const Line &other, Point *point) const {
-    return Intersect(*this, other, point);
+  bool Intersects(const Line &other, bool *incident, Point *point) const {
+    return Intersect(*this, other, incident, point);
   }
 
-  bool IntersectsInBounds(const Line &other, Point *point) const;
+  bool IntersectsInBounds(const Line &other, bool *incident, Point *point) const;
 
   bool IsSameInfiniteLine(const Line &other) const {
     return AreSameInfiniteLine(*this, other);
@@ -69,6 +70,8 @@ class Line {
 
   // Angle in radians.
   double AngleToLine(const Line &other) const;
+
+  int64_t DotProduct(const Line &with) const;
 
   void set_start(const Point &start) { start_ = start; }
   void set_end(const Point &end) { end_ = end; }

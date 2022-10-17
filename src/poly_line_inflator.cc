@@ -266,7 +266,20 @@ std::unique_ptr<Line> PolyLineInflator::ShiftAndAppendIntersection(
   }
 
   Point intersection;
-  if (Line::Intersect(*last_shifted_line, *shifted_line, &intersection)) {
+  bool incident;
+  if (Line::Intersect(
+        *last_shifted_line, *shifted_line, &incident, &intersection)) {
+    if (incident) {
+      // Compute the midpoint of the two lines as the intersection. Because?
+      const Line &lhs = *last_shifted_line;
+      const Line &rhs = *shifted_line;
+      double lhs_mid_y 
+          = (lhs.end().y() - lhs.start().y())/2.0 + lhs.start().y();
+      double rhs_mid_y 
+          = (rhs.end().y() - rhs.start().y())/2.0 + rhs.start().y();
+      double lhs_rhs_mid_y = (lhs_mid_y + rhs_mid_y) / 2.0;
+      intersection = Point(lhs.start().x(), lhs_rhs_mid_y);
+    }
     polygon->AddVertex(intersection);
   } else {
     // The lines never intersect, which means they're parallel. That also means
