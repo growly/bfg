@@ -17,7 +17,7 @@ bool Line::Intersect(const Line &lhs, const Line &rhs, Point *point) {
   // xx = (c1 - c2)/(m2 - m1)
   // yy = m1*xx + c1
 
-  if (lhs.end().x() == lhs.start().x() && rhs.end().x() == rhs.start().x()) {
+  if (lhs.IsVertical() && rhs.IsVertical()) {
     // Both lines are vertical. Check if they are at the same x:
     if (lhs.start().x() == rhs.start().x()) {
       // The intersection of these lines is each other, so we'll just return
@@ -52,14 +52,14 @@ bool Line::Intersect(const Line &lhs, const Line &rhs, Point *point) {
   double m1 = lhs.Gradient();
   double c1 = lhs.Offset();
 
-  LOG(INFO) << lhs.start() << " -> " << lhs.end()
-            << ": y1 = " << m1 << "*x1 + " << c1;
+  VLOG(11) << lhs.start() << " -> " << lhs.end()
+           << ": y1 = " << m1 << "*x1 + " << c1;
 
   double m2 = rhs.Gradient();
   double c2 = rhs.Offset();
 
-  LOG(INFO) << rhs.start() << " -> " << rhs.end()
-            << ": y2 = " << m2 << "*x2 + " << c2;
+  VLOG(11) << rhs.start() << " -> " << rhs.end()
+           << ": y2 = " << m2 << "*x2 + " << c2;
 
   // TODO(aryap): What if two overlapping horizontal lines are intersected?
 
@@ -72,6 +72,41 @@ bool Line::Intersect(const Line &lhs, const Line &rhs, Point *point) {
   double y = m1*x + c1;
   *point = Point(static_cast<int64_t>(x), static_cast<int64_t>(y));
   return true;
+}
+
+bool Line::AreSameInfiniteLine(const Line &lhs, const Line &rhs) {
+  if (lhs.IsVertical() && rhs.IsVertical()) {
+    // Both lines are vertical. Check if they are at the same x:
+    return lhs.start().x() == rhs.start().x();
+  }
+  // We can now ask for the gradient because it's not vertical (i.e. NaN):
+  if (lhs.Gradient() != rhs.Gradient())
+    return false;
+  if (lhs.Offset() != rhs.Offset())
+    return false;
+  return true;
+}
+
+bool Line::IsVertical() const {
+  return start_.x() == end_.x();
+}
+
+bool Line::IntersectsInBounds(const Line &other, Point *point) const {
+  Point intersection;
+  if (!Intersects(other, &intersection))
+    return false;
+
+  int64_t max_y = std::max(start_.y(), end_.y());
+  int64_t min_y = std::min(start_.y(), end_.y());
+  int64_t max_x = std::max(start_.x(), end_.x());
+  int64_t min_x = std::min(start_.x(), end_.x());
+
+  if (min_x <= intersection.x() && intersection.x() <= max_x &&
+      min_y <= intersection.y() && intersection.y() <= max_y) {
+    *point = intersection;
+    return true;
+  }
+  return false;
 }
 
 //           _
@@ -130,6 +165,15 @@ double Line::AngleToHorizon() const {
   }
 
   return theta;
+}
+
+//     /
+//    /
+//   /
+//  / ) theta   a . b = ||a|| ||b|| cos (theta)
+// -----------
+double Line::AngleToLine(const Line &other) const {
+
 }
 
 }  // namespace geometry

@@ -27,10 +27,10 @@ void Point::Translate(const Point &offset) {
   y_ += offset.y_;
 }
 
-void Point::Rotate(int32_t degrees_counter_clockwise) {
+void Point::Rotate(int32_t degrees_ccw) {
   // Apparently they did this for us in C++20.
   constexpr double two_pi = 2 * 3.14159265358979323846;
-  double theta = static_cast<double>(degrees_counter_clockwise)/360.0 * two_pi;
+  double theta = static_cast<double>(degrees_ccw)/360.0 * two_pi;
   Rotate(theta);
 }
 
@@ -48,10 +48,32 @@ void Point::Rotate(double theta_radians) {
   y_ = std::llround(x * std::sin(theta_radians) + y * std::cos(theta_radians));
 }
 
-double Point::L2DistanceTo(const geometry::Point &other) const {
+int64_t Point::L2SquaredDistanceTo(const Point &other) const {
+  int64_t dx = x_ - other.x_;
+  int64_t dy = y_ - other.y_;
+  return (dx << 1) + (dy << 1);
+}
+
+double Point::L2DistanceTo(const Point &other) const {
   double dx = x_ - other.x_;
   double dy = y_ - other.y_;
   return std::pow(dx, 2.0) + std::pow(dy, 2.0);
+}
+
+Point operator+(const Point &lhs, const Point &rhs) {
+  return Point(lhs.x() + rhs.x(), lhs.y() + rhs.y());
+}
+
+Point operator-(const Point &lhs, const Point &rhs) {
+  return Point(lhs.x() - rhs.x(), lhs.y() - rhs.y());
+}
+
+Point operator-(const Point &other) {
+  return Point(-other.x(), -other.y());
+}
+
+bool operator==(const Point &lhs, const Point &rhs) {
+  return lhs.x() == rhs.x() && lhs.y() == rhs.y();
 }
 
 }  // namespace geometry
@@ -59,25 +81,6 @@ double Point::L2DistanceTo(const geometry::Point &other) const {
 std::ostream &operator<<(std::ostream &os, const geometry::Point &point) {
   os << "(" << point.x() << ", " << point.y() << ")";
   return os;
-}
-
-geometry::Point operator+(
-    const geometry::Point &lhs, const geometry::Point &rhs) {
-  return geometry::Point(lhs.x() + rhs.x(), lhs.y() + rhs.y());
-}
-
-geometry::Point operator-(
-    const geometry::Point &lhs, const geometry::Point &rhs) {
-  return geometry::Point(lhs.x() - rhs.x(), lhs.y() - rhs.y());
-}
-
-geometry::Point operator-(const geometry::Point &other) {
-  return geometry::Point(-other.x(), -other.y());
-}
-
-bool operator==(
-    const geometry::Point &lhs, const geometry::Point &rhs) {
-  return lhs.x() == rhs.x() && lhs.y() == rhs.y();
 }
 
 }  // namespace bfg

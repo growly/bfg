@@ -16,6 +16,10 @@ find_package(Protobuf REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
+set(ABSL_PROPAGATE_CXX_STD true)
+set(ABSL_CXX_STANDARD 17)
+set(BUILD_DEPS true)
+
 include_directories(${GTEST_INCLUDE_DIR})
 
 set(PROTO_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
@@ -198,8 +202,11 @@ message(STATUS "found ${tcmalloc_lib}")
 target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
                                       gflags
                                       glog::glog
+                                      absl::base
                                       absl::strings
                                       absl::str_format
+                                      absl::status
+                                      absl::statusor
                                       vlsir_lib
                                       ${Protobuf_LIBRARIES})
 
@@ -227,6 +234,7 @@ target_link_libraries(bfg_bin PUBLIC bfg
 
 set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/instance_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/polygon_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle_test.cc
 )

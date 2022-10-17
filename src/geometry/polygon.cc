@@ -1,11 +1,105 @@
 #include "polygon.h"
 
 #include <ostream>
+#include <utility>
 
+#include "point.h"
 #include "rectangle.h"
 
 namespace bfg {
 namespace geometry {
+
+// Compute the points at which a line intersects with a polygon, returning the
+// pairs of points at which the line enters and then exits the polygon. Uses
+// the same principle as polygon filling algorithms: Lines start at infinity
+// and so much enter a polygon on the first intersection, and leave on the next.
+//
+// Intersections at a corner are trickier: they can be thought of as entering
+// and exiting the polygon at the same point. We discover this "for free" since
+// we'll compute an intersection with both lines anyway..
+//
+// If the polygon has two identical-gradient line segments in a row, we must
+// discard one or merge them. Otherwise we will get a duplicate point.
+void Polygon::IntersectingPoints(
+    const Line &line,
+    std::vector<std::pair<Point, Point>> *points) const {
+  if (vertices_.empty()) {
+    LOG(WARNING) << "Polygon with no vertices!";
+    return;
+  }
+
+  std::vector<Point> intersections;
+  std::vector<Line> segments;
+  const Point *next_point = nullptr;
+  const Point *last_point = &*vertices_.begin();
+  Line segment;
+  Line last_segment = Line(vertices_.back(), vertices_.front());
+  for (size_t i = 1; i < vertices_.size() + 1;
+       ++i, last_point = next_point, last_segment = segment) {
+    if (i < vertices_.size()) {
+      next_point = &vertices_[i];
+    } else {
+      next_point = &vertices_[0];
+    }
+    segment = Line(*last_point, *next_point);
+    DVLOG(12) << "Checking " << segment;
+    // NOTE(aryap): We don't need to check this because we check for
+    // intersections in the line's bounds and our test for ingress/egress will
+    // determine determine if the point should be de-duplicated.
+    // if (segment.IsSameInfiniteLine(last_segment)) {
+    //   // Skip segment entirely.
+    //   continue;
+    // }
+    segments.push_back(segment);
+    Point intersection;
+    if (!segment.IntersectsInBounds(line, &intersection)) {
+      continue;
+    }
+    DVLOG(12) << segment << " intersects " << line << " at " << intersection;
+    if (intersection == segment.start()) {
+      // Since the line intersected with a segment boundary, we have to check
+      // if the line has gone through the Polygon's hull. We do that by
+      // completing the triangle between the two segments and seeing if the
+      // line intersects that too.
+      Line completion_line = Line(segment.end(), last_segment.start());
+      Point completion_intersection;
+      if (!completion_line.IntersectsInBounds(line, &completion_intersection)) {
+        // The line has not entered nor exited the polygon and should be
+        // recorded twice (here and when the other segment encounters it),
+        // since that indicates ingress or egress.
+        intersections.push_back(intersection);
+      }
+      DVLOG(12) << "corner " << intersection << " is an ingress or egress";
+      continue;
+    }
+    if (i < vertices_.size() &&
+        !intersections.empty() && intersections.back() == intersection) {
+      continue;
+    } else if (!intersections.empty() && intersections.front() == intersection) {
+      intersections.insert(intersections.begin(), intersection);
+    } else {
+      intersections.push_back(intersection);
+    }
+  }
+
+  //LOG_IF(FATAL, intersections.size() % 2 != 0)
+  //    << "Expected pairs of intersecting points.";
+
+  Point outside = GetBoundingBox().PointOnLineOutside(line);
+  DVLOG(12) << "Outside point: " << outside;
+  std::sort(intersections.begin(), intersections.end(),
+            [&](const Point &lhs, const Point &rhs) {
+    return outside.L2SquaredDistanceTo(lhs) > outside.L2SquaredDistanceTo(rhs);
+  });
+
+  for (const auto &point : intersections) {
+    LOG(INFO) << point;
+  }
+
+  for (size_t i = 0; i < intersections.size() - 1; i += 2) {
+    points->push_back({intersections[i], intersections[i + 1]});
+  }
+}
 
 void Polygon::MirrorY() {
   for (Point &point : vertices_) {
@@ -43,6 +137,12 @@ void Polygon::ResetOrigin() {
   Translate(-bounding_box.lower_left());
 }
 
+void Polygon::Rotate(int32_t degrees_ccw) {
+  for (auto &vertex : vertices_) {
+    vertex.Rotate(degrees_ccw);
+  }
+}
+
 const Rectangle Polygon::GetBoundingBox() const {
   Point lower_left;
   Point upper_right;
@@ -58,7 +158,9 @@ const Rectangle Polygon::GetBoundingBox() const {
     }
   }
 
-  return Rectangle(lower_left, upper_right);
+  Rectangle bounding_box = Rectangle(lower_left, upper_right);
+  bounding_box.set_layer(layer_);
+  return bounding_box;
 }
 
 }  // namespace geometry

@@ -74,7 +74,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   circuit->AddPort(X5);
   circuit->AddPort(X6);
   circuit->AddPort(X7);
-  circuit->AddPort
+  circuit->AddPort(Z);
 
   return circuit.release();
 }
@@ -573,6 +573,11 @@ void GenerateOutput2To1Mux(
     main_layout->SavePoint(
         "final_output",
         met2_bar->GetBoundingBox().centre());
+
+    Rectangle met2_bb = met2_bar->GetBoundingBox();
+    main_layout->AddPort(geometry::Port(
+        met2_bb.centre(), met2_bb.Height(), met2_bb.Height(),
+        met2_bar->layer(), "Z"));
   }
 }
 
@@ -712,6 +717,35 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       mux_top_y,
       mux_bottom_y,
       layout.get());
+
+  // Translate sub-layout ports to external-facing ports:
+  std::vector<std::pair<std::string, std::string>> ports = {
+    {"lower_left.input_0", "input_0"},
+    {"lower_left.input_1", "input_1"},
+    {"lower_left.input_2", "input_2"},
+    {"lower_left.input_3", "input_3"},
+    {"lower_right.input_0", "input_0"},
+    {"lower_right.input_1", "input_1"},
+    {"lower_right.input_2", "input_2"},
+    {"lower_right.input_3", "input_3"},
+    {"upper_left.input_0", "input_4"},
+    {"upper_left.input_1", "input_5"},
+    {"upper_left.input_2", "input_6"},
+    {"upper_left.input_3", "input_7"},
+    {"upper_right.input_0", "input_4"},
+    {"upper_right.input_1", "input_5"},
+    {"upper_right.input_2", "input_6"},
+    {"upper_right.input_3", "input_7"}
+  };
+  for (const auto &entry : ports) {
+    const std::string &layout_port = entry.first;
+    const std::string &net = entry.second;
+    Point centre = layout->GetPoint(layout_port);
+    geometry::Layer layer = centre.layer();
+    int64_t via_size = db.Rules(layer).via_width;
+    layout->AddPort(geometry::Port(
+        layout->GetPoint(layout_port), via_size, via_size, layer, net));
+  }
 
   return layout.release();
 }
@@ -922,7 +956,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     input_2_met_0 = layout->AddPolygon(input_2_template);
 
     layout->SetActiveLayerByName("li.pin");
-    layout->AddSquare(p_1, via_side);
+    geometry::Rectangle *via = layout->AddSquare(p_1, via_side);
+    layout->SavePoint("input_2", via->centre());
   }
 
   Polygon *input_3_met_0;
@@ -946,7 +981,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     input_3_met_0 = layout->AddPolygon(input_3_template);
 
     layout->SetActiveLayerByName("li.pin");
-    layout->AddSquare(p_0 + Point(via_side / 2, 0), via_side);
+    geometry::Rectangle *via = layout->AddSquare(
+        p_0 + Point(via_side / 2, 0), via_side);
+    layout->SavePoint("input_3", via->centre());
   }
 
   {
@@ -960,9 +997,10 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     input_0_met_0->MoveLowerLeftTo(via_0_1->centre() + via_relative_to_corner);
 
     layout->SetActiveLayerByName("li.pin");
-    layout->AddSquare(
+    geometry::Rectangle *via = layout->AddSquare(
         input_0_met_0->GetBoundingBox().LowerRight() - Point(
             via_side / 2, -via_side / 2), via_side);
+    layout->SavePoint("input_0", via->centre());
   }
 
   {
@@ -982,7 +1020,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
         via_side / 2, input_1_met_0->vertices().back().y() - via_side / 2);
 
     layout->SetActiveLayerByName("li.pin");
+    end.set_layer(layout->active_layer());
     layout->AddSquare(end, via_side);
+    layout->SavePoint("input_1", end);
   }
 
   {

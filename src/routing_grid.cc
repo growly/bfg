@@ -334,6 +334,7 @@ bool RoutingTrack::IsBlockedBetween(
     const geometry::Point &one_end, const geometry::Point &other_end) const {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
+
   if (low > high)
     std::swap(low, high);
 
@@ -357,8 +358,40 @@ int64_t RoutingTrack::ProjectOntoTrack(const geometry::Point &point) const {
   return 0;
 }
 
+int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
+  switch (direction_) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      return point.y();
+    case RoutingTrackDirection::kTrackVertical:
+      return point.x();
+    default:
+      LOG(FATAL) << "This RoutingTrack has an unrecognised "
+                 << "RoutingTrackDirection: " << direction_;
+  }
+  return 0;
+}
+
+bool RoutingTrack::Intersects(const geometry::Rectangle &rectangle) const {
+  // First check that the minor direction falls on this offset:
+  int offset_axis_low = ProjectOntoOffset(rectangle.lower_left());
+  int offset_axis_high = ProjectOntoOffset(rectangle.upper_right());
+
+  if (offset_axis_low > offset_axis_high)
+    std::swap(offset_axis_low, offset_axis_high);
+
+  return (offset_ >= offset_axis_low && offset_ <= offset_axis_high);
+}
+
 RoutingTrackBlockage *RoutingTrack::CreateBlockage(
-      const geometry::Point &one_end, const geometry::Point &other_end) {
+    const geometry::Rectangle &rectangle) {
+  if (Intersects(rectangle)) {
+    return CreateBlockage(rectangle.lower_left(), rectangle.upper_right());
+  }
+  return nullptr;
+}
+
+RoutingTrackBlockage *RoutingTrack::CreateBlockage(
+    const geometry::Point &one_end, const geometry::Point &other_end) {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
   if (low > high)
@@ -975,6 +1008,7 @@ RoutingPath *RoutingGrid::ShortestPath(
 
     auto &last_entry = prev[last_index];
     last_index = last_entry.first;
+
     last_edge = last_entry.second;
   }
 
@@ -988,6 +1022,24 @@ RoutingPath *RoutingGrid::ShortestPath(
 
   RoutingPath *path = new RoutingPath(begin, shortest_edges);
   return path;
+}
+
+void RoutingGrid::AddBlockages(const geometry::ShapeCollection &shapes) {
+  for (const auto &rectangle : shapes.rectangles) {
+    AddBlockage(*rectangle);
+  }
+}
+
+void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle) {
+  auto it = tracks_by_layer_.find(rectangle.layer());
+  if (it == tracks_by_layer_.end()) {
+    LOG(WARNING) << "No RoutingGrid tracks on blockage layer: "
+                 << rectangle.layer();
+    return;
+  }
+  for (RoutingTrack *track : it->second) {
+    track->CreateBlockage(rectangle);
+  }
 }
 
 void RoutingGrid::AddRoutingViaInfo(

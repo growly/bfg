@@ -6,6 +6,9 @@
 #include <ostream>
 #include <utility>
 #include <glog/logging.h>
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+#include <absl/strings/str_cat.h>
 #include <absl/strings/str_split.h>
 
 #include "geometry/layer.h"
@@ -13,6 +16,8 @@
 
 namespace bfg {
 
+using absl::Status;
+using absl::StatusOr;
 using geometry::Layer;
 
 void PhysicalPropertiesDatabase::LoadTechnology(
@@ -49,8 +54,8 @@ const Layer PhysicalPropertiesDatabase::GetLayer(
   std::string &name = name_parts.front();
   std::string &purpose = name_parts.back();
 
-  auto name_it = layer_infos_by_name_.find(name);
-  LOG_IF(FATAL, name_it == layer_infos_by_name_.end())
+  auto name_it = layers_by_name_.find(name);
+  LOG_IF(FATAL, name_it == layers_by_name_.end())
       << "No match for named layer: " << name;
 
   const std::unordered_map<std::string, Layer> &sub_map =
@@ -61,6 +66,15 @@ const Layer PhysicalPropertiesDatabase::GetLayer(
   return sub_it->second;
 }
 
+absl::StatusOr<std::string> PhysicalPropertiesDatabase::GetLayerNameAndPurpose(
+    const Layer &layer) const {
+  auto it = layer_names_.find(layer);
+  if (it == layer_names_.end()) {
+    return absl::NotFoundError("No match");
+  }
+  return absl::StrCat(it->second.first, ".", it->second.second);
+}
+
 void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
   // Add to mapping by layer number.
   const Layer &layer = info.internal_layer;
@@ -69,9 +83,9 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
       << "Duplicate layer info: " << layer;
   layer_infos_.insert({layer, info});
 
-  auto name_iterator = layer_infos_by_name_.find(info.name);
-  if (name_iterator == layer_infos_by_name_.end()) {
-    auto insertion_result = layer_infos_by_name_.insert({info.name,
+  auto name_iterator = layers_by_name_.find(info.name);
+  if (name_iterator == layers_by_name_.end()) {
+    auto insertion_result = layers_by_name_.insert({info.name,
         std::unordered_map<std::string, Layer>()});
     LOG_IF(FATAL, !insertion_result.second)
         << "Could not create sub-map for layer: (" << info.name
@@ -87,6 +101,8 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
       << "Duplicate layer name when adding layer info: (" << info.name
       << ", " << info.purpose << ")";
   sub_map.insert({info.purpose, layer});
+
+  layer_names_.insert({layer, {info.name, info.purpose}});
 }
 
 const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
@@ -133,9 +149,19 @@ void PhysicalPropertiesDatabase::AddRules(
 const IntraLayerConstraints &PhysicalPropertiesDatabase::Rules(
     const std::string &layer_name) const {
   const auto layer = GetLayer(layer_name);
+  return Rules(layer);
+}
+
+const IntraLayerConstraints &PhysicalPropertiesDatabase::Rules(
+    const Layer &layer) const {
   const auto map_it = intra_layer_constraints_.find(layer);
-  LOG_IF(FATAL, map_it == intra_layer_constraints_.end())
-      << "No intra-layer constraints for " << layer_name;
+  if (map_it == intra_layer_constraints_.end()) {
+    StatusOr<std::string> result = GetLayerNameAndPurpose(layer);
+    std::string name_and_purpose = result.ok() ? *result : "unknown";
+    LOG(FATAL)
+        << "No intra-layer constraints for layer " << layer
+        << " (" << name_and_purpose << ")";
+  }
   return map_it->second;
 }
 

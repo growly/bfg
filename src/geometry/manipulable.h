@@ -32,6 +32,8 @@ class Manipulable {
     Translate(point);
   }
 
+  virtual void Rotate(int32_t degrees_ccw) {};
+
   // Make the lower-left point of the bounding box the origin (0, 0).
   virtual void ResetOrigin() {}
 };

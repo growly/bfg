@@ -12,7 +12,7 @@ namespace bfg {
 namespace geometry {
 
 void Instance::MirrorY() {
-  rotation_clockwise_degrees_ = (rotation_clockwise_degrees_ + 180) % 360;
+  rotation_degrees_ccw_ = (rotation_degrees_ccw_ + 180) % 360;
   FlipVertical();
 }
 
@@ -41,24 +41,26 @@ void Instance::ResetOrigin() {
 }
 
 // We compute the bounding box assuming the instance has been rotated by
-// rotation_clockwise_degrees_ about the origin in the frame of the template
+// rotation_degrees_ccw_ about the origin in the frame of the template
 // cell; that is, about the lower left point of the instance.
 const Rectangle Instance::GetBoundingBox() const {
   LOG_IF(FATAL, template_layout_ == nullptr)
       << "Why does this Instance object have no template_layout set?";
   Rectangle template_bb = template_layout_->GetBoundingBox();
 
-  int32_t degrees_ccw = (
-      360 - (rotation_clockwise_degrees_ % 360)) % 360;
+  // We used to store it cw:
+  //int32_t degrees_ccw = (
+  //    360 - (rotation_degrees_ccw_ % 360)) % 360;
 
-  Rectangle rotated = template_bb.BoundingBoxIfRotated(Point(0, 0), degrees_ccw);
+  Rectangle rotated = template_bb.BoundingBoxIfRotated(
+      Point(0, 0), rotation_degrees_ccw_);
   rotated.Translate(lower_left_);
   return rotated;
 }
 
 void Instance::GeneratePorts() {
   int32_t rotation_ccw_degrees = (
-      360 - (rotation_clockwise_degrees_ % 360)) % 360;
+      360 - (rotation_degrees_ccw_ % 360)) % 360;
   instance_ports_.clear();
   for (const auto &port : template_layout_->Ports()) {
     const std::string &net = port->net();
@@ -69,7 +71,34 @@ void Instance::GeneratePorts() {
     instance_port->set_upper_right(rotated_bounds.upper_right());
     // Move to where the instance is supposed to sit:
     instance_port->Translate(lower_left_);
-    instance_ports_[net].reset(instance_port);
+    instance_ports_[net].insert(std::unique_ptr<Port>(instance_port));
+  }
+  ports_generated_ = true;
+}
+
+void Instance::GetShapesOnLayer(const geometry::Layer &layer,
+                                ShapeCollection *shapes) const {
+  ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
+  if (!master_shapes)
+    return;
+
+  for (const auto &rectangle : master_shapes->rectangles) {
+    Rectangle *copy = new Rectangle(*rectangle);
+    copy->Rotate(rotation_degrees_ccw_);
+    copy->Translate(lower_left_);
+    shapes->rectangles.emplace_back(copy);
+  }
+  for (const auto &polygon : master_shapes->polygons) {
+    Polygon *copy = new Polygon(*polygon);
+    copy->Rotate(rotation_degrees_ccw_);
+    copy->Translate(lower_left_);
+    shapes->polygons.emplace_back(copy);
+  }
+  for (const auto &port : master_shapes->ports) {
+    Port *copy = new Port(*port);
+    copy->Rotate(rotation_degrees_ccw_);
+    copy->Translate(lower_left_);
+    shapes->ports.emplace_back(copy);
   }
 }
 

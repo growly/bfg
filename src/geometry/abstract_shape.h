@@ -5,7 +5,6 @@
 #include <utility>
 
 #include "layer.h"
-#include "point.h"
 
 namespace bfg {
 namespace geometry {

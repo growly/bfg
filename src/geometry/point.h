@@ -5,13 +5,14 @@
 #include <cstdint>
 #include <vector>
 
+#include "abstract_shape.h"
 #include "manipulable.h"
 #include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
 namespace geometry {
 
-class Point : public Manipulable {
+class Point : public AbstractShape, public Manipulable {
  public:
   Point() = default;
   Point(const int64_t x, const int64_t y)
@@ -39,9 +40,10 @@ class Point : public Manipulable {
   void ResetOrigin() override {}    // No-op for a point.
 
   void Rotate(double theta_radians);
-  void Rotate(int32_t degrees_counter_clockwise);
+  void Rotate(int32_t degrees_ccw) override;
 
-  double L2DistanceTo(const geometry::Point &other) const;
+  int64_t L2SquaredDistanceTo(const Point &other) const;
+  double L2DistanceTo(const Point &other) const;
 
   Point &operator+=(const Point &other);
 
@@ -50,19 +52,16 @@ class Point : public Manipulable {
   int64_t y_;
 };
 
+// Treat the point as a vector from the origin, then add element-wise.
+Point operator+(const Point &lhs, const Point &rhs);
+Point operator-(const Point &lhs, const Point &rhs);
+Point operator-(const Point &rhs);
+
+bool operator==(const Point &lhs, const Point &rhs);
+
 }  // namespace geometry
 
 std::ostream &operator<<(std::ostream &os, const geometry::Point &point);
-
-// Treat the point as a vector from the origin, then add element-wise.
-geometry::Point operator+(
-    const geometry::Point &lhs, const geometry::Point &rhs);
-geometry::Point operator-(
-    const geometry::Point &lhs, const geometry::Point &rhs);
-geometry::Point operator-(const geometry::Point &rhs);
-
-bool operator==(
-    const geometry::Point &lhs, const geometry::Point &rhs);
 
 }  // namespace bfg
 

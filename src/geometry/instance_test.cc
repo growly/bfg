@@ -8,12 +8,12 @@ namespace bfg {
 namespace geometry {
 namespace {
 
-TEST(Rectangle, BoundingBoxOnRotation) {
+TEST(Instance, BoundingBoxOnRotation) {
   bfg::Layout template_layout = bfg::Layout(PhysicalPropertiesDatabase());
   template_layout.AddRectangle(Rectangle(Point(1, 0), Point(2, 1)));
 
   Instance instance(&template_layout, Point(0, 0));
-  instance.set_rotation_clockwise_degrees(90);
+  instance.set_rotation_degrees_ccw(270);
 
   Rectangle bounding_box = instance.GetBoundingBox();
 

@@ -5,6 +5,7 @@
 
 #include "shape.h"
 #include "point.h"
+#include "line.h"
 
 namespace bfg {
 namespace geometry {
@@ -13,6 +14,8 @@ namespace geometry {
 // object on a layer with connected nets and such, and a generic notion of a
 // "rectangular region", which we use to do math? I mean, maybe. But
 // laziness...
+//
+// A rectilinear rectangle.
 class Rectangle : public Shape {
  public:
   Rectangle() : Shape(0, "") {}
@@ -50,8 +53,10 @@ class Rectangle : public Shape {
   void FlipHorizontal() override {}   // No-op for a rectangle.
   void FlipVertical() override {}   // No-op for rectangle.
   void MoveLowerLeftTo(const Point &point) override { Translate(point); }
+  void Rotate(int32_t degrees_ccw) override;
 
-  Rectangle BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw);
+  Point PointOnLineOutside(const Line &line) const;
+  Rectangle BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) const;
 
   // TODO(aryap): To be able to reotate arbitrarily, we have to store the
   // upper_left and lower_right values explicitly OR store the rotation angle so
@@ -61,12 +66,15 @@ class Rectangle : public Shape {
   // TODO(aryap): Hmmm. Not a double. Truncating. Hmmm.
   // TODO(aryap): Rename Centre().
   Point centre() const {
-    return Point((lower_left_.x() + upper_right_.x()) / 2,
-                 (lower_left_.y() + upper_right_.y()) / 2);
+    Point centre = Point
+        ((lower_left_.x() + upper_right_.x()) / 2,
+         (lower_left_.y() + upper_right_.y()) / 2);
+    centre.set_layer(layer_);
+    return centre;
   }
 
   const Rectangle GetBoundingBox() const override {
-    return std::make_pair(lower_left_, upper_right_);
+    return *this;
   }
 
   const Point &lower_left() const { return lower_left_; }
@@ -87,14 +95,13 @@ class Rectangle : public Shape {
   Point upper_right_;
 };
 
+bool operator==(const Rectangle &lhs, const Rectangle &rhs);
+
 }  // namespace geometry
 
 std::ostream &operator<<(
     std::ostream &os,
     const geometry::Rectangle &rectangle);
-
-bool operator==(
-    const geometry::Rectangle &lhs, const geometry::Rectangle &rhs);
 
 }  // namespace bfg
 

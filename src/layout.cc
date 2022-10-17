@@ -14,6 +14,7 @@
 namespace bfg {
 
 using geometry::Point;
+using geometry::ShapeCollection;
 
 const std::string &Layout::NameOrParentName() const {
   if (name_ == "" && parent_cell_ != nullptr) {
@@ -234,8 +235,9 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     *instance_pb->mutable_origin_location() =
         instance->lower_left().ToVLSIRPoint();
     instance_pb->set_reflect_vert(instance->reflect_vertical());
+    // FIXME(aryap): VLSIR needs to make this ccw:
     instance_pb->set_rotation_clockwise_degrees(
-        instance->rotation_clockwise_degrees());
+        instance->rotation_degrees_ccw());
   }
   for (const auto &entry : named_points_) {
     ::vlsir::raw::TextElement *text = layout_pb.add_annotations();
@@ -247,15 +249,35 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   return layout_pb;
 };
 
-Layout::ShapeCollection *Layout::GetOrInsertLayerShapes(
+ShapeCollection *Layout::GetOrInsertLayerShapes(
     const geometry::Layer &layer) {
-  auto shapes_it = shapes_.find(layer);
-  if (shapes_it != shapes_.end()) {
-    return shapes_it->second.get();
-  }
-  ShapeCollection *shape_collection = new ShapeCollection();
+  ShapeCollection *shape_collection = GetShapeCollection(layer);
+  if (shape_collection) return shape_collection;
+  // Create a new one.
+  shape_collection = new ShapeCollection();
   shapes_.insert({layer, std::unique_ptr<ShapeCollection>(shape_collection)});
   return shape_collection;
+}
+
+void Layout::AddPort(
+    const geometry::Port &port, const std::string &net_prefix) {
+  LOG_IF(FATAL, port.net().empty()) << "Can't add a port with net \"\".";
+  std::string net_name = net_prefix.empty() ?
+      port.net() : absl::StrCat(net_prefix, ".", port.net());
+  geometry::Port *copy = new geometry::Port(port);
+  copy->set_layer(active_layer_);
+  copy->set_net(net_name);
+  ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
+  shape_collection->ports.emplace_back(copy);
+  ports_by_net_[net_name].insert(copy);
+}
+
+void Layout::GetPorts(
+    const std::string &net_name, std::set<geometry::Port*> *out) const {
+  auto it = ports_by_net_.find(net_name);
+  LOG_IF(FATAL, it == ports_by_net_.end())
+      << "No port associated with net: " << net_name;
+  out->insert(it->second.begin(), it->second.end());
 }
 
 void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
@@ -272,7 +294,7 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
       AddPolygon(*polygon);
     }
     for (const auto &port : other_collection->ports) {
-      AddPort(*port);
+      AddPort(*port, name_prefix);
     }
   }
   for (const auto &instance : other.instances_) {
@@ -293,6 +315,33 @@ void Layout::MakeVia(const std::string &layer_name, const geometry::Point &centr
   int64_t via_side = physical_db_.Rules(layer_name).via_width;
   AddSquare(centre, via_side);
   active_layer_ = last_layer;
+}
+
+void Layout::GetShapesOnLayer(const geometry::Layer &layer,
+                              ShapeCollection *shapes) const {
+  ShapeCollection *direct = GetShapeCollection(layer);
+  if (direct) {
+    for (const auto &rectangle : direct->rectangles) {
+      shapes->rectangles.emplace_back(new geometry::Rectangle(*rectangle));
+    }
+    for (const auto &polygon : direct->polygons) {
+      shapes->polygons.emplace_back(new geometry::Polygon(*polygon));
+    }
+    for (const auto &port : direct->ports) {
+      shapes->ports.emplace_back(new geometry::Port(*port));
+    }
+  }
+  for (const auto &instance : instances_) {
+    instance->GetShapesOnLayer(layer, shapes);
+  }
+}
+
+ShapeCollection *Layout::GetShapeCollection(const geometry::Layer &layer) const {
+  auto shapes_it = shapes_.find(layer);
+  if (shapes_it != shapes_.end()) {
+    return shapes_it->second.get();
+  }
+  return nullptr;
 }
 
 const std::set<geometry::Port*> Layout::Ports() const {

@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
     .via_width = 170,
   };
   physical_db.AddRules("licon.drawing", intra_constraints);
+  physical_db.AddRules("li.pin", intra_constraints);
   physical_db.AddRules("via1.drawing", intra_constraints);
   physical_db.AddRules("mcon.drawing", intra_constraints);
   intra_constraints = {

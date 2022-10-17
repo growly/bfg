@@ -65,7 +65,9 @@ const Rectangle PolyLine::GetBoundingBox() const {
     max_y = std::max(segment.end.y(), max_y);
   }
 
-  return Rectangle(Point(min_x, min_y), Point(max_x, max_y));
+  Rectangle bounding_box = Rectangle(Point(min_x, min_y), Point(max_x, max_y));
+  bounding_box.set_layer(layer_);
+  return bounding_box;
 };
 
 void PolyLine::AddSegment(const Point &to, const uint64_t width) {

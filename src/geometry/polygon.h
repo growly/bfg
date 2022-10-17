@@ -3,11 +3,13 @@
 
 #include <glog/logging.h>
 #include <ostream>
+#include <utility>
 #include <vector>
 
 #include "point.h"
 #include "rectangle.h"
 #include "shape.h"
+#include "line.h"
 
 namespace bfg {
 namespace geometry {
@@ -26,12 +28,17 @@ class Polygon : public Shape {
     vertices_.push_back(point);
   }
 
+  void IntersectingPoints(
+      const Line &line,
+      std::vector<std::pair<Point, Point>> *points) const;
+
   void MirrorY() override;
   void MirrorX() override;
   void FlipHorizontal() override;
   void FlipVertical() override;
   void Translate(const Point &offset) override;
   void ResetOrigin() override;
+  void Rotate(int32_t degrees_ccw) override;
 
   const Rectangle GetBoundingBox() const override;
 

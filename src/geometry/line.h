@@ -8,9 +8,11 @@
 namespace bfg {
 namespace geometry {
 
-// This is a line as defined by two points. It's actually a vector, and is
-// sometimes treated as such, and sometimes we take the extension of the line
-// on which that vector falls.
+// This is a line as defined by two points. It's also a vector from the start
+// to the end point and is sometimes treated as such, and sometimes we take the
+// extension of the line on which that vector falls.
+// TODO(growly): do we need separate concepts for an infinite length line and a
+// line connecting only two points?
 class Line {
  public:
   Line() = default;
@@ -23,6 +25,18 @@ class Line {
   // fills `point` with the intersection point. Returns false if the lines do
   // not intersect (are parallel).
   static bool Intersect(const Line &lhs, const Line &rhs, Point *point);
+
+  static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
+
+  bool Intersects(const Line &other, Point *point) const {
+    return Intersect(*this, other, point);
+  }
+
+  bool IntersectsInBounds(const Line &other, Point *point) const;
+
+  bool IsSameInfiniteLine(const Line &other) const {
+    return AreSameInfiniteLine(*this, other);
+  }
 
   void Shift(int64_t dx, int64_t dy) {
     ShiftStart(dx, dy);
@@ -40,6 +54,9 @@ class Line {
   // Reverse the direction of this line.
   void Reverse() { std::swap(start_, end_); }
 
+  // If 'm' is not a number in y = m*x + c;
+  bool IsVertical() const;
+
   // Returns 'm' in y = m*x + c;
   double Gradient() const;
 
@@ -49,6 +66,9 @@ class Line {
   // Find angle between our line and the x-axis, where 0 means pointing
   // horizontally to the right. Returns the angle in radians.
   double AngleToHorizon() const;
+
+  // Angle in radians.
+  double AngleToLine(const Line &other) const;
 
   void set_start(const Point &start) { start_ = start; }
   void set_end(const Point &end) { end_ = end; }

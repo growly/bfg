@@ -52,7 +52,27 @@ void Rectangle::ResetOrigin() {
   Translate(-bounding_box.lower_left());
 }
 
-Rectangle Rectangle::BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) {
+void Rectangle::Rotate(int32_t degrees_ccw) {
+  LOG_IF(WARNING, degrees_ccw % 90 != 0)
+      << "Rectangle only supports rectilinear shapes and will be "
+      << "massaged as such.";
+  // This is the slow but more general way to do this:
+  Rectangle bb = BoundingBoxIfRotated(Point(0, 0), degrees_ccw);
+  lower_left_ = bb.lower_left_;
+  upper_right_ = bb.upper_right_;
+}
+
+Point Rectangle::PointOnLineOutside(const Line &line) const {
+  if (line.IsVertical()) {
+    return Point(line.start().x(), lower_left_.y() - 1);
+  }
+  double y = line.Gradient() * static_cast<double>(
+      lower_left_.x() - 1) + line.Offset();
+  return Point(lower_left_.x() - 1, static_cast<int64_t>(y));
+}
+
+Rectangle Rectangle::BoundingBoxIfRotated(
+    const Point &about, int32_t degrees_ccw) const {
   Point lower_left = lower_left_ - about;
   Point upper_left = UpperLeft() - about;
   Point upper_right = upper_right_ - about;
@@ -78,20 +98,17 @@ Rectangle Rectangle::BoundingBoxIfRotated(const Point &about, int32_t degrees_cc
   return rotated;
 }
 
+bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
+  return lhs.lower_left() == rhs.lower_left()
+      && lhs.upper_right() == rhs.upper_right();
+}
+
 }  // namespace geometry
 
-std::ostream &operator<<(
-    std::ostream &os,
-    const geometry::Rectangle &rectangle) {
+std::ostream &operator<<(std::ostream &os, const geometry::Rectangle &rectangle) {
   os << "[Rectangle " << rectangle.lower_left()
      << " " << rectangle.upper_right() << "]";
   return os;
-}
-
-bool operator==(
-    const geometry::Rectangle &lhs, const geometry::Rectangle &rhs) {
-  return lhs.lower_left() == rhs.lower_left()
-      && lhs.upper_right() == rhs.upper_right();
 }
 
 

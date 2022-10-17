@@ -12,10 +12,13 @@
 #include "geometry/polygon.h"
 #include "geometry/port.h"
 #include "geometry/rectangle.h"
+#include "geometry/shape_collection.h"
 
 #include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
+
+using geometry::ShapeCollection;
 
 class Cell;
 
@@ -29,11 +32,6 @@ struct LayoutPadding {
 
 class Layout : public geometry::Manipulable {
  public:
-  struct ShapeCollection {
-    std::vector<std::unique_ptr<geometry::Rectangle>> rectangles;
-    std::vector<std::unique_ptr<geometry::Polygon>> polygons;
-    std::vector<std::unique_ptr<geometry::Port>> ports;
-  };
 
   Layout() = delete;
   Layout(const PhysicalPropertiesDatabase &physical_db)
@@ -68,12 +66,8 @@ class Layout : public geometry::Manipulable {
     instances_.emplace_back(copy);
     return copy;
   }
-  void AddPort(const geometry::Port &port) {
-    geometry::Port *copy = new geometry::Port(port);
-    copy->set_layer(active_layer_);
-    ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
-    shape_collection->ports.emplace_back(copy);
-  }
+  void AddPort(const geometry::Port &port, const std::string &net_prefix = "");
+  void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out) const;
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
 
   void MakeVia(const std::string &layer_name, const geometry::Point &centre);
@@ -105,6 +99,13 @@ class Layout : public geometry::Manipulable {
     tiling_bounds_.reset();
   }
 
+  void SavePoint(const std::string &name, const geometry::Point &point);
+  geometry::Point GetPoint(const std::string &name) const;
+
+  void GetShapesOnLayer(
+      const geometry::Layer &layer, ShapeCollection *shapes) const;
+  ShapeCollection *GetShapeCollection(const geometry::Layer &layer) const;
+
   const std::string &NameOrParentName() const;
 
   const std::string &name() const { return name_; }
@@ -119,6 +120,8 @@ class Layout : public geometry::Manipulable {
   };
   const geometry::Layer &active_layer() const { return active_layer_; }
 
+  const std::unordered_map<std::string, std::set<geometry::Port*>>
+      &ports_by_net() const { return ports_by_net_; }
   //const std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() const {
   //  return rectangles_;
   //}
@@ -128,9 +131,6 @@ class Layout : public geometry::Manipulable {
   const std::vector<std::unique_ptr<geometry::Instance>> &instances() const {
     return instances_;
   }
-
-  void SavePoint(const std::string &name, const geometry::Point &point);
-  geometry::Point GetPoint(const std::string &name) const;
 
  private:
   bfg::Cell *parent_cell_;
@@ -144,6 +144,8 @@ class Layout : public geometry::Manipulable {
   std::unique_ptr<geometry::Rectangle> tiling_bounds_;
 
   std::vector<std::unique_ptr<geometry::Instance>> instances_;
+
+  std::unordered_map<std::string, std::set<geometry::Port*>> ports_by_net_;
 
   geometry::Layer active_layer_;
   std::map<geometry::Layer, std::unique_ptr<ShapeCollection>> shapes_;

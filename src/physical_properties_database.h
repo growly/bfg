@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <ostream>
 
+#include <absl/status/statusor.h>
+
 #include "abstract_via.h"
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
@@ -87,6 +89,8 @@ class PhysicalPropertiesDatabase {
   }
 
   const geometry::Layer GetLayer(const std::string &name_and_purpose) const;
+  absl::StatusOr<std::string> GetLayerNameAndPurpose(
+      const geometry::Layer &layer) const;
 
   void AddLayerInfo(const LayerInfo &info);
   const LayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
@@ -102,8 +106,8 @@ class PhysicalPropertiesDatabase {
 
   const InterLayerConstraints &Rules(
       const std::string &left, const std::string &right) const;
-  const IntraLayerConstraints &Rules(
-      const std::string &layer_name) const;
+  const IntraLayerConstraints &Rules(const std::string &layer_name) const;
+  const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
 
  private:
   double internal_units_per_external_;
@@ -113,7 +117,8 @@ class PhysicalPropertiesDatabase {
 
   // Store a mapping of layer name to internal layer number.
   std::unordered_map<std::string, std::unordered_map<
-      std::string, geometry::Layer>> layer_infos_by_name_;
+      std::string, geometry::Layer>> layers_by_name_;
+  std::map<geometry::Layer, std::pair<std::string, std::string>> layer_names_;
 
   std::unordered_map<geometry::Layer,
       std::unordered_map<geometry::Layer, InterLayerConstraints>>

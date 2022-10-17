@@ -270,11 +270,16 @@ class RoutingTrack {
   void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out);
   void ReportAvailableVertices(std::vector<RoutingVertex*> *vertices_out);
 
+  bool Intersects(const geometry::Rectangle &rectangle) const;
+  RoutingTrackBlockage *CreateBlockage(const geometry::Rectangle &retangle);
+
   std::string Debug() const;
 
   const std::set<RoutingEdge*> &edges() const { return edges_; }
 
   const geometry::Layer &layer() const { return layer_; }
+
+  int64_t offset() const { return offset_; }
 
  private:
   bool IsBlocked(const geometry::Point &point) const {
@@ -283,6 +288,7 @@ class RoutingTrack {
   bool IsBlockedBetween(const geometry::Point &one_end, const geometry::Point &other_end) const;
 
   int64_t ProjectOntoTrack(const geometry::Point &point) const;
+  int64_t ProjectOntoOffset(const geometry::Point &point) const;
 
   RoutingTrackBlockage *CreateBlockage(
       const geometry::Point &one_end, const geometry::Point &other_end);
@@ -299,7 +305,8 @@ class RoutingTrack {
   geometry::Layer layer_;
   RoutingTrackDirection direction_;
 
-  // The x or y coordinate for this track.
+  // The x or y coordinate for this track, when the track runs in the y or x
+  // direction.
   int64_t offset_;
 
   // We want to keep a sorted list of blockages, but if we keep them as a
@@ -344,6 +351,9 @@ class RoutingGrid {
   PolyLineCell *CreatePolyLineCell() const;
 
   Layout *GenerateLayout() const;
+
+  void AddBlockages(const geometry::ShapeCollection &shapes);
+  void AddBlockage(const geometry::Rectangle &rectangle);
 
   void AddRoutingViaInfo(const geometry::Layer &lhs,
                          const geometry::Layer &rhs,
