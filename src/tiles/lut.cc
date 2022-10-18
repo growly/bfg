@@ -132,6 +132,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
     routing_grid.AddBlockages(shapes);
+    //LOG(INFO) << shapes.Describe();
   }
 
   // Connect the scan chain.

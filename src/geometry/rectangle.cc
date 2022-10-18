@@ -111,5 +111,4 @@ std::ostream &operator<<(std::ostream &os, const geometry::Rectangle &rectangle)
   return os;
 }
 
-
 }  // namespace bfg

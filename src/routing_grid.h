@@ -271,8 +271,8 @@ class RoutingTrack {
   void ReportAvailableVertices(std::vector<RoutingVertex*> *vertices_out);
 
   bool Intersects(const geometry::Rectangle &rectangle) const;
-  RoutingTrackBlockage *CreateBlockage(const geometry::Rectangle &retangle);
-  void CreateBlockage(const geometry::Polygon &polygon);
+  RoutingTrackBlockage *AddBlockage(const geometry::Rectangle &retangle);
+  void AddBlockage(const geometry::Polygon &polygon);
 
   geometry::Line AsLine() const;
 
@@ -284,7 +284,14 @@ class RoutingTrack {
 
   int64_t offset() const { return offset_; }
 
+  int64_t width() const { return width_; }
+  void set_width(int64_t width) { width_ = width; }
+
  private:
+  // TODO(aryap): Maybe we sort edges and vertices by their starting/centre
+  // positions?
+  //static bool EdgeComp(RoutingEdge *lhs, RoutingEdge *rhs);
+
   bool IsBlocked(const geometry::Point &point) const {
     return IsBlockedBetween(point, point);
   }
@@ -295,6 +302,7 @@ class RoutingTrack {
 
   RoutingTrackBlockage *CreateBlockage(
       const geometry::Point &one_end, const geometry::Point &other_end);
+  void ApplyBlockage(const RoutingTrackBlockage &blockage);
 
   void SortBlockages();
 
@@ -312,9 +320,12 @@ class RoutingTrack {
   // direction.
   int64_t offset_;
 
+  // The working width of this track.
+  int64_t width_;
+
   // We want to keep a sorted list of blockages, but if we keep them as a
-  // std::set we can't mutate the objects (since then no resorting is
-  // performed). Instead we keep a vector and make sure to sort it ourselves.
+  // std::set we can't mutate the objects (since they will not automatically be
+  // re-sorted). Instead we keep a vector and make sure to sort it ourselves.
   std::vector<RoutingTrackBlockage*> blockages_;
 };
 
@@ -358,6 +369,8 @@ class RoutingGrid {
   void AddBlockages(const geometry::ShapeCollection &shapes);
   void AddBlockage(const geometry::Rectangle &rectangle);
   void AddBlockage(const geometry::Polygon &polygon);
+  // TODO(aryap): This might be a useful optimisation.
+  void RemoveUnavailableVertices();
 
   void AddRoutingViaInfo(const geometry::Layer &lhs,
                          const geometry::Layer &rhs,
@@ -370,7 +383,8 @@ class RoutingGrid {
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   void AddRoutingLayerInfo(const RoutingLayerInfo &info);
-  const RoutingLayerInfo &GetRoutingLayerInfo(const geometry::Layer &layer) const;
+  const RoutingLayerInfo &GetRoutingLayerInfo(
+      const geometry::Layer &layer) const;
 
   const std::vector<RoutingPath*> &paths() const { return paths_; }
   const std::set<RoutingEdge*> &off_grid_edges() const {
@@ -386,7 +400,8 @@ class RoutingGrid {
       PickHorizontalAndVertical(
           const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
-  std::vector<RoutingVertex*> &GetAvailableVertices(const geometry::Layer &layer);
+  std::vector<RoutingVertex*> &GetAvailableVertices(
+      const geometry::Layer &layer);
 
   RoutingVertex *GenerateGridVertexForPoint(
       const geometry::Point &point, const geometry::Layer &layer);
@@ -417,14 +432,15 @@ class RoutingGrid {
   // in a RoutingPath).
   std::set<RoutingEdge*> off_grid_edges_;
 
-  // All owned vertices.
+  // All Owned vertices.
   std::vector<RoutingVertex*> vertices_;
 
   // All routing tracks (we own these).
   std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;
 
   // The list of all available vertices per layer.
-  std::map<geometry::Layer, std::vector<RoutingVertex*>> available_vertices_by_layer_;
+  std::map<geometry::Layer,
+           std::vector<RoutingVertex*>> available_vertices_by_layer_;
 
   const PhysicalPropertiesDatabase &physical_db_;
 };

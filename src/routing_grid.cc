@@ -21,6 +21,17 @@
 #include "routing_grid.h"
 #include "geometry/rectangle.h"
 
+// TODO(aryap):
+//  1) What does RoutingGrid::available_vertices_by_layer_ actually do?
+
+// A RoutingGrid manages a multi-layer rectilinear wire grid for for
+// connections between points.
+//
+// The grid comprises RoutingTracks, which own a set of RoutingVertexs and
+// RoutingEdges. It also owns a separate collection of RoutingVertexs and
+// RoutingEdges that do not fall onto specific tracks.
+//
+
 namespace bfg {
 
 void RoutingEdge::set_track(RoutingTrack *track) {
@@ -42,7 +53,7 @@ void RoutingEdge::PrepareForRemoval() {
   track_ = nullptr;
 }
 
-// TODO(aryap): This is a pretty interesting problem to solve:
+// NOTE(aryap): This is a pretty interesting problem to solve:
 void RoutingEdge::ApproximateCost() {
   // Proportional to the square of the distance.
   cost_ = std::log(first_->centre().L2DistanceTo(second_->centre()));
@@ -392,29 +403,45 @@ int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
 
 bool RoutingTrack::Intersects(const geometry::Rectangle &rectangle) const {
   // First check that the minor direction falls on this offset:
-  int offset_axis_low = ProjectOntoOffset(rectangle.lower_left());
-  int offset_axis_high = ProjectOntoOffset(rectangle.upper_right());
+  int64_t offset_axis_low = ProjectOntoOffset(rectangle.lower_left());
+  int64_t offset_axis_high = ProjectOntoOffset(rectangle.upper_right());
 
   if (offset_axis_low > offset_axis_high)
     std::swap(offset_axis_low, offset_axis_high);
 
-  return (offset_ >= offset_axis_low && offset_ <= offset_axis_high);
+  int64_t high = offset_ + width_ / 2;
+  int64_t low = offset_ - (width_ - width_ / 2);
+
+  // There is no intersection if both the track edges are on the low or the
+  // high side of the blockage. Otherwise if one of the edges is straddled or
+  // we're entirely within the shape, there is:
+  return !((low < offset_axis_low && high < offset_axis_low) ||
+           (low > offset_axis_high && high > offset_axis_high));
 }
 
-RoutingTrackBlockage *RoutingTrack::CreateBlockage(
+RoutingTrackBlockage *RoutingTrack::AddBlockage(
     const geometry::Rectangle &rectangle) {
   if (Intersects(rectangle)) {
-    return CreateBlockage(rectangle.lower_left(), rectangle.upper_right());
+    LOG(INFO) << rectangle << " intersects offset " << offset_;
+    RoutingTrackBlockage *blockage = CreateBlockage(
+        rectangle.lower_left(), rectangle.upper_right());
+    if (blockage) {
+      ApplyBlockage(*blockage);
+    }
   }
   return nullptr;
 }
 
-void RoutingTrack::CreateBlockage(const geometry::Polygon &polygon) {
+void RoutingTrack::AddBlockage(const geometry::Polygon &polygon) {
   geometry::Line track = AsLine();
   std::vector<std::pair<geometry::Point, geometry::Point>> intersections;
   polygon.IntersectingPoints(track, &intersections);
   for (const auto &pair : intersections) {
-    CreateBlockage(pair.first, pair.second);
+    RoutingTrackBlockage *blockage = CreateBlockage(
+        pair.first, pair.second);
+    if (blockage) {
+      ApplyBlockage(*blockage);
+    }
   }
 }
 
@@ -496,6 +523,19 @@ void RoutingTrack::SortBlockages() {
         lhs->start() < rhs->start() : lhs->end() < rhs->end();
   };
   std::sort(blockages_.begin(), blockages_.end(), comp);
+}
+
+void RoutingTrack::ApplyBlockage(const RoutingTrackBlockage &blockage) {
+  for (RoutingVertex *vertex : vertices_) {
+    if (IsBlockedBetween(vertex->centre(), vertex->centre())) {
+      vertex->set_available(false);
+    }
+  }
+  for (RoutingEdge *edge : edges_) {
+    if (IsBlockedBetween(edge->first()->centre(), edge->second()->centre())) {
+      edge->set_available(false);
+    }
+  }
 }
 
 std::ostream &operator<<(std::ostream &os, const RoutingTrack &track) {
@@ -689,7 +729,7 @@ namespace {
 // So we have to do this:
 int64_t modulo(int64_t a, int64_t b) {
   int64_t remainder = a % b;
-  return remainder < 0? remainder + b : remainder;
+  return remainder < 0 ? remainder + b : remainder;
 }
 
 }   // namespace
@@ -746,6 +786,7 @@ void RoutingGrid::ConnectLayers(
   for (int64_t x = x_start; x < x_max; x += x_pitch) {
     RoutingTrack *track = new RoutingTrack(
         vertical_info.layer, RoutingTrackDirection::kTrackVertical, x);
+    track->set_width(vertical_info.wire_width);
     vertical_tracks.insert({x, track});
     AddTrackToLayer(track, vertical_info.layer);
   }
@@ -754,6 +795,7 @@ void RoutingGrid::ConnectLayers(
     RoutingTrack *track = new RoutingTrack(
         horizontal_info.layer,
         RoutingTrackDirection::kTrackHorizontal, y);
+    track->set_width(horizontal_info.wire_width);
     horizontal_tracks.insert({y, track});
     AddTrackToLayer(track, horizontal_info.layer);
   }
@@ -881,9 +923,10 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
     auto &available_vertices = it->second;
     auto pos = std::find(
         available_vertices.begin(), available_vertices.end(), vertex);
-    LOG_IF(FATAL, pos == available_vertices.end())
-        << "Did not find vertex we're removing in available ones for layer "
-        << layer << "; vertex: " << vertex;
+    if (pos == available_vertices.end()) {
+      // Already removed from availability list.
+      continue;
+    }
     available_vertices.erase(pos);
   }
 
@@ -927,6 +970,10 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
 
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin, RoutingVertex *end) {
+  // FIXME(aryap): This is very bad.
+  LOG_IF(WARNING, !begin->available()) << "Start vertex for path is not available";
+  LOG_IF(WARNING, !end->available()) << "End vertex for path is not available";
+
   // Give everything its index for the duration of this algorithm.
   for (size_t i = 0; i < vertices_.size(); ++i) {
     vertices_[i]->set_contextual_index(i);
@@ -992,12 +1039,18 @@ RoutingPath *RoutingGrid::ShortestPath(
     }
 
     for (RoutingEdge *edge : current->edges()) {
+      if (!edge->available())
+        continue;
+
       // We don't know what direction we're using the edge in, and edges are
       // not directional per se, so pick the side that isn't the one we came in
       // on:
       // TODO(aryap): Maybe bake this into the RoutingEdge.
       RoutingVertex *next =
           edge->first() == current ? edge->second() : edge->first();
+
+      if (!next->available())
+        continue;
 
       size_t next_index = next->contextual_index();
 
@@ -1053,13 +1106,14 @@ RoutingPath *RoutingGrid::ShortestPath(
 }
 
 void RoutingGrid::AddBlockages(const geometry::ShapeCollection &shapes) {
-  for (const auto &rectangle : shapes.rectangles) {
+  for (const auto &rectangle : shapes.rectangles()) {
+    LOG(INFO) << "adding blockage rect " << *rectangle;
     AddBlockage(*rectangle);
   }
-  for (const auto &polygon : shapes.polygons) {
+  for (const auto &polygon : shapes.polygons()) {
     AddBlockage(*polygon);
   }
-  for (const auto &port : shapes.ports) {
+  for (const auto &port : shapes.ports()) {
     AddBlockage(*port);
   }
 }
@@ -1069,7 +1123,7 @@ void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle) {
   if (it == tracks_by_layer_.end())
     return;
   for (RoutingTrack *track : it->second) {
-    track->CreateBlockage(rectangle);
+    track->AddBlockage(rectangle);
   }
 }
 
@@ -1078,7 +1132,21 @@ void RoutingGrid::AddBlockage(const geometry::Polygon &polygon) {
   if (it == tracks_by_layer_.end())
     return;
   for (RoutingTrack *track : it->second) {
-    track->CreateBlockage(polygon);
+    track->AddBlockage(polygon);
+  }
+}
+
+void RoutingGrid::RemoveUnavailableVertices() {
+  for (auto &entry : available_vertices_by_layer_) {
+    std::vector<RoutingVertex*> &available = entry.second;
+    for (auto it = available.begin(); it != available.end();) {
+      RoutingVertex *vertex = *it;
+      if (!vertex->available()) {
+        it = available.erase(it);
+      } else {
+        ++it;
+      }
+    }
   }
 }
 

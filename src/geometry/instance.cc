@@ -82,24 +82,11 @@ void Instance::GetShapesOnLayer(const geometry::Layer &layer,
   if (!master_shapes)
     return;
 
-  for (const auto &rectangle : master_shapes->rectangles) {
-    Rectangle *copy = new Rectangle(*rectangle);
-    copy->Rotate(rotation_degrees_ccw_);
-    copy->Translate(lower_left_);
-    shapes->rectangles.emplace_back(copy);
-  }
-  for (const auto &polygon : master_shapes->polygons) {
-    Polygon *copy = new Polygon(*polygon);
-    copy->Rotate(rotation_degrees_ccw_);
-    copy->Translate(lower_left_);
-    shapes->polygons.emplace_back(copy);
-  }
-  for (const auto &port : master_shapes->ports) {
-    Port *copy = new Port(*port);
-    copy->Rotate(rotation_degrees_ccw_);
-    copy->Translate(lower_left_);
-    shapes->ports.emplace_back(copy);
-  }
+  ShapeCollection instance_shapes;
+  instance_shapes.Add(*master_shapes);
+  instance_shapes.Rotate(rotation_degrees_ccw_);
+  instance_shapes.Translate(lower_left_);
+  shapes->Add(instance_shapes);
 }
 
 }  // namespace geometry

@@ -26,9 +26,7 @@ const std::string &Layout::NameOrParentName() const {
 void Layout::MirrorY() {
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
-    for (const auto &rectangle : shapes->rectangles) { rectangle->MirrorY(); }
-    for (const auto &polygon : shapes->polygons) { polygon->MirrorY(); }
-    for (const auto &port : shapes->ports) { port->MirrorY(); }
+    shapes->MirrorY();
   }
   for (const auto &instance : instances_) { instance->MirrorY(); }
   for (auto &entry : named_points_) { entry.second.MirrorY(); }
@@ -37,9 +35,7 @@ void Layout::MirrorY() {
 void Layout::MirrorX() {
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
-    for (const auto &rectangle : shapes->rectangles) { rectangle->MirrorX(); }
-    for (const auto &polygon : shapes->polygons) { polygon->MirrorX(); }
-    for (const auto &port : shapes->ports) { port->MirrorX(); }
+    shapes->MirrorX();
   }
   for (const auto &instance : instances_) { instance->MirrorX(); }
   for (auto &entry : named_points_) { entry.second.MirrorX(); }
@@ -60,11 +56,7 @@ void Layout::FlipVertical() {
 void Layout::Translate(const Point &offset) {
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
-    for (const auto &rectangle : shapes->rectangles) {
-      rectangle->Translate(offset);
-    }
-    for (const auto &polygon : shapes->polygons) { polygon->Translate(offset); }
-    for (const auto &port : shapes->ports) { port->Translate(offset); }
+    shapes->Translate(offset);
   }
   for (const auto &instance : instances_) { instance->Translate(offset); }
   for (auto &entry : named_points_) { entry.second.Translate(offset); }
@@ -79,10 +71,10 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
   std::optional<Point> start;
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
-    if (!shapes->rectangles.empty()) {
-      start = shapes->rectangles.front()->lower_left();
-    } else if (!shapes->polygons.empty()) {
-      start = shapes->polygons.front()->GetBoundingBox().lower_left();
+    if (!shapes->rectangles().empty()) {
+      start = shapes->rectangles().front()->lower_left();
+    } else if (!shapes->polygons().empty()) {
+      start = shapes->polygons().front()->GetBoundingBox().lower_left();
     }
   }
   if (!start && !instances_.empty()) {
@@ -100,29 +92,11 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
 
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
-    for (const auto &rectangle : shapes->rectangles) {
-      min_x = std::min(rectangle->lower_left().x(), min_x);
-      min_y = std::min(rectangle->lower_left().y(), min_y);
-      max_x = std::max(rectangle->upper_right().x(), max_x);
-      max_y = std::max(rectangle->upper_right().y(), max_y);
-    }
-
-    for (const auto &polygon : shapes->polygons) {
-      geometry::Rectangle bounding_box = polygon->GetBoundingBox();
-      const Point &lower_left = bounding_box.lower_left();
-      const Point &upper_right = bounding_box.upper_right();
-      min_x = std::min(lower_left.x(), min_x);
-      min_y = std::min(lower_left.y(), min_y);
-      max_x = std::max(upper_right.x(), max_x);
-      max_y = std::max(upper_right.y(), max_y);
-    }
-
-    for (const auto &port : shapes->ports) {
-      min_x = std::min(port->lower_left().x(), min_x);
-      min_y = std::min(port->lower_left().y(), min_y);
-      max_x = std::max(port->upper_right().x(), max_x);
-      max_y = std::max(port->upper_right().y(), max_y);
-    }
+    const geometry::Rectangle bb = shapes->GetBoundingBox();
+    min_x = std::min(bb.lower_left().x(), min_x);
+    min_y = std::min(bb.lower_left().y(), min_y);
+    max_x = std::max(bb.upper_right().x(), max_x);
+    max_y = std::max(bb.upper_right().y(), max_y);
   }
   for (const auto &instance : instances_) {
     LOG(INFO) << "Computing bounding box for " << instance->name();
@@ -150,9 +124,9 @@ std::string Layout::Describe() const {
 
   for (const auto &entry : shapes_) {
     ShapeCollection *collection = entry.second.get();
-    num_rectangles += collection->rectangles.size();
-    num_polygons += collection->polygons.size();
-    num_ports += collection->ports.size();
+    num_rectangles += collection->rectangles().size();
+    num_polygons += collection->polygons().size();
+    num_ports += collection->ports().size();
   }
 
   ss << "layout: " << num_layers << " layers, "
@@ -164,24 +138,11 @@ std::string Layout::Describe() const {
   for (const auto &entry : shapes_) {
     ShapeCollection *collection = entry.second.get();
     ss << "  layer " << entry.first << std::endl;
-    for (const auto &rectangle : collection->rectangles) {
-      ss << "    rect " << rectangle->lower_left().x() << " "
-         << rectangle->lower_left().y() << " "
-         << rectangle->upper_right().x() << " "
-         << rectangle->upper_right().y() << std::endl;
-    }
-    for (const auto &poly : collection->polygons) {
-      ss << "    polygon ";
-      for (const geometry::Point &point : poly->vertices()) {
-        ss << "(" << point.x() << ", " << point.y() << ") ";
-      }
-      ss << std::endl;
-    }
-
-    if (!named_points_.empty()) {
-      for (const auto &entry : named_points_) {
-        ss << "named point " << entry.first << ": " << entry.second << std::endl;
-      }
+    ss << collection->Describe();
+  }
+  if (!named_points_.empty()) {
+    for (const auto &entry : named_points_) {
+      ss << "named point " << entry.first << ": " << entry.second << std::endl;
     }
   }
 
@@ -207,14 +168,14 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
 
     // Collect shapes by layer.
-    for (const auto &rect : shape_collection->rectangles) {
+    for (const auto &rect : shape_collection->rectangles()) {
       ::vlsir::raw::Rectangle *rect_pb = layer_shapes_pb->add_rectangles();
       rect_pb->mutable_lower_left()->set_x(rect->lower_left().x());
       rect_pb->mutable_lower_left()->set_y(rect->lower_left().y());
       rect_pb->set_width(rect->upper_right().x() - rect->lower_left().x());
       rect_pb->set_height(rect->upper_right().y() - rect->lower_left().y());
     }
-    for (const auto &poly : shape_collection->polygons) {
+    for (const auto &poly : shape_collection->polygons()) {
       ::vlsir::raw::Polygon *poly_pb = layer_shapes_pb->add_polygons();
       for (const auto &point : poly->vertices()) {
         ::vlsir::raw::Point *point_pb = poly_pb->add_vertices();
@@ -222,7 +183,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
         point_pb->set_y(point.y());
       }
     }
-    LOG_IF(WARNING, !shape_collection->ports.empty())
+    LOG_IF(WARNING, !shape_collection->ports().empty())
         << "vlsir does not support ports yet";
   }
   for (const auto &instance : instances_) {
@@ -268,7 +229,7 @@ void Layout::AddPort(
   copy->set_layer(active_layer_);
   copy->set_net(net_name);
   ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
-  shape_collection->ports.emplace_back(copy);
+  shape_collection->ports().emplace_back(copy);
   ports_by_net_[net_name].insert(copy);
 }
 
@@ -287,13 +248,13 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   for (const auto &entry : other.shapes_) {
     active_layer_ = entry.first;
     ShapeCollection *other_collection = entry.second.get();
-    for (const auto &rectangle : other_collection->rectangles) {
+    for (const auto &rectangle : other_collection->rectangles()) {
       AddRectangle(*rectangle);
     }
-    for (const auto &polygon : other_collection->polygons) {
+    for (const auto &polygon : other_collection->polygons()) {
       AddPolygon(*polygon);
     }
-    for (const auto &port : other_collection->ports) {
+    for (const auto &port : other_collection->ports()) {
       AddPort(*port, name_prefix);
     }
   }
@@ -320,15 +281,17 @@ void Layout::MakeVia(const std::string &layer_name, const geometry::Point &centr
 void Layout::GetShapesOnLayer(const geometry::Layer &layer,
                               ShapeCollection *shapes) const {
   ShapeCollection *direct = GetShapeCollection(layer);
+  // TODO(aryap): This is just
+  // shapes->Add(direct);
   if (direct) {
-    for (const auto &rectangle : direct->rectangles) {
-      shapes->rectangles.emplace_back(new geometry::Rectangle(*rectangle));
+    for (const auto &rectangle : direct->rectangles()) {
+      shapes->rectangles().emplace_back(new geometry::Rectangle(*rectangle));
     }
-    for (const auto &polygon : direct->polygons) {
-      shapes->polygons.emplace_back(new geometry::Polygon(*polygon));
+    for (const auto &polygon : direct->polygons()) {
+      shapes->polygons().emplace_back(new geometry::Polygon(*polygon));
     }
-    for (const auto &port : direct->ports) {
-      shapes->ports.emplace_back(new geometry::Port(*port));
+    for (const auto &port : direct->ports()) {
+      shapes->ports().emplace_back(new geometry::Port(*port));
     }
   }
   for (const auto &instance : instances_) {
@@ -348,8 +311,8 @@ const std::set<geometry::Port*> Layout::Ports() const {
   std::set<geometry::Port*> all_ports;
   for (const auto &entry : shapes_) {
     // How is this:
-    std::transform(entry.second->ports.begin(),
-                   entry.second->ports.end(),
+    std::transform(entry.second->ports().begin(),
+                   entry.second->ports().end(),
                    std::inserter(all_ports, all_ports.begin()),
                    [](const std::unique_ptr<geometry::Port> &u) { return u.get(); });
     // Nicer than this:

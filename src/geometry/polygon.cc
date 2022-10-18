@@ -39,7 +39,7 @@ void Polygon::IntersectingPoints(
     // Get next point, wrapping around to the front if we're at the end.
     point = &vertices_[i % vertices_.size()];
     segment = Line(*last_point, *point);
-    LOG(INFO) << "Checking " << segment;
+    VLOG(12) << "Checking " << segment;
     // NOTE(aryap): We don't need to check this because we check for
     // intersections in the line's bounds and our test for ingress/egress will
     // determine determine if the point should be de-duplicated.
@@ -54,7 +54,7 @@ void Polygon::IntersectingPoints(
       continue;
     }
     if (incident) {
-      LOG(INFO) << segment << " is incident on " << line;
+      VLOG(12) << segment << " is incident on " << line;
       // The line falls on a edge of the polygon directly, so skip the check
       // for a corner and whether we ingress/egress. Because do.
       intersections.push_back(segment.end());
@@ -86,7 +86,7 @@ void Polygon::IntersectingPoints(
       }
       continue;
     }
-    LOG(INFO) << segment << " intersects " << line << " at " << intersection;
+    VLOG(12) << segment << " intersects " << line << " at " << intersection;
     if (intersection == segment.start()) {
       // Since the line intersected with a segment boundary, we have to check
       // if the line has gone through the Polygon's hull. We do that by
@@ -101,7 +101,7 @@ void Polygon::IntersectingPoints(
         // since that indicates ingress or egress.
         intersections.push_back(intersection);
       } else {
-        LOG(INFO) << "corner " << intersection << " is an ingress or egress";
+        VLOG(12) << "corner " << intersection << " is an ingress or egress";
       }
       continue;
     }
@@ -117,14 +117,14 @@ void Polygon::IntersectingPoints(
   }
 
   for (const auto &point : intersections) {
-    LOG(INFO) << point;
+    VLOG(12) << point;
   }
 
   LOG_IF(FATAL, intersections.size() % 2 != 0)
       << "Expected pairs of intersecting points.";
 
   Point outside = GetBoundingBox().PointOnLineOutside(line);
-  LOG(INFO) << "outside point: " << outside;
+  VLOG(12) << "outside point: " << outside;
   std::sort(intersections.begin(), intersections.end(),
             [&](const Point &lhs, const Point &rhs) {
     return outside.L2SquaredDistanceTo(lhs) > outside.L2SquaredDistanceTo(rhs);

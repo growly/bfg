@@ -68,6 +68,7 @@ set(GEOMETRY_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/shape_collection.cc
 )
 
 set(CIRCUIT_SRC

@@ -43,7 +43,7 @@ class Layout : public geometry::Manipulable {
     geometry::Rectangle *copy = new geometry::Rectangle(rectangle);
     copy->set_layer(active_layer_);
     ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
-    shape_collection->rectangles.emplace_back(copy);
+    shape_collection->rectangles().emplace_back(copy);
     return copy;
   }
   geometry::Rectangle *AddSquare(
@@ -58,7 +58,7 @@ class Layout : public geometry::Manipulable {
     geometry::Polygon *copy = new geometry::Polygon(polygon);
     copy->set_layer(active_layer_);
     ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
-    shape_collection->polygons.emplace_back(copy);
+    shape_collection->polygons().emplace_back(copy);
     return copy;
   }
   geometry::Instance *AddInstance(const geometry::Instance &instance) {
