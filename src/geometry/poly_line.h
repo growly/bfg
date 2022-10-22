@@ -14,8 +14,6 @@ namespace bfg {
 
 namespace geometry {
 
-using ::bfg::AbstractVia;
-
 class PolyLine : public Shape {
  public:
   PolyLine() = default;

@@ -15,6 +15,32 @@
 #include <deque>
 #include <vector>
 
+// TODO(aryap): Another version of this RoutingGrid should exist that uses a
+// more standard model of the routing fabric. Instead of generating 1 edge for
+// every possible wire length, represent every wire segment as an edge and vias
+// as an edge to a vertex on an upper layer. Via cost is captured by the edge
+// between layers. This will reduce memory demand but possibly will increase
+// compute time cost as the breadth-first fan out from a starting node will
+// include a lot more false paths, I'm not sure. The disadvantage of this (and
+// I think why I avoided it the first time) is that it will be harder to assign
+// non-linear cost to edges based on their length.
+//
+// TODO(aryap): Multi-point routing asks us to find the lowest overall cost for
+// a tree that connects N different points.
+//    - It's not minimum spanning tree because we have (and should use) the
+//    option of crossing intermediary vertices to shorten the path.
+//    - It's not Travelling Salesman because, again, we can use intermediary
+//    vertices and we can revisit them (also no cycle but whatever).
+// So what is it?  One immediately-useful option is to find the longest route
+// first and then find paths to that route from the others (this is effectively
+// the max-cut of the subgraph?) This will be easier with the 2.5D model but
+// possible with this model with modifications: every vertex needs to know
+// which edges span it so we can check which net it will belong to, and each
+// edge needs to know which vertex it spans.
+//
+// In the short term it will be enough to give users a way to simply connect a
+// point to an existing net, I think?
+
 namespace bfg {
 
 using geometry::Layer;
@@ -22,7 +48,9 @@ using geometry::PolyLine;
 
 class RoutingEdge;
 class RoutingTrack;
-class RoutingGrid;
+class RoutingTrackBlockage;
+class RoutingPath;
+class RoutingVertex;
 
 struct RoutingLayerInfo {
   geometry::Layer layer;
@@ -33,319 +61,12 @@ struct RoutingLayerInfo {
   int64_t pitch;
 };
 
-class RoutingVertex {
- public:
-  RoutingVertex(const geometry::Point &centre)
-      : available_(true), horizontal_track_(nullptr), vertical_track_(nullptr),
-        contextual_index_(-1), centre_(centre) {}
-
-  void AddEdge(RoutingEdge *edge) { edges_.insert(edge); }
-  bool RemoveEdge(RoutingEdge *edge);
-
-  //const std::set<RoutingEdge*> &edges() { return edges_; }
-
-  uint64_t L1DistanceTo(const geometry::Point &point);
-
-  // This is the cost of connecting through this vertex (i.e. a via).
-  double cost() const { return 1.0; }
-
-  void AddConnectedLayer(const geometry::Layer &layer) {
-    connected_layers_.push_back(layer);
-  }
-  const std::vector<geometry::Layer> &connected_layers() { return connected_layers_; }
-
-  void set_contextual_index(size_t index) { contextual_index_ = index; }
-  size_t contextual_index() const { return contextual_index_; }
-
-  const std::set<RoutingEdge*> edges() const { return edges_; }
-
-  const geometry::Point &centre() const { return centre_; }
-
-  void set_available(bool available) { available_ = available; }
-  bool available() { return available_; }
-
-  void set_horizontal_track(RoutingTrack *track) { horizontal_track_ = track; }
-  RoutingTrack *horizontal_track() const { return horizontal_track_; }
-  void set_vertical_track(RoutingTrack *track) { vertical_track_ = track; }
-  RoutingTrack *vertical_track() const { return vertical_track_; }
-
- private:
-  bool available_;
-  RoutingTrack *horizontal_track_;
-  RoutingTrack *vertical_track_;
-
-  // This is a minor optimisation to avoid having to key things by pointer.
-  // This index should be unique within the RoutingGrid that owns this
-  // RoutingVertex for the duration of whatever process requires it.
-  size_t contextual_index_;
-
-  geometry::Point centre_;
-  std::vector<geometry::Layer> connected_layers_;
-  std::set<RoutingEdge*> edges_;
-};
-
-// Edges are NOT directed.
-class RoutingEdge {
- public:
-  RoutingEdge(RoutingVertex *first, RoutingVertex *second)
-    : available_(true),
-      track_(nullptr),
-      layer_(-1),
-      first_(first),
-      second_(second),
-      cost_(-1.0) {
-    ApproximateCost();
-  }
-  ~RoutingEdge() {}
-
-  void PrepareForRemoval();
-
-  void set_cost(double cost) { cost_ = cost; }
-  double cost() const { return cost_; }
-
-  RoutingVertex *first() { return first_; }
-  RoutingVertex *second() { return second_; }
-
-  void set_available(bool available) { available_ = available; }
-  bool available() { return available_; }
-
-  void set_layer(const geometry::Layer &layer) { layer_ = layer; }
-
-  const geometry::Layer &ExplicitOrTrackLayer() const;
-
-  // Off-grid edges do not have tracks.
-  void set_track(RoutingTrack *track);
-  RoutingTrack *track() const { return track_; }
-
-  std::vector<RoutingVertex*> VertexList() const;
-
- private:
-  void ApproximateCost();
-
-  bool available_;
-
-  RoutingTrack *track_;
-  geometry::Layer layer_;
-
-  RoutingVertex *first_;
-  RoutingVertex *second_;
-
-  // Need some function of the distance between the two vertices (like of
-  // length, sheet resistance). This also needs to be computed only once...
-  double cost_;
-};
-
-class RoutingPath {
- public:
-  // We seize ownership of the edges and vertices given to this path.
-  //
-  // TODO(aryap): Maybe we should just leave ownership up to the RoutingGrid
-  // and just make sure all the referenced edges and vertices in paths are
-  // ultimately deleted anyway.
-  //
-  // TODO(aryap): Yeah, this makes me nervous. In order to avoid simply keeping
-  // all routing resources, something you'd call a premature optimisation, I
-  // now have to make sure that ownership of used edges is transferred from
-  // wherever into the paths. This better not bite me in the ass like it
-  // absolutely is going to.
-  RoutingPath(RoutingVertex *start, const std::deque<RoutingEdge*> edges);
-  ~RoutingPath() {
-    for (RoutingVertex *vertex : vertices_) { delete vertex; }
-    for (RoutingEdge *edge : edges_) { delete edge; }
-  }
-
-  RoutingVertex *Begin() const {
-    return Empty() ? nullptr : vertices_.front();
-  }
-  RoutingVertex *End() const {
-    return Empty() ? nullptr : vertices_.back();
-  }
-
-  void ToPolyLinesAndVias(
-      const RoutingGrid &routing_grid,
-      std::vector<std::unique_ptr<PolyLine>> *poly_lines,
-      std::vector<std::unique_ptr<AbstractVia>> *vias) const;
-
-  bool Empty() const { return edges_.empty(); }
-
-  const geometry::Port *start_port() const { return start_port_; }
-  void set_start_port(const geometry::Port *port) { start_port_ = port; }
-  const geometry::Port *end_port() const { return end_port_; }
-  void set_end_port(const geometry::Port *port) { end_port_ = port; }
-
-  const std::vector<RoutingVertex*> vertices() const { return vertices_; }
-  const std::vector<RoutingEdge*> edges() const { return edges_; }
-
- private:
-  // If these ports are provided, a via will be generated or the edge on the
-  // given layer extended to correctly connect to them.
-  const geometry::Port *start_port_;
-  const geometry::Port *end_port_;
-
-  // The ordered list of vertices making up the path. The edges alone, since
-  // they are undirected, do not yield this directional information.
-  // These vertices are OWNED by RoutingPath.
-  std::vector<RoutingVertex*> vertices_;
-
-  // The list of edges. Edge i connected vertices_[j] and vertices_[j+1].
-  // These edges are OWNED by RoutingPath.
-  std::vector<RoutingEdge*> edges_;
-};
-
-std::ostream &operator<<(std::ostream &os, const RoutingPath &path);
-
-class RoutingTrackBlockage {
- public:
-  RoutingTrackBlockage(int64_t start, int64_t end)
-      : start_(start), end_(end) {
-    LOG_IF(FATAL, end_ < start_)
-        << "RoutingTrackBlockage start must be before end.";
-  }
-
-  bool Contains(int64_t position);
-  bool IsAfter(int64_t position);
-  bool IsBefore(int64_t position);
-
-  bool Blocks(int64_t low, int64_t high);
-
-  void set_start(int64_t start) { start_ = start; }
-  void set_end(int64_t end) { end_ = end; }
-
-  int64_t start() const { return start_; }
-  int64_t end() const { return end_; }
-
- private:
-  int64_t start_;
-  int64_t end_;
-};
-
-// RoutingTracks keep track of the edges, which are physical spans, that could
-// fall on them. When such an edge is used for a route, the RoutingTrack
-// determines which other edges must be invalidated.
-//
-// RoutingTracks do not own anything, but keep track of which vertices and
-// edges associated with them. They invalidate those objects when they are used
-// up.
-class RoutingTrack {
- public:
-  RoutingTrack(const geometry::Layer &layer,
-               const RoutingTrackDirection &direction,
-               int64_t offset)
-      : layer_(layer), direction_(direction), offset_(offset) {}
-
-  ~RoutingTrack() {
-    for (RoutingEdge *edge : edges_) { delete edge; }
-    for (RoutingTrackBlockage *blockage : blockages_) { delete blockage; }
-  }
-
-  // Tries to add an edge between the two vertices, returning true if
-  // successful and false if no edge could be added (it was blocked).
-  bool MaybeAddEdgeBetween(RoutingVertex *one, RoutingVertex *the_other);
-
-  std::set<RoutingEdge*>::iterator RemoveEdge(
-      const std::set<RoutingEdge*>::iterator &pos);
-
-  bool RemoveEdge(RoutingEdge *edge, bool and_delete);
-
-  // Adds the given vertex to this track, but does not take ownership of it.
-  // Generates an edge from the given vertex to every other vertex in the
-  // track, as long as that edge would not be blocked already.
-  bool AddVertex(RoutingVertex *vertex);
-
-  // Remove the vertex from this track, and remove any edge that uses it.
-  bool RemoveVertex(RoutingVertex *vertex);
-
-  // 
-  void MarkEdgeAsUsed(RoutingEdge *edge,
-                      std::set<RoutingVertex*> *removed_vertices);
-
-  // Triest to connect the target vertex to a canidate vertex placed at the
-  // nearest point on the track to the given point. If successful, the new
-  // vertex is returned, otherwise nullptr. The return vertex is property of
-  // the caller and any generated edge is property of the track.
-  RoutingVertex *CreateNearestVertexAndConnect(
-      const geometry::Point &point,
-      RoutingVertex *target);
-
-  void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out);
-  void ReportAvailableVertices(std::vector<RoutingVertex*> *vertices_out);
-
-  bool Intersects(const geometry::Rectangle &rectangle) const;
-  RoutingTrackBlockage *AddBlockage(const geometry::Rectangle &retangle);
-  void AddBlockage(const geometry::Polygon &polygon);
-
-  geometry::Line AsLine() const;
-
-  std::string Debug() const;
-
-  const std::set<RoutingEdge*> &edges() const { return edges_; }
-
-  const geometry::Layer &layer() const { return layer_; }
-
-  int64_t offset() const { return offset_; }
-
-  int64_t width() const { return width_; }
-  void set_width(int64_t width) { width_ = width; }
-
- private:
-  // TODO(aryap): Maybe we sort edges and vertices by their starting/centre
-  // positions?
-  //static bool EdgeComp(RoutingEdge *lhs, RoutingEdge *rhs);
-
-  bool IsBlocked(const geometry::Point &point) const {
-    return IsBlockedBetween(point, point);
-  }
-  bool IsBlockedBetween(const geometry::Point &one_end, const geometry::Point &other_end) const;
-
-  int64_t ProjectOntoTrack(const geometry::Point &point) const;
-  int64_t ProjectOntoOffset(const geometry::Point &point) const;
-
-  RoutingTrackBlockage *CreateBlockage(
-      const geometry::Point &one_end, const geometry::Point &other_end);
-  void ApplyBlockage(const RoutingTrackBlockage &blockage);
-
-  void SortBlockages();
-
-  // The edges generated for vertices on this track. These are OWNED by
-  // RoutingTrack.
-  std::set<RoutingEdge*> edges_;
-
-  // The vertices on this track. Vertices are NOT OWNED by RoutingTrack.
-  std::set<RoutingVertex*> vertices_;
-
-  geometry::Layer layer_;
-  RoutingTrackDirection direction_;
-
-  // The x or y coordinate for this track, when the track runs in the y or x
-  // direction.
-  int64_t offset_;
-
-  // The working width of this track.
-  int64_t width_;
-
-  // We want to keep a sorted list of blockages, but if we keep them as a
-  // std::set we can't mutate the objects (since they will not automatically be
-  // re-sorted). Instead we keep a vector and make sure to sort it ourselves.
-  std::vector<RoutingTrackBlockage*> blockages_;
-};
-
-std::ostream &operator<<(std::ostream &os, const RoutingTrack &track);
-
 class RoutingGrid {
  public:
   RoutingGrid(const PhysicalPropertiesDatabase &physical_db)
       : physical_db_(physical_db) {}
 
-  ~RoutingGrid() {
-    for (auto entry : tracks_by_layer_) {
-      for (RoutingTrack *track : entry.second) {
-        delete track;
-      }
-    }
-    for (RoutingPath *path : paths_) { delete path; }
-    for (RoutingEdge *edge : off_grid_edges_) { delete edge; }
-    for (RoutingVertex *vertex : vertices_) { delete vertex; }
-  }
+  ~RoutingGrid();
 
   // Connecting two layers generates the graph that describes all the paths one
   // can take between them; concretely, it creates a vertex every time a

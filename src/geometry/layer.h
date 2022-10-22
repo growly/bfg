@@ -1,6 +1,8 @@
 #ifndef GEOMETRY_LAYER_H_
 #define GEOMETRY_LAYER_H_
 
+#include <cstdint>
+
 namespace bfg {
 namespace geometry {
 
