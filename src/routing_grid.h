@@ -46,6 +46,7 @@ namespace bfg {
 using geometry::Layer;
 using geometry::PolyLine;
 
+class PossessiveRoutingPath;
 class RoutingEdge;
 class RoutingTrack;
 class RoutingTrackBlockage;
@@ -135,6 +136,7 @@ class RoutingGrid {
   // Takes ownership of the given object and accounts for the path's resources
   // as used.
   void InstallPath(RoutingPath *path);
+  void InstallPath(PossessiveRoutingPath *path);
 
   void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
 

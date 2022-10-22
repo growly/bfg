@@ -19,6 +19,7 @@
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
 #include "poly_line_inflator.h"
+#include "possessive_routing_path.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_path.h"
@@ -442,6 +443,10 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
 
 void RoutingGrid::InstallPath(RoutingPath *path) {
   LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
+}
+
+void RoutingGrid::InstallPath(PossessiveRoutingPath *path) {
+  LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
   // Remove edges from the track which owns them.
   std::set<RoutingVertex*> unusable_vertices;
   for (RoutingEdge *edge : path->edges()) {
@@ -465,7 +470,8 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     RemoveVertex(vertex, true);
   }
   
-  paths_.push_back(path);
+  // TODO(growly): Create a collection for these if they are in fact useful.
+  // paths_.push_back(path);
 }
 
 RoutingPath *RoutingGrid::ShortestPath(

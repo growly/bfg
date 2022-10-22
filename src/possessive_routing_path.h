@@ -1,5 +1,5 @@
-#ifndef ROUTING_PATH_H_
-#define ROUTING_PATH_H_
+#ifndef OWNING_ROUTING_PATH_H_
+#define OWNING_ROUTING_PATH_H_
 
 #include <deque>
 #include <vector>
@@ -21,9 +21,24 @@ class AbstractVia;
 class RoutingGrid;
 
 // Edges are NOT directed.
-class RoutingPath {
+class PossessiveRoutingPath {
  public:
-  RoutingPath(RoutingVertex *start, const std::deque<RoutingEdge*> edges);
+  // We seize ownership of the edges and vertices given to this path.
+  //
+  // TODO(aryap): Maybe we should just leave ownership up to the RoutingGrid
+  // and just make sure all the referenced edges and vertices in paths are
+  // ultimately deleted anyway.
+  //
+  // TODO(aryap): Yeah, this makes me nervous. In order to avoid simply keeping
+  // all routing resources, something you'd call a premature optimisation, I
+  // now have to make sure that ownership of used edges is transferred from
+  // wherever into the paths. This better not bite me in the ass like it
+  // absolutely is going to.
+  //
+  // Update: It bit me in the ass. Is this even a useful thing to have?
+  PossessiveRoutingPath(
+      RoutingVertex *start, const std::deque<RoutingEdge*> edges);
+  ~PossessiveRoutingPath();
 
   RoutingVertex *Begin() const {
     return Empty() ? nullptr : vertices_.front();
@@ -55,16 +70,16 @@ class RoutingPath {
 
   // The ordered list of vertices making up the path. The edges alone, since
   // they are undirected, do not yield this directional information.
-  // These vertices are NOT OWNED by RoutingPath.
+  // These vertices are OWNED by RoutingPath.
   std::vector<RoutingVertex*> vertices_;
 
   // The list of edges. Edge i connected vertices_[j] and vertices_[j+1].
-  // These edges are NOT OWNED by RoutingPath.
+  // These edges are OWNED by RoutingPath.
   std::vector<RoutingEdge*> edges_;
 };
 
-std::ostream &operator<<(std::ostream &os, const RoutingPath &path);
+std::ostream &operator<<(std::ostream &os, const PossessiveRoutingPath &path);
 
 }  // namespace bfg
 
-#endif  // ROUTING_PATH_H_
+#endif  // OWNING_ROUTING_PATH_H_
