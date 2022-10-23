@@ -44,6 +44,9 @@ class RoutingPath {
   const geometry::Port *end_port() const { return end_port_; }
   void set_end_port(const geometry::Port *port) { end_port_ = port; }
 
+  void set_net(const std::string &net) { net_ = net; }
+  const std::string &net() const { return net_; }
+
   const std::vector<RoutingVertex*> vertices() const { return vertices_; }
   const std::vector<RoutingEdge*> edges() const { return edges_; }
 
@@ -52,6 +55,8 @@ class RoutingPath {
   // given layer extended to correctly connect to them.
   const geometry::Port *start_port_;
   const geometry::Port *end_port_;
+
+  std::string net_;
 
   // The ordered list of vertices making up the path. The edges alone, since
   // they are undirected, do not yield this directional information.

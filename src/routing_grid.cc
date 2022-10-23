@@ -19,7 +19,6 @@
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
 #include "poly_line_inflator.h"
-#include "possessive_routing_path.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_path.h"
@@ -360,7 +359,9 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
 }
 
 bool RoutingGrid::AddRouteBetween(
-    const geometry::Port &begin, const geometry::Port &end) {
+    const geometry::Port &begin,
+    const geometry::Port &end,
+    const std::string &net) {
   RoutingVertex *begin_vertex = GenerateGridVertexForPoint(
       begin.centre(), begin.layer());
   if (!begin_vertex) {
@@ -391,6 +392,10 @@ bool RoutingGrid::AddRouteBetween(
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
+  // Assign net and install:
+  if (!net.empty())
+    shortest_path->set_net(net);
+
   InstallPath(shortest_path.release());
 
   return true;
@@ -410,7 +415,6 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
                << " because it includes vertex " << vertex;
       edge->PrepareForRemoval();
       delete edge;
-      LOG(INFO) << "deleted in routinggrid::removevertex";
       it = off_grid_edges_.erase(it);
     } else {
       ++it;
@@ -443,42 +447,35 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
 
 void RoutingGrid::InstallPath(RoutingPath *path) {
   LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
-}
 
-void RoutingGrid::InstallPath(PossessiveRoutingPath *path) {
-  LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
   // Remove edges from the track which owns them.
-  std::set<RoutingVertex*> unusable_vertices;
   for (RoutingEdge *edge : path->edges()) {
-    // Remove edges from the off-grid collection if they are contained there
-    // (they may not be!), since they are owned by the path now. If they are
-    // removed from that collection by RoutingGrid::RemoveVertex they will also
-    // be deleted, but we just want to transfer ownership.
-    off_grid_edges_.erase(edge);
-
-    if (edge->track() != nullptr)
-      edge->track()->MarkEdgeAsUsed(edge, &unusable_vertices);
+    if (edge->track() != nullptr) {
+      edge->track()->MarkEdgeAsUsed(
+          edge, path->net() == "" ? nullptr : &path->net());
+    }
+    edge->set_available(false);
   }
 
-  // Remove vertices from all of the tracks which reference them.
   for (RoutingVertex *vertex : path->vertices()) {
-    unusable_vertices.erase(vertex);
-    RemoveVertex(vertex, false);
-  }
-
-  for (RoutingVertex *vertex : unusable_vertices) {
-    RemoveVertex(vertex, true);
+    // This should already be done for all the vertices on tracks.
+    vertex->set_available(false);
   }
   
-  // TODO(growly): Create a collection for these if they are in fact useful.
-  // paths_.push_back(path);
+  paths_.push_back(path);
 }
 
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin, RoutingVertex *end) {
   // FIXME(aryap): This is very bad.
-  LOG_IF(WARNING, !begin->available()) << "Start vertex for path is not available";
-  LOG_IF(WARNING, !end->available()) << "End vertex for path is not available";
+  if (!begin->available()) {
+    LOG(WARNING) << "Start vertex for path is not available";
+    return nullptr;
+  }
+  if (!end->available()) {
+    LOG(WARNING) << "End vertex for path is not available";
+    return nullptr;
+  }
 
   // Give everything its index for the duration of this algorithm.
   for (size_t i = 0; i < vertices_.size(); ++i) {
@@ -560,18 +557,19 @@ RoutingPath *RoutingGrid::ShortestPath(
 
       size_t next_index = next->contextual_index();
 
-      if (seen[next_index])
-        continue;
-
       double next_cost = cost[current_index] + edge->cost() + next->cost();
+
+      LOG_IF(FATAL, !std::isfinite(next_cost)) << "!";
 
       if (next_cost < cost[next_index]) {
         cost[next_index] = next_cost;
         prev[next_index] = std::make_pair(current_index, edge);
 
-        // Since we now have a faster way to get to this edge, we should visit it.
-        queue.push(next);
-        seen[next_index] = true;
+        // If we haven't seen this node before we should definitely visit it.
+        if (!seen[next_index]) {
+          queue.push(next);
+          seen[next_index] = true;
+        }
       }
     }
   }
@@ -579,6 +577,135 @@ RoutingPath *RoutingGrid::ShortestPath(
   std::deque<RoutingEdge*> shortest_edges;
 
   size_t last_index = prev[end_index].first;
+  RoutingEdge *last_edge = prev[end_index].second;
+
+  while (last_edge != nullptr) {
+    LOG_IF(FATAL, (last_edge->first() != vertices_[last_index] &&
+                   last_edge->second() != vertices_[last_index]))
+        << "last_edge does not land back at source vertex";
+
+    shortest_edges.push_front(last_edge);
+
+    if (last_index == begin_index) {
+      // We found our way back.
+      break;
+    }
+
+    auto &last_entry = prev[last_index];
+    last_index = last_entry.first;
+
+    last_edge = last_entry.second;
+  }
+
+  if (shortest_edges.empty()) {
+    return nullptr;
+  } else if (shortest_edges.front()->first() != begin &&
+             shortest_edges.front()->second() != begin) {
+    LOG(FATAL) << "Did not find beginning vertex.";
+    return nullptr;
+  }
+
+  RoutingPath *path = new RoutingPath(begin, shortest_edges);
+  return path;
+}
+
+RoutingPath *RoutingGrid::ShortestPath(
+    RoutingVertex *begin, const std::string &to_net) {
+  LOG_IF(WARNING, !begin->available()) << "Start vertex for path is not available";
+
+  // Give everything its index for the duration of this algorithm.
+  for (size_t i = 0; i < vertices_.size(); ++i) {
+    vertices_[i]->set_contextual_index(i);
+  }
+
+  auto is_target = [&](RoutingVertex *candidate) {
+    return candidate->available() && candidate->net() == to_net;
+  };
+
+  double cost[vertices_.size()];
+  bool seen[vertices_.size()];
+
+  // Recording the edge to take back to the start that makes the shortest path,
+  // as well as the vertex it leads to. If RoutingEdge* is nullptr then this is
+  // invalid.
+  std::vector<std::pair<size_t, RoutingEdge*>> prev(vertices_.size());
+
+  auto vertex_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
+    // We want the lowest value at the back of the array.
+    // But in a priority_queue, we want the highest value at the start of the
+    // collection so that the least element is popped first (because that's how
+    // priorit_queue works).
+    return cost[a->contextual_index()] > cost[b->contextual_index()];
+  };
+  // All vertices sorted according to their cost.
+  std::priority_queue<RoutingVertex*,
+                      std::vector<RoutingVertex*>,
+                      decltype(vertex_sort_fn)> queue(vertex_sort_fn);
+  std::set<RoutingVertex*> found_targets;
+
+  size_t begin_index = begin->contextual_index();
+  cost[begin_index] = 0;
+
+  for (size_t i = 0; i < vertices_.size(); ++i) {
+    RoutingVertex *vertex = vertices_[i];
+    LOG_IF(FATAL, i != vertex->contextual_index())
+      << "Vertex " << i << " no longer matches its index "
+      << vertex->contextual_index();
+    prev[i].second = nullptr;
+    if (i == begin_index)
+      continue;
+    cost[i] = std::numeric_limits<double>::max();
+    seen[i] = false;
+  }
+
+  queue.push(begin);
+  seen[begin_index] = true;
+
+  while (!queue.empty()) {
+    RoutingVertex *current = queue.top();
+    queue.pop();
+    size_t current_index = current->contextual_index();
+
+    if (is_target(current)) {
+      //found_targets.
+      continue;
+    }
+
+    for (RoutingEdge *edge : current->edges()) {
+      if (!edge->available())
+        continue;
+
+      // We don't know what direction we're using the edge in, and edges are
+      // not directional per se, so pick the side that isn't the one we came in
+      // on:
+      // TODO(aryap): Maybe bake this into the RoutingEdge.
+      RoutingVertex *next =
+          edge->first() == current ? edge->second() : edge->first();
+
+      if (!next->available())
+        continue;
+
+      size_t next_index = next->contextual_index();
+
+      double next_cost = cost[current_index] + edge->cost() + next->cost();
+
+      if (next_cost < cost[next_index]) {
+        cost[next_index] = next_cost;
+        prev[next_index] = std::make_pair(current_index, edge);
+
+        // If we haven't seen this node before we should definitely visit it.
+        if (!seen[next_index]) {
+          queue.push(next);
+          seen[next_index] = true;
+        }
+      }
+    }
+  }
+
+  std::deque<RoutingEdge*> shortest_edges;
+
+  // TODO(aryap): Remove:
+  size_t end_index = 0, last_index = 0;
   RoutingEdge *last_edge = prev[end_index].second;
 
   while (last_edge != nullptr) {

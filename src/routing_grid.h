@@ -77,7 +77,9 @@ class RoutingGrid {
       const geometry::Layer &first, const geometry::Layer &second);
 
   bool AddRouteBetween(
-      const geometry::Port &begin, const geometry::Port &end);
+      const geometry::Port &begin,
+      const geometry::Port &end,
+      const std::string &net = "");
 
   void AddVertex(RoutingVertex *vertex);
 
@@ -130,13 +132,11 @@ class RoutingGrid {
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
-  RoutingPath *ShortestPath(
-      RoutingVertex *begin, RoutingVertex *end);
+  RoutingPath *ShortestPath(RoutingVertex *begin, RoutingVertex *end);
 
-  // Takes ownership of the given object and accounts for the path's resources
-  // as used.
+  RoutingPath *ShortestPath(RoutingVertex *from, const std::string &to_net);
+
   void InstallPath(RoutingPath *path);
-  void InstallPath(PossessiveRoutingPath *path);
 
   void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
 

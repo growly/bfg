@@ -25,18 +25,18 @@ void RoutingEdge::PrepareForRemoval() {
     first_->RemoveEdge(this);
   if (second_)
     second_->RemoveEdge(this);
-  // TODO(aryap): Am not thinking about this hard enough but:
-  for (RoutingVertex *vertex : spans_) {
-    vertex->RemoveSpanningEdge(this);
-  }
-  spans_.clear();
   track_ = nullptr;
 }
 
 // NOTE(aryap): This is a pretty interesting problem to solve:
 void RoutingEdge::ApproximateCost() {
   // Proportional to the square of the distance.
-  cost_ = std::log(first_->centre().L2DistanceTo(second_->centre()));
+  int64_t distance = first_->centre().L2DistanceTo(second_->centre());
+  if (distance == 0) {
+    cost_ = 0;
+    return;
+  }
+  cost_ = std::log(distance);
   // LOG(INFO) << "edge " << first_->centre() << " to " << second_->centre()
   //           << " cost is " << cost_;
 }

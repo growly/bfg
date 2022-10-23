@@ -88,35 +88,30 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
   return true;
 }
 
-void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge,
-                                  std::set<RoutingVertex*> *removed_vertices) {
+void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
+  edge->set_available(true);
+
   if (edges_.find(edge) == edges_.end())
     // Possible off-grid edge?
     return;
 
   CreateBlockage(edge->first()->centre(), edge->second()->centre());
 
-  // Remove the edge from our collection.
-  // Ownership of this edge is transferred to the RoutingPath that owns it.
-  RemoveEdge(edge, false);
-
-  // Remove other edges that are blocked by this.
-  for (auto it = edges_.begin(); it != edges_.end(); ) {
-    RoutingEdge *edge = *it;
+  // Mark other edges that are blocked by this as used.
+  for (RoutingEdge *edge : edges_) {
     if (IsBlockedBetween(edge->first()->centre(), edge->second()->centre())) {
       // Ownership of other blocked edges is not transferred; they are just
       // removed.
-      it = RemoveEdge(it);
-      delete edge;
-    } else {
-      ++it;
+      edge->set_available(false);
     }
   }
 
   // Remove other vertices that are blocked by this.
   for (RoutingVertex *vertex : vertices_) {
-    if (IsBlocked(vertex->centre()))
-      removed_vertices->insert(vertex);
+    if (EdgeSpansVertex(*edge, *vertex)) {
+      vertex->set_available(false);
+      if (net) vertex->set_net(*net);
+    }
   }
 }
 
@@ -225,6 +220,25 @@ geometry::Line RoutingTrack::AsLine() const {
       break;
   }
   return geometry::Line(start, end);
+}
+
+std::pair<int64_t, int64_t> RoutingTrack::ProjectOntoTrack(
+    const geometry::Point &lhs, const geometry::Point &rhs) const {
+  int64_t low = ProjectOntoTrack(lhs);
+  int64_t high = ProjectOntoTrack(rhs);
+  if (low > high)
+    std::swap(low, high);
+  return {low, high};
+}
+
+bool RoutingTrack::EdgeSpansVertex(
+    const RoutingEdge &edge, const RoutingVertex &vertex) const {
+  int64_t pos = ProjectOntoTrack(vertex.centre());
+  auto points = ProjectOntoTrack(edge.first()->centre(), edge.second()->centre());
+  int64_t low = points.first;
+  int64_t high = points.second;
+
+  return low <= pos && pos <= high;
 }
 
 bool RoutingTrack::IsBlockedBetween(

@@ -21,9 +21,6 @@ class RoutingVertex {
   void AddEdge(RoutingEdge *edge) { edges_.insert(edge); }
   bool RemoveEdge(RoutingEdge *edge);
 
-  void AddSpanningEdge(RoutingEdge *edge) { spanned_by_.insert(edge); }
-  void RemoveSpanningEdge(RoutingEdge *edge) { spanned_by_.erase(edge); }
-
   //const std::set<RoutingEdge*> &edges() { return edges_; }
 
   uint64_t L1DistanceTo(const geometry::Point &point);
@@ -43,6 +40,9 @@ class RoutingVertex {
 
   const geometry::Point &centre() const { return centre_; }
 
+  void set_net(const std::string &net) { net_ = net; }
+  const std::string &net() const { return net_; }
+
   void set_available(bool available) { available_ = available; }
   bool available() { return available_; }
 
@@ -52,6 +52,7 @@ class RoutingVertex {
   RoutingTrack *vertical_track() const { return vertical_track_; }
 
  private:
+  std::string net_;
   bool available_;
   RoutingTrack *horizontal_track_;
   RoutingTrack *vertical_track_;
@@ -64,9 +65,6 @@ class RoutingVertex {
   geometry::Point centre_;
   std::vector<geometry::Layer> connected_layers_;
   std::set<RoutingEdge*> edges_;
-
-  // The edges that span this vertex.
-  std::set<RoutingEdge*> spanned_by_;
 };
 
 

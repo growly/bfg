@@ -2,6 +2,7 @@
 #define ROUTING_TRACK_H_
 
 #include <set>
+#include <utility>
 #include <vector>
 
 #include "geometry/layer.h"
@@ -13,6 +14,10 @@
 #include "physical_properties_database.h"
 
 namespace bfg {
+
+// FIXME(growly): Instead of assigning spanned/spanned by sets (expensive given
+// model we have), assign net labels when a path is installed to all all
+// spanned vertices in the track.
 
 class RoutingTrackBlockage;
 
@@ -50,8 +55,7 @@ class RoutingTrack {
   bool RemoveVertex(RoutingVertex *vertex);
 
   // 
-  void MarkEdgeAsUsed(RoutingEdge *edge,
-                      std::set<RoutingVertex*> *removed_vertices);
+  void MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net);
 
   // Triest to connect the target vertex to a canidate vertex placed at the
   // nearest point on the track to the given point. If successful, the new
@@ -91,7 +95,11 @@ class RoutingTrack {
   }
   bool IsBlockedBetween(
       const geometry::Point &one_end, const geometry::Point &other_end) const;
+  bool EdgeSpansVertex(
+      const RoutingEdge &edge, const RoutingVertex &vertex) const;
 
+  std::pair<int64_t, int64_t> ProjectOntoTrack(
+      const geometry::Point &lhs, const geometry::Point &rhs) const;
   int64_t ProjectOntoTrack(const geometry::Point &point) const;
   int64_t ProjectOntoOffset(const geometry::Point &point) const;
 

@@ -19,7 +19,7 @@ class RoutingEdge {
       layer_(-1),
       first_(first),
       second_(second),
-      cost_(-1.0) {
+      cost_(0.0) {
     ApproximateCost();
   }
   ~RoutingEdge() {}
@@ -29,11 +29,8 @@ class RoutingEdge {
   void set_cost(double cost) { cost_ = cost; }
   double cost() const { return cost_; }
 
-  RoutingVertex *first() { return first_; }
-  RoutingVertex *second() { return second_; }
-
-  void AddSpannedVertex(RoutingVertex *vertex) { spans_.insert(vertex); }
-  void RemoveSpannedVertex(RoutingVertex *vertex) { spans_.erase(vertex); }
+  RoutingVertex *first() const { return first_; }
+  RoutingVertex *second() const { return second_; }
 
   void set_available(bool available) { available_ = available; }
   bool available() { return available_; }
@@ -62,9 +59,6 @@ class RoutingEdge {
   // Need some function of the distance between the two vertices (like of
   // length, sheet resistance). This also needs to be computed only once...
   double cost_;
-
-  // The vertices spanned by this Edge.
-  std::set<RoutingVertex*> spans_;
 };
 
 }  // namespace bfg
