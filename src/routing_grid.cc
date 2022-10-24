@@ -759,10 +759,6 @@ RoutingPath *RoutingGrid::ShortestPath(
   if (found_targets.empty())
     return nullptr;
 
-  for (RoutingVertex *target : found_targets) {
-    LOG(INFO) << "net " << to_net << " target " << target->centre() << " cost " << cost[target->contextual_index()];
-  }
-
   // Pick the lowest-cost target:
   RoutingVertex *end_target = *found_targets.begin();
   size_t end_index = end_target->contextual_index();
@@ -803,7 +799,6 @@ RoutingPath *RoutingGrid::ShortestPath(
 
 void RoutingGrid::AddBlockages(const geometry::ShapeCollection &shapes) {
   for (const auto &rectangle : shapes.rectangles()) {
-    LOG(INFO) << "adding blockage rect " << *rectangle;
     AddBlockage(*rectangle);
   }
   for (const auto &polygon : shapes.polygons()) {

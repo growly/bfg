@@ -82,6 +82,12 @@ class Layout : public geometry::Manipulable {
   void FlipVertical() override;
   void ResetOrigin() override;
   void Translate(const geometry::Point &offset) override;
+  void MoveTo(const geometry::Point &lower_left) {
+    // TODO(aryap): Surely this just takes one translation after you compute a
+    // vector:
+    ResetOrigin();
+    Translate(lower_left);
+  }
 
   const geometry::Rectangle GetBoundingBox() const;
   const geometry::Rectangle GetTilingBounds() const {

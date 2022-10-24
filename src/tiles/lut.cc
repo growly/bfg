@@ -7,6 +7,7 @@
 #include "../poly_line_inflator.h"
 #include "../routing_grid.h"
 #include "../layout.h"
+#include "../geometry/matrix.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/shape_collection.h"
 #include "../atoms/sky130_dfxtp.h"
@@ -15,77 +16,132 @@
 namespace bfg {
 namespace tiles {
 
+const Lut::LayoutConfig *Lut::GetLayoutConfiguration(size_t lut_size) {
+  size_t num_configurations =
+      sizeof(kLayoutConfigurations) / sizeof(kLayoutConfigurations[0]);
+  for (size_t i = 0; i < num_configurations; ++i ){
+    if (kLayoutConfigurations[i].first == lut_size) {
+      return &kLayoutConfigurations[i].second;
+    }
+  }
+  LOG(FATAL) << "No layout configuration for LUT size: " << lut_size;
+  return nullptr;
+}
+
 bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   std::unique_ptr<bfg::Cell> lut_cell(new bfg::Cell("lut"));
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
-  constexpr size_t kNumRows = 4;
-  constexpr size_t kNumColumns = 4;
+  const Lut::LayoutConfig layout_config =
+      *Lut::GetLayoutConfiguration(lut_size_); 
+  constexpr int64_t kMuxSize = 8;
 
-  // Let's assume N = 16 for now.
   std::vector<geometry::Instance*> flip_flops;
-  for (size_t j = 0; j < kNumRows; j++) {
-    for (size_t i = 0; i < kNumColumns; i++) {
-      std::string instance_name = absl::StrFormat("lut_dfxtp_%d_%d", i, j);
-      std::string cell_name = absl::StrCat(instance_name, "_template");
-      bfg::atoms::Sky130Dfxtp::Parameters params;
-      bfg::atoms::Sky130Dfxtp generator(params, design_db_);
-      bfg::Cell *cell = generator.Generate();
-      cell->set_name(cell_name);
-      //cell->layout()->ResetOrigin();
-      design_db_->ConsumeCell(cell);
-      circuit->AddInstance(instance_name, cell->circuit());
-      geometry::Rectangle bounding_box = cell->layout()->GetTilingBounds();
-      int64_t height = static_cast<int64_t>(bounding_box.Height());
-      int64_t width = static_cast<int64_t>(bounding_box.Width());
-      // For every other row, place backwards from the end.
-      int64_t x_pos = (j % 2 != 0 ? kNumColumns - 1 - i : i) * width;
-      int64_t y_pos = j * height;
-      LOG(INFO) << "placing " << instance_name;
-      geometry::Instance geo_instance(
-          cell->layout(), geometry::Point { x_pos, y_pos });
-      geo_instance.set_name(instance_name);
-      if (j % 2 != 0) {
-        geo_instance.set_rotation_degrees_ccw(180);
-        geo_instance.Translate(geometry::Point(width, height));
+  std::vector<std::unique_ptr<bfg::Layout>> bank_layouts;
+  for (size_t b = 0; b < layout_config.num_banks; ++b) {
+    bfg::Layout *bank_layout = new bfg::Layout(db);
+    bank_layouts.emplace_back(bank_layout);
+    for (size_t j = 0; j < layout_config.bank_rows; j++) {
+      size_t row_width = 0;
+      for (size_t i = 0; i < layout_config.bank_columns; i++) {
+        std::string instance_name = absl::StrFormat(
+            "lut_dfxtp_%d_%d_%d", b, i, j);
+        std::string cell_name = absl::StrCat(instance_name, "_template");
+        bfg::atoms::Sky130Dfxtp::Parameters params;
+        bfg::atoms::Sky130Dfxtp generator(params, design_db_);
+        bfg::Cell *cell = generator.Generate();
+        cell->set_name(cell_name);
+        //cell->layout()->ResetOrigin();
+        design_db_->ConsumeCell(cell);
+        circuit->AddInstance(instance_name, cell->circuit());
+        geometry::Rectangle bounding_box = cell->layout()->GetTilingBounds();
+        int64_t height = static_cast<int64_t>(bounding_box.Height());
+        int64_t width = static_cast<int64_t>(bounding_box.Width());
+        row_width += width;
+        // For every other row, place backwards from the end.
+        int64_t x_pos = (
+            j % 2 != 0 ? layout_config.bank_columns - 1 - i : i) * width;
+        int64_t y_pos = j * height;
+        LOG(INFO) << "placing " << instance_name;
+        geometry::Instance geo_instance(
+            cell->layout(), geometry::Point { x_pos, y_pos });
+        geo_instance.set_name(instance_name);
+        if (j % 2 != 0) {
+          geo_instance.set_rotation_degrees_ccw(180);
+          geo_instance.Translate(geometry::Point(width, height));
+        }
+        geometry::Instance *installed = bank_layout->AddInstance(geo_instance);
+        flip_flops.push_back(installed);
       }
-      geometry::Instance *installed = layout->AddInstance(geo_instance);
-      flip_flops.push_back(installed);
     }
   }
 
-  geometry::Rectangle ff_bounds = layout->GetBoundingBox();
+  LOG_IF(FATAL, bank_layouts.size() < 1)
+      << "Expected at least 1 bank by this point.";
 
-  int64_t x_pos = static_cast<int64_t>(ff_bounds.Width());
-  int64_t y_pos = static_cast<int64_t>(ff_bounds.Height());
+  layout->AddLayout(*bank_layouts[0]);
+  geometry::Rectangle left_bounds = layout->GetBoundingBox();
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);
   bfg::Cell *mux_cell = mux.GenerateIntoDatabase("mux_template");
 
   std::vector<geometry::Instance*> mux_order;
-  circuit->AddInstance("mux_0", mux_cell->circuit());
-  {
+
+  size_t num_muxes = (1 << lut_size_) / kMuxSize;
+
+  int64_t x_pos = static_cast<int64_t>(
+      left_bounds.Width()) + layout_config.mux_area_padding;
+  int64_t y_pos = 0;
+
+  // Muxes are positioned like so:
+  //
+  // | 4-LUT | 5-LUT | 6-LUT
+  //                 
+  // |   x   |   x   |   x x
+  // | x     | x     | x     x
+  // |       |   x   |   x x
+  // |       | x     | x     x
+  //
+  // The number of columns is defined in the LayoutConfig struct in
+  // kLayoutConfigurations. Here we must compute the position based on where
+  // they are in this chain.
+  size_t column_select = 0;
+  size_t mux_height = mux_cell->layout()->GetBoundingBox().Height();
+  size_t mux_width = mux_cell->layout()->GetBoundingBox().Width();
+  size_t p = 0;
+  for (size_t i = 0; i < num_muxes; ++i) {
+    std::string mux_name = absl::StrCat("mux_", i);
+    circuit->AddInstance(mux_name, mux_cell->circuit());
     geometry::Instance geo_instance(
-        mux_cell->layout(), geometry::Point { x_pos + 500, 0 });
-    geo_instance.set_name("mux_0");
+        mux_cell->layout(), geometry::Point {
+            x_pos + static_cast<int64_t>(column_select * mux_width),
+            y_pos
+        });
+    geo_instance.set_name(mux_name);
     geometry::Instance *instance = layout->AddInstance(geo_instance);
     mux_order.push_back(instance);
+    if (p < layout_config.mux_area_rows - 1) {
+      y_pos += mux_height;
+      ++p;
+    } else {
+      x_pos += 2 * mux_width;
+      y_pos = 0;
+      p = 0;
+    }
+
+    // Alternates between 0 and 1.
+    column_select = (column_select + 1) % 2;
   }
 
-  circuit->AddInstance("mux_1", mux_cell->circuit());
-  {
-    geometry::Instance geo_instance(
-        mux_cell->layout(),
-        geometry::Point {
-            x_pos + 500,
-            static_cast<int64_t>(mux_cell->layout()->GetBoundingBox().Height())
-        });
-    geo_instance.set_name("mux_1");
-    geometry::Instance *instance = layout->AddInstance(geo_instance);
-    mux_order.push_back(instance);
+  // NOTE(aryap): Can only gracefully deal with two banks.
+  x_pos = layout->GetBoundingBox().Width() + layout_config.mux_area_padding;
+  for (size_t i = 1; i < bank_layouts.size(); ++i) {
+    bank_layouts[i]->MoveTo(geometry::Point(x_pos, 0));
+    layout->AddLayout(*bank_layouts[i]);
+    x_pos += bank_layouts[i - 1]->GetBoundingBox().Width();
   }
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
@@ -138,7 +194,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // Connect the scan chain.
   for (size_t i = 0; i < flip_flops.size(); ++i) {
     geometry::Instance *instance = flip_flops[i];
-    LOG(INFO) << "adding routes for flip flop " << i;
+    LOG(INFO) << "Adding routes for flip flop " << i;
     if (i == flip_flops.size() - 1)
       continue;
     geometry::Instance *next_in_chain = flip_flops[i+1];
@@ -168,7 +224,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     "input_5",
   };
   size_t j = 0;
-  constexpr int64_t kMuxSize = 8;
   while (j < flip_flops.size()) {
     for (size_t k = 0; k < kMuxSize && j < flip_flops.size(); ++k) {
       std::set<geometry::Port*> ff_ports;
@@ -187,7 +242,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       std::string net_name = absl::StrCat("net_", j, "_", k);
 
       geometry::Port *first_port = *ports.begin();
-      LOG(INFO) << "adding routes for (ff, mux) = (" << j << ", " << mux_index << ")";
+      LOG(INFO) << "Adding routes for (ff, mux) = (" << j << ", " << mux_index << ")";
       // HACK HACK HACK
       start->set_layer(db.GetLayer("met1.drawing"));
       first_port->set_layer(db.GetLayer("met1.drawing"));
@@ -197,7 +252,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       it++;  // Skip first port.
       while (it != ports.end()) {
         geometry::Port *port = *it;
-        LOG(INFO) << "adding routes for (ff, mux) = (" << j << ", "
+        LOG(INFO) << "Adding routes for (ff, mux) = (" << j << ", "
                   << mux_index << ")" << " to net " << net_name;
         // HACK HACK HACK
         start->set_layer(db.GetLayer("met1.drawing"));

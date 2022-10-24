@@ -305,7 +305,6 @@ bool RoutingTrack::Intersects(const geometry::Rectangle &rectangle) const {
 RoutingTrackBlockage *RoutingTrack::AddBlockage(
     const geometry::Rectangle &rectangle) {
   if (Intersects(rectangle)) {
-    LOG(INFO) << rectangle << " intersects offset " << offset_;
     RoutingTrackBlockage *blockage = CreateBlockage(
         rectangle.lower_left(), rectangle.upper_right());
     if (blockage) {

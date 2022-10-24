@@ -30,6 +30,10 @@ DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
 //DEFINE_bool(read_text_format, true, "Expect input protobufs in text format");
 DEFINE_bool(write_text_format, true, "Also write text format protobufs");
 
+// Demo flags.
+DEFINE_int32(k_lut, 4, "How many LUT inputs");
+DEFINE_bool(s44, false, "Whether to make an S44 LUT (override K selection)");
+
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -155,7 +159,7 @@ int main(int argc, char **argv) {
   // std::cout << cell->layout()->Describe();
 
   std::string top_name = "lut";
-  bfg::tiles::Lut generator(&design_db);
+  bfg::tiles::Lut generator(&design_db, FLAGS_k_lut);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
   //std::cout << top->layout()->Describe();
 
