@@ -401,6 +401,38 @@ bool RoutingGrid::AddRouteBetween(
   return true;
 }
 
+bool RoutingGrid::AddRouteToNet(
+    const geometry::Port &begin, const std::string &net) {
+  RoutingVertex *begin_vertex = GenerateGridVertexForPoint(
+      begin.centre(), begin.layer());
+  if (!begin_vertex) {
+    LOG(ERROR) << "Could not find available vertex for begin port.";
+    return false;
+  }
+  LOG(INFO) << "Nearest vertex to begin is " << begin_vertex->centre();
+
+  std::unique_ptr<RoutingPath> shortest_path(
+      ShortestPath(begin_vertex, net));
+
+  if (!shortest_path) {
+    LOG(WARNING) << "No path found to net " << net << ".";
+    return false;
+  }
+
+  // Remember the ports to which the path should connect.
+  shortest_path->set_start_port(&begin);
+
+  LOG(INFO) << "Found path: " << *shortest_path;
+  //LOG(INFO) << "final vertex is on layer " << shortest_path->vertices().end()->layer();
+
+  // Assign net and install:
+  shortest_path->set_net(net);
+
+  InstallPath(shortest_path.release());
+
+  return true;
+}
+
 bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
   if (vertex->horizontal_track())
     vertex->horizontal_track()->RemoveVertex(vertex);
@@ -457,9 +489,22 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     edge->set_available(false);
   }
 
-  for (RoutingVertex *vertex : path->vertices()) {
-    // This should already be done for all the vertices on tracks.
-    vertex->set_available(false);
+  LOG_IF(FATAL, path->vertices().size() != path->edges().size() + 1)
+      << "Path vertices and edges mismatched. There are "
+      << path->edges().size() << " edges and " << path->vertices().size()
+      << " vertices";
+
+  size_t i = 0;
+  RoutingEdge *edge = nullptr;
+  path->vertices()[0]->set_available(false);
+  while (i < path->edges().size()) {
+    RoutingVertex *last_vertex = path->vertices()[i];
+    RoutingVertex *next_vertex = path->vertices()[i + 1];
+    RoutingEdge *edge = path->edges()[i];
+    last_vertex->set_out_edge(edge);
+    next_vertex->set_in_edge(edge);
+    next_vertex->set_available(false);
+    ++i;
   }
   
   paths_.push_back(path);
@@ -537,6 +582,8 @@ RoutingPath *RoutingGrid::ShortestPath(
     queue.pop();
     size_t current_index = current->contextual_index();
 
+    // NOTE: We assume current is available, otherwise we will never have it
+    // added to the queue to detect goal completion here.
     if (current == end) {
       continue;
     }
@@ -619,7 +666,7 @@ RoutingPath *RoutingGrid::ShortestPath(
   }
 
   auto is_target = [&](RoutingVertex *candidate) {
-    return candidate->available() && candidate->net() == to_net;
+    return candidate->net() == to_net;
   };
 
   double cost[vertices_.size()];
@@ -641,7 +688,12 @@ RoutingPath *RoutingGrid::ShortestPath(
   std::priority_queue<RoutingVertex*,
                       std::vector<RoutingVertex*>,
                       decltype(vertex_sort_fn)> queue(vertex_sort_fn);
-  std::set<RoutingVertex*> found_targets;
+
+  auto target_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
+    return cost[a->contextual_index()] < cost[b->contextual_index()];
+  };
+  std::set<RoutingVertex*,
+           decltype(target_sort_fn)> found_targets(target_sort_fn);
 
   size_t begin_index = begin->contextual_index();
   cost[begin_index] = 0;
@@ -664,12 +716,17 @@ RoutingPath *RoutingGrid::ShortestPath(
   while (!queue.empty()) {
     RoutingVertex *current = queue.top();
     queue.pop();
-    size_t current_index = current->contextual_index();
 
     if (is_target(current)) {
-      //found_targets.
+      found_targets.insert(current);
       continue;
     }
+
+    if (!current->available()) {
+      continue;
+    }
+
+    size_t current_index = current->contextual_index();
 
     for (RoutingEdge *edge : current->edges()) {
       if (!edge->available())
@@ -681,9 +738,6 @@ RoutingPath *RoutingGrid::ShortestPath(
       // TODO(aryap): Maybe bake this into the RoutingEdge.
       RoutingVertex *next =
           edge->first() == current ? edge->second() : edge->first();
-
-      if (!next->available())
-        continue;
 
       size_t next_index = next->contextual_index();
 
@@ -702,12 +756,21 @@ RoutingPath *RoutingGrid::ShortestPath(
     }
   }
 
+  if (found_targets.empty())
+    return nullptr;
+
+  for (RoutingVertex *target : found_targets) {
+    LOG(INFO) << "net " << to_net << " target " << target->centre() << " cost " << cost[target->contextual_index()];
+  }
+
+  // Pick the lowest-cost target:
+  RoutingVertex *end_target = *found_targets.begin();
+  size_t end_index = end_target->contextual_index();
+
   std::deque<RoutingEdge*> shortest_edges;
 
-  // TODO(aryap): Remove:
-  size_t end_index = 0, last_index = 0;
   RoutingEdge *last_edge = prev[end_index].second;
-
+  size_t last_index = prev[end_index].first;
   while (last_edge != nullptr) {
     LOG_IF(FATAL, (last_edge->first() != vertices_[last_index] &&
                    last_edge->second() != vertices_[last_index]))

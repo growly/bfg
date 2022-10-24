@@ -229,8 +229,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->SetActiveLayerByName("met1.drawing");
   layout->AddRectangle(Rectangle(Point(0, 2480), Point(6000, 2960)));
   layout->AddRectangle(Rectangle(Point(0, -240), Point(6000, 240)));
-  layout->AddPolygon(Polygon({Point(0, 1800),
-                              Point(1310, 1800),
+  layout->AddPolygon(Polygon({//Point(0, 1800),
+                              //Point(1310, 1800),
                               Point(1310, 1755),
                               Point(1600, 1755),
                               Point(1600, 1800),
@@ -242,11 +242,12 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(2880, 1940),
                               Point(1600, 1940),
                               Point(1600, 1985),
-                              Point(1310, 1985),
-                              Point(1310, 1940),
-                              Point(0, 1940)}));
-  layout->AddPolygon(Polygon({Point(0, 1460),
-                              Point(795, 1460),
+                              Point(1310, 1985)//,
+                              //Point(1310, 1940),
+                              //Point(0, 1940)
+                              }));
+  layout->AddPolygon(Polygon({//Point(0, 1460),
+                              //Point(795, 1460),
                               Point(795, 1415),
                               Point(1085, 1415),
                               Point(1085, 1460),
@@ -259,8 +260,9 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(1085, 1600),
                               Point(1085, 1645),
                               Point(795, 1645),
-                              Point(795, 1600),
-                              Point(0, 1600)}));
+                              //Point(795, 1600),
+                              //Point(0, 1600)
+                              }));
 
   // diff.drawing [DRAWING] 65/20
   layout->SetActiveLayerByName("diff.drawing");

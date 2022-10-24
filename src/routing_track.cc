@@ -110,6 +110,8 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
   for (RoutingVertex *vertex : vertices_) {
     if (EdgeSpansVertex(*edge, *vertex)) {
       vertex->set_available(false);
+      vertex->set_in_edge(edge);
+      vertex->set_out_edge(edge);
       if (net) vertex->set_net(*net);
     }
   }

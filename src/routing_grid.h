@@ -60,6 +60,7 @@ struct RoutingLayerInfo {
   int64_t offset;
   RoutingTrackDirection direction;
   int64_t pitch;
+  int64_t via_width;
 };
 
 class RoutingGrid {
@@ -80,6 +81,8 @@ class RoutingGrid {
       const geometry::Port &begin,
       const geometry::Port &end,
       const std::string &net = "");
+  bool AddRouteToNet(
+      const geometry::Port &begin, const std::string &net);
 
   void AddVertex(RoutingVertex *vertex);
 

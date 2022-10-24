@@ -15,8 +15,14 @@ class RoutingTrack;
 class RoutingVertex {
  public:
   RoutingVertex(const geometry::Point &centre)
-      : available_(true), horizontal_track_(nullptr), vertical_track_(nullptr),
-        contextual_index_(-1), centre_(centre) {}
+      : net_(""),
+        available_(true),
+        in_edge_(nullptr),
+        out_edge_(nullptr),
+        horizontal_track_(nullptr),
+        vertical_track_(nullptr),
+        contextual_index_(-1),
+        centre_(centre) {}
 
   void AddEdge(RoutingEdge *edge) { edges_.insert(edge); }
   bool RemoveEdge(RoutingEdge *edge);
@@ -46,14 +52,25 @@ class RoutingVertex {
   void set_available(bool available) { available_ = available; }
   bool available() { return available_; }
 
+  void set_in_edge(RoutingEdge *edge) { in_edge_ = edge; }
+  RoutingEdge *in_edge() const { return in_edge_; }
+  void set_out_edge(RoutingEdge *edge) { out_edge_ = edge; }
+  RoutingEdge *out_edge() const { return out_edge_; }
+
   void set_horizontal_track(RoutingTrack *track) { horizontal_track_ = track; }
   RoutingTrack *horizontal_track() const { return horizontal_track_; }
   void set_vertical_track(RoutingTrack *track) { vertical_track_ = track; }
   RoutingTrack *vertical_track() const { return vertical_track_; }
 
  private:
+  // If the vertex is in use by some route, the name of the net should be here,
+  // available_ should be false. in_edge and out_edge should point to the
+  // incoming and outgoing edges used for the route through this vertex.
   std::string net_;
   bool available_;
+  RoutingEdge *in_edge_;
+  RoutingEdge *out_edge_;
+
   RoutingTrack *horizontal_track_;
   RoutingTrack *vertical_track_;
 

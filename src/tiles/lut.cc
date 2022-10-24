@@ -95,21 +95,21 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   bfg::RoutingLayerInfo vertical_routing;
   vertical_routing.layer = db.GetLayer("met1.drawing");
   const IntraLayerConstraints vertical_rules = db.Rules("met2.drawing");
+  vertical_routing.direction = bfg::RoutingTrackDirection::kTrackVertical;
   vertical_routing.area = pre_route_bounds;
   vertical_routing.wire_width = vertical_rules.min_width;
   vertical_routing.offset = 50;
   vertical_routing.pitch = vertical_rules.min_pitch;
-  vertical_routing.direction = bfg::RoutingTrackDirection::kTrackVertical;
 
   bfg::RoutingLayerInfo horizontal_routing;
   horizontal_routing.layer = db.GetLayer("met2.drawing");
   const IntraLayerConstraints horizontal_rules =
       db.Rules("met2.drawing");
+  horizontal_routing.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
   horizontal_routing.area = pre_route_bounds;
   horizontal_routing.wire_width = horizontal_rules.min_width;
   horizontal_routing.offset = 50;
   horizontal_routing.pitch = horizontal_rules.min_pitch;
-  horizontal_routing.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
 
   bfg::RoutingViaInfo routing_via_info;
   routing_via_info.layer = db.GetLayer("mcon.drawing");
@@ -168,24 +168,42 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     "input_5",
   };
   size_t j = 0;
+  constexpr int64_t kMuxSize = 8;
   while (j < flip_flops.size()) {
-    for (size_t k = 0; k < 8 && j < flip_flops.size(); ++k) {
+    for (size_t k = 0; k < kMuxSize && j < flip_flops.size(); ++k) {
       std::set<geometry::Port*> ff_ports;
       geometry::Instance *ff = flip_flops[j];
       ff->GetInstancePorts("D", &ff_ports);
       geometry::Port *start = *ff_ports.begin();
 
       std::set<geometry::Port*> ports;
-      size_t mux_index = j % mux_order.size();
+      size_t mux_index = j / kMuxSize;
       geometry::Instance *mux = mux_order[mux_index];
       mux->GetInstancePorts(mux_input_order[k], &ports);
 
-      for (geometry::Port *port : ports) {
-        LOG(INFO) << "adding routes for ff " << j << " to mux " << mux_index;
+      if (ports.empty())
+        continue;
+
+      std::string net_name = absl::StrCat("net_", j, "_", k);
+
+      geometry::Port *first_port = *ports.begin();
+      LOG(INFO) << "adding routes for (ff, mux) = (" << j << ", " << mux_index << ")";
+      // HACK HACK HACK
+      start->set_layer(db.GetLayer("met1.drawing"));
+      first_port->set_layer(db.GetLayer("met1.drawing"));
+      routing_grid.AddRouteBetween(*start, *first_port, net_name);
+
+      auto it = ports.begin();
+      it++;  // Skip first port.
+      while (it != ports.end()) {
+        geometry::Port *port = *it;
+        LOG(INFO) << "adding routes for (ff, mux) = (" << j << ", "
+                  << mux_index << ")" << " to net " << net_name;
         // HACK HACK HACK
         start->set_layer(db.GetLayer("met1.drawing"));
         port->set_layer(db.GetLayer("met1.drawing"));
-        routing_grid.AddRouteBetween(*start, *port);
+        routing_grid.AddRouteToNet(*port, net_name);
+        it++;
       }
       j++;
     }

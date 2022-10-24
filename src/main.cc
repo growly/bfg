@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
   intra_constraints = {
     .min_separation = 200,
     .min_width = 140,
-    .min_pitch = 180,
+    .min_pitch = 340,
   };
   physical_db.AddRules("met1.drawing", intra_constraints);
   // Lazy:
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = 50,
-    .via_overhang = 80,
+    .via_overhang = 60,
   };
   physical_db.AddRules("li.drawing", "licon.drawing", inter_constraints);
   physical_db.AddRules("li.drawing", "mcon.drawing", inter_constraints);
