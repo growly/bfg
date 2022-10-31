@@ -29,15 +29,21 @@ class Line {
 
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
 
+  bool Intersects(const Point &point) const;
+
   bool Intersects(const Line &other, bool *incident, Point *point) const {
     return Intersect(*this, other, incident, point);
   }
+
+  bool IntersectsInBounds(const Point &point) const;
 
   bool IntersectsInBounds(const Line &other, bool *incident, Point *point) const;
 
   bool IsSameInfiniteLine(const Line &other) const {
     return AreSameInfiniteLine(*this, other);
   }
+
+  Point PointOnLineAtDistance(const Point &start, double distance) const;
 
   void Shift(int64_t dx, int64_t dy) {
     ShiftStart(dx, dy);

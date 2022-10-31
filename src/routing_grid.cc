@@ -797,7 +797,9 @@ RoutingPath *RoutingGrid::ShortestPath(
   return path;
 }
 
-void RoutingGrid::AddBlockages(const geometry::ShapeCollection &shapes) {
+void RoutingGrid::AddBlockages(
+    const geometry::ShapeCollection &shapes,
+    int64_t padding) {
   for (const auto &rectangle : shapes.rectangles()) {
     AddBlockage(*rectangle);
   }
@@ -809,21 +811,23 @@ void RoutingGrid::AddBlockages(const geometry::ShapeCollection &shapes) {
   }
 }
 
-void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle) {
+void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
+                              int64_t padding) {
   auto it = tracks_by_layer_.find(rectangle.layer());
   if (it == tracks_by_layer_.end())
     return;
   for (RoutingTrack *track : it->second) {
-    track->AddBlockage(rectangle);
+    track->AddBlockage(rectangle, padding);
   }
 }
 
-void RoutingGrid::AddBlockage(const geometry::Polygon &polygon) {
+void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
+                              int64_t padding) {
   auto it = tracks_by_layer_.find(polygon.layer());
   if (it == tracks_by_layer_.end())
     return;
   for (RoutingTrack *track : it->second) {
-    track->AddBlockage(polygon);
+    track->AddBlockage(polygon, padding);
   }
 }
 

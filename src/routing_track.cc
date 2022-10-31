@@ -284,7 +284,9 @@ int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
   return 0;
 }
 
-bool RoutingTrack::Intersects(const geometry::Rectangle &rectangle) const {
+bool RoutingTrack::Intersects(
+    const geometry::Rectangle &rectangle,
+    int64_t within_halo) const {
   // First check that the minor direction falls on this offset:
   int64_t offset_axis_low = ProjectOntoOffset(rectangle.lower_left());
   int64_t offset_axis_high = ProjectOntoOffset(rectangle.upper_right());
@@ -292,8 +294,11 @@ bool RoutingTrack::Intersects(const geometry::Rectangle &rectangle) const {
   if (offset_axis_low > offset_axis_high)
     std::swap(offset_axis_low, offset_axis_high);
 
-  int64_t high = offset_ + width_ / 2;
-  int64_t low = offset_ - (width_ - width_ / 2);
+  offset_axis_low -= within_halo;
+  offset_axis_high += within_halo;
+
+  int64_t low = offset_ - (width_ - width_ / 2) - within_halo;
+  int64_t high = offset_ + width_ / 2 + within_halo;
 
   // There is no intersection if both the track edges are on the low or the
   // high side of the blockage. Otherwise if one of the edges is straddled or
@@ -303,8 +308,9 @@ bool RoutingTrack::Intersects(const geometry::Rectangle &rectangle) const {
 }
 
 RoutingTrackBlockage *RoutingTrack::AddBlockage(
-    const geometry::Rectangle &rectangle) {
-  if (Intersects(rectangle)) {
+    const geometry::Rectangle &rectangle,
+    int64_t padding) {
+  if (Intersects(rectangle, padding)) {
     RoutingTrackBlockage *blockage = CreateBlockage(
         rectangle.lower_left(), rectangle.upper_right());
     if (blockage) {
@@ -314,7 +320,9 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
   return nullptr;
 }
 
-void RoutingTrack::AddBlockage(const geometry::Polygon &polygon) {
+void RoutingTrack::AddBlockage(
+    const geometry::Polygon &polygon,
+    int64_t padding) {
   geometry::Line track = AsLine();
   std::vector<std::pair<geometry::Point, geometry::Point>> intersections;
   polygon.IntersectingPoints(track, &intersections);

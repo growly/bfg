@@ -38,11 +38,18 @@ class PolyLine : public Shape {
 
   const Rectangle GetBoundingBox() const override;
 
+  bool Intersects(const Point &point, size_t *segment_index) const;
+
   void AddSegment(const Point &point) {
     AddSegment(point, 0);
   }
 
   void AddSegment(const Point &to, const uint64_t width);
+
+  // Inserts what will become a rectangular bulge into the PolyLine by creating
+  // the appropriate segments. The width and length are coaxial: width is
+  // distance orthogonal to the direction of the line and length is parallel.
+  void InsertBulge(const Point &point, uint64_t width, uint64_t length);
 
   void SetWidth(const uint64_t width);
   const std::vector<Point> Vertices() const;

@@ -71,6 +71,18 @@ bool Line::Intersect(
   return true;
 }
 
+bool Line::Intersects(const Point &point) const {
+  if (IsVertical()) {
+    return point.x() == start_.x();
+  }
+  // Numerous ways to skin this, including finding the more general distance of
+  // the point to the line, but I think this is faster:
+  double y_hypothetical = Gradient() * point.x() + Offset();
+  double y_error = std::abs(static_cast<double>(point.y()) - y_hypothetical);
+  // Since our unit resolution is 1, we consider that the limit of error:
+  return y_error < 1.0;
+}
+
 bool Line::AreSameInfiniteLine(const Line &lhs, const Line &rhs) {
   if (lhs.IsVertical() && rhs.IsVertical()) {
     // Both lines are vertical. Check if they are at the same x:
@@ -86,6 +98,23 @@ bool Line::AreSameInfiniteLine(const Line &lhs, const Line &rhs) {
 
 bool Line::IsVertical() const {
   return start_.x() == end_.x();
+}
+
+bool Line::IntersectsInBounds(const Point &point) const {
+  if (!Intersects(point))
+    return false;
+
+  // This is a very common operation of order the two ys or xs:
+  int64_t max_y = std::max(start_.y(), end_.y());
+  int64_t min_y = std::min(start_.y(), end_.y());
+  int64_t max_x = std::max(start_.x(), end_.x());
+  int64_t min_x = std::min(start_.x(), end_.x());
+
+  if (min_x <= point.x() && point.x() <= max_x &&
+      min_y <= point.y() && point.y() <= max_y) {
+    return true;
+  }
+  return false;
 }
 
 bool Line::IntersectsInBounds(
@@ -144,17 +173,40 @@ void Line::ShiftEnd(int64_t dx, int64_t dy) {
 }
 
 double Line::Gradient() const {
+  int64_t divisor = end_.x() - start_.x();
+  LOG_IF(FATAL, divisor == 0)
+      << "This is a vertical line; do not compute gradient.";
   return static_cast<double>(end_.y() - start_.y()) /
-         static_cast<double>(end_.x() - start_.x());
+         static_cast<double>(divisor);
+}
+
+Point Line::PointOnLineAtDistance(const Point &start, double distance) const {
+  LOG_IF(WARNING, !Intersects(start))
+      << "Point " << start << " is not on this line";
+
+  //           end
+  //           /
+  //          o <- want this point
+  //         / distance, d
+  //        x ---- horizon
+  //       / -d
+  //      o
+  //     /
+  //   start
+
+  double theta = AngleToHorizon();
+  int64_t dx = std::round(distance * std::cos(theta));
+  int64_t dy = std::round(distance * std::sin(theta));
+  return start + Point(dx, dy);
 }
 
 double Line::Offset() const {
-  return end_.y() - Gradient()*end_.x();
+  return end_.y() - Gradient() * end_.x();
 }
 
 double Line::AngleToHorizon() const {
-  int64_t dx = end_.x() - start_.x();
-  int64_t dy = end_.y() - start_.y();
+  double dx = end_.x() - start_.x();
+  double dy = end_.y() - start_.y();
 
   double theta = 0;
   if (dx == 0) {

@@ -93,9 +93,12 @@ class RoutingGrid {
 
   Layout *GenerateLayout() const;
 
-  void AddBlockages(const geometry::ShapeCollection &shapes);
-  void AddBlockage(const geometry::Rectangle &rectangle);
-  void AddBlockage(const geometry::Polygon &polygon);
+  void AddBlockages(const geometry::ShapeCollection &shapes,
+                    int64_t padding = 0);
+  void AddBlockage(const geometry::Rectangle &rectangle,
+                   int64_t padding = 0);
+  void AddBlockage(const geometry::Polygon &polygon,
+                   int64_t padding = 0);
   // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
 

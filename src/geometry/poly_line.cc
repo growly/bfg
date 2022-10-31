@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "line_segment.h"
+#include "point.h"
 #include "rectangle.h"
 
 namespace bfg {
@@ -80,6 +81,53 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
   segments_.push_back(LineSegment{to, width});
 }
 
+void PolyLine::InsertBulge(
+    const Point &point, uint64_t width, uint64_t length) {
+  size_t segment_index = 0;
+  if (!Intersects(point, &segment_index)) {
+    return;
+  }
+
+  Point start;
+  const LineSegment &segment = segments_[segment_index];
+  if (segment_index > 0) {
+    start = segments_[segment_index - 1].end;
+  } else {
+    start = start_;
+  }
+
+  Line line = Line(start, segment.end);
+  uint64_t previous_width = segment.width;
+  double d_end = point.L2DistanceTo(segment.end);
+  double d_start = point.L2DistanceTo(start);
+
+  if (point == segment.end) {
+    // TODO(aryap): Special treatment if the intersection was at the end of the
+    // LineSegment.
+    return;
+    // TODO(aryap): There is also the case where we are within `length` of the
+    // end of the segment.
+  }
+
+  //           /
+  //          o <- want this point after
+  //         /
+  //        x
+  //       /
+  //      o <- want this point before
+  //     /
+
+  Point point_before = line.PointOnLineAtDistance(point, -length);
+  Point point_after = line.PointOnLineAtDistance(point, length);
+  LineSegment bulge_segment = {
+    .end = point_after,
+    .width = width,
+    .growth_anchor = AnchorPosition::kCenterAutomatic
+  };
+
+  segments_.insert(segments_.begin() + segment_index, bulge_segment);
+}
+
 void PolyLine::SetWidth(const uint64_t width) {
   for (LineSegment &segment : segments_) {
     segment.width = width;
@@ -92,6 +140,23 @@ const std::vector<Point> PolyLine::Vertices() const {
     points.push_back(segment.end);
   }
   return points;
+}
+
+bool PolyLine::Intersects(const Point &point, size_t *segment_index) const {
+  Point start = start_;
+  int64_t k = -1;
+  for (size_t i = 0; i < segments_.size(); ++i) {
+    const LineSegment &segment = segments_[i];
+    Line line = Line(start, segment.end);
+    if (line.IntersectsInBounds(point)) {
+      k = i;
+      break;
+    }
+    start = segment.end;
+  }
+  if (segment_index)
+    *segment_index = k;
+  return k >= 0;
 }
 
 }  // namespace geometry

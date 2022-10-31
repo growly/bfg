@@ -221,8 +221,8 @@ void GenerateOutput2To1Mux(
   int64_t poly_overhang = li_rules.min_width + li_rules.min_separation;
   int64_t poly_pitch = poly_rules.min_pitch;
   int64_t poly_gap = poly_pitch - poly_rules.min_width;
-  Point gap_top = main_layout->GetPoint("upper_left.column_2_centre_bottom");
-  Point gap_bottom = main_layout->GetPoint("lower_left.column_2_centre_bottom");
+  Point gap_top = main_layout->GetPoint("upper_left.column_2_centre_bottom_via");
+  Point gap_bottom = main_layout->GetPoint("lower_left.column_2_centre_bottom_via");
   // 2 * poly_overhang + stage_2_mux_fet_0_width;
   int64_t height = (
       gap_top.y() - gap_bottom.y()) - 2 * poly_rules.min_separation;
@@ -285,7 +285,7 @@ void GenerateOutput2To1Mux(
 
   // Compute the offset required to align the polys.
   int64_t target_x =
-      main_layout->GetPoint("upper_right.column_3_centre_bottom").x();
+      main_layout->GetPoint("upper_right.column_3_centre_bottom_via").x();
   int64_t offset_x = template_right_poly->centre().x();
   layout->Translate(Point(target_x - offset_x, bb.lower_left().y()));
 
@@ -636,17 +636,18 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   const InterLayerConstraints &met1_mcon_rules = db.Rules(
       "met1.drawing", "mcon.drawing");
 
-  std::set<int64_t> enabled_columns = {0, 2, 4, 7, 9, 12, 14, 16};
+  // Generate vertical metal columns.
+  std::set<int64_t> enabled_columns = {1, 2, 4, 7, 9, 12, 14, 15};
   std::map<int64_t, int64_t> met1_column_x_midpoints;
   std::map<int64_t, Rectangle*> enabled_column_geometries;
   int64_t mux_top_y = static_cast<int64_t>(bounding_box.Height());
   int64_t mux_bottom_y = 0;
   {
     // Add vertical selector connections.
-    int64_t offset_x = 50;
+    int64_t offset_x = met1_rules.min_separation;
     int64_t pitch = met1_rules.min_width + met1_rules.min_separation;
     int64_t width = static_cast<int64_t>(bounding_box.Width());
-    int64_t extension = 150;
+    int64_t extension = 0;
     layout->SetActiveLayerByName("met1.drawing");
 
     for (int64_t x = offset_x, k = 0; x < width; x += pitch, ++k) {
@@ -661,47 +662,47 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   ConnectNamedPointsToColumn(
       db,
-      {"lower_left.column_0_centre_bottom", "lower_left.column_0_centre_top",
-       "upper_left.column_0_centre_top"},
-      *enabled_column_geometries[0],
+      {"lower_left.column_0_centre_bottom_via", "lower_left.column_0_centre_top_via",
+       "upper_left.column_0_centre_top_via"},
+      *enabled_column_geometries[1],
       layout.get());
   ConnectNamedPointsToColumn(
       db,
-      {"lower_left.column_1_centre_bottom", "lower_left.column_1_centre_top",
-       "upper_left.column_1_centre_top"},
+      {"lower_left.column_1_centre_bottom_via", "lower_left.column_1_centre_top_via",
+       "upper_left.column_1_centre_top_via"},
       *enabled_column_geometries[2],
       layout.get());
   ConnectNamedPointsToColumn(
       db,
-      {"upper_left.column_2_centre_top", "lower_left.column_2_centre_top"},
+      {"upper_left.column_2_centre_top_via", "lower_left.column_2_centre_top_via"},
       *enabled_column_geometries[4],
       layout.get());
   ConnectNamedPointsToColumn(
       db,
-      {"upper_left.column_3_centre_top", "lower_left.column_3_centre_top"},
+      {"upper_left.column_3_centre_top_via", "lower_left.column_3_centre_top_via"},
       *enabled_column_geometries[7],
       layout.get());
 
   ConnectNamedPointsToColumn(
       db,
-      {"upper_right.column_0_centre_bottom", "upper_right.column_0_centre_top",
-       "lower_right.column_0_centre_top"},
-      *enabled_column_geometries[16],
+      {"upper_right.column_0_centre_bottom_via", "upper_right.column_0_centre_top_via",
+       "lower_right.column_0_centre_top_via"},
+      *enabled_column_geometries[15],
       layout.get());
   ConnectNamedPointsToColumn(
       db,
-      {"upper_right.column_1_centre_bottom", "upper_right.column_1_centre_top",
-       "lower_right.column_1_centre_top"},
+      {"upper_right.column_1_centre_bottom_via", "upper_right.column_1_centre_top_via",
+       "lower_right.column_1_centre_top_via"},
       *enabled_column_geometries[14],
       layout.get());
   ConnectNamedPointsToColumn(
       db,
-      {"upper_right.column_2_centre_top", "lower_right.column_2_centre_top"},
+      {"upper_right.column_2_centre_top_via", "lower_right.column_2_centre_top_via"},
       *enabled_column_geometries[12],
       layout.get());
   ConnectNamedPointsToColumn(
       db,
-      {"upper_right.column_3_centre_top", "upper_right.column_3_centre_top"},
+      {"upper_right.column_3_centre_top_via", "upper_right.column_3_centre_top_via"},
       *enabled_column_geometries[9],
       layout.get());
 
@@ -779,6 +780,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
 
   const IntraLayerConstraints &li_rules = db.Rules("li.drawing");
   const IntraLayerConstraints &poly_rules = db.Rules("poly.drawing");
+  const IntraLayerConstraints &met1_rules = db.Rules("met1.drawing");
 
   const InterLayerConstraints &li_licon_rules = db.Rules(
       "li.drawing", "licon.drawing");
@@ -807,40 +809,55 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
       Point(column_0_x, -poly_overhang),
       Point(column_0_x + poly_width, height + poly_overhang)));
 
-  layout->SavePoint("column_0_centre_bottom", Point(
-      column_0->centre().x(), column_0->lower_left().y()));
-  layout->SavePoint("column_0_centre_top", Point(
-      column_0->centre().x(), column_0->upper_right().y()));
+  int64_t via_centre_to_poly_edge =
+      licon_rules.via_width / 2 + poly_licon_rules.min_separation;
+
+  layout->SavePoint("column_0_centre_bottom_via", Point(
+      column_0->centre().x(),
+      column_0->lower_left().y() - via_centre_to_poly_edge));
+  layout->SavePoint("column_0_centre_top_via", Point(
+      column_0->centre().x(),
+      column_0->upper_right().y() - via_centre_to_poly_edge));
 
   int64_t column_1_x = column_0_x + poly_pitch;
+  // We want the 2nd column to stick out above the left column by enough
+  // distance to clear a 2nd li track horizontally.
   Rectangle *column_1 = layout->AddRectangle(Rectangle(
       Point(column_1_x, -poly_overhang),
-      Point(column_1_x + poly_width, height + poly_overhang)));
+      Point(column_1_x + poly_width,
+            height + poly_overhang +
+            li_rules.min_width + li_rules.min_separation)));
 
-  layout->SavePoint("column_1_centre_bottom", Point(
-      column_1->centre().x(), column_1->lower_left().y()));
-  layout->SavePoint("column_1_centre_top", Point(
-      column_1->centre().x(), column_1->upper_right().y()));
+  layout->SavePoint("column_1_centre_bottom_via", Point(
+      column_1->centre().x(),
+      column_1->lower_left().y() - via_centre_to_poly_edge));
+  layout->SavePoint("column_1_centre_top_via", Point(
+      column_1->centre().x(),
+      column_1->upper_right().y() - via_centre_to_poly_edge));
 
   int64_t column_2_x = column_1_x + 2 * poly_pitch;
   Rectangle *column_2 = layout->AddRectangle(Rectangle(
       Point(column_2_x, height - fet_4_width - poly_overhang),
       Point(column_2_x + poly_width, height + poly_overhang)));
 
-  layout->SavePoint("column_2_centre_bottom", Point(
-      column_2->centre().x(), column_2->lower_left().y()));
-  layout->SavePoint("column_2_centre_top", Point(
-      column_2->centre().x(), column_2->upper_right().y()));
+  layout->SavePoint("column_2_centre_bottom_via", Point(
+      column_2->centre().x(),
+      column_2->lower_left().y() - via_centre_to_poly_edge));
+  layout->SavePoint("column_2_centre_top_via", Point(
+      column_2->centre().x(),
+      column_2->upper_right().y() - via_centre_to_poly_edge));
 
   int64_t column_3_x = column_2_x + poly_pitch;
   Rectangle *column_3 = layout->AddRectangle(Rectangle(
       Point(column_3_x, height - fet_5_width - poly_overhang),
       Point(column_3_x + poly_width, height + poly_overhang)));
 
-  layout->SavePoint("column_3_centre_bottom", Point(
-      column_3->centre().x(), column_3->lower_left().y()));
-  layout->SavePoint("column_3_centre_top", Point(
-      column_3->centre().x(), column_3->upper_right().y()));
+  layout->SavePoint("column_3_centre_bottom_via", Point(
+      column_3->centre().x(),
+      column_3->lower_left().y() - via_centre_to_poly_edge));
+  layout->SavePoint("column_3_centre_top_via", Point(
+      column_3->centre().x(),
+      column_3->upper_right().y() - via_centre_to_poly_edge));
 
   // +---------+---------+   +---------+---------+
   // | pfet 1  | pfet 3  |   | pfet 4  | pfet 5  |
@@ -944,8 +961,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     int64_t metal_width = li_rules.min_width;
 
     Point p_0 = via_0_0->centre();
-    Point p_1 = p_0 + Point(0, 4 * li_licon_rules.via_overhang);
-    Point p_2 = Point(0, p_1.y());
+    Point p_1 = p_0 + Point(0, 4 * li_licon_rules.via_overhang);  // Up a bit.
+    Point p_2 = Point(-met1_rules.min_separation, p_1.y());
     PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
     input_2_line.SetWidth(li_rules.min_width);
     input_2_line.set_overhang_start(via_side / 2 + li_licon_rules.via_overhang);
@@ -956,7 +973,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     input_2_met_0 = layout->AddPolygon(input_2_template);
 
     layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(p_1, via_side);
+    geometry::Rectangle *via = layout->AddSquare(
+        p_2 + Point(via_side / 2, 0), via_side);
     layout->SavePoint("input_2", via->centre());
   }
 
@@ -968,7 +986,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     int64_t lower_left_y = input_2_met_0->GetBoundingBox().lower_left().y() -
                            (metal_width / 2) - li_rules.min_separation;
 
-    Point p_0 = Point(0, lower_left_y);
+    Point p_0 = Point(-met1_rules.min_separation, lower_left_y);
     Point p_2 = via_2_0->centre();
     Point p_1 = Point(p_2.x(), p_0.y());
     PolyLine input_3_line = PolyLine({p_0, p_1, p_2});
@@ -995,11 +1013,10 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
         input_2_met_0->GetBoundingBox().UpperLeft() - via_0_0->centre();
     via_relative_to_corner.MirrorX();
     input_0_met_0->MoveLowerLeftTo(via_0_1->centre() + via_relative_to_corner);
-
     layout->SetActiveLayerByName("li.pin");
     geometry::Rectangle *via = layout->AddSquare(
-        input_0_met_0->GetBoundingBox().LowerRight() - Point(
-            via_side / 2, -via_side / 2), via_side);
+        input_0_met_0->GetBoundingBox().lower_left() + Point(
+            via_side / 2, via_side / 2), via_side);
     layout->SavePoint("input_0", via->centre());
   }
 
@@ -1017,7 +1034,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     // points about the x-axis, we know which points should be at the "end" of
     // the wire:
     Point end = Point(
-        via_side / 2, input_1_met_0->vertices().back().y() - via_side / 2);
+        input_1_met_0->vertices().back().x() + via_side / 2,
+        input_1_met_0->vertices().back().y() - via_side / 2);
 
     layout->SetActiveLayerByName("li.pin");
     end.set_layer(layout->active_layer());

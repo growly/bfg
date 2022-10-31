@@ -68,9 +68,14 @@ class RoutingTrack {
   void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out);
   void ReportAvailableVertices(std::vector<RoutingVertex*> *vertices_out);
 
-  bool Intersects(const geometry::Rectangle &rectangle) const;
-  RoutingTrackBlockage *AddBlockage(const geometry::Rectangle &retangle);
-  void AddBlockage(const geometry::Polygon &polygon);
+  bool Intersects(const geometry::Rectangle &rectangle,
+                  int64_t within_halo = 0) const;
+  RoutingTrackBlockage *AddBlockage(
+      const geometry::Rectangle &retangle,
+      int64_t padding = 0);
+  void AddBlockage(
+      const geometry::Polygon &polygon,
+      int64_t padding = 0);
 
   geometry::Line AsLine() const;
 

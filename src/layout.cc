@@ -270,7 +270,8 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   }
 }
 
-void Layout::MakeVia(const std::string &layer_name, const geometry::Point &centre) {
+void Layout::MakeVia(
+    const std::string &layer_name, const geometry::Point &centre) {
   geometry::Layer last_layer = active_layer_;
   SetActiveLayerByName(layer_name);
   int64_t via_side = physical_db_.Rules(layer_name).via_width;

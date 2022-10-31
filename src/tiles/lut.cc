@@ -40,6 +40,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   std::vector<geometry::Instance*> flip_flops;
   std::vector<std::unique_ptr<bfg::Layout>> bank_layouts;
+  int64_t max_row_height = 0;
   for (size_t b = 0; b < layout_config.num_banks; ++b) {
     bfg::Layout *bank_layout = new bfg::Layout(db);
     bank_layouts.emplace_back(bank_layout);
@@ -60,6 +61,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         int64_t height = static_cast<int64_t>(bounding_box.Height());
         int64_t width = static_cast<int64_t>(bounding_box.Width());
         row_width += width;
+        max_row_height = std::max(max_row_height, height);
         // For every other row, place backwards from the end.
         int64_t x_pos = (
             j % 2 != 0 ? layout_config.bank_columns - 1 - i : i) * width;
@@ -92,10 +94,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   size_t num_muxes = (1 << lut_size_) / kMuxSize;
 
-  int64_t x_pos = static_cast<int64_t>(
-      left_bounds.Width()) + layout_config.mux_area_padding;
-  int64_t y_pos = 0;
-
   // Muxes are positioned like so:
   //
   // | 4-LUT | 5-LUT | 6-LUT
@@ -109,26 +107,38 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // kLayoutConfigurations. Here we must compute the position based on where
   // they are in this chain.
   size_t column_select = 0;
-  size_t mux_height = mux_cell->layout()->GetBoundingBox().Height();
-  size_t mux_width = mux_cell->layout()->GetBoundingBox().Width();
+  int64_t column_spacing = 300;
+  int64_t row_spacing = -500;
+  int64_t mux_height = mux_cell->layout()->GetBoundingBox().Height();
+  int64_t mux_width = mux_cell->layout()->GetBoundingBox().Width();
+  int64_t effective_mux_height = mux_height + row_spacing;
+  int64_t effective_mux_width = mux_width + column_spacing;
+
+  int64_t x_pos = static_cast<int64_t>(
+      left_bounds.Width()) + layout_config.mux_area_padding;
+  int64_t y_offset = -(mux_height - 2 * max_row_height) / 2;
+  int64_t y_pos = y_offset;
+
   size_t p = 0;
   for (size_t i = 0; i < num_muxes; ++i) {
     std::string mux_name = absl::StrCat("mux_", i);
     circuit->AddInstance(mux_name, mux_cell->circuit());
+    int64_t x_shift = column_select * effective_mux_width;
     geometry::Instance geo_instance(
         mux_cell->layout(), geometry::Point {
-            x_pos + static_cast<int64_t>(column_select * mux_width),
+            x_pos + static_cast<int64_t>(column_select * effective_mux_width),
             y_pos
         });
     geo_instance.set_name(mux_name);
     geometry::Instance *instance = layout->AddInstance(geo_instance);
     mux_order.push_back(instance);
     if (p < layout_config.mux_area_rows - 1) {
-      y_pos += mux_height;
+      y_pos += effective_mux_height;
       ++p;
     } else {
-      x_pos += 2 * mux_width;
-      y_pos = 0;
+      column_select += 1;   // Alternate the alternation.
+      x_pos += 2 * (effective_mux_width);
+      y_pos = y_offset;
       p = 0;
     }
 
@@ -170,7 +180,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   bfg::RoutingViaInfo routing_via_info;
   routing_via_info.layer = db.GetLayer("mcon.drawing");
   const IntraLayerConstraints via_rules = db.Rules("mcon.drawing");
-  routing_via_info.cost = 1.0;
+  routing_via_info.cost = 0.5;
   routing_via_info.width = via_rules.via_width;
   routing_via_info.height = via_rules.via_width;
   routing_via_info.overhang = db.Rules(
@@ -187,8 +197,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
-    routing_grid.AddBlockages(shapes);
-    //LOG(INFO) << shapes.Describe();
+    routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
+  }
+  {
+    geometry::ShapeCollection shapes;
+    layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+    routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
   }
 
   // Connect the scan chain.
