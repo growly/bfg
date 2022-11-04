@@ -801,14 +801,17 @@ void RoutingGrid::AddBlockages(
     const geometry::ShapeCollection &shapes,
     int64_t padding) {
   for (const auto &rectangle : shapes.rectangles()) {
-    AddBlockage(*rectangle);
+    AddBlockage(*rectangle, padding);
   }
   for (const auto &polygon : shapes.polygons()) {
-    AddBlockage(*polygon);
+    AddBlockage(*polygon, padding);
   }
-  for (const auto &port : shapes.ports()) {
-    AddBlockage(*port);
-  }
+  // Do not add ports as permanent blockages. They must be considered
+  // route-by-route, since some ports might be needed for connection.
+  // FIXME(aryap): Need to add temporary blockages during search.
+  //for (const auto &port : shapes.ports()) {
+  //  AddBlockage(*port, padding);
+  //}
 }
 
 void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,

@@ -30,6 +30,12 @@ class PolyLine : public Shape {
     }
   }
 
+  PolyLine(const Point &start,
+           const std::vector<LineSegment> &segments)
+      : start_(start), segments_(segments.begin(), segments.end()) {}
+
+  std::string Describe() const;
+
   void MirrorY() override;
   void MirrorX() override;
   void FlipHorizontal() override;
@@ -49,7 +55,8 @@ class PolyLine : public Shape {
   // Inserts what will become a rectangular bulge into the PolyLine by creating
   // the appropriate segments. The width and length are coaxial: width is
   // distance orthogonal to the direction of the line and length is parallel.
-  void InsertBulge(const Point &point, uint64_t width, uint64_t length);
+  void InsertBulge(
+      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length);
 
   void SetWidth(const uint64_t width);
   const std::vector<Point> Vertices() const;

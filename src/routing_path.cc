@@ -36,7 +36,8 @@ void RoutingPath::ToPolyLinesAndVias(
       << "There should be one more vertex than there are edges.";
   std::unique_ptr<PolyLine> last;
   RoutingEdge *edge = nullptr;
-  int64_t overhang_start = 0;
+  int64_t bulge_length = 0;
+  int64_t bulge_width = 0;
   for (size_t i = 0; i < vertices_.size() - 1; ++i) {
     RoutingVertex *current = vertices_.at(i);
     edge = edges_.at(i);
@@ -47,6 +48,8 @@ void RoutingPath::ToPolyLinesAndVias(
     if (!last || last->layer() != layer) {
       // TODO(aryap): Is this even an 'abstract' via still? We seem to have all
       // the concrete details in here.
+      // TODO(aryap): It's more straightforward to assign all the vias and then
+      // go through and insert bulges on the layers where they are.
       AbstractVia *via = nullptr;
       if (last) {
         // This is a change in layer, so we finish the last line and store it.
@@ -57,18 +60,17 @@ void RoutingPath::ToPolyLinesAndVias(
         const RoutingViaInfo &routing_via_info =
             routing_grid.GetRoutingViaInfo(last->layer(), layer);
         int64_t via_width = std::max(routing_via_info.width, routing_via_info.height);
-        overhang_start = via_width / 2 + routing_via_info.overhang;
+        bulge_length = via_width + 2 * routing_via_info.overhang_length;
+        bulge_width = via_width + 2 * routing_via_info.overhang_width;
+        last->InsertBulge(current->centre(), bulge_width, bulge_length);
+        last->InsertBulge(last->start(), bulge_width, bulge_length);
         // TODO(aryap): There are different rules for overhanging from the
         // layer above and below.
-        // TODO(aryap): We also have to add minimum covering pours, like a
-        // rectangle.
-        last->set_overhang_end(overhang_start);
         polylines->push_back(std::move(last));
       }
       // Start a new line.
       last.reset(new PolyLine());
       last->set_layer(layer);
-      last->set_overhang_start(overhang_start);
       last->set_start(current->centre());
       last->set_start_via(via);
       continue;
@@ -78,9 +80,10 @@ void RoutingPath::ToPolyLinesAndVias(
 
   const RoutingLayerInfo &last_info = routing_grid.GetRoutingLayerInfo(
       edge->ExplicitOrTrackLayer());
-  last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
   // TODO(aryap): How do get info for last port?
-  last->set_overhang_end(overhang_start);
+  last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
+  last->InsertBulge(last->start(), bulge_width, bulge_length);
+  last->InsertBulge(last->segments().back().end, bulge_width, bulge_length);
   polylines->push_back(std::move(last));
 
   // Copy pointers to the start and end ports, if any.

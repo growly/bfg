@@ -93,6 +93,8 @@ class RoutingGrid {
 
   Layout *GenerateLayout() const;
 
+  // Add permanent blockages. Ports need special consideration and are not
+  // added from the ShapeCollection by default.
   void AddBlockages(const geometry::ShapeCollection &shapes,
                     int64_t padding = 0);
   void AddBlockage(const geometry::Rectangle &rectangle,

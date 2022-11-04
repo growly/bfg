@@ -106,22 +106,33 @@ int main(int argc, char **argv) {
 
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = 50,
-    .via_overhang = 60,
+    .via_overhang = 80,
+    .via_overhang_wide = 50
+  };
+  physical_db.AddRules("poly.drawing", "licon.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = 50,
+    .via_overhang = 80,
+    .via_overhang_wide = 35
   };
   physical_db.AddRules("li.drawing", "licon.drawing", inter_constraints);
-  physical_db.AddRules("li.drawing", "mcon.drawing", inter_constraints);
-  physical_db.AddRules("met1.drawing", "mcon.drawing", inter_constraints);
-  physical_db.AddRules("met1.drawing", "via1.drawing", inter_constraints);
-  physical_db.AddRules("met2.drawing", "via1.drawing", inter_constraints);
-  physical_db.AddRules("poly.drawing", "licon.drawing", inter_constraints);
-  // Lazy but doesn't make sense:
-  physical_db.AddRules("met2.drawing", "mcon.drawing", inter_constraints);
-  physical_db.AddRules("met3.drawing", "mcon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 40,
     .via_overhang = 40,
   };
   physical_db.AddRules("diff.drawing", "licon.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = 50,
+    .via_overhang = 60,
+    .via_overhang_wide = 30
+  };
+  physical_db.AddRules("li.drawing", "mcon.drawing", inter_constraints);
+  physical_db.AddRules("met1.drawing", "mcon.drawing", inter_constraints);
+  physical_db.AddRules("met1.drawing", "via1.drawing", inter_constraints);
+  physical_db.AddRules("met2.drawing", "via1.drawing", inter_constraints);
+  // Lazy but doesn't make sense:
+  physical_db.AddRules("met2.drawing", "mcon.drawing", inter_constraints);
+  physical_db.AddRules("met3.drawing", "mcon.drawing", inter_constraints);
   // TODO(growly): Need to alias these layer names so that they apply to any
   // process.
 

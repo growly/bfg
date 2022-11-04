@@ -30,7 +30,8 @@ struct RoutingViaInfo {
   int64_t height;
 
   // TODO(aryap): I'm not sure how this generalises.
-  int64_t overhang;
+  int64_t overhang_length;
+  int64_t overhang_width;
 };
 
 struct LayerInfo {
@@ -56,7 +57,9 @@ struct IntraLayerConstraints {
 
 struct InterLayerConstraints {
   int64_t min_separation;
+
   int64_t via_overhang;
+  int64_t via_overhang_wide;
 };
 
 

@@ -961,20 +961,29 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     int64_t metal_width = li_rules.min_width;
 
     Point p_0 = via_0_0->centre();
-    Point p_1 = p_0 + Point(0, 4 * li_licon_rules.via_overhang);  // Up a bit.
+    Point p_1 = p_0 + Point(0, 2 * li_licon_rules.via_overhang);  // Up a bit.
     Point p_2 = Point(-met1_rules.min_separation, p_1.y());
     PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
     input_2_line.SetWidth(li_rules.min_width);
-    input_2_line.set_overhang_start(via_side / 2 + li_licon_rules.via_overhang);
-    input_2_line.set_overhang_end(0);
+    input_2_line.InsertBulge(
+        p_0,
+        via_side + 2 * li_licon_rules.via_overhang_wide,
+        via_side + 2 * li_licon_rules.via_overhang);
+    input_2_line.InsertBulge(
+        p_2,
+        via_side + 2 * li_licon_rules.via_overhang_wide,
+        via_side + 2 * li_licon_rules.via_overhang);
+    LOG(INFO) <<     via_side + 2 * li_licon_rules.via_overhang_wide;
+    LOG(INFO) <<     via_side + 2 * li_licon_rules.via_overhang;
+    LOG(INFO) << input_2_line.Describe();
     Polygon input_2_template;
     inflator.InflatePolyLine(input_2_line, &input_2_template);
-    // This is the installed object... it's different.
+    // This is the installed object.
     input_2_met_0 = layout->AddPolygon(input_2_template);
 
     layout->SetActiveLayerByName("li.pin");
     geometry::Rectangle *via = layout->AddSquare(
-        p_2 + Point(via_side / 2, 0), via_side);
+        p_2, via_side);
     layout->SavePoint("input_2", via->centre());
   }
 
@@ -1013,6 +1022,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
         input_2_met_0->GetBoundingBox().UpperLeft() - via_0_0->centre();
     via_relative_to_corner.MirrorX();
     input_0_met_0->MoveLowerLeftTo(via_0_1->centre() + via_relative_to_corner);
+
     layout->SetActiveLayerByName("li.pin");
     geometry::Rectangle *via = layout->AddSquare(
         input_0_met_0->GetBoundingBox().lower_left() + Point(

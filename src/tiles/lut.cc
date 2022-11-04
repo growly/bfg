@@ -183,8 +183,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   routing_via_info.cost = 0.5;
   routing_via_info.width = via_rules.via_width;
   routing_via_info.height = via_rules.via_width;
-  routing_via_info.overhang = db.Rules(
+  routing_via_info.overhang_length = db.Rules(
       "mcon.drawing", "met2.drawing").via_overhang;
+  routing_via_info.overhang_width = db.Rules(
+      "mcon.drawing", "met2.drawing").via_overhang_wide;
 
   RoutingGrid routing_grid(db);
   routing_grid.AddRoutingLayerInfo(vertical_routing);
@@ -197,11 +199,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+    LOG(INFO) << "met2 shapes: " << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
   }
   {
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+    LOG(INFO) << "met2 shapes: " << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
   }
 
@@ -262,18 +266,18 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       first_port->set_layer(db.GetLayer("met1.drawing"));
       routing_grid.AddRouteBetween(*start, *first_port, net_name);
 
-      auto it = ports.begin();
-      it++;  // Skip first port.
-      while (it != ports.end()) {
-        geometry::Port *port = *it;
-        LOG(INFO) << "Adding routes for (ff, mux) = (" << j << ", "
-                  << mux_index << ")" << " to net " << net_name;
-        // HACK HACK HACK
-        start->set_layer(db.GetLayer("met1.drawing"));
-        port->set_layer(db.GetLayer("met1.drawing"));
-        routing_grid.AddRouteToNet(*port, net_name);
-        it++;
-      }
+      //auto it = ports.begin();
+      //it++;  // Skip first port.
+      //while (it != ports.end()) {
+      //  geometry::Port *port = *it;
+      //  LOG(INFO) << "Adding routes for (ff, mux) = (" << j << ", "
+      //            << mux_index << ")" << " to net " << net_name;
+      //  // HACK HACK HACK
+      //  start->set_layer(db.GetLayer("met1.drawing"));
+      //  port->set_layer(db.GetLayer("met1.drawing"));
+      //  routing_grid.AddRouteToNet(*port, net_name);
+      //  it++;
+      //}
       j++;
     }
   }

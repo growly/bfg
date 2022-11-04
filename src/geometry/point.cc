@@ -57,7 +57,7 @@ int64_t Point::L2SquaredDistanceTo(const Point &other) const {
 double Point::L2DistanceTo(const Point &other) const {
   double dx = x_ - other.x_;
   double dy = y_ - other.y_;
-  return std::pow(dx, 2.0) + std::pow(dy, 2.0);
+  return std::sqrt(std::pow(dx, 2.0) + std::pow(dy, 2.0));
 }
 
 Point operator+(const Point &lhs, const Point &rhs) {
