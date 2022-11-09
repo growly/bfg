@@ -70,7 +70,7 @@ void Instance::GeneratePorts() {
     instance_port->set_lower_left(rotated_bounds.lower_left());
     instance_port->set_upper_right(rotated_bounds.upper_right());
     // Move to where the instance is supposed to sit:
-    instance_port->Translate(lower_left_);
+    instance_port->MoveLowerLeftTo(lower_left_);
     instance_ports_[net].insert(std::unique_ptr<Port>(instance_port));
   }
   ports_generated_ = true;

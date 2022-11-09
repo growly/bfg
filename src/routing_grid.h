@@ -1,6 +1,13 @@
 #ifndef ROUTING_GRID_H_
 #define ROUTING_GRID_H_
 
+#include <deque>
+#include <functional>
+#include <map>
+#include <optional>
+#include <set>
+#include <vector>
+
 #include "layout.h"
 #include "geometry/layer.h"
 #include "physical_properties_database.h"
@@ -9,11 +16,6 @@
 #include "poly_line_cell.h"
 #include "geometry/port.h"
 #include "geometry/rectangle.h"
-
-#include <map>
-#include <set>
-#include <deque>
-#include <vector>
 
 // TODO(aryap): Another version of this RoutingGrid should exist that uses a
 // more standard model of the routing fabric. Instead of generating 1 edge for
@@ -108,10 +110,14 @@ class RoutingGrid {
                          const geometry::Layer &rhs,
                          const RoutingViaInfo &info);
 
-  const RoutingViaInfo &GetRoutingViaInfo(const AbstractVia &via) const {
-    return GetRoutingViaInfo(via.bottom_layer(), via.top_layer());
+  const RoutingViaInfo &GetRoutingViaInfoOrDie(const AbstractVia &via) const {
+    return GetRoutingViaInfoOrDie(via.bottom_layer(), via.top_layer());
   }
-  const RoutingViaInfo &GetRoutingViaInfo(
+  const RoutingViaInfo &GetRoutingViaInfoOrDie(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
+  std::optional<std::reference_wrapper<const RoutingViaInfo>>
+  GetRoutingViaInfo(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   void AddRoutingLayerInfo(const RoutingLayerInfo &info);
@@ -127,6 +133,12 @@ class RoutingGrid {
   const PhysicalPropertiesDatabase &physical_db() const { return physical_db_; }
 
  private:
+  struct CostedVertex {
+    uint64_t cost;
+    geometry::Layer layer;
+    RoutingVertex *vertex;
+  };
+
   std::pair<std::reference_wrapper<const RoutingLayerInfo>,
             std::reference_wrapper<const RoutingLayerInfo>>
       PickHorizontalAndVertical(

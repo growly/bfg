@@ -42,6 +42,8 @@ class Polygon : public Shape {
 
   const Rectangle GetBoundingBox() const override;
 
+  const std::string Describe() const;
+
   const std::vector<Point> &vertices() const { return vertices_; }
 
  private:

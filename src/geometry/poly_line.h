@@ -26,13 +26,17 @@ class PolyLine : public Shape {
 
     start_ = points.front();
     for (size_t i = 1; i < points.size(); ++i) {
-      segments_.push_back(LineSegment{points[i], 0});
+      AddSegment(points[i], 0);
     }
   }
 
+  // This constructor skips the segment sanity checks in AddSegment.
   PolyLine(const Point &start,
            const std::vector<LineSegment> &segments)
-      : start_(start), segments_(segments.begin(), segments.end()) {}
+      : start_(start), overhang_start_(0), overhang_end_(0),
+        start_via_(nullptr), end_via_(nullptr),
+        start_port_(nullptr), end_port_(nullptr),
+        segments_(segments.begin(), segments.end()) {}
 
   std::string Describe() const;
 
@@ -64,6 +68,8 @@ class PolyLine : public Shape {
   void set_start(const Point &start) { start_ = start; }
   const Point &start() const { return start_; }
 
+  const Point &End() const { return segments_.back().end; }
+
   uint64_t overhang_start() const { return overhang_start_; }
   void set_overhang_start(uint64_t overhang) { overhang_start_ = overhang; }
 
@@ -83,6 +89,8 @@ class PolyLine : public Shape {
   const std::vector<LineSegment> &segments() const { return segments_; }
 
  private:
+  void EnforceInvariants();
+
   Point start_;
 
   // How much to extend the line over the start/end segments.
@@ -95,6 +103,8 @@ class PolyLine : public Shape {
   // be avoided. At the very least, though, we need some way of making sure
   // that the inflated PolyLine satisfies the layout constraints of connecting
   // to vias at the start or end.
+  // I don't think PolyeLine is the rigth place for via information. Some
+  // aggregating data structure must do that.
   AbstractVia *start_via_;
   AbstractVia *end_via_;
 

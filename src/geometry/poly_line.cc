@@ -16,10 +16,11 @@ namespace geometry {
 
 std::string PolyLine::Describe() const {
   std::stringstream ss;
-  ss << start_;
+  ss << "|" << overhang_start_ << "| " << start_;
   for (const auto &segment : segments_) {
     ss << " |" << segment.width << "| " << segment.end;
   }
+  ss << " |" << overhang_end_ << "|";
   return ss.str();
 }
 
@@ -83,9 +84,13 @@ const Rectangle PolyLine::GetBoundingBox() const {
 };
 
 void PolyLine::AddSegment(const Point &to, const uint64_t width) {
-  int64_t last_x = segments_.empty() ? start_.x() : segments_.back().end.x();
-  int64_t last_y = segments_.empty() ? start_.y() : segments_.back().end.y();
-  if (to.x() != last_x && to.y() != last_y) {
+  const Point &last = segments_.empty() ? start_ : segments_.back().end;
+  // Skip duplicate segments.
+  if (to == last) {
+    LOG(WARNING) << "Skipping duplicate PolyLine segment to " << to;
+    return;
+  }
+  if (to.x() != last.x() && to.y() != last.y()) {
     LOG(FATAL) << "PolyLine segments must be rectilinear. Make sure the new "
                << "x == last_x or y == last_y.";
   }
@@ -121,7 +126,7 @@ void PolyLine::InsertBulge(
   double d_start = point.L2DistanceTo(start);
   double d_end = point.L2DistanceTo(segment.end);
 
-  LOG(INFO) << "d_end: " << d_end << ", half_length: " << half_length;
+  //LOG(INFO) << "d_end: " << d_end << ", half_length: " << half_length;
   if (d_end < half_length) {
     double overflow = half_length - d_end;
     if (segment_index == segments_.size() - 1) {
@@ -136,17 +141,18 @@ void PolyLine::InsertBulge(
       segment.width = coaxial_width;
 
       // A new segment should created along the next segment we were going to
-      // embark on with the new width:
+      // embark on, with the new width:
       LineSegment &next_segment = segments_[segment_index + 1];
       Line next_line = Line(segment.end, next_segment.end);
       Point point_after = next_line.PointOnLineAtDistance(segment.end, half_width);
+
       segments_.insert(
           segments_.begin() + segment_index + 1,
           LineSegment {
             .end = point_after,
-            .width = std::max(half_width, next_segment.width)
-          });
-
+            .width = std::max(
+                static_cast<uint64_t>(2.0 * overflow), next_segment.width)
+      });
     }
   } else {
     Point point_after = line.PointOnLineAtDistance(point, half_length);
@@ -157,17 +163,39 @@ void PolyLine::InsertBulge(
                      });
   }
 
-  // If the intersection is with the first segment we have to check the
-  // start, otherwise, we don't, since the start of the next segment is equal
-  // to the end of the last.
-  //
-  // If the bulge is going to overlap the start point, we have to push the
-  // start point back by the difference in lengths.
-  if (segment_index == 0 && d_start < half_length) {
+  // We also have to check the distance to the previous point on the line,
+  // which is the end of the last segment or the start of the line, depending
+  // on whether we've intersected the starting line.
+  if (d_start < half_length) {
     double overflow = half_length - d_start;
-    // Effectively at the start, so instead of inserting a new segment before
-    // modifying the start point:
-    start_ = line.PointOnLineAtDistance(start_, -overflow);
+    // If the intersection is with the first segment we have to check the
+    // start.
+    //
+    // If the bulge is going to overlap the start point, we have to push the
+    // start point back by the difference in lengths.
+    if (segment_index == 0) {
+      // Effectively at the start, so instead of inserting a new segment before
+      // modifying the start point:
+      start_ = line.PointOnLineAtDistance(start_, -overflow);
+    } else {
+      // We modify the previous segment to preserve the width of the bulge.
+      LineSegment &last_segment = segments_[segment_index - 1];
+      Point last_line_start =
+          segment_index == 1 ? start_ : segments_[segment_index - 2].end;
+      // The end of the last line is the start of this line. The start of the
+      // last line is the end of the line before it.
+      Line last_line = Line(last_line_start, start);
+      Point point_before = last_line.PointOnLineAtDistance(
+          start, -static_cast<int64_t>(half_width));
+
+      segments_.insert(
+          segments_.begin() + segment_index - 1,
+          LineSegment {
+            .end = point_before,
+            .width = std::max(
+                static_cast<uint64_t>(2.0 * overflow), last_segment.width)
+          });
+    }
   } else {
     Point point_before = line.PointOnLineAtDistance(point, -half_length);
     segments_.insert(segments_.begin() + segment_index,
@@ -176,6 +204,8 @@ void PolyLine::InsertBulge(
                        .width = previous_width
                      });
   }
+
+  EnforceInvariants();
 }
 
 void PolyLine::SetWidth(const uint64_t width) {
@@ -207,6 +237,25 @@ bool PolyLine::Intersects(const Point &point, size_t *segment_index) const {
   if (segment_index)
     *segment_index = k;
   return k >= 0;
+}
+
+void PolyLine::EnforceInvariants() {
+  // Remove duplicate segment end-points, enlarging the remaining to the max of
+  // all the segment widths which had the same end-point.
+  Point last = start_;
+  auto last_segment = segments_.end();
+  for (auto it = segments_.begin(); it != segments_.end();) {
+    if (it->end == last) {
+      if (last_segment != segments_.end()) {
+        last_segment->width = std::max(last_segment->width, it->width);
+      }
+      it = segments_.erase(it);
+    } else {
+      last = it->end;
+      last_segment = it;
+      ++it;
+    }
+  }
 }
 
 }  // namespace geometry

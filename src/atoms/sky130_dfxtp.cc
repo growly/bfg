@@ -664,6 +664,10 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   Rectangle *q_port = layout->AddRectangle(
       Rectangle(Point(5590, 425), Point(5760, 595)));
 
+  layout->SetActiveLayerByName("li.drawing");
+  layout->AddPort({*d_port, "D"});
+  layout->AddPort({*q_port, "Q"});
+
   // nwell.pin [PIN] 64/16
   layout->SetActiveLayerByName("nwell.pin");
 
@@ -673,8 +677,6 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // met1.pin [PIN] 68/16
   layout->SetActiveLayerByName("met1.pin");
 
-  layout->AddPort({*d_port, "D"});
-  layout->AddPort({*q_port, "Q"});
   layout->AddPort({
       Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLKB"});
   layout->AddPort({

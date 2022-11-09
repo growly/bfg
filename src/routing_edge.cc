@@ -1,5 +1,6 @@
 #include "routing_edge.h"
 
+#include <cmath>
 #include <set>
 #include <vector>
 

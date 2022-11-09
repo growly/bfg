@@ -1,6 +1,7 @@
 #include "polygon.h"
 
 #include <ostream>
+#include <sstream>
 #include <utility>
 
 #include "point.h"
@@ -198,6 +199,14 @@ const Rectangle Polygon::GetBoundingBox() const {
   Rectangle bounding_box = Rectangle(lower_left, upper_right);
   bounding_box.set_layer(layer_);
   return bounding_box;
+}
+
+const std::string Polygon::Describe() const {
+  std::stringstream ss;
+  for (const auto &point : vertices_) {
+    ss << point << " ";
+  }
+  return ss.str();
 }
 
 }  // namespace geometry

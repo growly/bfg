@@ -30,21 +30,24 @@ Layout *PolyLineInflator::Inflate(
     LOG_IF(FATAL, !poly_line) << "poly_line is nullptr?!";
 
     Polygon polygon;
+    LOG(INFO) << "inflating: " << poly_line->Describe();
     InflatePolyLine(*poly_line, &polygon);
+    LOG(INFO) << " into: " << polygon.Describe();
     polygon.set_layer(poly_line->layer());
 
     auto bb = polygon.GetBoundingBox();
-    LOG(INFO) << polygon << " bounded by ll= " << bb.lower_left()
-              << " ur= " << bb.upper_right();
     layout->set_active_layer(poly_line->layer());
     layout->AddPolygon(polygon);
   }
   for (const auto &via : poly_line_cell.vias()) {
     Rectangle rectangle;
     InflateVia(
-        routing_grid.GetRoutingViaInfo(via->bottom_layer(), via->top_layer()),
+        routing_grid.GetRoutingViaInfoOrDie(
+            via->bottom_layer(), via->top_layer()),
         *via,
         &rectangle);
+    LOG(INFO) << "creating via on layer "
+              << *physical_db_.GetLayerNameAndPurpose(rectangle.layer());
     layout->set_active_layer(rectangle.layer());
     layout->AddRectangle(rectangle);
   }
@@ -142,34 +145,11 @@ void PolyLineInflator::InflatePolyLine(
 
     // Stretch the start of the start, or end of the end segments according to
     // policy:
-    if (i == 0) {
-      if (polyline.overhang_start() > 0) {
-        line.StretchStart(polyline.overhang_start());
-      //} else if (polyline.start_via() != nullptr) {
-      //  const ViaInfo &via_info = physical_db_.GetViaInfo(
-      //      *polyline.start_via());
-      //  // TODO(aryap): This depends on the orientation of the starting segment.
-      //  uint64_t via_length = std::max(via_info.width, via_info.height);
-      //  line.StretchStart(via_length / 2 + via_info.overhang);
-      } else if (polyline.start_port() != nullptr) {
-        uint64_t port_length = std::max(polyline.start_port()->Width(),
-                                        polyline.start_port()->Height());
-        line.StretchStart(port_length / 2);
-      }
+    if (i == 0 && polyline.overhang_start() > 0) {
+      line.StretchStart(polyline.overhang_start());
     }
-    if (i == polyline.segments().size() - 1) {
-      if (polyline.overhang_end() > 0) {
-        line.StretchEnd(polyline.overhang_end());
-      //} else if (polyline.end_via() != nullptr) {
-      //  const ViaInfo &via_info = physical_db_.GetViaInfo(*polyline.end_via());
-      //  uint64_t via_length = std::max(via_info.width, via_info.height);
-      //  line.StretchEnd(via_length / 2 + via_info.overhang);
-      } else if (polyline.end_port() != nullptr) {
-        uint64_t port_length = std::max(polyline.end_port()->Width(),
-                                        polyline.end_port()->Height());
-        // uint64_t overhang = physical_db_.Rules(end_port()...
-        line.StretchStart(port_length / 2);
-      }
+    if (i == polyline.segments().size() - 1 && polyline.overhang_end() > 0) {
+      line.StretchEnd(polyline.overhang_end());
     }
 
     // AnchorPosition growth_anchor;

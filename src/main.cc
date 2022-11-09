@@ -86,8 +86,9 @@ int main(int argc, char **argv) {
   };
   physical_db.AddRules("licon.drawing", intra_constraints);
   physical_db.AddRules("li.pin", intra_constraints);
-  physical_db.AddRules("via1.drawing", intra_constraints);
   physical_db.AddRules("mcon.drawing", intra_constraints);
+  physical_db.AddRules("via1.drawing", intra_constraints);
+  physical_db.AddRules("via2.drawing", intra_constraints);
   intra_constraints = {
     .min_separation = 200,
     .min_width = 170,
@@ -131,10 +132,12 @@ int main(int argc, char **argv) {
   physical_db.AddRules("met1.drawing", "via1.drawing", inter_constraints);
   physical_db.AddRules("met2.drawing", "via1.drawing", inter_constraints);
   // Lazy but doesn't make sense:
-  physical_db.AddRules("met2.drawing", "mcon.drawing", inter_constraints);
-  physical_db.AddRules("met3.drawing", "mcon.drawing", inter_constraints);
+  physical_db.AddRules("met2.drawing", "via2.drawing", inter_constraints);
+  physical_db.AddRules("met3.drawing", "via2.drawing", inter_constraints);
   // TODO(growly): Need to alias these layer names so that they apply to any
   // process.
+
+  LOG(INFO) << "\n" << physical_db.DescribeLayers();
 
   if (FLAGS_external_circuits != "") {
     vlsir::circuit::Package external_circuits_pb;

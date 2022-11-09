@@ -13,7 +13,8 @@ namespace geometry {
 // shape. Which is confusing. Oh well.
 class AbstractShape {
  public:
-  AbstractShape() = default;
+  AbstractShape()
+    : layer_(0), net_("") {}
   virtual ~AbstractShape() = default;
 
   AbstractShape(const Layer &layer, const std::string &net)

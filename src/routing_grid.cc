@@ -6,6 +6,7 @@
 #include <map>
 #include <map>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <queue>
 #include <utility>
@@ -98,35 +99,49 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   // to the position. This can be quite expensive. Also, there remains the
   // question of whether the vertex we find can be routed to.
   //
+  // We have to check for available vertices on all the layers we might be able
+  // to route to (i.e. insert a via to), and pick the cheapest.
+  //
   // The first cut of this algorithm is to just find the closest of all the
   // available vertices on the given layer.
 
-  auto it = available_vertices_by_layer_.find(layer);
-  if (it == available_vertices_by_layer_.end()) {
-    LOG(FATAL) << "Could not find a list of available vertices on layer: "
-               << layer;
-  }
+  std::vector<CostedVertex> costed_vertices;
+  for (const auto &entry : available_vertices_by_layer_) {
+    // Is this layer reachable from the target?
+    std::optional<std::reference_wrapper<const RoutingViaInfo>> needs_via;
+    if (entry.first != layer) {
+      needs_via = GetRoutingViaInfo(entry.first, layer);
+      if (!needs_via)
+        continue;
+      LOG(INFO) << "layer " << *physical_db_.GetLayerNameAndPurpose(layer)
+                << " is accessible for routing via layer "
+                << *physical_db_.GetLayerNameAndPurpose(needs_via->get().layer);
+    }
 
-  if (it->second.empty())
-    return nullptr;
-
-  std::vector<std::pair<uint64_t, RoutingVertex*>> costed_vertices;
-  for (RoutingVertex *vertex : it->second) {
-    uint64_t vertex_cost = vertex->L1DistanceTo(point);
-    costed_vertices.emplace_back(vertex_cost, vertex);
+    for (RoutingVertex *vertex : entry.second) {
+      uint64_t vertex_cost = vertex->L1DistanceTo(point);
+      if (needs_via) {
+        vertex_cost += (10.0 * needs_via->get().cost);
+      }
+      costed_vertices.emplace_back(CostedVertex {
+          .cost = vertex_cost,
+          .layer = entry.first,
+          .vertex = vertex
+      });
+    }
   }
 
   // Should sort automatically based on operator< for first and second entries
   // in pairs.
-  std::sort(costed_vertices.begin(),
-            costed_vertices.end(),
-            std::greater<std::pair<uint64_t, RoutingVertex*>>());
+  static auto comp = [](const CostedVertex &lhs,
+                        const CostedVertex &rhs) {
+    return lhs.cost > rhs.cost;
+  };
+  std::sort(costed_vertices.begin(), costed_vertices.end(), comp);
 
   // To ensure we can go the "last mile", we check if the required paths, as
   // projected on the tracks on which the nearest vertex lies, are legal.
-  // Consider 4 vertices X on the RoutingGrid surrounding the port O. The
-  // sections (A) and (B) must be legal on the horizontal or vertical tracks
-  // to which we must connect O to get to X:
+  // Consider 4 vertices X on the RoutingGrid surrounding the port O.
   //
   //     (A)
   //    X---+       X
@@ -137,8 +152,17 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   //
   //    X           X
   //
-  // If neither is legal, we cannot use that vertex. In the diagram, (A) and
-  // (B) are the bridging edges, and (A') and (B') are the off-grid edges.
+  // To access O we must go off-grid and beat a path on the layer closest to
+  // it. We should not need to hop between horizontal/vertical track layers
+  // unless a direct path on a single layer is blocked.
+  //
+  // In the diagram, (A) and (B) are the bridging edges, and (A') and (B') are
+  // the off-grid edges.
+  //
+  // We have to check each possible path {(A), (B')} and {(B), (A')} for each
+  // of the vertices. If we can't establish the path on the cloest layer alone
+  // we might have to hop between them - in practice however this is unlikely
+  // to work since grid spacing won't allow for two vias so close.
   //
   // We generate a new RoutingVertex for the landing spot on each track and
   // provide that to the grid-router to use in finding a shortest path.
@@ -148,8 +172,12 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   // the global shortest-path search. This would avoid having to turn corners
   // and go backwards, for example.
   while (!costed_vertices.empty()) {
-    RoutingVertex *candidate = costed_vertices.back().second;
+    RoutingVertex *candidate = costed_vertices.back().vertex;
+    const geometry::Layer vertex_layer = costed_vertices.back().layer;
     costed_vertices.pop_back();
+
+    LOG(INFO) << "vertex " << candidate->centre() << " layer " << vertex_layer
+              << " cost " << costed_vertices.back().cost;
 
     if (candidate->vertical_track() == nullptr) {
       // FIXME(aryap): Is this a problem?
@@ -157,8 +185,8 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
                << " as candidate because vertical track is nullptr";
       continue;
     } else if (candidate->horizontal_track() == nullptr) {
-      VLOG(1) << "Cannot use vertex " << candidate
-              << " as candidate because horizontal track is nullptr";
+      VLOG(10) << "Cannot use vertex " << candidate
+               << " as candidate because horizontal track is nullptr";
       continue;
     }
 
@@ -178,20 +206,22 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     // starting point but not for the ending point.
 
     // Success, so add a new vertex at this position and the bridging one too.
-    if (bridging_vertex == candidate) {
-      // The closest vertex was the candidate itself, no bridging vertex necessary.
-      return bridging_vertex;
+    if (bridging_vertex != candidate) {
+      // If the closest vertex was the candidate itself, no bridging vertex is
+      // necessary. Otherwise:
+
+      bridging_vertex->AddConnectedLayer(vertex_layer);
+      AddVertex(bridging_vertex);
     }
 
-    bridging_vertex->AddConnectedLayer(layer);
-    AddVertex(bridging_vertex);
-
     RoutingVertex *off_grid = new RoutingVertex(point);
-    off_grid->AddConnectedLayer(layer);
+    off_grid->AddConnectedLayer(vertex_layer);
     AddVertex(off_grid);
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
-    edge->set_layer(layer);
+    edge->set_layer(vertex_layer);
+    LOG(INFO) << "connected new vertex " << bridging_vertex->centre()
+              << " on layer " << edge->ExplicitOrTrackLayer();
     bridging_vertex->AddEdge(edge);
     off_grid->AddEdge(edge);
     
@@ -368,7 +398,8 @@ bool RoutingGrid::AddRouteBetween(
     LOG(ERROR) << "Could not find available vertex for begin port.";
     return false;
   }
-  LOG(INFO) << "Nearest vertex to begin is " << begin_vertex->centre();
+  LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
+            << begin_vertex->centre();
 
   RoutingVertex *end_vertex = GenerateGridVertexForPoint(
       end.centre(), end.layer());
@@ -376,7 +407,8 @@ bool RoutingGrid::AddRouteBetween(
     LOG(ERROR) << "Could not find available vertex for end port.";
     return false;
   }
-  LOG(INFO) << "Nearest vertex to end is " << end_vertex->centre();
+  LOG(INFO) << "Nearest vertex to end (" << end << ") is "
+            << end_vertex->centre();
 
   std::unique_ptr<RoutingPath> shortest_path(
       ShortestPath(begin_vertex, end_vertex));
@@ -388,7 +420,7 @@ bool RoutingGrid::AddRouteBetween(
 
   // Remember the ports to which the path should connect.
   shortest_path->set_start_port(&begin);
-  shortest_path->set_end_port(&begin);
+  shortest_path->set_end_port(&end);
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
@@ -409,7 +441,8 @@ bool RoutingGrid::AddRouteToNet(
     LOG(ERROR) << "Could not find available vertex for begin port.";
     return false;
   }
-  LOG(INFO) << "Nearest vertex to begin is " << begin_vertex->centre();
+  LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
+            << begin_vertex->centre();
 
   std::unique_ptr<RoutingPath> shortest_path(
       ShortestPath(begin_vertex, net));
@@ -865,22 +898,29 @@ void RoutingGrid::AddRoutingViaInfo(
   via_infos_[first][second] = info;
 }
 
-const RoutingViaInfo &RoutingGrid::GetRoutingViaInfo(
+const RoutingViaInfo &RoutingGrid::GetRoutingViaInfoOrDie(
     const Layer &lhs, const Layer &rhs) const {
+  auto via_info = GetRoutingViaInfo(lhs, rhs);
+  LOG_IF(FATAL, !via_info)
+      << "No known connectiion between layer " << lhs
+      << " and layer " << rhs;
+  return *via_info;
+}
+
+std::optional<std::reference_wrapper<const RoutingViaInfo>>
+RoutingGrid::GetRoutingViaInfo(const Layer &lhs, const Layer &rhs) const {
   std::pair<const Layer&, const Layer&> ordered_layers =
       geometry::OrderFirstAndSecondLayers(lhs, rhs);
   const Layer &first = ordered_layers.first;
   const Layer &second = ordered_layers.second;
 
   const auto first_it = via_infos_.find(first);
-  LOG_IF(FATAL, first_it == via_infos_.end())
-      << "No known connectiion between layer " << first
-      << " and layer " << second;
+  if (first_it == via_infos_.end())
+    return std::nullopt;
   const std::map<Layer, RoutingViaInfo> &inner_map = first_it->second;
   const auto second_it = inner_map.find(second);
-  LOG_IF(FATAL, second_it == inner_map.end())
-      << "No known connectiion between layer " << first
-      << " and layer " << second;
+  if (second_it == inner_map.end())
+    return std::nullopt;
   return second_it->second;
 }
 

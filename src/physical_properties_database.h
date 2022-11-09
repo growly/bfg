@@ -4,8 +4,7 @@
 #include <map>
 #include <unordered_map>
 #include <ostream>
-
-#include <absl/status/statusor.h>
+#include <optional>
 
 #include "abstract_via.h"
 #include "geometry/layer.h"
@@ -92,13 +91,18 @@ class PhysicalPropertiesDatabase {
   }
 
   const geometry::Layer GetLayer(const std::string &name_and_purpose) const;
-  absl::StatusOr<std::string> GetLayerNameAndPurpose(
+  std::optional<std::string> GetLayerNameAndPurpose(
       const geometry::Layer &layer) const;
 
   void AddLayerInfo(const LayerInfo &info);
   const LayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
   const LayerInfo &GetLayerInfo(
       const std::string &layer_name_and_purpose) const;
+
+  std::optional<const geometry::Layer> GetViaLayer(
+      const std::string &left, const std::string &right) const;
+  std::optional<const geometry::Layer> GetViaLayer(
+      const geometry::Layer &left, const geometry::Layer &right) const;
 
   void AddRules(const std::string &first_layer,
                 const std::string &second_layer,
@@ -111,6 +115,8 @@ class PhysicalPropertiesDatabase {
       const std::string &left, const std::string &right) const;
   const IntraLayerConstraints &Rules(const std::string &layer_name) const;
   const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
+
+  std::string DescribeLayers() const;
 
  private:
   double internal_units_per_external_;
@@ -126,6 +132,11 @@ class PhysicalPropertiesDatabase {
   std::unordered_map<geometry::Layer,
       std::unordered_map<geometry::Layer, InterLayerConstraints>>
       inter_layer_constraints_;
+
+  // Stores the via layer required to get from the first indexed layer to the
+  // second indexed layer.
+  std::unordered_map<geometry::Layer,
+      std::unordered_map<geometry::Layer, geometry::Layer>> via_layers_;
 
   std::unordered_map<geometry::Layer, IntraLayerConstraints>
       intra_layer_constraints_;

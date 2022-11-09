@@ -128,8 +128,20 @@ Polygon *StraightLineBetweenLayers(
   PolyLineInflator inflator(db);
   PolyLine line = PolyLine({start, end});
   line.SetWidth(width);
-  line.set_overhang_start(start_overhang);
-  line.set_overhang_end(end_overhang);
+
+  int64_t via_side = db.Rules(start_layer).via_width;
+  int64_t via_encap_width =
+      via_side + 2 * db.Rules(path_layer, start_layer).via_overhang_wide;
+  int64_t via_encap_length =
+      via_side + 2 * db.Rules(path_layer, start_layer).via_overhang;
+  line.InsertBulge(start, via_encap_width, via_encap_length);
+
+  via_side = db.Rules(end_layer).via_width;
+  via_encap_width =
+      via_side + 2 * db.Rules(path_layer, end_layer).via_overhang_wide;
+  via_encap_length =
+      via_side + 2 * db.Rules(path_layer, end_layer).via_overhang;
+  line.InsertBulge(end, via_encap_width, via_encap_length);
   Polygon polygon;
   inflator.InflatePolyLine(line, &polygon);
   return layout->AddPolygon(polygon);
@@ -720,6 +732,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       layout.get());
 
   // Translate sub-layout ports to external-facing ports:
+  layout->SetActiveLayerByName("li.drawing");
   std::vector<std::pair<std::string, std::string>> ports = {
     {"lower_left.input_0", "input_0"},
     {"lower_left.input_1", "input_1"},
@@ -776,7 +789,6 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
   const IntraLayerConstraints &diff_rules = db.Rules("diff.drawing");
   int64_t diffusion_min_distance = diff_rules.min_separation;
   const IntraLayerConstraints &licon_rules = db.Rules("licon.drawing");
-  int64_t via_side = licon_rules.via_width;
 
   const IntraLayerConstraints &li_rules = db.Rules("li.drawing");
   const IntraLayerConstraints &poly_rules = db.Rules("poly.drawing");
@@ -788,6 +800,10 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
       "poly.drawing", "licon.drawing");
   const InterLayerConstraints &diff_licon_rules = db.Rules(
       "diff.drawing", "licon.drawing");
+
+  int64_t via_side = licon_rules.via_width;
+  int64_t via_encap_width = via_side + 2 * li_licon_rules.via_overhang_wide;
+  int64_t via_encap_length = via_side + 2 * li_licon_rules.via_overhang;
 
   int64_t poly_pitch = poly_rules.min_pitch;
   int64_t start_x = poly_pitch / 2;
@@ -965,25 +981,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     Point p_2 = Point(-met1_rules.min_separation, p_1.y());
     PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
     input_2_line.SetWidth(li_rules.min_width);
-    input_2_line.InsertBulge(
-        p_0,
-        via_side + 2 * li_licon_rules.via_overhang_wide,
-        via_side + 2 * li_licon_rules.via_overhang);
-    input_2_line.InsertBulge(
-        p_2,
-        via_side + 2 * li_licon_rules.via_overhang_wide,
-        via_side + 2 * li_licon_rules.via_overhang);
-    LOG(INFO) <<     via_side + 2 * li_licon_rules.via_overhang_wide;
-    LOG(INFO) <<     via_side + 2 * li_licon_rules.via_overhang;
-    LOG(INFO) << input_2_line.Describe();
+    input_2_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_2_line.InsertBulge(p_2, via_encap_width, via_encap_length);
     Polygon input_2_template;
     inflator.InflatePolyLine(input_2_line, &input_2_template);
     // This is the installed object.
     input_2_met_0 = layout->AddPolygon(input_2_template);
 
     layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(
-        p_2, via_side);
+    geometry::Rectangle *via = layout->AddSquare(p_2, via_side);
     layout->SavePoint("input_2", via->centre());
   }
 
@@ -1000,16 +1006,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     Point p_1 = Point(p_2.x(), p_0.y());
     PolyLine input_3_line = PolyLine({p_0, p_1, p_2});
     input_3_line.SetWidth(metal_width);
-    input_3_line.set_overhang_start(0);
-    input_3_line.set_overhang_end(via_side / 2 + li_licon_rules.via_overhang);
+    input_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_3_line.InsertBulge(p_2, via_encap_width, via_encap_length);
 
     Polygon input_3_template;
     inflator.InflatePolyLine(input_3_line, &input_3_template);
     input_3_met_0 = layout->AddPolygon(input_3_template);
 
     layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(
-        p_0 + Point(via_side / 2, 0), via_side);
+    geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
     layout->SavePoint("input_3", via->centre());
   }
 
@@ -1018,15 +1023,18 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     layout->SetActiveLayerByName("li.drawing");
     Polygon *input_0_met_0 = layout->AddPolygon(*input_2_met_0);
     input_0_met_0->MirrorX();
-    Point via_relative_to_corner =
+    Point relative_offset =
         input_2_met_0->GetBoundingBox().UpperLeft() - via_0_0->centre();
-    via_relative_to_corner.MirrorX();
-    input_0_met_0->MoveLowerLeftTo(via_0_1->centre() + via_relative_to_corner);
+    relative_offset.MirrorX();
+    input_0_met_0->MoveLowerLeftTo(via_0_1->centre() + relative_offset);
+
+    Point end_via_centre = layout->GetPoint("input_2");
+    relative_offset = end_via_centre - input_2_met_0->GetBoundingBox().centre();
+    relative_offset.MirrorX();
+    end_via_centre = input_0_met_0->GetBoundingBox().centre() + relative_offset;
 
     layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(
-        input_0_met_0->GetBoundingBox().lower_left() + Point(
-            via_side / 2, via_side / 2), via_side);
+    geometry::Rectangle *via = layout->AddSquare(end_via_centre, via_side);
     layout->SavePoint("input_0", via->centre());
   }
 
@@ -1040,17 +1048,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     via_relative_to_corner.MirrorX();
     input_1_met_0->MoveLowerLeftTo(via_1_1->centre() + via_relative_to_corner);
 
-    // Since we constructed input_3_met_0 in this order, and then flipped the
-    // points about the x-axis, we know which points should be at the "end" of
-    // the wire:
-    Point end = Point(
-        input_1_met_0->vertices().back().x() + via_side / 2,
-        input_1_met_0->vertices().back().y() - via_side / 2);
+    Point end_via_centre = layout->GetPoint("input_3");
+    Point relative_offset =
+        end_via_centre - input_3_met_0->GetBoundingBox().centre();
+    relative_offset.MirrorX();
+    end_via_centre = input_1_met_0->GetBoundingBox().centre() + relative_offset;
 
     layout->SetActiveLayerByName("li.pin");
-    end.set_layer(layout->active_layer());
-    layout->AddSquare(end, via_side);
-    layout->SavePoint("input_1", end);
+    geometry::Rectangle *via = layout->AddSquare(end_via_centre, via_side);
+    layout->SavePoint("input_1", via->centre());
   }
 
   {
@@ -1064,8 +1070,11 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout() {
     Point p_3 = via_3_1->centre();
     PolyLine input_0_1_line = PolyLine({p_0, p_1, p_2, p_3});
     input_0_1_line.SetWidth(li_rules.min_width);
-    input_0_1_line.set_overhang_start(via_side / 2 + li_licon_rules.via_overhang);
-    input_0_1_line.set_overhang_end(via_side / 2 + li_licon_rules.via_overhang);
+    //input_0_1_line.set_overhang_start(via_side / 2 + li_licon_rules.via_overhang);
+    //input_0_1_line.set_overhang_end(via_side / 2 + li_licon_rules.via_overhang);
+    input_0_1_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_0_1_line.InsertBulge(p_3, via_encap_width, via_encap_length);
+
     PolyLineInflator inflator(design_db_->physical_db());
     Polygon input_0_1;
     inflator.InflatePolyLine(input_0_1_line, &input_0_1);

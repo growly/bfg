@@ -90,8 +90,8 @@ TEST(PolyLineTest, InsertBulge_MidSegment) {
 //  +-----------o           +--------+--+   |
 //              |                    +--|---+
 //              |                       |
-//   length=l   |                       |
-//   width=2    |     ->                |
+//   length=    |                       |
+//   width=     |     ->                |
 //              |                       |
 //              |                       |
 //              |                       |
@@ -111,7 +111,7 @@ TEST(PolyLineTest, InsertBulge_EndSegmentIsMidLine) {
   EXPECT_EQ(expected, line.Vertices());
 
   std::vector<uint64_t> expected_widths = {
-    0, 2, 1, 0
+    0, 2, 6, 0
   };
   std::vector<uint64_t> widths;
   for (const auto &segment : line.segments()) {
@@ -131,7 +131,7 @@ TEST(PolyLineTest, InsertBulge_EndSegmentIsMidLine) {
   EXPECT_EQ(expected, line.Vertices());
 
   expected_widths = {
-    0, 2, 1, 0
+    0, 2, 6, 0
   };
   widths.clear();
   for (const auto &segment : line.segments()) {
@@ -245,6 +245,18 @@ TEST(PolyLineTest, InsertBulge_StartOfPolyLine) {
   EXPECT_EQ(expected_widths, widths);
 }
 
+//                                  +------+
+//  +-----------o           +-------+---+  |
+//              |                   +---+--+
+//              |                       |
+//   length=    |                       |
+//   width=     |     ->                |
+//              |                       |
+//              |                       |
+//              |                       |
+//              |                       |
+//              +                       +
+//
 TEST(PolyLineTest, BulgeDoesNotFitBeforeCorner) {
   Point p_0 = {125, 320};
   Point p_1 = {125, 480};
@@ -271,6 +283,127 @@ TEST(PolyLineTest, BulgeDoesNotFitBeforeCorner) {
     widths.push_back(segment.width);
   }
   EXPECT_EQ(expected_widths, widths);
+}
+
+TEST(PolyLineTest, BulgeAfterCornerTurn) {
+  Point p_0 = {2, 10};
+  Point p_1 = {2, 2};
+  Point p_2 = {10, 2};
+  PolyLine line = PolyLine({p_0, p_1, p_2});
+  line.SetWidth(4);
+  line.InsertBulge({4, 2}, 6, 6);
+  LOG(INFO) << line.Describe();
+  //line.InsertBulge(p_2, 240, 330);
+
+  std::vector<Point> expected = {
+      {2, 10},
+      {2, 5},
+      {2, 2},
+      {7, 2},
+      {10, 2}
+  };
+  EXPECT_EQ(expected, line.Vertices());
+
+  std::vector<uint64_t> expected_widths = {
+    4,
+    std::max(4, 1), // (6 / 2) - 2
+    6,
+    4
+  };
+  std::vector<uint64_t> widths;
+  for (const auto &segment : line.segments()) {
+    widths.push_back(segment.width);
+  }
+  EXPECT_EQ(expected_widths, widths);
+} 
+
+// |0| (17830, 9690) |140| (17730, 9690) |140| (17730, 9570) |0|
+// turns into
+// |0| (17685, 9690) |230| (17845, 9690) |260| (17730, 9690) |230| (17730, 9425) |0|
+// 
+ 
+//                       +------------+
+//  +--o--+              |+---+       |
+//  |                    ++---+-------+
+//  o                 ->  |   |
+//  |                     |   |
+//  |                     +-+-+
+//  |                       |
+//  +                       +
+//
+//TEST(PolyLineTest, OverlappingBulgeAtStart) {
+//  Point p_0 = {10, 10};
+//  Point p_1 = {2, 10};
+//  Point p_2 = {2, 2};
+//  PolyLine line = PolyLine({p_0, p_1, p_2});
+//  line.SetWidth(2);
+//  LOG(INFO) << line.Describe();
+//  line.InsertBulge({6, 10}, 6, 12);
+//  LOG(INFO) << line.Describe();
+//  line.InsertBulge({2, 6}, 8, 12);
+//  LOG(INFO) << line.Describe();
+//  //line.InsertBulge(p_2, 240, 330);
+//
+//  std::vector<Point> expected = {
+//      {12, 10},
+//      {2, 10},
+//      {2, 7},
+//      {2, 2}
+//  };
+//  EXPECT_EQ(expected, line.Vertices());
+//
+//  std::vector<uint64_t> expected_widths = {
+//    6,
+//    4,
+//    2
+//  };
+//  std::vector<uint64_t> widths;
+//  for (const auto &segment : line.segments()) {
+//    widths.push_back(segment.width);
+//  }
+//  EXPECT_EQ(expected_widths, widths);
+//} 
+
+//
+//            +------+          +------+
+//       +----+      |     +----+      |
+//  +----+    |      |+-+--+    |      |
+//       +----+      |     +----+      |
+//            +------+          +------+
+//
+TEST(PolyLineTest, BulgeOverlapsSameLineDifferentWidthSegments) {
+  PolyLine line = PolyLine({2, 2}, {
+      LineSegment {{4, 2}, 0},
+      LineSegment {{6, 2}, 2},
+      LineSegment {{8, 2}, 4},
+      LineSegment {{10, 2}, 0},
+      LineSegment {{12, 2}, 2},
+      LineSegment {{14, 2}, 4},
+  });
+
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({9, 2}, 7, 5);
+  LOG(INFO) << line.Describe();
+
+//  std::vector<Point> expected = {
+//      {12, 10},
+//      {2, 10},
+//      {2, 7},
+//      {2, 2}
+//  };
+//  EXPECT_EQ(expected, line.Vertices());
+//
+//  std::vector<uint64_t> expected_widths = {
+//    6,
+//    4,
+//    2
+//  };
+//  std::vector<uint64_t> widths;
+//  for (const auto &segment : line.segments()) {
+//    widths.push_back(segment.width);
+//  }
+//  EXPECT_EQ(expected_widths, widths);
+
 }
 
 }  // namespace

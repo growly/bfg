@@ -31,7 +31,8 @@ bfg::Cell *Sky130Buf::Generate() {
   //          |         |
   //          V         V
 
-  std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_buf"));
+  std::unique_ptr<bfg::Cell> cell(
+      new bfg::Cell(name_.empty() ? "sky130_buf": name_));
   cell->SetLayout(GenerateLayout());
   cell->SetCircuit(GenerateCircuit());
 

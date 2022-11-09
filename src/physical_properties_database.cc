@@ -4,11 +4,14 @@
 #include <map>
 #include <unordered_map>
 #include <ostream>
+#include <sstream>
+#include <optional>
 #include <utility>
 #include <glog/logging.h>
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <absl/strings/str_cat.h>
+#include <absl/strings/str_format.h>
 #include <absl/strings/str_split.h>
 
 #include "geometry/layer.h"
@@ -17,7 +20,6 @@
 namespace bfg {
 
 using absl::Status;
-using absl::StatusOr;
 using geometry::Layer;
 
 void PhysicalPropertiesDatabase::LoadTechnology(
@@ -66,11 +68,11 @@ const Layer PhysicalPropertiesDatabase::GetLayer(
   return sub_it->second;
 }
 
-absl::StatusOr<std::string> PhysicalPropertiesDatabase::GetLayerNameAndPurpose(
+std::optional<std::string> PhysicalPropertiesDatabase::GetLayerNameAndPurpose(
     const Layer &layer) const {
   auto it = layer_names_.find(layer);
   if (it == layer_names_.end()) {
-    return absl::NotFoundError("No match");
+    return std::nullopt;
   }
   return absl::StrCat(it->second.first, ".", it->second.second);
 }
@@ -93,8 +95,7 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
     name_iterator = insertion_result.first;
   }
 
-  std::unordered_map<
-      std::string, Layer> &sub_map = name_iterator->second;
+  std::unordered_map<std::string, Layer> &sub_map = name_iterator->second;
 
   auto sub_it = sub_map.find(info.purpose);
   LOG_IF(FATAL, sub_it != sub_map.end())
@@ -119,6 +120,30 @@ const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
   return GetLayerInfo(layer);
 }
 
+std::optional<const Layer> PhysicalPropertiesDatabase::GetViaLayer(
+      const std::string &left, const std::string &right) const {
+  const auto layers = GetTwoLayersAndSort(left, right);
+  auto outer_it = via_layers_.find(layers.first);
+  if (outer_it == via_layers_.end())
+    return std::nullopt;
+  auto inner_it = outer_it->second.find(layers.second);
+  if (inner_it == outer_it->second.end())
+    return std::nullopt;
+  return inner_it->second;
+}
+
+std::optional<const Layer> PhysicalPropertiesDatabase::GetViaLayer(
+      const geometry::Layer &left, const geometry::Layer &right) const {
+  std::pair<const Layer&, const Layer&> ordered_layers =
+      geometry::OrderFirstAndSecondLayers(left, right);
+  auto outer_it = via_layers_.find(ordered_layers.first);
+  if (outer_it == via_layers_.end())
+    return std::nullopt;
+  auto inner_it = outer_it->second.find(ordered_layers.second);
+  if (inner_it == outer_it->second.end())
+    return std::nullopt;
+  return inner_it->second;
+}
 void PhysicalPropertiesDatabase::AddRules(
     const std::string &first_layer,
     const std::string &second_layer,
@@ -156,13 +181,29 @@ const IntraLayerConstraints &PhysicalPropertiesDatabase::Rules(
     const Layer &layer) const {
   const auto map_it = intra_layer_constraints_.find(layer);
   if (map_it == intra_layer_constraints_.end()) {
-    StatusOr<std::string> result = GetLayerNameAndPurpose(layer);
-    std::string name_and_purpose = result.ok() ? *result : "unknown";
+    std::optional<std::string> result = GetLayerNameAndPurpose(layer);
+    std::string name_and_purpose = result ? *result : "unknown";
     LOG(FATAL)
         << "No intra-layer constraints for layer " << layer
         << " (" << name_and_purpose << ")";
   }
   return map_it->second;
+}
+
+std::string PhysicalPropertiesDatabase::DescribeLayers() const {
+  std::stringstream ss;
+  ss << "Physical properties database layer information:" << std::endl;
+  for (const auto &entry : layer_names_) {
+    const geometry::Layer &layer = entry.first;
+    const std::string &major_name = entry.second.first;
+    const std::string &minor_name = entry.second.second;
+    const uint16_t gds_layer = GetLayerInfo(layer).gds_layer;
+    const uint16_t gds_datatype = GetLayerInfo(layer).gds_datatype;
+    ss << absl::StrFormat("%10d %20s %20s %10u %10u\n",
+                          layer, major_name, minor_name,
+                          gds_layer, gds_datatype);
+  }
+  return ss.str();
 }
 
 const std::pair<Layer, Layer>
