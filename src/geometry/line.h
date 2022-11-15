@@ -43,6 +43,8 @@ class Line {
     return AreSameInfiniteLine(*this, other);
   }
 
+  double Length() const;
+
   Point PointOnLineAtDistance(const Point &start, double distance) const;
 
   void Shift(int64_t dx, int64_t dy) {

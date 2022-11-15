@@ -87,6 +87,10 @@ bool Line::AreSameInfiniteLine(const Line &lhs, const Line &rhs) {
   if (lhs.IsVertical() && rhs.IsVertical()) {
     // Both lines are vertical. Check if they are at the same x:
     return lhs.start().x() == rhs.start().x();
+  } else if (lhs.IsVertical()) {
+    return false;
+  } else if (rhs.IsVertical()) {
+    return false;
   }
   // We can now ask for the gradient because it's not vertical (i.e. NaN):
   if (lhs.Gradient() != rhs.Gradient())
@@ -180,9 +184,16 @@ double Line::Gradient() const {
          static_cast<double>(divisor);
 }
 
+double Line::Length() const {
+  return start_.L2DistanceTo(end_);
+}
+
 Point Line::PointOnLineAtDistance(const Point &start, double distance) const {
   LOG_IF(WARNING, !Intersects(start))
       << "Point " << start << " is not on this line";
+
+  if (distance == 0.0)
+    return start;
 
   //           end
   //           /

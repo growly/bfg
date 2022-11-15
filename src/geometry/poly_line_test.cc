@@ -51,6 +51,7 @@ TEST(PolyLineTest, InsertBulge_MidSegment) {
       {12, 4},
       {12, 0}
   };
+  LOG(INFO) << line.Describe();
   EXPECT_EQ(expected, line.Vertices());
 
   std::vector<uint64_t> expected_widths = {
@@ -317,6 +318,30 @@ TEST(PolyLineTest, BulgeAfterCornerTurn) {
   EXPECT_EQ(expected_widths, widths);
 } 
 
+TEST(PolyLineTest, What) {
+  PolyLine line = PolyLine({24530, 4810}, {
+      LineSegment {{24530, 4885}, 140},
+      LineSegment {{24665, 4885}, 140},
+  });
+
+  line.InsertBulge({24530, 4810}, 230, 290);
+  line.InsertBulge({24665, 4885}, 230, 290);
+
+//  std::vector<Point> expected = {
+//      {-3, 2},
+//      {17, 2}
+//  };
+//  EXPECT_EQ(expected, line.Vertices());
+//
+//  std::vector<uint64_t> expected_widths = { 30 };
+//  std::vector<uint64_t> widths;
+//  for (const auto &segment : line.segments()) {
+//    widths.push_back(segment.width);
+//  }
+//  EXPECT_EQ(expected_widths, widths);
+//
+}
+
 // |0| (17830, 9690) |140| (17730, 9690) |140| (17730, 9570) |0|
 // turns into
 // |0| (17685, 9690) |230| (17845, 9690) |260| (17730, 9690) |230| (17730, 9425) |0|
@@ -364,46 +389,122 @@ TEST(PolyLineTest, BulgeAfterCornerTurn) {
 //  EXPECT_EQ(expected_widths, widths);
 //} 
 
-//
-//            +------+          +------+
-//       +----+      |     +----+      |
-//  +----+    |      |+-+--+    |      |
-//       +----+      |     +----+      |
-//            +------+          +------+
+// w =  0     4     8     0     4     8
+//               +-----+           +-----+
+//         +-----+     |     +-----+     |
+//   +-----+     |     |+-+--+     |     |
+//         +-----+     |     +-----+     |
+//               +-----+           +-----+
+// x = 2   4     6     8    10    12    14
 //
 TEST(PolyLineTest, BulgeOverlapsSameLineDifferentWidthSegments) {
   PolyLine line = PolyLine({2, 2}, {
       LineSegment {{4, 2}, 0},
-      LineSegment {{6, 2}, 2},
-      LineSegment {{8, 2}, 4},
+      LineSegment {{6, 2}, 4},
+      LineSegment {{8, 2}, 8},
       LineSegment {{10, 2}, 0},
-      LineSegment {{12, 2}, 2},
-      LineSegment {{14, 2}, 4},
+      LineSegment {{12, 2}, 4},
+      LineSegment {{14, 2}, 8},
   });
 
-  LOG(INFO) << line.Describe();
-  line.InsertBulge({9, 2}, 7, 5);
-  LOG(INFO) << line.Describe();
+  PolyLine one = PolyLine(line);
+  one.InsertBulge({7, 2}, 30, 20);
 
-//  std::vector<Point> expected = {
-//      {12, 10},
-//      {2, 10},
-//      {2, 7},
-//      {2, 2}
-//  };
-//  EXPECT_EQ(expected, line.Vertices());
-//
-//  std::vector<uint64_t> expected_widths = {
-//    6,
-//    4,
-//    2
-//  };
-//  std::vector<uint64_t> widths;
-//  for (const auto &segment : line.segments()) {
-//    widths.push_back(segment.width);
-//  }
-//  EXPECT_EQ(expected_widths, widths);
+  std::vector<Point> expected = {
+      {-3, 2},
+      {17, 2}
+  };
+  EXPECT_EQ(expected, one.Vertices());
 
+  std::vector<uint64_t> expected_widths = { 30 };
+  std::vector<uint64_t> widths;
+  for (const auto &segment : one.segments()) {
+    widths.push_back(segment.width);
+  }
+  EXPECT_EQ(expected_widths, widths);
+
+  PolyLine two = PolyLine(line);
+  LOG(INFO) << two.Describe();
+  two.InsertBulge({7, 2}, 30, 10);
+  LOG(INFO) << two.Describe();
+
+  expected = {
+    {2, 2},
+    {12, 2},
+    {14, 2}
+  };
+  EXPECT_EQ(expected, two.Vertices());
+
+  expected_widths = { 30, 8 };
+  widths.clear();
+  for (const auto &segment : two.segments()) {
+    widths.push_back(segment.width);
+  }
+  EXPECT_EQ(expected_widths, widths);
+
+  PolyLine three = PolyLine(line);
+  LOG(INFO) << three.Describe();
+  three.InsertBulge({7, 2}, 30, 6);
+  LOG(INFO) << three.Describe();
+
+  expected = {
+    {2, 2},
+    {4, 2},
+    {10, 2},
+    {12, 2},
+    {14, 2}
+  };
+  EXPECT_EQ(expected, three.Vertices());
+
+  expected_widths = { 0, 30, 4, 8 };
+  widths.clear();
+  for (const auto &segment : three.segments()) {
+    widths.push_back(segment.width);
+  }
+  EXPECT_EQ(expected_widths, widths);
+
+  PolyLine four = PolyLine(line);
+  LOG(INFO) << four.Describe();
+  four.InsertBulge({11, 2}, 30, 6);
+  LOG(INFO) << four.Describe();
+
+  expected = {
+    {2, 2},
+    {4, 2},
+    {6, 2},
+    {8, 2},
+    {14, 2}
+  };
+  EXPECT_EQ(expected, four.Vertices());
+
+  expected_widths = { 0, 4, 8, 30 };
+  widths.clear();
+  for (const auto &segment : four.segments()) {
+    widths.push_back(segment.width);
+  }
+  EXPECT_EQ(expected_widths, widths);
+
+  PolyLine five = PolyLine(line);
+  LOG(INFO) << five.Describe();
+  five.InsertBulge({8, 2}, 6, 20);
+  LOG(INFO) << five.Describe();
+
+  expected = {
+    {-2, 2},
+    {6, 2},
+    {8, 2},
+    {12, 2},
+    {14, 2},
+    {18, 2}
+  };
+  EXPECT_EQ(expected, five.Vertices());
+
+  expected_widths = { 6, 8, 6, 8, 6 };
+  widths.clear();
+  for (const auto &segment : five.segments()) {
+    widths.push_back(segment.width);
+  }
+  EXPECT_EQ(expected_widths, widths);
 }
 
 }  // namespace

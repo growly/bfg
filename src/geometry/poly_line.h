@@ -90,6 +90,13 @@ class PolyLine : public Shape {
 
  private:
   void EnforceInvariants();
+  void InsertForwardBulgePoint(
+      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
+      size_t intersection_index, const Line &intersected_line);
+  void InsertBackwardBulgePoint(
+      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
+      size_t intersection_index, const Line &intersected_line,
+      uint64_t intersected_previous_width);
 
   Point start_;
 

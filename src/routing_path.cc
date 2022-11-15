@@ -64,7 +64,7 @@ void RoutingPath::ToPolyLinesAndVias(
             routing_via_info.width, routing_via_info.height);
         bulge_length = via_width + 2 * routing_via_info.overhang_length;
         bulge_width = via_width + 2 * routing_via_info.overhang_width;
-        //last->InsertBulge(current->centre(), bulge_width, bulge_length);
+        last->InsertBulge(current->centre(), bulge_width, bulge_length);
 
         if (i > 2) {
           last->InsertBulge(last->start(), bulge_width, bulge_length);
@@ -91,7 +91,7 @@ void RoutingPath::ToPolyLinesAndVias(
   const RoutingLayerInfo &last_info = routing_grid.GetRoutingLayerInfo(
       edge->ExplicitOrTrackLayer());
   last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
-  //last->InsertBulge(last->start(), bulge_width, bulge_length);
+  last->InsertBulge(last->start(), bulge_width, bulge_length);
   generated_lines.push_back(std::move(last));
 
   // Connect the start and end of the PolyLine to the appropriate layer with
@@ -102,7 +102,7 @@ void RoutingPath::ToPolyLinesAndVias(
         start_port_->centre(), front->layer(), start_port_->layer());
     vias->emplace_back(via);
 
-    //front->InsertBulge(start_port_->centre(), bulge_width, bulge_length);
+    front->InsertBulge(start_port_->centre(), bulge_width, bulge_length);
   }
   front->set_start_port(start_port_);
 
@@ -112,7 +112,7 @@ void RoutingPath::ToPolyLinesAndVias(
         end_port_->centre(), back->layer(), end_port_->layer());
     vias->emplace_back(via);
 
-    //back->InsertBulge(end_port_->centre(), bulge_width, bulge_length);
+    back->InsertBulge(end_port_->centre(), bulge_width, bulge_length);
   }
   back->set_end_port(end_port_);
 

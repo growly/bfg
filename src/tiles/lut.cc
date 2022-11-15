@@ -191,7 +191,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
               //}
           )
       );
-      buf_width += buf_cell->layout()->GetBoundingBox().Width();
+      geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
+      buf_width += bounding_box.Width();
     }
   }
 

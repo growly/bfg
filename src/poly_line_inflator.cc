@@ -152,20 +152,6 @@ void PolyLineInflator::InflatePolyLine(
       line.StretchEnd(polyline.overhang_end());
     }
 
-    // AnchorPosition growth_anchor;
-
-    // LineOrientation orientation = LineOrientation::kOther;
-    // if (segment.end.x() == start.x()) {
-    //   orientation = LineOrientation::kVertical;
-    //   growth_anchor = AnchorPosition::kCenterVertical;
-    // } else if (segment.end.y() == start.y()) {
-    //   orientation = LineOrientation::kHorizontal;
-    //   growth_anchor = AnchorPosition::kCenterHorizontal;
-    // }
-
-    // growth_anchor = segment.growth_anchor == AnchorPosition::kCenterAutomatic
-    //   ? growth_anchor : segment.growth_anchor;
-
     double width = segment.width == 0 ?
         100 : static_cast<double>(segment.width);
 
