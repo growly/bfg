@@ -61,7 +61,6 @@ void Polygon::IntersectingPoints(
       VLOG(12) << segment << " is incident on " << line;
       // The line falls on a edge of the polygon directly, so skip the check
       // for a corner and whether we ingress/egress. Because do.
-      intersections.push_back(segment.end());
   
       // When the line is incident on a segment, we have to check the previous
       // and following segments to determine if it is an ingress/egress event.
@@ -76,9 +75,30 @@ void Polygon::IntersectingPoints(
       //
       // (a) a single event
       // (b) two events
+      //
+      // If there are two lines in series both incident, we skip the current
+      // one and hope that the next one yields the correct intersection point
+      // (i.e. the end of that line):
+      //
+      //   |
+      //   v
+      //
+      //   +--
+      //   | <- skip
+      //   +
+      //   |
+      // --+
+      //  (a)
 
       const Point *next_point = &vertices_[(i + 1) % vertices_.size()];
       Line next_segment = Line(*point, *next_point);
+
+      if (segment.IsSameInfiniteLine(next_segment)) {
+        continue;
+      }
+
+      intersections.push_back(segment.end());
+
       int64_t dot_product = last_segment.DotProduct(next_segment);
       //  a . b = ||a|| ||b|| cos (theta)
       //  a . b < 0 iff cos (theta) < 0 iff pi/2 <= theta <= 3*pi/2
@@ -112,7 +132,7 @@ void Polygon::IntersectingPoints(
     if (i < vertices_.size() &&
         !intersections.empty() &&
         intersections.back() == intersection &&
-        (intersection == segment.start() || intersection == segment.end())) {
+        intersection == segment.start()) {
       // Do not add duplicate intersections when they occur at the start or end
       // of line segments. (If they occur at the middle of line segments they
       // must come from multiple lines.)

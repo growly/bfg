@@ -286,7 +286,7 @@ TEST(Polygon, IntersectingPoints_AnotherVerticalLine) {
   EXPECT_EQ(expected, intersections);
 }
 
-TEST(Polygon, IntersectingPoints_BogusPolygon) {
+TEST(Polygon, IntersectingPoints_BogusPolygonStillWorks) {
   std::vector<Point> points = {
       {31970, 6185},
       {31970, 6408},
@@ -313,6 +313,37 @@ TEST(Polygon, IntersectingPoints_BogusPolygon) {
       {{32010, 6185}, {32010, 6415}},
       {{32010, 6415}, {32010, 6585}}
   };
+}
+
+TEST(Polygon, IntersectingPoints_BogusPolygonStillWorks2) {
+  std::vector<Point> points = {
+      {28270, 5085},
+      {28270, 5308},
+      {28270, 5315},
+      {28355, 5315},
+      {28245, 5315},
+      {27955, 5315},
+      {27955, 5400},
+      {27955, 5485},
+      {27955, 5485},
+      {28100, 5485},
+      {28440, 5485},
+      {28440, 5308},
+      {28440, 5085},
+  };
+  Polygon polygon(points);
+
+  Line line = Line({28270, 0}, {28270, 1});
+
+  std::vector<std::pair<Point, Point>> intersections;
+  polygon.IntersectingPoints(line, &intersections);
+  for (const auto &p : intersections)
+    LOG(INFO) <<  p.first << " " << p.second;
+
+  //std::vector<std::pair<Point, Point>> expected = {
+  //    {{28270, 5085}, {28270, 5315}},
+  //    {{28270, 5315}, {, 6585}}
+  //};
 }
 
 }  // namespace
