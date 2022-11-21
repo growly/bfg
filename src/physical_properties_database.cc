@@ -8,8 +8,6 @@
 #include <optional>
 #include <utility>
 #include <glog/logging.h>
-#include <absl/status/status.h>
-#include <absl/status/statusor.h>
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_split.h>
@@ -19,7 +17,6 @@
 
 namespace bfg {
 
-using absl::Status;
 using geometry::Layer;
 
 void PhysicalPropertiesDatabase::LoadTechnology(
@@ -179,13 +176,23 @@ const IntraLayerConstraints &PhysicalPropertiesDatabase::Rules(
 
 const IntraLayerConstraints &PhysicalPropertiesDatabase::Rules(
     const Layer &layer) const {
-  const auto map_it = intra_layer_constraints_.find(layer);
-  if (map_it == intra_layer_constraints_.end()) {
+  auto rules = GetRules(layer);
+  if (!rules) {
     std::optional<std::string> result = GetLayerNameAndPurpose(layer);
     std::string name_and_purpose = result ? *result : "unknown";
     LOG(FATAL)
         << "No intra-layer constraints for layer " << layer
         << " (" << name_and_purpose << ")";
+  }
+  return *rules;
+}
+
+std::optional<std::reference_wrapper<const IntraLayerConstraints>>
+PhysicalPropertiesDatabase::GetRules(
+    const Layer &layer) const {
+  const auto map_it = intra_layer_constraints_.find(layer);
+  if (map_it == intra_layer_constraints_.end()) {
+    return std::nullopt;
   }
   return map_it->second;
 }

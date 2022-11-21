@@ -286,6 +286,35 @@ TEST(Polygon, IntersectingPoints_AnotherVerticalLine) {
   EXPECT_EQ(expected, intersections);
 }
 
+TEST(Polygon, IntersectingPoints_BogusPolygon) {
+  std::vector<Point> points = {
+      {31970, 6185},
+      {31970, 6408},
+      {31970, 6415},
+      {32055, 6415},
+      {32040, 6415},
+      {31750, 6415},
+      {31750, 6500},
+      {31750, 6585},
+      {31750, 6585},
+      {31895, 6585},
+      {32140, 6585},
+      {32140, 6408},
+      {32140, 6185},
+  };
+  Polygon polygon(points);
+
+  Line line = Line({32010, 0}, {32010, 1});
+
+  std::vector<std::pair<Point, Point>> intersections;
+  polygon.IntersectingPoints(line, &intersections);
+
+  std::vector<std::pair<Point, Point>> expected = {
+      {{32010, 6185}, {32010, 6415}},
+      {{32010, 6415}, {32010, 6585}}
+  };
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

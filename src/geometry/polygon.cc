@@ -4,6 +4,8 @@
 #include <sstream>
 #include <utility>
 
+#include <glog/logging.h>
+
 #include "point.h"
 #include "rectangle.h"
 
@@ -24,6 +26,7 @@ namespace geometry {
 void Polygon::IntersectingPoints(
     const Line &line,
     std::vector<std::pair<Point, Point>> *points) const {
+  points->clear();
   if (vertices_.empty()) {
     LOG(WARNING) << "Polygon with no vertices!";
     return;
@@ -43,7 +46,7 @@ void Polygon::IntersectingPoints(
     VLOG(12) << "Checking " << segment;
     // NOTE(aryap): We don't need to check this because we check for
     // intersections in the line's bounds and our test for ingress/egress will
-    // determine determine if the point should be de-duplicated.
+    // determine if the point should be de-duplicated.
     // if (segment.IsSameInfiniteLine(last_segment)) {
     //   // Skip segment entirely.
     //   continue;
@@ -107,7 +110,15 @@ void Polygon::IntersectingPoints(
       continue;
     }
     if (i < vertices_.size() &&
-        !intersections.empty() && intersections.back() == intersection) {
+        !intersections.empty() &&
+        intersections.back() == intersection &&
+        (intersection == segment.start() || intersection == segment.end())) {
+      // Do not add duplicate intersections when they occur at the start or end
+      // of line segments. (If they occur at the middle of line segments they
+      // must come from multiple lines.)
+      //
+      // NOTE(aryap): A more elegant way to do this would be to check for
+      // intersection only including one of line bounds, not both.
       continue;
     }
     if (!intersections.empty() && intersections.front() == intersection) {
@@ -122,7 +133,9 @@ void Polygon::IntersectingPoints(
   }
 
   LOG_IF(FATAL, intersections.size() % 2 != 0)
-      << "Expected pairs of intersecting points.";
+      << "Expected pairs of intersecting points, got "
+      << intersections.size() << " intersecting " << Describe() << " with "
+      << line.Describe();
 
   Point outside = GetBoundingBox().PointOnLineOutside(line);
   VLOG(12) << "outside point: " << outside;

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <stack>
 
 #include "physical_properties_database.h"
 #include "geometry/instance.h"
@@ -121,18 +122,21 @@ class Layout : public geometry::Manipulable {
   bfg::Cell *parent_cell() const { return parent_cell_; }
 
   void SetActiveLayerByName(const std::string &name);
+  void RestoreLastActiveLayer() {
+    if (previous_layers_.empty())
+      return;
+    geometry::Layer last = previous_layers_.top();
+    previous_layers_.pop();
+    active_layer_ = last;
+  }
   void set_active_layer(const geometry::Layer &active_layer) {
+    previous_layers_.push(active_layer_);
     active_layer_ = active_layer;
   };
   const geometry::Layer &active_layer() const { return active_layer_; }
 
   const std::unordered_map<std::string, std::set<geometry::Port*>>
       &ports_by_net() const { return ports_by_net_; }
-  //const std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() const {
-  //  return rectangles_;
-  //}
-  //const std::vector<std::unique_ptr<geometry::Polygon>> &polygons() const { return polygons_; }
-  //const std::vector<std::unique_ptr<geometry::Port>> &ports() const { return ports_; }
   const std::set<geometry::Port*> Ports() const;
   const std::vector<std::unique_ptr<geometry::Instance>> &instances() const {
     return instances_;
@@ -154,6 +158,8 @@ class Layout : public geometry::Manipulable {
   std::unordered_map<std::string, std::set<geometry::Port*>> ports_by_net_;
 
   geometry::Layer active_layer_;
+  std::stack<geometry::Layer> previous_layers_;
+
   std::map<geometry::Layer, std::unique_ptr<ShapeCollection>> shapes_;
 
   std::unordered_map<std::string, geometry::Point> named_points_;

@@ -222,8 +222,6 @@ void PolyLine::InsertBackwardBulgePoint(
   double d_insertion = half_length;
   double overflow = d_insertion - d_start;
 
-  Point insertion_start = point;
-
   size_t k = intersection_index;
   while (k > 0) {
     Line previous_line = Line(
@@ -238,7 +236,6 @@ void PolyLine::InsertBackwardBulgePoint(
       break;
     }
 
-    insertion_start = k == 1 ? start_ : segments_[k - 2].end;
     double previous_line_length = previous_line.Length();
     d_insertion = overflow;
     overflow -= previous_line_length;
@@ -268,10 +265,11 @@ void PolyLine::InsertBackwardBulgePoint(
   } else if (overflow == 0) {
     segments_[k].width = std::max(segments_[k].width, coaxial_width);
   } else if (k == 0) {
-    start_ = intersected_line.PointOnLineAtDistance(insertion_start, -overflow);
+    start_ = intersected_line.PointOnLineAtDistance(start_, -overflow);
   } else {
     // In this case we have overflow and a corner turn.
     LineSegment &last_segment = segments_[k - 1];
+    uint64_t previous_width = last_segment.width;
     Point last_line_start = k == 1 ?  start_ : segments_[k - 2].end;
     // The end of the last line is the start of this line. The start of the
     // last line is the end of the line before it.
@@ -283,8 +281,7 @@ void PolyLine::InsertBackwardBulgePoint(
         segments_.begin() + k - 1,
         LineSegment {
           .end = point_before,
-          .width = std::max(
-              static_cast<uint64_t>(2.0 * overflow), last_segment.width)
+          .width = previous_width
         });
   }
 }
@@ -372,6 +369,45 @@ void PolyLine::EnforceInvariants() {
       last = it->end;
       last_segment = it;
       ++it;
+    }
+  }
+
+  // If min_separation_ is defined, also remove segments in a straight line
+  // that would a violation of min_separation between the segments before and
+  // after due to contracting/expanding widths:
+  //
+  //       > min_separation_
+  //       <--->
+  //  ----+     +----
+  //      |     |
+  //      +-----+
+  //
+  //      +-----+
+  //      |     |
+  //  ----+     +----
+  //
+  if (!min_separation_)
+    return;
+  for (size_t i = 1; i < segments_.size() - 1; ++i) {
+    const LineSegment &last_segment = segments_[i - 1];
+    const LineSegment &this_segment = segments_[i];
+    const LineSegment &next_segment = segments_[i + 1];
+
+    Line last_line(i == 1 ? start_ : segments_[i - 2].end, last_segment.end);
+    Line this_line(last_segment.end, this_segment.end);
+    Line next_line(this_segment.end, next_segment.end);
+
+    if (!last_line.IsSameInfiniteLine(this_line) ||
+        !next_line.IsSameInfiniteLine(this_line))
+      continue;
+
+    int64_t length = static_cast<uint64_t>(this_line.Length());
+
+    if (this_segment.width < last_segment.width &&
+        this_segment.width < next_segment.width &&
+        length < *min_separation_) {
+      segments_.erase(segments_.begin() + i);
+      --i;
     }
   }
 }

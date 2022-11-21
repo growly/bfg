@@ -77,6 +77,7 @@ int main(int argc, char **argv) {
   intra_constraints = {
     .min_separation = 170,
     .min_width = 170,
+    .min_pitch = 170 + 170 + 80,
   };
   physical_db.AddRules("li.drawing", intra_constraints);
   physical_db.AddRules("diff.drawing", intra_constraints);
@@ -90,7 +91,7 @@ int main(int argc, char **argv) {
   physical_db.AddRules("via1.drawing", intra_constraints);
   physical_db.AddRules("via2.drawing", intra_constraints);
   intra_constraints = {
-    .min_separation = 200,
+    .min_separation = 210,
     .min_width = 170,
     .min_pitch = 500,
   };
@@ -114,11 +115,14 @@ int main(int argc, char **argv) {
   inter_constraints = {
     .min_separation = 50,
     .via_overhang = 80,
-    .via_overhang_wide = 35
+    .via_overhang_wide = 0
   };
   physical_db.AddRules("li.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 40,
+    .max_separation = 190,
+    // This is minimum enclosure in 1 direction?
+    .min_enclosure = 50,
     .via_overhang = 40,
   };
   physical_db.AddRules("diff.drawing", "licon.drawing", inter_constraints);
@@ -136,6 +140,15 @@ int main(int argc, char **argv) {
   physical_db.AddRules("met3.drawing", "via2.drawing", inter_constraints);
   // TODO(growly): Need to alias these layer names so that they apply to any
   // process.
+  inter_constraints = {
+    .min_enclosure = 140,
+  };
+  physical_db.AddRules("diff.drawing", "nsdm.drawing", inter_constraints);
+  physical_db.AddRules("diff.drawing", "psdm.drawing", inter_constraints);
+  inter_constraints = {
+    .min_enclosure = 180,
+  };
+  physical_db.AddRules("diff.drawing", "nwell.drawing", inter_constraints);
 
   LOG(INFO) << "\n" << physical_db.DescribeLayers();
 

@@ -30,6 +30,16 @@ class PolyLine : public Shape {
     }
   }
 
+  PolyLine(const PolyLine &other)
+      : start_(other.start_),
+        overhang_start_(other.overhang_start_),
+        overhang_end_(other.overhang_end_),
+        start_via_(nullptr),  // TODO(aryap): Should these be copied?
+        end_via_(nullptr),
+        start_port_(nullptr),
+        end_port_(nullptr),
+        segments_(other.segments_.begin(), other.segments_.end()) {}
+
   // This constructor skips the segment sanity checks in AddSegment.
   PolyLine(const Point &start,
            const std::vector<LineSegment> &segments)
@@ -68,6 +78,10 @@ class PolyLine : public Shape {
   void set_start(const Point &start) { start_ = start; }
   const Point &start() const { return start_; }
 
+  void set_min_separation(std::optional<int64_t> min_separation) {
+      min_separation_ = min_separation;
+  }
+
   const Point &End() const { return segments_.back().end; }
 
   uint64_t overhang_start() const { return overhang_start_; }
@@ -103,6 +117,7 @@ class PolyLine : public Shape {
   // How much to extend the line over the start/end segments.
   uint64_t overhang_start_;
   uint64_t overhang_end_;
+  std::optional<int64_t> min_separation_;
 
   // TODO(aryap): I can't figure out where to put this. This isn't exactly a
   // general solution - what about vias that connect part way through a

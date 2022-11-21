@@ -1,5 +1,6 @@
 #include <glog/logging.h>
 #include <cmath>
+#include <sstream>
 
 #include "line.h"
 #include "point.h"
@@ -8,6 +9,12 @@ namespace bfg {
 namespace geometry {
 
 double Line::kPi = std::acos(-1);
+
+std::string Line::Describe() const {
+  std::stringstream ss;
+  ss << start_ << " -> " << end_;
+  return ss.str();
+}
 
 bool Line::Intersect(
     const Line &lhs, const Line &rhs, bool *incident, Point *point) {

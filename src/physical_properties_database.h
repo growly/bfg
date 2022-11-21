@@ -4,6 +4,7 @@
 #include <map>
 #include <unordered_map>
 #include <ostream>
+#include <functional>
 #include <optional>
 
 #include "abstract_via.h"
@@ -56,6 +57,12 @@ struct IntraLayerConstraints {
 
 struct InterLayerConstraints {
   int64_t min_separation;
+  int64_t max_separation;
+
+  // TODO(aryap): An 'enclosure' rule seems more descriptive than via overhang
+  // but is not commutative necessarily, whereas until now I've
+  // assumed they all are.
+  int64_t min_enclosure;
 
   int64_t via_overhang;
   int64_t via_overhang_wide;
@@ -111,6 +118,10 @@ class PhysicalPropertiesDatabase {
   void AddRules(const std::string &layer_name,
                 const IntraLayerConstraints &constraints);
 
+  std::optional<std::reference_wrapper<const IntraLayerConstraints>>
+      GetRules(const geometry::Layer &layer) const;
+
+  // These look up methods are fatal if the given layer is not found.
   const InterLayerConstraints &Rules(
       const std::string &left, const std::string &right) const;
   const IntraLayerConstraints &Rules(const std::string &layer_name) const;

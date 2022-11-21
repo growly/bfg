@@ -27,6 +27,8 @@ class Line {
   static bool Intersect(
       const Line &lhs, const Line &rhs, bool *incident, Point *point);
 
+  std::string Describe() const;
+
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
 
   bool Intersects(const Point &point) const;

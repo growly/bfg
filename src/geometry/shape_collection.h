@@ -6,6 +6,7 @@
 #include "polygon.h"
 #include "port.h"
 #include "rectangle.h"
+#include "poly_line.h"
 
 namespace bfg {
 namespace geometry {
@@ -37,6 +38,9 @@ class ShapeCollection : public Manipulable {
   std::vector<std::unique_ptr<geometry::Port>> &ports() {
     return ports_;
   }
+  std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() {
+    return poly_lines_;
+  }
 
   const std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() const {
     return rectangles_;
@@ -47,11 +51,17 @@ class ShapeCollection : public Manipulable {
   const std::vector<std::unique_ptr<geometry::Port>> &ports() const {
     return ports_;
   }
+  const std::vector<std::unique_ptr<geometry::PolyLine>> &poly_lines() const {
+    return poly_lines_;
+  }
 
  private:
   std::vector<std::unique_ptr<geometry::Rectangle>> rectangles_;
   std::vector<std::unique_ptr<geometry::Polygon>> polygons_;
   std::vector<std::unique_ptr<geometry::Port>> ports_;
+
+  // TODO(aryap): This idea is half-baked.
+  std::vector<std::unique_ptr<geometry::PolyLine>> poly_lines_;
 };
 
 }  // namespace geometry

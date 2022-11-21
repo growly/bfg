@@ -2,6 +2,11 @@
 
 #include <sstream>
 
+#include "polygon.h"
+#include "port.h"
+#include "rectangle.h"
+#include "poly_line.h"
+
 namespace bfg {
 namespace geometry {
 
@@ -27,6 +32,9 @@ std::string ShapeCollection::Describe() const {
        << port->upper_right().x() << " "
        << port->upper_right().y() << std::endl;
   }
+  for (const auto &line : poly_lines_) {
+    ss << "    poly line " << line->Describe() << std::endl;
+  }
   return ss.str();
 }
 
@@ -47,18 +55,24 @@ void ShapeCollection::Add(const ShapeCollection &other) {
     Port *copy = new Port(*port);
     ports_.emplace_back(copy);
   }
+  for (const auto &poly_line : other.poly_lines_) {
+    PolyLine *copy = new PolyLine(*poly_line);
+    poly_lines_.emplace_back(copy);
+  }
 }
 
 void ShapeCollection::MirrorY() {
   for (const auto &rectangle : rectangles_) { rectangle->MirrorY(); }
   for (const auto &polygon : polygons_) { polygon->MirrorY(); }
   for (const auto &port : ports_) { port->MirrorY(); }
+  for (const auto &poly_line : poly_lines_) { poly_line->MirrorY(); }
 }
 
 void ShapeCollection::MirrorX() {
   for (const auto &rectangle : rectangles_) { rectangle->MirrorX(); }
   for (const auto &polygon : polygons_) { polygon->MirrorX(); }
   for (const auto &port : ports_) { port->MirrorX(); }
+  for (const auto &poly_line : poly_lines_) { poly_line->MirrorX(); }
 }
 
 void ShapeCollection::Translate(const Point &offset) {
@@ -67,12 +81,14 @@ void ShapeCollection::Translate(const Point &offset) {
   }
   for (const auto &polygon : polygons_) { polygon->Translate(offset); }
   for (const auto &port : ports_) { port->Translate(offset); }
+  for (const auto &poly_line : poly_lines_) { poly_line->Translate(offset); }
 }
 
 void ShapeCollection::Rotate(int32_t degrees_ccw) {
   for (const auto &rectangle : rectangles_) { rectangle->Rotate(degrees_ccw); }
   for (const auto &polygon : polygons_) { polygon->Rotate(degrees_ccw); }
   for (const auto &port : ports_) { port->Rotate(degrees_ccw); }
+  for (const auto &poly_line : poly_lines_) { poly_line->Rotate(degrees_ccw); }
 }
 
 void ShapeCollection::ResetOrigin() {
@@ -130,6 +146,11 @@ const Rectangle ShapeCollection::GetBoundingBox() const {
     max_x = std::max(port->upper_right().x(), max_x);
     max_y = std::max(port->upper_right().y(), max_y);
   }
+
+  if (!poly_lines_.empty()) {
+    LOG(WARNING) << "PolyLines are not accounted for in bounding boxes yet";
+  }
+
   return Rectangle({min_x, min_y}, {max_x, max_y});
 }
 

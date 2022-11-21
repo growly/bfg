@@ -182,15 +182,15 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
-      geometry::Instance *instance = layout->AddInstance(
-          geometry::Instance (
-              buf_cell->layout(),
-              start_position + geometry::Point(buf_width, 0)
-              //geometry::Point {
-              //-200, -200
-              //}
-          )
-      );
+      //geometry::Instance *instance = layout->AddInstance(
+      //    geometry::Instance (
+      //        buf_cell->layout(),
+      //        start_position + geometry::Point(buf_width, 0)
+      //        //geometry::Point {
+      //        //-200, -200
+      //        //}
+      //    )
+      //);
       geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
       buf_width += bounding_box.Width();
     }
