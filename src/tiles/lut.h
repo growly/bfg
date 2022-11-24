@@ -46,9 +46,9 @@ class Lut : public Tile {
   // TODO(aryap): Figure out how to express mux arrangement statically.
   static constexpr std::pair<size_t, LayoutConfig> kLayoutConfigurations[] = {
       {4, LayoutConfig {
-          .num_banks = 1,
+          .num_banks = 2,
           .bank_rows = 4,
-          .bank_columns = 4,
+          .bank_columns = 2,
           .mux_area_rows = 2,
           .mux_area_columns = 2,
           .mux_area_padding = 500

@@ -5,13 +5,17 @@
 BUILD_DIR=watch_build
 PID_FILE=klayout.pid
 PROTO2GDS_BIN="${HOME}/src/Layout21/target/debug/proto2gds"
+#TECH='sky130.technology.pb'
+TECH='gf180mcu.technology.pb'
+#IN_GDS='library'
+IN_GDS='gf180_mux'
 TOP=
 
 mkdir -p "${BUILD_DIR}" || exit 1
 
 cat << EOF > ${BUILD_DIR}/view_script.py
 import gdspy
-lib = gdspy.GdsLibrary(infile='library.gds')
+lib = gdspy.GdsLibrary(infile='${IN_GDS}.gds')
 tops = lib.top_level()
 for cell in tops:
   filename = f'library.{cell.name}.svg'
@@ -29,10 +33,12 @@ cmake --build "${BUILD_DIR}" -j $(nproc) || exit 3
   --external_circuits sky130hd.pb \
   --logtostderr --v 2 || exit 4
 
+  #--technology "${TECH}" \
+
 "${PROTO2GDS_BIN}" \
-  -i library.pb \
-  -t sky130.technology.pb \
-  -o library.gds || exit 5
+  -i "${IN_GDS}".pb \
+  -t "${TECH}" \
+  -o "${IN_GDS}".gds || exit 5
 
 python3 "${BUILD_DIR}/view_script.py"
 

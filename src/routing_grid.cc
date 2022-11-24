@@ -113,9 +113,9 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
       needs_via = GetRoutingViaInfo(entry.first, layer);
       if (!needs_via)
         continue;
-      LOG(INFO) << "layer " << *physical_db_.GetLayerNameAndPurpose(layer)
+      LOG(INFO) << "layer " << *physical_db_.GetLayerName(layer)
                 << " is accessible for routing via layer "
-                << *physical_db_.GetLayerNameAndPurpose(needs_via->get().layer);
+                << *physical_db_.GetLayerName(needs_via->get().layer);
     }
 
     for (RoutingVertex *vertex : entry.second) {

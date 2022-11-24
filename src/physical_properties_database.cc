@@ -21,19 +21,10 @@ using geometry::Layer;
 
 void PhysicalPropertiesDatabase::LoadTechnology(
     const vlsir::tech::Technology &pdk) {
-  Layer internal_layer = 0;
   for (const auto &layer_info : pdk.layers()) {
-    // Find a free internal layer number:
-    while (layer_infos_.find(internal_layer) != layer_infos_.end()) {
-      internal_layer++;
-      LOG_IF(FATAL, internal_layer == 0)
-          << "Ran out of internal layer numbers!";
-    }
 
-    VLOG(3) << "Loading layer " << internal_layer << ": \"" << layer_info.name()
-            << "\"";
+    VLOG(3) << "Loading layer from proto: \"" << layer_info.name() << "\"";
     LayerInfo info {
-        .internal_layer = internal_layer,
         .name = layer_info.name(),
         .purpose = layer_info.purpose().description(),
         .gds_layer = static_cast<uint16_t>(layer_info.index()),
@@ -43,64 +34,72 @@ void PhysicalPropertiesDatabase::LoadTechnology(
   }
 }
 
-const Layer PhysicalPropertiesDatabase::GetLayer(
-    const std::string &name_and_purpose) const {
-  std::vector<std::string> name_parts = absl::StrSplit(name_and_purpose, ".");
+void PhysicalPropertiesDatabase::AddLayerAlias(
+    const std::string &alias, const std::string &name) {
+  auto alias_check = FindLayer(alias);
+  LOG_IF(FATAL, alias_check)
+      << "Cannot use " << alias << " as a layer alias, it already exists";
+  auto target = FindLayer(name);
+  LOG_IF(FATAL, !target)
+      << "Cannot create alias, target layer does not exist: "
+      << name;
 
-  LOG_IF(FATAL, name_parts.size() != 2)
-      << "GetLayerInfo by name requires a layer in the form name.purpose.";
-
-  std::string &name = name_parts.front();
-  std::string &purpose = name_parts.back();
-
-  auto name_it = layers_by_name_.find(name);
-  LOG_IF(FATAL, name_it == layers_by_name_.end())
-      << "No match for named layer: " << name;
-
-  const std::unordered_map<std::string, Layer> &sub_map =
-      name_it->second;
-  auto sub_it = sub_map.find(purpose);
-  LOG_IF(FATAL, sub_it == sub_map.end())
-      << "No match for named layer (\"" <<  name << "\") purpose: " << purpose;
-  return sub_it->second;
+  layers_by_name_.insert({alias, target.value()});
 }
 
-std::optional<std::string> PhysicalPropertiesDatabase::GetLayerNameAndPurpose(
+std::optional<const geometry::Layer> PhysicalPropertiesDatabase::FindLayer(
+    const std::string &name) const {
+  auto name_it = layers_by_name_.find(name);
+  if (name_it == layers_by_name_.end())
+    return std::nullopt;
+  return name_it->second;
+}
+
+const Layer PhysicalPropertiesDatabase::GetLayer(
+    const std::string &name) const {
+  std::optional<const geometry::Layer> layer = FindLayer(name);
+
+  LOG_IF(FATAL, !layer) << "Could not find layer: " << name;
+
+  return *layer;
+}
+
+std::optional<std::string> PhysicalPropertiesDatabase::GetLayerName(
     const Layer &layer) const {
   auto it = layer_names_.find(layer);
   if (it == layer_names_.end()) {
     return std::nullopt;
   }
-  return absl::StrCat(it->second.first, ".", it->second.second);
+  return it->second;
 }
 
 void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
+  // Find a free internal layer number:
+  Layer layer = GetNextInternalLayer();
+  while (layer_infos_.find(layer) != layer_infos_.end()) {
+    layer = GetNextInternalLayer();
+  }
+
+  LayerInfo copy = info;
+  copy.internal_layer = layer;
+
   // Add to mapping by layer number.
-  const Layer &layer = info.internal_layer;
   auto number_iterator = layer_infos_.find(layer);
   LOG_IF(FATAL, number_iterator != layer_infos_.end())
       << "Duplicate layer info: " << layer;
-  layer_infos_.insert({layer, info});
+  layer_infos_.insert({layer, copy});
 
-  auto name_iterator = layers_by_name_.find(info.name);
-  if (name_iterator == layers_by_name_.end()) {
-    auto insertion_result = layers_by_name_.insert({info.name,
-        std::unordered_map<std::string, Layer>()});
-    LOG_IF(FATAL, !insertion_result.second)
-        << "Could not create sub-map for layer: (" << info.name
-        << ", " << info.purpose << ")";
-    name_iterator = insertion_result.first;
-  }
+  std::string internal_name = absl::StrCat(copy.name, ".", copy.purpose);
 
-  std::unordered_map<std::string, Layer> &sub_map = name_iterator->second;
+  auto name_iterator = layers_by_name_.find(internal_name);
+  LOG_IF(FATAL, name_iterator != layers_by_name_.end())
+      << "Duplicate internal name for layer: " << internal_name;
 
-  auto sub_it = sub_map.find(info.purpose);
-  LOG_IF(FATAL, sub_it != sub_map.end())
-      << "Duplicate layer name when adding layer info: (" << info.name
-      << ", " << info.purpose << ")";
-  sub_map.insert({info.purpose, layer});
+  layer_names_.insert({layer, internal_name});
+  layers_by_name_.insert({internal_name, layer});
 
-  layer_names_.insert({layer, {info.name, info.purpose}});
+  VLOG(3) << "Added layer " << layer << ", name: " << info.name
+          << ", purpose: " << info.purpose;
 }
 
 const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
@@ -112,8 +111,8 @@ const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
 }
 
 const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
-    const std::string &layer_name_and_purpose) const {
-  const Layer layer = GetLayer(layer_name_and_purpose);
+    const std::string &layer_name) const {
+  const Layer layer = GetLayer(layer_name);
   return GetLayerInfo(layer);
 }
 
@@ -178,11 +177,11 @@ const IntraLayerConstraints &PhysicalPropertiesDatabase::Rules(
     const Layer &layer) const {
   auto rules = GetRules(layer);
   if (!rules) {
-    std::optional<std::string> result = GetLayerNameAndPurpose(layer);
-    std::string name_and_purpose = result ? *result : "unknown";
+    std::optional<std::string> result = GetLayerName(layer);
+    std::string name = result ? *result : "unknown";
     LOG(FATAL)
         << "No intra-layer constraints for layer " << layer
-        << " (" << name_and_purpose << ")";
+        << " (" << name << ")";
   }
   return *rules;
 }
@@ -202,13 +201,21 @@ std::string PhysicalPropertiesDatabase::DescribeLayers() const {
   ss << "Physical properties database layer information:" << std::endl;
   for (const auto &entry : layer_names_) {
     const geometry::Layer &layer = entry.first;
-    const std::string &major_name = entry.second.first;
-    const std::string &minor_name = entry.second.second;
+    const std::string &name = entry.second;
     const uint16_t gds_layer = GetLayerInfo(layer).gds_layer;
     const uint16_t gds_datatype = GetLayerInfo(layer).gds_datatype;
-    ss << absl::StrFormat("%10d %20s %20s %10u %10u\n",
-                          layer, major_name, minor_name,
+    ss << absl::StrFormat("%10d %-30s %10u %10u\n",
+                          layer, name,
                           gds_layer, gds_datatype);
+  }
+
+  ss << "\nLayer name to layer mapping: (" << layers_by_name_.size() << ")"
+     << std::endl;
+  for (const auto &entry : layers_by_name_) {
+    const std::string &name = entry.first;
+    const geometry::Layer &layer = entry.second;
+    std::string canonical_name = GetLayerName(layer).value();
+    ss << absl::StrFormat("%-30s: %u (%s)\n", name, layer, canonical_name);
   }
   return ss.str();
 }
@@ -222,6 +229,14 @@ PhysicalPropertiesDatabase::GetTwoLayersAndSort(
     std::swap(first, second);
   }
   return {first, second};
+}
+
+Layer PhysicalPropertiesDatabase::GetNextInternalLayer() {
+  Layer next = next_internal_layer_;
+  ++next_internal_layer_;
+  LOG_IF(FATAL, next_internal_layer_ == 0)
+      << "Ran out of internal layer numbers!";
+  return next;
 }
 
 std::ostream &operator<<(std::ostream &os,

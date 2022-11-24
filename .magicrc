@@ -1,1 +1,2 @@
-source sky130A.magicrc
+#source sky130A.magicrc
+source gf180mcuA.magicrc

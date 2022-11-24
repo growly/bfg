@@ -78,10 +78,19 @@ struct InterLayerConstraints {
 // etc. A challenge with process-portability is mapping the different
 // parameters in different processes doing the same thing to the same name, and
 // so perhaps some of those should be made explicit and mapped. Unsure.
+//
+// TODO(aryap): Handling virtual layers:
+// Sometimes the same GDS layer behaves differently depending on its usage. We
+// can model this with separate internal layers whose rules can be
+// distinguished in the natural way. All that is needed is for the two layers
+// to map to the same GDS layer at the end. Their treatment internally can be
+// virtual. This can also be captured by the relationship properties of
+// InterLayerConstraints.
 class PhysicalPropertiesDatabase {
  public:
   PhysicalPropertiesDatabase()
-      : internal_units_per_external_(0.001) {}
+      : internal_units_per_external_(0.001),
+        next_internal_layer_(0) {}
 
   void LoadTechnology(const vlsir::tech::Technology &pdk);
 
@@ -97,14 +106,18 @@ class PhysicalPropertiesDatabase {
     return internal_value / internal_units_per_external_;
   }
 
-  const geometry::Layer GetLayer(const std::string &name_and_purpose) const;
-  std::optional<std::string> GetLayerNameAndPurpose(
-      const geometry::Layer &layer) const;
+  void AddLayerAlias(
+      const std::string &alias,
+      const std::string &name);
+
+  const geometry::Layer GetLayer(const std::string &name) const;
+  std::optional<const geometry::Layer> FindLayer(
+      const std::string &name) const;
+  std::optional<std::string> GetLayerName(const geometry::Layer &layer) const;
 
   void AddLayerInfo(const LayerInfo &info);
   const LayerInfo &GetLayerInfo(const geometry::Layer &layer) const;
-  const LayerInfo &GetLayerInfo(
-      const std::string &layer_name_and_purpose) const;
+  const LayerInfo &GetLayerInfo(const std::string &layer_name) const;
 
   std::optional<const geometry::Layer> GetViaLayer(
       const std::string &left, const std::string &right) const;
@@ -130,15 +143,18 @@ class PhysicalPropertiesDatabase {
   std::string DescribeLayers() const;
 
  private:
+  geometry::Layer GetNextInternalLayer();
+
   double internal_units_per_external_;
+
+  geometry::Layer next_internal_layer_;
 
   // Store a mapping of internal layer number to layer information.
   std::map<geometry::Layer, LayerInfo> layer_infos_;
 
   // Store a mapping of layer name to internal layer number.
-  std::unordered_map<std::string, std::unordered_map<
-      std::string, geometry::Layer>> layers_by_name_;
-  std::map<geometry::Layer, std::pair<std::string, std::string>> layer_names_;
+  std::unordered_map<std::string, geometry::Layer> layers_by_name_;
+  std::map<geometry::Layer, std::string> layer_names_;
 
   std::unordered_map<geometry::Layer,
       std::unordered_map<geometry::Layer, InterLayerConstraints>>

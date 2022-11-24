@@ -108,3 +108,9 @@ from a release tarball, it seems fine.
   cmake ../
   make
   ```
+
+## Making tech protos
+
+```
+protoc --proto_path=vlsir/ --encode vlsir.tech.Technology vlsir/tech.proto < gf180mcu.technology.pb.txt > gf180mcu.technology.pb
+```

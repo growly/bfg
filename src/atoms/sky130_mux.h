@@ -47,6 +47,27 @@ class Sky130Mux: public Atom {
     uint64_t nfet_5_length_nm = 150;
   };
 
+  struct Mux2Parameters {
+    std::string diff_layer_name = "ndiff.drawing";
+    std::string diff_contact_layer_name = "ndiff.drawing";
+
+    // To avoid C++'s automatic arithmetic type conversions, make these all the
+    // same int64_t type:
+    int64_t fet_0_width = 640;
+    int64_t fet_1_width = 640;
+    int64_t fet_2_width = 640;
+    int64_t fet_3_width = 640;
+    int64_t fet_4_width = 640;
+    int64_t fet_5_width = 640;
+
+    int64_t fet_0_length = 150;
+    int64_t fet_1_length = 150;
+    int64_t fet_2_length = 150;
+    int64_t fet_3_length = 150;
+    int64_t fet_4_length = 150;
+    int64_t fet_5_length = 150;
+  };
+
   Sky130Mux(const Parameters &parameters,
             DesignDatabase *design_db)
       : Atom(design_db),
@@ -56,11 +77,11 @@ class Sky130Mux: public Atom {
   // Caller takes ownership!
   bfg::Cell *Generate() override;
 
- private:
+ protected:
   bfg::Layout *GenerateLayout();
   bfg::Circuit *GenerateCircuit();
 
-  bfg::Layout *GenerateMux2Layout();
+  bfg::Layout *GenerateMux2Layout(const Mux2Parameters &params);
   bfg::Circuit *GenerateMux2Circuit();
 
   Parameters parameters_;

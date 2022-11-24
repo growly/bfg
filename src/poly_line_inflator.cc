@@ -46,8 +46,8 @@ Layout *PolyLineInflator::Inflate(
             via->bottom_layer(), via->top_layer()),
         *via,
         &rectangle);
-    LOG(INFO) << "creating via on layer "
-              << *physical_db_.GetLayerNameAndPurpose(rectangle.layer());
+    LOG(INFO) << "Creating via on layer "
+              << *physical_db_.GetLayerName(rectangle.layer());
     layout->set_active_layer(rectangle.layer());
     layout->AddRectangle(rectangle);
   }

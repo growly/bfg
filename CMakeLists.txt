@@ -63,6 +63,7 @@ set(ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_mux.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/gf180mcu_mux.cc
 )
 
 set(GEOMETRY_SRC 
