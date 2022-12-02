@@ -64,6 +64,8 @@ struct InterLayerConstraints {
   // assumed they all are.
   int64_t min_enclosure;
 
+  // Another way to express this is as min_enclosure on all sides and an
+  // 'overhang' in one axis, obviating the need for one of these.
   int64_t via_overhang;
   int64_t via_overhang_wide;
 };

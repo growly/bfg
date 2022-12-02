@@ -219,6 +219,8 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddLayerAlias("via1.drawing", "via2.via2");
   db->AddLayerAlias("via2.drawing", "via3.via3");
 
+  db->AddLayerAlias("areaid.standardrc", "pr_boundary.pr_boundary");
+
   // Virtual layers for n-type and p-type diffusion rules.
   bfg::LayerInfo pdiff = db->GetLayerInfo("diff.drawing");
   pdiff.name = "pdiff";
@@ -263,8 +265,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("li.drawing", intra_constraints);
   intra_constraints = {
-    .min_width = 170,
-    .via_width = 170,
+    .via_width = 230,
   };
   db->AddRules("ncon.drawing", intra_constraints);
   db->AddRules("pcon.drawing", intra_constraints);
@@ -295,7 +296,14 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("met3.drawing", intra_constraints);
 
   bfg::InterLayerConstraints inter_constraints = {
-    .min_separation = 145,
+    // TODO(aryap): I'm using this as an 'overhang', essentially, but it
+    // doesn't actually imply complete enclosure.
+    .min_enclosure = 230,
+  };
+  db->AddRules("ndiff.drawing", "poly.drawing", inter_constraints);
+  db->AddRules("pdiff.drawing", "poly.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = 150,
     .via_overhang = 80,
     .via_overhang_wide = 50
   };
@@ -303,9 +311,9 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("poly.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
-    .min_separation = 145,
+    .min_separation = 150,
     .via_overhang = 80,
-    .via_overhang_wide = 0
+    .via_overhang_wide = 55
   };
   db->AddRules("li.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
@@ -314,14 +322,14 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
     .min_separation = 40,
     .max_separation = 190,
     // This is minimum enclosure in 1 direction?
-    .min_enclosure = 50,
+    .min_enclosure = 70,
     .via_overhang = 40,
   };
   db->AddRules("ndiff.drawing", "ncon.drawing", inter_constraints);
   inter_constraints = {
-    .min_separation = 145,
-    .max_separation = 190,
-    .min_enclosure = 65,
+    .min_separation = 150,
+    .max_separation = 170,
+    .min_enclosure = 70,
     .via_overhang = 40,
   };
   db->AddRules("pdiff.drawing", "pcon.drawing", inter_constraints);
@@ -364,7 +372,6 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("psdm.drawing", "nwell.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 430,
-    .min_enclosure = 430
   };
   // This is spacing to ndiff
   db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);

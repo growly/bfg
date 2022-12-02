@@ -150,6 +150,23 @@ bool Line::IntersectsInBounds(
   return false;
 }
 
+bool Line::IntersectsInMutualBounds(
+    const Line &other, bool *incident, Point *point) const {
+  Point intersection_in_our_bounds;
+  if (!IntersectsInBounds(other, incident, &intersection_in_our_bounds))
+    return false;
+
+  if (*incident) {
+    // Check if the other line overlaps this line.
+
+    // Find the projection of each point onto the shared line.
+    //      _ _      _   _   _   _     _
+    // proj_s(v) = [(v . s)/(s . s)] * s
+
+  }
+
+}
+
 //           _
 //           /|
 //          /

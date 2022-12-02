@@ -67,11 +67,15 @@ class Layout : public geometry::Manipulable {
     instances_.emplace_back(copy);
     return copy;
   }
+  geometry::Polygon *AddPolyLine(const geometry::PolyLine &line);
   void AddPort(const geometry::Port &port, const std::string &net_prefix = "");
   void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out) const;
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
 
   void MakeVia(const std::string &layer_name, const geometry::Point &centre);
+  void MakePort(const std::string &net_name,
+                const geometry::Point &centre,
+                const std::string &layer_name = "");
 
   std::string Describe() const;
 
@@ -107,6 +111,8 @@ class Layout : public geometry::Manipulable {
   }
 
   void SavePoint(const std::string &name, const geometry::Point &point);
+  void SavePoints(
+      std::map<const std::string, const geometry::Point> named_points);
   geometry::Point GetPoint(const std::string &name) const;
 
   void GetShapesOnLayer(

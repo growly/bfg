@@ -41,6 +41,9 @@ class Line {
 
   bool IntersectsInBounds(const Line &other, bool *incident, Point *point) const;
 
+  bool IntersectsInMutualBounds(
+      const Line &other, bool *incident, Point *point) const;
+
   bool IsSameInfiniteLine(const Line &other) const {
     return AreSameInfiniteLine(*this, other);
   }

@@ -1,5 +1,14 @@
 name: "Sky130"
 layers {
+  name: "pr_boundary"
+  purpose {
+    description: "pr_boundary"
+    type: DRAWING
+  }
+  index: 0
+  sub_index: 0
+}
+layers {
   name: "comp"
   purpose {
     description: "comp"

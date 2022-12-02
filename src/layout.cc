@@ -8,6 +8,8 @@
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/rectangle.h"
+#include "geometry/polygon.h"
+#include "poly_line_inflator.h"
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -15,6 +17,13 @@ namespace bfg {
 
 using geometry::Point;
 using geometry::ShapeCollection;
+
+geometry::Polygon *Layout::AddPolyLine(const geometry::PolyLine &line) {
+  PolyLineInflator inflator(physical_db_);
+  geometry::Polygon polygon;
+  inflator.InflatePolyLine(line, &polygon);
+  return AddPolygon(polygon);
+}
 
 const std::string &Layout::NameOrParentName() const {
   if (name_ == "" && parent_cell_ != nullptr) {
@@ -278,6 +287,18 @@ void Layout::MakeVia(
   RestoreLastActiveLayer();
 }
 
+void Layout::MakePort(
+    const std::string &net_name,
+    const geometry::Point &centre,
+    const std::string &layer_name) {
+  int64_t layer = layer_name == "" ? 0 : physical_db_.GetLayer(layer_name);
+  int64_t via_side = layer_name == "" ?
+    100 : physical_db_.Rules(layer_name).via_width;
+  geometry::Port port = geometry::Port(
+      centre, via_side, via_side, layer, net_name);
+  AddPort(port);
+}
+
 void Layout::GetShapesOnLayer(const geometry::Layer &layer,
                               ShapeCollection *shapes) const {
   ShapeCollection *direct = GetShapeCollection(layer);
@@ -329,6 +350,12 @@ void Layout::SavePoint(const std::string &name, const geometry::Point &point) {
       << "Saving " << name << " overrides an existing point " << it->second;
   named_points_[name] = point;
 }
+
+void Layout::SavePoints(std::map<const std::string, const Point> named_points) {
+  for (const auto &entry : named_points) {
+    SavePoint(entry.first, entry.second);
+  }
+};
 
 geometry::Point Layout::GetPoint(const std::string &name) const {
   auto it = named_points_.find(name);

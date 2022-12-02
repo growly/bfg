@@ -66,6 +66,15 @@ class Sky130Mux: public Atom {
     int64_t fet_3_length = 150;
     int64_t fet_4_length = 150;
     int64_t fet_5_length = 150;
+
+    std::optional<int64_t> col_0_poly_overhang_top;
+    std::optional<int64_t> col_0_poly_overhang_bottom;
+    std::optional<int64_t> col_1_poly_overhang_top;
+    std::optional<int64_t> col_1_poly_overhang_bottom;
+    std::optional<int64_t> col_2_poly_overhang_top;
+    std::optional<int64_t> col_2_poly_overhang_bottom;
+    std::optional<int64_t> col_3_poly_overhang_top;
+    std::optional<int64_t> col_3_poly_overhang_bottom;
   };
 
   Sky130Mux(const Parameters &parameters,
