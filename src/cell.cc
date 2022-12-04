@@ -10,8 +10,10 @@ namespace bfg {
 ::vlsir::raw::Cell Cell::ToVLSIRCell() const {
   ::vlsir::raw::Cell cell_pb;
   cell_pb.set_name(name_);
-  if (layout_)
+  if (layout_) {
     *cell_pb.mutable_layout() = layout_->ToVLSIRLayout();
+    *cell_pb.mutable_abstract() = layout_->ToVLSIRAbstract();
+  }
   if (circuit_)
     *cell_pb.mutable_module() = circuit_->ToVLSIRCircuit();
   return cell_pb;

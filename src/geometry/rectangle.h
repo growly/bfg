@@ -7,6 +7,8 @@
 #include "point.h"
 #include "line.h"
 
+#include "vlsir/layout/raw.pb.h"
+
 namespace bfg {
 namespace geometry {
 
@@ -76,6 +78,9 @@ class Rectangle : public Shape {
   const Rectangle GetBoundingBox() const override {
     return *this;
   }
+
+  ::vlsir::raw::Rectangle ToVLSIRRectangle() const;
+  ::vlsir::raw::Polygon ToVLSIRPolygon() const;
 
   const Point &lower_left() const { return lower_left_; }
   void set_lower_left(const Point &lower_left) { lower_left_ = lower_left; }

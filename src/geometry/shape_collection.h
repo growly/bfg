@@ -1,12 +1,19 @@
 #ifndef GEOMETRY_SHAPE_COLLECTION_H_
 #define GEOMETRY_SHAPE_COLLECTION_H_
 
+#include <map>
+#include <memory>
+#include <unordered_map>
 #include <sstream>
+#include <optional>
 
+#include "layer.h"
 #include "polygon.h"
 #include "port.h"
 #include "rectangle.h"
 #include "poly_line.h"
+
+#include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
 namespace geometry {
@@ -28,6 +35,19 @@ class ShapeCollection : public Manipulable {
   void Add(const ShapeCollection &other);
 
   const Rectangle GetBoundingBox() const;
+
+  void CopyPins(
+      const std::optional<Layer> expected_layer,
+      std::unordered_map<
+          std::string,
+          std::map<geometry::Layer,
+                   std::unique_ptr<ShapeCollection>>> *shapes_by_layer_by_net)
+      const;
+
+  ::vlsir::raw::LayerShapes ToVLSIRLayerShapes(
+      bool include_non_pins = true,
+      bool include_pins = true,
+      size_t *count_out = nullptr) const;
 
   std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() {
     return rectangles_;

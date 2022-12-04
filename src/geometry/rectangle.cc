@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <glog/logging.h>
 
+#include "vlsir/layout/raw.pb.h"
+
 namespace bfg {
 namespace geometry {
 
@@ -96,6 +98,31 @@ Rectangle Rectangle::BoundingBoxIfRotated(
   Rectangle rotated = Rectangle(Point(min_x, min_y) + about,
                                 Point(max_x, max_y) + about);
   return rotated;
+}
+
+::vlsir::raw::Rectangle Rectangle::ToVLSIRRectangle() const{
+  ::vlsir::raw::Rectangle rect_pb;
+  rect_pb.mutable_lower_left()->set_x(lower_left_.x());
+  rect_pb.mutable_lower_left()->set_y(lower_left_.y());
+  rect_pb.set_width(Width());
+  rect_pb.set_height(Height());
+  return rect_pb;
+}
+
+::vlsir::raw::Polygon Rectangle::ToVLSIRPolygon() const {
+  ::vlsir::raw::Polygon polygon_pb;
+  std::vector<Point> outline_points = {
+      lower_left_,
+      UpperLeft(),
+      upper_right_,
+      LowerRight()
+  };
+  for (const auto &point : outline_points) {
+    ::vlsir::raw::Point *point_pb = polygon_pb.add_vertices();
+    point_pb->set_x(point.x());
+    point_pb->set_y(point.y());
+  }
+  return polygon_pb;
 }
 
 bool operator==(const Rectangle &lhs, const Rectangle &rhs) {

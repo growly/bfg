@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stack>
+#include <optional>
 
 #include "physical_properties_database.h"
 #include "geometry/instance.h"
@@ -79,6 +80,8 @@ class Layout : public geometry::Manipulable {
 
   std::string Describe() const;
 
+  ::vlsir::raw::Abstract ToVLSIRAbstract(
+      std::optional<geometry::Layer> top_layer = std::nullopt) const;
   ::vlsir::raw::Layout ToVLSIRLayout() const;
 
   void MirrorY() override;

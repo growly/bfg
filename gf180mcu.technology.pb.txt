@@ -1,4 +1,4 @@
-name: "Sky130"
+name: "gf180mcu"
 layers {
   name: "pr_boundary"
   purpose {

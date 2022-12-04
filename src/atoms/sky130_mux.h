@@ -67,6 +67,10 @@ class Sky130Mux: public Atom {
     int64_t fet_4_length = 150;
     int64_t fet_5_length = 150;
 
+    int64_t fet_4_5_offset_y = 0;
+
+    bool add_input_wires = true;
+
     std::optional<int64_t> col_0_poly_overhang_top;
     std::optional<int64_t> col_0_poly_overhang_bottom;
     std::optional<int64_t> col_1_poly_overhang_top;
@@ -75,6 +79,12 @@ class Sky130Mux: public Atom {
     std::optional<int64_t> col_2_poly_overhang_bottom;
     std::optional<int64_t> col_3_poly_overhang_top;
     std::optional<int64_t> col_3_poly_overhang_bottom;
+
+    // Pointers emitted to created input objects.
+    std::optional<bfg::geometry::Polygon**> input_0;
+    std::optional<bfg::geometry::Polygon**> input_1;
+    std::optional<bfg::geometry::Polygon**> input_2;
+    std::optional<bfg::geometry::Polygon**> input_3;
   };
 
   Sky130Mux(const Parameters &parameters,

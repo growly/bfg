@@ -309,6 +309,12 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("poly.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "ncon.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = 150,
+    .min_enclosure = 70,
+    .via_overhang = 80,
+    .via_overhang_wide = 70
+  };
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 150,

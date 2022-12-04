@@ -1,0 +1,1518 @@
+units: NANO
+cells {
+  name: "gf180mcu_mux"
+  module {
+  }
+  layout {
+    name: "gf180mcu_mux"
+    shapes {
+      layer {
+        number: 30
+      }
+      rectangles {
+        lower_left {
+          x: 2615
+          y: 1330
+        }
+        width: 280
+        height: 2180
+      }
+      rectangles {
+        lower_left {
+          x: 3135
+          y: 1330
+        }
+        width: 280
+        height: 2180
+      }
+      rectangles {
+        lower_left {
+          x: 5665
+          y: 1330
+        }
+        width: 280
+        height: 2180
+      }
+      rectangles {
+        lower_left {
+          x: 5145
+          y: 1330
+        }
+        width: 280
+        height: 2180
+      }
+      polygons {
+        vertices {
+          x: 425
+        }
+        vertices {
+          x: 425
+          y: 1755
+        }
+        vertices {
+          x: 425
+          y: 3510
+        }
+        vertices {
+          x: 565
+          y: 3510
+        }
+        vertices {
+          x: 705
+          y: 3510
+        }
+        vertices {
+          x: 705
+          y: 1755
+        }
+        vertices {
+          x: 705
+        }
+      }
+      polygons {
+        vertices {
+          x: 1065
+        }
+        vertices {
+          x: 1065
+          y: 1870
+        }
+        vertices {
+          x: 1065
+          y: 3970
+        }
+        vertices {
+          x: 1205
+          y: 3970
+        }
+        vertices {
+          x: 1345
+          y: 3970
+        }
+        vertices {
+          x: 1345
+          y: 1870
+        }
+        vertices {
+          x: 1345
+        }
+      }
+      polygons {
+        vertices {
+          x: 8165
+        }
+        vertices {
+          x: 8165
+          y: 1755
+        }
+        vertices {
+          x: 8165
+          y: 3510
+        }
+        vertices {
+          x: 8025
+          y: 3510
+        }
+        vertices {
+          x: 7885
+          y: 3510
+        }
+        vertices {
+          x: 7885
+          y: 1755
+        }
+        vertices {
+          x: 7885
+        }
+      }
+      polygons {
+        vertices {
+          x: 7525
+        }
+        vertices {
+          x: 7525
+          y: 1870
+        }
+        vertices {
+          x: 7525
+          y: 3970
+        }
+        vertices {
+          x: 7385
+          y: 3970
+        }
+        vertices {
+          x: 7245
+          y: 3970
+        }
+        vertices {
+          x: 7245
+          y: 1870
+        }
+        vertices {
+          x: 7245
+        }
+      }
+    }
+    shapes {
+      layer {
+        number: 21
+      }
+      rectangles {
+        lower_left {
+          x: 4275
+          y: 340
+        }
+        width: 4760
+        height: 2830
+      }
+    }
+    shapes {
+      layer {
+        number: 32
+      }
+      rectangles {
+        lower_left {
+          x: -230
+          y: 540
+        }
+        width: 4300
+        height: 2430
+      }
+    }
+    shapes {
+      layer {
+        number: 31
+      }
+      rectangles {
+        lower_left {
+          x: 4475
+          y: 540
+        }
+        width: 4360
+        height: 2430
+      }
+    }
+    shapes {
+      layer {
+        number: 34
+      }
+      polygons {
+        vertices {
+          x: 90
+          y: 1050
+        }
+        vertices {
+          x: 90
+          y: 1231
+        }
+        vertices {
+          x: 90
+          y: 1575
+        }
+        vertices {
+          x: 430
+          y: 1575
+        }
+        vertices {
+          x: 430
+          y: 1405
+        }
+        vertices {
+          x: 430
+          y: 1235
+        }
+        vertices {
+          x: 430
+          y: 1235
+        }
+        vertices {
+          x: 430
+          y: 1231
+        }
+        vertices {
+          x: 430
+          y: 1050
+        }
+      }
+      polygons {
+        vertices {
+          x: 170
+          y: 875
+        }
+        vertices {
+          x: 560
+          y: 875
+        }
+        vertices {
+          x: 560
+          y: 820
+        }
+        vertices {
+          x: 1490
+          y: 820
+        }
+        vertices {
+          x: 1490
+          y: 740
+        }
+        vertices {
+          x: 1435
+          y: 740
+        }
+        vertices {
+          x: 1435
+          y: 1130
+        }
+        vertices {
+          x: 1605
+          y: 1130
+        }
+        vertices {
+          x: 1775
+          y: 1130
+        }
+        vertices {
+          x: 1775
+          y: 740
+        }
+        vertices {
+          x: 1720
+          y: 740
+        }
+        vertices {
+          x: 1720
+          y: 590
+        }
+        vertices {
+          x: 560
+          y: 590
+        }
+        vertices {
+          x: 560
+          y: 535
+        }
+        vertices {
+          x: 170
+          y: 535
+        }
+      }
+      polygons {
+        vertices {
+          x: 90
+          y: 2460
+        }
+        vertices {
+          x: 90
+          y: 2279
+        }
+        vertices {
+          x: 90
+          y: 1935
+        }
+        vertices {
+          x: 430
+          y: 1935
+        }
+        vertices {
+          x: 430
+          y: 2105
+        }
+        vertices {
+          x: 430
+          y: 2275
+        }
+        vertices {
+          x: 430
+          y: 2275
+        }
+        vertices {
+          x: 430
+          y: 2279
+        }
+        vertices {
+          x: 430
+          y: 2460
+        }
+      }
+      polygons {
+        vertices {
+          x: 170
+          y: 2635
+        }
+        vertices {
+          x: 560
+          y: 2635
+        }
+        vertices {
+          x: 560
+          y: 2690
+        }
+        vertices {
+          x: 1490
+          y: 2690
+        }
+        vertices {
+          x: 1490
+          y: 2770
+        }
+        vertices {
+          x: 1435
+          y: 2770
+        }
+        vertices {
+          x: 1435
+          y: 2380
+        }
+        vertices {
+          x: 1605
+          y: 2380
+        }
+        vertices {
+          x: 1775
+          y: 2380
+        }
+        vertices {
+          x: 1775
+          y: 2770
+        }
+        vertices {
+          x: 1720
+          y: 2770
+        }
+        vertices {
+          x: 1720
+          y: 2920
+        }
+        vertices {
+          x: 560
+          y: 2920
+        }
+        vertices {
+          x: 560
+          y: 2975
+        }
+        vertices {
+          x: 170
+          y: 2975
+        }
+      }
+      polygons {
+        vertices {
+          x: 690
+          y: 2435
+        }
+        vertices {
+          x: 1080
+          y: 2435
+        }
+        vertices {
+          x: 1080
+          y: 2380
+        }
+        vertices {
+          x: 1260
+          y: 2380
+        }
+        vertices {
+          x: 1260
+          y: 2150
+        }
+        vertices {
+          x: 1950
+          y: 2150
+        }
+        vertices {
+          x: 1950
+          y: 2380
+        }
+        vertices {
+          x: 2160
+          y: 2380
+        }
+        vertices {
+          x: 2160
+          y: 2435
+        }
+        vertices {
+          x: 2550
+          y: 2435
+        }
+        vertices {
+          x: 2550
+          y: 2265
+        }
+        vertices {
+          x: 2550
+          y: 2095
+        }
+        vertices {
+          x: 2160
+          y: 2095
+        }
+        vertices {
+          x: 2160
+          y: 2150
+        }
+        vertices {
+          x: 2180
+          y: 2150
+        }
+        vertices {
+          x: 2180
+          y: 1920
+        }
+        vertices {
+          x: 1030
+          y: 1920
+        }
+        vertices {
+          x: 1030
+          y: 2150
+        }
+        vertices {
+          x: 1080
+          y: 2150
+        }
+        vertices {
+          x: 1080
+          y: 2095
+        }
+        vertices {
+          x: 690
+          y: 2095
+        }
+      }
+      polygons {
+        vertices {
+          x: 715
+          y: 1050
+        }
+        vertices {
+          x: 715
+          y: 1440
+        }
+        vertices {
+          x: 770
+          y: 1440
+        }
+        vertices {
+          x: 770
+          y: 1640
+        }
+        vertices {
+          x: 3560
+          y: 1640
+        }
+        vertices {
+          x: 3560
+          y: 2225
+        }
+        vertices {
+          x: 3505
+          y: 2225
+        }
+        vertices {
+          x: 3505
+          y: 2615
+        }
+        vertices {
+          x: 3675
+          y: 2615
+        }
+        vertices {
+          x: 3845
+          y: 2615
+        }
+        vertices {
+          x: 3845
+          y: 2225
+        }
+        vertices {
+          x: 3790
+          y: 2225
+        }
+        vertices {
+          x: 3790
+          y: 1410
+        }
+        vertices {
+          x: 1000
+          y: 1410
+        }
+        vertices {
+          x: 1000
+          y: 1440
+        }
+        vertices {
+          x: 1055
+          y: 1440
+        }
+        vertices {
+          x: 1055
+          y: 1050
+        }
+      }
+      polygons {
+        vertices {
+          x: 8515
+          y: 1035
+        }
+        vertices {
+          x: 8515
+          y: 1216
+        }
+        vertices {
+          x: 8515
+          y: 1560
+        }
+        vertices {
+          x: 8130
+          y: 1560
+        }
+        vertices {
+          x: 8130
+          y: 1390
+        }
+        vertices {
+          x: 8130
+          y: 1220
+        }
+        vertices {
+          x: 8175
+          y: 1220
+        }
+        vertices {
+          x: 8175
+          y: 1216
+        }
+        vertices {
+          x: 8175
+          y: 1035
+        }
+      }
+      polygons {
+        vertices {
+          x: 8420
+          y: 860
+        }
+        vertices {
+          x: 8030
+          y: 860
+        }
+        vertices {
+          x: 8030
+          y: 805
+        }
+        vertices {
+          x: 7100
+          y: 805
+        }
+        vertices {
+          x: 7100
+          y: 755
+        }
+        vertices {
+          x: 7155
+          y: 755
+        }
+        vertices {
+          x: 7155
+          y: 1145
+        }
+        vertices {
+          x: 6985
+          y: 1145
+        }
+        vertices {
+          x: 6815
+          y: 1145
+        }
+        vertices {
+          x: 6815
+          y: 755
+        }
+        vertices {
+          x: 6870
+          y: 755
+        }
+        vertices {
+          x: 6870
+          y: 575
+        }
+        vertices {
+          x: 8030
+          y: 575
+        }
+        vertices {
+          x: 8030
+          y: 520
+        }
+        vertices {
+          x: 8420
+          y: 520
+        }
+      }
+      polygons {
+        vertices {
+          x: 8515
+          y: 2475
+        }
+        vertices {
+          x: 8515
+          y: 2294
+        }
+        vertices {
+          x: 8515
+          y: 1950
+        }
+        vertices {
+          x: 8130
+          y: 1950
+        }
+        vertices {
+          x: 8130
+          y: 2120
+        }
+        vertices {
+          x: 8130
+          y: 2290
+        }
+        vertices {
+          x: 8175
+          y: 2290
+        }
+        vertices {
+          x: 8175
+          y: 2294
+        }
+        vertices {
+          x: 8175
+          y: 2475
+        }
+      }
+      polygons {
+        vertices {
+          x: 8420
+          y: 2650
+        }
+        vertices {
+          x: 8030
+          y: 2650
+        }
+        vertices {
+          x: 8030
+          y: 2705
+        }
+        vertices {
+          x: 7100
+          y: 2705
+        }
+        vertices {
+          x: 7100
+          y: 2755
+        }
+        vertices {
+          x: 7155
+          y: 2755
+        }
+        vertices {
+          x: 7155
+          y: 2365
+        }
+        vertices {
+          x: 6985
+          y: 2365
+        }
+        vertices {
+          x: 6815
+          y: 2365
+        }
+        vertices {
+          x: 6815
+          y: 2755
+        }
+        vertices {
+          x: 6870
+          y: 2755
+        }
+        vertices {
+          x: 6870
+          y: 2935
+        }
+        vertices {
+          x: 8030
+          y: 2935
+        }
+        vertices {
+          x: 8030
+          y: 2990
+        }
+        vertices {
+          x: 8420
+          y: 2990
+        }
+      }
+      polygons {
+        vertices {
+          x: 7900
+          y: 2450
+        }
+        vertices {
+          x: 7510
+          y: 2450
+        }
+        vertices {
+          x: 7510
+          y: 2395
+        }
+        vertices {
+          x: 7330
+          y: 2395
+        }
+        vertices {
+          x: 7330
+          y: 2135
+        }
+        vertices {
+          x: 6640
+          y: 2135
+        }
+        vertices {
+          x: 6640
+          y: 2395
+        }
+        vertices {
+          x: 6400
+          y: 2395
+        }
+        vertices {
+          x: 6400
+          y: 2450
+        }
+        vertices {
+          x: 6010
+          y: 2450
+        }
+        vertices {
+          x: 6010
+          y: 2280
+        }
+        vertices {
+          x: 6010
+          y: 2110
+        }
+        vertices {
+          x: 6400
+          y: 2110
+        }
+        vertices {
+          x: 6400
+          y: 2165
+        }
+        vertices {
+          x: 6410
+          y: 2165
+        }
+        vertices {
+          x: 6410
+          y: 1905
+        }
+        vertices {
+          x: 7560
+          y: 1905
+        }
+        vertices {
+          x: 7560
+          y: 2165
+        }
+        vertices {
+          x: 7510
+          y: 2165
+        }
+        vertices {
+          x: 7510
+          y: 2110
+        }
+        vertices {
+          x: 7900
+          y: 2110
+        }
+      }
+      polygons {
+        vertices {
+          x: 7875
+          y: 1035
+        }
+        vertices {
+          x: 7875
+          y: 1425
+        }
+        vertices {
+          x: 7820
+          y: 1425
+        }
+        vertices {
+          x: 7820
+          y: 1640
+        }
+        vertices {
+          x: 5000
+          y: 1640
+        }
+        vertices {
+          x: 5000
+          y: 2225
+        }
+        vertices {
+          x: 5055
+          y: 2225
+        }
+        vertices {
+          x: 5055
+          y: 2615
+        }
+        vertices {
+          x: 4885
+          y: 2615
+        }
+        vertices {
+          x: 4715
+          y: 2615
+        }
+        vertices {
+          x: 4715
+          y: 2225
+        }
+        vertices {
+          x: 4770
+          y: 2225
+        }
+        vertices {
+          x: 4770
+          y: 1410
+        }
+        vertices {
+          x: 7590
+          y: 1410
+        }
+        vertices {
+          x: 7590
+          y: 1425
+        }
+        vertices {
+          x: 7535
+          y: 1425
+        }
+        vertices {
+          x: 7535
+          y: 1035
+        }
+      }
+    }
+    shapes {
+      layer {
+        number: 63
+        purpose: 63
+      }
+      rectangles {
+        lower_left {
+          x: 250
+          y: 1290
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 250
+          y: 590
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 250
+          y: 1989
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 250
+          y: 2689
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 8110
+          y: 1275
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 8110
+          y: 575
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 8110
+          y: 2004
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 8110
+          y: 2704
+        }
+        width: 230
+        height: 230
+      }
+    }
+    shapes {
+      layer {
+        number: 22
+      }
+      rectangles {
+        lower_left {
+          x: 7705
+          y: 770
+        }
+        width: 900
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 7705
+          y: 2100
+        }
+        width: 900
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 6805
+          y: 770
+        }
+        width: 900
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 6805
+          y: 2100
+        }
+        width: 900
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 5545
+          y: 2100
+        }
+        width: 840
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 4705
+          y: 2100
+        }
+        width: 840
+        height: 640
+      }
+    }
+    shapes {
+      layer {
+        number: 22
+      }
+      rectangles {
+        lower_left {
+          y: 770
+        }
+        width: 885
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          y: 2100
+        }
+        width: 885
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 885
+          y: 770
+        }
+        width: 885
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 885
+          y: 2100
+        }
+        width: 885
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 2190
+          y: 2100
+        }
+        width: 825
+        height: 640
+      }
+      rectangles {
+        lower_left {
+          x: 3015
+          y: 2100
+        }
+        width: 825
+        height: 640
+      }
+    }
+    shapes {
+      layer {
+        number: 33
+      }
+      rectangles {
+        lower_left {
+          x: 145
+          y: 1130
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 145
+          y: 2150
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 770
+          y: 1130
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 770
+          y: 2150
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 1490
+          y: 820
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 1490
+          y: 2460
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 2240
+          y: 2150
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 3560
+          y: 2305
+        }
+        width: 230
+        height: 230
+      }
+    }
+    shapes {
+      layer {
+        number: 33
+      }
+      rectangles {
+        lower_left {
+          x: 8230
+          y: 1115
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 8230
+          y: 2165
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 7590
+          y: 1115
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 7590
+          y: 2165
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 6870
+          y: 835
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 6870
+          y: 2445
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 6090
+          y: 2165
+        }
+        width: 230
+        height: 230
+      }
+      rectangles {
+        lower_left {
+          x: 4770
+          y: 2305
+        }
+        width: 230
+        height: 230
+      }
+    }
+    annotations {
+      string: "right.column_3_centre_top_via"
+      loc {
+        x: 5285
+        y: 3045
+      }
+    }
+    annotations {
+      string: "right.diff_lr"
+      loc {
+        x: 4705
+        y: 770
+      }
+    }
+    annotations {
+      string: "right.column_2_centre_bottom"
+      loc {
+        x: 5805
+        y: 1330
+      }
+    }
+    annotations {
+      string: "right.diff_ll"
+      loc {
+        x: 8605
+        y: 770
+      }
+    }
+    annotations {
+      string: "right.column_2_centre_bottom_via"
+      loc {
+        x: 5805
+        y: 1795
+      }
+    }
+    annotations {
+      string: "right.column_3_centre_bottom_via"
+      loc {
+        x: 5285
+        y: 1795
+      }
+    }
+    annotations {
+      string: "right.diff_ur"
+      loc {
+        x: 4705
+        y: 2740
+      }
+    }
+    annotations {
+      string: "right.column_1_centre_top_via"
+      loc {
+        x: 7385
+        y: 3045
+      }
+    }
+    annotations {
+      string: "right.li_corner_se_centre"
+      loc {
+        x: 4885
+        y: 1525
+      }
+    }
+    annotations {
+      string: "left.li_corner_se_centre"
+      loc {
+        x: 3675
+        y: 1525
+      }
+    }
+    annotations {
+      string: "left.column_2_centre_bottom_via"
+      loc {
+        x: 2755
+        y: 1795
+      }
+    }
+    annotations {
+      string: "left.column_3_centre_bottom_via"
+      loc {
+        x: 3275
+        y: 1795
+      }
+    }
+    annotations {
+      string: "right.column_0_centre_centre_via"
+      loc {
+        x: 8025
+        y: 1755
+      }
+    }
+    annotations {
+      string: "right.column_1_centre_bottom_via"
+      loc {
+        x: 7385
+        y: 465
+      }
+    }
+    annotations {
+      string: "left.input_0"
+      loc {
+        x: 365
+        y: 2104
+      }
+    }
+    annotations {
+      string: "right.input_0"
+      loc {
+        x: 8225
+        y: 2119
+      }
+    }
+    annotations {
+      string: "right.column_2_centre_top_via"
+      loc {
+        x: 5805
+        y: 3045
+      }
+    }
+    annotations {
+      string: "left.column_0_centre_centre_via"
+      loc {
+        x: 565
+        y: 1755
+      }
+    }
+    annotations {
+      string: "left.column_1_centre_top_via"
+      loc {
+        x: 1205
+        y: 3045
+      }
+    }
+    annotations {
+      string: "left.column_1_centre_centre_via"
+      loc {
+        x: 1205
+        y: 1755
+      }
+    }
+    annotations {
+      string: "left.input_3"
+      loc {
+        x: 365
+        y: 705
+      }
+    }
+    annotations {
+      string: "left.column_2_centre_bottom"
+      loc {
+        x: 2755
+        y: 1330
+      }
+    }
+    annotations {
+      string: "left.input_1"
+      loc {
+        x: 365
+        y: 2804
+      }
+    }
+    annotations {
+      string: "left.diff_ul"
+      loc {
+        y: 2740
+      }
+    }
+    annotations {
+      string: "left.column_0_centre_top_via"
+      loc {
+        x: 565
+        y: 3045
+      }
+    }
+    annotations {
+      string: "right.column_1_centre_centre_via"
+      loc {
+        x: 7385
+        y: 1755
+      }
+    }
+    annotations {
+      string: "left.column_0_centre_bottom_via"
+      loc {
+        x: 565
+        y: 465
+      }
+    }
+    annotations {
+      string: "left.diff_ll"
+      loc {
+        y: 770
+      }
+    }
+    annotations {
+      string: "right.column_0_centre_bottom_via"
+      loc {
+        x: 8025
+        y: 465
+      }
+    }
+    annotations {
+      string: "left.input_2"
+      loc {
+        x: 365
+        y: 1405
+      }
+    }
+    annotations {
+      string: "left.diff_lr"
+      loc {
+        x: 3840
+        y: 770
+      }
+    }
+    annotations {
+      string: "right.output"
+      loc {
+        x: 5545
+        y: 2560
+      }
+    }
+    annotations {
+      string: "left.column_3_centre_top_via"
+      loc {
+        x: 3275
+        y: 3045
+      }
+    }
+    annotations {
+      string: "right.column_0_centre_top_via"
+      loc {
+        x: 8025
+        y: 3045
+      }
+    }
+    annotations {
+      string: "left.column_2_centre_top_via"
+      loc {
+        x: 2755
+        y: 3045
+      }
+    }
+    annotations {
+      string: "right.input_1"
+      loc {
+        x: 8225
+        y: 2819
+      }
+    }
+    annotations {
+      string: "left.output"
+      loc {
+        x: 3015
+        y: 2575
+      }
+    }
+    annotations {
+      string: "right.input_3"
+      loc {
+        x: 8225
+        y: 690
+      }
+    }
+    annotations {
+      string: "right.input_2"
+      loc {
+        x: 8225
+        y: 1390
+      }
+    }
+    annotations {
+      string: "left.diff_ur"
+      loc {
+        x: 3840
+        y: 2740
+      }
+    }
+    annotations {
+      string: "left.column_1_centre_bottom_via"
+      loc {
+        x: 1205
+        y: 465
+      }
+    }
+    annotations {
+      string: "right.diff_ul"
+      loc {
+        x: 8605
+        y: 2740
+      }
+    }
+  }
+}

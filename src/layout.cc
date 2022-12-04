@@ -162,6 +162,89 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   set_active_layer(physical_db_.GetLayerInfo(name).internal_layer);
 }
 
+::vlsir::raw::Abstract Layout::ToVLSIRAbstract(
+      std::optional<geometry::Layer> top_layer) const {
+  //
+  // HACK HACK HACK
+
+  top_layer = physical_db_.GetLayer("li.drawing");
+
+  //  
+  //
+  ::vlsir::raw::Abstract abstract_pb;
+
+  abstract_pb.set_name(parent_cell_->name());
+
+  *abstract_pb.mutable_outline() = GetTilingBounds().ToVLSIRPolygon();
+
+  std::unordered_map<
+      std::string,
+      std::map<geometry::Layer, std::unique_ptr<ShapeCollection>>>
+          pins_by_layer_by_net;
+
+  for (const auto &entry : shapes_) {
+    const geometry::Layer &layer = entry.first;
+    if (top_layer && *top_layer != layer) {
+      continue;
+    }
+    ShapeCollection *shape_collection = entry.second.get();
+
+    shape_collection->CopyPins(layer, &pins_by_layer_by_net);
+
+    size_t num_obstructions = 0;
+    ::vlsir::raw::LayerShapes obstructions = 
+        shape_collection->ToVLSIRLayerShapes(true, false, &num_obstructions);
+
+    if (num_obstructions > 0) {
+      ::vlsir::raw::LayerShapes *layer_shapes_pb = abstract_pb.add_blockages();
+      *layer_shapes_pb = obstructions;
+
+      const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
+      layer_shapes_pb->mutable_layer()->set_number(layer_info.gds_layer);
+      layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
+    }
+  }
+
+  for (const auto &entry : pins_by_layer_by_net) {
+    const std::string &net = entry.first;
+    ::vlsir::raw::AbstractPort *port_pb = abstract_pb.add_ports();
+    port_pb->set_net(net);
+    for (const auto &sub_entry : entry.second) {
+      const geometry::Layer &layer = sub_entry.first;
+      ShapeCollection *shape_collection = sub_entry.second.get();
+
+      size_t num_pins = 0;
+
+      ::vlsir::raw::LayerShapes *layer_shapes_pb = port_pb->add_shapes();
+      *layer_shapes_pb =
+          shape_collection->ToVLSIRLayerShapes(false, true, &num_pins);
+      LOG(INFO) << "num_pins " << num_pins;
+
+      const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
+      layer_shapes_pb->mutable_layer()->set_number(layer_info.gds_layer);
+      layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
+    }
+  }
+
+  // Collect explicit Port objects and any shape that is labelled as a pin:
+  //for (const auto &entry : ports_by_net_) {
+  //  const std::string &net = entry.first;
+  //  ::vlsir::raw::AbstractPort *port_pb = abstract_pb.add_ports();
+  //  port_pb->set_net(net);
+  //  for (const auto &port : entry.second) {
+  //    ::vlsir::raw::LayerShapes *layer_shapes_pb = port_pb->add_shapes();
+  //    ::vlsir::raw::Rectangle *rect_pb = layer_shapes_pb->add_rectangles();
+  //    *rect_pb = port->ToVLSIRRectangle();
+  //    const geometry::Layer &layer = port->layer();
+  //    const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
+  //    layer_shapes_pb->mutable_layer()->set_number(layer_info.gds_layer);
+  //    layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
+  //  }
+  //}
+
+  return abstract_pb;
+}
+
 ::vlsir::raw::Layout Layout::ToVLSIRLayout() const {
   ::vlsir::raw::Layout layout_pb;
 
@@ -173,27 +256,10 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
 
     ::vlsir::raw::LayerShapes *layer_shapes_pb = layout_pb.add_shapes();
+    *layer_shapes_pb = shape_collection->ToVLSIRLayerShapes();
+
     layer_shapes_pb->mutable_layer()->set_number(layer_info.gds_layer);
     layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
-
-    // Collect shapes by layer.
-    for (const auto &rect : shape_collection->rectangles()) {
-      ::vlsir::raw::Rectangle *rect_pb = layer_shapes_pb->add_rectangles();
-      rect_pb->mutable_lower_left()->set_x(rect->lower_left().x());
-      rect_pb->mutable_lower_left()->set_y(rect->lower_left().y());
-      rect_pb->set_width(rect->upper_right().x() - rect->lower_left().x());
-      rect_pb->set_height(rect->upper_right().y() - rect->lower_left().y());
-    }
-    for (const auto &poly : shape_collection->polygons()) {
-      ::vlsir::raw::Polygon *poly_pb = layer_shapes_pb->add_polygons();
-      for (const auto &point : poly->vertices()) {
-        ::vlsir::raw::Point *point_pb = poly_pb->add_vertices();
-        point_pb->set_x(point.x());
-        point_pb->set_y(point.y());
-      }
-    }
-    LOG_IF(WARNING, !shape_collection->ports().empty())
-        << "vlsir does not support ports yet";
   }
   for (const auto &instance : instances_) {
     ::vlsir::raw::Instance *instance_pb = layout_pb.add_instances();

@@ -1088,21 +1088,22 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
       InflatePolyLine(db, column_1_line));
   Rectangle column_1 = column_1_polygon->GetBoundingBox();
 
+  int64_t height_fet_4_5 = height + params.fet_4_5_offset_y;
   int64_t poly_width = poly_rules.min_width;
   int64_t column_2_x = column_1_x + std::max(
       diff_wing * 2 + diff_rules.min_separation + params.fet_4_length,
       poly_rules.min_pitch);
   Rectangle *column_2 = layout->AddRectangle(Rectangle(
-      Point(column_2_x, height - params.fet_4_width - 
+      Point(column_2_x, height_fet_4_5 - params.fet_4_width - 
           params.col_2_poly_overhang_bottom.value_or(default_poly_overhang)),
-      Point(column_2_x + params.fet_4_length, height +
+      Point(column_2_x + params.fet_4_length, height_fet_4_5 +
           params.col_2_poly_overhang_top.value_or(default_poly_overhang))));
 
   int64_t column_3_x = column_2_x + params.fet_5_length / 2 + poly_gap;
   Rectangle *column_3 = layout->AddRectangle(Rectangle(
-      Point(column_3_x, height - params.fet_5_width -
+      Point(column_3_x, height_fet_4_5 - params.fet_5_width -
           params.col_3_poly_overhang_bottom.value_or(default_poly_overhang)),
-      Point(column_3_x + params.fet_5_length, height +
+      Point(column_3_x + params.fet_5_length, height_fet_4_5 +
           params.col_3_poly_overhang_top.value_or(default_poly_overhang))));
 
   // +---------+---------+   +---------+---------+
@@ -1139,8 +1140,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   int64_t column_2_3_mid_x = (
       column_2->GetBoundingBox().upper_right().x() + column_3_x) / 2;
   Rectangle *pfet_4_diff = layout->AddRectangle(Rectangle(
-      Point(column_2->lower_left().x() - diff_wing, height - params.fet_4_width),
-      Point(column_2_3_mid_x, height)));
+      Point(column_2->lower_left().x() - diff_wing,
+            height_fet_4_5 - params.fet_4_width),
+      Point(column_2_3_mid_x, height_fet_4_5)));
 
   int64_t poly_contact_to_diff =
       diff_polycon_rules.max_separation + polycon_rules.via_width / 2;
@@ -1149,8 +1151,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
   // pfet 5
   Rectangle *pfet_5_diff = layout->AddRectangle(Rectangle(
-      Point(column_2_3_mid_x, height - params.fet_5_width),
-      Point(column_3->upper_right().x() + diff_wing, height)));
+      Point(column_2_3_mid_x, height_fet_4_5 - params.fet_5_width),
+      Point(column_3->upper_right().x() + diff_wing, height_fet_4_5)));
 
   std::map<const std::string, const Point> export_points = {
       {"column_0_centre_bottom_via", Point(
@@ -1304,113 +1306,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
       poly_polycon_rules.min_separation + dcon_rules.via_width / 2);
   Rectangle *via_3_1 = layout->AddSquare(
       Point(via_column_3_x,
-          pfet_4_diff->lower_left().y() + dcon_rules.via_width / 2 +
-          diff_dcon_rules.min_enclosure),
+          pfet_4_diff->centre().y()),
+          // + dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure
       via_side);
 
   int64_t via_column_4_x =
       pfet_5_diff->upper_right().x() - via_centre_to_diff_edge;
-  int64_t via_4_1_y = height - params.fet_0_width / 2;
+  int64_t via_4_1_y = height_fet_4_5 - params.fet_0_width / 2;
   Rectangle *via_4_1 = layout->AddSquare(
       Point(via_column_4_x, via_4_1_y), via_side);
-
-  PolyLineInflator inflator(design_db_->physical_db());
-
-  Polygon *input_2_met_0;
-  {
-    // Input 2 metal.
-    layout->SetActiveLayerByName("li.drawing"); 
-
-    Point p_0 = via_0_0->centre();
-    Point p_1 = Point(p_0.x(), inputs_y[1]);
-    Point p_2 = Point(p_0.x() - met1_rules.min_separation, p_1.y());
-    PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
-    input_2_line.SetWidth(li_rules.min_width);
-    input_2_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_2_line.InsertBulge(p_2, via_encap_width, via_encap_length);
-    Polygon input_2_template;
-    inflator.InflatePolyLine(input_2_line, &input_2_template);
-    // This is the installed object.
-    input_2_met_0 = layout->AddPolygon(input_2_template);
-
-    layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(p_2, via_side);
-    layout->SavePoint("input_2", via->centre());
-  }
-
-  Polygon *input_3_met_0;
-  {
-    // Input 3 metal.
-    layout->SetActiveLayerByName("li.drawing");
-    int64_t metal_width = li_rules.min_width;
-    //int64_t lower_left_y = input_2_met_0->GetBoundingBox().lower_left().y() -
-    //                       li_dcon_rules.via_overhang_wide -
-    //                       (metal_width / 2) - li_rules.min_separation;
-
-    Point p_0 = Point(via_0_0->centre().x() - met1_rules.min_separation,
-                      inputs_y[0]);
-    Point p_2 = via_2_0->centre();
-    Point p_1 = Point(p_2.x(), p_0.y());
-    PolyLine input_3_line = PolyLine(p_0, {
-        LineSegment {p_1, static_cast<uint64_t>(metal_width)},
-        LineSegment {p_2, static_cast<uint64_t>(via_encap_width)}
-    });
-    input_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_3_line.InsertBulge(p_2, via_encap_width, via_encap_length);
-
-    Polygon input_3_template;
-    inflator.InflatePolyLine(input_3_line, &input_3_template);
-    input_3_met_0 = layout->AddPolygon(input_3_template);
-
-    layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
-    layout->SavePoint("input_3", via->centre());
-  }
-
-  {
-    // Input 0 metal.
-    layout->SetActiveLayerByName("li.drawing"); 
-
-    Point p_0 = via_0_1->centre();
-    Point p_1 = Point(p_0.x(), inputs_y[2]);
-    Point p_2 = Point(p_0.x() - met1_rules.min_separation, p_1.y());
-
-    PolyLine input_0_line = PolyLine({p_0, p_1, p_2});
-    input_0_line.SetWidth(li_rules.min_width);
-    input_0_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_0_line.InsertBulge(p_2, via_encap_width, via_encap_length);
-
-    Polygon *input_0_met_0 = layout->AddPolygon(
-        InflatePolyLine(db, input_0_line));
-
-    layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(p_2, via_side);
-    layout->SavePoint("input_0", via->centre());
-  }
-
-  {
-    // Input 1 metal.
-    layout->SetActiveLayerByName("li.drawing");
-    int64_t metal_width = li_rules.min_width;
-
-    Point p_0 = Point(via_0_0->centre().x() - met1_rules.min_separation,
-                      inputs_y[3]);
-    Point p_2 = via_2_1->centre();
-    Point p_1 = Point(p_2.x(), p_0.y());
-    PolyLine input_3_line = PolyLine(p_0, {
-        LineSegment {p_1, static_cast<uint64_t>(metal_width)},
-        LineSegment {p_2, static_cast<uint64_t>(via_encap_width)}
-    });
-    input_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_3_line.InsertBulge(p_2, via_encap_width, via_encap_length);
-
-    Polygon *input_3_met_0 = layout->AddPolygon(
-        InflatePolyLine(db, input_3_line));
-
-    layout->SetActiveLayerByName("li.pin");
-    geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
-    layout->SavePoint("input_1", via->centre());
-  }
 
   {
     layout->SetActiveLayerByName("li.drawing");
@@ -1458,6 +1362,120 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     input_2_3_line.InsertBulge(p_3, via_encap_width, via_encap_length);
     layout->AddPolyLine(input_2_3_line);
     layout->SavePoint("li_corner_se_centre", p_2);
+  }
+
+  if (!params.add_input_wires) {
+    return layout.release();
+  }
+
+  PolyLineInflator inflator(design_db_->physical_db());
+
+  Polygon *input_2_met_0;
+  {
+    // Input 2 metal.
+    layout->SetActiveLayerByName("li.drawing"); 
+
+    Point p_0 = via_0_0->centre();
+    Point p_1 = Point(p_0.x(), inputs_y[1]);
+    Point p_2 = Point(p_0.x() - met1_rules.min_separation, p_1.y());
+    PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
+    input_2_line.SetWidth(li_rules.min_width);
+    input_2_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_2_line.InsertBulge(p_2, via_encap_width, via_encap_length);
+    Polygon input_2_template;
+    inflator.InflatePolyLine(input_2_line, &input_2_template);
+    // This is the installed object.
+    input_2_met_0 = layout->AddPolygon(input_2_template);
+    if (params.input_2) {
+      *params.input_2.value() = input_2_met_0;
+    }
+
+    layout->SetActiveLayerByName("li.pin");
+    geometry::Rectangle *via = layout->AddSquare(p_2, via_side);
+    layout->SavePoint("input_2", via->centre());
+  }
+
+  Polygon *input_3_met_0;
+  {
+    // Input 3 metal.
+    layout->SetActiveLayerByName("li.drawing");
+    int64_t metal_width = li_rules.min_width;
+    //int64_t lower_left_y = input_2_met_0->GetBoundingBox().lower_left().y() -
+    //                       li_dcon_rules.via_overhang_wide -
+    //                       (metal_width / 2) - li_rules.min_separation;
+
+    Point p_0 = Point(via_0_0->centre().x() - met1_rules.min_separation,
+                      inputs_y[0]);
+    Point p_2 = via_2_0->centre();
+    Point p_1 = Point(p_2.x(), p_0.y());
+    PolyLine input_3_line = PolyLine(p_0, {
+        LineSegment {p_1, static_cast<uint64_t>(metal_width)},
+        LineSegment {p_2, static_cast<uint64_t>(via_encap_width)}
+    });
+    input_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_3_line.InsertBulge(p_2, via_encap_width, via_encap_length);
+
+    Polygon input_3_template;
+    inflator.InflatePolyLine(input_3_line, &input_3_template);
+    input_3_met_0 = layout->AddPolygon(input_3_template);
+    if (params.input_3) {
+      *params.input_3.value() = input_3_met_0;
+    }
+
+    layout->SetActiveLayerByName("li.pin");
+    geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
+    layout->SavePoint("input_3", via->centre());
+  }
+
+  {
+    // Input 0 metal.
+    layout->SetActiveLayerByName("li.drawing"); 
+
+    Point p_0 = via_0_1->centre();
+    Point p_1 = Point(p_0.x(), inputs_y[2]);
+    Point p_2 = Point(p_0.x() - met1_rules.min_separation, p_1.y());
+
+    PolyLine input_0_line = PolyLine({p_0, p_1, p_2});
+    input_0_line.SetWidth(li_rules.min_width);
+    input_0_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_0_line.InsertBulge(p_2, via_encap_width, via_encap_length);
+
+    Polygon *input_0_met_0 = layout->AddPolygon(
+        InflatePolyLine(db, input_0_line));
+    if (params.input_0) {
+      *params.input_0.value() = input_0_met_0;
+    }
+
+    layout->SetActiveLayerByName("li.pin");
+    geometry::Rectangle *via = layout->AddSquare(p_2, via_side);
+    layout->SavePoint("input_0", via->centre());
+  }
+
+  {
+    // Input 1 metal.
+    layout->SetActiveLayerByName("li.drawing");
+    int64_t metal_width = li_rules.min_width;
+
+    Point p_0 = Point(via_0_0->centre().x() - met1_rules.min_separation,
+                      inputs_y[3]);
+    Point p_2 = via_2_1->centre();
+    Point p_1 = Point(p_2.x(), p_0.y());
+    PolyLine input_1_line = PolyLine(p_0, {
+        LineSegment {p_1, static_cast<uint64_t>(metal_width)},
+        LineSegment {p_2, static_cast<uint64_t>(via_encap_width)}
+    });
+    input_1_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_1_line.InsertBulge(p_2, via_encap_width, via_encap_length);
+
+    Polygon *input_1_met_0 = layout->AddPolygon(
+        InflatePolyLine(db, input_1_line));
+    if (params.input_1) {
+      *params.input_1.value() = input_1_met_0;
+    }
+
+    layout->SetActiveLayerByName("li.pin");
+    geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
+    layout->SavePoint("input_1", via->centre());
   }
 
   return layout.release();

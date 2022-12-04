@@ -1,11 +1,19 @@
 #include "shape_collection.h"
 
 #include <sstream>
+#include <map>
+#include <memory>
+#include <unordered_map>
+#include <sstream>
+#include <optional>
 
+#include "layer.h"
 #include "polygon.h"
 #include "port.h"
 #include "rectangle.h"
 #include "poly_line.h"
+
+#include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
 namespace geometry {
@@ -152,6 +160,130 @@ const Rectangle ShapeCollection::GetBoundingBox() const {
   }
 
   return Rectangle({min_x, min_y}, {max_x, max_y});
+}
+
+
+namespace {
+
+ShapeCollection *FindOrCreateCollection(
+    const std::string &net,
+    const geometry::Layer &layer,
+    std::unordered_map<
+        std::string,
+        std::map<geometry::Layer,
+                 std::unique_ptr<ShapeCollection>>> *by_layer_by_net) {
+  auto outer_it = by_layer_by_net->find(net);
+  if (outer_it == by_layer_by_net->end()) {
+    auto insertion_result = by_layer_by_net->insert({
+        net, std::map<geometry::Layer, std::unique_ptr<ShapeCollection>>()});
+    ShapeCollection *new_collection = new ShapeCollection();
+    insertion_result.first->second.insert(
+        {layer, std::unique_ptr<ShapeCollection>(new_collection)});
+    return new_collection;
+  }
+  std::map<geometry::Layer, std::unique_ptr<ShapeCollection>> &by_layer =
+      outer_it->second;
+  auto inner_it = by_layer.find(layer);
+  if (inner_it == by_layer.end()) {
+    ShapeCollection *new_collection = new ShapeCollection();
+    by_layer.insert({layer, std::unique_ptr<ShapeCollection>(new_collection)});
+    return new_collection;
+  }
+  return inner_it->second.get();
+}
+
+
+}   // namespace
+
+
+void ShapeCollection::CopyPins(
+    const std::optional<Layer> expected_layer,
+    std::unordered_map<
+        std::string,
+        std::map<geometry::Layer,
+                 std::unique_ptr<ShapeCollection>>> *shapes_by_layer_by_net)
+    const {
+
+  // Collect shapes by layer.
+  for (const auto &rect : rectangles_) {
+    if (!rect->is_pin()) {
+      continue;
+    }
+    LOG_IF(FATAL,
+        expected_layer.has_value() && *expected_layer != rect->layer())
+        << "Expected layer mismatch: " << *expected_layer
+        << " vs " << rect->layer();
+    ShapeCollection *collection = FindOrCreateCollection(
+        rect->net(), rect->layer(), shapes_by_layer_by_net);
+    Rectangle *copy = new Rectangle();
+    *copy = *rect;
+    collection->rectangles_.emplace_back(copy);
+  }
+  for (const auto &poly : polygons_) {
+    if (!poly->is_pin()) {
+      continue;
+    }
+    LOG_IF(FATAL,
+        expected_layer.has_value() && *expected_layer != poly->layer())
+        << "Expected layer mismatch: " << *expected_layer
+        << " vs " << poly->layer();
+    ShapeCollection *collection = FindOrCreateCollection(
+        poly->net(), poly->layer(), shapes_by_layer_by_net);
+    Polygon *copy = new Polygon();
+    *copy = *poly;
+    collection->polygons_.emplace_back(copy);
+  }
+  for (const auto &port : ports_) {
+    if (!port->is_pin()) {
+      continue;
+    }
+    LOG_IF(FATAL,
+        expected_layer.has_value() && *expected_layer != port->layer())
+        << "Expected layer mismatch: " << *expected_layer
+        << " vs " << port->layer();
+    ShapeCollection *collection = FindOrCreateCollection(
+        port->net(), port->layer(), shapes_by_layer_by_net);
+    Port *copy = new Port();
+    *copy = *port;
+    collection->ports_.emplace_back(copy);
+  }
+}
+
+::vlsir::raw::LayerShapes ShapeCollection::ToVLSIRLayerShapes(
+    bool include_non_pins, bool include_pins, size_t *count_out) const {
+  ::vlsir::raw::LayerShapes layer_shapes_pb;
+
+  size_t count = 0;
+
+  // Collect shapes by layer.
+  for (const auto &rect : rectangles_) {
+    if ((rect->is_pin() && !include_pins) ||
+        (!rect->is_pin() && !include_non_pins)) {
+      continue;
+    }
+    count++;
+    *layer_shapes_pb.add_rectangles() = rect->ToVLSIRRectangle();
+  }
+  for (const auto &poly : polygons_) {
+    if ((poly->is_pin() && !include_pins) ||
+        (!poly->is_pin() && !include_non_pins)) {
+      continue;
+    }
+    ::vlsir::raw::Polygon *poly_pb = layer_shapes_pb.add_polygons();
+
+    for (const auto &point : poly->vertices()) {
+      ::vlsir::raw::Point *point_pb = poly_pb->add_vertices();
+      point_pb->set_x(point.x());
+      point_pb->set_y(point.y());
+    }
+    count++;
+  }
+  LOG_IF(WARNING, !ports_.empty()) << "vlsir does not support ports yet";
+
+  if (count_out) {
+    *count_out = count;
+  }
+  return layer_shapes_pb;
 }
 
 }   // namespace geometry
