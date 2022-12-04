@@ -6,6 +6,7 @@
 #include <glog/logging.h>
 #include <sstream>
 #include <vector>
+#include <optional>
 
 #include "line_segment.h"
 #include "point.h"

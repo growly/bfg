@@ -3,7 +3,6 @@
 
 #include <utility>
 
-#include "../geometry/matrix.h"
 #include "tile.h"
 #include "../design_database.h"
 

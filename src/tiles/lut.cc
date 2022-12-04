@@ -7,7 +7,6 @@
 #include "../poly_line_inflator.h"
 #include "../routing_grid.h"
 #include "../layout.h"
-#include "../geometry/matrix.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/shape_collection.h"
 #include "../atoms/sky130_buf.h"
