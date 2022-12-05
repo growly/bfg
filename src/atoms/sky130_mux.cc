@@ -1026,7 +1026,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
   constexpr int kNumInputs = 4;
   int64_t inputs_y[kNumInputs] = {0};
-  int64_t input_y_padding = 0; // -2 * li_rules.min_separation;
+  int64_t input_x_padding = params.input_x_padding;
+  int64_t input_y_padding = params.input_y_padding;
   int64_t input_y_span = height + 2 * li_rules.min_separation +
       mcon_rules.via_width - 2 * input_y_padding;
   int64_t input_y_spacing = input_y_span / (kNumInputs - 1); 
@@ -1377,7 +1378,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
     Point p_0 = via_0_0->centre();
     Point p_1 = Point(p_0.x(), inputs_y[1]);
-    Point p_2 = Point(p_0.x() - met1_rules.min_separation, p_1.y());
+    Point p_2 = Point(p_0.x() - met1_rules.min_separation + input_x_padding,
+                      p_1.y());
     PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
     input_2_line.SetWidth(li_rules.min_width);
     input_2_line.InsertBulge(p_0, via_encap_width, via_encap_length);
@@ -1404,8 +1406,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     //                       li_dcon_rules.via_overhang_wide -
     //                       (metal_width / 2) - li_rules.min_separation;
 
-    Point p_0 = Point(via_0_0->centre().x() - met1_rules.min_separation,
-                      inputs_y[0]);
+    Point p_0 = Point(
+        via_0_0->centre().x() - met1_rules.min_separation + input_x_padding,
+        inputs_y[0]);
     Point p_2 = via_2_0->centre();
     Point p_1 = Point(p_2.x(), p_0.y());
     PolyLine input_3_line = PolyLine(p_0, {
@@ -1433,7 +1436,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
     Point p_0 = via_0_1->centre();
     Point p_1 = Point(p_0.x(), inputs_y[2]);
-    Point p_2 = Point(p_0.x() - met1_rules.min_separation, p_1.y());
+    Point p_2 = Point(
+        p_0.x() - met1_rules.min_separation + input_x_padding,
+        p_1.y());
 
     PolyLine input_0_line = PolyLine({p_0, p_1, p_2});
     input_0_line.SetWidth(li_rules.min_width);
@@ -1456,8 +1461,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     layout->SetActiveLayerByName("li.drawing");
     int64_t metal_width = li_rules.min_width;
 
-    Point p_0 = Point(via_0_0->centre().x() - met1_rules.min_separation,
-                      inputs_y[3]);
+    Point p_0 = Point(
+        via_0_0->centre().x() - met1_rules.min_separation + input_x_padding,
+        inputs_y[3]);
     Point p_2 = via_2_1->centre();
     Point p_1 = Point(p_2.x(), p_0.y());
     PolyLine input_1_line = PolyLine(p_0, {

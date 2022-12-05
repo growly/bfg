@@ -97,7 +97,9 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_0 = &left_input_0,
     .input_1 = &left_input_1,
     .input_2 = &left_input_2,
-    .input_3 = &left_input_3
+    .input_3 = &left_input_3,
+    .input_x_padding = -2000,
+    .input_y_padding = -2000
   };
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
 
@@ -147,7 +149,9 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_0 = &right_input_0,
     .input_1 = &right_input_1,
     .input_2 = &right_input_2,
-    .input_3 = &right_input_3
+    .input_3 = &right_input_3,
+    .input_x_padding = -2000,
+    .input_y_padding = -2000
   };
   mux2_layout.reset(GenerateMux2Layout(mux2_params_p));
 
@@ -214,11 +218,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         mcon_rules.via_width + li_mcon_rules.via_overhang_wide);
 
     layout->SetActiveLayerByName("li.drawing");
-    layout->AddPolyLine(line);
+    Polygon *polygon = layout->AddPolyLine(line);
+    polygon->set_is_pin(true);
+    polygon->set_net("z");
     layout->MakeVia("ncon.drawing", p_0);
     layout->MakeVia("pcon.drawing", p_3);
 
-    layout->MakePort("z", output_via_centre, "mcon.drawing");
+    //layout->MakePort("z", output_via_centre, "mcon.drawing");
   }
   
 
@@ -255,7 +261,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
     layout->MakeVia("polycon.drawing", actual_via);
     p_0 = actual_via;
-    p_1 = p_0 - Point(polycon_rules.via_width / 2, 0);
+    p_1 = p_0 - Point(6 * polycon_rules.via_width / 2, 0);
 
     layout->SetActiveLayerByName("li.drawing");
     line = PolyLine({p_0, p_1});
@@ -265,7 +271,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     Polygon *polygon = layout->AddPolyLine(line);
     polygon->set_net("s0b");
     polygon->set_is_pin(true);
-    layout->MakePort("s0b", p_1, "li.drawing");
+    //layout->MakePort("s0b", p_1, "li.drawing");
   }
 
   {
@@ -298,7 +304,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     p_0 = actual_via;
     //p_1 = Point(p_0.x(), p_0.y() + polycon_rules.via_width);
     //p_2 = Point(p_1.x() + polycon_rules.via_width, p_1.y());
-    p_1 = p_0 + Point(polycon_rules.via_width / 2, 0);
+    p_1 = p_0 + Point(6 * polycon_rules.via_width / 2, 0);
 
     layout->SetActiveLayerByName("li.drawing");
     line = PolyLine({p_0, p_1});
@@ -371,8 +377,24 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         LineSegment {p_3, static_cast<uint64_t>(mux2_params_p.fet_4_length)}
     });
 
+    Point actual_via = Point((p_1.x() + p_2.x()) / 2, bar_y_high);
+    line.InsertBulge(
+        actual_via,
+        poly_polycon_via_bulge_width,
+        poly_polycon_via_bulge_length);
+
     layout->SetActiveLayerByName("poly.drawing");
     layout->AddPolyLine(line);
+
+    // The port needs to be on li.drawing.
+    layout->MakeVia("polycon.drawing", actual_via);
+
+    layout->SetActiveLayerByName("li.drawing");
+    int64_t pour_side = std::max(
+        li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    Rectangle *rectangle = layout->AddSquare(actual_via, pour_side);
+    rectangle->set_net("s1b");
+    rectangle->set_is_pin(true);
 
     // FIXME(aryap): This needs a port.
     // The port needs to be on li.drawing.
@@ -414,7 +436,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
   // Add PR boundary.
   Rectangle bounding_box = layout->GetBoundingBox();
-  constexpr int64_t height = 3920;
+  // 7t gf180mcu standard cell: 3920;
+  constexpr int64_t height = bounding_box.Height();
   int64_t padding_left = nwell_padding;
   int64_t padding_right = nwell_padding;
   layout->SetActiveLayerByName("areaid.standardrc");

@@ -85,6 +85,10 @@ class Sky130Mux: public Atom {
     std::optional<bfg::geometry::Polygon**> input_1;
     std::optional<bfg::geometry::Polygon**> input_2;
     std::optional<bfg::geometry::Polygon**> input_3;
+
+    // Additionally padding for the inputs.
+    int64_t input_x_padding = 0;
+    int64_t input_y_padding = 0;
   };
 
   Sky130Mux(const Parameters &parameters,
