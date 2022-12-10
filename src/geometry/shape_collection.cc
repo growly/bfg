@@ -12,6 +12,7 @@
 #include "port.h"
 #include "rectangle.h"
 #include "poly_line.h"
+#include "../physical_properties_database.h"
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -250,7 +251,10 @@ void ShapeCollection::CopyPins(
 }
 
 ::vlsir::raw::LayerShapes ShapeCollection::ToVLSIRLayerShapes(
-    bool include_non_pins, bool include_pins, size_t *count_out) const {
+    const PhysicalPropertiesDatabase &db,
+    bool include_non_pins,
+    bool include_pins,
+    size_t *count_out) const {
   ::vlsir::raw::LayerShapes layer_shapes_pb;
 
   size_t count = 0;
@@ -262,7 +266,7 @@ void ShapeCollection::CopyPins(
       continue;
     }
     count++;
-    *layer_shapes_pb.add_rectangles() = rect->ToVLSIRRectangle();
+    *layer_shapes_pb.add_rectangles() = rect->ToVLSIRRectangle(db);
   }
   for (const auto &poly : polygons_) {
     if ((poly->is_pin() && !include_pins) ||
@@ -273,8 +277,8 @@ void ShapeCollection::CopyPins(
 
     for (const auto &point : poly->vertices()) {
       ::vlsir::raw::Point *point_pb = poly_pb->add_vertices();
-      point_pb->set_x(point.x());
-      point_pb->set_y(point.y());
+      point_pb->set_x(db.ToExternalUnits(point.x()));
+      point_pb->set_y(db.ToExternalUnits(point.y()));
     }
     count++;
   }

@@ -16,6 +16,9 @@
 #include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
+
+class PhysicalPropertiesDatabase;
+
 namespace geometry {
 
 class ShapeCollection : public Manipulable {
@@ -45,6 +48,7 @@ class ShapeCollection : public Manipulable {
       const;
 
   ::vlsir::raw::LayerShapes ToVLSIRLayerShapes(
+      const PhysicalPropertiesDatabase &db,
       bool include_non_pins = true,
       bool include_pins = true,
       size_t *count_out = nullptr) const;

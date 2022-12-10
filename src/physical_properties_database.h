@@ -7,9 +7,7 @@
 #include <functional>
 #include <optional>
 
-#include "abstract_via.h"
 #include "geometry/layer.h"
-#include "geometry/rectangle.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {

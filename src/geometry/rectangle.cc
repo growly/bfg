@@ -1,9 +1,9 @@
 #include "rectangle.h"
-
-#include "point.h"
-
 #include <algorithm>
 #include <glog/logging.h>
+
+#include "point.h"
+#include "../physical_properties_database.h"
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -100,16 +100,18 @@ Rectangle Rectangle::BoundingBoxIfRotated(
   return rotated;
 }
 
-::vlsir::raw::Rectangle Rectangle::ToVLSIRRectangle() const{
+::vlsir::raw::Rectangle Rectangle::ToVLSIRRectangle(
+    const PhysicalPropertiesDatabase &db) const {
   ::vlsir::raw::Rectangle rect_pb;
-  rect_pb.mutable_lower_left()->set_x(lower_left_.x());
-  rect_pb.mutable_lower_left()->set_y(lower_left_.y());
-  rect_pb.set_width(Width());
-  rect_pb.set_height(Height());
+  rect_pb.mutable_lower_left()->set_x(db.ToExternalUnits(lower_left_.x()));
+  rect_pb.mutable_lower_left()->set_y(db.ToExternalUnits(lower_left_.y()));
+  rect_pb.set_width(db.ToExternalUnits(Width()));
+  rect_pb.set_height(db.ToExternalUnits(Height()));
   return rect_pb;
 }
 
-::vlsir::raw::Polygon Rectangle::ToVLSIRPolygon() const {
+::vlsir::raw::Polygon Rectangle::ToVLSIRPolygon(
+    const PhysicalPropertiesDatabase &db) const {
   ::vlsir::raw::Polygon polygon_pb;
   std::vector<Point> outline_points = {
       lower_left_,
@@ -119,8 +121,8 @@ Rectangle Rectangle::BoundingBoxIfRotated(
   };
   for (const auto &point : outline_points) {
     ::vlsir::raw::Point *point_pb = polygon_pb.add_vertices();
-    point_pb->set_x(point.x());
-    point_pb->set_y(point.y());
+    point_pb->set_x(db.ToExternalUnits(point.x()));
+    point_pb->set_y(db.ToExternalUnits(point.y()));
   }
   return polygon_pb;
 }

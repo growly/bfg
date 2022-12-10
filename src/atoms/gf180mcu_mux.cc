@@ -72,19 +72,19 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   Mux2Parameters mux2_params_n = {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
-    .fet_0_width = 465,
-    .fet_1_width = 465,
-    .fet_2_width = 465,
-    .fet_3_width = 465,
-    .fet_4_width = 465,
-    .fet_5_width = 465,
-    .fet_0_length = 600,
-    .fet_1_length = 600,
-    .fet_2_length = 600,
-    .fet_3_length = 600,
-    .fet_4_length = 600,
-    .fet_5_length = 600,
-    .fet_4_5_offset_y = -200,
+    .fet_0_width = db.ToInternalUnits(465),
+    .fet_1_width = db.ToInternalUnits(465),
+    .fet_2_width = db.ToInternalUnits(465),
+    .fet_3_width = db.ToInternalUnits(465),
+    .fet_4_width = db.ToInternalUnits(465),
+    .fet_5_width = db.ToInternalUnits(465),
+    .fet_0_length = db.ToInternalUnits(600),
+    .fet_1_length = db.ToInternalUnits(600),
+    .fet_2_length = db.ToInternalUnits(600),
+    .fet_3_length = db.ToInternalUnits(600),
+    .fet_4_length = db.ToInternalUnits(600),
+    .fet_5_length = db.ToInternalUnits(600),
+    .fet_4_5_offset_y = db.ToInternalUnits(-200),
     .add_input_wires = true,
     .col_0_poly_overhang_top = 0,
     .col_0_poly_overhang_bottom = ndiff_poly_rules.min_enclosure,
@@ -98,8 +98,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_1 = &left_input_1,
     .input_2 = &left_input_2,
     .input_3 = &left_input_3,
-    .input_x_padding = -2000,
-    .input_y_padding = -2000
+    .input_x_padding = 0,
+    .input_y_padding = 0
   };
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
 
@@ -123,19 +123,19 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   Mux2Parameters mux2_params_p = {
     .diff_layer_name = "pdiff.drawing",
     .diff_contact_layer_name = "pcon.drawing",
-    .fet_0_width = 865,
-    .fet_1_width = 865,
-    .fet_2_width = 865,
-    .fet_3_width = 865,
-    .fet_4_width = 865,
-    .fet_5_width = 865,
-    .fet_0_length = 500,
-    .fet_1_length = 500,
-    .fet_2_length = 500,
-    .fet_3_length = 500,
-    .fet_4_length = 500,
-    .fet_5_length = 500,
-    .fet_4_5_offset_y = -200,
+    .fet_0_width = db.ToInternalUnits(865),
+    .fet_1_width = db.ToInternalUnits(865),
+    .fet_2_width = db.ToInternalUnits(865),
+    .fet_3_width = db.ToInternalUnits(865),
+    .fet_4_width = db.ToInternalUnits(865),
+    .fet_5_width = db.ToInternalUnits(865),
+    .fet_0_length = db.ToInternalUnits(500),
+    .fet_1_length = db.ToInternalUnits(500),
+    .fet_2_length = db.ToInternalUnits(500),
+    .fet_3_length = db.ToInternalUnits(500),
+    .fet_4_length = db.ToInternalUnits(500),
+    .fet_5_length = db.ToInternalUnits(500),
+    .fet_4_5_offset_y = db.ToInternalUnits(-200),
     .add_input_wires = true,
     .col_0_poly_overhang_top = pdiff_poly_rules.min_enclosure,
     .col_0_poly_overhang_bottom = 0,
@@ -150,8 +150,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_1 = &right_input_1,
     .input_2 = &right_input_2,
     .input_3 = &right_input_3,
-    .input_x_padding = -2000,
-    .input_y_padding = -2000
+    .input_x_padding = 0,
+    .input_y_padding = 0,
   };
   mux2_layout.reset(GenerateMux2Layout(mux2_params_p));
 
@@ -368,7 +368,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         p_3.y() + poly_width / 2 + pdiff_poly_rules.min_enclosure);
     bar_y_high = std::max(
         new_bar_y_high,
-        bar_y_high + poly_width + poly_rules.min_separation);
+        bar_y_high + poly_polycon_via_bulge_width / 2 +
+            poly_width / 2 + poly_rules.min_separation);
     Point p_1 = Point(p_0.x(), bar_y_high);
     Point p_2 = Point(p_3.x(), bar_y_high);
     PolyLine line = PolyLine(p_0, {
@@ -437,7 +438,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   // Add PR boundary.
   Rectangle bounding_box = layout->GetBoundingBox();
   // 7t gf180mcu standard cell: 3920;
-  constexpr int64_t height = bounding_box.Height();
+  int64_t height = bounding_box.Height();
   int64_t padding_left = nwell_padding;
   int64_t padding_right = nwell_padding;
   layout->SetActiveLayerByName("areaid.standardrc");
