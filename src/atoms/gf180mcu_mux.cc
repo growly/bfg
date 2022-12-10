@@ -104,13 +104,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
 
   left_input_0->set_is_pin(true);
-  left_input_0->set_net("i0");
+  left_input_0->set_net("i0_l");
   left_input_1->set_is_pin(true);
-  left_input_1->set_net("i1");
+  left_input_1->set_net("i1_l");
   left_input_2->set_is_pin(true);
-  left_input_2->set_net("i2");
+  left_input_2->set_net("i2_l");
   left_input_3->set_is_pin(true);
-  left_input_3->set_net("i3");
+  left_input_3->set_net("i3_l");
 
   Rectangle mux2_bounding_box = mux2_layout->GetBoundingBox();
 
@@ -156,13 +156,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   mux2_layout.reset(GenerateMux2Layout(mux2_params_p));
 
   right_input_0->set_is_pin(true);
-  right_input_0->set_net("i0");
+  right_input_0->set_net("i0_r");
   right_input_1->set_is_pin(true);
-  right_input_1->set_net("i1");
+  right_input_1->set_net("i1_r");
   right_input_2->set_is_pin(true);
-  right_input_2->set_net("i2");
+  right_input_2->set_net("i2_r");
   right_input_3->set_is_pin(true);
-  right_input_3->set_net("i3");
+  right_input_3->set_net("i3_r");
 
   int64_t nsdm_padding = diff_nsdm_rules.min_enclosure;
   int64_t psdm_padding = diff_psdm_rules.min_enclosure;
@@ -190,48 +190,14 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
   // Connect the output.
   int64_t metal_width = li_rules.min_width;
-  {
-    Point p_0 = layout->GetPoint("left.output");
-    Point p_3 = layout->GetPoint("right.output");
-    int64_t bar_y = std::max(
-        layout->GetPoint("left.li_corner_ne_centre").y(),
-        layout->GetPoint("right.li_corner_ne_centre").y()) +
-        li_rules.min_separation + metal_width / 2;
-    Point p_1 = Point(p_0.x(), bar_y);
-    Point p_2 = Point(p_3.x(), bar_y);
-    PolyLine line = PolyLine({p_0, p_1, p_2, p_3});
-    line.SetWidth(metal_width);
-
-    line.InsertBulge(
-        p_0,
-        ncon_rules.via_width + 2 * li_ncon_rules.via_overhang_wide,
-        ncon_rules.via_width + 2 * li_ncon_rules.via_overhang);
-    line.InsertBulge(
-        p_3,
-        pcon_rules.via_width + 2 * li_pcon_rules.via_overhang_wide,
-        pcon_rules.via_width + 2 * li_pcon_rules.via_overhang);
-
-    Point output_via_centre = Point((p_0.x() + p_3.x()) / 2, bar_y);
-    line.InsertBulge(
-        output_via_centre,
-        mcon_rules.via_width + li_mcon_rules.via_overhang,
-        mcon_rules.via_width + li_mcon_rules.via_overhang_wide);
-
-    layout->SetActiveLayerByName("li.drawing");
-    Polygon *polygon = layout->AddPolyLine(line);
-    polygon->set_is_pin(true);
-    polygon->set_net("z");
-    layout->MakeVia("ncon.drawing", p_0);
-    layout->MakeVia("pcon.drawing", p_3);
-
-    //layout->MakePort("z", output_via_centre, "mcon.drawing");
-  }
-  
 
   // Connect select-line polys.
   int64_t poly_width = poly_rules.min_width;
   int64_t bar_y_high = 0;
   int64_t bar_y_low = 0;
+  int64_t hack_row_plus_1 = 0;
+  int64_t hack_row_plus_2 = 0;
+  int64_t hack_row_minus_1 = 0;
   {
     // Left column 2 poly to right column 3 poly.
     Point p_0 = layout->GetPoint("left.column_2_centre_bottom");
@@ -261,10 +227,15 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
     layout->MakeVia("polycon.drawing", actual_via);
     p_0 = actual_via;
-    p_1 = p_0 - Point(6 * polycon_rules.via_width / 2, 0);
+    p_1 = p_0 - Point(4 * polycon_rules.via_width / 2, 0);
+    
+    // HACK HACK HACK
+    hack_row_plus_1 = layout->GetBoundingBox().upper_right().y() + 2000;
+    p_2 = Point(p_1.x(), hack_row_plus_1);
+    p_3 = Point(layout->GetBoundingBox().lower_left().x(), p_2.y());
 
     layout->SetActiveLayerByName("li.drawing");
-    line = PolyLine({p_0, p_1});
+    line = PolyLine({p_0, p_1, p_2, p_3});
     line.SetWidth(li_polycon_via_bulge_width);
     line.InsertBulge(p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     line.InsertBulge(p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
@@ -304,10 +275,14 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     p_0 = actual_via;
     //p_1 = Point(p_0.x(), p_0.y() + polycon_rules.via_width);
     //p_2 = Point(p_1.x() + polycon_rules.via_width, p_1.y());
-    p_1 = p_0 + Point(6 * polycon_rules.via_width / 2, 0);
+    p_1 = p_0 + Point(4 * polycon_rules.via_width / 2, 0);
+    
+    // HACK HACK HACK
+    p_2 = Point(p_1.x(), hack_row_plus_1);
+    p_3 = Point(layout->GetBoundingBox().upper_right().x(), p_2.y());
 
     layout->SetActiveLayerByName("li.drawing");
-    line = PolyLine({p_0, p_1});
+    line = PolyLine({p_0, p_1, p_2, p_3});
     line.SetWidth(li_polycon_via_bulge_width);
     line.InsertBulge(p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     line.InsertBulge(p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
@@ -349,12 +324,28 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     // The port needs to be on li.drawing.
     layout->MakeVia("polycon.drawing", actual_via);
 
+
+    // HACK HACK HACK
+    hack_row_minus_1 = layout->GetBoundingBox().lower_left().y() - 2000;
+    p_0 = actual_via;
+    p_1 = Point(p_0.x(), hack_row_minus_1);
+    p_2 = Point(layout->GetBoundingBox().lower_left().x(), p_1.y());
+
+    // HACK HACK HACK
+    //layout->SetActiveLayerByName("li.drawing");
+    //int64_t pour_side = std::max(
+    //    li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    //Rectangle *rectangle = layout->AddSquare(actual_via, pour_side);
+    //rectangle->set_net("s1");
+    //rectangle->set_is_pin(true);
     layout->SetActiveLayerByName("li.drawing");
-    int64_t pour_side = std::max(
-        li_polycon_via_bulge_width, li_polycon_via_bulge_length);
-    Rectangle *rectangle = layout->AddSquare(actual_via, pour_side);
-    rectangle->set_net("s1");
-    rectangle->set_is_pin(true);
+    line = PolyLine({p_0, p_1, p_2});
+    line.SetWidth(li_polycon_via_bulge_width);
+    line.InsertBulge(p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    Polygon *polygon = layout->AddPolyLine(line);
+    polygon->set_net("s1");
+    polygon->set_is_pin(true);
+
     // FIXME(aryap): What port is this though?
     //layout->MakePort("s1", actual_via, "li.drawing");
   }
@@ -368,7 +359,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         p_3.y() + poly_width / 2 + pdiff_poly_rules.min_enclosure);
     bar_y_high = std::max(
         new_bar_y_high,
-        bar_y_high + poly_width + poly_rules.min_separation);
+        bar_y_high + poly_polycon_via_bulge_width / 2 +
+            + poly_width / 2 + poly_rules.min_separation );
     Point p_1 = Point(p_0.x(), bar_y_high);
     Point p_2 = Point(p_3.x(), bar_y_high);
     PolyLine line = PolyLine(p_0, {
@@ -389,12 +381,25 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     // The port needs to be on li.drawing.
     layout->MakeVia("polycon.drawing", actual_via);
 
+    // HACK HACK HACK
+    hack_row_plus_2 = layout->GetBoundingBox().upper_right().y() + 2000;
+    p_0 = actual_via;
+    p_1 = Point(p_0.x(), hack_row_plus_2);
+    p_2 = Point(layout->GetBoundingBox().lower_left().x(), p_1.y());
+
+    //layout->SetActiveLayerByName("li.drawing");
+    //int64_t pour_side = std::max(
+    //    li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    //Rectangle *rectangle = layout->AddSquare(actual_via, pour_side);
+    //rectangle->set_net("s1b");
+    //rectangle->set_is_pin(true);
     layout->SetActiveLayerByName("li.drawing");
-    int64_t pour_side = std::max(
-        li_polycon_via_bulge_width, li_polycon_via_bulge_length);
-    Rectangle *rectangle = layout->AddSquare(actual_via, pour_side);
-    rectangle->set_net("s1b");
-    rectangle->set_is_pin(true);
+    line = PolyLine({p_0, p_1, p_2});
+    line.SetWidth(li_polycon_via_bulge_width);
+    line.InsertBulge(p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    Polygon *polygon = layout->AddPolyLine(line);
+    polygon->set_net("s1b");
+    polygon->set_is_pin(true);
 
     // FIXME(aryap): This needs a port.
     // The port needs to be on li.drawing.
@@ -404,6 +409,56 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     layout->MakeVia("polycon.drawing", 
                     layout->GetPoint("left.column_3_centre_bottom_via"));
   }
+
+  {
+    Point p_0 = layout->GetPoint("left.output");
+    Point p_3 = layout->GetPoint("right.output");
+    int64_t bar_y = std::max(
+        layout->GetPoint("left.li_corner_ne_centre").y(),
+        layout->GetPoint("right.li_corner_ne_centre").y()) +
+        li_rules.min_separation + metal_width / 2;
+    Point p_1 = Point(p_0.x(), bar_y);
+    Point p_2 = Point(p_3.x(), bar_y);
+    PolyLine line = PolyLine({p_0, p_1, p_2, p_3});
+    line.SetWidth(metal_width);
+
+    layout->MakeVia("ncon.drawing", p_0);
+    layout->MakeVia("pcon.drawing", p_3);
+
+    line.InsertBulge(
+        p_0,
+        ncon_rules.via_width + 2 * li_ncon_rules.via_overhang_wide,
+        ncon_rules.via_width + 2 * li_ncon_rules.via_overhang);
+    line.InsertBulge(
+        p_3,
+        pcon_rules.via_width + 2 * li_pcon_rules.via_overhang_wide,
+        pcon_rules.via_width + 2 * li_pcon_rules.via_overhang);
+
+    Point output_via_centre = Point((p_0.x() + p_3.x()) / 2, bar_y);
+    line.InsertBulge(
+        output_via_centre,
+        mcon_rules.via_width + li_mcon_rules.via_overhang,
+        mcon_rules.via_width + li_mcon_rules.via_overhang_wide);
+
+    layout->SetActiveLayerByName("li.drawing");
+    Polygon *polygon = layout->AddPolyLine(line);
+    polygon->set_is_pin(true);
+    polygon->set_net("z");
+
+    // HACK HACK HACK
+    p_0 = Point((output_via_centre.x() + p_3.x()) / 2, output_via_centre.y());
+    p_1 = Point(p_0.x(), hack_row_plus_2);
+    p_2 = Point(layout->GetBoundingBox().upper_right().x(), p_1.y());
+    line = PolyLine({p_0, p_1, p_2});
+    line.SetWidth(li_polycon_via_bulge_width);
+    polygon = layout->AddPolyLine(line);
+
+    polygon->set_is_pin(true);
+    polygon->set_net("z");
+
+    //layout->MakePort("z", output_via_centre, "mcon.drawing");
+  }
+  
   // Add diffusion qualifying layers, wells, etc.
   //
   // Left side is N.
@@ -437,7 +492,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   // Add PR boundary.
   Rectangle bounding_box = layout->GetBoundingBox();
   // 7t gf180mcu standard cell: 3920;
-  constexpr int64_t height = bounding_box.Height();
+  int64_t height = bounding_box.Height();
   int64_t padding_left = nwell_padding;
   int64_t padding_right = nwell_padding;
   layout->SetActiveLayerByName("areaid.standardrc");

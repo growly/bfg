@@ -1381,7 +1381,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     Point p_2 = Point(p_0.x() - met1_rules.min_separation + input_x_padding,
                       p_1.y());
     PolyLine input_2_line = PolyLine({p_0, p_1, p_2});
-    input_2_line.SetWidth(li_rules.min_width);
+    input_2_line.SetWidth(via_encap_width);
     input_2_line.InsertBulge(p_0, via_encap_width, via_encap_length);
     input_2_line.InsertBulge(p_2, via_encap_width, via_encap_length);
     Polygon input_2_template;
@@ -1441,7 +1441,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
         p_1.y());
 
     PolyLine input_0_line = PolyLine({p_0, p_1, p_2});
-    input_0_line.SetWidth(li_rules.min_width);
+    input_0_line.SetWidth(via_encap_width);
     input_0_line.InsertBulge(p_0, via_encap_width, via_encap_length);
     input_0_line.InsertBulge(p_2, via_encap_width, via_encap_length);
 
