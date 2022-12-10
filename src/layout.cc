@@ -175,7 +175,8 @@ void Layout::SetActiveLayerByName(const std::string &name) {
 
   abstract_pb.set_name(parent_cell_->name());
 
-  *abstract_pb.mutable_outline() = GetTilingBounds().ToVLSIRPolygon();
+  *abstract_pb.mutable_outline() =
+      GetTilingBounds().ToVLSIRPolygon(physical_db_);
 
   std::unordered_map<
       std::string,
@@ -193,7 +194,8 @@ void Layout::SetActiveLayerByName(const std::string &name) {
 
     size_t num_obstructions = 0;
     ::vlsir::raw::LayerShapes obstructions = 
-        shape_collection->ToVLSIRLayerShapes(true, false, &num_obstructions);
+        shape_collection->ToVLSIRLayerShapes(
+            physical_db_, true, false, &num_obstructions);
 
     if (num_obstructions > 0) {
       ::vlsir::raw::LayerShapes *layer_shapes_pb = abstract_pb.add_blockages();
@@ -205,6 +207,8 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     }
   }
 
+  // This should include all Port objects explicitly created, since they should
+  // be assigned is_pin = true and will have an associated net.
   for (const auto &entry : pins_by_layer_by_net) {
     const std::string &net = entry.first;
     ::vlsir::raw::AbstractPort *port_pb = abstract_pb.add_ports();
@@ -217,7 +221,8 @@ void Layout::SetActiveLayerByName(const std::string &name) {
 
       ::vlsir::raw::LayerShapes *layer_shapes_pb = port_pb->add_shapes();
       *layer_shapes_pb =
-          shape_collection->ToVLSIRLayerShapes(false, true, &num_pins);
+          shape_collection->ToVLSIRLayerShapes(
+              physical_db_, false, true, &num_pins);
       LOG(INFO) << "num_pins " << num_pins;
 
       const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
@@ -226,6 +231,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     }
   }
 
+  // TODO(aryap):
   // Collect explicit Port objects and any shape that is labelled as a pin:
   //for (const auto &entry : ports_by_net_) {
   //  const std::string &net = entry.first;
@@ -256,7 +262,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
 
     ::vlsir::raw::LayerShapes *layer_shapes_pb = layout_pb.add_shapes();
-    *layer_shapes_pb = shape_collection->ToVLSIRLayerShapes();
+    *layer_shapes_pb = shape_collection->ToVLSIRLayerShapes(physical_db_);
 
     layer_shapes_pb->mutable_layer()->set_number(layer_info.gds_layer);
     layer_shapes_pb->mutable_layer()->set_purpose(layer_info.gds_datatype);
@@ -269,7 +275,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
         instance->template_layout()->NameOrParentName());
     *instance_pb->mutable_cell() = cell_reference;
     *instance_pb->mutable_origin_location() =
-        instance->lower_left().ToVLSIRPoint();
+        instance->lower_left().ToVLSIRPoint(physical_db_);
     instance_pb->set_reflect_vert(instance->reflect_vertical());
     // FIXME(aryap): VLSIR needs to make this ccw:
     instance_pb->set_rotation_clockwise_degrees(

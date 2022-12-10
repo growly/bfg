@@ -10,6 +10,9 @@
 #include "vlsir/layout/raw.pb.h"
 
 namespace bfg {
+
+class PhysicalPropertiesDatabase;
+
 namespace geometry {
 
 // TODO(aryap): Do we need to have separate classes for a "rectangle", the
@@ -79,8 +82,10 @@ class Rectangle : public Shape {
     return *this;
   }
 
-  ::vlsir::raw::Rectangle ToVLSIRRectangle() const;
-  ::vlsir::raw::Polygon ToVLSIRPolygon() const;
+  ::vlsir::raw::Rectangle ToVLSIRRectangle(
+      const PhysicalPropertiesDatabase &db) const;
+  ::vlsir::raw::Polygon ToVLSIRPolygon(
+      const PhysicalPropertiesDatabase &db) const;
 
   const Point &lower_left() const { return lower_left_; }
   void set_lower_left(const Point &lower_left) { lower_left_ = lower_left; }

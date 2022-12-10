@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "../physical_properties_database.h"
 #include "abstract_shape.h"
 #include "manipulable.h"
 #include "vlsir/layout/raw.pb.h"
@@ -25,10 +26,11 @@ class Point : public AbstractShape, public Manipulable {
   void set_x(const int64_t &x) { x_ = x; }
   void set_y(const int64_t &y) { y_ = y; }
 
-  ::vlsir::raw::Point ToVLSIRPoint() const {
+  ::vlsir::raw::Point ToVLSIRPoint(
+      const PhysicalPropertiesDatabase &db) const {
     ::vlsir::raw::Point point_pb;
-    point_pb.set_x(x_);
-    point_pb.set_y(y_);
+    point_pb.set_x(db.ToExternalUnits(x_));
+    point_pb.set_y(db.ToExternalUnits(y_));
     return point_pb;
   }
 

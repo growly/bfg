@@ -7,9 +7,7 @@
 #include <functional>
 #include <optional>
 
-#include "abstract_via.h"
 #include "geometry/layer.h"
-#include "geometry/rectangle.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {
@@ -96,11 +94,9 @@ class PhysicalPropertiesDatabase {
 
   void LoadTechnology(const vlsir::tech::Technology &pdk);
 
-  // Internally, all positions and lengths are computed in integer units.
-  // Externally to this program, the user probably expects real units, like
-  // mircons or nanometres (i.e. not yards or inches or anything stupid like
-  // that). When setting up a process, we must define the conversion factor
-  // between external and internal units.
+  // Internally, all positions and lengths are computed in integer units,
+  // meaning that truncation and rounding have to be considered when it is
+  // prudent to do so.
   int64_t ToInternalUnits(const int64_t external_value) const {
     return external_value * internal_units_per_external_;
   }
@@ -143,6 +139,13 @@ class PhysicalPropertiesDatabase {
   const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
 
   std::string DescribeLayers() const;
+
+  void set_internal_units_per_external(double new_value) {
+    internal_units_per_external_ = new_value;
+  }
+  double internal_units_per_external() const {
+    return internal_units_per_external_;
+  }
 
  private:
   geometry::Layer GetNextInternalLayer();
