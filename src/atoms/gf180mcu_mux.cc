@@ -98,8 +98,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_1 = &left_input_1,
     .input_2 = &left_input_2,
     .input_3 = &left_input_3,
-    .input_x_padding = 0,
-    .input_y_padding = 0
+    .input_x_padding = db.ToInternalUnits(-2000),
+    .input_y_padding = db.ToInternalUnits(-2000)
   };
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
 
@@ -150,8 +150,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_1 = &right_input_1,
     .input_2 = &right_input_2,
     .input_3 = &right_input_3,
-    .input_x_padding = 0,
-    .input_y_padding = 0,
+    .input_x_padding = db.ToInternalUnits(-2000),
+    .input_y_padding = db.ToInternalUnits(-2000),
   };
   mux2_layout.reset(GenerateMux2Layout(mux2_params_p));
 
@@ -230,7 +230,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     p_1 = p_0 - Point(4 * polycon_rules.via_width / 2, 0);
     
     // HACK HACK HACK
-    hack_row_plus_1 = layout->GetBoundingBox().upper_right().y() + 2000;
+    hack_row_plus_1 = layout->GetBoundingBox().upper_right().y() +
+        db.ToInternalUnits(2000);
     p_2 = Point(p_1.x(), hack_row_plus_1);
     p_3 = Point(layout->GetBoundingBox().lower_left().x(), p_2.y());
 
@@ -326,7 +327,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
 
     // HACK HACK HACK
-    hack_row_minus_1 = layout->GetBoundingBox().lower_left().y() - 2000;
+    hack_row_minus_1 = layout->GetBoundingBox().lower_left().y() -
+        db.ToInternalUnits(2000);
     p_0 = actual_via;
     p_1 = Point(p_0.x(), hack_row_minus_1);
     p_2 = Point(layout->GetBoundingBox().lower_left().x(), p_1.y());
@@ -382,7 +384,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     layout->MakeVia("polycon.drawing", actual_via);
 
     // HACK HACK HACK
-    hack_row_plus_2 = layout->GetBoundingBox().upper_right().y() + 2000;
+    hack_row_plus_2 = layout->GetBoundingBox().upper_right().y() +
+        db.ToInternalUnits(2000);
     p_0 = actual_via;
     p_1 = Point(p_0.x(), hack_row_plus_2);
     p_2 = Point(layout->GetBoundingBox().lower_left().x(), p_1.y());
