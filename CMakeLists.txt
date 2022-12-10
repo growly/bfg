@@ -205,6 +205,7 @@ target_include_directories(bfg PUBLIC
 
 find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
 message(STATUS "found ${tcmalloc_lib}")
+message(STATUS \t${Protobuf_LIBRARIES})
 
 target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
                                       gflags
