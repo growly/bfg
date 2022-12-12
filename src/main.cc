@@ -275,7 +275,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("li.drawing", intra_constraints);
   intra_constraints = {
-    .via_width = db->ToInternalUnits(230),
+    .via_width = db->ToInternalUnits(220),
   };
   db->AddRules("ncon.drawing", intra_constraints);
   db->AddRules("pcon.drawing", intra_constraints);

@@ -104,13 +104,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
 
   left_input_0->set_is_pin(true);
-  left_input_0->set_net("i0");
+  left_input_0->set_net("i0_l");
   left_input_1->set_is_pin(true);
-  left_input_1->set_net("i1");
+  left_input_1->set_net("i1_l");
   left_input_2->set_is_pin(true);
-  left_input_2->set_net("i2");
+  left_input_2->set_net("i2_l");
   left_input_3->set_is_pin(true);
-  left_input_3->set_net("i3");
+  left_input_3->set_net("i3_l");
 
   Rectangle mux2_bounding_box = mux2_layout->GetBoundingBox();
 
@@ -156,13 +156,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   mux2_layout.reset(GenerateMux2Layout(mux2_params_p));
 
   right_input_0->set_is_pin(true);
-  right_input_0->set_net("i0");
+  right_input_0->set_net("i0_r");
   right_input_1->set_is_pin(true);
-  right_input_1->set_net("i1");
+  right_input_1->set_net("i1_r");
   right_input_2->set_is_pin(true);
-  right_input_2->set_net("i2");
+  right_input_2->set_net("i2_r");
   right_input_3->set_is_pin(true);
-  right_input_3->set_net("i3");
+  right_input_3->set_net("i3_r");
 
   int64_t nsdm_padding = diff_nsdm_rules.min_enclosure;
   int64_t psdm_padding = diff_psdm_rules.min_enclosure;
@@ -249,9 +249,6 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     layout->SetActiveLayerByName("poly.drawing");
     layout->AddPolyLine(line);
 
-    layout->MakeVia("polycon.drawing", 
-                    layout->GetPoint("left.column_3_centre_bottom_via"));
-
     Point actual_via = p_1 + Point(
         (-mux2_params_n.fet_4_length + polycon_rules.via_width) / 2 +
             poly_polycon_rules.min_enclosure,
@@ -266,8 +263,10 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     layout->SetActiveLayerByName("li.drawing");
     line = PolyLine({p_0, p_1});
     line.SetWidth(li_polycon_via_bulge_width);
-    line.InsertBulge(p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
-    line.InsertBulge(p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    line.InsertBulge(
+        p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    line.InsertBulge(
+        p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     Polygon *polygon = layout->AddPolyLine(line);
     polygon->set_net("s0b");
     polygon->set_is_pin(true);
@@ -309,8 +308,10 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     layout->SetActiveLayerByName("li.drawing");
     line = PolyLine({p_0, p_1});
     line.SetWidth(li_polycon_via_bulge_width);
-    line.InsertBulge(p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
-    line.InsertBulge(p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    line.InsertBulge(
+        p_0, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
+    line.InsertBulge(
+        p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     Polygon *polygon = layout->AddPolyLine(line);
     polygon->set_net("s0");
     polygon->set_is_pin(true);
@@ -402,8 +403,6 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     // layout->MakePort("s0b",
     //                 layout->GetPoint("left.column_3_centre_bottom_via"),
     //                 "polycon.drawing");
-    layout->MakeVia("polycon.drawing", 
-                    layout->GetPoint("left.column_3_centre_bottom_via"));
   }
   // Add diffusion qualifying layers, wells, etc.
   //
@@ -412,8 +411,12 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   layout->AddRectangle({
       layout->GetPoint("left.diff_ll") - Point(
           nsdm_padding, nsdm_padding),
-      layout->GetPoint("left.diff_ur") + Point(
-          nsdm_padding, nsdm_padding)
+      Point(
+          layout->GetPoint("left.diff_ur").x() + nsdm_padding,
+          std::max(
+              layout->GetPoint("left.diff_ur").y(),
+              layout->GetPoint("left.diff_ul").y()) +
+              nsdm_padding)
   });
 
   // Right side is P, but note that that layout has been horizontally flipped
@@ -438,7 +441,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   // Add PR boundary.
   Rectangle bounding_box = layout->GetBoundingBox();
   // 7t gf180mcu standard cell: 3920;
-  int64_t height = bounding_box.Height();
+  int64_t height = db.ToInternalUnits(3920);
   int64_t padding_left = nwell_padding;
   int64_t padding_right = nwell_padding;
   layout->SetActiveLayerByName("areaid.standardrc");
