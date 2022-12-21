@@ -714,12 +714,12 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .fet_3_width = 640,
     .fet_4_width = 640,
     .fet_5_width = 640,
-    .fet_0_length = 150,
-    .fet_1_length = 150,
-    .fet_2_length = 150,
-    .fet_3_length = 150,
-    .fet_4_length = 150,
-    .fet_5_length = 150
+    .fet_0_length = 170,
+    .fet_1_length = 170,
+    .fet_2_length = 170,
+    .fet_3_length = 170,
+    .fet_4_length = 170,
+    .fet_5_length = 170
   };
 
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
@@ -999,7 +999,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   const auto &diff_polycon_rules = db.Rules(
       params.diff_layer_name, "polycon.drawing");
 
-  int64_t min_width = std::min({
+  int64_t min_lenth = std::min({
       params.fet_0_length,
       params.fet_1_length,
       params.fet_2_length,
@@ -1007,8 +1007,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
       params.fet_4_length,
       params.fet_5_length
   });
-  LOG_IF(FATAL, min_width < poly_rules.min_width)
-      << "Min transistor length is smaller than poly_rules.min_width";
+  LOG_IF(FATAL, min_lenth < poly_rules.min_width)
+      << "Least given transistor length is smaller than poly_rules.min_width";
 
   int64_t via_side = dcon_rules.via_width;
   int64_t via_encap_width = via_side + 2 * li_dcon_rules.via_overhang_wide;

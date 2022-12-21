@@ -67,6 +67,8 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .min_pitch = 170 + 170 + 80,
   };
   db->AddRules("diff.drawing", intra_constraints);
+  db->AddRules("ndiff.drawing", intra_constraints);
+  db->AddRules("pdiff.drawing", intra_constraints);
 
   intra_constraints = {
     .min_width = 170,
@@ -80,6 +82,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("ncon.drawing", intra_constraints);
   db->AddRules("pcon.drawing", intra_constraints);
   db->AddRules("polycon.drawing", intra_constraints);
+  db->AddRules("licon.drawing", intra_constraints);
 
   db->AddRules("li.pin", intra_constraints);
   db->AddRules("mcon.drawing", intra_constraints);
@@ -110,6 +113,8 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .via_overhang = 80,
     .via_overhang_wide = 50
   };
+  db->AddRules("poly.drawing", "pcon.drawing", inter_constraints);
+  db->AddRules("poly.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 50,
@@ -119,6 +124,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("li.drawing", "polycon.drawing", inter_constraints);
+  db->AddRules("li.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = 40,
     .max_separation = 190,
@@ -154,8 +160,8 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   inter_constraints = {
     .min_enclosure = 140,
   };
-  db->AddRules("diff.drawing", "nsdm.drawing", inter_constraints);
-  db->AddRules("diff.drawing", "psdm.drawing", inter_constraints);
+  db->AddRules("ndiff.drawing", "nsdm.drawing", inter_constraints);
+  db->AddRules("pdiff.drawing", "psdm.drawing", inter_constraints);
   db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "nwell.drawing", inter_constraints);
 }
@@ -464,14 +470,14 @@ int main(int argc, char **argv) {
     design_db.LoadPackage(external_circuits_pb);
   }
 
-  //std::string top_name = "lut";
-  //bfg::tiles::Lut generator(&design_db, FLAGS_k_lut);
-  //bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
+  std::string top_name = "lut";
+  bfg::tiles::Lut generator(&design_db, FLAGS_k_lut);
+  bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
-  //design_db.WriteTop(
-  //    *top, FLAGS_output_library, FLAGS_write_text_format);
+  design_db.WriteTop(
+      *top, FLAGS_output_library, FLAGS_write_text_format);
 
-  Gf180McuMuxExperiment();
+  //Gf180McuMuxExperiment();
 
   google::protobuf::ShutdownProtobufLibrary();
 
