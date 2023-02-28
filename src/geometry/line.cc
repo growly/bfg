@@ -165,6 +165,8 @@ bool Line::IntersectsInMutualBounds(
 
   }
 
+  // TODO(growly): This is incomplete?
+  return false;
 }
 
 //           _
@@ -270,7 +272,7 @@ int64_t Line::DotProduct(const Line &with) const {
   // point:
   Point a = end_ - start_;
   Point b = with.end() - with.start();
-  return a.x() * b.x() + a.y() + b.y();
+  return a.x() * b.x() + a.y() * b.y();
 }
 
 }  // namespace geometry

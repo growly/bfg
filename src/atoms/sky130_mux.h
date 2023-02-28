@@ -52,7 +52,8 @@ class Sky130Mux: public Atom {
     std::string diff_contact_layer_name = "ndiff.drawing";
 
     // To avoid C++'s automatic arithmetic type conversions, make these all the
-    // same int64_t type:
+    // same int64_t type (also note that these are all in internal units so
+    // don't inherently mean anything).
     int64_t fet_0_width = 640;
     int64_t fet_1_width = 640;
     int64_t fet_2_width = 640;
@@ -86,13 +87,12 @@ class Sky130Mux: public Atom {
     std::optional<bfg::geometry::Polygon**> input_2;
     std::optional<bfg::geometry::Polygon**> input_3;
 
-    // Additionally padding for the inputs.
+    // Additional padding for the inputs.
     int64_t input_x_padding = 0;
     int64_t input_y_padding = 0;
   };
 
-  Sky130Mux(const Parameters &parameters,
-            DesignDatabase *design_db)
+  Sky130Mux(const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters),
         internal_units_per_nm_(1.0) {}

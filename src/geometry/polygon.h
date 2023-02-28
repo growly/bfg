@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "point.h"
+#include "point_or_choice.h"
 #include "rectangle.h"
 #include "shape.h"
 #include "line.h"
@@ -16,6 +17,11 @@ namespace geometry {
 
 class Polygon : public Shape {
  public:
+  static void ResolveIntersectingPointsFrom(
+      const std::vector<PointOrChoice> &choices,
+      const Point &reference_point,
+      std::vector<std::pair<Point, Point>> *intersections);
+
   Polygon() = default;
 
   Polygon(const std::vector<Point> &vertices) {

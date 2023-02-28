@@ -61,23 +61,27 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
 
   std::cout << "\n" << db->DescribeLayers();
 
+  // The following constants are specified in nm, but the internal units are the
+  // minimum manufacturing grid resolution of also 1 nm.
+  db->set_internal_units_per_external(1); 
+
   bfg::IntraLayerConstraints intra_constraints = {
-    .min_separation = 270,
-    .min_width = 170,
-    .min_pitch = 170 + 170 + 80,
+    .min_separation = db->ToInternalUnits(270),
+    .min_width = db->ToInternalUnits(170),
+    .min_pitch = db->ToInternalUnits(170 + 170 + 80),
   };
   db->AddRules("diff.drawing", intra_constraints);
   db->AddRules("ndiff.drawing", intra_constraints);
   db->AddRules("pdiff.drawing", intra_constraints);
 
   intra_constraints = {
-    .min_width = 170,
-    .min_pitch = 170 + 170 + 80,
+    .min_width = db->ToInternalUnits(170),
+    .min_pitch = db->ToInternalUnits(170 + 170 + 80),
   };
   db->AddRules("li.drawing", intra_constraints);
   intra_constraints = {
-    .min_width = 170,
-    .via_width = 170,
+    .min_width = db->ToInternalUnits(170),
+    .via_width = db->ToInternalUnits(170),
   };
   db->AddRules("ncon.drawing", intra_constraints);
   db->AddRules("pcon.drawing", intra_constraints);
@@ -87,21 +91,21 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.pin", intra_constraints);
   db->AddRules("mcon.drawing", intra_constraints);
   intra_constraints = {
-    .min_width = 170,
-    .via_width = 150,
+    .min_width = db->ToInternalUnits(170),
+    .via_width = db->ToInternalUnits(150),
   };
   db->AddRules("via1.drawing", intra_constraints);
   db->AddRules("via2.drawing", intra_constraints);
   intra_constraints = {
-    .min_separation = 210,
-    .min_width = 170,
-    .min_pitch = 500,
+    .min_separation = db->ToInternalUnits(210),
+    .min_width = db->ToInternalUnits(170),
+    .min_pitch = db->ToInternalUnits(500),
   };
   db->AddRules("poly.drawing", intra_constraints);
   intra_constraints = {
-    .min_separation = 200,
-    .min_width = 140,
-    .min_pitch = 340,
+    .min_separation = db->ToInternalUnits(200),
+    .min_width = db->ToInternalUnits(140),
+    .min_pitch = db->ToInternalUnits(340),
   };
   db->AddRules("met1.drawing", intra_constraints);
   // Lazy:
@@ -109,28 +113,28 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("met3.drawing", intra_constraints);
 
   bfg::InterLayerConstraints inter_constraints = {
-    .min_separation = 50,
-    .via_overhang = 80,
-    .via_overhang_wide = 50
+    .min_separation = db->ToInternalUnits(55),
+    .via_overhang = db->ToInternalUnits(80),
+    .via_overhang_wide = db->ToInternalUnits(50)
   };
   db->AddRules("poly.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
-    .min_separation = 50,
-    .via_overhang = 80,
-    .via_overhang_wide = 0
+    .min_separation = db->ToInternalUnits(50),
+    .via_overhang = db->ToInternalUnits(80),
+    .via_overhang_wide = db->ToInternalUnits(0)
   };
   db->AddRules("li.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("li.drawing", "polycon.drawing", inter_constraints);
   db->AddRules("li.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
-    .min_separation = 40,
-    .max_separation = 190,
+    .min_separation = db->ToInternalUnits(40),
+    .max_separation = db->ToInternalUnits(190),
     // This is minimum enclosure in 1 direction?
-    .min_enclosure = 50,
-    .via_overhang = 40,
+    .min_enclosure = db->ToInternalUnits(50),
+    .via_overhang = db->ToInternalUnits(40),
   };
   db->AddRules("ndiff.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("ndiff.drawing", "ncon.drawing", inter_constraints);
@@ -139,16 +143,16 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("pdiff.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
-    .min_separation = 50,
-    .via_overhang = 60,
-    .via_overhang_wide = 30
+    .min_separation = db->ToInternalUnits(50),
+    .via_overhang = db->ToInternalUnits(60),
+    .via_overhang_wide = db->ToInternalUnits(30)
   };
   db->AddRules("li.drawing", "mcon.drawing", inter_constraints);
   db->AddRules("met1.drawing", "mcon.drawing", inter_constraints);
   inter_constraints = {
-    .min_separation = 50,
-    .via_overhang = 85,
-    .via_overhang_wide = 55
+    .min_separation = db->ToInternalUnits(50),
+    .via_overhang = db->ToInternalUnits(85),
+    .via_overhang_wide = db->ToInternalUnits(55)
   };
   db->AddRules("met1.drawing", "via1.drawing", inter_constraints);
   db->AddRules("met2.drawing", "via1.drawing", inter_constraints);
@@ -158,7 +162,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   // TODO(growly): Need to alias these layer names so that they apply to any
   // process.
   inter_constraints = {
-    .min_enclosure = 140,
+    .min_enclosure = db->ToInternalUnits(140),
   };
   db->AddRules("ndiff.drawing", "nsdm.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "psdm.drawing", inter_constraints);
@@ -477,7 +481,7 @@ int main(int argc, char **argv) {
   design_db.WriteTop(
       *top, FLAGS_output_library, FLAGS_write_text_format);
 
-  //Gf180McuMuxExperiment();
+  Gf180McuMuxExperiment();
 
   google::protobuf::ShutdownProtobufLibrary();
 

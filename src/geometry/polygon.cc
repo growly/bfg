@@ -1,6 +1,10 @@
 #include "polygon.h"
 
+#include <algorithm>
+#include <functional>
 #include <ostream>
+#include <optional>
+#include <set>
 #include <sstream>
 #include <utility>
 
@@ -11,6 +15,72 @@
 
 namespace bfg {
 namespace geometry {
+
+void Polygon::ResolveIntersectingPointsFrom(
+    const std::vector<PointOrChoice> &choices,
+    const Point &reference_point,
+    std::vector<std::pair<Point, Point>> *intersections) {
+  std::vector<PointOrChoice> choices_copy(choices.begin(), choices.end());
+
+  for (const auto &choice : choices) {
+    if (choice.unique()) {
+      LOG(INFO) << *choice.unique();
+    } else {
+      Point closest = choice.ClosestPointTo(reference_point);
+      Point furthest = choice.FurthestPointFrom(reference_point);
+      LOG(INFO) << "(" << closest << " or " << furthest << ")";
+    }
+  }
+
+  std::vector<Point> sorted;
+  bool outside = true;
+  while (!choices_copy.empty()) {
+    // We have to repeatedly choose the next closest point to the reference
+    // point from the available choices. Whether we are currently inside or
+    // outside the polygon affects whether we choose the closest or furthest
+    // point from a set of choices in a given PointOrChoice structure.
+    //
+    // We do not need to maintain a sorted structure; we only need the minimum
+    // in the collection at a given time.
+    std::function<bool (const PointOrChoice&, const PointOrChoice&)> comparator;
+    if (outside) {
+      comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
+        const Point left = lhs.ClosestPointTo(reference_point);
+        const Point right = rhs.ClosestPointTo(reference_point);
+        return reference_point.L2SquaredDistanceTo(
+            left) > reference_point.L2SquaredDistanceTo(right);
+      };
+    } else {
+      comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
+        //const Point *left = lhs.FurthestPointFrom(reference_point);
+        //const Point *right = rhs.FurthestPointFrom(reference_point);
+        const Point left = lhs.ClosestPointTo(reference_point);
+        const Point right = rhs.ClosestPointTo(reference_point);
+        return reference_point.L2SquaredDistanceTo(
+            left) > reference_point.L2SquaredDistanceTo(right);
+      };
+    }
+    auto it = std::min_element(
+        choices_copy.begin(), choices_copy.end(), comparator);
+    LOG_IF(FATAL, it == choices_copy.end())
+        << "choices_copy was not empty so at least one min element must exist";
+    Point next_point = outside ?
+        it->ClosestPointTo(reference_point) :
+        it->FurthestPointFrom(reference_point);
+    sorted.push_back(next_point);
+    choices_copy.erase(it);
+    outside = !outside;
+  }
+
+  LOG(INFO) << "sorted:";
+  for (const auto &point : sorted) {
+    LOG(INFO) << point;
+  }
+
+  for (size_t i = 0; i < sorted.size() - 1; i += 2) {
+    intersections->push_back({sorted[i], sorted[i + 1]});
+  }
+}
 
 // Compute the points at which a line intersects with a polygon, returning the
 // pairs of points at which the line enters and then exits the polygon. Uses
@@ -32,7 +102,7 @@ void Polygon::IntersectingPoints(
     return;
   }
 
-  std::vector<Point> intersections;
+  std::vector<PointOrChoice> intersections;
   std::vector<Line> segments;
   const Point *point = nullptr;
   const Point *last_point = &*vertices_.begin();
@@ -60,7 +130,7 @@ void Polygon::IntersectingPoints(
     if (incident) {
       VLOG(12) << segment << " is incident on " << line;
       // The line falls on a edge of the polygon directly, so skip the check
-      // for a corner and whether we ingress/egress. Because do.
+      // for a corner and whether we ingress/egress. Because we do.
   
       // When the line is incident on a segment, we have to check the previous
       // and following segments to determine if it is an ingress/egress event.
@@ -68,46 +138,69 @@ void Polygon::IntersectingPoints(
       //   |          |
       //   v          v
       //                  
-      //   +--      --+
+      //   +<-      ->+
       //   |          |
-      // --+        --+
+      // <-+        <-+
       //  (a)        (b)
       //
       // (a) a single event
       // (b) two events
-      //
-      // If there are two lines in series both incident, we skip the current
-      // one and hope that the next one yields the correct intersection point
-      // (i.e. the end of that line):
-      //
-      //   |
-      //   v
-      //
-      //   +--
-      //   | <- skip
-      //   +
-      //   |
-      // --+
-      //  (a)
 
       const Point *next_point = &vertices_[(i + 1) % vertices_.size()];
       Line next_segment = Line(*point, *next_point);
 
       if (segment.IsSameInfiniteLine(next_segment)) {
+        // If there are two lines in series both incident, we skip the current
+        // one and hope that the next one yields the correct intersection point
+        // (i.e. the end of that line).
+        //
+        // Set up segment to be the last_segment, so that at the end of the loop
+        // it is set back to itself. This makes it like the vertical segment
+        // didn't exist.
+        //
+        //   |
+        //   v
+        //
+        //   +--
+        //   | <- skip
+        //   +
+        //   |
+        // --+
+        // ^
+        // Preserve as last_segment on the next iteration.
+        segment = last_segment;
         continue;
       }
-
-      intersections.push_back(segment.end());
 
       int64_t dot_product = last_segment.DotProduct(next_segment);
       //  a . b = ||a|| ||b|| cos (theta)
       //  a . b < 0 iff cos (theta) < 0 iff pi/2 <= theta <= 3*pi/2
       if (dot_product < 0) {
-        // Skip the next segment.
-        segment = next_segment;
-        point = next_point;
-        ++i;
+        // Case (b) above; we keep the intersection from the previous segment
+        // and from the end of this segment, since both are boundaries of the
+        // polygon.
+        intersections.emplace_back(segment.end());
+      } else if (dot_product > 0) {
+        // FIXME(aryap): Two potential problems here:
+        // 1) what if the last segment was a vertical segment we skipped already
+        //    - last_segment is not updated so this should 
+        // 2) what if this is the start of the line
+        // Remove the last intersection, since it also falls on this vertical
+        // line and needs to be considered as a choice of intersecting point
+        // depending on where we are in the overall polygon.
+        if (!intersections.empty()) intersections.pop_back();
+        intersections.emplace_back(std::set<Point> {
+            segment.end(), last_segment.end()
+        });
       }
+
+      // Skip the next segment since the intersection with this vertical line
+      // was recorded as an intersection with last_segment, and we're done (case
+      // (a) above) or we added the intersection from the end of this segment
+      // already (case (b) above).
+      segment = next_segment;
+      point = next_point;
+      ++i;
       continue;
     }
     VLOG(12) << segment << " intersects " << line << " at " << intersection;
@@ -123,7 +216,7 @@ void Polygon::IntersectingPoints(
         // The line has not entered nor exited the polygon and should be
         // recorded twice (here and when the other segment encounters it),
         // since that indicates ingress or egress.
-        intersections.push_back(intersection);
+        intersections.emplace_back(intersection);
       } else {
         VLOG(12) << "corner " << intersection << " is an ingress or egress";
       }
@@ -131,7 +224,7 @@ void Polygon::IntersectingPoints(
     }
     if (i < vertices_.size() &&
         !intersections.empty() &&
-        intersections.back() == intersection &&
+        intersections.back().Contains(intersection) &&
         intersection == segment.start()) {
       // Do not add duplicate intersections when they occur at the start or end
       // of line segments. (If they occur at the middle of line segments they
@@ -141,35 +234,27 @@ void Polygon::IntersectingPoints(
       // intersection only including one of line bounds, not both.
       continue;
     }
-    if (!intersections.empty() && intersections.front() == intersection) {
-      intersections.insert(intersections.begin(), intersection);
+    if (!intersections.empty() &&
+        intersections.front().Contains(intersection)) {
+      intersections.insert(intersections.begin(), PointOrChoice(intersection));
     } else {
-      intersections.push_back(intersection);
+      intersections.push_back(PointOrChoice(intersection));
     }
   }
-
-  for (const auto &point : intersections) {
-    VLOG(12) << point;
-  }
-
-  LOG_IF(FATAL, intersections.size() % 2 != 0)
-      << "Expected pairs of intersecting points, got "
-      << intersections.size() << " intersecting " << Describe() << " with "
-      << line.Describe();
-
-  Point outside = GetBoundingBox().PointOnLineOutside(line);
-  VLOG(12) << "outside point: " << outside;
-  std::sort(intersections.begin(), intersections.end(),
-            [&](const Point &lhs, const Point &rhs) {
-    return outside.L2SquaredDistanceTo(lhs) > outside.L2SquaredDistanceTo(rhs);
-  });
 
   if (intersections.empty())
     return;
 
-  for (size_t i = 0; i < intersections.size() - 1; i += 2) {
-    points->push_back({intersections[i], intersections[i + 1]});
-  }
+  LOG_IF(FATAL, intersections.size() % 2 != 0)
+      << "Expected pairs of intersecting point choices, got "
+      << intersections.size() << " intersecting " << Describe() << " with "
+      << line.Describe();
+
+  Point outside_point = GetBoundingBox().PointOnLineOutside(line);
+  VLOG(12) << "outside point: " << outside_point;
+
+  // Go through all points and choices among points. 
+  ResolveIntersectingPointsFrom(intersections, outside_point, points);
 }
 
 void Polygon::MirrorY() {

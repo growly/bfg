@@ -71,6 +71,7 @@ set(GEOMETRY_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/label.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/point.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/point_or_choice.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle.cc

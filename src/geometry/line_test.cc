@@ -83,6 +83,12 @@ TEST(LineTest, PointOnLineAtDistance) {
   EXPECT_EQ(Point(0, 0), before);
 }
 
+TEST(LineTest, DotProduct) {
+  Line left = Line({1, 1}, {1, 2});
+  Line right = Line({3, 3}, {2, 3});
+  EXPECT_EQ(0, left.DotProduct(right));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

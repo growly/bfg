@@ -253,6 +253,51 @@ TEST(Polygon, IntersectingPoints_SimpleHorizontalLine) {
   EXPECT_EQ(expected, intersections);
 }
 
+
+// In this example the polygon is an 'H', and the intersecting line is incident
+// on two vertical lines on top of each other in one of the arms.
+//
+//     ^
+//     |
+//     |
+// +--(+)  +---+
+// |   |   |   |
+// |   +---+   |
+// |           |
+// |   +---+   |
+// |   |   |   |
+// +--(+)  +---+
+//     |
+//     |
+//
+TEST(Polygon, IntersectingPoints_YetAnotherVerticalLine) {
+  std::vector<Point> points = {
+      {30520, 3925},
+      {30230, 3925},
+      {30230, 3880},
+      {28950, 3880},
+      {28950, 3925},
+      {28660, 3925},
+      {28660, 3695},
+      {28950, 3695},
+      {28950, 3740},
+      {30230, 3740},
+      {30230, 3695},
+      {30520, 3695}
+  };
+  Polygon polygon = Polygon(points);
+
+  Line line = Line({28950, 0}, {28950, 1});
+
+  std::vector<std::pair<Point, Point>> intersections;
+  polygon.IntersectingPoints(line, &intersections);
+
+  std::vector<std::pair<Point, Point>> expected = {
+      {{28950, 3695}, {28950, 3925}}
+  };
+  EXPECT_EQ(expected, intersections);
+}
+
 TEST(Polygon, IntersectingPoints_AnotherVerticalLine) {
   std::vector<Point> points = {
       {12000, 7240},
@@ -285,6 +330,51 @@ TEST(Polygon, IntersectingPoints_AnotherVerticalLine) {
 
   EXPECT_EQ(expected, intersections);
 }
+
+//
+//
+//
+//
+//  +--+
+//     |
+//     
+TEST(Polygon, IntersectingPoints_TODO) {
+  std::vector<Point> points = {
+    {13990, 15},
+    {13990, 215},
+    {13945, 215},
+    {13945, 505},
+    {13990, 505},
+    {13990, 4645},
+    {13945, 4645},
+    {13945, 4935},
+    {13990, 4935},
+    {13990, 5135},
+    {14060, 5135},
+    {14130, 5135},
+    {14130, 4935},
+    {14175, 4935},
+    {14175, 4645},
+    {14130, 4645},
+    {14130, 505},
+    {14175, 505},
+    {14175, 215},
+    {14130, 215},
+    {14130, 15},
+  };
+  Polygon polygon(points);
+
+  Line line = Line({32010, 0}, {32010, 1});
+
+  std::vector<std::pair<Point, Point>> intersections;
+  polygon.IntersectingPoints(line, &intersections);
+
+  std::vector<std::pair<Point, Point>> expected = {
+      {{32010, 6185}, {32010, 6415}},
+      {{32010, 6415}, {32010, 6585}}
+  };
+}
+
 
 TEST(Polygon, IntersectingPoints_BogusPolygonStillWorks) {
   std::vector<Point> points = {

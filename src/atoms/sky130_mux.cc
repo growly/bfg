@@ -291,15 +291,16 @@ void GenerateOutput2To1Mux(
   const auto &ndiff_polycon_rules =
       db.Rules("ndiff.drawing", "polycon.drawing");
   const auto &pdiff_pcon_rules = db.Rules("pdiff.drawing", "pcon.drawing");
-  const auto &pdiff_polycon_rules = db.Rules("pdiff.drawing", "polycon.drawing");
+  const auto &pdiff_polycon_rules =
+      db.Rules("pdiff.drawing", "polycon.drawing");
   const auto &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
   const auto &poly_polycon_rules = db.Rules("poly.drawing", "polycon.drawing");
   const auto &poly_ncon_rules = db.Rules("poly.drawing", "ncon.drawing");
   const auto &poly_pcon_rules = db.Rules("poly.drawing", "pcon.drawing");
   const auto &met1_mcon_rules = db.Rules("met1.drawing", "mcon.drawing");
 
-  int64_t stage_2_mux_fet_0_width = 640;
-  int64_t stage_2_mux_fet_1_width = 640;
+  int64_t stage_2_mux_fet_0_width = db.ToInternalUnits(640);
+  int64_t stage_2_mux_fet_1_width = db.ToInternalUnits(640);
 
   int64_t poly_contact_to_ndiff =
       ndiff_polycon_rules.max_separation + polycon_rules.via_width / 2;
@@ -708,18 +709,34 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   Mux2Parameters mux2_params_n = {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
-    .fet_0_width = 640,
-    .fet_1_width = 640,
-    .fet_2_width = 640,
-    .fet_3_width = 640,
-    .fet_4_width = 640,
-    .fet_5_width = 640,
-    .fet_0_length = 170,
-    .fet_1_length = 170,
-    .fet_2_length = 170,
-    .fet_3_length = 170,
-    .fet_4_length = 170,
-    .fet_5_length = 170
+    .fet_0_width = db.ToInternalUnits(640),
+    .fet_1_width = db.ToInternalUnits(640),
+    .fet_2_width = db.ToInternalUnits(640),
+    .fet_3_width = db.ToInternalUnits(640),
+    .fet_4_width = db.ToInternalUnits(640),
+    .fet_5_width = db.ToInternalUnits(640),
+    .fet_0_length = db.ToInternalUnits(170),
+    .fet_1_length = db.ToInternalUnits(170),
+    .fet_2_length = db.ToInternalUnits(170),
+    .fet_3_length = db.ToInternalUnits(170),
+    .fet_4_length = db.ToInternalUnits(170),
+    .fet_5_length = db.ToInternalUnits(170),
+    .fet_4_5_offset_y = db.ToInternalUnits(-200),
+    .add_input_wires = true,
+    .col_0_poly_overhang_top = std::nullopt,
+    .col_0_poly_overhang_bottom = std::nullopt,
+    .col_1_poly_overhang_top = std::nullopt,
+    .col_1_poly_overhang_bottom = std::nullopt,
+    .col_2_poly_overhang_top = std::nullopt,
+    .col_2_poly_overhang_bottom = std::nullopt,
+    .col_3_poly_overhang_top = std::nullopt,
+    .col_3_poly_overhang_bottom = std::nullopt,
+    .input_0 = std::nullopt,
+    .input_1 = std::nullopt,
+    .input_2 = std::nullopt,
+    .input_3 = std::nullopt,
+    .input_x_padding = 0,
+    .input_y_padding = db.ToInternalUnits(100)
   };
 
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
@@ -1054,12 +1071,13 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   int64_t mid_y = height / 2;
   PolyLine column_0_line = PolyLine(
       {column_0_x,
-       -params.col_0_poly_overhang_bottom.value_or(default_poly_overhang)}, {
-      {{column_0_x, mid_y}, static_cast<uint64_t>(params.fet_0_length)},
-      {{column_0_x, height +
-          params.col_0_poly_overhang_top.value_or(default_poly_overhang)},
-        static_cast<uint64_t>(params.fet_1_length)}
-  });
+          -params.col_0_poly_overhang_bottom.value_or(default_poly_overhang)},
+      {
+          {{column_0_x, mid_y}, static_cast<uint64_t>(params.fet_0_length)},
+          {{column_0_x, height +
+              params.col_0_poly_overhang_top.value_or(default_poly_overhang)},
+          static_cast<uint64_t>(params.fet_1_length)}
+      });
   Polygon *column_0_polygon = layout->AddPolygon(
       InflatePolyLine(db, column_0_line));
   Rectangle column_0 = column_0_polygon->GetBoundingBox();
@@ -1323,9 +1341,11 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     int64_t via_padding_x = li_rules.min_separation + li_rules.min_width / 2 +
         li_dcon_rules.via_overhang_wide;
     Point p_1 = Point(via_2_1->lower_left().x() - via_padding_x, p_0.y());
-    Point p_2 = Point(p_1.x(), via_2_1->lower_left().y() - (
-         via_padding_x +
-         (li_dcon_rules.via_overhang - li_dcon_rules.via_overhang_wide)));
+    Point p_2 = Point(p_1.x(), std::min(
+          via_2_1->lower_left().y() - (
+              via_padding_x +
+              (li_dcon_rules.via_overhang - li_dcon_rules.via_overhang_wide)),
+          p_1.y()));
     Point p_3 = Point(via_2_1->LowerRight().x() + via_padding_x, p_2.y());
     Point p_4 = Point(p_3.x(), via_3_1->centre().y());
     Point p_5 = via_3_1->centre();
@@ -1346,8 +1366,10 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   {
     layout->SetActiveLayerByName("li.drawing");
     Point p_0 = via_1_0->centre();
-    int64_t line_y = via_2_0->upper_right().y() + li_dcon_rules.via_overhang +
-        li_rules.min_separation + li_rules.min_width / 2;
+    int64_t line_y = std::max(
+        via_2_0->upper_right().y() + li_dcon_rules.via_overhang +
+            li_rules.min_separation + li_rules.min_width / 2,
+        p_0.y());
     //  std::max(
     //    pfet_0_diff->upper_right().y(), pfet_2_diff->upper_right().y()) +
     //    li_rules.min_width / 2;

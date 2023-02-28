@@ -72,6 +72,13 @@ Point operator-(const Point &other) {
   return Point(-other.x(), -other.y());
 }
 
+bool operator<(const Point &lhs, const Point &rhs) {
+  if (lhs.x() != rhs.x()) {
+    return lhs.x() < rhs.x();
+  }
+  return lhs.y() < rhs.y();
+}
+
 bool operator==(const Point &lhs, const Point &rhs) {
   return lhs.x() == rhs.x() && lhs.y() == rhs.y();
 }
