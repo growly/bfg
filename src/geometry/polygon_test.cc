@@ -82,8 +82,8 @@ TEST(Polygon, IntersectingPoints_IntersectionAtInnerCorner) {
   //
   //           +---(+)4, 2
   //     0, 0  |    |
-  //      +---(+)   |
-  //      |    2, 0 |
+  //      +----+ <------ this corner is not included since the boundary is in
+  //      |    2, 0 |    the polygon
   //     (+)--------+ 4, -2
   //       0, -2
   // x
@@ -106,8 +106,7 @@ TEST(Polygon, IntersectingPoints_IntersectionAtInnerCorner) {
   polygon.IntersectingPoints(line, &intersections);
 
   std::vector<std::pair<Point, Point>> expected = {
-      {{0, -2}, {2, 0}},
-      {{2, 0}, {4, 2}}
+      {{0, -2}, {4, 2}}
   };
 
   EXPECT_EQ(expected, intersections);
@@ -204,6 +203,13 @@ TEST(Polygon, IntersectingPoints_SimpleVerticalLine) {
 
   EXPECT_EQ(expected, intersections);
 
+  //
+  //              4, 2
+  //         +---(+)
+  //         |    | 
+  //         +---(+)
+  //
+  //              x (4, -2)
   line = Line({4, -2}, {4, 0});
 
   intersections.clear();
@@ -398,6 +404,8 @@ TEST(Polygon, IntersectingPoints_BogusPolygonStillWorks) {
 
   std::vector<std::pair<Point, Point>> intersections;
   polygon.IntersectingPoints(line, &intersections);
+  for (const auto &p : intersections)
+    LOG(INFO) <<  p.first << " " << p.second;
 
   std::vector<std::pair<Point, Point>> expected = {
       {{32010, 6185}, {32010, 6415}},

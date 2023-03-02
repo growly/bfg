@@ -39,7 +39,11 @@ class Line {
 
   bool IntersectsInBounds(const Point &point) const;
 
-  bool IntersectsInBounds(const Line &other, bool *incident, Point *point) const;
+  bool IntersectsInBounds(const Line &other,
+                          bool *incident,
+                          bool *is_start_or_end,
+                          Point *point,
+                          bool ignore_start = false) const;
 
   bool IntersectsInMutualBounds(
       const Line &other, bool *incident, Point *point) const;

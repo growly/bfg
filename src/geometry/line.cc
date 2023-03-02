@@ -129,7 +129,11 @@ bool Line::IntersectsInBounds(const Point &point) const {
 }
 
 bool Line::IntersectsInBounds(
-    const Line &other, bool *incident, Point *point) const {
+    const Line &other,
+    bool *incident,
+    bool *is_start_or_end,
+    Point *point,
+    bool ignore_end) const {
   Point intersection;
   if (!Intersects(other, incident, &intersection))
     return false;
@@ -145,6 +149,15 @@ bool Line::IntersectsInBounds(
   if (min_x <= intersection.x() && intersection.x() <= max_x &&
       min_y <= intersection.y() && intersection.y() <= max_y) {
     *point = intersection;
+
+    if (intersection == start_) {
+      *is_start_or_end = true;
+    } else if (intersection == end_) {
+      if (ignore_end) {
+        return false;
+      }
+      *is_start_or_end = true;
+    }
     return true;
   }
   return false;
@@ -153,7 +166,9 @@ bool Line::IntersectsInBounds(
 bool Line::IntersectsInMutualBounds(
     const Line &other, bool *incident, Point *point) const {
   Point intersection_in_our_bounds;
-  if (!IntersectsInBounds(other, incident, &intersection_in_our_bounds))
+  bool ignored;
+  if (!IntersectsInBounds(
+          other, incident, &ignored, &intersection_in_our_bounds))
     return false;
 
   if (*incident) {
