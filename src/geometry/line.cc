@@ -133,7 +133,8 @@ bool Line::IntersectsInBounds(
     bool *incident,
     bool *is_start_or_end,
     Point *point,
-    bool ignore_end) const {
+    bool ignore_end,
+    bool ignore_start) const {
   Point intersection;
   if (!Intersects(other, incident, &intersection))
     return false;
@@ -151,6 +152,9 @@ bool Line::IntersectsInBounds(
     *point = intersection;
 
     if (intersection == start_) {
+      if (ignore_start) {
+        return false;
+      }
       *is_start_or_end = true;
     } else if (intersection == end_) {
       if (ignore_end) {

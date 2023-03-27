@@ -80,27 +80,49 @@ void Polygon::ResolveIntersectingPointsFrom(
         std::find(sorted.begin(), sorted.end(), next_point) != sorted.end());
     check_for_dupes = false;
 
-    bool add_span_of_choices =
-        outside && choice.choose_one() && !choice.crosses_boundary();
-    if (add_span_of_choices) {
-      // If there are multiple choices, we will take the extremes and add them
-      // to the list. We have to make sure that this not yield any accidental
-      // duplicates. This happens when a line is incident on a line in a polygon
-      // - in that case, the start point of the previous or next line segment in
-      // the polygon will also yield an intersection. We can rely on that but
-      // only in one direction (clockwise or anti-clockwise around the
-      // segments), so instead we don't rely on it. We always add both the
-      // closest and furthest points on the segment and then de-dupe them later.
-      Point other_next_point = outside ?
-          choice.FurthestPointFrom(reference_point) :
-          choice.ClosestPointTo(reference_point);
-      if (!already_exists) {
-        sorted.push_back(next_point);
+    if (choice.choose_one() && !choice.crosses_boundary()) {
+      // Incident on an edge of the polygon but do not cross the edge.
+
+      if (outside) {
+        // We're outside, so add the span of choices (both closest and
+        // furthest).
+        //
+        // If there are multiple choices, we will take the extremes and add them
+        // to the list. We have to make sure that this not yield any accidental
+        // duplicates. This happens when a line is incident on a line in a
+        // polygon - in that case, the start point of the previous or next line
+        // segment in the polygon will also yield an intersection. We can rely
+        // on that but only in one direction (clockwise or anti-clockwise around
+        // the segments), so instead we don't rely on it. We always add both the
+        // closest and furthest points on the segment and then de-dupe them
+        // later.
+        Point other_next_point = choice.FurthestPointFrom(reference_point);
+        if (!already_exists) {
+          sorted.push_back(next_point);
+        }
+        sorted.push_back(other_next_point);
+        choices_copy.erase(it);
+        check_for_dupes = true;
+      } else {
+        // We're still inside, so ignore both ends of the span and make sure
+        // they don't get included again:
+        poisoned.insert(next_point);
+
+        Point other_end = outside ?
+            choice.FurthestPointFrom(reference_point) :
+            choice.ClosestPointTo(reference_point);
+        poisoned.insert(other_end);
       }
-      sorted.push_back(other_next_point);
+
       choices_copy.erase(it);
-      check_for_dupes = true;
       continue;
+    }
+
+    // Any time we hit a span we should make sure to check for dupes on the next
+    // iteration (since we could be duplicating one end of the span in the
+    // points list).
+    if (choice.choose_one()) {
+      check_for_dupes = true;
     }
 
     bool poison_other_end = choice.choose_one() && choice.crosses_boundary();
@@ -139,7 +161,7 @@ void Polygon::ResolveIntersectingPointsFrom(
 
     choices_copy.erase(it);
 
-    if (choice.crosses_boundary()) {
+    if (!already_exists && choice.crosses_boundary()) {
       outside = !outside;
     }
   }
@@ -150,8 +172,8 @@ void Polygon::ResolveIntersectingPointsFrom(
   }
 
   LOG_IF(WARNING, sorted.size() % 2 != 0)
-      << "Expected pairs of intersecting point choices, got " << sorted.size()
-      << ". Undefined behaviour!";
+      << "Undefined behaviour: "
+      << "Expected pairs of intersecting point choices, got " << sorted.size();
 
   for (size_t i = 0; i < sorted.size() - 1; i += 2) {
     intersections->push_back({sorted[i], sorted[i + 1]});
@@ -263,6 +285,7 @@ void Polygon::IntersectingPoints(
 
   Point outside_point = GetBoundingBox().PointOnLineOutside(line);
   VLOG(12) << "outside point: " << outside_point;
+  VLOG(13) << *this;
 
   // Go through all points and choices among points. 
   ResolveIntersectingPointsFrom(intersections, outside_point, points);

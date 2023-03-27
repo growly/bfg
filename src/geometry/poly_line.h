@@ -142,6 +142,9 @@ class PolyLine : public Shape {
 };
 
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::PolyLine &poly_line);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_POLY_LINE_H_

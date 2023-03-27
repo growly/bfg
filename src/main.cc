@@ -75,6 +75,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("pdiff.drawing", intra_constraints);
 
   intra_constraints = {
+    .min_separation = db->ToInternalUnits(170),
     .min_width = db->ToInternalUnits(170),
     .min_pitch = db->ToInternalUnits(170 + 170 + 80),
   };
@@ -87,9 +88,15 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("pcon.drawing", intra_constraints);
   db->AddRules("polycon.drawing", intra_constraints);
   db->AddRules("licon.drawing", intra_constraints);
-
   db->AddRules("li.pin", intra_constraints);
+
+  intra_constraints = {
+    .min_separation = db->ToInternalUnits(190),
+    .min_width = db->ToInternalUnits(170),
+    .via_width = db->ToInternalUnits(170),
+  };
   db->AddRules("mcon.drawing", intra_constraints);
+
   intra_constraints = {
     .min_width = db->ToInternalUnits(170),
     .via_width = db->ToInternalUnits(150),
@@ -103,7 +110,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("poly.drawing", intra_constraints);
   intra_constraints = {
-    .min_separation = db->ToInternalUnits(200),
+    .min_separation = db->ToInternalUnits(140),
     .min_width = db->ToInternalUnits(140),
     .min_pitch = db->ToInternalUnits(340),
   };
@@ -290,6 +297,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("ncon.drawing", intra_constraints);
   db->AddRules("pcon.drawing", intra_constraints);
   db->AddRules("polycon.drawing", intra_constraints);
+  db->AddRules("licon.drawing", intra_constraints);
   //db->AddRules("li.pin", intra_constraints);
   db->AddRules("mcon.drawing", intra_constraints);
   intra_constraints = {

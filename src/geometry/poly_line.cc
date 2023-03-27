@@ -414,4 +414,11 @@ void PolyLine::EnforceInvariants() {
 }
 
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os,
+                         const geometry::PolyLine &poly_line) {
+  os << poly_line.Describe();
+  return os;
+}
+
 }  // namespace bfg

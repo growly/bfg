@@ -99,7 +99,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_2 = &left_input_2,
     .input_3 = &left_input_3,
     .input_x_padding = 0,
-    .input_y_padding = 0
+    .input_y_padding = -(li_rules.min_separation + mcon_rules.via_width / 2)
   };
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
 
@@ -151,7 +151,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     .input_2 = &right_input_2,
     .input_3 = &right_input_3,
     .input_x_padding = 0,
-    .input_y_padding = 0,
+    .input_y_padding = -(li_rules.min_separation + mcon_rules.via_width / 2)
   };
   mux2_layout.reset(GenerateMux2Layout(mux2_params_p));
 

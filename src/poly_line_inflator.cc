@@ -1,5 +1,6 @@
 #include "poly_line_inflator.h"
 
+#include <optional>
 #include <glog/logging.h>
 #include <cmath>
 #include <memory>
@@ -29,15 +30,19 @@ Layout *PolyLineInflator::Inflate(
   for (const auto &poly_line : poly_line_cell.poly_lines()) {
     LOG_IF(FATAL, !poly_line) << "poly_line is nullptr?!";
 
-    Polygon polygon;
-    LOG(INFO) << "inflating: " << poly_line->Describe();
-    InflatePolyLine(*poly_line, &polygon);
-    LOG(INFO) << " into: " << polygon.Describe();
-    polygon.set_layer(poly_line->layer());
+    std::optional<Polygon> polygon = InflatePolyLine(*poly_line);
+    LOG(INFO) << "inflating: " << poly_line->Describe() << " into: ";
+    if (polygon) {
+      LOG(INFO) << polygon->Describe();
+    } else {
+      LOG(INFO) << "(none)";
+      continue;
+    }
+    polygon->set_layer(poly_line->layer());
 
-    auto bb = polygon.GetBoundingBox();
+    auto bb = polygon->GetBoundingBox();
     layout->set_active_layer(poly_line->layer());
-    layout->AddPolygon(polygon);
+    layout->AddPolygon(*polygon);
   }
   for (const auto &via : poly_line_cell.vias()) {
     Rectangle rectangle;
@@ -75,6 +80,17 @@ void PolyLineInflator::InflateVia(const geometry::Layer layer,
                          width,
                          height);
   rectangle->set_layer(layer);
+}
+
+// An "inflated" Point is a bit strange. We only do this so we can provide a
+// manipulated Polygon representation of the same point.
+std::optional<Polygon> PolyLineInflator::InflatePoint(
+    const Point &point, int64_t horizontal, int64_t vertical) {
+  Point ll = point + Point(-horizontal, -vertical);
+  Point ul = point + Point(-horizontal, vertical);
+  Point ur = point + Point(horizontal, vertical);
+  Point lr = point + Point(horizontal, -vertical);
+  return Polygon({ll, ul, ur, lr});
 }
 
 // So, you could do this in one pass by inflating every central poly_line into
@@ -126,9 +142,15 @@ void PolyLineInflator::InflateVia(const geometry::Layer layer,
 //                        |
 //                        original vector, reversed
 //
-void PolyLineInflator::InflatePolyLine(
-    const PolyLine &polyline, Polygon *polygon) {
-  LOG_IF(FATAL, polyline.segments().empty()) << "Inflating empty PolyLine";
+std::optional<Polygon> PolyLineInflator::InflatePolyLine(
+    const PolyLine &polyline) {
+  if (polyline.segments().empty()) {
+    int64_t half_side = static_cast<int64_t>(
+        std::max(polyline.overhang_start(), polyline.overhang_end()));
+    LOG(WARNING) << "Inflating empty PolyLine as Point";
+    return InflatePoint(polyline.start(), half_side, half_side);
+  }
+  Polygon polygon;
 
   std::vector<Line> line_stack;
   std::unique_ptr<Line> last_shifted_line;
@@ -156,10 +178,10 @@ void PolyLineInflator::InflatePolyLine(
         100 : static_cast<double>(segment.width);
 
     last_shifted_line = std::move(ShiftAndAppendIntersection(
-          line, width, last_shifted_line.get(), polygon));
+          line, width, last_shifted_line.get(), &polygon));
     start = segment.end;
   }
-  polygon->AddVertex(last_shifted_line->end());
+  polygon.AddVertex(last_shifted_line->end());
 
   last_shifted_line = nullptr;
   // TODO(aryap): lmao if you use size_t here it underflows and never exits
@@ -169,7 +191,7 @@ void PolyLineInflator::InflatePolyLine(
     line.Reverse();
 
     if (i == line_stack.size() - 1) {
-      polygon->AddVertex(line.start());
+      polygon.AddVertex(line.start());
     }
 
     const LineSegment &segment = polyline.segments().at(i);
@@ -177,11 +199,12 @@ void PolyLineInflator::InflatePolyLine(
         ? 100 : static_cast<double>(segment.width);
 
     last_shifted_line = std::move(ShiftAndAppendIntersection(
-        line, width, last_shifted_line.get(), polygon));
+        line, width, last_shifted_line.get(), &polygon));
   }
   // We flipped all the lines on the way back, so the last point is the 'end'
   // position of the first line in the list.
-  polygon->AddVertex(last_shifted_line->end());
+  polygon.AddVertex(last_shifted_line->end());
+  return polygon;
 }
 
 Line *PolyLineInflator::GenerateShiftedLine(

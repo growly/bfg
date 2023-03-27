@@ -83,12 +83,17 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
 
 namespace {
 
-Polygon InflatePolyLine(const PhysicalPropertiesDatabase &db,
-                        const PolyLine line) {
+std::optional<Polygon> InflatePolyLine(const PhysicalPropertiesDatabase &db,
+                                       const PolyLine line) {
   PolyLineInflator inflator(db);
-  Polygon polygon;
-  inflator.InflatePolyLine(line, &polygon);
-  return polygon;
+  return inflator.InflatePolyLine(line);
+}
+
+Polygon InflatePolyLineOrDie(const PhysicalPropertiesDatabase &db,
+                             const PolyLine line) {
+  std::optional<Polygon> polygon = InflatePolyLine(db, line);
+  LOG_IF(FATAL, !polygon) << "Could not inflate polyline: " << line;
+  return *polygon;
 }
 
 Polygon *AddElbowPath(
@@ -107,7 +112,7 @@ Polygon *AddElbowPath(
   line.SetWidth(width);
   line.InsertBulge(start, start_encap_width, start_encap_length);
   line.InsertBulge(end, end_encap_width, end_encap_length);
-  return layout->AddPolygon(InflatePolyLine(db, line));
+  return layout->AddPolygon(InflatePolyLineOrDie(db, line));
 }
 
 Polygon *AddElbowPathBetweenLayers(
@@ -162,7 +167,6 @@ Polygon *StraightLineBetweenLayers(
         + db.Rules(start_layer, path_layer).via_overhang;
   int64_t end_overhang = db.Rules(end_layer).via_width / 2
         + db.Rules(end_layer, path_layer).via_overhang;
-  PolyLineInflator inflator(db);
   PolyLine line = PolyLine({start, end});
   line.set_layer(db.GetLayer(path_layer));
   line.set_min_separation(db.Rules(path_layer).min_separation); 
@@ -181,8 +185,7 @@ Polygon *StraightLineBetweenLayers(
   via_encap_length =
       via_side + 2 * db.Rules(path_layer, end_layer).via_overhang;
   line.InsertBulge(end, via_encap_width, via_encap_length);
-  Polygon polygon;
-  inflator.InflatePolyLine(line, &polygon);
+  Polygon polygon = InflatePolyLineOrDie(db, line);
   layout->SetActiveLayerByName(path_layer);
   Polygon *added = layout->AddPolygon(polygon);
   layout->RestoreLastActiveLayer();
@@ -721,7 +724,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .fet_3_length = db.ToInternalUnits(170),
     .fet_4_length = db.ToInternalUnits(170),
     .fet_5_length = db.ToInternalUnits(170),
-    .fet_4_5_offset_y = db.ToInternalUnits(-200),
+    .fet_4_5_offset_y = 0,
     .add_input_wires = true,
     .col_0_poly_overhang_top = std::nullopt,
     .col_0_poly_overhang_bottom = std::nullopt,
@@ -735,8 +738,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_1 = std::nullopt,
     .input_2 = std::nullopt,
     .input_3 = std::nullopt,
-    .input_x_padding = 0,
-    .input_y_padding = db.ToInternalUnits(100)
+    .input_x_padding = db.ToInternalUnits(-100),
+    .input_y_padding = 0 //db.ToInternalUnits(200)
   };
 
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
@@ -826,8 +829,14 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   // The second half of the list is right-hand-side columns. They should be
   // moved one over depending on the overall width of the mux.
   int64_t width = static_cast<int64_t>(bounding_box.Width());
-  int64_t column_pitch = met1_rules.min_width + met1_rules.min_separation;
-  int64_t column_offset_x = met1_rules.min_separation;
+  int64_t column_pitch = met1_rules.min_width / 2 + met1_rules.min_separation +
+      std::max(met1_rules.min_width / 2,
+               mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide);
+  int64_t column_offset_x =
+      met1_rules.min_separation +
+      2 * std::max(li_mcon_rules.via_overhang,
+                   li_mcon_rules.via_overhang_wide) +
+      li_rules.min_separation;
   int64_t last_column = (width - column_offset_x) / column_pitch - 1;
   LOG(INFO) << " last column " << last_column;
   std::set<int64_t> enabled_columns = {
@@ -932,9 +941,10 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   PolyLineInflator inflator(db);
   for (auto &entry : column_lines) {
     PolyLine *line = entry.second.get();
-    Polygon polygon;
-    inflator.InflatePolyLine(*line, &polygon);
-    layout->AddPolygon(polygon);
+    std::optional<Polygon> polygon = inflator.InflatePolyLine(*line);
+    if (polygon) {
+      layout->AddPolygon(*polygon);
+    }
   }
 
   //LOG(INFO) << layout->Describe();
@@ -951,33 +961,33 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   // Translate sub-layout ports to external-facing ports:
   layout->SetActiveLayerByName("li.drawing");
-  std::vector<std::pair<std::string, std::string>> ports = {
-    {"lower_left.input_0", "input_0"},
-    {"lower_left.input_1", "input_1"},
-    {"lower_left.input_2", "input_2"},
-    {"lower_left.input_3", "input_3"},
-    {"lower_right.input_0", "input_0"},
-    {"lower_right.input_1", "input_1"},
-    {"lower_right.input_2", "input_2"},
-    {"lower_right.input_3", "input_3"},
-    {"upper_left.input_0", "input_4"},
-    {"upper_left.input_1", "input_5"},
-    {"upper_left.input_2", "input_6"},
-    {"upper_left.input_3", "input_7"},
-    {"upper_right.input_0", "input_4"},
-    {"upper_right.input_1", "input_5"},
-    {"upper_right.input_2", "input_6"},
-    {"upper_right.input_3", "input_7"}
-  };
-  for (const auto &entry : ports) {
-    const std::string &layout_port = entry.first;
-    const std::string &net = entry.second;
-    Point centre = layout->GetPoint(layout_port);
-    geometry::Layer layer = centre.layer();
-    int64_t via_size = db.Rules(layer).via_width;
-    layout->AddPort(geometry::Port(
-        layout->GetPoint(layout_port), via_size, via_size, layer, net));
-  }
+  //std::vector<std::pair<std::string, std::string>> ports = {
+  //  {"lower_left.input_0", "input_0"},
+  //  {"lower_left.input_1", "input_1"},
+  //  {"lower_left.input_2", "input_2"},
+  //  {"lower_left.input_3", "input_3"},
+  //  {"lower_right.input_0", "input_0"},
+  //  {"lower_right.input_1", "input_1"},
+  //  {"lower_right.input_2", "input_2"},
+  //  {"lower_right.input_3", "input_3"},
+  //  {"upper_left.input_0", "input_4"},
+  //  {"upper_left.input_1", "input_5"},
+  //  {"upper_left.input_2", "input_6"},
+  //  {"upper_left.input_3", "input_7"},
+  //  {"upper_right.input_0", "input_4"},
+  //  {"upper_right.input_1", "input_5"},
+  //  {"upper_right.input_2", "input_6"},
+  //  {"upper_right.input_3", "input_7"}
+  //};
+  //for (const auto &entry : ports) {
+  //  const std::string &layout_port = entry.first;
+  //  const std::string &net = entry.second;
+  //  Point centre = layout->GetPoint(layout_port);
+  //  geometry::Layer layer = centre.layer();
+  //  int64_t via_size = db.Rules(layer).via_width;
+  //  layout->AddPort(geometry::Port(
+  //      layout->GetPoint(layout_port), via_size, via_size, layer, net));
+  //}
 
   return layout.release();
 }
@@ -998,6 +1008,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   const auto &diff_rules = db.Rules(params.diff_layer_name);
   int64_t diffusion_min_distance = diff_rules.min_separation;
   const auto &dcon_rules = db.Rules(params.diff_contact_layer_name);
+  const auto &licon_rules = db.Rules("licon.drawing");
   const auto &polycon_rules = db.Rules("polycon.drawing");
   const auto &mcon_rules = db.Rules("mcon.drawing");
 
@@ -1041,12 +1052,16 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
       li_rules.min_separation
   });
 
+  // Determining where to put the inputs is very contextual. In some situation
+  // it is enough to distribute them vertically alone the height of the
+  // structure (with some padding), in other cases you might want to minimise
+  // the vertical space consumed. Concern for the access positions and for the
+  // routing to those positions are separate.
   constexpr int kNumInputs = 4;
   int64_t inputs_y[kNumInputs] = {0};
   int64_t input_x_padding = params.input_x_padding;
   int64_t input_y_padding = params.input_y_padding;
-  int64_t input_y_span = height + 2 * li_rules.min_separation +
-      mcon_rules.via_width - 2 * input_y_padding;
+  int64_t input_y_span = height - 2 * input_y_padding;
   int64_t input_y_spacing = input_y_span / (kNumInputs - 1); 
   for (size_t i = 0; i < kNumInputs; ++i) {
     inputs_y[i] = (height - input_y_span) / 2 + (i * input_y_spacing);
@@ -1079,7 +1094,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
           static_cast<uint64_t>(params.fet_1_length)}
       });
   Polygon *column_0_polygon = layout->AddPolygon(
-      InflatePolyLine(db, column_0_line));
+      InflatePolyLineOrDie(db, column_0_line));
   Rectangle column_0 = column_0_polygon->GetBoundingBox();
 
   int64_t via_centre_to_poly_edge =
@@ -1104,7 +1119,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
           static_cast<uint64_t>(params.fet_3_length)}
   });
   Polygon *column_1_polygon = layout->AddPolygon(
-      InflatePolyLine(db, column_1_line));
+      InflatePolyLineOrDie(db, column_1_line));
   Rectangle column_1 = column_1_polygon->GetBoundingBox();
 
   int64_t height_fet_4_5 = height + params.fet_4_5_offset_y;
@@ -1323,11 +1338,11 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
   int64_t via_column_3_x = column_2->lower_left().x() - (
       poly_polycon_rules.min_separation + dcon_rules.via_width / 2);
-  Rectangle *via_3_1 = layout->AddSquare(
-      Point(via_column_3_x,
-          pfet_4_diff->centre().y()),
-          // + dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure
-      via_side);
+  Point via_3_1_bottom_option = Point(
+      via_column_3_x,
+      pfet_4_diff->lower_left().y() + via_centre_to_diff_edge);
+  Point via_3_1_middle_option = Point(
+      via_column_3_x, pfet_4_diff->centre().y());
 
   int64_t via_column_4_x =
       pfet_5_diff->upper_right().x() - via_centre_to_diff_edge;
@@ -1335,20 +1350,81 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   Rectangle *via_4_1 = layout->AddSquare(
       Point(via_column_4_x, via_4_1_y), via_side);
 
+  // Wires connecting output of first stage muxes to inputs of second stage mux.
+
+  int64_t inner_bottom_wire_line_y = 0;
+  // Bottom wire:
+  //                                 + p_4
+  //       p_2                       |
+  //         +-----------------------+ p_3  <-- inner_bottom_wire_line_y
+  //   p_0   |
+  //    +----+ p_1
   {
     layout->SetActiveLayerByName("li.drawing");
-    Point p_0 = via_1_1->centre();
-    int64_t via_padding_x = li_rules.min_separation + li_rules.min_width / 2 +
+    Point p_0 = via_1_0->centre();
+    Point p_1 = Point(via_2_0->lower_left().x() - (
+        li_dcon_rules.via_overhang_wide +
+        li_rules.min_separation +
+        li_rules.min_width / 2),
+        p_0.y());
+    inner_bottom_wire_line_y = std::max(
+        via_2_0->upper_right().y() + li_dcon_rules.via_overhang +
+            li_rules.min_separation + li_rules.min_width / 2,
+        p_0.y());
+    //  std::max(
+    //    pfet_0_diff->upper_right().y(), pfet_2_diff->upper_right().y()) +
+    //    li_rules.min_width / 2;
+    Point p_2 = Point(p_1.x(), inner_bottom_wire_line_y);
+    Point p_3 = Point(via_4_1->centre().x(), p_2.y());
+    Point p_4 = via_4_1->centre();
+    PolyLine input_2_3_line = PolyLine(p_0, {
+        LineSegment {p_1, static_cast<uint64_t>(via_encap_width)},
+        LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_3, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_4, static_cast<uint64_t>(via_encap_width)}
+    });
+    input_2_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_2_3_line.InsertBulge(p_4, via_encap_width, via_encap_length);
+    layout->AddPolyLine(input_2_3_line);
+    layout->SavePoint("li_corner_se_centre", p_2);
+  }
+
+  // Top wire:
+  //   p_0  p_1
+  //    +---+            p_5
+  //        |        +---+
+  //        |        |
+  //        +--------+ p_3
+  Point selected_via_3_1_centre;
+  {
+    int64_t via_3_1_to_bottom_wire_separation = 
+        (via_3_1_bottom_option.y() -
+            (dcon_rules.via_width / 2 +
+             li_dcon_rules.via_overhang_wide)) -
+        (inner_bottom_wire_line_y + li_rules.min_width);
+    if (via_3_1_to_bottom_wire_separation < li_rules.min_separation) {
+      // TODO(aryap): No facility to delete shapes?
+      selected_via_3_1_centre = via_3_1_middle_option;
+    } else {
+      selected_via_3_1_centre = via_3_1_bottom_option;
+    }
+
+    int64_t via_padding_x = li_rules.min_separation +
+        li_rules.min_width / 2 +
         li_dcon_rules.via_overhang_wide;
+    int64_t via_padding_y = li_rules.min_separation +
+        li_rules.min_width / 2 +
+        li_dcon_rules.via_overhang;
+
+    layout->SetActiveLayerByName("li.drawing");
+
+    Point p_0 = via_1_1->centre();
     Point p_1 = Point(via_2_1->lower_left().x() - via_padding_x, p_0.y());
-    Point p_2 = Point(p_1.x(), std::min(
-          via_2_1->lower_left().y() - (
-              via_padding_x +
-              (li_dcon_rules.via_overhang - li_dcon_rules.via_overhang_wide)),
-          p_1.y()));
+    Point p_2 = Point(p_1.x(),
+        std::min(via_2_1->lower_left().y() - via_padding_y, p_1.y()));
     Point p_3 = Point(via_2_1->LowerRight().x() + via_padding_x, p_2.y());
-    Point p_4 = Point(p_3.x(), via_3_1->centre().y());
-    Point p_5 = via_3_1->centre();
+    Point p_4 = Point(p_3.x(), selected_via_3_1_centre.y());
+    Point p_5 = selected_via_3_1_centre;
     PolyLine input_0_1_line = PolyLine(p_0, {
         LineSegment {p_1, static_cast<uint64_t>(via_encap_width)},
         LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
@@ -1363,35 +1439,34 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     layout->SavePoint("li_corner_ne_centre", p_5 + Point(0, via_encap_length));
   }
 
-  {
-    layout->SetActiveLayerByName("li.drawing");
-    Point p_0 = via_1_0->centre();
-    int64_t line_y = std::max(
-        via_2_0->upper_right().y() + li_dcon_rules.via_overhang +
-            li_rules.min_separation + li_rules.min_width / 2,
-        p_0.y());
-    //  std::max(
-    //    pfet_0_diff->upper_right().y(), pfet_2_diff->upper_right().y()) +
-    //    li_rules.min_width / 2;
-    Point p_1 = Point(p_0.x(), line_y);
-    Point p_2 = Point(via_4_1->centre().x(), p_1.y());
-    Point p_3 = via_4_1->centre();
-    PolyLine input_2_3_line = PolyLine(p_0, {
-        LineSegment {p_1, static_cast<uint64_t>(via_encap_width)},
-        LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
-        LineSegment {p_3, static_cast<uint64_t>(via_encap_width)}
-    });
-    input_2_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_2_3_line.InsertBulge(p_3, via_encap_width, via_encap_length);
-    layout->AddPolyLine(input_2_3_line);
-    layout->SavePoint("li_corner_se_centre", p_2);
-  }
+  Rectangle *via_3_1 = layout->AddSquare(
+      selected_via_3_1_centre, via_side);
+            // + dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure
 
   if (!params.add_input_wires) {
     return layout.release();
   }
 
-  PolyLineInflator inflator(design_db_->physical_db());
+  // The four input wires:
+  //
+  //  (Top left)
+  //
+  //  +---------------+
+  //                  |
+  //  +---+    +      +
+  //           |
+  //           + -------------- (inner wire)
+  //
+  //           + -------------- (inner wire)
+  //           |
+  //  +---+    +      +
+  //                  |
+  //  +---------------+
+  //
+  //  (Bottom left)
+  //
+  // Sometimes the outer arms can go straight out, but they have to avoid
+  // interfering with the inner wires from above.
 
   Polygon *input_2_met_0;
   {
@@ -1406,8 +1481,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     input_2_line.SetWidth(via_encap_width);
     input_2_line.InsertBulge(p_0, via_encap_width, via_encap_length);
     input_2_line.InsertBulge(p_2, via_encap_width, via_encap_length);
-    Polygon input_2_template;
-    inflator.InflatePolyLine(input_2_line, &input_2_template);
+    Polygon input_2_template = InflatePolyLineOrDie(db, input_2_line);
     // This is the installed object.
     input_2_met_0 = layout->AddPolygon(input_2_template);
     if (params.input_2) {
@@ -1440,8 +1514,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     input_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
     input_3_line.InsertBulge(p_2, via_encap_width, via_encap_length);
 
-    Polygon input_3_template;
-    inflator.InflatePolyLine(input_3_line, &input_3_template);
+    Polygon input_3_template  = InflatePolyLineOrDie(db, input_3_line);
     input_3_met_0 = layout->AddPolygon(input_3_template);
     if (params.input_3) {
       *params.input_3.value() = input_3_met_0;
@@ -1468,7 +1541,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     input_0_line.InsertBulge(p_2, via_encap_width, via_encap_length);
 
     Polygon *input_0_met_0 = layout->AddPolygon(
-        InflatePolyLine(db, input_0_line));
+        InflatePolyLineOrDie(db, input_0_line));
     if (params.input_0) {
       *params.input_0.value() = input_0_met_0;
     }
@@ -1479,24 +1552,35 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   }
 
   {
+    // Test if we can head straight out.
+    int64_t direct_route_clearance_y = via_2_1->lower_left().y() - (
+        via_1_1->upper_right().y() + 2*li_dcon_rules.via_overhang_wide);
+
     // Input 1 metal.
     layout->SetActiveLayerByName("li.drawing");
-    int64_t metal_width = li_rules.min_width;
 
     Point p_0 = Point(
         via_0_0->centre().x() - met1_rules.min_separation + input_x_padding,
         inputs_y[3]);
+
     Point p_2 = via_2_1->centre();
-    Point p_1 = Point(p_2.x(), p_0.y());
+
+    Point p_1;
+    if (direct_route_clearance_y < li_rules.min_separation) {
+      p_1 = Point(p_2.x(), p_0.y());
+    } else {
+      p_1 = Point(p_0.x(), p_2.y());
+    }
+
     PolyLine input_1_line = PolyLine(p_0, {
-        LineSegment {p_1, static_cast<uint64_t>(metal_width)},
+        LineSegment {p_1, static_cast<uint64_t>(li_rules.min_width)},
         LineSegment {p_2, static_cast<uint64_t>(via_encap_width)}
     });
     input_1_line.InsertBulge(p_0, via_encap_width, via_encap_length);
     input_1_line.InsertBulge(p_2, via_encap_width, via_encap_length);
 
     Polygon *input_1_met_0 = layout->AddPolygon(
-        InflatePolyLine(db, input_1_line));
+        InflatePolyLineOrDie(db, input_1_line));
     if (params.input_1) {
       *params.input_1.value() = input_1_met_0;
     }

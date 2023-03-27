@@ -43,6 +43,7 @@ class Line {
                           bool *incident,
                           bool *is_start_or_end,
                           Point *point,
+                          bool ignore_end = false,
                           bool ignore_start = false) const;
 
   bool IntersectsInMutualBounds(

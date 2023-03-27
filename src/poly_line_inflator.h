@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 #include "layout.h"
@@ -37,8 +38,11 @@ class PolyLineInflator {
                   const AbstractVia &via,
                   geometry::Rectangle *rectangle);
 
-  void InflatePolyLine(const geometry::PolyLine &line,
-                       geometry::Polygon *polygon);
+  std::optional<geometry::Polygon> InflatePolyLine(
+      const geometry::PolyLine &line);
+
+  std::optional<geometry::Polygon> InflatePoint(
+      const geometry::Point &point, int64_t horizontal, int64_t vertical);
 
  private:
   // Shift the given line consistently (relative to its bearing) by half the

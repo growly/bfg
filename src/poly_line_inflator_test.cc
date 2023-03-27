@@ -35,13 +35,14 @@ TEST(PolyLineInflatorTest, SharpCorner) {
   PhysicalPropertiesDatabase db;
   PolyLineInflator inflator(db);
 
-  geometry::Polygon inflated;
-  inflator.InflatePolyLine(line, &inflated);
+  std::optional<geometry::Polygon> inflated =
+      inflator.InflatePolyLine(line);
 
-  for (const auto &point : inflated.vertices()) {
+  EXPECT_TRUE(inflated.has_value());
+
+  for (const auto &point : inflated->vertices()) {
     LOG(INFO) << point;
   }
-
   EXPECT_TRUE(true);
 }
 

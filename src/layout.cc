@@ -20,9 +20,12 @@ using geometry::ShapeCollection;
 
 geometry::Polygon *Layout::AddPolyLine(const geometry::PolyLine &line) {
   PolyLineInflator inflator(physical_db_);
-  geometry::Polygon polygon;
-  inflator.InflatePolyLine(line, &polygon);
-  return AddPolygon(polygon);
+  std::optional<geometry::Polygon> polygon = inflator.InflatePolyLine(line);
+  if (polygon) {
+    return AddPolygon(*polygon);
+  } else {
+    return nullptr;
+  }
 }
 
 const std::string &Layout::NameOrParentName() const {
