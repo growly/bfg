@@ -353,6 +353,8 @@ void GenerateOutput2To1Mux(
   Point poly_ur = Point(gap_top.x() + poly_rules.min_width / 2,
                         ((gap_top + gap_bottom).y() + height) / 2);
 
+
+
   // The limiting constraint on the output mux is the number of horizontal li
   // tracks needed to connect to the poly and metal. If we start with one
   // bounding edge, the closest li1 pour in the lower left mux2, we can build y
@@ -611,35 +613,35 @@ void GenerateOutput2To1Mux(
   //    |
   //    |
   //    +--+  (from lower left mux output)
-  {
-    source = main_layout->GetPoint("lower_right.output");
-    main_layout->MakeVia("licon.drawing", source);
-    destination = main_layout->GetPoint("output_mux_right.right_input");
-    met1_p0 = Point(
-        right_right_metal_column_x,
-        main_layout->GetPoint("lower_right.li_corner_se_centre").y()
-            + li_pitch_optimistic);
-    output_mux_lr_elbow_connect = met1_p0;
-          
-    met1_p1 = Point(right_right_metal_column_x, source.y());
-    main_layout->SetActiveLayerByName("li.drawing");
-    AddElbowPathBetweenLayers(
-        db,
-        destination, met1_p0,
-        "licon.drawing", "li.drawing", "mcon.drawing",
-        main_layout);
-    main_layout->SetActiveLayerByName("met1.drawing");
-    StraightLineBetweenLayers(
-        db,
-        met1_p1, met1_p0,
-        "mcon.drawing", "met1.drawing", "mcon.drawing",
-        main_layout);
-    main_layout->MakeVia("mcon.drawing", met1_p0);
+  //{
+  //  source = main_layout->GetPoint("lower_right.output");
+  //  main_layout->MakeVia("licon.drawing", source);
+  //  destination = main_layout->GetPoint("output_mux_right.right_input");
+  //  met1_p0 = Point(
+  //      right_right_metal_column_x,
+  //      main_layout->GetPoint("lower_right.li_corner_se_centre").y()
+  //          + li_pitch_optimistic);
+  //  output_mux_lr_elbow_connect = met1_p0;
+  //        
+  //  met1_p1 = Point(right_right_metal_column_x, source.y());
+  //  main_layout->SetActiveLayerByName("li.drawing");
+  //  AddElbowPathBetweenLayers(
+  //      db,
+  //      destination, met1_p0,
+  //      "licon.drawing", "li.drawing", "mcon.drawing",
+  //      main_layout);
+  //  main_layout->SetActiveLayerByName("met1.drawing");
+  //  StraightLineBetweenLayers(
+  //      db,
+  //      met1_p1, met1_p0,
+  //      "mcon.drawing", "met1.drawing", "mcon.drawing",
+  //      main_layout);
+  //  main_layout->MakeVia("mcon.drawing", met1_p0);
 
-    main_layout->SetActiveLayerByName("li.drawing");
-    ConnectDiffToMet1(
-        db, source, met1_p1, "ncon.drawing", main_layout);
-  }
+  //  main_layout->SetActiveLayerByName("li.drawing");
+  //  ConnectDiffToMet1(
+  //      db, source, met1_p1, "ncon.drawing", main_layout);
+  //}
 
   // Connect the signal that selects the output of the bottom-left mux
   // structure to the right gate (poly).
