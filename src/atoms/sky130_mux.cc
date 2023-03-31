@@ -563,62 +563,83 @@ void GenerateOutput2To1Mux(
       "polycon.drawing",
       main_layout);
 
-  source = main_layout->GetPoint("upper_right.output");
-  main_layout->MakeVia("licon.drawing", source);
-  destination = main_layout->GetPoint("output_mux_right.left_input");
-  met1_p0 = Point(
-      right_left_metal_column_x,
-      main_layout->GetPoint("upper_right.li_corner_se_centre").y()
-          - li_pitch_optimistic - pcon_via_encap_side);
-  met1_p1 = Point(right_left_metal_column_x, source.y());
-  output_mux_ul_elbow_connect = met1_p0;
+  //              (from upper left mux output)
+  //    +------+
+  //    |
+  //    |
+  //    |
+  //    |
+  //    |
+  //    +
+  //    |
+  //    +
+  {
+    source = main_layout->GetPoint("upper_right.output");
+    main_layout->MakeVia("licon.drawing", source);
+    destination = main_layout->GetPoint("output_mux_right.left_input");
+    met1_p0 = Point(
+        right_left_metal_column_x,
+        main_layout->GetPoint("upper_right.li_corner_se_centre").y()
+            - li_pitch_optimistic - pcon_via_encap_side);
+    met1_p1 = Point(right_left_metal_column_x, source.y());
+    output_mux_ul_elbow_connect = met1_p0;
 
-  main_layout->SetActiveLayerByName("li.drawing");
-  AddElbowPathBetweenLayers(
-      db,
-      destination, met1_p0,
-      "licon.drawing", "li.drawing", "mcon.drawing",
-      main_layout);
+    main_layout->SetActiveLayerByName("li.drawing");
+    AddElbowPathBetweenLayers(
+        db,
+        destination, met1_p0,
+        "licon.drawing", "li.drawing", "mcon.drawing",
+        main_layout);
 
-  main_layout->SetActiveLayerByName("met1.drawing");
-  StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
-  main_layout->MakeVia("mcon.drawing", met1_p0);
+    main_layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        met1_p1, met1_p0,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
+    main_layout->MakeVia("mcon.drawing", met1_p0);
 
-  main_layout->SetActiveLayerByName("li.drawing");
-  ConnectDiffToMet1(
-      db, source, met1_p1, "ncon.drawing", main_layout);
+    main_layout->SetActiveLayerByName("li.drawing");
+    ConnectDiffToMet1(
+        db, source, met1_p1, "ncon.drawing", main_layout);
+  }
 
-  source = main_layout->GetPoint("lower_right.output");
-  main_layout->MakeVia("licon.drawing", source);
-  destination = main_layout->GetPoint("output_mux_right.right_input");
-  met1_p0 = Point(
-      right_right_metal_column_x,
-      main_layout->GetPoint("lower_right.li_corner_se_centre").y()
-          + li_pitch_optimistic);
-  output_mux_lr_elbow_connect = met1_p0;
-        
-  met1_p1 = Point(right_right_metal_column_x, source.y());
-  main_layout->SetActiveLayerByName("li.drawing");
-  AddElbowPathBetweenLayers(
-      db,
-      destination, met1_p0,
-      "licon.drawing", "li.drawing", "mcon.drawing",
-      main_layout);
-  main_layout->SetActiveLayerByName("met1.drawing");
-  StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
-  main_layout->MakeVia("mcon.drawing", met1_p0);
+  //            +
+  //            |
+  //    +-------/
+  //    |
+  //    |
+  //    |
+  //    +--+  (from lower left mux output)
+  {
+    source = main_layout->GetPoint("lower_right.output");
+    main_layout->MakeVia("licon.drawing", source);
+    destination = main_layout->GetPoint("output_mux_right.right_input");
+    met1_p0 = Point(
+        right_right_metal_column_x,
+        main_layout->GetPoint("lower_right.li_corner_se_centre").y()
+            + li_pitch_optimistic);
+    output_mux_lr_elbow_connect = met1_p0;
+          
+    met1_p1 = Point(right_right_metal_column_x, source.y());
+    main_layout->SetActiveLayerByName("li.drawing");
+    AddElbowPathBetweenLayers(
+        db,
+        destination, met1_p0,
+        "licon.drawing", "li.drawing", "mcon.drawing",
+        main_layout);
+    main_layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        met1_p1, met1_p0,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
+    main_layout->MakeVia("mcon.drawing", met1_p0);
 
-  main_layout->SetActiveLayerByName("li.drawing");
-  ConnectDiffToMet1(
-      db, source, met1_p1, "ncon.drawing", main_layout);
+    main_layout->SetActiveLayerByName("li.drawing");
+    ConnectDiffToMet1(
+        db, source, met1_p1, "ncon.drawing", main_layout);
+  }
 
   // Connect the signal that selects the output of the bottom-left mux
   // structure to the right gate (poly).
@@ -1422,14 +1443,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     layout->SetActiveLayerByName("li.drawing");
     Point p_0 = via_1_0->centre();
     Point p_1 = Point(via_2_0->lower_left().x() - (
-        li_dcon_rules.via_overhang_wide +
-        li_rules.min_separation +
-        li_rules.min_width / 2),
+        li_dcon_rules.via_overhang_wide + li_rules.min_separation +
+            li_rules.min_width / 2),
         p_0.y());
-    inner_bottom_wire_line_y = std::max(
+    inner_bottom_wire_line_y = std::max({
         via_2_0->upper_right().y() + li_dcon_rules.via_overhang +
             li_rules.min_separation + li_rules.min_width / 2,
-        p_0.y());
+        
+        p_0.y()  // This one is kinda dumb. Forces a straight line out.
+    });
     //  std::max(
     //    pfet_0_diff->upper_right().y(), pfet_2_diff->upper_right().y()) +
     //    li_rules.min_width / 2;
