@@ -455,73 +455,17 @@ void GenerateOutput2To1Mux(
   // upwards and place the li pours. Then we can place the diffusion pour so
   // that the poly encapsulation (larger than the gate length) doesn't overlap
   // the transistor diffusion.
-
-  // Draw poly and diffusion (i.e. the transistors) for four transistors.
-  //
-  // left left               right left
-  //            left right             right right
-  // +---------+---------+   +---------+---------+
-  // | nfet 0  | nfet 1  |   | pfet 0  | pfet 1  |
-  // +---------+---------+   +---------+---------+
-  //        (N-fets)               (P-fets)
-  //
-  // fet 0:
+ 
   Point poly_ll = poly_ur - Point(poly_rules.min_width, height);
-  Point diff_ur = Point(
-      poly_ur.x() + poly_gap / 2,
-      (poly_ur.y() + poly_ll.y() + stage_2_mux_fet_0_width) / 2);
-  Point diff_ll = Point(
-      poly_ll.x() - diff_wing, diff_ur.y() - stage_2_mux_fet_0_width);
   layout->SetActiveLayerByName("poly.drawing");
   Rectangle *template_left_poly = layout->AddRectangle({poly_ll, poly_ur});
   Rectangle left_left_poly = *template_left_poly;
-  layout->SetActiveLayerByName("ndiff.drawing");
-  Rectangle *fet_0_diff = layout->AddRectangle({diff_ll, diff_ur});
 
-  // fet 1:
   poly_ur.Translate({poly_pitch, 0});
   poly_ll.Translate({poly_pitch, 0});
-  diff_ll.set_x(diff_ur.x());
-  diff_ur = Point(
-      poly_ur.x() + diff_wing,
-      (poly_ur.y() + poly_ll.y() + stage_2_mux_fet_1_width) / 2);
-  diff_ll.set_y(diff_ur.y() - stage_2_mux_fet_1_width);
   layout->SetActiveLayerByName("poly.drawing");
   Rectangle *template_right_poly = layout->AddRectangle({poly_ll, poly_ur});
   Rectangle left_right_poly = *template_right_poly;
-  layout->SetActiveLayerByName("pdiff.drawing");
-  Rectangle *fet_1_diff = layout->AddRectangle({diff_ll, diff_ur});
-
-  // Name input and output via points.
-  Point input_0 = Point(
-      fet_0_diff->lower_left().x() + diff_wing / 2,
-      fet_0_diff->upper_right().y() - via_centre_to_poly_edge);
-  layout->SavePoint("left_input", input_0);
-  layout->MakeVia("licon.drawing", input_0);
-
-  Point input_1 = Point(
-      fet_1_diff->upper_right().x() - diff_wing / 2,
-      fet_1_diff->lower_left().y() + via_centre_to_poly_edge);
-  layout->SavePoint("right_input", input_1);
-  layout->MakeVia("licon.drawing", input_1);
-
-  Point output = Point(
-      fet_1_diff->lower_left().x(),
-      (fet_1_diff->upper_right().y() + std::max(
-           fet_0_diff->lower_left().y(), fet_1_diff->lower_left().y())) / 2);
-  layout->SavePoint("output", output);
-  layout->MakeVia("licon.drawing", output);
-
-  // FIXME(aryap): Do not copy and flip this to align; the P-fets have to be
-  // sized independently of the N-fets.
-
-  // Add the first side of the mux back to the main layout.
-  main_layout->AddLayout(*layout, "output_mux_left");
-  Rectangle bb = layout->GetBoundingBox();
-
-  // Flip and shift the layout to create the p-side.
-  layout->MirrorY();
-  layout->ResetOrigin();
 
   // Compute the offset required to align the polys.
   int64_t target_x =
@@ -529,16 +473,16 @@ void GenerateOutput2To1Mux(
   int64_t offset_x = template_right_poly->centre().x();
   layout->Translate(Point(target_x - offset_x, bb.lower_left().y()));
 
+  // After transformation, the shapes in the original are now:
+  Rectangle right_left_poly = *template_left_poly;
+  Rectangle right_right_poly = *template_right_poly;
+
   int64_t via_side = li_rules.via_width;
   int64_t li_pitch_optimistic = li_rules.min_width / 2 +
       std::max(li_rules.min_width / 2, mcon_rules.via_width / 2) +
       li_rules.min_separation +
       li_mcon_rules.via_overhang_wide;
   int64_t pcon_via_encap_side = li_pcon_rules.via_overhang_wide;
-
-  // After transformation, the shapes in the original are now:
-  Rectangle right_left_poly = *template_left_poly;
-  Rectangle right_right_poly = *template_right_poly;
 
   main_layout->AddLayout(*layout, "output_mux_right");
 
@@ -887,6 +831,64 @@ void GenerateOutput2To1Mux(
         "polycon.drawing",
         main_layout);
   }
+
+  // Draw poly and diffusion (i.e. the transistors) for four transistors.
+  //
+  // left left               right left
+  //            left right             right right
+  // +---------+---------+   +---------+---------+
+  // | nfet 0  | nfet 1  |   | pfet 0  | pfet 1  |
+  // +---------+---------+   +---------+---------+
+  //        (N-fets)               (P-fets)
+  //
+  // fet 0:
+  layout->SetActiveLayerByName("ndiff.drawing");
+  Point diff_ur = Point(
+      poly_ur.x() + poly_gap / 2,
+      (poly_ur.y() + poly_ll.y() + stage_2_mux_fet_0_width) / 2);
+  Point diff_ll = Point(
+      poly_ll.x() - diff_wing, diff_ur.y() - stage_2_mux_fet_0_width);
+  Rectangle *fet_0_diff = layout->AddRectangle({diff_ll, diff_ur});
+
+  // fet 1:
+  diff_ll.set_x(diff_ur.x());
+  diff_ur = Point(
+      poly_ur.x() + diff_wing,
+      (poly_ur.y() + poly_ll.y() + stage_2_mux_fet_1_width) / 2);
+  diff_ll.set_y(diff_ur.y() - stage_2_mux_fet_1_width);
+  layout->SetActiveLayerByName("pdiff.drawing");
+  Rectangle *fet_1_diff = layout->AddRectangle({diff_ll, diff_ur});
+
+  // Name input and output via points.
+  Point input_0 = Point(
+      fet_0_diff->lower_left().x() + diff_wing / 2,
+      fet_0_diff->upper_right().y() - via_centre_to_poly_edge);
+  layout->SavePoint("left_input", input_0);
+  layout->MakeVia("licon.drawing", input_0);
+
+  Point input_1 = Point(
+      fet_1_diff->upper_right().x() - diff_wing / 2,
+      fet_1_diff->lower_left().y() + via_centre_to_poly_edge);
+  layout->SavePoint("right_input", input_1);
+  layout->MakeVia("licon.drawing", input_1);
+
+  Point output = Point(
+      fet_1_diff->lower_left().x(),
+      (fet_1_diff->upper_right().y() + std::max(
+           fet_0_diff->lower_left().y(), fet_1_diff->lower_left().y())) / 2);
+  layout->SavePoint("output", output);
+  layout->MakeVia("licon.drawing", output);
+
+  // FIXME(aryap): Do not copy and flip this to align; the P-fets have to be
+  // sized independently of the N-fets.
+
+  // Add the first side of the mux back to the main layout.
+  main_layout->AddLayout(*layout, "output_mux_left");
+  Rectangle bb = layout->GetBoundingBox();
+
+  // Flip and shift the layout to create the p-side.
+  layout->MirrorY();
+  layout->ResetOrigin();
 
   // Connect the P- and N-MOS pass gate outputs.
   Point left = main_layout->GetPoint("output_mux_left.output");
