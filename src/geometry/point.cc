@@ -14,6 +14,12 @@ Point &Point::operator+=(const Point &other) {
   return *this;
 }
 
+Point &Point::operator-=(const Point &other) {
+  x_ = x_ - other.x_;
+  y_ = y_ - other.y_;
+  return *this;
+}
+
 void Point::MirrorY() {
   x_ = -x_;
 }

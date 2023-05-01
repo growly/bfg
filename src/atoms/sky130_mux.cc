@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "atom.h"
 #include "../circuit/wire.h"
@@ -123,7 +124,6 @@ Polygon *AddElbowPathBetweenLayers(
     const std::string &path_layer,
     const std::string &end_layer,
     bfg::Layout *layout) {
-  const int64_t width = db.Rules(path_layer).min_width;
   const int64_t start_encap_width = db.Rules(start_layer).via_width +
       2 * db.Rules(start_layer, path_layer).via_overhang_wide;
   const int64_t start_encap_length = db.Rules(start_layer).via_width +
@@ -132,6 +132,14 @@ Polygon *AddElbowPathBetweenLayers(
       2 * db.Rules(end_layer, path_layer).via_overhang_wide;
   const int64_t end_encap_length = db.Rules(end_layer).via_width +
       2 * db.Rules(end_layer, path_layer).via_overhang;
+  // TODO(aryap): This is a hack workaround for the problem that frequently
+  // occurs when an elbows start and end encapsulation pours are too close
+  // together, and a divet is created between them that violates the min.
+  // separation distance for the layer. This is most elegantly solved as an
+  // automatic feature of the PolyLine which should automatically widen widths
+  // to avoid divets.
+  const int64_t width = std::max({
+      db.Rules(path_layer).min_width, end_encap_width});
   LOG(INFO) << "Adding elbow (" << start_layer << ") " << start << " -("
             << path_layer << ")-> " << end << " (" << end_layer << ") "
             << width << " "
@@ -225,38 +233,126 @@ Polygon *ConnectDiffToMet1(
   return added;
 }
 
+enum BulgeDirection {
+  LEFT,
+  CENTRE,
+  RIGHT
+};
+
+Polygon *ConnectPolyToMet1(
+    const PhysicalPropertiesDatabase &db,
+    const Point &poly_point,
+    const Point &met1_point,
+    const std::string &poly_contact,
+    bool rotate,
+    const BulgeDirection &bulge_direction,
+    bfg::Layout *layout) {
+  int64_t via_side = db.Rules(poly_contact).via_width;
+  int64_t via_overhang_wide =
+      db.Rules("poly.drawing", poly_contact).via_overhang_wide;
+  int64_t via_encap_width = via_side + 2 * via_overhang_wide;
+  int64_t via_encap_length =
+      via_side + 2 * db.Rules("poly.drawing", poly_contact).via_overhang;
+
+  int64_t poly_width = db.Rules("poly.drawing").min_width;
+
+  layout->SetActiveLayerByName("poly.drawing");
+
+  Point poly_via_centre = poly_point;
+
+  switch (bulge_direction) {
+    case BulgeDirection::LEFT:
+      LOG(INFO) << "translating left";
+      poly_via_centre -= Point(via_overhang_wide, 0);
+      break;
+    case BulgeDirection::CENTRE:
+      // Do nothing; pour starts centred.
+      break;
+    case BulgeDirection::RIGHT:
+      LOG(INFO) << "translating right";
+      poly_via_centre += Point(via_overhang_wide, 0);
+      break;
+  }
+  layout->AddRectangle(
+      {poly_via_centre - Point(via_encap_width / 2, via_encap_length / 2),
+       poly_via_centre + Point(via_encap_width / 2, via_encap_length / 2)});
+
+  layout->RestoreLastActiveLayer();
+
+  layout->MakeVia(poly_contact, poly_via_centre);
+
+  Polygon *added = AddElbowPathBetweenLayers(
+      db,
+      rotate ? poly_via_centre : met1_point,
+      rotate ? met1_point : poly_via_centre,
+      rotate ? poly_contact : "mcon.drawing",
+      "li.drawing",
+      rotate ? "mcon.drawing" : poly_contact,
+      layout);
+
+  layout->MakeVia("mcon.drawing", met1_point);
+
+  return added;
+}
+
 Polygon *ConnectPolyToMet1(
     const PhysicalPropertiesDatabase &db,
     const Point &poly_point,
     const Point &met1_point,
     const std::string &poly_contact,
     bfg::Layout *layout) {
-  int64_t via_side = db.Rules(poly_contact).via_width;
-  int64_t via_encap_width =
-      via_side + 2 * db.Rules("poly.drawing", poly_contact).via_overhang_wide;
-  int64_t via_encap_length =
-      via_side + 2 * db.Rules("poly.drawing", poly_contact).via_overhang;
-
-  layout->SetActiveLayerByName("poly.drawing");
-  layout->AddRectangle(
-      {poly_point - Point(via_encap_width / 2, via_encap_length / 2),
-       poly_point + Point(via_encap_width / 2, via_encap_length / 2)});
-  layout->RestoreLastActiveLayer();
-
-  layout->MakeVia(poly_contact, poly_point);
-
-  Polygon *added = AddElbowPathBetweenLayers(
+  return ConnectPolyToMet1(
       db,
-      met1_point,
       poly_point,
-      "mcon.drawing",
-      "li.drawing",
+      met1_point,
       poly_contact,
+      false,
+      BulgeDirection::CENTRE,
       layout);
+}
 
-  layout->MakeVia("mcon.drawing", met1_point);
+// The mapping is a triple of (named point, connecting column poly line, and
+// whether or not the jog should be rotated).
+void ConnectNamedPointsToColumns(
+    const PhysicalPropertiesDatabase &db,
+    std::vector<
+        std::tuple<std::string, PolyLine*, bool>> mapping,
+    const std::string &poly_contact,
+    bool point_up,
+    bfg::Layout *layout) {
+  int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
+  int64_t mcon_encap_width = mcon_via_side + 2 * db.Rules(
+      "li.drawing", "mcon.drawing").via_overhang_wide;
+  int64_t mcon_encap_length = mcon_via_side + 2 * db.Rules(
+      "li.drawing", "mcon.drawing").via_overhang;
 
-  return added;
+  BulgeDirection bulge_direction = BulgeDirection::LEFT;
+  for (size_t i = 0; i < mapping.size(); ++i) {
+    const auto &triple = mapping[i];
+    std::string name;
+    PolyLine *poly_line;
+    bool rotate;
+    std::tie(name, poly_line, rotate) = triple;
+    // NOTE(aryap): Apparently in C++17 you can do:
+    // const auto [name, poly_line, rotate] = triple;
+
+    Point source = layout->GetPoint(name);
+    Point connection = {poly_line->start().x(), source.y()};
+
+    if (point_up) {
+      connection.set_y(source.y() + mcon_via_side);
+    } else {
+      connection.set_y(source.y() - mcon_via_side);
+    }
+    ConnectPolyToMet1(
+        db, source, connection, poly_contact, rotate, bulge_direction, layout);
+    rotate = !rotate;
+    bulge_direction = bulge_direction == BulgeDirection::LEFT ?
+        BulgeDirection::RIGHT : bulge_direction == BulgeDirection::RIGHT ?
+        BulgeDirection::LEFT : BulgeDirection::CENTRE;
+
+    poly_line->InsertBulge(connection, mcon_encap_width, mcon_encap_length);
+  }
 }
 
 void ConnectNamedPointsToColumn(
@@ -326,9 +422,9 @@ void GenerateOutput2To1Mux(
   //int64_t stage_2_mux_nfet_0
 
   int64_t poly_contact_to_ndiff =
-      ndiff_polycon_rules.max_separation + polycon_rules.via_width / 2;
+      ndiff_polycon_rules.min_separation + polycon_rules.via_width / 2;
   int64_t poly_contact_to_pdiff =
-      pdiff_polycon_rules.max_separation + polycon_rules.via_width / 2;
+      pdiff_polycon_rules.min_separation + polycon_rules.via_width / 2;
 
   int64_t via_centre_to_poly_edge =
       polycon_rules.via_width / 2 + poly_polycon_rules.min_separation;
@@ -352,8 +448,6 @@ void GenerateOutput2To1Mux(
       gap_top.y() - gap_bottom.y()) - 2 * poly_rules.min_separation;
   Point poly_ur = Point(gap_top.x() + poly_rules.min_width / 2,
                         ((gap_top + gap_bottom).y() + height) / 2);
-
-
 
   // The limiting constraint on the output mux is the number of horizontal li
   // tracks needed to connect to the poly and metal. If we start with one
@@ -448,142 +542,230 @@ void GenerateOutput2To1Mux(
 
   main_layout->AddLayout(*layout, "output_mux_right");
 
+  Point output_mux_ul_elbow_connect =
+      Point(left_left_metal_column_x, input_0.y());
+  Polygon *left_input_li_pour = nullptr;
   // Connect the outputs of the outer muxes to the final stage mux.
   // Upper left:
-  Point source = main_layout->GetPoint("upper_left.output");
-  main_layout->MakeVia("licon.drawing", source);
-  Point destination = main_layout->GetPoint("output_mux_left.left_input");
-  Point met1_p0 = Point(left_left_metal_column_x, input_0.y());
-  Point met1_p1 = Point(left_left_metal_column_x, source.y());
-  Point output_mux_ul_elbow_connect = met1_p0;
-
-  main_layout->SetActiveLayerByName("li.drawing");
-  Polygon *left_input_li_pour = AddElbowPathBetweenLayers(
-      db,
-      destination, met1_p0,
-      "licon.drawing", "li.drawing", "mcon.drawing",
-      main_layout);
-
-  main_layout->SetActiveLayerByName("met1.drawing");
-  StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
-  main_layout->MakeVia("mcon.drawing", met1_p0);
-
-  main_layout->SetActiveLayerByName("li.drawing");
-  ConnectDiffToMet1(
-      db, source, met1_p1, "ncon.drawing", main_layout);
-
-  source = main_layout->GetPoint("lower_left.output");
-  main_layout->MakeVia("licon.drawing", source);
-  destination = main_layout->GetPoint("output_mux_left.right_input");
-  // This could also be something like
-  //  main_layout->GetPort("output").centre();
-  // if it had been added as a port.
-  met1_p0 = Point(
-      left_right_metal_column_x,
-      main_layout->GetPoint("lower_left.li_corner_se_centre").y()
-          + li_pitch_optimistic);
-  Point output_mux_lr_elbow_connect = met1_p0;
-        
-  met1_p1 = Point(left_right_metal_column_x, source.y());
-  main_layout->SetActiveLayerByName("li.drawing");
-  AddElbowPathBetweenLayers(
-      db,
-      destination, met1_p0,
-      "licon.drawing", "li.drawing", "mcon.drawing",
-      main_layout);
-  main_layout->SetActiveLayerByName("met1.drawing");
-  StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
-  main_layout->MakeVia("mcon.drawing", met1_p0);
-
-  main_layout->SetActiveLayerByName("li.drawing");
-  ConnectDiffToMet1(
-      db, source, met1_p1, "ncon.drawing", main_layout);
-
-  // Connect the signal that selects the output of the bottom-left mux
-  // structure.
-  met1_p1 = Point(left_right_metal_column_x, met1_top_y);
-  int64_t lower_left_poly_connect_y =
-      fet_1_diff->upper_right().y() + poly_contact_to_ndiff;
-  Point lower_left_poly_connect = Point(
-      left_right_poly.centre().x(), lower_left_poly_connect_y);
-  met1_p0 = Point(
-      met1_p1.x(), lower_left_poly_connect_y);
-  main_layout->SetActiveLayerByName("met1.drawing");
-  Polygon *top_poly_connector = StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
-
-  main_layout->SetActiveLayerByName("li.drawing");
-  Polygon *left_right_poly_li_pour = ConnectDiffToMet1(
-      db,
-      Point(left_right_poly.centre().x(),
-            met1_p0.y()),
-      met1_p0,
-      "ncon.drawing",
-      main_layout);
-
-  // Connect the signal that selects the output of the upper-left mux
-  // structure to the appropriate gate (poly).
-  met1_p1 = Point(left_left_metal_column_x, met1_bottom_y);
-  int64_t upper_left_poly_connect_y = std::max({
-      // Can't be further than poly_contact_to_ndiff from diffusion.
-      fet_0_diff->lower_left().y() - poly_contact_to_ndiff,
-      // Can't be too close to the bottom end of the poly.
-      left_left_poly.lower_left().y() + (
-          via_side / 2
-          + poly_polycon_rules.min_separation
-          + li_rules.min_width / 2),
-      output_mux_lr_elbow_connect.y() + li_pitch_optimistic
-  });
-  Point upper_left_poly_connect = Point(
-      left_left_poly.centre().x(), upper_left_poly_connect_y);
-  met1_p0 = Point(
-      met1_p1.x(), upper_left_poly_connect.y());
-  main_layout->SetActiveLayerByName("met1.drawing");
-  Polygon *bottom_poly_connector = StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
-
-  main_layout->SetActiveLayerByName("li.drawing");
-  Polygon *left_left_poly_li_pour = ConnectPolyToMet1(
-      db,
-      Point(left_left_poly.centre().x(),
-            met1_p0.y()),
-      met1_p0,
-      "polycon.drawing",
-      main_layout);
-
-  //              (from upper left mux output)
-  //    +------+
+  //    p_2       (from upper left mux output)
+  //      +------+
+  //      |      |
+  //      |      + p_0
+  //      |
+  //      |
+  //      |
+  //      + p_3
+  //      |
+  //      |
+  //    +-+ p_4
   //    |
-  //    |
-  //    |
-  //    |
-  //    |
-  //    +
-  //    |
-  //    +
+  //    + p_6
   {
-    source = main_layout->GetPoint("upper_right.output");
+    const auto &li_dcon_rules = db.Rules("li.drawing", "ncon.drawing");
+    const auto &dcon_rules = db.Rules("ncon.drawing");
+    int64_t via_side = dcon_rules.via_width;
+    int64_t li_mcon_via_encap_width =
+        via_side + 2 * li_mcon_rules.via_overhang_wide;
+    int64_t li_mcon_via_encap_length =
+        via_side + 2 * li_mcon_rules.via_overhang;
+    int64_t li_dcon_via_encap_width =
+        via_side + 2 * li_dcon_rules.via_overhang_wide;
+    int64_t li_dcon_via_encap_length =
+        via_side + 2 * li_dcon_rules.via_overhang;
+
+    Point source = main_layout->GetPoint("upper_left.output");
     main_layout->MakeVia("licon.drawing", source);
-    destination = main_layout->GetPoint("output_mux_right.left_input");
-    met1_p0 = Point(
+    Point destination = main_layout->GetPoint("output_mux_left.left_input");
+
+    Point p_0 = source;
+    Point p_2 = Point(
+        left_left_metal_column_x,
+        main_layout->GetPoint("upper_left.via_3_1_ur").y() + (
+            li_rules.min_separation +
+            li_mcon_rules.via_overhang_wide +
+            mcon_rules.via_width / 2
+        ));
+    Point p_6 = destination;
+    Point p_3 = Point(
+        left_left_metal_column_x,
+        main_layout->GetPoint("upper_left.li_corner_se_centre").y() - (
+            li_rules.min_separation + li_mcon_rules.via_overhang +
+            mcon_rules.via_width / 2 + li_rules.min_width / 2));
+    Point p_4 = Point(p_3.x(), (p_6.y() + p_3.y()) / 2);
+    Point p_5 = Point(p_6.x(), p_4.y());
+
+    main_layout->SetActiveLayerByName("li.drawing");
+    PolyLine left_input_jog = PolyLine(p_3, {
+        LineSegment {p_4, static_cast<uint64_t>(li_mcon_via_encap_width)},
+        LineSegment {p_5, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_6, static_cast<uint64_t>(li_rules.min_width)}
+    });
+    left_input_jog.InsertBulge(p_3,
+                               li_mcon_via_encap_width,
+                               li_mcon_via_encap_length);
+    left_input_jog.InsertBulge(p_6,
+                               li_dcon_via_encap_width,
+                               li_dcon_via_encap_length);
+    left_input_li_pour = main_layout->AddPolygon(
+        InflatePolyLineOrDie(db, left_input_jog));
+
+    main_layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        p_2, p_3,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
+    main_layout->MakeVia("mcon.drawing", p_3);
+
+    main_layout->SetActiveLayerByName("li.drawing");
+    AddElbowPathBetweenLayers(
+        db,
+        p_0, p_2,
+        "ncon.drawing", "li.drawing", "mcon.drawing",
+        main_layout);
+  }
+
+
+  Point output_mux_lr_elbow_top;
+  Point output_mux_lr_elbow_bottom;
+  {
+    //            destination
+    //              + p_5
+    //              |
+    // p_3  +-------/
+    //      |
+    //      |  + p_0 (from lower left mux output)
+    //      |  | source
+    // p_2  +--/
+    //
+
+    Point p_0 = main_layout->GetPoint("lower_left.output");
+    main_layout->MakeVia("licon.drawing", p_0);
+
+    Point p_5 = main_layout->GetPoint("output_mux_left.right_input");
+
+    // Jog up a bit and connect to the metal track.
+    Point p_2 = Point(
+        left_right_metal_column_x, p_0.y() - li_rules.min_width);
+    Point p_3 = Point(
+        left_right_metal_column_x,
+        // This could also be something like
+        //  main_layout->GetPort("output").centre();
+        // if it had been added as a port.
+        main_layout->GetPoint("lower_left.li_corner_se_centre").y()
+            + li_pitch_optimistic);
+
+    output_mux_lr_elbow_top = p_3;
+          
+    main_layout->SetActiveLayerByName("li.drawing");
+    AddElbowPathBetweenLayers(
+        db,
+        p_5, p_3,
+        "licon.drawing", "li.drawing", "mcon.drawing",
+        main_layout);
+
+    main_layout->MakeVia("mcon.drawing", p_3);
+    main_layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        p_3, p_2,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
+    main_layout->MakeVia("mcon.drawing", p_2);
+
+    main_layout->SetActiveLayerByName("li.drawing");
+    AddElbowPathBetweenLayers(
+        db,
+        p_0, p_2,
+        "licon.drawing", "li.drawing", "mcon.drawing",
+        main_layout);
+  }
+
+  Polygon *left_right_poly_li_pour = nullptr;
+  Polygon *top_poly_connector = nullptr;
+  {
+    // Connect the signal that selects the output of the bottom-left mux
+    // structure.
+    //
+    //     + p_0
+    //     |
+    //     |
+    //     |
+    //     |
+    //     |
+    //     +---+ p_2
+    //     p_1
+    //
+    Point p_0 = Point(left_right_metal_column_x, met1_top_y);
+    int64_t lower_left_poly_connect_y =
+        main_layout->GetPoint("upper_left.li_corner_se_centre").y() - (
+            li_rules.min_separation + li_mcon_rules.via_overhang +
+            mcon_rules.via_width / 2 + li_rules.min_width / 2);
+    Point lower_left_poly_connect = Point(
+        left_right_poly.centre().x(), lower_left_poly_connect_y);
+    Point p_1 = Point(
+        p_0.x(), lower_left_poly_connect_y);
+    main_layout->SetActiveLayerByName("met1.drawing");
+    top_poly_connector = StraightLineBetweenLayers(
+        db,
+        p_0, p_1,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
+
+    main_layout->SetActiveLayerByName("li.drawing");
+    left_right_poly_li_pour = ConnectPolyToMet1(
+        db,
+        Point(left_right_poly.centre().x(),
+              p_1.y()),
+        p_1,
+        "polycon.drawing",
+        main_layout);
+  }
+
+  {
+    // Connect the signal that selects the output of the upper-left mux
+    // structure to the appropriate gate (poly).
+    Point met1_p1 = Point(left_left_metal_column_x, met1_bottom_y);
+    int64_t upper_left_poly_connect_y = std::max({
+        // Can't be further than poly_contact_to_ndiff from diffusion.
+        //fet_0_diff->lower_left().y() - poly_contact_to_ndiff,
+        // Can't be too close to the bottom end of the poly.
+        left_left_poly.lower_left().y() + (
+            via_side / 2
+            + poly_polycon_rules.min_separation
+            + li_rules.min_width / 2),
+        output_mux_lr_elbow_top.y() + li_pitch_optimistic
+    });
+    Point upper_left_poly_connect = Point(
+        left_left_poly.centre().x(), upper_left_poly_connect_y);
+    Point met1_p0 = Point(
+        met1_p1.x(), upper_left_poly_connect.y());
+    main_layout->SetActiveLayerByName("met1.drawing");
+    Polygon *bottom_poly_connector = StraightLineBetweenLayers(
+        db,
+        met1_p1, met1_p0,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
+
+    main_layout->SetActiveLayerByName("li.drawing");
+    Polygon *left_left_poly_li_pour = ConnectPolyToMet1(
+        db,
+        Point(left_left_poly.centre().x(),
+              met1_p0.y()),
+        met1_p0,
+        "polycon.drawing",
+        main_layout);
+  }
+
+  {
+    Point source = main_layout->GetPoint("upper_right.output");
+    main_layout->MakeVia("licon.drawing", source);
+    Point destination = main_layout->GetPoint("output_mux_right.left_input");
+    Point met1_p0 = Point(
         right_left_metal_column_x,
         main_layout->GetPoint("upper_right.li_corner_se_centre").y()
             - li_pitch_optimistic - pcon_via_encap_side);
-    met1_p1 = Point(right_left_metal_column_x, source.y());
+    Point met1_p1 = Point(right_left_metal_column_x, source.y());
     output_mux_ul_elbow_connect = met1_p0;
 
     main_layout->SetActiveLayerByName("li.drawing");
@@ -606,100 +788,105 @@ void GenerateOutput2To1Mux(
         db, source, met1_p1, "ncon.drawing", main_layout);
   }
 
-  //            +
+  //    +
+  //    |
+  //    \-------_
   //            |
-  //    +-------/
-  //    |
-  //    |
-  //    |
-  //    +--+  (from lower left mux output)
-  //{
-  //  source = main_layout->GetPoint("lower_right.output");
-  //  main_layout->MakeVia("licon.drawing", source);
-  //  destination = main_layout->GetPoint("output_mux_right.right_input");
-  //  met1_p0 = Point(
-  //      right_right_metal_column_x,
-  //      main_layout->GetPoint("lower_right.li_corner_se_centre").y()
-  //          + li_pitch_optimistic);
-  //  output_mux_lr_elbow_connect = met1_p0;
-  //        
-  //  met1_p1 = Point(right_right_metal_column_x, source.y());
-  //  main_layout->SetActiveLayerByName("li.drawing");
-  //  AddElbowPathBetweenLayers(
-  //      db,
-  //      destination, met1_p0,
-  //      "licon.drawing", "li.drawing", "mcon.drawing",
-  //      main_layout);
-  //  main_layout->SetActiveLayerByName("met1.drawing");
-  //  StraightLineBetweenLayers(
-  //      db,
-  //      met1_p1, met1_p0,
-  //      "mcon.drawing", "met1.drawing", "mcon.drawing",
-  //      main_layout);
-  //  main_layout->MakeVia("mcon.drawing", met1_p0);
+  //            |
+  //            |
+  //        +--+
+  //  (from lower right mux output)
+  {
+    Point source = main_layout->GetPoint("lower_right.output");
+    main_layout->MakeVia("licon.drawing", source);
+    Point destination = main_layout->GetPoint("output_mux_right.right_input");
+    Point met1_p0 = Point(
+        right_right_metal_column_x,
+        main_layout->GetPoint("lower_right.li_corner_se_centre").y()
+            + li_pitch_optimistic);
+    output_mux_lr_elbow_top = met1_p0;
+          
+    Point met1_p1 = Point(right_right_metal_column_x, source.y());
+    main_layout->SetActiveLayerByName("li.drawing");
+    AddElbowPathBetweenLayers(
+        db,
+        destination, met1_p0,
+        "licon.drawing", "li.drawing", "mcon.drawing",
+        main_layout);
+    main_layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        met1_p1, met1_p0,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
+    main_layout->MakeVia("mcon.drawing", met1_p0);
 
-  //  main_layout->SetActiveLayerByName("li.drawing");
-  //  ConnectDiffToMet1(
-  //      db, source, met1_p1, "ncon.drawing", main_layout);
-  //}
+    main_layout->SetActiveLayerByName("li.drawing");
+    ConnectDiffToMet1(
+        db, source, met1_p1, "ncon.drawing", main_layout);
+  }
 
-  // Connect the signal that selects the output of the bottom-left mux
-  // structure to the right gate (poly).
-  met1_p1 = Point(right_right_metal_column_x, met1_top_y);
-  lower_left_poly_connect = Point(
-      right_right_poly.centre().x(),
-      std::min(
-          right_right_poly.upper_right().y() - (via_side / 2
-              + poly_polycon_rules.min_separation
-              + li_rules.min_width / 2),
-          output_mux_ul_elbow_connect.y() - li_pitch_optimistic
-      ));
-  met1_p0 = Point(
-      met1_p1.x(), lower_left_poly_connect.y());
-  main_layout->SetActiveLayerByName("met1.drawing");
-  StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
+  {
+    // Connect the signal that selects the output of the bottom-left mux
+    // structure to the right gate (poly).
+    Point met1_p1 = Point(right_right_metal_column_x, met1_top_y);
+    Point lower_left_poly_connect = Point(
+        right_right_poly.centre().x(),
+        std::min(
+            right_right_poly.upper_right().y() - (via_side / 2
+                + poly_polycon_rules.min_separation
+                + li_rules.min_width / 2),
+            output_mux_ul_elbow_connect.y() - li_pitch_optimistic
+        ));
+    Point met1_p0 = Point(
+        met1_p1.x(), lower_left_poly_connect.y());
+    main_layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        met1_p1, met1_p0,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
 
-  main_layout->SetActiveLayerByName("li.drawing");
-  ConnectDiffToMet1(
-      db,
-      Point(right_right_poly.centre().x(),
-            met1_p0.y()),
-      met1_p0,
-      "ncon.drawing",
-      main_layout);
+    main_layout->SetActiveLayerByName("li.drawing");
+    ConnectDiffToMet1(
+        db,
+        Point(right_right_poly.centre().x(),
+              met1_p0.y()),
+        met1_p0,
+        "ncon.drawing",
+        main_layout);
+  }
 
-  // Connect the signal that selects the output of the upper-left mux
-  // structure.
-  met1_p1 = Point(right_left_metal_column_x, met1_bottom_y);
-  upper_left_poly_connect = Point(
-      right_left_poly.centre().x(),
-      std::min(
-          right_left_poly.upper_right().y() + (via_side / 2
-              + poly_polycon_rules.min_separation
-              + li_rules.min_width / 2),
-          output_mux_lr_elbow_connect.y() + li_pitch_optimistic
-      ));
-  met1_p0 = Point(
-      met1_p1.x(), upper_left_poly_connect.y());
-  main_layout->SetActiveLayerByName("met1.drawing");
-  StraightLineBetweenLayers(
-      db,
-      met1_p1, met1_p0,
-      "mcon.drawing", "met1.drawing", "mcon.drawing",
-      main_layout);
+  {
+    // Connect the signal that selects the output of the upper-left mux
+    // structure.
+    Point met1_p1 = Point(right_left_metal_column_x, met1_bottom_y);
+    upper_left_poly_connect = Point(
+        right_left_poly.centre().x(),
+        std::min(
+            right_left_poly.upper_right().y() + (via_side / 2
+                + poly_polycon_rules.min_separation
+                + li_rules.min_width / 2),
+            output_mux_lr_elbow_top.y() + li_pitch_optimistic
+        ));
+    Point met1_p0 = Point(
+        met1_p1.x(), upper_left_poly_connect.y());
+    main_layout->SetActiveLayerByName("met1.drawing");
+    StraightLineBetweenLayers(
+        db,
+        met1_p1, met1_p0,
+        "mcon.drawing", "met1.drawing", "mcon.drawing",
+        main_layout);
 
-  main_layout->SetActiveLayerByName("li.drawing");
-  ConnectDiffToMet1(
-      db,
-      Point(right_left_poly.centre().x(),
-            met1_p0.y()),
-      met1_p0,
-      "ncon.drawing",
-      main_layout);
+    main_layout->SetActiveLayerByName("li.drawing");
+    Polygon *right_right_poly_li_pour = ConnectPolyToMet1(
+        db,
+        Point(right_left_poly.centre().x(),
+              met1_p0.y()),
+        met1_p0,
+        "polycon.drawing",
+        main_layout);
+  }
 
   // Connect the P- and N-MOS pass gate outputs.
   Point left = main_layout->GetPoint("output_mux_left.output");
@@ -787,12 +974,12 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   Mux2Parameters mux2_params_n = {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
-    .fet_0_width = db.ToInternalUnits(640),
-    .fet_1_width = db.ToInternalUnits(640),
-    .fet_2_width = db.ToInternalUnits(640),
-    .fet_3_width = db.ToInternalUnits(640),
-    .fet_4_width = db.ToInternalUnits(640),
-    .fet_5_width = db.ToInternalUnits(640),
+    .fet_0_width = db.ToInternalUnits(450),
+    .fet_1_width = db.ToInternalUnits(450),
+    .fet_2_width = db.ToInternalUnits(450),
+    .fet_3_width = db.ToInternalUnits(450),
+    .fet_4_width = db.ToInternalUnits(450),
+    .fet_5_width = db.ToInternalUnits(450),
     .fet_0_length = db.ToInternalUnits(170),
     .fet_1_length = db.ToInternalUnits(170),
     .fet_2_length = db.ToInternalUnits(170),
@@ -813,7 +1000,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_1 = std::nullopt,
     .input_2 = std::nullopt,
     .input_3 = std::nullopt,
-    .input_x_padding = db.ToInternalUnits(-100),
+    .input_x_padding = db.ToInternalUnits(-200),
     .input_y_padding = 0 //db.ToInternalUnits(200)
   };
 
@@ -874,7 +1061,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   // Right side is P.
   diff_padding = pdiff_psdm_rules.min_enclosure;
   layout->SetActiveLayerByName("psdm.drawing");
-  layout->AddRectangle({
+  Rectangle *pdiff = layout->AddRectangle({
       layout->GetPoint("lower_right.diff_ur") - Point(
           diff_padding, diff_padding),
       layout->GetPoint("upper_right.diff_ul") + Point(
@@ -885,10 +1072,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   diff_padding = ndiff_nwell_rules.min_enclosure;
   layout->SetActiveLayerByName("nwell.drawing");
   layout->AddRectangle({
-      layout->GetPoint("lower_right.diff_ur") - Point(
-          diff_padding, diff_padding),
-      layout->GetPoint("upper_right.diff_ul") + Point(
-          diff_padding, diff_padding)
+      pdiff->lower_left() - Point(diff_padding, diff_padding),
+      pdiff->upper_right() + Point(diff_padding, diff_padding)
   });
 
   // Generate vertical metal columns.
@@ -904,35 +1089,71 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   // The second half of the list is right-hand-side columns. They should be
   // moved one over depending on the overall width of the mux.
   int64_t width = static_cast<int64_t>(bounding_box.Width());
-  int64_t column_pitch = std::max(
-      met1_rules.min_width / 2 + met1_rules.min_separation +
-      std::max(
+  int64_t column_pitch_max = std::max(
+      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
           met1_rules.min_width / 2,
-          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide),
-          // li_rules.min_width + li_mcon_rules.via_overhang_wide * 2 +
-          // li_rules.min_separation);
-      0L);
+          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
+      ),
+      mcon_rules.via_width + (
+          li_mcon_rules.via_overhang_wide +
+          li_mcon_rules.via_overhang +
+          li_rules.min_separation
+      )
+  );
+
+  int64_t column_pitch_min = std::min(
+      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
+          met1_rules.min_width / 2,
+          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
+      ),
+      mcon_rules.via_width + (
+          li_mcon_rules.via_overhang_wide * 2 +
+          li_rules.min_separation
+      )
+  );
 
 
-  int64_t column_offset_x =
-      met1_rules.min_separation +
-      //2 * std::max(li_mcon_rules.via_overhang,
-      //             li_mcon_rules.via_overhang_wide) +
-      li_rules.min_separation;
-  int64_t last_column = (width - column_offset_x) / column_pitch - 1;
-  LOG(INFO) << " last column " << last_column;
-  std::set<int64_t> enabled_columns = {
+  // Draw a regular set of vertical metal columns such that:
+  // - there is a single vertical column in the centre, connectible to the
+  // output
+  // - the PMOS and NMOS sides have an equal number of extending out from the
+  // centre
+  // - the pitches between columns vary according to our need for their
+  // positioning
+  // - space is made for these columns but only some of them are drawn here
+
+  int64_t central_column_x = width / 2;
+  constexpr size_t kNumColumnsPerFlank = 6;
+
+  // e.g. if 6 columns per flank, including the centre there are 13 columns, so
+  // the index is 12.
+  size_t last_column = 2 * kNumColumnsPerFlank;
+  std::set<size_t> drawn_columns = {
+      0,
       1,
-      3,
-      4,
-      8,
-      last_column - 7,
-      last_column - 4,
+      2,
+      5,
+      last_column - 5,
       last_column - 2,
-      last_column
+      last_column - 1,
+      last_column - 0
   };
-  std::map<int64_t, std::unique_ptr<PolyLine>> column_lines;
-  std::map<int64_t, int64_t> column_x;
+  std::map<size_t, std::unique_ptr<PolyLine>> column_lines;
+  std::map<size_t, int64_t> column_x;
+
+  // The pitches of columns in order extending outward from the centre.
+  std::vector<int64_t> pitches = {
+      column_pitch_min,
+      // Push the 2nd column out over the centre of the output muxes in each
+      // quadrant (TODO(aryap): This should really be computed as a function of
+      // where those points are.)
+      column_pitch_max + li_rules.min_separation,
+      column_pitch_max + (li_rules.min_separation - met1_rules.min_separation),
+      column_pitch_max,
+      column_pitch_max,
+      2 * column_pitch_max
+  };
+
   int64_t mux_top_y = static_cast<int64_t>(bounding_box.Height());
   int64_t mux_bottom_y = 0;
   {
@@ -940,84 +1161,108 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     int64_t extension = 0;
     layout->SetActiveLayerByName("met1.drawing");
 
-    for (int64_t x = column_offset_x, k = 0;
-         x < width;
-         x += column_pitch, ++k) {
-      column_x[k] = x;
-      Point bottom = {x, -extension};
-      Point top = {x, mux_top_y + extension};
-      if (enabled_columns.find(k) != enabled_columns.end()) {
-        PolyLine *column_line = new PolyLine({bottom, top});
-        column_lines[k].reset(column_line);
-        column_line->SetWidth(met1_rules.min_width);
+    int64_t last_x_left = central_column_x;
+    int64_t last_x_right = central_column_x;
+
+    for (size_t i = 0; i < kNumColumnsPerFlank; ++i) {
+      // Left and right k.
+      size_t k_values[] = {
+          kNumColumnsPerFlank - i - 1, 1 + kNumColumnsPerFlank + i};
+      int64_t x_values[] = {
+          last_x_left - pitches[i], last_x_right + pitches[i]};
+      last_x_left = x_values[0];
+      last_x_right = x_values[1];
+      for (size_t j = 0; j < 2; ++j) {
+        // Draw the left columns for j == 0, right columns for j ==1.
+        size_t k = k_values[j];
+        int64_t x = x_values[j];
+
+        column_x[k] = x;
+        Point bottom = {x, -extension};
+        Point top = {x, mux_top_y + extension};
+        if (drawn_columns.find(k) != drawn_columns.end()) {
+          PolyLine *column_line = new PolyLine({bottom, top});
+          column_lines[k].reset(column_line);
+          column_line->SetWidth(met1_rules.min_width);
+        }
       }
     }
   }
 
-  ConnectNamedPointsToColumn(
+  // Connect poly to metal columns.
+  // Along the top of the mux:
+  //
+  // v metal line (m)
+  // m  p   p  m
+  // x  p   +--x
+  // |  p   |  m ... and so on.
+  // +--x   x  m
+  // m  p   p  m
+  // m  p   p  m
+  //    ^ poly (p)
+  ConnectNamedPointsToColumns(
       db,
-      {"upper_left.column_0_centre_top_via",
-       "upper_left.column_0_centre_bottom_via",
-       "lower_left.column_0_centre_bottom_via",
-       "lower_left.column_0_centre_top_via"},
-      column_lines[1].get(),
+      {
+       {"upper_left.column_0_centre_top_via",
+         column_lines[0].get(),
+         false},
+        {"upper_left.column_1_centre_top_via",
+         column_lines[1].get(),
+         true},
+        {"upper_left.column_2_centre_top_via",
+         column_lines[2].get(),
+         false},
+        {"upper_left.column_3_centre_top_via",
+         column_lines[5].get(),
+         true},
+        {"upper_right.column_3_centre_top_via",
+         column_lines[last_column - 5].get(),
+         true},
+        {"upper_right.column_2_centre_top_via",
+         column_lines[last_column - 2].get(),
+         false},
+        {"upper_right.column_1_centre_top_via",
+         column_lines[last_column - 1].get(),
+         true},
+        {"upper_right.column_0_centre_top_via",
+         column_lines[last_column - 0].get(),
+         false}
+      },
       poly_contact,
-      layout.get());
-  ConnectNamedPointsToColumn(
-      db,
-      {"upper_left.column_1_centre_top_via",
-       "upper_left.column_1_centre_bottom_via",
-       "lower_left.column_1_centre_bottom_via",
-       "lower_left.column_1_centre_top_via"},
-      column_lines[3].get(),
-      poly_contact,
-      layout.get());
-  ConnectNamedPointsToColumn(
-      db,
-      {"upper_left.column_2_centre_top_via",
-       "lower_left.column_2_centre_top_via"},
-      column_lines[4].get(),
-      poly_contact,
-      layout.get());
-  ConnectNamedPointsToColumn(
-      db,
-      {"upper_left.column_3_centre_top_via",
-       "lower_left.column_3_centre_top_via"},
-      column_lines[8].get(),
-      poly_contact,
+      true,  // point up
       layout.get());
 
-  ConnectNamedPointsToColumn(
+  // Along the bottom of the mux:
+  ConnectNamedPointsToColumns(
       db,
-      {"upper_right.column_0_centre_top_via",
-       "upper_right.column_0_centre_bottom_via",
-       "lower_right.column_0_centre_bottom_via",
-       "lower_right.column_0_centre_top_via"},
-      column_lines[last_column].get(),
+      {
+       {"lower_left.column_0_centre_top_via",
+         column_lines[0].get(),
+         false},
+        {"lower_left.column_1_centre_top_via",
+         column_lines[1].get(),
+         true},
+        {"lower_left.column_2_centre_top_via",
+         column_lines[2].get(),
+         false},
+        {"lower_left.column_3_centre_top_via",
+         column_lines[5].get(),
+         true},
+        {"lower_right.column_3_centre_top_via",
+         column_lines[last_column - 5].get(),
+         true},
+        {"lower_right.column_2_centre_top_via",
+         column_lines[last_column - 2].get(),
+         false},
+        {"lower_right.column_1_centre_top_via",
+         column_lines[last_column - 1].get(),
+         true},
+        {"lower_right.column_0_centre_top_via",
+         column_lines[last_column - 0].get(),
+         false}
+      },
       poly_contact,
-      layout.get());
-  ConnectNamedPointsToColumn(
-      db,
-      {"upper_right.column_1_centre_top_via",
-       "upper_right.column_1_centre_bottom_via",
-       "lower_right.column_1_centre_bottom_via",
-       "lower_right.column_1_centre_top_via"},
-      column_lines[last_column - 2].get(),
-      poly_contact,
-      layout.get());
-  ConnectNamedPointsToColumn(
-      db,
-      {"upper_right.column_2_centre_top_via",
-       "lower_right.column_2_centre_top_via"},
-      column_lines[last_column- 4].get(),
-      poly_contact,
-      layout.get());
-  ConnectNamedPointsToColumn(
-      db,
-      {"upper_right.column_3_centre_top_via",
-       "lower_right.column_3_centre_top_via"},
-      column_lines[last_column - 7].get(),
-      poly_contact,
+      false,  // point up
       layout.get());
 
   PolyLineInflator inflator(db);
@@ -1033,10 +1278,10 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   GenerateOutput2To1Mux(
       db,
-      column_x[5],
-      column_x[6],
-      column_x[12],
-      column_x[11],
+      column_x[3],
+      column_x[4],
+      column_x[9],
+      column_x[8],
       mux_top_y,
       mux_bottom_y,
       layout.get());
@@ -1159,20 +1404,28 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   int64_t diff_wing = via_side + poly_dcon_rules.min_separation +
       diff_dcon_rules.min_enclosure;
 
-  // TODO: This is the distance diffusion extends from poly. Is it a DRC rule?
-  int64_t default_poly_overhang = li_rules.min_width + li_rules.min_separation
-      + polycon_rules.via_width + li_polycon_rules.via_overhang;
+  // This is the distance poly extends from diffusion.
+  int64_t default_poly_overhang_top =
+      2 * (li_rules.min_width + li_rules.min_separation) +
+      polycon_rules.via_width + li_polycon_rules.via_overhang;
+  int64_t default_poly_overhang_bottom =
+      li_rules.min_width + li_rules.min_separation +
+      polycon_rules.via_width + li_polycon_rules.via_overhang;
+  int64_t min_poly_overhang = // TODO(aryap): find this DRC rule.
+      diff_polycon_rules.min_enclosure;
 
   layout->SetActiveLayerByName("poly.drawing");
   int64_t column_0_x = 0;
   int64_t mid_y = height / 2;
   PolyLine column_0_line = PolyLine(
       {column_0_x,
-          -params.col_0_poly_overhang_bottom.value_or(default_poly_overhang)},
+          -params.col_0_poly_overhang_bottom.value_or(
+              default_poly_overhang_bottom)},
       {
           {{column_0_x, mid_y}, static_cast<uint64_t>(params.fet_0_length)},
           {{column_0_x, height +
-              params.col_0_poly_overhang_top.value_or(default_poly_overhang)},
+              params.col_0_poly_overhang_top.value_or(
+                  default_poly_overhang_top)},
           static_cast<uint64_t>(params.fet_1_length)}
       });
   Polygon *column_0_polygon = layout->AddPolygon(
@@ -1190,12 +1443,13 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   });
   int64_t column_1_x = column_0.upper_right().x() + poly_gap;
   int64_t column_1_y_max = height + params.col_1_poly_overhang_top.value_or(
-      default_poly_overhang + li_rules.min_width + li_rules.min_separation);
+      default_poly_overhang_top);
   // We want the 2nd column to stick out above the left column by enough
   // distance to clear a 2nd li track horizontally.
   PolyLine column_1_line = PolyLine(
       {column_1_x,
-       -params.col_1_poly_overhang_bottom.value_or(default_poly_overhang)}, {
+       -params.col_1_poly_overhang_bottom.value_or(
+           default_poly_overhang_bottom)}, {
       {{column_1_x, mid_y}, static_cast<uint64_t>(params.fet_2_length)},
       {{column_1_x, column_1_y_max},
           static_cast<uint64_t>(params.fet_3_length)}
@@ -1211,16 +1465,18 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
       poly_rules.min_pitch);
   Rectangle *column_2 = layout->AddRectangle(Rectangle(
       Point(column_2_x, height_fet_4_5 - params.fet_4_width - 
-          params.col_2_poly_overhang_bottom.value_or(default_poly_overhang)),
+          params.col_2_poly_overhang_bottom.value_or(min_poly_overhang)),
       Point(column_2_x + params.fet_4_length, height_fet_4_5 +
-          params.col_2_poly_overhang_top.value_or(default_poly_overhang))));
+          params.col_2_poly_overhang_top.value_or(
+              default_poly_overhang_top))));
 
   int64_t column_3_x = column_2_x + params.fet_5_length / 2 + poly_gap;
   Rectangle *column_3 = layout->AddRectangle(Rectangle(
       Point(column_3_x, height_fet_4_5 - params.fet_5_width -
-          params.col_3_poly_overhang_bottom.value_or(default_poly_overhang)),
+          params.col_3_poly_overhang_bottom.value_or(min_poly_overhang)),
       Point(column_3_x + params.fet_5_length, height_fet_4_5 +
-          params.col_3_poly_overhang_top.value_or(default_poly_overhang))));
+          params.col_3_poly_overhang_top.value_or(
+              default_poly_overhang_top))));
 
   // +---------+---------+   +---------+---------+
   // | pfet 1  | pfet 3  |   | pfet 4  | pfet 5  |
@@ -1229,6 +1485,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   // +---------+---------+
   // | pfet 0  | pfet 2  |
   // +---------+---------+
+  // FIXME(aryap): The diff pour should come last because we're constrained by
+  // the wiring on the metal/li layers.
   layout->SetActiveLayerByName(params.diff_layer_name);
   // pfet 0
   int64_t column_0_1_mid_x = (
@@ -1260,121 +1518,10 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
             height_fet_4_5 - params.fet_4_width),
       Point(column_2_3_mid_x, height_fet_4_5)));
 
-  int64_t poly_contact_to_diff =
-      diff_polycon_rules.max_separation + polycon_rules.via_width / 2;
-  int64_t licon_via_to_li_end =
-      polycon_rules.via_width / 2 + li_polycon_rules.min_enclosure;
-
   // pfet 5
   Rectangle *pfet_5_diff = layout->AddRectangle(Rectangle(
       Point(column_2_3_mid_x, height_fet_4_5 - params.fet_5_width),
       Point(column_3->upper_right().x() + diff_wing, height_fet_4_5)));
-
-  std::map<const std::string, const Point> export_points = {
-      {"column_0_centre_bottom_via", Point(
-          column_0.centre().x(),
-          std::max(
-              pfet_0_diff->lower_left().y() - poly_contact_to_diff,
-              column_0.lower_left().y() + licon_via_to_li_end
-          ))
-      },
-      {"column_0_centre_centre_via", Point(
-          column_0.centre().x(),
-          (pfet_1_diff->lower_left().y() +
-              pfet_0_diff->upper_right().y()) / 2)},
-      {"column_0_centre_top_via", Point(
-          column_0.centre().x(),
-          std::min(
-              pfet_1_diff->upper_right().y() + poly_contact_to_diff,
-              column_0.upper_right().y() - licon_via_to_li_end
-          ))
-      },
-
-      {"column_1_centre_bottom_via", Point(
-          column_1.centre().x(),
-          std::max(
-              pfet_2_diff->lower_left().y() - poly_contact_to_diff,
-              column_1.lower_left().y() + licon_via_to_li_end
-          ))
-      },
-      {"column_1_centre_centre_via", Point(
-          column_1.centre().x(),
-          (pfet_3_diff->lower_left().y() +
-              pfet_2_diff->upper_right().y()) / 2)},
-      {"column_1_centre_top_via", Point(
-          column_1.centre().x(),
-          std::min(
-              pfet_3_diff->upper_right().y() + poly_contact_to_diff,
-              column_1.upper_right().y() - licon_via_to_li_end
-          ))
-      },
-
-      {"column_2_centre_bottom_via", Point(
-          column_2->centre().x(),
-          std::max(
-              pfet_4_diff->lower_left().y() - poly_contact_to_diff,
-              column_2->lower_left().y() + licon_via_to_li_end
-          ))
-      },
-      {"column_2_centre_top_via", Point(
-          column_2->centre().x(),
-          std::min(
-              pfet_4_diff->upper_right().y() + poly_contact_to_diff,
-              column_2->upper_right().y() - licon_via_to_li_end
-          ))
-      },
-
-      {"column_3_centre_bottom_via", Point(
-          column_3->centre().x(),
-          std::max(
-              pfet_5_diff->lower_left().y() - poly_contact_to_diff,
-              column_3->lower_left().y() + licon_via_to_li_end
-          ))
-      },
-      {"column_3_centre_top_via", Point(
-          column_3->centre().x(),
-          std::min(
-              pfet_5_diff->upper_right().y() + poly_contact_to_diff,
-              column_3->upper_right().y() - licon_via_to_li_end
-          ))
-      },
-
-      {"column_0_centre_bottom", Point(
-          column_0.centre().x(), column_0.lower_left().y())},
-      {"column_0_centre_top", Point(
-          column_0.centre().x(), column_0.upper_right().y())},
-
-      {"column_1_centre_bottom", Point(
-          column_1.centre().x(), column_1.lower_left().y())},
-      {"column_1_centre_top", Point(
-          column_1.centre().x(), column_1.upper_right().y())},
-
-      {"column_2_centre_bottom", Point(
-          column_2->centre().x(), column_2->lower_left().y())},
-      {"column_2_centre_top", Point(
-          column_2->centre().x(), column_2->upper_right().y())},
-      {"column_3_centre_bottom", Point(
-          column_3->centre().x(), column_3->lower_left().y())},
-      {"column_3_centre_top", Point(
-          column_3->centre().x(), column_3->upper_right().y())},
-
-      {"output", Point(
-            pfet_4_diff->upper_right().x(),
-            pfet_4_diff->upper_right().y() - (
-                dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure))},
-
-      // Save some bounds for the diff regions.
-      // TODO(aryap): It would be convenient to get the bounding box for all the
-      // shapes on diff.drawing at this point and use that for this:
-      {"diff_ll", pfet_0_diff->lower_left()},
-      {"diff_ul", pfet_1_diff->UpperLeft()},
-      {"diff_ur", pfet_5_diff->upper_right()},
-      {"diff_lr", Point(
-          pfet_5_diff->upper_right().x(),
-          pfet_0_diff->lower_left().y())}
-  };
-  layout->SavePoints(export_points);
-
 
   // diff/met0 vias
   // Vias are named with indices according to their (column, row):
@@ -1428,7 +1575,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
   int64_t via_column_4_x =
       pfet_5_diff->upper_right().x() - via_centre_to_diff_edge;
-  int64_t via_4_1_y = height_fet_4_5 - params.fet_0_width / 2;
+  int64_t via_4_1_y =
+      height_fet_4_5 - params.fet_5_width + via_centre_to_diff_edge;
   Rectangle *via_4_1 = layout->AddSquare(
       Point(via_column_4_x, via_4_1_y), via_side);
 
@@ -1534,17 +1682,17 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   //
   //  (Top left)
   //
-  //  +---------------+
-  //                  |
-  //  +---+    +      +
-  //           |
-  //           + -------------- (inner wire)
+  //  input_1   +---------------+
+  //                            |
+  //  input_0   +---+    +      +
+  //                     |
+  //                     + -------------- (inner wire)
   //
-  //           + -------------- (inner wire)
-  //           |
-  //  +---+    +      +
-  //                  |
-  //  +---------------+
+  //                     + -------------- (inner wire)
+  //                     |
+  //  input_2   +---+    +      +
+  //                            |
+  //  input_3   +---------------+
   //
   //  (Bottom left)
   //
@@ -1577,6 +1725,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   }
 
   Polygon *input_3_met_0;
+  int64_t input_3_line_y;
   {
     // Input 3 metal.
     layout->SetActiveLayerByName("li.drawing");
@@ -1585,17 +1734,30 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     //                       li_dcon_rules.via_overhang_wide -
     //                       (metal_width / 2) - li_rules.min_separation;
 
+    int64_t input_3_line_y = std::min(
+        std::min(via_0_0->lower_left().y(), via_0_1->lower_left().y()) - (
+            li_dcon_rules.via_overhang_wide +
+            li_dcon_rules.via_overhang +
+            li_rules.min_separation +
+            dcon_rules.via_width / 2),
+        via_2_0->centre().y());
+
     Point p_0 = Point(
         via_0_0->centre().x() - met1_rules.min_separation + input_x_padding,
         inputs_y[0]);
-    Point p_2 = via_2_0->centre();
-    Point p_1 = Point(p_2.x(), p_0.y());
+
+    Point p_3 = via_2_0->centre();
+
+    Point p_1 = Point(p_0.x(), input_3_line_y);
+    Point p_2 = Point(p_3.x(), input_3_line_y);
+
     PolyLine input_3_line = PolyLine(p_0, {
         LineSegment {p_1, static_cast<uint64_t>(metal_width)},
-        LineSegment {p_2, static_cast<uint64_t>(via_encap_width)}
+        LineSegment {p_2, static_cast<uint64_t>(metal_width)},
+        LineSegment {p_3, static_cast<uint64_t>(via_encap_width)}
     });
     input_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_3_line.InsertBulge(p_2, via_encap_width, via_encap_length);
+    input_3_line.InsertBulge(p_3, via_encap_width, via_encap_length);
 
     Polygon input_3_template  = InflatePolyLineOrDie(db, input_3_line);
     input_3_met_0 = layout->AddPolygon(input_3_template);
@@ -1634,10 +1796,18 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     layout->SavePoint("input_0", via->centre());
   }
 
+  Polygon *input_1_met_0;
+  int64_t input_1_line_y;
   {
     // Test if we can head straight out.
-    int64_t direct_route_clearance_y = via_2_1->lower_left().y() - (
-        via_1_1->upper_right().y() + 2*li_dcon_rules.via_overhang_wide);
+    input_1_line_y = std::max(
+        // Closest we can go to the vias + li over the diff:
+        std::max(via_1_1->upper_right().y(), via_0_1->upper_right().y()) + (
+            li_dcon_rules.via_overhang_wide +
+            li_dcon_rules.via_overhang +
+            li_rules.min_separation +
+            dcon_rules.via_width / 2),
+        via_2_1->centre().y());
 
     // Input 1 metal.
     layout->SetActiveLayerByName("li.drawing");
@@ -1646,23 +1816,20 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
         via_0_0->centre().x() - met1_rules.min_separation + input_x_padding,
         inputs_y[3]);
 
-    Point p_2 = via_2_1->centre();
+    Point p_3 = via_2_1->centre();
 
-    Point p_1;
-    if (direct_route_clearance_y < li_rules.min_separation) {
-      p_1 = Point(p_2.x(), p_0.y());
-    } else {
-      p_1 = Point(p_0.x(), p_2.y());
-    }
+    Point p_1 = Point(p_0.x(), input_1_line_y);
+    Point p_2 = Point(p_3.x(), input_1_line_y);
 
     PolyLine input_1_line = PolyLine(p_0, {
         LineSegment {p_1, static_cast<uint64_t>(li_rules.min_width)},
-        LineSegment {p_2, static_cast<uint64_t>(via_encap_width)}
+        LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_3, static_cast<uint64_t>(via_encap_width)}
     });
     input_1_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_1_line.InsertBulge(p_2, via_encap_width, via_encap_length);
+    input_1_line.InsertBulge(p_3, via_encap_width, via_encap_length);
 
-    Polygon *input_1_met_0 = layout->AddPolygon(
+    input_1_met_0 = layout->AddPolygon(
         InflatePolyLineOrDie(db, input_1_line));
     if (params.input_1) {
       *params.input_1.value() = input_1_met_0;
@@ -1672,6 +1839,149 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
     layout->SavePoint("input_1", via->centre());
   }
+
+  int64_t poly_contact_to_diff =
+      diff_polycon_rules.min_separation + polycon_rules.via_width / 2;
+  int64_t licon_via_to_li_end =
+      polycon_rules.via_width / 2 + li_polycon_rules.min_enclosure;
+  int64_t poly_contact_to_li = li_polycon_rules.via_overhang +
+      li_rules.min_separation + licon_rules.via_width / 2;
+
+  std::map<const std::string, const Point> export_points = {
+      {"column_0_centre_bottom_via", Point(
+          column_0.centre().x(),
+          // The contact can't be too close to the end of the poly -
+          // TODO(aryap): but maybe we don't want to enforce this constraint?
+          std::max(
+              // The poly contact can't be too close to the diffusion.
+              std::min(
+                  pfet_0_diff->lower_left().y() - poly_contact_to_diff,
+                  input_3_met_0->GetBoundingBox().lower_left().y() -
+                  poly_contact_to_li
+              ),
+              column_0.lower_left().y() + licon_via_to_li_end
+          ))
+      },
+      {"column_0_centre_centre_via", Point(
+          column_0.centre().x(),
+          (pfet_1_diff->lower_left().y() +
+              pfet_0_diff->upper_right().y()) / 2)},
+      {"column_0_centre_top_via", Point(
+          column_0.centre().x(),
+          std::min(
+              std::max(
+                  pfet_1_diff->upper_right().y() + poly_contact_to_diff,
+                  input_1_line_y + li_rules.min_width / 2 +
+                  poly_contact_to_li
+              ),
+              column_0.upper_right().y() - licon_via_to_li_end
+          ))
+      },
+
+      {"column_1_centre_bottom_via", Point(
+          column_1.centre().x(),
+          std::max(
+              // The poly contact can't be too close to the diffusion.
+              std::min(
+                  pfet_2_diff->lower_left().y() - poly_contact_to_diff,
+                  input_3_met_0->GetBoundingBox().lower_left().y() -
+                  poly_contact_to_li
+              ),
+              column_1.lower_left().y() + licon_via_to_li_end
+          ))
+      },
+      {"column_1_centre_centre_via", Point(
+          column_1.centre().x(),
+          (pfet_3_diff->lower_left().y() +
+              pfet_2_diff->upper_right().y()) / 2)},
+      {"column_1_centre_top_via", Point(
+          column_1.centre().x(),
+          std::min(
+              std::max(
+                  pfet_3_diff->upper_right().y() + poly_contact_to_diff,
+                  input_1_line_y + li_rules.min_width / 2 +
+                  poly_contact_to_li
+              ),
+              column_1.upper_right().y() - licon_via_to_li_end
+          ))
+      },
+
+      {"column_2_centre_bottom_via", Point(
+          column_2->centre().x(),
+          std::max(
+              pfet_4_diff->lower_left().y() - poly_contact_to_diff,
+              column_2->lower_left().y() + licon_via_to_li_end
+          ))
+      },
+      {"column_2_centre_top_via", Point(
+          column_2->centre().x(),
+          std::min(
+              std::max(
+                  pfet_4_diff->upper_right().y() + poly_contact_to_diff,
+                  input_1_line_y + li_rules.min_width / 2 +
+                  poly_contact_to_li
+              ),
+              column_2->upper_right().y() - licon_via_to_li_end
+          ))
+      },
+
+      {"column_3_centre_bottom_via", Point(
+          column_3->centre().x(),
+          std::max(
+              pfet_5_diff->lower_left().y() - poly_contact_to_diff,
+              column_3->lower_left().y() + licon_via_to_li_end
+          ))
+      },
+      {"column_3_centre_top_via", Point(
+          column_3->centre().x(),
+          std::min(
+              std::max(
+                  pfet_5_diff->upper_right().y() + poly_contact_to_diff,
+                  input_1_line_y + li_rules.min_width / 2 + poly_contact_to_li
+              ),
+              column_3->upper_right().y() - licon_via_to_li_end
+          ))
+      },
+
+      {"column_0_centre_bottom", Point(
+          column_0.centre().x(), column_0.lower_left().y())},
+      {"column_0_centre_top", Point(
+          column_0.centre().x(), column_0.upper_right().y())},
+
+      {"column_1_centre_bottom", Point(
+          column_1.centre().x(), column_1.lower_left().y())},
+      {"column_1_centre_top", Point(
+          column_1.centre().x(), column_1.upper_right().y())},
+
+      {"column_2_centre_bottom", Point(
+          column_2->centre().x(), column_2->lower_left().y())},
+      {"column_2_centre_top", Point(
+          column_2->centre().x(), column_2->upper_right().y())},
+      {"column_3_centre_bottom", Point(
+          column_3->centre().x(), column_3->lower_left().y())},
+      {"column_3_centre_top", Point(
+          column_3->centre().x(), column_3->upper_right().y())},
+
+      {"output", Point(
+            pfet_4_diff->upper_right().x(),
+            pfet_4_diff->upper_right().y() - (
+                dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure))},
+
+      {"via_3_1_ur", via_3_1->upper_right()},
+
+      // Save some bounds for the diff regions.
+      // TODO(aryap): It would be convenient to get the bounding box for all the
+      // shapes on diff.drawing at this point and use that for this:
+      {"diff_ll", pfet_0_diff->lower_left()},
+      {"diff_ul", pfet_1_diff->UpperLeft()},
+      {"diff_ur", pfet_5_diff->upper_right()},
+      {"diff_lr", Point(
+          pfet_5_diff->upper_right().x(),
+          pfet_0_diff->lower_left().y())}
+  };
+  layout->SavePoints(export_points);
+
+
 
   return layout.release();
 }

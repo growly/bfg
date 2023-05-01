@@ -48,6 +48,7 @@ class Point : public AbstractShape, public Manipulable {
   double L2DistanceTo(const Point &other) const;
 
   Point &operator+=(const Point &other);
+  Point &operator-=(const Point &other);
 
  private:
   int64_t x_;

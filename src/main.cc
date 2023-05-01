@@ -138,16 +138,22 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = db->ToInternalUnits(40),
-    .max_separation = db->ToInternalUnits(190),
     // This is minimum enclosure in 1 direction?
-    .min_enclosure = db->ToInternalUnits(50),
+    .min_enclosure = db->ToInternalUnits(60),
     .via_overhang = db->ToInternalUnits(40),
   };
   db->AddRules("ndiff.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("ndiff.drawing", "ncon.drawing", inter_constraints);
-  db->AddRules("ndiff.drawing", "polycon.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "ncon.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(190),
+    // TODO(aryap): I don't think this name captures what this rules is.
+    // This is the min overhang of one layer by the other.
+    .min_enclosure = db->ToInternalUnits(130),
+    .via_overhang = db->ToInternalUnits(40),
+  };
+  db->AddRules("ndiff.drawing", "polycon.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = db->ToInternalUnits(50),
@@ -169,7 +175,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   // TODO(growly): Need to alias these layer names so that they apply to any
   // process.
   inter_constraints = {
-    .min_enclosure = db->ToInternalUnits(140),
+    .min_enclosure = db->ToInternalUnits(180),
   };
   db->AddRules("ndiff.drawing", "nsdm.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "psdm.drawing", inter_constraints);
