@@ -11,6 +11,7 @@
 #include "../circuit/wire.h"
 #include "../cell.h"
 #include "../layout.h"
+#include "../geometry/compass.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/line_segment.h"
 #include "../geometry/polygon.h"
@@ -20,6 +21,7 @@
 namespace bfg {
 namespace atoms {
 
+using ::bfg::geometry::Compass;
 using ::bfg::geometry::Point;
 using ::bfg::geometry::PolyLine;
 using ::bfg::geometry::LineSegment;
@@ -391,6 +393,7 @@ void GenerateOutput2To1Mux(
     const PhysicalPropertiesDatabase &db,
     int64_t left_left_metal_column_x,
     int64_t left_right_metal_column_x,
+    int64_t output_metal_column_x,
     int64_t right_left_metal_column_x,
     int64_t right_right_metal_column_x,
     int64_t met1_top_y,
@@ -644,33 +647,29 @@ void GenerateOutput2To1Mux(
   // Upper right:
   //    Recreate the above structure but mirroring it so that it works for the
   //    P-side.
-  enum Target {
-    LEFT,
-    RIGHT
+  std::map<Compass, std::string> source_structures = {
+    {Compass::LEFT, "upper_left"},
+    {Compass::RIGHT, "upper_right"}
   };
-  std::map<Target, std::string> source_structures = {
-    {Target::LEFT, "upper_left"},
-    {Target::RIGHT, "upper_right"}
+  std::map<Compass, std::string> destinations = {
+    {Compass::LEFT, "output_mux.input_0_n"},
+    {Compass::RIGHT, "output_mux.input_0_p"}
   };
-  std::map<Target, std::string> destinations = {
-    {Target::LEFT, "output_mux.input_0_n"},
-    {Target::RIGHT, "output_mux.input_0_p"}
+  std::map<Compass, std::string> dcon_layers = {
+    {Compass::LEFT, "ncon.drawing"},
+    {Compass::RIGHT, "pcon.drawing"}
   };
-  std::map<Target, std::string> dcon_layers = {
-    {Target::LEFT, "ncon.drawing"},
-    {Target::RIGHT, "pcon.drawing"}
+  std::map<Compass, std::string> diff_layers = {
+    {Compass::LEFT, "ndiff.drawing"},
+    {Compass::RIGHT, "pdiff.drawing"}
   };
-  std::map<Target, std::string> diff_layers = {
-    {Target::LEFT, "ndiff.drawing"},
-    {Target::RIGHT, "pdiff.drawing"}
+  std::map<Compass, int64_t> metal_column_x_values = {
+    {Compass::LEFT, left_left_metal_column_x},
+    {Compass::RIGHT, right_right_metal_column_x}
   };
-  std::map<Target, int64_t> metal_column_x_values = {
-    {Target::LEFT, left_left_metal_column_x},
-    {Target::RIGHT, right_right_metal_column_x}
-  };
-  std::map<Target, Polygon*> outer_li_pours;
+  std::map<Compass, Polygon*> outer_li_pours;
   for (const auto &entry : source_structures) {
-    const Target &target = entry.first;
+    const Compass &target = entry.first;
     const std::string &structure = source_structures[target];
     const std::string &destination_name = destinations[target];
     const std::string &dcon_layer = dcon_layers[target];
@@ -759,19 +758,19 @@ void GenerateOutput2To1Mux(
   // Lower right:
   //    Mirror the above structure.
   source_structures = {
-    {Target::LEFT, "lower_left"},
-    {Target::RIGHT, "lower_right"}
+    {Compass::LEFT, "lower_left"},
+    {Compass::RIGHT, "lower_right"}
   };
   destinations = {
-    {Target::LEFT, "output_mux.input_1_n"},
-    {Target::RIGHT, "output_mux.input_1_p"}
+    {Compass::LEFT, "output_mux.input_1_n"},
+    {Compass::RIGHT, "output_mux.input_1_p"}
   };
   metal_column_x_values = {
-    {Target::LEFT, left_right_metal_column_x},
-    {Target::RIGHT, right_left_metal_column_x}
+    {Compass::LEFT, left_right_metal_column_x},
+    {Compass::RIGHT, right_left_metal_column_x}
   };
   for (const auto &entry : source_structures) {
-    const Target &target = entry.first;
+    const Compass &target = entry.first;
     const std::string &structure = source_structures[target];
     const std::string &destination_name = destinations[target];
     const std::string dcon_layer = dcon_layers[target];
@@ -820,15 +819,15 @@ void GenerateOutput2To1Mux(
   Polygon *left_right_poly_li_pour = nullptr;
   Polygon *top_poly_connector = nullptr;
   metal_column_x_values = {
-    {Target::LEFT, left_right_metal_column_x},
-    {Target::RIGHT, right_left_metal_column_x}
+    {Compass::LEFT, left_right_metal_column_x},
+    {Compass::RIGHT, right_left_metal_column_x}
   };
-  std::map<Target, int64_t> poly_column_x_values = {
-    {Target::LEFT, left_right_poly.centre().x()},
-    {Target::RIGHT, right_left_poly.centre().x()}
+  std::map<Compass, int64_t> poly_column_x_values = {
+    {Compass::LEFT, left_right_poly.centre().x()},
+    {Compass::RIGHT, right_left_poly.centre().x()}
   };
   for (const auto &entry : metal_column_x_values) {
-    const Target &target = entry.first;
+    const Compass &target = entry.first;
     int64_t metal_x = metal_column_x_values[target];
     int64_t poly_x = poly_column_x_values[target];
     // Lower-left selector
@@ -870,20 +869,20 @@ void GenerateOutput2To1Mux(
   // 
   // Mirror this and repeat for the upper-right mux structure.
   metal_column_x_values = {
-    {Target::LEFT, left_left_metal_column_x},
-    {Target::RIGHT, right_right_metal_column_x}
+    {Compass::LEFT, left_left_metal_column_x},
+    {Compass::RIGHT, right_right_metal_column_x}
   };
-  std::map<Target, int64_t> poly_column_min_y_values = {
-    {Target::LEFT, left_left_poly.lower_left().y()},
-    {Target::RIGHT, right_right_poly.lower_left().y()}
+  std::map<Compass, int64_t> poly_column_min_y_values = {
+    {Compass::LEFT, left_left_poly.lower_left().y()},
+    {Compass::RIGHT, right_right_poly.lower_left().y()}
   };
   poly_column_x_values = {
-    {Target::LEFT, left_left_poly.centre().x()},
-    {Target::RIGHT, right_right_poly.centre().x()}
+    {Compass::LEFT, left_left_poly.centre().x()},
+    {Compass::RIGHT, right_right_poly.centre().x()}
   };
   Polygon *bottom_poly_connector;
   for (const auto &entry : metal_column_x_values) {
-    const Target &target = entry.first;
+    const Compass &target = entry.first;
     int64_t metal_x = metal_column_x_values[target];
     int64_t poly_x = poly_column_x_values[target];
     int64_t poly_min_y = poly_column_min_y_values[target];
@@ -919,8 +918,8 @@ void GenerateOutput2To1Mux(
   // Add the first side of the mux back to the main layout.
   Rectangle bb = layout->GetBoundingBox();
 
-  Polygon *left_input_li_pour = outer_li_pours[Target::LEFT];
-  Polygon *right_input_li_pour = outer_li_pours[Target::RIGHT];
+  Polygon *left_input_li_pour = outer_li_pours[Compass::LEFT];
+  Polygon *right_input_li_pour = outer_li_pours[Compass::RIGHT];
 
   // Find the bounding box for the li pour around the output via.
   // TODO(growly): It would be nice to ask the Polygon for its width at a given
@@ -931,46 +930,59 @@ void GenerateOutput2To1Mux(
  
   int64_t li_centre_to_edge_x = li_pitch_optimistic - li_rules.min_width/ 2;
 
-  std::map<Target, std::pair<int64_t, int64_t>> bounding_x_values = {
-    {Target::LEFT,
+  std::map<Compass, std::pair<int64_t, int64_t>> bounding_x_values = {
+    {Compass::LEFT,
       {left_input_li_pour->GetBoundingBox().upper_right().x() +
            li_rules.min_separation,
        main_layout->GetPoint(
            "output_mux.input_1_n").x() - li_centre_to_edge_x}},
-    {Target::RIGHT,
+    {Compass::RIGHT,
       {main_layout->GetPoint(
            "output_mux.input_1_p").x() + li_centre_to_edge_x,
        right_input_li_pour->GetBoundingBox().lower_left().x() -
            li_rules.min_separation}}
   };
-  std::map<Target, std::pair<int64_t, int64_t>> li_bounding_y_values = {
-    {Target::LEFT,
+  std::map<Compass, std::pair<int64_t, int64_t>> li_bounding_y_values = {
+    {Compass::LEFT,
       {second_bottom_li_track_centre_y + li_pitch_optimistic -
            li_rules.min_width / 2,
        left_right_poly_li_pour->GetBoundingBox().lower_left().y() -
            li_rules.min_separation}},
-    {Target::RIGHT,
+    {Compass::RIGHT,
       {second_bottom_li_track_centre_y + li_pitch_optimistic -
            li_rules.min_width / 2,
        left_right_poly_li_pour->GetBoundingBox().lower_left().y() -
            li_rules.min_separation}},
   };
-  std::map<Target, std::pair<int64_t, int64_t>> met1_bounding_y_values = {
-    {Target::LEFT,
+  std::map<Compass, int64_t> li_direct_bound_y_low = {
+    {Compass::LEFT,
+       main_layout->GetPoint(
+          // TODO(growly): This might need to be specific for  y:
+           "output_mux.input_1_n").y() + (
+           ncon_rules.via_width / 2 + li_ncon_rules.via_overhang +
+               li_rules.min_separation)},
+    {Compass::RIGHT,
+      main_layout->GetPoint(
+           "output_mux.input_1_p").y() + (
+           pcon_rules.via_width / 2 + li_pcon_rules.via_overhang +
+               li_rules.min_separation)},
+  };
+  std::map<Compass, std::pair<int64_t, int64_t>> met1_bounding_y_values = {
+    {Compass::LEFT,
       {bottom_poly_connector->GetBoundingBox().upper_right().y()
            + met1_rules.min_separation,
        top_poly_connector->GetBoundingBox().lower_left().y()
            - met1_rules.min_separation}},
-    {Target::RIGHT,
+    {Compass::RIGHT,
       {bottom_poly_connector->GetBoundingBox().upper_right().y()
            + met1_rules.min_separation,
        top_poly_connector->GetBoundingBox().lower_left().y()
            - met1_rules.min_separation}}
   };
-  std::map<Target, Rectangle*> li_pours;
+  std::map<Compass, Rectangle*> li_pours;
 
   for (const auto &entry : bounding_x_values) {
-    const Target &target = entry.first;
+    const Compass &target = entry.first;
     int64_t min_x = entry.second.first;
     int64_t max_x = entry.second.second;
 
@@ -983,40 +995,127 @@ void GenerateOutput2To1Mux(
     Rectangle *pour = main_layout->AddRectangle(
         {{min_x, min_y}, {max_x, max_y}});
 
-    // Add mcon vias:
-    main_layout->MakeVia("mcon.drawing", pour->centre());
-
     // Store:
     li_pours[target] = pour;
-
-    // Now get the met1 bounding values:
-    min_y = met1_bounding_y_values[target].first;
-    max_y = met1_bounding_y_values[target].second;
-
-    main_layout->SetActiveLayerByName("met1.drawing");
-    main_layout->AddRectangle({{min_x, min_y}, {max_x, max_y}});
   }
 
-  // Add via to met2.
-  main_layout->MakeVia("via1.drawing", li_pours[Target::LEFT]->centre());
-  main_layout->MakeVia("via1.drawing", li_pours[Target::RIGHT]->centre());
-  main_layout->SetActiveLayerByName("met2.drawing");
+  // Now we have to try and draw a direct li1 path between the two sides. If
+  // this is not possible, we will have to draw a metal2 bar over the top.
+  //
+  // The top y bounding value already adds the li_rules.min_separation
+  // padding, and the bottom y bounding values already adds the space from
+  // the via centre to the li pour edge and then includes another unit of
+  // li_rules.min_separation padding.
+  int64_t li_direct_width_left = 
+      li_bounding_y_values[Compass::LEFT].second - 
+      li_direct_bound_y_low[Compass::LEFT];
+  int64_t li_direct_width_right =
+      li_bounding_y_values[Compass::RIGHT].second - 
+      li_direct_bound_y_low[Compass::RIGHT];
+  bool room_for_li_connection_left = li_direct_width_left >= li_rules.min_width;
+  bool room_for_li_connection_right =
+      li_direct_width_right >= li_rules.min_width;
 
-  // Connect the P- and N-MOS pass gate outputs.
-  Polygon *met2_bar = StraightLineBetweenLayers(
-      db,
-      li_pours[Target::LEFT]->centre(),
-      li_pours[Target::RIGHT]->centre(),
-      "via1.drawing", "met2.drawing", "via1.drawing",
-      main_layout);
-  main_layout->SavePoint(
-      "final_output",
-      met2_bar->GetBoundingBox().centre());
+  if (room_for_li_connection_left && room_for_li_connection_right) {
+    int64_t li_mcon_via_encap_width =
+        mcon_rules.via_width + 2 * li_mcon_rules.via_overhang_wide;
+    int64_t li_mcon_via_encap_length =
+        mcon_rules.via_width + 2 * li_mcon_rules.via_overhang;
 
-  Rectangle met2_bb = met2_bar->GetBoundingBox();
-  main_layout->AddPort(geometry::Port(
-      met2_bb.centre(), met2_bb.Height(), met2_bb.Height(),
-      met2_bar->layer(), "Z"));
+    LOG(INFO) << "Drawing direct li1 connection between both sides.";
+
+    // +---+     p_1  mcon_via_point
+    // |p_0+------+  /
+    // |   |      +<-   p_3
+    // |   |      +------+---+
+    // +---+     p_2     |   |
+    //                   |   |
+    //                   +---+
+    Rectangle *left_pour = li_pours[Compass::LEFT];
+    Point p_0 = Point(
+        left_pour->upper_right().x(),
+        left_pour->upper_right().y() - li_direct_width_left / 2);
+
+    Rectangle *right_pour = li_pours[Compass::RIGHT];
+    Point p_3 = Point(
+        right_pour->lower_left().x(),
+        right_pour->upper_right().y() - li_direct_width_right / 2);
+
+    Point p_1 = Point(output_metal_column_x, p_0.y());
+    Point p_2 = Point(output_metal_column_x, p_3.y());
+
+    Point mcon_via_point = Point(p_1.x(), (p_1.y() + p_2.y()) / 2);
+
+    PolyLine direct_li_line = PolyLine(p_0, {
+        LineSegment {p_1, static_cast<uint64_t>(li_direct_width_left)},
+        LineSegment {p_2, static_cast<uint64_t>(
+            std::max(li_direct_width_left, li_direct_width_right))},
+        LineSegment {p_3, static_cast<uint64_t>(li_direct_width_right)}
+    });
+    direct_li_line.InsertBulge(mcon_via_point,
+                               li_mcon_via_encap_width,
+                               li_mcon_via_encap_length);
+
+    Polygon *direct_li = main_layout->AddPolygon(
+        InflatePolyLineOrDie(db, direct_li_line));
+
+    // Connect met1 and li:
+    main_layout->MakeVia("mcon.drawing", mcon_via_point);
+
+    // Ensure sufficient encapsulation on li1 and met1 layers:
+    int64_t met1_mcon_via_encap_width =
+        mcon_rules.via_width + 2 * met1_mcon_rules.via_overhang_wide;
+    int64_t met1_mcon_via_encap_length =
+        mcon_rules.via_width + 2 * met1_mcon_rules.via_overhang;
+    main_layout->SetActiveLayerByName("met1.drawing");
+    main_layout->AddRectangle({
+        mcon_via_point - Point(
+            met1_mcon_via_encap_width / 2, met1_mcon_via_encap_length / 2),
+        static_cast<uint64_t>(met1_mcon_via_encap_width),
+        static_cast<uint64_t>(met1_mcon_via_encap_length)});
+
+  } else {
+    LOG(WARNING) << "Not enough room for direct li1 connection between both "
+                 << "sides; drawing a metal2 bar";
+    // Have to draw metal1 pours ugh:
+    for (const auto &entry : bounding_x_values) {
+      const Compass &target = entry.first;
+      int64_t min_x = entry.second.first;
+      int64_t max_x = entry.second.second;
+
+      // Get the met1 bounding values:
+      int64_t min_y = met1_bounding_y_values[target].first;
+      int64_t max_y = met1_bounding_y_values[target].second;
+
+      main_layout->SetActiveLayerByName("met1.drawing");
+      Rectangle *pour = main_layout->AddRectangle(
+          {{min_x, min_y}, {max_x, max_y}});
+
+      // Add mcon vias:
+      main_layout->MakeVia("mcon.drawing", pour->centre());
+    }
+    // Add via to met2.
+    main_layout->MakeVia("via1.drawing", li_pours[Compass::LEFT]->centre());
+    main_layout->MakeVia("via1.drawing", li_pours[Compass::RIGHT]->centre());
+    main_layout->SetActiveLayerByName("met2.drawing");
+
+    // Connect the P- and N-MOS pass gate outputs.
+    Polygon *met2_bar = StraightLineBetweenLayers(
+        db,
+        li_pours[Compass::LEFT]->centre(),
+        li_pours[Compass::RIGHT]->centre(),
+        "via1.drawing", "met2.drawing", "via1.drawing",
+        main_layout);
+    main_layout->SavePoint(
+        "final_output",
+        met2_bar->GetBoundingBox().centre());
+
+    Rectangle met2_bb = met2_bar->GetBoundingBox();
+    main_layout->AddPort(geometry::Port(
+        met2_bb.centre(), met2_bb.Height(), met2_bb.Height(),
+        met2_bar->layer(), "Z"));
+
+  }
 }
 
 }  // namespace
@@ -1195,6 +1294,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       1,
       2,
       5,
+      6,  // The output column.
       last_column - 5,
       last_column - 2,
       last_column - 1,
@@ -1205,6 +1305,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   // The pitches of columns in order extending outward from the centre.
   std::vector<int64_t> pitches = {
+      0,  // For the cenral output column.
       column_pitch_min,
       // Push the 2nd column out over the centre of the output muxes in each
       // quadrant (TODO(aryap): This should really be computed as a function of
@@ -1226,16 +1327,20 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     int64_t last_x_left = central_column_x;
     int64_t last_x_right = central_column_x;
 
-    for (size_t i = 0; i < kNumColumnsPerFlank; ++i) {
+    for (size_t i = 0; i <= kNumColumnsPerFlank; ++i) {
       // Left and right k.
       size_t k_values[] = {
-          kNumColumnsPerFlank - i - 1, 1 + kNumColumnsPerFlank + i};
+          kNumColumnsPerFlank - i, kNumColumnsPerFlank + i};
       int64_t x_values[] = {
           last_x_left - pitches[i], last_x_right + pitches[i]};
       last_x_left = x_values[0];
       last_x_right = x_values[1];
       for (size_t j = 0; j < 2; ++j) {
-        // Draw the left columns for j == 0, right columns for j ==1.
+        // Draw the left columns for j == 0, right columns for j ==1. When i ==
+        // 0 we are handling the central column so no repetition is needed:
+        if (i == 0 && j > 1) {
+          break;
+        }
         size_t k = k_values[j];
         int64_t x = x_values[j];
 
@@ -1342,6 +1447,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       db,
       column_x[3],
       column_x[4],
+      column_x[6],
       column_x[8],
       column_x[9],
       mux_top_y,
@@ -2057,8 +2163,6 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
           pfet_0_diff->lower_left().y())}
   };
   layout->SavePoints(export_points);
-
-
 
   return layout.release();
 }
