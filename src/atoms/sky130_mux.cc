@@ -593,8 +593,8 @@ void GenerateOutput2To1Mux(
 
   Point output_n = Point(
       nfet_1_diff->lower_left().x(),
-      (nfet_1_diff->upper_right().y() + std::max(
-           nfet_0_diff->lower_left().y(), nfet_1_diff->lower_left().y())) / 2);
+      std::min(nfet_0_diff->upper_right().y(), nfet_1_diff->upper_right().y()) -
+          via_centre_to_ndiff_edge);
   layout->SavePoint("output_n", output_n);
   layout->MakeVia("licon.drawing", output_n);
 
@@ -612,8 +612,8 @@ void GenerateOutput2To1Mux(
 
   Point output_p = Point(
       pfet_1_diff->lower_left().x(),
-      (pfet_1_diff->upper_right().y() + std::max(
-           pfet_0_diff->lower_left().y(), pfet_1_diff->lower_left().y())) / 2);
+      std::min(pfet_0_diff->upper_right().y(), pfet_1_diff->upper_right().y()) -
+          via_centre_to_pdiff_edge);
   layout->SavePoint("output_p", output_p);
   layout->MakeVia("licon.drawing", output_p);
 
@@ -1407,6 +1407,8 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
   const auto &li_dcon_rules = db.Rules(
       "li.drawing", params.diff_contact_layer_name);
+  const auto &li_mcon_rules = db.Rules(
+      "li.drawing", "mcon.drawing");
   const auto &li_polycon_rules = db.Rules("li.drawing", "polycon.drawing");
   const auto &poly_polycon_rules = db.Rules("poly.drawing", "polycon.drawing");
   const auto &poly_dcon_rules = db.Rules(
@@ -1742,21 +1744,21 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
 
   // The four input wires:
   //
-  //  (Top left)
+  //   inputs_y[k]   (Top left)
+  //    where k=
+  //       3         input_1   +---------------+                         
+  //                                           |
+  //       2         input_0   +---+    +      +
+  //                                    |
+  //                                    + -------------- (inner wire)
   //
-  //  input_1   +---------------+
-  //                            |
-  //  input_0   +---+    +      +
-  //                     |
-  //                     + -------------- (inner wire)
+  //                                    + -------------- (inner wire)
+  //                                    |
+  //       1         input_2   +---+    +      +
+  //                                           |
+  //       0         input_3   +---------------+
   //
-  //                     + -------------- (inner wire)
-  //                     |
-  //  input_2   +---+    +      +
-  //                            |
-  //  input_3   +---------------+
-  //
-  //  (Bottom left)
+  //                 (Bottom left)
   //
   // Sometimes the outer arms can go straight out, but they have to avoid
   // interfering with the inner wires from above.
@@ -1796,13 +1798,19 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
     //                       li_dcon_rules.via_overhang_wide -
     //                       (metal_width / 2) - li_rules.min_separation;
 
-    int64_t input_3_line_y = std::min(
+    int64_t input_3_line_y = std::min({
         std::min(via_0_0->lower_left().y(), via_0_1->lower_left().y()) - (
             li_dcon_rules.via_overhang_wide +
             li_dcon_rules.via_overhang +
             li_rules.min_separation +
             dcon_rules.via_width / 2),
-        via_2_0->centre().y());
+        via_2_0->centre().y(),
+        inputs_y[1] - (std::max(
+            li_mcon_rules.via_overhang, li_mcon_rules.via_overhang_wide) +
+            mcon_rules.via_width / 2 +
+            li_rules.min_separation +
+            li_rules.min_width / 2),
+    });
 
     Point p_0 = Point(
         via_0_0->centre().x() - met1_rules.min_separation + input_x_padding,
@@ -1862,14 +1870,21 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   int64_t input_1_line_y;
   {
     // Test if we can head straight out.
-    input_1_line_y = std::max(
-        // Closest we can go to the vias + li over the diff:
+    input_1_line_y = std::max({
+        // Closest we can go to the vias + li over the diff, and we also have
+        // clear the nearby input we might conflict with:
         std::max(via_1_1->upper_right().y(), via_0_1->upper_right().y()) + (
             li_dcon_rules.via_overhang_wide +
             li_dcon_rules.via_overhang +
             li_rules.min_separation +
             dcon_rules.via_width / 2),
-        via_2_1->centre().y());
+        via_2_1->centre().y(),
+        inputs_y[2] + std::max(
+            li_mcon_rules.via_overhang, li_mcon_rules.via_overhang_wide) +
+            mcon_rules.via_width / 2 +
+            li_rules.min_separation +
+            li_rules.min_width / 2
+    });
 
     // Input 1 metal.
     layout->SetActiveLayerByName("li.drawing");
