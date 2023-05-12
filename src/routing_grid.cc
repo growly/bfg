@@ -594,7 +594,8 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
       Compass::LOWER_RIGHT,
     };
     for (const auto &position : kDisabledNeighbours) {
-      std::set<RoutingVertex*> neighbours = next_vertex->GetNeighbours(position);
+      std::set<RoutingVertex*> neighbours =
+          next_vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
         neighbour->set_available(false);
       }
