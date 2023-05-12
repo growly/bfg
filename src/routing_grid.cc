@@ -405,33 +405,6 @@ void RoutingGrid::ConnectLayers(
     i++;
   }
 
-  // Test.
-  RoutingVertex *test = vertices[1][1];
-  RoutingVertex *ul = vertices[0][2];
-  RoutingVertex *u = vertices[1][2];
-  RoutingVertex *ur = vertices[2][2];
-  RoutingVertex *l = vertices[0][1];
-  RoutingVertex *r = vertices[2][1];
-  RoutingVertex *ll = vertices[0][0];
-  RoutingVertex *low = vertices[1][0];
-  RoutingVertex *lr = vertices[2][0];
-  LOG(INFO) << ul->centre() << " " << u->centre() << " " << ur->centre();
-  LOG(INFO) << l->centre() << " " << test->centre() << " " << r->centre();
-  LOG(INFO) << ll->centre() << " " << low->centre() << " " << lr->centre();
-
-  LOG(INFO) << "neighbours:";
-  ul = *test->GetNeighbours(Compass::UPPER_LEFT).begin();
-  u = *test->GetNeighbours(Compass::UPPER).begin();
-  ur = *test->GetNeighbours(Compass::UPPER_RIGHT).begin();
-  l = *test->GetNeighbours(Compass::LEFT).begin();
-  r = *test->GetNeighbours(Compass::RIGHT).begin();
-  ll = *test->GetNeighbours(Compass::LOWER_LEFT).begin();
-  low = *test->GetNeighbours(Compass::LOWER).begin();
-  lr = *test->GetNeighbours(Compass::LOWER_RIGHT).begin();
-  LOG(INFO) << ul->centre() << " " << u->centre() << " " << ur->centre();
-  LOG(INFO) << l->centre() << " " << test->centre() << " " << r->centre();
-  LOG(INFO) << ll->centre() << " " << low->centre() << " " << lr->centre();
-
   size_t num_edges = 0;
   for (auto entry : tracks_by_layer_)
     for (RoutingTrack *track : entry.second)
@@ -608,6 +581,25 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     last_vertex->set_out_edge(edge);
     next_vertex->set_in_edge(edge);
     next_vertex->set_available(false);
+
+    // Disable neighbours.
+    static const std::vector<Compass> kDisabledNeighbours = {
+      Compass::UPPER_LEFT,
+      Compass::UPPER,
+      Compass::UPPER_RIGHT,
+      Compass::LEFT,
+      Compass::RIGHT,
+      Compass::LOWER_LEFT,
+      Compass::LOWER,
+      Compass::LOWER_RIGHT,
+    };
+    for (const auto &position : kDisabledNeighbours) {
+      std::set<RoutingVertex*> neighbours = next_vertex->GetNeighbours(position);
+      for (RoutingVertex *neighbour : neighbours) {
+        neighbour->set_available(false);
+      }
+    };
+
     ++i;
   }
   
