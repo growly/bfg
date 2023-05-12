@@ -63,6 +63,9 @@ struct RoutingLayerInfo {
   RoutingTrackDirection direction;
   int64_t pitch;
   int64_t via_width;
+  // Sizing is such that neighbouring (horizontal, vertical and diagonal)
+  // neighbours cannot simultaneously host vias:
+  bool invalidate_neighbours;
 };
 
 class RoutingGrid {

@@ -4,6 +4,7 @@
 #include <set>
 #include <vector>
 
+#include "geometry/compass.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
 
@@ -34,7 +35,9 @@ class RoutingVertex {
   void AddConnectedLayer(const geometry::Layer &layer) {
     connected_layers_.push_back(layer);
   }
-  const std::vector<geometry::Layer> &connected_layers() { return connected_layers_; }
+  const std::vector<geometry::Layer> &connected_layers() {
+    return connected_layers_;
+  }
 
   // This is the cost of connecting through this vertex (i.e. a via).
   double cost() const { return 1.0; }
@@ -62,7 +65,16 @@ class RoutingVertex {
   void set_vertical_track(RoutingTrack *track) { vertical_track_ = track; }
   RoutingTrack *vertical_track() const { return vertical_track_; }
 
+  void AddNeighbour(const geometry::Compass &position, RoutingVertex *vertex);
+  std::set<RoutingVertex*> GetNeighbours(
+      const geometry::Compass &position) const;
+
  private:
+  struct NeighbouringVertex {
+    geometry::Compass position;
+    RoutingVertex *vertex;
+  };
+
   // If the vertex is in use by some route, the name of the net should be here,
   // available_ should be false. in_edge and out_edge should point to the
   // incoming and outgoing edges used for the route through this vertex.
@@ -73,6 +85,9 @@ class RoutingVertex {
 
   RoutingTrack *horizontal_track_;
   RoutingTrack *vertical_track_;
+
+  // There are up to 8 neighbouring vertices. 
+  std::vector<NeighbouringVertex> neighbours_;
 
   // This is a minor optimisation to avoid having to key things by pointer.
   // This index should be unique within the RoutingGrid that owns this

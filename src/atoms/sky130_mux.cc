@@ -1456,33 +1456,33 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   // Translate sub-layout ports to external-facing ports:
   layout->SetActiveLayerByName("li.drawing");
-  //std::vector<std::pair<std::string, std::string>> ports = {
-  //  {"lower_left.input_0", "input_0"},
-  //  {"lower_left.input_1", "input_1"},
-  //  {"lower_left.input_2", "input_2"},
-  //  {"lower_left.input_3", "input_3"},
-  //  {"lower_right.input_0", "input_0"},
-  //  {"lower_right.input_1", "input_1"},
-  //  {"lower_right.input_2", "input_2"},
-  //  {"lower_right.input_3", "input_3"},
-  //  {"upper_left.input_0", "input_4"},
-  //  {"upper_left.input_1", "input_5"},
-  //  {"upper_left.input_2", "input_6"},
-  //  {"upper_left.input_3", "input_7"},
-  //  {"upper_right.input_0", "input_4"},
-  //  {"upper_right.input_1", "input_5"},
-  //  {"upper_right.input_2", "input_6"},
-  //  {"upper_right.input_3", "input_7"}
-  //};
-  //for (const auto &entry : ports) {
-  //  const std::string &layout_port = entry.first;
-  //  const std::string &net = entry.second;
-  //  Point centre = layout->GetPoint(layout_port);
-  //  geometry::Layer layer = centre.layer();
-  //  int64_t via_size = db.Rules(layer).via_width;
-  //  layout->AddPort(geometry::Port(
-  //      layout->GetPoint(layout_port), via_size, via_size, layer, net));
-  //}
+  std::vector<std::pair<std::string, std::string>> ports = {
+    {"lower_left.input_0", "input_0"},
+    {"lower_left.input_1", "input_1"},
+    {"lower_left.input_2", "input_2"},
+    {"lower_left.input_3", "input_3"},
+    {"lower_right.input_0", "input_0"},
+    {"lower_right.input_1", "input_1"},
+    {"lower_right.input_2", "input_2"},
+    {"lower_right.input_3", "input_3"},
+    {"upper_left.input_0", "input_4"},
+    {"upper_left.input_1", "input_5"},
+    {"upper_left.input_2", "input_6"},
+    {"upper_left.input_3", "input_7"},
+    {"upper_right.input_0", "input_4"},
+    {"upper_right.input_1", "input_5"},
+    {"upper_right.input_2", "input_6"},
+    {"upper_right.input_3", "input_7"}
+  };
+  for (const auto &entry : ports) {
+    const std::string &layout_port = entry.first;
+    const std::string &net = entry.second;
+    Point centre = layout->GetPoint(layout_port);
+    geometry::Layer layer = centre.layer();
+    int64_t via_size = db.Rules(layer).via_width;
+    layout->AddPort(geometry::Port(
+        layout->GetPoint(layout_port), via_size, via_size, layer, net));
+  }
 
   return layout.release();
 }

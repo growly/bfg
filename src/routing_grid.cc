@@ -15,6 +15,7 @@
 #include <absl/strings/str_join.h>
 #include <glog/logging.h>
 
+#include "geometry/compass.h"
 #include "geometry/poly_line.h"
 #include "geometry/rectangle.h"
 #include "physical_properties_database.h"
@@ -37,6 +38,8 @@
 // RoutingEdges. It also owns a separate collection of RoutingVertexs and
 // RoutingEdges that do not fall onto specific tracks.
 //
+
+using bfg::geometry::Compass;
 
 namespace bfg {
 
@@ -308,6 +311,8 @@ void RoutingGrid::ConnectLayers(
       GetAvailableVertices(second);
 
   size_t num_vertices = 0;
+  size_t num_x = 0;
+  size_t num_y = 0;
 
   std::map<int64_t, RoutingTrack*> vertical_tracks;
   std::map<int64_t, RoutingTrack*> horizontal_tracks;
@@ -319,6 +324,7 @@ void RoutingGrid::ConnectLayers(
     track->set_width(vertical_info.wire_width);
     vertical_tracks.insert({x, track});
     AddTrackToLayer(track, vertical_info.layer);
+    num_x++;
   }
 
   for (int64_t y = y_start; y < y_max; y += y_pitch) {
@@ -328,16 +334,22 @@ void RoutingGrid::ConnectLayers(
     track->set_width(horizontal_info.wire_width);
     horizontal_tracks.insert({y, track});
     AddTrackToLayer(track, horizontal_info.layer);
+    num_y++;
   }
+
+  std::vector<std::vector<RoutingVertex*>> vertices(
+      num_x, std::vector<RoutingVertex*>(num_y, nullptr));
 
   // Generate a vertex at the intersection of every horizontal and vertical
   // track.
+  size_t i = 0;
   for (int64_t x = x_start; x < x_max; x += x_pitch) {
     // This (and the horizontal one) must exist by now, so we can make this
     // fatal.
     RoutingTrack *vertical_track = vertical_tracks.find(x)->second;
     LOG_IF(FATAL, !vertical_track) << "Vertical routing track is nullptr";
 
+    size_t j = 0;
     for (int64_t y = y_start; y < y_max; y += y_pitch) {
       RoutingTrack *horizontal_track = horizontal_tracks.find(y)->second;
       LOG_IF(FATAL, !horizontal_track) << "Horizontal routing track is nullptr";
@@ -357,9 +369,68 @@ void RoutingGrid::ConnectLayers(
 
       VLOG(10) << "Vertex created: " << vertex->centre() << " on layers: "
                << absl::StrJoin(vertex->connected_layers(), ", ");
-      // TODO(aryap): Remove these.
+
+      vertices[i][j] = vertex;
+
+      // Assign neighbours. Since we do the reciprocal relationship too, we
+      // assigning up to all 8 neighbours per iteration.
+      if (i > 0) {
+        // Left neighbour.
+        RoutingVertex *neighbour = vertices[i - 1][j];
+        vertex->AddNeighbour(Compass::LEFT, neighbour);
+        neighbour->AddNeighbour(Compass::RIGHT, vertex);
+
+        if (j > 0) {
+          // Lower left neighbour.
+          RoutingVertex *neighbour = vertices[i - 1][j - 1];
+          vertex->AddNeighbour(Compass::LOWER_LEFT, neighbour);
+          neighbour->AddNeighbour(Compass::UPPER_RIGHT, vertex);
+        }
+
+        if (j < vertices[i].size() - 1) {
+          // Upper left neighbour.
+          RoutingVertex *neighbour = vertices[i - 1][j + 1];
+          vertex->AddNeighbour(Compass::UPPER_LEFT, neighbour);
+          neighbour->AddNeighbour(Compass::LOWER_RIGHT, vertex);
+        }
+      }
+      if (j > 0) {
+        // Lower neighbour.
+        RoutingVertex *neighbour = vertices[i][j - 1];
+        vertex->AddNeighbour(Compass::LOWER, neighbour);
+        neighbour->AddNeighbour(Compass::UPPER, vertex);
+      }
+      j++;
     }
+    i++;
   }
+
+  // Test.
+  RoutingVertex *test = vertices[1][1];
+  RoutingVertex *ul = vertices[0][2];
+  RoutingVertex *u = vertices[1][2];
+  RoutingVertex *ur = vertices[2][2];
+  RoutingVertex *l = vertices[0][1];
+  RoutingVertex *r = vertices[2][1];
+  RoutingVertex *ll = vertices[0][0];
+  RoutingVertex *low = vertices[1][0];
+  RoutingVertex *lr = vertices[2][0];
+  LOG(INFO) << ul->centre() << " " << u->centre() << " " << ur->centre();
+  LOG(INFO) << l->centre() << " " << test->centre() << " " << r->centre();
+  LOG(INFO) << ll->centre() << " " << low->centre() << " " << lr->centre();
+
+  LOG(INFO) << "neighbours:";
+  ul = *test->GetNeighbours(Compass::UPPER_LEFT).begin();
+  u = *test->GetNeighbours(Compass::UPPER).begin();
+  ur = *test->GetNeighbours(Compass::UPPER_RIGHT).begin();
+  l = *test->GetNeighbours(Compass::LEFT).begin();
+  r = *test->GetNeighbours(Compass::RIGHT).begin();
+  ll = *test->GetNeighbours(Compass::LOWER_LEFT).begin();
+  low = *test->GetNeighbours(Compass::LOWER).begin();
+  lr = *test->GetNeighbours(Compass::LOWER_RIGHT).begin();
+  LOG(INFO) << ul->centre() << " " << u->centre() << " " << ur->centre();
+  LOG(INFO) << l->centre() << " " << test->centre() << " " << r->centre();
+  LOG(INFO) << ll->centre() << " " << low->centre() << " " << lr->centre();
 
   size_t num_edges = 0;
   for (auto entry : tracks_by_layer_)
