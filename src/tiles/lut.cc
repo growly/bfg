@@ -326,7 +326,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
       geometry::Port *first_port = *ports.begin();
       LOG(INFO) << "Adding routes for (ff, mux) = (" << j << ", " << mux_index << ")";
-      routing_grid.AddRouteBetween(*start, *first_port, net_name);
+      //routing_grid.AddRouteBetween(*start, *first_port, net_name);
 
       //auto it = ports.begin();
       //it++;  // Skip first port.

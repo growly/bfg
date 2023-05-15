@@ -735,6 +735,7 @@ void GenerateOutput2To1Mux(
         p_2, p_3,
         "mcon.drawing", "met1.drawing", "mcon.drawing",
         main_layout);
+    main_layout->MakeVia("mcon.drawing", p_2);
     main_layout->MakeVia("mcon.drawing", p_3);
 
     main_layout->SetActiveLayerByName("li.drawing");
@@ -1124,6 +1125,19 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const IntraLayerConstraints &poly_rules = db.Rules("poly.drawing");
 
+  const auto &li_rules = db.Rules("li.drawing");
+  const auto &licon_rules = db.Rules("licon.drawing");
+  const auto &mcon_rules = db.Rules("mcon.drawing");
+  const auto &met1_rules = db.Rules("met1.drawing");
+  const auto &li_licon_rules = db.Rules("li.drawing", "licon.drawing");
+  const auto &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
+  const auto &poly_ncon_rules = db.Rules("poly.drawing", "ncon.drawing");
+  const auto &met1_mcon_rules = db.Rules("met1.drawing", "mcon.drawing");
+  const auto &ndiff_nsdm_rules = db.Rules("ndiff.drawing", "nsdm.drawing");
+  const auto &pdiff_psdm_rules = db.Rules("pdiff.drawing", "psdm.drawing");
+  const auto &pdiff_nwell_rules = db.Rules("pdiff.drawing", "nwell.drawing");
+  const auto &nsdm_nwell_rules = db.Rules("nsdm.drawing", "nwell.drawing");
+
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
 
@@ -1161,63 +1175,63 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_1 = std::nullopt,
     .input_2 = std::nullopt,
     .input_3 = std::nullopt,
-    .input_x_padding = db.ToInternalUnits(-200),
+    .input_x_padding = db.ToInternalUnits(-300),
     .input_y_padding = 0 //db.ToInternalUnits(200)
   };
 
-  std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
+  Mux2Parameters mux2_params_p = mux2_params_n;
 
-  Rectangle mux2_bounding_box = mux2_layout->GetBoundingBox();
-  int64_t mux2_width = (1 +
-      mux2_bounding_box.Width() / poly_rules.min_pitch) * poly_rules.min_pitch;
-  int64_t mux2_height = mux2_bounding_box.Height();
-  // There is a min_separation rule between N-type diff.drawing (a virtual
-  // layer) and the N-well.
-  int64_t intra_spacing = 340;
+  std::unique_ptr<bfg::Layout> mux2_layout_n(GenerateMux2Layout(mux2_params_n));
+  std::unique_ptr<bfg::Layout> mux2_layout_p(GenerateMux2Layout(mux2_params_p));
+
+  Rectangle mux2_n_bounding_box = mux2_layout_n->GetBoundingBox();
+
+
+  int64_t mux2_height = mux2_n_bounding_box.Height();
   int64_t vert_spacing = 0;
 
-  mux2_layout->ResetOrigin();
-  layout->AddLayout(*mux2_layout, "upper_left");
+  mux2_layout_n->ResetOrigin();
+  layout->AddLayout(*mux2_layout_n, "upper_left");
 
-  mux2_layout->FlipHorizontal();
-  mux2_layout->MoveLowerLeftTo(Point(mux2_width + intra_spacing, 0));
-  layout->AddLayout(*mux2_layout, "upper_right");
+  mux2_layout_n->FlipVertical();
+  mux2_layout_n->MoveLowerLeftTo(Point(0, -(mux2_height + vert_spacing)));
+  layout->AddLayout(*mux2_layout_n, "lower_left");
 
-  mux2_layout->FlipVertical();
-  mux2_layout->MoveLowerLeftTo(
-      Point(mux2_width + intra_spacing, -(mux2_height + vert_spacing)));
-  layout->AddLayout(*mux2_layout, "lower_right");
-
-  mux2_layout->FlipHorizontal();
-  mux2_layout->MoveLowerLeftTo(Point(0, -(mux2_height + vert_spacing)));
-  layout->AddLayout(*mux2_layout, "lower_left");
-
-  layout->ResetOrigin();
-
-  Rectangle bounding_box = layout->GetBoundingBox();
-  const auto &li_rules = db.Rules("li.drawing");
-  const auto &licon_rules = db.Rules("licon.drawing");
-  const auto &mcon_rules = db.Rules("mcon.drawing");
-  const auto &met1_rules = db.Rules("met1.drawing");
-  const auto &li_licon_rules = db.Rules("li.drawing", "licon.drawing");
-  const auto &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
-  const auto &poly_ncon_rules = db.Rules("poly.drawing", "ncon.drawing");
-  const auto &met1_mcon_rules = db.Rules("met1.drawing", "mcon.drawing");
-  const auto &ndiff_nsdm_rules = db.Rules("ndiff.drawing", "nsdm.drawing");
-  const auto &pdiff_psdm_rules = db.Rules("pdiff.drawing", "psdm.drawing");
-  const auto &ndiff_nwell_rules = db.Rules("ndiff.drawing", "nwell.drawing");
-
-  // Add diffusion qualifying layers, wells, etc.
+  // Add diffusion qualifying layers, wells, etc, as we go.
   //
   // Left side is N.
   int64_t diff_padding = ndiff_nsdm_rules.min_enclosure;
   layout->SetActiveLayerByName("nsdm.drawing");
-  layout->AddRectangle({
+  Rectangle *nsdm = layout->AddRectangle({
       layout->GetPoint("lower_left.diff_ul") - Point(
           diff_padding, diff_padding),
       layout->GetPoint("upper_left.diff_ur") + Point(
           diff_padding, diff_padding)
   });
+
+  // Leave space for the N-well-to-N-diff-marker separation as well as the
+  // N-well and P-diff markers:
+  int64_t intra_spacing = nsdm_nwell_rules.min_separation +
+      pdiff_psdm_rules.min_enclosure +
+      pdiff_nwell_rules.min_enclosure;
+  int64_t mux2_p_lower_left_x = layout->GetBoundingBox().upper_right().x() + 
+      intra_spacing;
+
+  mux2_layout_p->ResetOrigin();
+  mux2_layout_p->FlipHorizontal();
+  mux2_layout_p->MoveLowerLeftTo(Point(mux2_p_lower_left_x, 0));
+  layout->AddLayout(*mux2_layout_p, "upper_right");
+
+  mux2_layout_p->FlipVertical();
+  mux2_layout_p->MoveLowerLeftTo(
+      Point(mux2_p_lower_left_x, -(mux2_height + vert_spacing)));
+  layout->AddLayout(*mux2_layout_p, "lower_right");
+
+  mux2_layout_n->FlipHorizontal();
+
+  layout->ResetOrigin();
+
+  Rectangle bounding_box = layout->GetBoundingBox();
 
   // Right side is P.
   diff_padding = pdiff_psdm_rules.min_enclosure;
@@ -1230,7 +1244,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   });
 
   // Add N-Well.
-  diff_padding = ndiff_nwell_rules.min_enclosure;
+  diff_padding = pdiff_nwell_rules.min_enclosure;
   layout->SetActiveLayerByName("nwell.drawing");
   layout->AddRectangle({
       pdiff->lower_left() - Point(diff_padding, diff_padding),
@@ -1286,6 +1300,16 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   int64_t central_column_x = width / 2;
   constexpr size_t kNumColumnsPerFlank = 6;
 
+  // FIXME(aryap): The way the metal columns are placed (below) is extremely
+  // brittle. They need to take into acccount the spacing of the local
+  // interconnect layer beneath them, and space needs to be made for that when
+  // placing the underlying objects.
+  //
+  // A better approach will be to explicitly calculate the x positions of each
+  // column up front, since at each decision we have to consider the underlying
+  // geometry, instead of this reliance on specifying pitches, since it obscures
+  // the actual calculation of x position.
+
   // e.g. if 6 columns per flank, including the centre there are 13 columns, so
   // the index is 12.
   size_t last_column = 2 * kNumColumnsPerFlank;
@@ -1310,8 +1334,9 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       // Push the 2nd column out over the centre of the output muxes in each
       // quadrant (TODO(aryap): This should really be computed as a function of
       // where those points are.)
-      column_pitch_max + li_rules.min_separation,
-      column_pitch_max + (li_rules.min_separation - met1_rules.min_separation),
+      column_pitch_max + li_rules.min_separation + li_rules.min_separation / 2,
+      column_pitch_max + (
+          li_rules.min_separation - met1_rules.min_separation),
       column_pitch_max,
       column_pitch_max,
       2 * column_pitch_max

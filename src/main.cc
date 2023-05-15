@@ -181,6 +181,10 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("pdiff.drawing", "psdm.drawing", inter_constraints);
   db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "nwell.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(340)
+  };
+  db->AddRules("nsdm.drawing", "nwell.drawing", inter_constraints);
 }
 
 void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {

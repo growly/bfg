@@ -271,6 +271,8 @@ int64_t RoutingTrack::ProjectOntoTrack(const geometry::Point &point) const {
   return 0;
 }
 
+// Get the x- or y-coordinate of this track if it is vertical or horizontal,
+// respectively.
 int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
   switch (direction_) {
     case RoutingTrackDirection::kTrackHorizontal:
