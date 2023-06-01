@@ -534,6 +534,58 @@ TEST(Polygon, IntersectingPoints_VerticalTwoPlus) {
   EXPECT_EQ(expected, intersections);
 }
 
+TEST(Polygon, OutsideVerticalEdgeSpanningEndAndStartPoints) {
+  // This tickled two bugs:
+  //  - double erasure of an iterator to the choices_copy vector; and
+  //  - not setting 'check_for_dupes' correctly when considering a duplicate
+  //  point (i.e. the intersection with the start point) and the same point in a
+  //  span.
+  //
+  //            |
+  //  y = 2225  +-----+     +-----+
+  //            |     |     |     |
+  //  y = 2180  |     +-----+     |
+  //            |                 |
+  //  y = 2040  |     +-----+     |
+  //            |     |     |     |
+  //  y = 1995 (s)----+     +-----+
+  //            ^
+  //            |
+  //      x = 29150 29440 30720 31010
+  //
+  // Expect intersections at (29150, 1995), (29150, 2225).
+ 
+  std::vector<Point> points = {
+    {29150, 1995},
+    {29440, 1995},
+    {29440, 2040},
+    {30720, 2040},
+    {30720, 1995},
+    {31010, 1995},
+    {31010, 2225},
+    {30720, 2225},
+    {30720, 2180},
+    {29440, 2180},
+    {29440, 2225},
+    {29150, 2225}
+  };
+  Polygon polygon(points);
+
+  Line line = Line({29150, 0}, {29150, 1});
+
+  std::vector<std::pair<Point, Point>> intersections;
+  polygon.IntersectingPoints(line, &intersections);
+  for (const auto &p : intersections)
+    LOG(INFO) <<  p.first << " " << p.second;
+
+  std::vector<std::pair<Point, Point>> expected = {
+      {{29150, 1995}, {29150, 2225}}
+      //{{29150, 2225}, {29150, 1995}}
+  };
+
+  EXPECT_EQ(expected, intersections);
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

@@ -17,11 +17,6 @@ namespace geometry {
 
 class Polygon : public Shape {
  public:
-  static void ResolveIntersectingPointsFrom(
-      const std::vector<PointOrChoice> &choices,
-      const Point &reference_point,
-      std::vector<std::pair<Point, Point>> *intersections);
-
   Polygon() = default;
 
   Polygon(const std::vector<Point> &vertices) {
@@ -53,6 +48,11 @@ class Polygon : public Shape {
   const std::vector<Point> &vertices() const { return vertices_; }
 
  private:
+  static void ResolveIntersectingPointsFrom(
+      const std::vector<PointOrChoice> &choices,
+      const Point &reference_point,
+      std::vector<std::pair<Point, Point>> *intersections);
+
   std::vector<Point> vertices_;
 };
 

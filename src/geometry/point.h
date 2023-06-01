@@ -3,6 +3,7 @@
 
 #include <ostream>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "../physical_properties_database.h"
@@ -63,6 +64,8 @@ Point operator-(const Point &rhs);
 bool operator<(const Point &lhs, const Point &rhs);
 bool operator==(const Point &lhs, const Point &rhs);
 bool operator!=(const Point &lhs, const Point &rhs);
+
+typedef std::pair<Point, Point> PointPair;
 
 }  // namespace geometry
 

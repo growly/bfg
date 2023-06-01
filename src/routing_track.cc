@@ -205,6 +205,26 @@ std::string RoutingTrack::Debug() const {
   return ss.str();
 }
 
+std::pair<geometry::Line, geometry::Line> RoutingTrack::MajorAxisLines(
+    int64_t padding) const {
+  geometry::Line low;
+  geometry::Line high;
+  switch (direction_) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      low = geometry::Line({0, offset_ - padding}, {1, offset_ - padding});
+      high = geometry::Line({0, offset_ + padding}, {1, offset_ + padding});
+      break;
+    case RoutingTrackDirection::kTrackVertical:
+      low = geometry::Line({offset_ - padding, 0}, {offset_ - padding, 1});
+      high = geometry::Line({offset_ + padding, 0}, {offset_ + padding, 1});
+      break;
+    default:
+      LOG(FATAL) << "RoutingTrack has unknown direction " << direction_;
+      break;
+  }
+  return {low, high};
+}
+
 geometry::Line RoutingTrack::AsLine() const {
   geometry::Point start;
   geometry::Point end;
@@ -271,8 +291,8 @@ int64_t RoutingTrack::ProjectOntoTrack(const geometry::Point &point) const {
   return 0;
 }
 
-// Get the x- or y-coordinate of this track if it is vertical or horizontal,
-// respectively.
+// Get the x- or y-coordinate of the given point if this is a vertical or
+// horizontal, respectively.
 int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
   switch (direction_) {
     case RoutingTrackDirection::kTrackHorizontal:
@@ -286,6 +306,20 @@ int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
   return 0;
 }
 
+// Given a rectangle and this track (the line):
+//
+//        +-------------+             y = offset_axis_high
+//        |             |
+//        +-------------+             y = offset_axis_low
+//
+//    -------------------------       y = high
+//    -------------------------       y = low
+//
+// The y-axis is the offset axis because the track runs horizontally.
+//
+// TODO(growly): These lines aren't actually infinite. We need to make sure
+// shapes outside of the routing grid are not accidentally counted as
+// intersections.
 bool RoutingTrack::Intersects(
     const geometry::Rectangle &rectangle,
     int64_t within_halo) const {
@@ -299,6 +333,7 @@ bool RoutingTrack::Intersects(
   offset_axis_low -= within_halo;
   offset_axis_high += within_halo;
 
+  // FIXME(aryap): I think adding the halo again here is double counting it:
   int64_t low = offset_ - (width_ - width_ / 2) - within_halo;
   int64_t high = offset_ + width_ / 2 + within_halo;
 
@@ -307,6 +342,51 @@ bool RoutingTrack::Intersects(
   // we're entirely within the shape, there is:
   return !((low < offset_axis_low && high < offset_axis_low) ||
            (low > offset_axis_high && high > offset_axis_high));
+}
+
+// Given a polygon and this track (the line):
+//
+//        +-------------+
+//        |             |
+//        +--------+    |
+//                 |    |
+//                 +----+
+//
+//    -------------------------       y = high
+//    -------------------------       y = low
+//
+// This is not a generic way to determine if a polygon and a rectangle
+// intersect. That would be more sophisticated. This is a rudimentary way to
+// tell if, for our purposes, there is an intersection issue between the too.
+// Practically that means we only check the major axis of the track for
+// intersection with the polygon, and we assume the track is never full
+// contained by or fully contains the polygon.
+bool RoutingTrack::Intersects(
+    const geometry::Polygon &polygon,
+    std::vector<geometry::PointPair> *intersections,
+    int64_t within_halo) const {
+  std::pair<geometry::Line, geometry::Line> major_axis_lines =
+      MajorAxisLines(within_halo);
+
+  std::vector<geometry::PointPair> intersections_low;
+  polygon.IntersectingPoints(major_axis_lines.first, &intersections_low);
+ 
+  std::vector<geometry::PointPair> intersections_high;
+  polygon.IntersectingPoints(major_axis_lines.second, &intersections_high);
+
+  auto comp = [](const geometry::PointPair &lhs,
+                 const geometry::PointPair &rhs) {
+    if (lhs.first == rhs.first) {
+      return lhs.first < rhs.first;
+    }
+    return lhs.second < rhs.second;
+  };
+  auto deduped = std::set<
+    std::pair<geometry::Point, geometry::Point>, decltype(comp)>(comp);
+  deduped.insert(intersections_low.begin(), intersections_low.end());
+  deduped.insert(intersections_high.begin(), intersections_high.end());
+  intersections->insert(intersections->end(), deduped.begin(), deduped.end());
+  return !deduped.empty();
 }
 
 RoutingTrackBlockage *RoutingTrack::AddBlockage(
@@ -326,8 +406,9 @@ void RoutingTrack::AddBlockage(
     const geometry::Polygon &polygon,
     int64_t padding) {
   geometry::Line track = AsLine();
-  std::vector<std::pair<geometry::Point, geometry::Point>> intersections;
-  polygon.IntersectingPoints(track, &intersections);
+  std::vector<geometry::PointPair> intersections;
+  Intersects(polygon, &intersections, padding);
+
   for (const auto &pair : intersections) {
     RoutingTrackBlockage *blockage = CreateBlockage(
         pair.first, pair.second);
@@ -390,7 +471,7 @@ RoutingTrackBlockage *RoutingTrack::CreateBlockage(
       std::min(low, (*first)->start()),
       std::max(high, (*last)->end()));
 
-  // Delete the old elements
+  // Delete the old elements.
   ++last;
   for (auto it = first; it != last; ++it)
     delete *it;

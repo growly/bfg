@@ -19,8 +19,8 @@ namespace geometry {
 void Polygon::ResolveIntersectingPointsFrom(
     const std::vector<PointOrChoice> &choices,
     const Point &reference_point,
-    std::vector<std::pair<Point, Point>> *intersections) {
-  std::vector<PointOrChoice> choices_copy(choices.begin(), choices.end());
+    std::vector<PointPair> *intersections) {
+  std::vector<PointOrChoice> choices_copy(choices);
 
   for (const auto &choice : choices) {
     VLOG(13) << choice;
@@ -70,6 +70,13 @@ void Polygon::ResolveIntersectingPointsFrom(
       continue;
     }
 
+    // Any time we hit a span we should make sure to check for dupes on the next
+    // iteration (since we could be duplicating one end of the span in the
+    // points list).
+    if (choice.choose_one()) {
+      check_for_dupes = true;
+    }
+
     // By the strict order of distances from the reference point, we wouldn't
     // normally have to go back and make sure we're not adding a duplicate point
     // somewhere well back in the sorted list. But since we add both ends of an
@@ -78,7 +85,12 @@ void Polygon::ResolveIntersectingPointsFrom(
     // of order.
     bool already_exists = check_for_dupes && (
         std::find(sorted.begin(), sorted.end(), next_point) != sorted.end());
-    check_for_dupes = false;
+
+    // Reset the check for subsequent iterations if this choice is not a choice
+    // between two points.
+    if (!choice.choose_one()) {
+      check_for_dupes = false;
+    }
 
     if (choice.choose_one() && !choice.crosses_boundary()) {
       // Incident on an edge of the polygon but do not cross the edge.
@@ -101,8 +113,8 @@ void Polygon::ResolveIntersectingPointsFrom(
           sorted.push_back(next_point);
         }
         sorted.push_back(other_next_point);
-        choices_copy.erase(it);
-        check_for_dupes = true;
+        // choices_copy.erase(it);
+        // check_for_dupes = true;
       } else {
         // We're still inside, so ignore both ends of the span and make sure
         // they don't get included again:
@@ -116,13 +128,6 @@ void Polygon::ResolveIntersectingPointsFrom(
 
       choices_copy.erase(it);
       continue;
-    }
-
-    // Any time we hit a span we should make sure to check for dupes on the next
-    // iteration (since we could be duplicating one end of the span in the
-    // points list).
-    if (choice.choose_one()) {
-      check_for_dupes = true;
     }
 
     bool poison_other_end = choice.choose_one() && choice.crosses_boundary();
@@ -182,7 +187,7 @@ void Polygon::ResolveIntersectingPointsFrom(
 
 void Polygon::IntersectingPoints(
     const Line &line,
-    std::vector<std::pair<Point, Point>> *points) const {
+    std::vector<PointPair> *points) const {
   points->clear();
   if (vertices_.empty()) {
     LOG(WARNING) << "Polygon with no vertices!";
