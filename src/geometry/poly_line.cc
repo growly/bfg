@@ -302,8 +302,9 @@ void PolyLine::InsertBulge(
     return;
   }
 
-  LOG(INFO) << Describe();
-  LOG(INFO) << "point = " << point << " w x l " << coaxial_width << " x " << coaxial_length;
+  // TODO(aryap): This doesn't quite work yet, so I'm leaving these here:
+  // LOG(INFO) << Describe();
+  // LOG(INFO) << "point = " << point << " w x l " << coaxial_width << " x " << coaxial_length;
 
   const Point &start =
       intersection_index == 0 ? start_ : segments_[intersection_index - 1].end;
@@ -319,7 +320,7 @@ void PolyLine::InsertBulge(
       point, coaxial_width, coaxial_length, intersection_index, line,
       previous_width);
 
-  LOG(INFO) << Describe();
+  // LOG(INFO) << Describe();
 
   EnforceInvariants();
 }
