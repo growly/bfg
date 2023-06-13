@@ -48,6 +48,7 @@ class Sky130Mux: public Atom {
   };
 
   struct Mux2Parameters {
+    std::string fet_model_name = "sky130_fd_pr__nfet_01v8";
     std::string diff_layer_name = "ndiff.drawing";
     std::string diff_contact_layer_name = "ndiff.drawing";
 
@@ -105,7 +106,7 @@ class Sky130Mux: public Atom {
   bfg::Circuit *GenerateCircuit();
 
   bfg::Layout *GenerateMux2Layout(const Mux2Parameters &params);
-  bfg::Circuit *GenerateMux2Circuit();
+  bfg::Circuit *GenerateMux2Circuit(const Mux2Parameters &params);
 
   Parameters parameters_;
 

@@ -51,21 +51,24 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   circuit::Wire S2 = circuit->AddSignal("S2");
   circuit::Wire S2B = circuit->AddSignal("S2B");
 
-  circuit::Wire X0 = circuit->AddSignal("X0");
-  circuit::Wire X1 = circuit->AddSignal("X1");
-  circuit::Wire X2 = circuit->AddSignal("X2");
-  circuit::Wire X3 = circuit->AddSignal("X3");
-  circuit::Wire X4 = circuit->AddSignal("X4");
-  circuit::Wire X5 = circuit->AddSignal("X5");
-  circuit::Wire X6 = circuit->AddSignal("X6");
-  circuit::Wire X7 = circuit->AddSignal("X7");
+  circuit::Wire I0 = circuit->AddSignal("I0");
+  circuit::Wire I1 = circuit->AddSignal("I1");
+  circuit::Wire I2 = circuit->AddSignal("I2");
+  circuit::Wire I3 = circuit->AddSignal("I3");
+  circuit::Wire I4 = circuit->AddSignal("I4");
+  circuit::Wire I5 = circuit->AddSignal("I5");
+  circuit::Wire I6 = circuit->AddSignal("I6");
+  circuit::Wire I7 = circuit->AddSignal("I7");
 
-  circuit::Wire Z = circuit->AddSignal("Z");
+  circuit::Wire Y = circuit->AddSignal("Y");
 
   //circuit::Wire VPWR = circuit->AddSignal("VPWR");
   //circuit::Wire VGND = circuit->AddSignal("VGND");
   //circuit::Wire VPB = circuit->AddSignal("VPB");
   //circuit::Wire VNB = circuit->AddSignal("VNB");
+
+
+  // TODO(aryap): instantiate four of the mux 2 subcircuits
 
   circuit->AddPort(S0);
   circuit->AddPort(S0B);
@@ -73,15 +76,15 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   circuit->AddPort(S1B);
   circuit->AddPort(S2);
   circuit->AddPort(S2B);
-  circuit->AddPort(X0);
-  circuit->AddPort(X1);
-  circuit->AddPort(X2);
-  circuit->AddPort(X3);
-  circuit->AddPort(X4);
-  circuit->AddPort(X5);
-  circuit->AddPort(X6);
-  circuit->AddPort(X7);
-  circuit->AddPort(Z);
+  circuit->AddPort(I0);
+  circuit->AddPort(I1);
+  circuit->AddPort(I2);
+  circuit->AddPort(I3);
+  circuit->AddPort(I4);
+  circuit->AddPort(I5);
+  circuit->AddPort(I6);
+  circuit->AddPort(I7);
+  circuit->AddPort(Y);
 
   return circuit.release();
 }
@@ -1384,14 +1387,20 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   // Connect poly to metal columns.
   // Along the top of the mux:
   //
-  // v metal line (m)
+  // metal line (m)
+  // |
+  // v
+  //
   // m  p   p  m
   // x  p   +--x
   // |  p   |  m ... and so on.
   // +--x   x  m
   // m  p   p  m
   // m  p   p  m
-  //    ^ poly (p)
+  //
+  //    ^
+  //    |
+  //    poly line (p)
   ConnectNamedPointsToColumns(
       db,
       {
@@ -2192,9 +2201,42 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   return layout.release();
 }
 
-bfg::Circuit *Sky130Mux::GenerateMux2Circuit() {
+bfg::Circuit *Sky130Mux::GenerateMux2Circuit(const Mux2Parameters &params) {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
+  circuit::Wire S0 = circuit->AddSignal("S0");
+  circuit::Wire S0B = circuit->AddSignal("S0B");
+  circuit::Wire S1 = circuit->AddSignal("S1");
+  circuit::Wire S1B = circuit->AddSignal("S1B");
+
+  circuit::Wire I0 = circuit->AddSignal("I0");
+  circuit::Wire I1 = circuit->AddSignal("I1");
+  circuit::Wire I2 = circuit->AddSignal("I2");
+  circuit::Wire I3 = circuit->AddSignal("I3");
+
+  circuit::Wire Y = circuit->AddSignal("Y");
+
+  circuit::Wire a0 = circuit->AddSignal("a0");
+  circuit::Wire a1 = circuit->AddSignal("a1");
+
+  // .subckt  sky130_fd_pr__nfet_01v8 d g s b
+
+  // TODO(aryap): Need to assign the corresponding width/length parameters from
+  // params.
+  circuit::Instance *fet_0 = circuit->AddInstance("fet_0", nullptr);
+  circuit::Instance *fet_1 = circuit->AddInstance("fet_1", nullptr);
+  circuit::Instance *fet_2 = circuit->AddInstance("fet_2", nullptr);
+  circuit::Instance *fet_3 = circuit->AddInstance("fet_3", nullptr);
+  circuit::Instance *fet_4 = circuit->AddInstance("fet_4", nullptr);
+  circuit::Instance *fet_5 = circuit->AddInstance("fet_5", nullptr);
+
+  fet_0->Connect({{"s", I2}, {"g", S0B}, {"d", a0}/*, {"b", GND} */});
+  fet_2->Connect({{"s", a0}, {"g", S0}, {"d", I3}/*, {"b", GND} */});
+  fet_1->Connect({{"s", I0}, {"g", S0B}, {"d", a1}/*, {"b", GND} */});
+  fet_3->Connect({{"s", a1}, {"g", S0}, {"d", I1}/*, {"b", GND} */});
+
+  fet_4->Connect({{"s", a1}, {"g", S1B}, {"d", Y}/*, {"b", GND} */});
+  fet_5->Connect({{"s", Y}, {"g", S1}, {"d", a0}/*, {"b", GND} */});
 
   return circuit.release();
 }

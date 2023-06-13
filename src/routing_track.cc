@@ -244,10 +244,37 @@ geometry::Line RoutingTrack::AsLine() const {
   return geometry::Line(start, end);
 }
 
+// Find the point along the track at the given value on the track's major axis.
+// e.g. a horizontal track would be given x = 10 and return the Point with x =
+// 10, y = offset_. (This is also "projecting" onto the track in a way but I
+// didn't want to overload it.)
+geometry::Point RoutingTrack::PointOnTrack(
+    int64_t projection_onto_track) const {
+  switch (direction_) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      return geometry::Point(projection_onto_track, offset_);
+    case RoutingTrackDirection::kTrackVertical:
+      return geometry::Point(offset_, projection_onto_track);
+    default:
+      LOG(FATAL) << "RoutingTrack has unknown direction " << direction_;
+      break;
+  }
+  return geometry::Point();
+}
+
 std::pair<int64_t, int64_t> RoutingTrack::ProjectOntoTrack(
     const geometry::Point &lhs, const geometry::Point &rhs) const {
   int64_t low = ProjectOntoTrack(lhs);
   int64_t high = ProjectOntoTrack(rhs);
+  if (low > high)
+    std::swap(low, high);
+  return {low, high};
+}
+
+std::pair<int64_t, int64_t> RoutingTrack::ProjectOntoOffset(
+    const geometry::Point &lhs, const geometry::Point &rhs) const {
+  int64_t low = ProjectOntoOffset(lhs);
+  int64_t high = ProjectOntoOffset(rhs);
   if (low > high)
     std::swap(low, high);
   return {low, high};
@@ -365,8 +392,31 @@ bool RoutingTrack::Intersects(
     const geometry::Polygon &polygon,
     std::vector<geometry::PointPair> *intersections,
     int64_t within_halo) const {
+  int64_t boundary_from_offset = width_ + within_halo;
   std::pair<geometry::Line, geometry::Line> major_axis_lines =
-      MajorAxisLines(within_halo);
+      MajorAxisLines(boundary_from_offset);
+
+  // If the polygon is entirely internal to the track, we will not find any
+  // intersections. Project the bounding box of the polygon onto the track's
+  // offset to check:
+  geometry::Rectangle polygon_bounding_box = polygon.GetBoundingBox();
+  std::pair<int64_t, int64_t> polygon_onto_offset = ProjectOntoOffset(
+      polygon_bounding_box.lower_left(), polygon_bounding_box.upper_right());
+  if (polygon_onto_offset.first >= ProjectOntoOffset(
+          major_axis_lines.first.start()) &&
+      polygon_onto_offset.second <= ProjectOntoOffset(
+          major_axis_lines.second.start())) {
+    std::pair<int64_t, int64_t> polygon_onto_track = ProjectOntoTrack(
+        polygon_bounding_box.lower_left(), polygon_bounding_box.upper_right());
+    intersections->push_back({
+        PointOnTrack(polygon_onto_track.first),
+        PointOnTrack(polygon_onto_track.second)});
+    LOG(INFO) << "blockage " << polygon.Describe()
+              << " is entirely contained within track (" << direction_ << ") "
+              << offset_ << " between " << polygon_onto_track.first << " and "
+              <<polygon_onto_track.second;
+    return true;
+  }
 
   std::vector<geometry::PointPair> intersections_low;
   polygon.IntersectingPoints(major_axis_lines.first, &intersections_low);
@@ -405,6 +455,8 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
 void RoutingTrack::AddBlockage(
     const geometry::Polygon &polygon,
     int64_t padding) {
+  //LOG(INFO) << "Adding polygon blockage to routing track " << offset_ << " padding="
+  //          << padding << ": " << polygon.Describe();
   geometry::Line track = AsLine();
   std::vector<geometry::PointPair> intersections;
   Intersects(polygon, &intersections, padding);

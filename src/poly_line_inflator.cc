@@ -31,13 +31,17 @@ Layout *PolyLineInflator::Inflate(
     LOG_IF(FATAL, !poly_line) << "poly_line is nullptr?!";
 
     std::optional<Polygon> polygon = InflatePolyLine(*poly_line);
-    LOG(INFO) << "inflating: " << poly_line->Describe() << " into: ";
-    if (polygon) {
-      LOG(INFO) << polygon->Describe();
-    } else {
-      LOG(INFO) << "(none)";
-      continue;
+
+    if (VLOG_IS_ON(12)) {
+      LOG(INFO) << "inflating: " << poly_line->Describe() << " into: ";
+      if (polygon) {
+        LOG(INFO) << polygon->Describe();
+      } else {
+        LOG(INFO) << "(none)";
+        continue;
+      }
     }
+
     polygon->set_layer(poly_line->layer());
 
     auto bb = polygon->GetBoundingBox();

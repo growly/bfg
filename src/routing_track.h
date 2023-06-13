@@ -121,7 +121,11 @@ class RoutingTrack {
   std::pair<int64_t, int64_t> ProjectOntoTrack(
       const geometry::Point &lhs, const geometry::Point &rhs) const;
   int64_t ProjectOntoTrack(const geometry::Point &point) const;
+  std::pair<int64_t, int64_t> ProjectOntoOffset(
+      const geometry::Point &lhs, const geometry::Point &rhs) const;
   int64_t ProjectOntoOffset(const geometry::Point &point) const;
+
+  geometry::Point PointOnTrack(int64_t projection_onto_track) const;
 
   RoutingTrackBlockage *CreateBlockage(
       const geometry::Point &one_end, const geometry::Point &other_end);

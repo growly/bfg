@@ -181,15 +181,15 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
-      //geometry::Instance *instance = layout->AddInstance(
-      //    geometry::Instance (
-      //        buf_cell->layout(),
-      //        start_position + geometry::Point(buf_width, 0)
-      //        //geometry::Point {
-      //        //-200, -200
-      //        //}
-      //    )
-      //);
+      geometry::Instance *instance = layout->AddInstance(
+          geometry::Instance (
+              buf_cell->layout(),
+              start_position + geometry::Point(buf_width, 0)
+              //geometry::Point {
+              //-200, -200
+              //}
+          )
+      );
       geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
       buf_width += bounding_box.Width();
     }
@@ -268,13 +268,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
-    LOG(INFO) << "met1 shapes: " << shapes.Describe();
+    LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
   }
   {
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
-    LOG(INFO) << "met2 shapes: " << shapes.Describe();
+    LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
   }
 
