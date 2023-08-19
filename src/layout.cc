@@ -226,7 +226,6 @@ void Layout::SetActiveLayerByName(const std::string &name) {
       *layer_shapes_pb =
           shape_collection->ToVLSIRLayerShapes(
               physical_db_, false, true, &num_pins);
-      LOG(INFO) << "num_pins " << num_pins;
 
       const LayerInfo &layer_info = physical_db_.GetLayerInfo(layer);
       layer_shapes_pb->mutable_layer()->set_number(layer_info.gds_layer);

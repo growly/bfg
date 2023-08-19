@@ -1598,14 +1598,20 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   // Connect poly to metal columns.
   // Along the top of the mux:
   //
-  // v metal line (m)
+  // metal line (m)
+  // |
+  // v
+  //
   // m  p   p  m
   // x  p   +--x
   // |  p   |  m ... and so on.
   // +--x   x  m
   // m  p   p  m
   // m  p   p  m
-  //    ^ poly (p)
+  //
+  //    ^
+  //    |
+  //    poly line (p)
   ConnectNamedPointsToColumns(
       db,
       {
