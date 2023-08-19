@@ -31,6 +31,8 @@ DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
 //DEFINE_bool(read_text_format, true, "Expect input protobufs in text format");
 DEFINE_bool(write_text_format, true, "Also write text format protobufs");
 
+DEFINE_string(primitives, "primitives.pb", "Path to binary circuits proto");
+
 // Demo flags.
 DEFINE_int32(k_lut, 4, "How many LUT inputs");
 DEFINE_bool(s44, false, "Whether to make an S44 LUT (override K selection)");
@@ -438,8 +440,7 @@ void Gf180McuMuxExperiment() {
   bfg::atoms::Gf180McuMux generator(params, &design_db);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
-  design_db.WriteTop(
-      *top, "gf180_mux.pb", "gf180_mux.pb.txt");
+  design_db.WriteTop(*top, "gf180_mux.pb", "gf180_mux.pb.txt");
 }
 
 int main(int argc, char **argv) {
@@ -451,6 +452,9 @@ int main(int argc, char **argv) {
       "BFG v" xstr(bfg_VERSION_MAJOR) "." xstr(bfg_VERSION_MINOR);
   std::cout << version << std::endl;
   LOG(INFO) << version << " start";
+
+  // The design database contains our design and all our dependencies.
+  bfg::DesignDatabase design_db;
 
   vlsir::tech::Technology tech_pb;
   // std::string pdk_file_name = "../sky130.technology.pb.txt";
@@ -471,13 +475,29 @@ int main(int argc, char **argv) {
                << FLAGS_technology;
   }
 
-  bfg::DesignDatabase design_db;
-  bfg::PhysicalPropertiesDatabase &physical_db = design_db.physical_db();
+  // TODO(aryap): This is a workaround for not having the package in the
+  // tech_pb. Want to do something like:
+  if (FLAGS_primitives != "") {
+    vlsir::circuit::Package package_pb;
+    std::fstream primitives_input(
+        FLAGS_primitives, std::ios::in | std::ios::binary);
+    LOG_IF(FATAL, !primitives_input)
+        << "Could not open primitives protobuf, "
+        << FLAGS_primitives;
+    if (!package_pb.ParseFromIstream(&primitives_input)) {
+      LOG(FATAL) << "Could not parse primitives protobuf, "
+                 << FLAGS_primitives;
+    }
+    design_db.LoadPackage(package_pb);
+  }
 
+  bfg::PhysicalPropertiesDatabase &physical_db = design_db.physical_db();
   physical_db.LoadTechnology(tech_pb);
 
   SetUpSky130(&physical_db);
 
+  // TODO(aryap): Need to clarify what 'external circuits' are. See note in
+  // DesignDatabase.
   if (FLAGS_external_circuits != "") {
     vlsir::circuit::Package external_circuits_pb;
     std::fstream external_circuits_input(

@@ -31,12 +31,18 @@ class Circuit {
   // Makes a new Circuit from a VLSIR Module message. Caller takes ownership.
   // Power and ground nets are copies verbatim so that the references remain.
   static Circuit *FromVLSIRModule(const vlsir::circuit::Module &module_pb);
+  static Circuit *FromVLSIRModule(
+      const vlsir::circuit::ExternalModule &module_pb);
 
   Circuit() = default;
 
-  // Copy another circuit into this one, prefixing all names to make them
-  // unique.
-  void MergeCircuit(const Circuit &other, const std::string &prefix);
+  // Merges another circuit into this one, creating copies of all the elements.
+  // Use the name_prefix argument to prefix all incoming entities with the given
+  // string. If any elements in the other circuit conflicts (by name) with an
+  // existing one, this will fail.
+  //
+  // Note that this is fundamentally different to the schematicaly
+  void AddCircuit(const Circuit &other, const std::string &prefix = "");
 
   // Convenient: Add a width=1 signal and return a wire indexing it. Wires are
   // designed to be ephemeral.
@@ -54,6 +60,10 @@ class Circuit {
   circuit::Port *AddPort(
       const circuit::Wire &wire,
       const circuit::Port::PortDirection &direction = circuit::Port::NONE);
+
+  void AddGlobal(const circuit::Wire &wire);
+  void AddGlobal(circuit::Signal *signal);
+  void SetParameter(const std::string &name, const Parameter &value);
 
   const circuit::Signal *GetSignal(const std::string &name) const {
     auto signals_it = signals_by_name_.find(name);
@@ -74,6 +84,9 @@ class Circuit {
 
   const std::string &NameOrParentName() const;
 
+  const std::string &domain() const { return domain_; }
+  void set_domain(const std::string &domain) { domain_ = domain; }
+
   const std::string &name() const { return name_; }
   void set_name(const std::string &name) { name_ = name; }
 
@@ -81,7 +94,12 @@ class Circuit {
     return instances_;
   };
 
+  const std::unordered_map<std::string, Parameter> &parameters() const {
+    return parameters_;
+  }
+
  protected:
+  bool IsGlobal(const circuit::Signal &signal) const;
   bool IsPowerOrGround(const circuit::Signal &signal) const;
 
  private:
@@ -89,6 +107,7 @@ class Circuit {
 
   Type type_;
 
+  std::string domain_;
   std::string name_;
   std::string description_;
 
@@ -102,6 +121,13 @@ class Circuit {
   // respectively.
   std::set<circuit::Signal*> power_signals_;
   std::set<circuit::Signal*> ground_signals_;
+
+  // Global signals are treated differently when resolving signals names in
+  // hierarchies, since they are available everywhere. They tend to miss out on
+  // any prefixes being added.
+  //
+  // Global signals must outlive this object.
+  std::set<const circuit::Signal*> global_signals_;
 
   std::unordered_map<std::string, circuit::Signal*> signals_by_name_;
   std::unordered_map<std::string, circuit::Instance*> instances_by_name_;

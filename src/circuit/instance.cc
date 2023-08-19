@@ -68,6 +68,10 @@ void Instance::Connect(
   }
 }
 
+void Instance::SetParameter(const std::string &name, const Parameter &value) {
+  parameters_[name] = value;
+}
+
 ::vlsir::circuit::Instance Instance::ToVLSIRInstance() const {
   ::vlsir::circuit::Instance instance_pb;
   instance_pb.set_name(name_);
@@ -84,8 +88,10 @@ void Instance::Connect(
     *connection_pb->mutable_target() = entry.second.ToVLSIRConnection();
   }
 
-  LOG_IF(FATAL, parameters_.size() > 0)
-      << "Unimplemented: serialising parameters";
+
+  for (const auto &entry : parameters_) {
+    *instance_pb.add_parameters() = entry.second.ToVLSIRParameter();
+  }
 
   return instance_pb;
 }

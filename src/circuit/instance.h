@@ -45,9 +45,7 @@ class Instance {
 
   void Connect(const std::string &port_name, const Signal &signal);
 
-  void SetParameter(const std::string &name, const Parameter &value) {
-    parameters_[name] = value;
-  }
+  void SetParameter(const std::string &name, const Parameter &value);
 
   ::vlsir::circuit::Instance ToVLSIRInstance() const;
 

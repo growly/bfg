@@ -16,6 +16,9 @@ class Cell {
   Cell() = default;
   Cell(const std::string &name) : name_(name) {}
 
+  void set_domain(const std::string &domain) { domain_ = domain; }
+  const std::string &domain() const { return domain_; }
+
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 
@@ -38,6 +41,7 @@ class Cell {
   ::vlsir::raw::Cell ToVLSIRCell() const;
 
  private:
+  std::string domain_;
   std::string name_;
 
   std::unique_ptr<Layout> layout_;

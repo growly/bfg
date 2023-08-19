@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <absl/strings/str_join.h>
 #include <deque>
+#include <sstream>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -18,6 +19,15 @@
 #include "vlsir/circuit.pb.h"
 
 namespace bfg {
+
+namespace {
+
+std::string JoinDomainAndName(const std::string &domain,
+                              const std::string &name) {
+  return absl::StrCat(domain, "/", name);
+}
+
+}  // namespace
 
 void DesignDatabase::LoadPackage(const vlsir::circuit::Package &package) {
   size_t num_modules = 0;
@@ -36,48 +46,126 @@ void DesignDatabase::LoadPackage(const vlsir::circuit::Package &package) {
 }
 
 void DesignDatabase::LoadModule(const vlsir::circuit::Module &module_pb) {
+  Circuit *circuit = Circuit::FromVLSIRModule(module_pb);
+  const std::string &domain = circuit->domain();
+  const std::string &name = circuit->name();
+
   // Get any existing cell being referenced:
-  auto cells_it = cells_.find(module_pb.name());
-  Cell *cell = nullptr;
-  if (cells_it != cells_.end()) {
-    cell = cells_it->second.get();
-  } else {
+  Cell *cell = FindCell(domain, name);
+  if (!cell) {
     cell = new Cell();
-    cell->set_name(module_pb.name());
-    cells_.insert({module_pb.name(), std::unique_ptr<Cell>(cell)});
+    cell->set_domain(domain);
+    cell->set_name(name);
+
+    ConsumeCell(cell);
   }
 
   cell->SetCircuit(Circuit::FromVLSIRModule(module_pb));
-  VLOG(3) << "Loaded module \"" << module_pb.name() << "\"";
+  VLOG(3) << "Loaded module " << domain << "/" << name;
 }
 
 void DesignDatabase::LoadExternalModule(
     const vlsir::circuit::ExternalModule &module_pb) {
-  LOG(WARNING) << "TODO: External module not loaded: "
-               << module_pb.name().domain() << " "
-               << module_pb.name().name();
+  // (We take ownership of the object.)
+  Circuit *circuit = Circuit::FromVLSIRModule(module_pb);
+  const std::string &domain = circuit->domain();
+  const std::string &name = circuit->name();
+
+  Cell *cell = FindCell(domain, name);
+  if (!cell) {
+    cell = new Cell();
+    cell->set_domain(domain);
+    cell->set_name(name);
+
+    ConsumeCell(cell);
+  }
+
+  LOG_IF(WARNING, cell->circuit())
+      << "Replacing circuit definition in cell domain: \""
+      << domain << "\", name: \"" << name << "\"";
+
+  cell->SetCircuit(circuit);
+  VLOG(3) << "Loaded module \"" << domain << "/" << name << "\"";
 }
 
-void DesignDatabase::ConsumeCell(Cell *cell) {
-  auto it = cells_.find(cell->name());
-  LOG_IF(FATAL, it != cells_.end())
-      << "Cell " << cell->name() << " already exists in the design database.";
-  cells_.insert({cell->name(), std::unique_ptr<Cell>(cell)});
+bool DesignDatabase::ConsumeCell(Cell *cell) {
+  const std::string &domain = cell->domain();
+  const std::string &name = cell->name();
+  auto outer_it = cells_.find(domain);
+  if (outer_it == cells_.end()) {
+    // NOTE(aryap): You need the std::move() to prevent triggering a copy of the
+    // unique_ptr, which is a deleted function. Also be very very careful when
+    // otherwise accidentally triggering copies of the inner structure, like for
+    // instance if you write 'auto inner =' instead of 'auto &inner =' below.
+    // This works:
+    //  cells_[domain][name] = std::move(std::unique_ptr<Cell>(cell));
+    // This is fewer lookups:
+    auto insertion = cells_.insert(
+        {domain, std::unordered_map<std::string, std::unique_ptr<Cell>>()});
+    outer_it = insertion.first;
+  }
+
+  auto &inner = outer_it->second;
+  auto inner_it = inner.find(name);
+
+  if (inner_it != inner.end()) {
+    VLOG(10)
+        << "Could not consume cell, (domain, name) pair exists; domain: \""
+        << domain << "\", name: \"" << name << "\"";
+    return false;
+  }
+
+  inner.insert({name, std::move(std::unique_ptr<Cell>(cell))});
+  return true;
 }
 
 Cell *DesignDatabase::FindCellOrDie(const std::string &name) const {
-  auto it = cells_.find(name);
-  if (it == cells_.end()) {
-    LOG(FATAL) << "Cell not found: \"" << name << "\"";
+  return FindCellOrDie("", name);
+}
+
+Cell *DesignDatabase::FindCellOrDie(const std::string &domain,
+                                    const std::string &name) const {
+  auto domain_it = cells_.find(domain);
+  if (domain_it == cells_.end()) {
+    LOG(FATAL) << "Cell " << JoinDomainAndName(domain, name)
+               << " not found; no entry for that domain";
+    return nullptr;
+  }
+
+  const std::unordered_map<std::string, std::unique_ptr<Cell>> &inner =
+      domain_it->second;
+
+  auto it = inner.find(name);
+  if (it == inner.end()) {
+    LOG(FATAL) << "Cell " << JoinDomainAndName(domain, name)
+               << " not found; no entry for that name in the domain";
     return nullptr;
   }
   Cell *cell = it->second.get();
-  LOG_IF(FATAL, !cell)
-      << "Cell found but it's nullptr: \"" << name << "\"";
+  if (!cell) {
+    LOG(FATAL) << "Cell " << JoinDomainAndName(domain, name)
+               << " found but it is nullptr";
+  }
   return cell;
 }
 
-// Place every cell in cells_ into *ordered_cells ensuring that every
+Cell *DesignDatabase::FindCell(const std::string &domain,
+                               const std::string &name) const {
+  auto domain_it = cells_.find(domain);
+  if (domain_it == cells_.end()) {
+    return nullptr;
+  }
+  const std::unordered_map<std::string, std::unique_ptr<Cell>> &inner =
+      domain_it->second;
+  auto it = inner.find(name);
+  if (it == inner.end()) {
+    return nullptr;
+  }
+  Cell *cell = it->second.get();
+  return cell;
+}
+
+// Place every cell in unordered_cells into *ordered_cells ensuring that every
 // dependency of a later cell is placed earlier in the list. This does no
 // pruning and no partitioning. We create a list of ancestor Cells for each
 // Cell by looking at the cells instantiated in the layouts and circuits. We
@@ -169,6 +257,19 @@ void DesignDatabase::WriteTop(
   std::vector<Cell*> ordered_cells(
       reverse_ordered_cells.rbegin(), reverse_ordered_cells.rend());
   WriteCellsToVLSIRLibrary(ordered_cells, file_name, include_text_format);
+}
+
+std::string DesignDatabase::Describe() const {
+  std::stringstream ss;
+  for (const auto &domain_entry : cells_) {
+    const std::string &domain = domain_entry.first;
+    for (const auto &name_entry : domain_entry.second) {
+      const std::string &name = name_entry.first;
+      const Cell *const cell = name_entry.second.get();
+      ss << cell << "\t" << domain << "\t" << name << std::endl;
+    }
+  }
+  return ss.str();
 }
 
 }  // namespace bfg

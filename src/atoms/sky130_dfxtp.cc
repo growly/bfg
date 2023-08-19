@@ -16,7 +16,6 @@ using ::bfg::geometry::Point;
 using ::bfg::geometry::Polygon;
 using ::bfg::geometry::Rectangle;
 using ::bfg::geometry::Layer;
-
 //
 
 bfg::Cell *Sky130Dfxtp::Generate() {
@@ -57,7 +56,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   // These are all sky130_fd_pr__nfet_01v8:
   Circuit *nfet_01v8 = design_db_->FindCellOrDie(
-      "sky130_fd_pr__nfet_01v8")->circuit();
+      "sky130", "sky130_fd_pr__nfet_01v8")->circuit();
   circuit::Instance *nfet_0 = circuit->AddInstance("nfet_0", nfet_01v8);
   circuit::Instance *nfet_1 = circuit->AddInstance("nfet_1", nfet_01v8);
   circuit::Instance *nfet_2 = circuit->AddInstance("nfet_2", nfet_01v8);
@@ -71,7 +70,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   // These are all sky130_fd_pr__pfet_01v8_hvt:
   Circuit *pfet_01v8_hvt = design_db_->FindCellOrDie(
-      "sky130_fd_pr__pfet_01v8_hvt")->circuit();
+      "sky130", "sky130_fd_pr__pfet_01v8_hvt")->circuit();
   circuit::Instance *pfet_0 = circuit->AddInstance("pfet_0", pfet_01v8_hvt);
   circuit::Instance *pfet_1 = circuit->AddInstance("pfet_1", pfet_01v8_hvt);
   circuit::Instance *pfet_2 = circuit->AddInstance("pfet_2", pfet_01v8_hvt);

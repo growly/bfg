@@ -69,7 +69,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   Polygon *right_input_2;
   Polygon *right_input_3;
 
-  Mux2Parameters mux2_params_n = {
+  Mux2LayoutParameters mux2_params_n = {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
     .fet_0_width = db.ToInternalUnits(465),
@@ -120,7 +120,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   mux2_layout->ResetOrigin();
   layout->AddLayout(*mux2_layout, "left");
 
-  Mux2Parameters mux2_params_p = {
+  Mux2LayoutParameters mux2_params_p = {
     .diff_layer_name = "pdiff.drawing",
     .diff_contact_layer_name = "pcon.drawing",
     .fet_0_width = db.ToInternalUnits(865),

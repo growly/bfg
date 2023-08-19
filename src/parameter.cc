@@ -1,6 +1,18 @@
 #include "parameter.h"
 
+#include <string>
+
 namespace bfg {
+
+Parameter Parameter::FromInteger(
+    const std::string &name, const int64_t value, const SIUnitPrefix unit) {
+  return Parameter{
+      .name = name,
+      .description = "",
+      .unit_prefix = unit,
+      .value = value
+  };
+}
 
 // Google style-guide says we're better off using an old-school array for
 // static data so that it is trivially destructible. Since the data is small,
@@ -9,19 +21,19 @@ namespace bfg {
 // https://google.github.io/styleguide/cppguide.html#Static_and_Global_Variables
 Parameter::SIUnitPrefix Parameter::FromVLSIRSIPrefix(
     const vlsir::utils::SIPrefix &prefix) {
-  for (size_t i; i < vlsir::utils::SIPrefix_ARRAYSIZE; ++i) {
+  for (size_t i = 0; i < vlsir::utils::SIPrefix_ARRAYSIZE; ++i) {
     if (kToVLSIRPrefixMapping[i].second == prefix) {
       return kToVLSIRPrefixMapping[i].first;
     }
   }
   LOG(FATAL) << "Cannot convert from VLSIR SI Prefix: mapping not found for "
-             << prefix;
+             << prefix << " (" << vlsir::utils::SIPrefix_Name(prefix) << ")";
   return NONE;
 }
 
 vlsir::utils::SIPrefix Parameter::ToVLSIRSIPrefix(
     const Parameter::SIUnitPrefix &prefix) {
-  for (size_t i; i < Parameter::SIUnitPrefix::MAX_VALUE; ++i) {
+  for (size_t i = 0; i < Parameter::SIUnitPrefix::MAX_VALUE; ++i) {
     if (kToVLSIRPrefixMapping[i].first == prefix) {
       return kToVLSIRPrefixMapping[i].second;
     }

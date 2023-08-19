@@ -23,7 +23,15 @@ Libraries
   make -j $(nproc) && sudo make install
   ```
 
-[gperftools/tcmalloc](https://github.com/gperftools/gperftools)
+<!---
+[google/tcmalloc](https://github.com/google/tcmalloc)
+  ```
+  git clone git@github.com:google/tcmalloc
+  ?
+  ```
+  --->
+
+[gperftools/gperftools](https://github.com/gperftools/gperftools)
   ```
   git clone git@github.com:gperftools/gperftools
   cd gperftools
@@ -67,7 +75,7 @@ Libraries
   ```
   wget https://github.com/protocolbuffers/protobuf/releases/download/v21.5/protobuf-all-21.5.tar.gz
   tar xf protobuf-all-21.5.tar.gz
-  cd protobuf-all-21.5
+  cd protobuf-21.5
   ./autogen.sh
   ./configure
   make -j $(nproc)

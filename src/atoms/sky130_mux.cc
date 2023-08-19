@@ -28,63 +28,7 @@ using ::bfg::geometry::LineSegment;
 using ::bfg::geometry::Polygon;
 using ::bfg::geometry::Rectangle;
 using ::bfg::geometry::Layer;
-
-//
-
-bfg::Cell *Sky130Mux::Generate() {
-  // A flip-flop is two back-to-back latches.
-
-  std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_mux"));
-  cell->SetLayout(GenerateLayout());
-  cell->SetCircuit(GenerateCircuit());
-
-  return cell.release();
-}
-
-bfg::Circuit *Sky130Mux::GenerateCircuit() {
-  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
-
-  circuit::Wire S0 = circuit->AddSignal("S0");
-  circuit::Wire S0B = circuit->AddSignal("S0B");
-  circuit::Wire S1 = circuit->AddSignal("S1");
-  circuit::Wire S1B = circuit->AddSignal("S1B");
-  circuit::Wire S2 = circuit->AddSignal("S2");
-  circuit::Wire S2B = circuit->AddSignal("S2B");
-
-  circuit::Wire X0 = circuit->AddSignal("X0");
-  circuit::Wire X1 = circuit->AddSignal("X1");
-  circuit::Wire X2 = circuit->AddSignal("X2");
-  circuit::Wire X3 = circuit->AddSignal("X3");
-  circuit::Wire X4 = circuit->AddSignal("X4");
-  circuit::Wire X5 = circuit->AddSignal("X5");
-  circuit::Wire X6 = circuit->AddSignal("X6");
-  circuit::Wire X7 = circuit->AddSignal("X7");
-
-  circuit::Wire Z = circuit->AddSignal("Z");
-
-  //circuit::Wire VPWR = circuit->AddSignal("VPWR");
-  //circuit::Wire VGND = circuit->AddSignal("VGND");
-  //circuit::Wire VPB = circuit->AddSignal("VPB");
-  //circuit::Wire VNB = circuit->AddSignal("VNB");
-
-  circuit->AddPort(S0);
-  circuit->AddPort(S0B);
-  circuit->AddPort(S1);
-  circuit->AddPort(S1B);
-  circuit->AddPort(S2);
-  circuit->AddPort(S2B);
-  circuit->AddPort(X0);
-  circuit->AddPort(X1);
-  circuit->AddPort(X2);
-  circuit->AddPort(X3);
-  circuit->AddPort(X4);
-  circuit->AddPort(X5);
-  circuit->AddPort(X6);
-  circuit->AddPort(X7);
-  circuit->AddPort(Z);
-
-  return circuit.release();
-}
+using ::bfg::circuit::Wire;
 
 namespace {
 
@@ -389,7 +333,81 @@ void ConnectNamedPointsToColumn(
   }
 }
 
-void GenerateOutput2To1Mux(
+bfg::Circuit *GenerateOutput2To1MuxCircuit(
+    const DesignDatabase &db,
+    const Sky130Mux::Parameters parameters,
+    const Wire &x0,
+    const Wire &x0_b,
+    const Wire &x1,
+    const Wire &x1_b,
+    const Wire &s,
+    const Wire &s_b,
+    const Wire &y,
+    const Wire &vpb,
+    const Wire &vnb) {
+  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+
+  circuit->AddGlobal(x0);
+  circuit->AddGlobal(x0_b);
+  circuit->AddGlobal(x1);
+  circuit->AddGlobal(x1_b);
+  circuit->AddGlobal(s);
+  circuit->AddGlobal(s_b);
+  circuit->AddGlobal(y);
+  circuit->AddGlobal(vpb);
+  circuit->AddGlobal(vnb);
+
+  bfg::Circuit *nfet_01v8 =
+      db.FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
+  bfg::Circuit *pfet_01v8 =
+      db.FindCellOrDie("sky130", "sky130_fd_pr__pfet_01v8")->circuit();
+
+  circuit::Instance *nfet_0 = circuit->AddInstance("nfet0", nfet_01v8);
+  circuit::Instance *nfet_1 = circuit->AddInstance("nfet1", nfet_01v8);
+
+  circuit::Instance *pfet_0 = circuit->AddInstance("pfet0", pfet_01v8);
+  circuit::Instance *pfet_1 = circuit->AddInstance("pfet1", pfet_01v8);
+
+  nfet_0->Connect({{"d", y}, {"g", s_b}, {"s", x0}, {"b", vnb}});
+  nfet_1->Connect({{"d", x1}, {"g", s}, {"s", y}, {"b", vnb}});
+
+  pfet_0->Connect({{"d", y}, {"g", s}, {"s", x0_b}, {"b", vpb}});
+  pfet_1->Connect({{"d", x1_b}, {"g", s_b}, {"s", y}, {"b", vpb}});
+
+  // Assign model parameters from configuration struct.
+  std::array<circuit::Instance*, 4> fets = {nfet_0, nfet_1, pfet_0, pfet_1};
+  std::array<int64_t, 4> widths = {
+      static_cast<int64_t>(parameters.nfet_6_width_nm),
+      static_cast<int64_t>(parameters.nfet_7_width_nm),
+      static_cast<int64_t>(parameters.pfet_6_width_nm),
+      static_cast<int64_t>(parameters.pfet_7_width_nm)
+  };
+  std::array<int64_t, 4> lengths = {
+      static_cast<int64_t>(parameters.nfet_6_length_nm),
+      static_cast<int64_t>(parameters.nfet_7_length_nm),
+      static_cast<int64_t>(parameters.pfet_6_length_nm),
+      static_cast<int64_t>(parameters.pfet_7_length_nm)
+  };
+  for (size_t i = 0; i < fets.size(); ++i) {
+    circuit::Instance *fet = fets[i];
+    fet->SetParameter(
+        parameters.fet_model_width_parameter,
+        Parameter::FromInteger(
+            parameters.fet_model_width_parameter,
+            widths[i],
+            Parameter::SIUnitPrefix::NANO));
+    fet->SetParameter(
+        parameters.fet_model_length_parameter,
+        Parameter::FromInteger(
+            parameters.fet_model_length_parameter,
+            lengths[i],
+            Parameter::SIUnitPrefix::NANO));
+  }
+
+  return circuit.release();
+}
+
+void GenerateOutput2To1MuxLayout(
     const PhysicalPropertiesDatabase &db,
     int64_t left_left_metal_column_x,
     int64_t left_right_metal_column_x,
@@ -1114,12 +1132,207 @@ void GenerateOutput2To1Mux(
     Rectangle met2_bb = met2_bar->GetBoundingBox();
     main_layout->AddPort(geometry::Port(
         met2_bb.centre(), met2_bb.Height(), met2_bb.Height(),
-        met2_bar->layer(), "Z"));
+        met2_bar->layer(), "Y"));
 
   }
 }
 
 }  // namespace
+
+
+bfg::Cell *Sky130Mux::Generate() {
+  // A flip-flop is two back-to-back latches.
+
+  std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_mux"));
+  cell->SetLayout(GenerateLayout());
+  cell->SetCircuit(GenerateCircuit());
+
+  return cell.release();
+}
+
+bfg::Circuit *Sky130Mux::GenerateCircuit() {
+  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+
+  Wire S0 = circuit->AddSignal("S0");
+  Wire S0_B = circuit->AddSignal("S0_B");
+  Wire S1 = circuit->AddSignal("S1");
+  Wire S1_B = circuit->AddSignal("S1_B");
+  Wire S2 = circuit->AddSignal("S2");
+  Wire S2_B = circuit->AddSignal("S2_B");
+
+  Wire X0 = circuit->AddSignal("X0");
+  Wire X1 = circuit->AddSignal("X1");
+  Wire X2 = circuit->AddSignal("X2");
+  Wire X3 = circuit->AddSignal("X3");
+  Wire X4 = circuit->AddSignal("X4");
+  Wire X5 = circuit->AddSignal("X5");
+  Wire X6 = circuit->AddSignal("X6");
+  Wire X7 = circuit->AddSignal("X7");
+
+  Wire Y = circuit->AddSignal("Y");
+
+  Wire VPWR = circuit->AddSignal("VPWR");
+  Wire VGND = circuit->AddSignal("VGND");
+
+  // Intermediate signals.
+  Wire A0 = circuit->AddSignal("A0");
+  Wire A1 = circuit->AddSignal("A1");
+  Wire A2 = circuit->AddSignal("A2");
+  Wire A3 = circuit->AddSignal("A3");
+
+  circuit->AddPort(S0);
+  circuit->AddPort(S0_B);
+  circuit->AddPort(S1);
+  circuit->AddPort(S1_B);
+  circuit->AddPort(S2);
+  circuit->AddPort(S2_B);
+  circuit->AddPort(X0);
+  circuit->AddPort(X1);
+  circuit->AddPort(X2);
+  circuit->AddPort(X3);
+  circuit->AddPort(X4);
+  circuit->AddPort(X5);
+  circuit->AddPort(X6);
+  circuit->AddPort(X7);
+  circuit->AddPort(Y);
+
+  bfg::Circuit *nfet_01v8 =
+      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
+  bfg::Circuit *pfet_01v8 =
+      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__pfet_01v8")->circuit();
+
+  Mux2CircuitParameters mux_params_ul = {
+    .fet_model = nfet_01v8,
+    .fet_0_width_nm = parameters_.nfet_0_width_nm,
+    .fet_1_width_nm = parameters_.nfet_1_width_nm,
+    .fet_2_width_nm = parameters_.nfet_2_width_nm,
+    .fet_3_width_nm = parameters_.nfet_3_width_nm,
+    .fet_4_width_nm = parameters_.nfet_4_width_nm,
+    .fet_5_width_nm = parameters_.nfet_5_width_nm,
+    .fet_0_length_nm = parameters_.nfet_0_length_nm,
+    .fet_1_length_nm = parameters_.nfet_1_length_nm,
+    .fet_2_length_nm = parameters_.nfet_2_length_nm,
+    .fet_3_length_nm = parameters_.nfet_3_length_nm,
+    .fet_4_length_nm = parameters_.nfet_4_length_nm,
+    .fet_5_length_nm = parameters_.nfet_5_length_nm,
+    .vb_wire = VGND,
+    .x0_wire = X0,
+    .x1_wire = X1,
+    .x2_wire = X2,
+    .x3_wire = X3,
+    .s0_wire = S0,
+    .s0_b_wire = S0_B,
+    .s1_wire = S1,
+    .s1_b_wire = S1_B,
+    .y_wire = A0
+  };
+
+  std::unique_ptr<bfg::Circuit> mux2_circuit(
+      GenerateMux2Circuit(mux_params_ul));
+  circuit->AddCircuit(*mux2_circuit, "upper_left");
+
+  Mux2CircuitParameters mux_params_ll = Mux2CircuitParameters {
+    .fet_model = nfet_01v8,
+    .fet_0_width_nm = parameters_.nfet_0_width_nm,
+    .fet_1_width_nm = parameters_.nfet_1_width_nm,
+    .fet_2_width_nm = parameters_.nfet_2_width_nm,
+    .fet_3_width_nm = parameters_.nfet_3_width_nm,
+    .fet_4_width_nm = parameters_.nfet_4_width_nm,
+    .fet_5_width_nm = parameters_.nfet_5_width_nm,
+    .fet_0_length_nm = parameters_.nfet_0_length_nm,
+    .fet_1_length_nm = parameters_.nfet_1_length_nm,
+    .fet_2_length_nm = parameters_.nfet_2_length_nm,
+    .fet_3_length_nm = parameters_.nfet_3_length_nm,
+    .fet_4_length_nm = parameters_.nfet_4_length_nm,
+    .fet_5_length_nm = parameters_.nfet_5_length_nm,
+    .vb_wire = VGND,
+    .x0_wire = X4,
+    .x1_wire = X5,
+    .x2_wire = X6,
+    .x3_wire = X7,
+    .s0_wire = S0,
+    .s0_b_wire = S0_B,
+    .s1_wire = S1,
+    .s1_b_wire = S1_B,
+    .y_wire = A1
+  };
+
+  mux2_circuit.reset(GenerateMux2Circuit(mux_params_ll));
+  circuit->AddCircuit(*mux2_circuit, "lower_left");
+
+  Mux2CircuitParameters mux_params_ur = {
+    .fet_model = pfet_01v8,
+    .fet_0_width_nm = parameters_.pfet_0_width_nm,
+    .fet_1_width_nm = parameters_.pfet_1_width_nm,
+    .fet_2_width_nm = parameters_.pfet_2_width_nm,
+    .fet_3_width_nm = parameters_.pfet_3_width_nm,
+    .fet_4_width_nm = parameters_.pfet_4_width_nm,
+    .fet_5_width_nm = parameters_.pfet_5_width_nm,
+    .fet_0_length_nm = parameters_.pfet_0_length_nm,
+    .fet_1_length_nm = parameters_.pfet_1_length_nm,
+    .fet_2_length_nm = parameters_.pfet_2_length_nm,
+    .fet_3_length_nm = parameters_.pfet_3_length_nm,
+    .fet_4_length_nm = parameters_.pfet_4_length_nm,
+    .fet_5_length_nm = parameters_.pfet_5_length_nm,
+    .vb_wire = VPWR,
+    .x0_wire = X0,
+    .x1_wire = X1,
+    .x2_wire = X2,
+    .x3_wire = X3,
+    .s0_wire = S0_B,
+    .s0_b_wire = S0,
+    .s1_wire = S1_B,
+    .s1_b_wire = S1,
+    .y_wire = A2
+  };
+
+  mux2_circuit.reset(GenerateMux2Circuit(mux_params_ur));
+  circuit->AddCircuit(*mux2_circuit, "upper_right");
+
+  Mux2CircuitParameters mux_params_lr = {
+    .fet_model = pfet_01v8,
+    .fet_0_width_nm = parameters_.pfet_0_width_nm,
+    .fet_1_width_nm = parameters_.pfet_1_width_nm,
+    .fet_2_width_nm = parameters_.pfet_2_width_nm,
+    .fet_3_width_nm = parameters_.pfet_3_width_nm,
+    .fet_4_width_nm = parameters_.pfet_4_width_nm,
+    .fet_5_width_nm = parameters_.pfet_5_width_nm,
+    .fet_0_length_nm = parameters_.pfet_0_length_nm,
+    .fet_1_length_nm = parameters_.pfet_1_length_nm,
+    .fet_2_length_nm = parameters_.pfet_2_length_nm,
+    .fet_3_length_nm = parameters_.pfet_3_length_nm,
+    .fet_4_length_nm = parameters_.pfet_4_length_nm,
+    .fet_5_length_nm = parameters_.pfet_5_length_nm,
+    .vb_wire = VPWR,
+    .x0_wire = X4,
+    .x1_wire = X5,
+    .x2_wire = X6,
+    .x3_wire = X7,
+    .s0_wire = S0_B,
+    .s0_b_wire = S0,
+    .s1_wire = S1_B,
+    .s1_b_wire = S1,
+    .y_wire = A3
+  };
+  mux2_circuit.reset(GenerateMux2Circuit(mux_params_lr));
+  circuit->AddCircuit(*mux2_circuit, "lower_right");
+
+  std::unique_ptr<bfg::Circuit> output_mux_circuit(
+      GenerateOutput2To1MuxCircuit(*design_db_,
+                                   parameters_,
+                                   A0,
+                                   A2,
+                                   A1,
+                                   A3,
+                                   S2,
+                                   S2_B,
+                                   Y,
+                                   VPWR,
+                                   VGND));
+  circuit->AddCircuit(*output_mux_circuit, "output_mux2");
+ 
+  return circuit.release();
+}
 
 bfg::Layout *Sky130Mux::GenerateLayout() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
@@ -1146,9 +1359,10 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   const std::string poly_contact = "polycon.drawing";
 
-  Mux2Parameters mux2_params_n = {
+  Mux2LayoutParameters mux2_params_n = {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
+    // TODO(aryap): These come from the parameters_ struct!
     .fet_0_width = db.ToInternalUnits(450),
     .fet_1_width = db.ToInternalUnits(450),
     .fet_2_width = db.ToInternalUnits(450),
@@ -1179,7 +1393,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_y_padding = 0 //db.ToInternalUnits(200)
   };
 
-  Mux2Parameters mux2_params_p = mux2_params_n;
+  Mux2LayoutParameters mux2_params_p = mux2_params_n;
 
   std::unique_ptr<bfg::Layout> mux2_layout_n(GenerateMux2Layout(mux2_params_n));
   std::unique_ptr<bfg::Layout> mux2_layout_p(GenerateMux2Layout(mux2_params_p));
@@ -1468,7 +1682,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   //LOG(INFO) << layout->Describe();
 
-  GenerateOutput2To1Mux(
+  GenerateOutput2To1MuxLayout(
       db,
       column_x[3],
       column_x[4],
@@ -1519,7 +1733,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 //         - met0 (li)
 //         - licon
 //  bottom - poly | diff
-bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
+bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
   std::unique_ptr<bfg::Layout> layout(
@@ -2192,9 +2406,126 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2Parameters &params) {
   return layout.release();
 }
 
-bfg::Circuit *Sky130Mux::GenerateMux2Circuit() {
+bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
+    const Mux2CircuitParameters &parameters) {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+ 
+  // Substrate connection.
+  Wire VB = parameters.vb_wire.value_or(circuit->AddSignal("VB"));
 
+  // Inputs.
+  Wire X0 = parameters.x0_wire.value_or(circuit->AddSignal("X0"));
+  Wire X1 = parameters.x1_wire.value_or(circuit->AddSignal("X1"));
+  Wire X2 = parameters.x2_wire.value_or(circuit->AddSignal("X2"));
+  Wire X3 = parameters.x3_wire.value_or(circuit->AddSignal("X3"));
+
+  // Select signals.
+  Wire S0 = parameters.s0_wire.value_or(circuit->AddSignal("S0"));
+  Wire S1 = parameters.s1_wire.value_or(circuit->AddSignal("S1"));
+
+  // Inverted select signals.
+  Wire S0_B =
+      parameters.s0_b_wire.value_or(circuit->AddSignal("S0_B"));
+  Wire S1_B =
+      parameters.s0_b_wire.value_or(circuit->AddSignal("S1_B"));
+
+  // Output.
+  Wire Y = parameters.y_wire.value_or(circuit->AddSignal("Y"));
+
+  // Intermediate signals.
+  Wire A0 = circuit->AddSignal("A0");
+  Wire A1 = circuit->AddSignal("A1");
+
+  // If we're passed wires as parameters we have to treat them as globals so
+  // that their names don't get mangled when the resulting Circuit here is added
+  // to something else.
+  std::vector<const std::optional<Wire>*> input_parameters = {
+    &parameters.vb_wire,
+    &parameters.x0_wire,
+    &parameters.x1_wire,
+    &parameters.x2_wire,
+    &parameters.x3_wire,
+    &parameters.s0_wire,
+    &parameters.s0_b_wire,
+    &parameters.s1_wire,
+    &parameters.s1_b_wire,
+    &parameters.y_wire
+  };
+  for (auto optional : input_parameters) {
+    if (*optional) {
+      circuit->AddGlobal(optional->value());
+    }
+  }
+  
+  // TODO(aryap): FET model is a function of much more than just P/N. We need
+  // to query the PDK database for the model appropriate for the various kinds
+  // of FET we are drawing:
+  circuit::Instance *fet_0 = circuit->AddInstance("fet0", parameters.fet_model);
+  circuit::Instance *fet_1 = circuit->AddInstance("fet1", parameters.fet_model);
+  circuit::Instance *fet_2 = circuit->AddInstance("fet2", parameters.fet_model);
+  circuit::Instance *fet_3 = circuit->AddInstance("fet3", parameters.fet_model);
+  circuit::Instance *fet_4 = circuit->AddInstance("fet4", parameters.fet_model);
+  circuit::Instance *fet_5 = circuit->AddInstance("fet5", parameters.fet_model);
+
+  fet_0->Connect({{"d", A0}, {"g", S0_B}, {"s", X2}, {"b", VB}});
+  fet_2->Connect({{"d", X3}, {"g", S0}, {"s", A0}, {"b", VB}});
+  fet_1->Connect({{"d", A1}, {"g", S0_B}, {"s", X0}, {"b", VB}});
+  fet_3->Connect({{"d", X1}, {"g", S0}, {"s", A1}, {"b", VB}});
+  fet_4->Connect({{"d", Y}, {"g", S1_B}, {"s", A1}, {"b", VB}});
+  fet_5->Connect({{"d", A0}, {"g", S1}, {"s", Y}, {"b", VB}});
+  //} else if (parameters.fet_type == Mux2CircuitParameters::FetType::P) {
+  //  fet_0 = circuit->AddInstance("fet0", nullptr);
+  //  fet_1 = circuit->AddInstance("fet1", nullptr);
+  //  fet_2 = circuit->AddInstance("fet2", nullptr);
+  //  fet_3 = circuit->AddInstance("fet3", nullptr);
+  //  fet_4 = circuit->AddInstance("fet4", nullptr);
+  //  fet_5 = circuit->AddInstance("fet5", nullptr);
+
+  //  fet_0->Connect({{"d", A0}, {"g", S0}, {"s", X2}, {"b", VB}});
+  //  fet_2->Connect({{"d", X3}, {"g", S0_B}, {"s", A0}, {"b", VB}});
+  //  fet_1->Connect({{"d", A1}, {"g", S0}, {"s", X0}, {"b", VB}});
+  //  fet_3->Connect({{"d", X1}, {"g", S0_B}, {"s", A1}, {"b", VB}});
+  //  fet_4->Connect({{"d", Y}, {"g", S1}, {"s", A1}, {"b", VB}});
+  //  fet_5->Connect({{"d", A0}, {"g", S1_B}, {"s", Y}, {"b", VB}});
+  //} else {
+  //  LOG(FATAL) << "Unknown FET type in Mux2CircuitParameters: "
+  //             << parameters.fet_type;
+  //}
+
+  // Assign model parameters from configuration struct.
+  std::array<circuit::Instance*, 6> fets = {
+      fet_0, fet_1, fet_2, fet_3, fet_4, fet_5};
+  std::array<int64_t, 6> widths = {
+      static_cast<int64_t>(parameters.fet_0_width_nm),
+      static_cast<int64_t>(parameters.fet_1_width_nm),
+      static_cast<int64_t>(parameters.fet_2_width_nm),
+      static_cast<int64_t>(parameters.fet_3_width_nm),
+      static_cast<int64_t>(parameters.fet_4_width_nm),
+      static_cast<int64_t>(parameters.fet_5_width_nm)
+  };
+  std::array<int64_t, 6> lengths = {
+      static_cast<int64_t>(parameters.fet_0_length_nm),
+      static_cast<int64_t>(parameters.fet_1_length_nm),
+      static_cast<int64_t>(parameters.fet_2_length_nm),
+      static_cast<int64_t>(parameters.fet_3_length_nm),
+      static_cast<int64_t>(parameters.fet_4_length_nm),
+      static_cast<int64_t>(parameters.fet_5_length_nm)
+  };
+  for (size_t i = 0; i < fets.size(); ++i) {
+    circuit::Instance *fet = fets[i];
+    fet->SetParameter(
+        parameters.fet_model_width_parameter,
+        Parameter::FromInteger(
+            parameters.fet_model_width_parameter,
+            widths[i],
+            Parameter::SIUnitPrefix::NANO));
+    fet->SetParameter(
+        parameters.fet_model_length_parameter,
+        Parameter::FromInteger(
+            parameters.fet_model_length_parameter,
+            lengths[i],
+            Parameter::SIUnitPrefix::NANO));
+  }
 
   return circuit.release();
 }

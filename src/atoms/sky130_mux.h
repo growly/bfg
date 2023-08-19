@@ -45,9 +45,63 @@ class Sky130Mux: public Atom {
     uint64_t nfet_3_length_nm = 150;
     uint64_t nfet_4_length_nm = 150;
     uint64_t nfet_5_length_nm = 150;
+
+    // Output mux sizing.
+    uint64_t pfet_6_width_nm = 420;
+    uint64_t pfet_7_width_nm = 420;
+
+    uint64_t nfet_6_width_nm = 420;
+    uint64_t nfet_7_width_nm = 420;
+
+    uint64_t pfet_6_length_nm = 150;
+    uint64_t pfet_7_length_nm = 150;
+
+    uint64_t nfet_6_length_nm = 150;
+    uint64_t nfet_7_length_nm = 150;
+
+    // TODO(aryap): Maybe these are queried from the PDK database?
+    std::string fet_model_length_parameter = "l";
+    std::string fet_model_width_parameter = "w";
   };
 
-  struct Mux2Parameters {
+  struct Mux2CircuitParameters {
+    // TODO(aryap): Delete these?
+    enum FetType { N, P };
+    FetType fet_type = FetType::N;
+
+    const bfg::Circuit *fet_model = nullptr;
+
+    // TODO(aryap): Maybe these are queried from the PDK database?
+    std::string fet_model_length_parameter = "l";
+    std::string fet_model_width_parameter = "w";
+
+    uint64_t fet_0_width_nm = 640;
+    uint64_t fet_1_width_nm = 640;
+    uint64_t fet_2_width_nm = 640;
+    uint64_t fet_3_width_nm = 640;
+    uint64_t fet_4_width_nm = 640;
+    uint64_t fet_5_width_nm = 640;
+
+    uint64_t fet_0_length_nm = 150;
+    uint64_t fet_1_length_nm = 150;
+    uint64_t fet_2_length_nm = 150;
+    uint64_t fet_3_length_nm = 150;
+    uint64_t fet_4_length_nm = 150;
+    uint64_t fet_5_length_nm = 150;
+
+    std::optional<circuit::Wire> vb_wire = std::nullopt;
+    std::optional<circuit::Wire> x0_wire = std::nullopt;
+    std::optional<circuit::Wire> x1_wire = std::nullopt;
+    std::optional<circuit::Wire> x2_wire = std::nullopt;
+    std::optional<circuit::Wire> x3_wire = std::nullopt;
+    std::optional<circuit::Wire> s0_wire = std::nullopt;
+    std::optional<circuit::Wire> s0_b_wire = std::nullopt;
+    std::optional<circuit::Wire> s1_wire = std::nullopt;
+    std::optional<circuit::Wire> s1_b_wire = std::nullopt;
+    std::optional<circuit::Wire> y_wire = std::nullopt;
+  };
+
+  struct Mux2LayoutParameters {
     std::string diff_layer_name = "ndiff.drawing";
     std::string diff_contact_layer_name = "ndiff.drawing";
 
@@ -104,8 +158,8 @@ class Sky130Mux: public Atom {
   bfg::Layout *GenerateLayout();
   bfg::Circuit *GenerateCircuit();
 
-  bfg::Layout *GenerateMux2Layout(const Mux2Parameters &params);
-  bfg::Circuit *GenerateMux2Circuit();
+  bfg::Layout *GenerateMux2Layout(const Mux2LayoutParameters &parameters);
+  bfg::Circuit *GenerateMux2Circuit(const Mux2CircuitParameters &parameters);
 
   Parameters parameters_;
 

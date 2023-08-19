@@ -1,0 +1,6536 @@
+domain: "sky130"
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_01v8"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_01v8_lvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__pfet_01v8"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__pfet_01v8_hvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__pfet_01v8_lvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__pfet_g5v0d10v5"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_g5v0d10v5"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__pfet_g5v0d16v0"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_20v0"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      integer: 30
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      integer: 1
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_20v0_zvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      integer: 30
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      integer: 1
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_20v0_iso"
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  ports {
+    signal: "sub"
+    direction: NONE
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  signals {
+    name: "sub"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      integer: 30
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      integer: 1
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__pfet_20v0"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      integer: 30
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      integer: 1
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_03v3_nvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_05v0_nvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__nfet_20v0_nvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      integer: 30
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      integer: 1
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__esd_nfet_01v8"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__esd_nfet_g5v0d10v5"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__esd_nfet_g5v0d10v5_nvt"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__esd_pfet_g5v0d10v5"
+  }
+  ports {
+    signal: "d"
+    direction: NONE
+  }
+  ports {
+    signal: "g"
+    direction: NONE
+  }
+  ports {
+    signal: "s"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "d"
+    width: 1
+  }
+  signals {
+    name: "g"
+    width: 1
+  }
+  signals {
+    name: "s"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 650
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 150
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "nf"
+    value {
+      integer: 1
+    }
+    desc: "Number of Fingers"
+  }
+  parameters {
+    name: "ad"
+    value {
+      literal: "int((nf+1)/2) * w/nf * 0.29"
+    }
+    desc: "Drain Area"
+  }
+  parameters {
+    name: "As"
+    value {
+      literal: "int((nf+2)/2) * w/nf * 0.29"
+    }
+    desc: "Source Area"
+  }
+  parameters {
+    name: "pd"
+    value {
+      literal: "2*int((nf+1)/2) * (w/nf + 0.29)"
+    }
+    desc: "Drain Perimeter"
+  }
+  parameters {
+    name: "ps"
+    value {
+      literal: "2*int((nf+2)/2) * (w/nf + 0.29)"
+    }
+    desc: "Source Perimeter"
+  }
+  parameters {
+    name: "nrd"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Drain Resistive Value"
+  }
+  parameters {
+    name: "nrs"
+    value {
+      literal: "0.29 / w"
+    }
+    desc: "Source Resistive Value"
+  }
+  parameters {
+    name: "sa"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Drain"
+  }
+  parameters {
+    name: "sb"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Gate to Source"
+  }
+  parameters {
+    name: "sd"
+    value {
+      literal: "0"
+    }
+    desc: "Spacing between Adjacent Drain to Source"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplier"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_po"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_l1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m2"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m3"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m4"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m5"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_nd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_pd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_iso_pw"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_po"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_l1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m2"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m3"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m4"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m5"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_nd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_pd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_iso_pw"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_po"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_l1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m2"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m3"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m4"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m5"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_nd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_pd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_iso_pw"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_po"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_l1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m1"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m2"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m3"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m4"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_m5"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  spicetype: RESISTOR
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_nd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_generic_pd"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_iso_pw"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "w"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Width in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_high_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p35"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_0p69"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_1p41"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_2p85"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}
+ext_modules {
+  name {
+    domain: "sky130"
+    name: "sky130_fd_pr__res_xhigh_po_5p73"
+  }
+  ports {
+    signal: "p"
+    direction: NONE
+  }
+  ports {
+    signal: "n"
+    direction: NONE
+  }
+  ports {
+    signal: "b"
+    direction: NONE
+  }
+  signals {
+    name: "p"
+    width: 1
+  }
+  signals {
+    name: "n"
+    width: 1
+  }
+  signals {
+    name: "b"
+    width: 1
+  }
+  parameters {
+    name: "l"
+    value {
+      prefixed {
+        prefix: MILLI
+        integer: 1000
+      }
+    }
+    desc: "Length in PDK Units (\302\265m)"
+  }
+  parameters {
+    name: "mult"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+  parameters {
+    name: "m"
+    value {
+      integer: 1
+    }
+    desc: "Multiplicity"
+  }
+}

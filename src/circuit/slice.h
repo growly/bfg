@@ -27,10 +27,14 @@ class Slice {
         low_index_(other.low_index_),
         high_index_(other.high_index_) {}
 
-  // Slice &operator=(const Slice &other) {
-  //   *this = Slice(other);
-  //   return *this;
-  // }
+  // Can't copy-assign a const Signal&, so force the compiler's hand. This feels
+  // so icky.
+  // TODO(aryap): Why does this even work? Why doesn't operator= get called in
+  // the *this = ... call?
+  //Slice &operator=(const Slice &other) {
+  //  *this = Slice(other);
+  //  return *this;
+  //}
 
   ::vlsir::circuit::Slice ToVLSIRSlice() const {
     ::vlsir::circuit::Slice slice_pb;

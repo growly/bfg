@@ -62,6 +62,9 @@ struct Parameter {
   //
   // but std::variant does this all so who cares.
 
+  static Parameter FromInteger(
+      const std::string &name, const int64_t value, const SIUnitPrefix unit);
+
   static SIUnitPrefix FromVLSIRSIPrefix(const vlsir::utils::SIPrefix &prefix);
   static vlsir::utils::SIPrefix ToVLSIRSIPrefix(const SIUnitPrefix &prefix);
 
@@ -70,6 +73,7 @@ struct Parameter {
 
   static constexpr std::pair<Parameter::SIUnitPrefix, vlsir::utils::SIPrefix>
       kToVLSIRPrefixMapping[] = {
+    {Parameter::SIUnitPrefix::NONE, vlsir::utils::SIPrefix::UNIT},
     {Parameter::SIUnitPrefix::YOCTO, vlsir::utils::SIPrefix::YOCTO},
     {Parameter::SIUnitPrefix::ZEPTO, vlsir::utils::SIPrefix::ZEPTO},
     {Parameter::SIUnitPrefix::ATTO,  vlsir::utils::SIPrefix::ATTO},
