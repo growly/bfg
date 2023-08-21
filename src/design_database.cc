@@ -85,6 +85,7 @@ void DesignDatabase::LoadExternalModule(
       << domain << "\", name: \"" << name << "\"";
 
   cell->SetCircuit(circuit);
+
   VLOG(3) << "Loaded module \"" << domain << "/" << name << "\"";
 }
 
@@ -242,8 +243,10 @@ void DesignDatabase::WriteTop(
   while (!to_visit.empty()) {
     Cell *cell = to_visit.front();
     to_visit.pop_front();
-    std::set<Cell*> direct_ancestors = cell->DirectAncestors(
-        true);
+    // Extract layout-only view of circuit.
+    // TODO(aryap): This is broken. Need to be able to combine netlist and
+    // layout hierarchies together.
+    std::set<Cell*> direct_ancestors = cell->DirectAncestors(true);
     for (Cell *ancestor : direct_ancestors) {
       if (ancestors.find(ancestor) != ancestors.end())
         continue;
