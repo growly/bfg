@@ -27,7 +27,7 @@ set(PROTO_SRC
   ${PROTO_SRC_DIR}/inflator_rules.proto
 )
 
-set(VLSIR_SRC_DIR ${PROJECT_SOURCE_DIR}/vlsir)
+set(VLSIR_SRC_DIR ${PROJECT_SOURCE_DIR}/vlsir/protos)
 file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
 #set(VLSIR_SRC
 #  ${VLSIR_SRC_DIR}/circuit.proto
@@ -150,15 +150,20 @@ endfunction()
 # -----
 #
 # Built as a library so that the proto import/include paths, which are relative
-# to the root of the vlsir/ directory, keep working. These are out of our
+# to the root of the vlsir/protos directory, keep working. These are out of our
 # control.
 #
-# We have to pass the same root of the vlsir generated directory as an include
-# directory for the main code, since this is effectively the public API of the
-# VLSIR stuff.
-
-file(RELATIVE_PATH vlsir_src_relative ${PROJECT_SOURCE_DIR} ${VLSIR_SRC_DIR})
-set(VLSIR_OUT_DIR ${PROJECT_BINARY_DIR}/${vlsir_src_relative})
+# Use this to generate the protobuf sources into the build directory at the same
+# relative directory path as they were to the original source directory. e.g.,
+# if they appear in the source tree at ${REPO_ROOT}/vlsir/protos, they will be
+# generated into ${BUILD_ROOT}/vlsir/protos.
+#   file(
+#       RELATIVE_PATH vlsir_src_relative ${PROJECT_SOURCE_DIR} ${VLSIR_SRC_DIR})
+#   set(VLSIR_OUT_DIR ${PROJECT_BINARY_DIR}/${vlsir_src_relative})
+#
+# This forces them into ${BUILD_ROOT}/vlsir, to simplify all the include paths
+# throughout the code.
+set(VLSIR_OUT_DIR ${PROJECT_BINARY_DIR}/vlsir)
 file(MAKE_DIRECTORY ${VLSIR_OUT_DIR})
 # Need quotes around "${VLSIR_SRC}" to ensure it gets passed as the
 # semicolon-delimited list that it is (otherwise only the first argument gets
