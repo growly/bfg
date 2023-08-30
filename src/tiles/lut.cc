@@ -59,7 +59,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         cell->set_name(cell_name);
         //cell->layout()->ResetOrigin();
         design_db_->ConsumeCell(cell);
-        circuit->AddInstance(instance_name, cell->circuit());
         geometry::Rectangle bounding_box = cell->layout()->GetTilingBounds();
         int64_t height = static_cast<int64_t>(bounding_box.Height());
         int64_t width = static_cast<int64_t>(bounding_box.Width());
@@ -174,10 +173,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       atoms::Sky130Buf::Parameters buf_params = {
         .width_nm = 1380,
         .height_nm = 2720,
-        .x0_width_nm = 520,
-        .x1_width_nm = 790,
-        .x2_width_nm = 520,
-        .x3_width_nm = 790
+        .nfet_0_width_nm = 520,
+        .nfet_1_width_nm = 520,
+        .pfet_0_width_nm = 790,
+        .pfet_1_width_nm = 790
       };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);

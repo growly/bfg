@@ -28,6 +28,7 @@
 DEFINE_string(technology, "technology.pb", "Path to binary technology proto");
 DEFINE_string(external_circuits, "", "Path to binary circuits proto");
 DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
+DEFINE_string(output_package, "package.pb", "Output Vlsir Package path");
 //DEFINE_bool(read_text_format, true, "Expect input protobufs in text format");
 DEFINE_bool(write_text_format, true, "Also write text format protobufs");
 
@@ -440,7 +441,7 @@ void Gf180McuMuxExperiment() {
   bfg::atoms::Gf180McuMux generator(params, &design_db);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
-  design_db.WriteTop(*top, "gf180_mux.pb", "gf180_mux.pb.txt");
+  design_db.WriteTop(*top, "gf180_mux.pb", "gf180_mux.package.pb", true);
 }
 
 int main(int argc, char **argv) {
@@ -516,8 +517,16 @@ int main(int argc, char **argv) {
   bfg::tiles::Lut generator(&design_db, FLAGS_k_lut);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
-  design_db.WriteTop(
-      *top, FLAGS_output_library, FLAGS_write_text_format);
+  // TODO(aryap): This is temporary, to make sense of one possible netlist.
+  design_db.WriteTop("sky130_mux",
+                     "sky130_mux.library.pb",
+                     "sky130_mux.package.pb",
+                     true);
+
+  design_db.WriteTop(*top,
+                     FLAGS_output_library,
+                     FLAGS_output_package,
+                     FLAGS_write_text_format);
 
   Gf180McuMuxExperiment();
 

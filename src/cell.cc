@@ -15,7 +15,7 @@ namespace bfg {
     *cell_pb.mutable_abstract() = layout_->ToVLSIRAbstract();
   }
   if (circuit_)
-    *cell_pb.mutable_module() = circuit_->ToVLSIRCircuit();
+    *cell_pb.mutable_module() = circuit_->ToVLSIRModule();
   return cell_pb;
 }
 

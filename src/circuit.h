@@ -31,7 +31,7 @@ class Circuit {
   // Makes a new Circuit from a VLSIR Module message. Caller takes ownership.
   // Power and ground nets are copies verbatim so that the references remain.
   static Circuit *FromVLSIRModule(const vlsir::circuit::Module &module_pb);
-  static Circuit *FromVLSIRModule(
+  static Circuit *FromVLSIRExternalModule(
       const vlsir::circuit::ExternalModule &module_pb);
 
   Circuit() = default;
@@ -80,9 +80,11 @@ class Circuit {
 
   std::string Describe() const;
 
-  ::vlsir::circuit::Module ToVLSIRCircuit() const;
+  ::vlsir::circuit::Module ToVLSIRModule() const;
+  ::vlsir::circuit::ExternalModule ToVLSIRExternalModule() const;
 
   const std::string &NameOrParentName() const;
+  const std::string &DomainOrParentDomain() const;
 
   const std::string &domain() const { return domain_; }
   void set_domain(const std::string &domain) { domain_ = domain; }

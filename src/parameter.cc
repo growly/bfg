@@ -49,14 +49,14 @@ Parameter Parameter::FromVLSIRParameter(const vlsir::utils::Param &param_pb) {
   parameter.description = param_pb.desc();
   const vlsir::utils::ParamValue &value = param_pb.value();
   switch (param_pb.value().value_case()) {
-    case vlsir::utils::ParamValue::ValueCase::kInteger:
-      parameter.value = value.integer();
+    case vlsir::utils::ParamValue::ValueCase::kInt64Value:
+      parameter.value = value.int64_value();
       break;
-    case vlsir::utils::ParamValue::ValueCase::kFloatingPoint:
-      parameter.value = value.floating_point();
+    case vlsir::utils::ParamValue::ValueCase::kDoubleValue:
+      parameter.value = value.double_value();
       break;
-    case vlsir::utils::ParamValue::ValueCase::kString:
-      parameter.value = value.string();
+    case vlsir::utils::ParamValue::ValueCase::kStringValue:
+      parameter.value = value.string_value();
       break;
     case vlsir::utils::ParamValue::ValueCase::kLiteral:
       parameter.value = value.literal();
@@ -65,14 +65,14 @@ Parameter Parameter::FromVLSIRParameter(const vlsir::utils::Param &param_pb) {
       const vlsir::utils::Prefixed &prefixed = param_pb.value().prefixed();
       parameter.unit_prefix = FromVLSIRSIPrefix(prefixed.prefix());
       switch (prefixed.number_case()) {
-        case vlsir::utils::Prefixed::NumberCase::kInteger:
-          parameter.value = prefixed.integer();
+        case vlsir::utils::Prefixed::NumberCase::kInt64Value:
+          parameter.value = prefixed.int64_value();
           break;
-        case vlsir::utils::Prefixed::NumberCase::kFloatingPoint:
-          parameter.value = prefixed.floating_point();
+        case vlsir::utils::Prefixed::NumberCase::kDoubleValue:
+          parameter.value = prefixed.double_value();
           break;
-        case vlsir::utils::Prefixed::NumberCase::kString:
-          parameter.value = prefixed.string();
+        case vlsir::utils::Prefixed::NumberCase::kStringValue:
+          parameter.value = prefixed.string_value();
           break;
       }
       break;
@@ -89,15 +89,15 @@ vlsir::utils::Param Parameter::ToVLSIRParameter() const {
         ToVLSIRSIPrefix(unit_prefix));
     switch (value.index()) {
       case 0:
-        param_pb.mutable_value()->mutable_prefixed()->set_integer(
+        param_pb.mutable_value()->mutable_prefixed()->set_int64_value(
             std::get<int64_t>(value));
         break;
       case 1:
-        param_pb.mutable_value()->mutable_prefixed()->set_floating_point(
+        param_pb.mutable_value()->mutable_prefixed()->set_double_value(
             std::get<double>(value));
         break;
       case 2:
-        param_pb.mutable_value()->mutable_prefixed()->set_string(
+        param_pb.mutable_value()->mutable_prefixed()->set_string_value(
             std::get<std::string>(value));
         break;
       default:
@@ -108,13 +108,13 @@ vlsir::utils::Param Parameter::ToVLSIRParameter() const {
   }
   switch (value.index()) {
     case 0:
-      param_pb.mutable_value()->set_integer(std::get<int64_t>(value));
+      param_pb.mutable_value()->set_int64_value(std::get<int64_t>(value));
       break;
     case 1:
-      param_pb.mutable_value()->set_floating_point(std::get<double>(value));
+      param_pb.mutable_value()->set_double_value(std::get<double>(value));
       break;
     case 2:
-      param_pb.mutable_value()->set_string(std::get<std::string>(value));
+      param_pb.mutable_value()->set_string_value(std::get<std::string>(value));
       break;
     default:
       LOG(FATAL) << "Unexpected variant index " << value.index();

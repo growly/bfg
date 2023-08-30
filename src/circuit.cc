@@ -43,7 +43,7 @@ Circuit *Circuit::FromVLSIRModule(const vlsir::circuit::Module &module_pb) {
   return circuit.release();
 }
 
-Circuit *Circuit::FromVLSIRModule(
+Circuit *Circuit::FromVLSIRExternalModule(
     const vlsir::circuit::ExternalModule &module_pb) {
   std::unique_ptr<Circuit> circuit(new Circuit());
 
@@ -70,12 +70,18 @@ Circuit *Circuit::FromVLSIRModule(
   return circuit.release();
 }
 
-
 const std::string &Circuit::NameOrParentName() const {
   if (name_ == "" && parent_cell_ != nullptr) {
     return parent_cell_->name();
   }
   return name_;
+}
+
+const std::string &Circuit::DomainOrParentDomain() const {
+  if (domain_ == "" && parent_cell_ != nullptr) {
+    return parent_cell_->domain();
+  }
+  return domain_;
 }
 
 namespace {
@@ -142,8 +148,7 @@ void Circuit::AddCircuit(const Circuit &other, const std::string &prefix) {
           std::string merged_name = other.IsGlobal(other_signal) ?
               other_signal.name() :
               MapSignalNameForAdd(prefix, other_signal.name());
-          std::string port_name = other.IsGlobal(other_signal) ?
-              entry.first : MapSignalNameForAdd(prefix, entry.first);
+          std::string port_name = entry.first;
           circuit::Signal *signal = GetSignal(merged_name);
           LOG_IF(FATAL, !signal) << "Signal " << merged_name << " not found.";
           instance->Connect(port_name, *signal);
@@ -155,8 +160,7 @@ void Circuit::AddCircuit(const Circuit &other, const std::string &prefix) {
           std::string merged_name = other.IsGlobal(other_signal) ?
               other_signal.name() :
               MapSignalNameForAdd(prefix, other_signal.name());
-          std::string port_name = other.IsGlobal(other_signal) ?
-              entry.first : MapSignalNameForAdd(prefix, entry.first);
+          std::string port_name = entry.first;
           circuit::Signal *signal = GetSignal(merged_name);
           LOG_IF(FATAL, !signal) << "Signal " << merged_name << " not found.";
           circuit::Slice slice(*signal,
@@ -261,16 +265,17 @@ circuit::Port *Circuit::AddPort(
 std::string Circuit::Describe() const {
   std::stringstream ss;
 
-  ss << "circuit: " << signals_.size() << " signals, "
-                    << ports_.size() << " ports, "
-                    << instances_.size() << " instances" << std::endl;
+  ss << "circuit " << domain_ << "/" << name_ << ": "
+                   << signals_.size() << " signals, "
+                   << ports_.size() << " ports, "
+                   << instances_.size() << " instances" << std::endl;
 
   return ss.str();
 };
 
-::vlsir::circuit::Module Circuit::ToVLSIRCircuit() const {
+::vlsir::circuit::Module Circuit::ToVLSIRModule() const {
   ::vlsir::circuit::Module mod_pb;
-  mod_pb.set_name(name_);
+  mod_pb.set_name(NameOrParentName());
 
   for (const auto &signal : signals_) {
     *mod_pb.add_signals() = signal->ToVLSIRSignal();
@@ -283,6 +288,29 @@ std::string Circuit::Describe() const {
   for (const auto &instance : instances_) {
     *mod_pb.add_instances() = instance->ToVLSIRInstance();
   }
+
+  // TODO(aryap): Add parameters.
+
+  return mod_pb;
+}
+
+::vlsir::circuit::ExternalModule Circuit::ToVLSIRExternalModule() const {
+  ::vlsir::circuit::ExternalModule mod_pb;
+
+  mod_pb.mutable_name()->set_domain(DomainOrParentDomain());
+  mod_pb.mutable_name()->set_name(NameOrParentName());
+  mod_pb.set_desc(parent_cell_ ? parent_cell_->description() : description_);
+
+  for (const auto &signal : signals_) {
+    *mod_pb.add_signals() = signal->ToVLSIRSignal();
+  }
+
+  for (const auto &port : ports_) {
+    *mod_pb.add_ports() = port->ToVLSIRPort();
+  }
+
+  // TODO(aryap): Add parameters.
+  // TODO(aryap): Add spicetype.
 
   return mod_pb;
 }

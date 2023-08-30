@@ -58,7 +58,10 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   circuit::Wire VPB = circuit->AddSignal("VPB");
   circuit::Wire VNB = circuit->AddSignal("VNB");
 
-  // We need handles to the Sky130 P/N fets.
+  bfg::Circuit *nfet_01v8 =
+      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
+  bfg::Circuit *pfet_01v8 =
+      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__pfet_01v8")->circuit();
 
   // TODO(aryap): Define circuit primitives within the Circuit schema per PDK.
   // We need models of different transistors and capacitors, resistors, etc.
@@ -82,10 +85,14 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   //
   // Model sky130_fd_pr__nfet_01v8__model has ports "d g s b":
   //  drain, gate, source, substrate bias
-  circuit::Instance *X0 = circuit->AddInstance("X0", nullptr);
-  circuit::Instance *X1 = circuit->AddInstance("X1", nullptr);
-  circuit::Instance *X2 = circuit->AddInstance("X2", nullptr);
-  circuit::Instance *X3 = circuit->AddInstance("X3", nullptr);
+  // nfet_0
+  circuit::Instance *X0 = circuit->AddInstance("X0", nfet_01v8);
+  // pfet_0
+  circuit::Instance *X1 = circuit->AddInstance("X1", pfet_01v8);
+  // nfet_1
+  circuit::Instance *X2 = circuit->AddInstance("X2", nfet_01v8);
+  // pfet_1
+  circuit::Instance *X3 = circuit->AddInstance("X3", pfet_01v8);
 
   X0->Connect("d", VGND);
   X0->Connect("g", P);
@@ -235,22 +242,22 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   layout->SetActiveLayerByName("diff.drawing");
   // X0
   uint64_t x0_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.x0_width_nm);
+      internal_units_per_nm_ * static_cast<double>(parameters_.nfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 235),
                                  Point(135 + 410 + 145, 235 + x0_width)));
   // X2
   uint64_t x2_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.x2_width_nm);
+      internal_units_per_nm_ * static_cast<double>(parameters_.nfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 235),
                                  Point(1245, 235 + x2_width)));
   // X1
   uint64_t x1_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.x1_width_nm);
+      internal_units_per_nm_ * static_cast<double>(parameters_.pfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 1695),
                                  Point(135 + 410 + 145, 1695 + x1_width)));
   // X3
   uint64_t x3_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.x3_width_nm);
+      internal_units_per_nm_ * static_cast<double>(parameters_.pfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 1695),
                                  Point(1245, 1695 + x3_width)));
 

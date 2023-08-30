@@ -44,11 +44,13 @@ class DesignDatabase {
 
   void WriteTop(
       const std::string &top_name,
-      const std::string &file_name,
+      const std::string &library_path,
+      const std::string &package_path,
       bool include_text_format) const;
   void WriteTop(
       const Cell &top,
-      const std::string &file_name,
+      const std::string &library_path,
+      const std::string &package_path,
       bool include_text_format) const;
 
   std::string Describe() const;
@@ -58,6 +60,12 @@ class DesignDatabase {
       const std::vector<Cell*> cells,
       const std::string &file_name,
       bool include_text_format);
+
+  static void WriteCellsToVLSIRPackage(
+      const std::vector<Cell*> cells,
+      const std::string &file_name,
+      bool include_text_format);
+
 
   // Find an ordering that places dependencies first.
   static void OrderCells(
@@ -71,6 +79,7 @@ class DesignDatabase {
   void LoadExternalModule(const vlsir::circuit::ExternalModule &module_pb);
 
   Cell *FindCell(const std::string &domain, const std::string &name) const;
+  Cell *FindOrCreateCell(const std::string &domain, const std::string &name);
 
   PhysicalPropertiesDatabase physical_db_;
 

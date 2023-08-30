@@ -78,7 +78,14 @@ void Instance::SetParameter(const std::string &name, const Parameter &value) {
   
   // TODO(aryap): This is where externally-referenced modules are recorded.
   if (module_) {
-    instance_pb.mutable_module()->set_local(module_->NameOrParentName());
+    const std::string &name = module_->NameOrParentName();
+    if (module_->domain() != "") {
+      instance_pb.mutable_module()->mutable_external()->set_domain(
+          module_->DomainOrParentDomain());
+      instance_pb.mutable_module()->mutable_external()->set_name(name);
+    } else {
+      instance_pb.mutable_module()->set_local(name);
+    }
   }
 
   for (const auto &entry : connections_) {

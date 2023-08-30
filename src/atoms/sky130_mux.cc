@@ -1141,8 +1141,6 @@ void GenerateOutput2To1MuxLayout(
 
 
 bfg::Cell *Sky130Mux::Generate() {
-  // A flip-flop is two back-to-back latches.
-
   std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_mux"));
   cell->SetLayout(GenerateLayout());
   cell->SetCircuit(GenerateCircuit());
@@ -1195,6 +1193,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   circuit->AddPort(X6);
   circuit->AddPort(X7);
   circuit->AddPort(Y);
+  circuit->AddPort(VPWR);
+  circuit->AddPort(VGND);
 
   bfg::Circuit *nfet_01v8 =
       design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
@@ -2479,24 +2479,6 @@ bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
   fet_3->Connect({{"d", X1}, {"g", S0}, {"s", A1}, {"b", VB}});
   fet_4->Connect({{"d", Y}, {"g", S1_B}, {"s", A1}, {"b", VB}});
   fet_5->Connect({{"d", A0}, {"g", S1}, {"s", Y}, {"b", VB}});
-  //} else if (parameters.fet_type == Mux2CircuitParameters::FetType::P) {
-  //  fet_0 = circuit->AddInstance("fet0", nullptr);
-  //  fet_1 = circuit->AddInstance("fet1", nullptr);
-  //  fet_2 = circuit->AddInstance("fet2", nullptr);
-  //  fet_3 = circuit->AddInstance("fet3", nullptr);
-  //  fet_4 = circuit->AddInstance("fet4", nullptr);
-  //  fet_5 = circuit->AddInstance("fet5", nullptr);
-
-  //  fet_0->Connect({{"d", A0}, {"g", S0}, {"s", X2}, {"b", VB}});
-  //  fet_2->Connect({{"d", X3}, {"g", S0_B}, {"s", A0}, {"b", VB}});
-  //  fet_1->Connect({{"d", A1}, {"g", S0}, {"s", X0}, {"b", VB}});
-  //  fet_3->Connect({{"d", X1}, {"g", S0_B}, {"s", A1}, {"b", VB}});
-  //  fet_4->Connect({{"d", Y}, {"g", S1}, {"s", A1}, {"b", VB}});
-  //  fet_5->Connect({{"d", A0}, {"g", S1_B}, {"s", Y}, {"b", VB}});
-  //} else {
-  //  LOG(FATAL) << "Unknown FET type in Mux2CircuitParameters: "
-  //             << parameters.fet_type;
-  //}
 
   // Assign model parameters from configuration struct.
   std::array<circuit::Instance*, 6> fets = {

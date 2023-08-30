@@ -45,20 +45,26 @@ void DesignDatabase::LoadPackage(const vlsir::circuit::Package &package) {
             << "(domain: \"" << package.domain() << "\")";
 }
 
+Cell *DesignDatabase::FindOrCreateCell(
+    const std::string &domain, const std::string &name) {
+  Cell *cell = FindCell(domain, name);
+  if (cell)
+    return cell;
+
+  cell = new Cell();
+  cell->set_domain(domain);
+  cell->set_name(name);
+  ConsumeCell(cell);
+  return cell;
+}
+
 void DesignDatabase::LoadModule(const vlsir::circuit::Module &module_pb) {
   Circuit *circuit = Circuit::FromVLSIRModule(module_pb);
   const std::string &domain = circuit->domain();
   const std::string &name = circuit->name();
 
   // Get any existing cell being referenced:
-  Cell *cell = FindCell(domain, name);
-  if (!cell) {
-    cell = new Cell();
-    cell->set_domain(domain);
-    cell->set_name(name);
-
-    ConsumeCell(cell);
-  }
+  Cell *cell = FindOrCreateCell(domain, name);
 
   cell->SetCircuit(Circuit::FromVLSIRModule(module_pb));
   VLOG(3) << "Loaded module " << domain << "/" << name;
@@ -67,24 +73,17 @@ void DesignDatabase::LoadModule(const vlsir::circuit::Module &module_pb) {
 void DesignDatabase::LoadExternalModule(
     const vlsir::circuit::ExternalModule &module_pb) {
   // (We take ownership of the object.)
-  Circuit *circuit = Circuit::FromVLSIRModule(module_pb);
+  Circuit *circuit = Circuit::FromVLSIRExternalModule(module_pb);
   const std::string &domain = circuit->domain();
   const std::string &name = circuit->name();
 
-  Cell *cell = FindCell(domain, name);
-  if (!cell) {
-    cell = new Cell();
-    cell->set_domain(domain);
-    cell->set_name(name);
-
-    ConsumeCell(cell);
-  }
-
+  Cell *cell = FindOrCreateCell(domain, name);
   LOG_IF(WARNING, cell->circuit())
       << "Replacing circuit definition in cell domain: \""
       << domain << "\", name: \"" << name << "\"";
 
   cell->SetCircuit(circuit);
+  cell->set_is_external(true);
 
   VLOG(3) << "Loaded module \"" << domain << "/" << name << "\"";
 }
@@ -195,6 +194,8 @@ void DesignDatabase::WriteCellsToVLSIRLibrary(
   library.set_units(::vlsir::raw::Units::NANO);
 
   for (Cell *cell : ordered_cells) {
+    if (!cell->layout())
+      continue;
     *library.add_cells() = cell->ToVLSIRCell();
   }
 
@@ -212,23 +213,61 @@ void DesignDatabase::WriteCellsToVLSIRLibrary(
   std::fstream output_file(
       file_name, std::ios::out | std::ios::trunc | std::ios::binary);
   if (!library.SerializeToOstream(&output_file)) {
-    LOG(ERROR) << "Failed to write library";
+    LOG(ERROR) << "Failed to write layout library";
   } else {
-    LOG(INFO) << "Wrote library to " << file_name;
+    LOG(INFO) << "Wrote layout library to " << file_name;
+  }
+}
+
+void DesignDatabase::WriteCellsToVLSIRPackage(
+    const std::vector<Cell*> ordered_cells,
+    const std::string &file_name,
+    bool include_text_format) {
+  ::vlsir::circuit::Package package;
+
+  for (Cell *cell : ordered_cells) {
+    if (!cell->circuit())
+      continue;
+    if (cell->is_external()) {
+      *package.add_ext_modules() = cell->circuit()->ToVLSIRExternalModule();
+    } else {
+      *package.add_modules() = cell->circuit()->ToVLSIRModule();
+    }
+  }
+
+  if (include_text_format) {
+    std::string text_format;
+    google::protobuf::TextFormat::PrintToString(package, &text_format);
+
+    std::fstream text_format_output(
+        file_name + ".txt",
+        std::ios::out | std::ios::trunc | std::ios::binary);
+    text_format_output << text_format;
+    text_format_output.close();
+  }
+
+  std::fstream output_file(
+      file_name, std::ios::out | std::ios::trunc | std::ios::binary);
+  if (!package.SerializeToOstream(&output_file)) {
+    LOG(ERROR) << "Failed to write circuit package";
+  } else {
+    LOG(INFO) << "Wrote circuit package to " << file_name;
   }
 }
 
 void DesignDatabase::WriteTop(
     const std::string &top_name,
-    const std::string &file_name,
+    const std::string &library_path,
+    const std::string &package_path,
     bool include_text_format) const {
   Cell *top = FindCellOrDie(top_name);
-  WriteTop(*top, file_name, include_text_format);
+  WriteTop(*top, library_path, package_path, include_text_format);
 }
 
 void DesignDatabase::WriteTop(
     const Cell &top,
-    const std::string &file_name,
+    const std::string &library_path,
+    const std::string &package_path,
     bool include_text_format) const {
   Cell *top_cell = const_cast<Cell*>(&top);
   std::set<Cell*> ancestors;
@@ -243,10 +282,7 @@ void DesignDatabase::WriteTop(
   while (!to_visit.empty()) {
     Cell *cell = to_visit.front();
     to_visit.pop_front();
-    // Extract layout-only view of circuit.
-    // TODO(aryap): This is broken. Need to be able to combine netlist and
-    // layout hierarchies together.
-    std::set<Cell*> direct_ancestors = cell->DirectAncestors(true);
+    std::set<Cell*> direct_ancestors = cell->DirectAncestors();
     for (Cell *ancestor : direct_ancestors) {
       if (ancestors.find(ancestor) != ancestors.end())
         continue;
@@ -259,7 +295,8 @@ void DesignDatabase::WriteTop(
   std::vector<Cell*> cells(ancestors.begin(), ancestors.end());
   std::vector<Cell*> ordered_cells(
       reverse_ordered_cells.rbegin(), reverse_ordered_cells.rend());
-  WriteCellsToVLSIRLibrary(ordered_cells, file_name, include_text_format);
+  WriteCellsToVLSIRLibrary(ordered_cells, library_path, include_text_format);
+  WriteCellsToVLSIRPackage(ordered_cells, package_path, include_text_format);
 }
 
 std::string DesignDatabase::Describe() const {
