@@ -1363,18 +1363,18 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
     // TODO(aryap): These come from the parameters_ struct!
-    .fet_0_width = db.ToInternalUnits(450),
-    .fet_1_width = db.ToInternalUnits(450),
-    .fet_2_width = db.ToInternalUnits(450),
-    .fet_3_width = db.ToInternalUnits(450),
-    .fet_4_width = db.ToInternalUnits(450),
-    .fet_5_width = db.ToInternalUnits(450),
-    .fet_0_length = db.ToInternalUnits(170),
-    .fet_1_length = db.ToInternalUnits(170),
-    .fet_2_length = db.ToInternalUnits(170),
-    .fet_3_length = db.ToInternalUnits(170),
-    .fet_4_length = db.ToInternalUnits(170),
-    .fet_5_length = db.ToInternalUnits(170),
+    .fet_0_width = db.ToInternalUnits(parameters_.nfet_0_width_nm),
+    .fet_1_width = db.ToInternalUnits(parameters_.nfet_1_width_nm),
+    .fet_2_width = db.ToInternalUnits(parameters_.nfet_2_width_nm),
+    .fet_3_width = db.ToInternalUnits(parameters_.nfet_3_width_nm),
+    .fet_4_width = db.ToInternalUnits(parameters_.nfet_4_width_nm),
+    .fet_5_width = db.ToInternalUnits(parameters_.nfet_5_width_nm),
+    .fet_0_length = db.ToInternalUnits(parameters_.nfet_0_length_nm),
+    .fet_1_length = db.ToInternalUnits(parameters_.nfet_1_length_nm),
+    .fet_2_length = db.ToInternalUnits(parameters_.nfet_2_length_nm),
+    .fet_3_length = db.ToInternalUnits(parameters_.nfet_3_length_nm),
+    .fet_4_length = db.ToInternalUnits(parameters_.nfet_4_length_nm),
+    .fet_5_length = db.ToInternalUnits(parameters_.nfet_5_length_nm),
     .fet_4_5_offset_y = 0,
     .add_input_wires = true,
     .col_0_poly_overhang_top = std::nullopt,
@@ -1393,13 +1393,44 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_y_padding = 0 //db.ToInternalUnits(200)
   };
 
-  Mux2LayoutParameters mux2_params_p = mux2_params_n;
+  Mux2LayoutParameters mux2_params_p = {
+    .diff_layer_name = "pdiff.drawing",
+    .diff_contact_layer_name = "ncon.drawing",
+    // TODO(aryap): These come from the parameters_ struct!
+    .fet_0_width = db.ToInternalUnits(parameters_.pfet_0_width_nm),
+    .fet_1_width = db.ToInternalUnits(parameters_.pfet_1_width_nm),
+    .fet_2_width = db.ToInternalUnits(parameters_.pfet_2_width_nm),
+    .fet_3_width = db.ToInternalUnits(parameters_.pfet_3_width_nm),
+    .fet_4_width = db.ToInternalUnits(parameters_.pfet_4_width_nm),
+    .fet_5_width = db.ToInternalUnits(parameters_.pfet_5_width_nm),
+    .fet_0_length = db.ToInternalUnits(parameters_.pfet_0_length_nm),
+    .fet_1_length = db.ToInternalUnits(parameters_.pfet_1_length_nm),
+    .fet_2_length = db.ToInternalUnits(parameters_.pfet_2_length_nm),
+    .fet_3_length = db.ToInternalUnits(parameters_.pfet_3_length_nm),
+    .fet_4_length = db.ToInternalUnits(parameters_.pfet_4_length_nm),
+    .fet_5_length = db.ToInternalUnits(parameters_.pfet_5_length_nm),
+    .fet_4_5_offset_y = 0,
+    .add_input_wires = true,
+    .col_0_poly_overhang_top = std::nullopt,
+    .col_0_poly_overhang_bottom = std::nullopt,
+    .col_1_poly_overhang_top = std::nullopt,
+    .col_1_poly_overhang_bottom = std::nullopt,
+    .col_2_poly_overhang_top = std::nullopt,
+    .col_2_poly_overhang_bottom = std::nullopt,
+    .col_3_poly_overhang_top = std::nullopt,
+    .col_3_poly_overhang_bottom = std::nullopt,
+    .input_0 = std::nullopt,
+    .input_1 = std::nullopt,
+    .input_2 = std::nullopt,
+    .input_3 = std::nullopt,
+    .input_x_padding = db.ToInternalUnits(-300),
+    .input_y_padding = 0 //db.ToInternalUnits(200)
+  };
 
   std::unique_ptr<bfg::Layout> mux2_layout_n(GenerateMux2Layout(mux2_params_n));
   std::unique_ptr<bfg::Layout> mux2_layout_p(GenerateMux2Layout(mux2_params_p));
 
   Rectangle mux2_n_bounding_box = mux2_layout_n->GetBoundingBox();
-
 
   int64_t mux2_height = mux2_n_bounding_box.Height();
   int64_t vert_spacing = 0;
@@ -2433,7 +2464,7 @@ bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
   Wire S0_B =
       parameters.s0_b_wire.value_or(circuit->AddSignal("S0_B"));
   Wire S1_B =
-      parameters.s0_b_wire.value_or(circuit->AddSignal("S1_B"));
+      parameters.s1_b_wire.value_or(circuit->AddSignal("S1_B"));
 
   // Output.
   Wire Y = parameters.y_wire.value_or(circuit->AddSignal("Y"));

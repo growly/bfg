@@ -94,7 +94,7 @@ std::string MapSignalNameForAdd(
   if (name_prefix == "") {
     return name;
   }
-  return absl::StrCat(name_prefix, ".", name);
+  return absl::StrCat(name_prefix, "__", name);
 }
 
 }   // namespace

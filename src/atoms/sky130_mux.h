@@ -18,33 +18,33 @@ class Sky130Mux: public Atom {
   struct Parameters {
     uint32_t n = 2;
 
-    uint64_t pfet_0_width_nm = 420;
-    uint64_t pfet_1_width_nm = 420;
-    uint64_t pfet_2_width_nm = 420;
-    uint64_t pfet_3_width_nm = 420;
-    uint64_t pfet_4_width_nm = 750;
-    uint64_t pfet_5_width_nm = 420;
+    uint64_t pfet_0_width_nm = 640;
+    uint64_t pfet_1_width_nm = 640;
+    uint64_t pfet_2_width_nm = 640;
+    uint64_t pfet_3_width_nm = 640;
+    uint64_t pfet_4_width_nm = 640;
+    uint64_t pfet_5_width_nm = 640;
 
-    uint64_t nfet_0_width_nm = 420;
-    uint64_t nfet_1_width_nm = 355;
-    uint64_t nfet_2_width_nm = 420;
-    uint64_t nfet_3_width_nm = 355;
-    uint64_t nfet_4_width_nm = 640;
-    uint64_t nfet_5_width_nm = 360;
+    uint64_t nfet_0_width_nm = 480;
+    uint64_t nfet_1_width_nm = 480;
+    uint64_t nfet_2_width_nm = 480;
+    uint64_t nfet_3_width_nm = 480;
+    uint64_t nfet_4_width_nm = 480;
+    uint64_t nfet_5_width_nm = 480;
 
-    uint64_t pfet_0_length_nm = 150;
-    uint64_t pfet_1_length_nm = 150;
-    uint64_t pfet_2_length_nm = 150;
-    uint64_t pfet_3_length_nm = 150;
-    uint64_t pfet_4_length_nm = 150;
-    uint64_t pfet_5_length_nm = 150;
+    uint64_t pfet_0_length_nm = 170;
+    uint64_t pfet_1_length_nm = 170;
+    uint64_t pfet_2_length_nm = 170;
+    uint64_t pfet_3_length_nm = 170;
+    uint64_t pfet_4_length_nm = 170;
+    uint64_t pfet_5_length_nm = 170;
 
-    uint64_t nfet_0_length_nm = 150;
-    uint64_t nfet_1_length_nm = 150;
-    uint64_t nfet_2_length_nm = 150;
-    uint64_t nfet_3_length_nm = 150;
-    uint64_t nfet_4_length_nm = 150;
-    uint64_t nfet_5_length_nm = 150;
+    uint64_t nfet_0_length_nm = 170;
+    uint64_t nfet_1_length_nm = 170;
+    uint64_t nfet_2_length_nm = 170;
+    uint64_t nfet_3_length_nm = 170;
+    uint64_t nfet_4_length_nm = 170;
+    uint64_t nfet_5_length_nm = 170;
 
     // Output mux sizing.
     uint64_t pfet_6_width_nm = 420;
