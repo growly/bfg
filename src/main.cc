@@ -365,6 +365,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("li.drawing", "polycon.drawing", inter_constraints);
+  db->AddRules("li.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = db->ToInternalUnits(40),
     .max_separation = db->ToInternalUnits(190),

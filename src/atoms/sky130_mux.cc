@@ -409,6 +409,7 @@ bfg::Circuit *GenerateOutput2To1MuxCircuit(
 
 void GenerateOutput2To1MuxLayout(
     const PhysicalPropertiesDatabase &db,
+    const Sky130Mux::Parameters &parameters,
     int64_t left_left_metal_column_x,
     int64_t left_right_metal_column_x,
     int64_t output_metal_column_x,
@@ -441,10 +442,14 @@ void GenerateOutput2To1MuxLayout(
 
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
 
-  int64_t stage_2_mux_nfet_0_width = db.ToInternalUnits(480);
-  int64_t stage_2_mux_nfet_1_width = db.ToInternalUnits(480);
-  int64_t stage_2_mux_pfet_0_width = db.ToInternalUnits(640);
-  int64_t stage_2_mux_pfet_1_width = db.ToInternalUnits(640);
+  int64_t stage_2_mux_nfet_0_width =
+      db.ToInternalUnits(parameters.nfet_6_width_nm);
+  int64_t stage_2_mux_nfet_1_width =
+      db.ToInternalUnits(parameters.nfet_7_width_nm);
+  int64_t stage_2_mux_pfet_0_width =
+      db.ToInternalUnits(parameters.pfet_6_width_nm);
+  int64_t stage_2_mux_pfet_1_width =
+      db.ToInternalUnits(parameters.pfet_7_width_nm);
 
   // If we need to support differing size FETs here, we can inflate the
   // poly pitch. If we can't do that we might have to use two different
@@ -471,10 +476,14 @@ void GenerateOutput2To1MuxLayout(
           2 * std::max(poly_ncon_rules.min_separation,
                        poly_pcon_rules.min_separation));
 
-  Point gap_top = main_layout->GetPoint("upper_left.column_2_centre_bottom");
-  Point gap_bottom = main_layout->GetPoint("lower_left.column_2_centre_bottom");
-  int64_t poly_max_y = gap_top.y() - poly_rules.min_separation;
-  int64_t poly_min_y = gap_bottom.y() + poly_rules.min_separation;
+  int64_t gap_top_y = std::min(
+      main_layout->GetPoint("upper_left.column_2_centre_bottom").y(),
+      main_layout->GetPoint("upper_right.column_2_centre_bottom").y());
+  int64_t gap_bottom_y = std::max(
+      main_layout->GetPoint("lower_left.column_2_centre_bottom").y(),
+      main_layout->GetPoint("lower_right.column_2_centre_bottom").y());
+  int64_t poly_max_y = gap_top_y - poly_rules.min_separation;
+  int64_t poly_min_y = gap_bottom_y + poly_rules.min_separation;
 
   int64_t via_side = li_rules.via_width;
   int64_t li_pitch_optimistic = li_rules.min_width / 2 +
@@ -770,9 +779,12 @@ void GenerateOutput2To1MuxLayout(
   //              |
   // p_3  +-------/
   //      |
-  //      |  + p_0 (from lower left mux output)
-  //      |  | source
-  // p_2  +--/
+  //      |  
+  //      |
+  // p_2  +--\
+  //         |
+  //         + p_0 (from lower left mux output)
+  //           source
   //
   // Lower right:
   //    Mirror the above structure.
@@ -803,7 +815,7 @@ void GenerateOutput2To1MuxLayout(
 
     // Jog up a bit and connect to the metal track.
     Point p_2 = Point(
-        metal_x, p_0.y() - li_rules.min_width);
+        metal_x, p_0.y() + li_rules.min_width);
     Point p_3 = Point(
         metal_x,
         // This could also be something like
@@ -1721,6 +1733,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   GenerateOutput2To1MuxLayout(
       db,
+      parameters_,
       column_x[3],
       column_x[4],
       column_x[6],
@@ -1730,7 +1743,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       mux_bottom_y,
       layout.get());
 
-  // Translate sub-layout ports to external-facing ports:
+  // Translate ports in sub-layouts into external-facing ports:
   layout->SetActiveLayerByName("li.drawing");
   std::vector<std::pair<std::string, std::string>> ports = {
     {"lower_left.input_0", "input_0"},
@@ -1791,6 +1804,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       "li.drawing", params.diff_contact_layer_name);
   const auto &li_mcon_rules = db.Rules(
       "li.drawing", "mcon.drawing");
+  const auto &li_licon_rules = db.Rules("li.drawing", "licon.drawing");
   const auto &li_polycon_rules = db.Rules("li.drawing", "polycon.drawing");
   const auto &poly_polycon_rules = db.Rules("poly.drawing", "polycon.drawing");
   const auto &poly_dcon_rules = db.Rules(
@@ -1970,11 +1984,12 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       Point(column_3->upper_right().x() + diff_wing, height_fet_4_5)));
 
   // diff/met0 vias
-  // Vias are named with indices according to their (column, row):
+  // Vias are named with indices according to their (column, row), skipping the
+  // output via position:
   //
-  //   x (0, 1)   x (1, 1)   x (2, 1)   x (3, 1)
-  //
-  //   x (0, 0)   x (1, 0)
+  //   x (0, 1)   x (1, 1)   x (2, 1)   x (3, 1)   x (output)   x(4, 1)
+  //                                 
+  //   x (0, 0)   x (1, 0)   x (2, 0)
   //
   int64_t via_centre_to_diff_edge =
       dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure;
@@ -2261,8 +2276,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
             li_rules.min_separation +
             dcon_rules.via_width / 2),
         via_2_1->centre().y(),
-        inputs_y[2] + std::max(
-            li_mcon_rules.via_overhang, li_mcon_rules.via_overhang_wide) +
+        inputs_y[2] +
+            std::max(li_mcon_rules.via_overhang,
+                     li_mcon_rules.via_overhang_wide) +
             mcon_rules.via_width / 2 +
             li_rules.min_separation +
             li_rules.min_width / 2
@@ -2299,6 +2315,11 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
     layout->SavePoint("input_1", via->centre());
   }
 
+  Point output_via = Point(
+      pfet_4_diff->upper_right().x(),
+      pfet_4_diff->upper_right().y() - (
+          dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure));
+
   int64_t poly_contact_to_diff =
       diff_polycon_rules.min_separation + polycon_rules.via_width / 2;
   int64_t licon_via_to_li_end =
@@ -2328,11 +2349,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       {"column_0_centre_top_via", Point(
           column_0.centre().x(),
           std::min(
-              std::max(
+              std::max({
                   pfet_1_diff->upper_right().y() + poly_contact_to_diff,
                   input_1_line_y + li_rules.min_width / 2 +
-                  poly_contact_to_li
-              ),
+                      poly_contact_to_li,
+                  inputs_y[3] + std::max(
+                      mcon_rules.via_width / 2 + li_mcon_rules.via_overhang,
+                      licon_rules.via_width / 2 + li_licon_rules.via_overhang) +
+                      li_rules.min_separation + li_rules.min_width / 2
+              }),
               column_0.upper_right().y() - licon_via_to_li_end
           ))
       },
@@ -2356,11 +2381,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       {"column_1_centre_top_via", Point(
           column_1.centre().x(),
           std::min(
-              std::max(
+              std::max({
                   pfet_3_diff->upper_right().y() + poly_contact_to_diff,
                   input_1_line_y + li_rules.min_width / 2 +
-                  poly_contact_to_li
-              ),
+                      poly_contact_to_li,
+                  via_2_1->centre().y() + dcon_rules.via_width / 2 +
+                      std::max(li_dcon_rules.via_overhang_wide,
+                               li_dcon_rules.via_overhang) +
+                      poly_contact_to_li
+              }),
               column_1.upper_right().y() - licon_via_to_li_end
           ))
       },
@@ -2375,11 +2404,15 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       {"column_2_centre_top_via", Point(
           column_2->centre().x(),
           std::min(
-              std::max(
+              std::max({
                   pfet_4_diff->upper_right().y() + poly_contact_to_diff,
                   input_1_line_y + li_rules.min_width / 2 +
-                  poly_contact_to_li
-              ),
+                  poly_contact_to_li,
+                  output_via.y() + dcon_rules.via_width / 2 +
+                      std::max(li_dcon_rules.via_overhang_wide,
+                               li_dcon_rules.via_overhang) +
+                      poly_contact_to_li
+              }),
               column_2->upper_right().y() - licon_via_to_li_end
           ))
       },
@@ -2394,10 +2427,14 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       {"column_3_centre_top_via", Point(
           column_3->centre().x(),
           std::min(
-              std::max(
+              std::max({
                   pfet_5_diff->upper_right().y() + poly_contact_to_diff,
-                  input_1_line_y + li_rules.min_width / 2 + poly_contact_to_li
-              ),
+                  input_1_line_y + li_rules.min_width / 2 + poly_contact_to_li,
+                  output_via.y() + dcon_rules.via_width / 2 +
+                      std::max(li_dcon_rules.via_overhang_wide,
+                               li_dcon_rules.via_overhang) +
+                      poly_contact_to_li
+              }),
               column_3->upper_right().y() - licon_via_to_li_end
           ))
       },
@@ -2421,10 +2458,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       {"column_3_centre_top", Point(
           column_3->centre().x(), column_3->upper_right().y())},
 
-      {"output", Point(
-            pfet_4_diff->upper_right().x(),
-            pfet_4_diff->upper_right().y() - (
-                dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure))},
+      {"output", output_via},
 
       {"via_3_1_ur", via_3_1->upper_right()},
 

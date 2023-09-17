@@ -47,17 +47,17 @@ class Sky130Mux: public Atom {
     uint64_t nfet_5_length_nm = 170;
 
     // Output mux sizing.
-    uint64_t pfet_6_width_nm = 420;
-    uint64_t pfet_7_width_nm = 420;
+    uint64_t pfet_6_width_nm = 640;
+    uint64_t pfet_7_width_nm = 640;
 
-    uint64_t nfet_6_width_nm = 420;
-    uint64_t nfet_7_width_nm = 420;
+    uint64_t nfet_6_width_nm = 480;
+    uint64_t nfet_7_width_nm = 480;
 
-    uint64_t pfet_6_length_nm = 150;
-    uint64_t pfet_7_length_nm = 150;
+    uint64_t pfet_6_length_nm = 170;
+    uint64_t pfet_7_length_nm = 170;
 
-    uint64_t nfet_6_length_nm = 150;
-    uint64_t nfet_7_length_nm = 150;
+    uint64_t nfet_6_length_nm = 170;
+    uint64_t nfet_7_length_nm = 170;
 
     // TODO(aryap): Maybe these are queried from the PDK database?
     std::string fet_model_length_parameter = "l";

@@ -58,8 +58,7 @@ struct InterLayerConstraints {
   int64_t max_separation;
 
   // TODO(aryap): An 'enclosure' rule seems more descriptive than via overhang
-  // but is not commutative necessarily, whereas until now I've
-  // assumed they all are.
+  // but does not apply equally on all sides usually.
   int64_t min_enclosure;
 
   // Another way to express this is as min_enclosure on all sides and an

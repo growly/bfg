@@ -12,11 +12,11 @@ data = pd.read_csv('tran.sp.csv')
 
 lines = [
     "V(XTOP:S0)",
-    "V(XTOP:S0_B)",
+    #"V(XTOP:S0_B)",
     "V(XTOP:S1)",
-    "V(XTOP:S1_B)",
+    #"V(XTOP:S1_B)",
     "V(XTOP:S2)",
-    "V(XTOP:S2_B)",
+    #"V(XTOP:S2_B)",
 
     #"V(XTOP:XDUT:UPPER_LEFT__A0)",
     #"V(XTOP:XDUT:UPPER_LEFT__A1)",
@@ -27,10 +27,10 @@ lines = [
     #"V(XTOP:XDUT:LOWER_RIGHT__A0)",
     #"V(XTOP:XDUT:LOWER_RIGHT__A1)",
 
-    "V(XTOP:DUT_VPWR)",
+    #"V(XTOP:DUT_VPWR)",
 
-    "V(XTOP:X0)",
-    "V(XTOP:X1)",
+    #"V(XTOP:X0)",
+    #"V(XTOP:X1)",
     #"V(XTOP:X2)",
     #"V(XTOP:X3)",
     #"V(XTOP:X4)",
@@ -46,18 +46,17 @@ lines = [
     "V(XTOP:Y)"
 ]
 
-fig, subs = plt.subplots(len(lines))
+#fig, subs = plt.subplots(len(lines))
 
 for i, line in enumerate(lines):
-    sub = subs[i]
-    sub.plot(data["TIME"], data[line], label=line)
+    plt.plot(data["TIME"], data[line], label=line)
     #sub.set_title(line)
     #sub.set_ylabel('V')
-    sub.legend()
-    sub.set_ylim(-0.1, 2.0)
-    sub.set_yticks(np.arange(-0.1, 2.0, step=0.4))
-    sub.tick_params(axis='y', labelsize=4)
-    sub.tick_params(axis='x', labelsize=4)
+    plt.legend()
+    plt.ylim(-0.1, 2.0)
+    plt.yticks(np.arange(-0.1, 2.0, step=0.4))
+    plt.tick_params(axis='y', labelsize=4)
+    plt.tick_params(axis='x', labelsize=4)
 
 plt.ylabel('V')
 plt.xlabel('Time (s)')
