@@ -56,6 +56,37 @@ TEST(PolyLineInflatorTest, SharpCorner) {
 // inflating: <0| (18315, 6630) |230| (18070, 6630) |140| (18070, 6745) |140| (18070, 6705) |230| (18070, 6995) |0>
 //  into: (18315, 6515) (18000, 6515) (18000, 6745) (18140, 6745) (18140, 6705) (17955, 6705) (17955, 6995) (18070, 6995) (18185, 6995) (18185, 6705) (18000, 6705) (18000, 6745) (18140, 6745) (18140, 6745) (18315, 6745)
 
+TEST(PolyLineInflatorTest, OverhangCutOff) {
+  // This does not inflate correctly:
+  // (-665, 1713) |170| 
+  // (-665, 1475) |184| 
+  // (-580, 1475) |170| 
+  // (590, 1475) |170| 
+  // (675, 1475) |170|
+  // (675, 1405) |170| 
+  // (675, 1240)
+  PolyLine line = PolyLine({-665, 1713}, {
+      LineSegment {{-665, 1475}, 170},
+      LineSegment {{-580, 1475}, 184},
+      LineSegment {{590, 1475}, 170},
+      LineSegment {{675, 1475}, 170},
+      LineSegment {{675, 1405}, 170},
+      LineSegment {{675, 1240}, 170}
+  });
+
+  PhysicalPropertiesDatabase db;
+  PolyLineInflator inflator(db);
+
+  std::optional<geometry::Polygon> inflated =
+      inflator.InflatePolyLine(line);
+
+  EXPECT_TRUE(inflated.has_value());
+
+  for (const auto &point : inflated->vertices()) {
+    LOG(INFO) << point;
+  }
+  EXPECT_TRUE(true);
+}
 
 }  // namespace
 }  // namespace bfg

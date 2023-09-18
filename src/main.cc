@@ -529,7 +529,7 @@ int main(int argc, char **argv) {
                      FLAGS_output_package,
                      FLAGS_write_text_format);
 
-  Gf180McuMuxExperiment();
+  //Gf180McuMuxExperiment();
 
   google::protobuf::ShutdownProtobufLibrary();
 

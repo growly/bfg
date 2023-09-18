@@ -106,7 +106,7 @@ void PolyLine::InsertForwardBulgePoint(
   uint64_t half_width = std::llround(static_cast<double>(coaxial_width) / 2.0);
 
   // - Proceed to the end of all segments in a straight line, stopping at the
-  // first turn or at when the bulge end point would fall on the current
+  // first turn or when the bulge end point would fall on the current
   // segment (index k).
   // - Fatten covered segments in the line to at least the width of the bulge.
   // - When the loop terminates, either we are at the end of the line, the next
@@ -173,7 +173,7 @@ void PolyLine::InsertForwardBulgePoint(
     // Effectively at the end of the poly line or only need to change the width
     // of this line, so only need modify the last segment instead of inserting
     // a new one.
-    if (segments_[k].width < coaxial_width) {
+    if (segments_[k].width <= coaxial_width) {
       segments_[k].end = intersected_line.PointOnLineAtDistance(
           segments_[k].end, overflow);
       segments_[k].width = coaxial_width;
@@ -277,6 +277,11 @@ void PolyLine::InsertBackwardBulgePoint(
     Line last_line = Line(last_line_start, last_segment.end);
     Point point_before = last_line.PointOnLineAtDistance(
         last_segment.end, -static_cast<int64_t>(half_width));
+
+    last_segment.width = std::max(
+        last_segment.width,
+        static_cast<uint64_t>(2.0 * overflow));
+
 
     segments_.insert(
         segments_.begin() + k - 1,

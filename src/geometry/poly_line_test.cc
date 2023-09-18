@@ -389,7 +389,6 @@ TEST(PolyLineTest, What4) {
 // |0| (17830, 9690) |140| (17730, 9690) |140| (17730, 9570) |0|
 // turns into
 // |0| (17685, 9690) |230| (17845, 9690) |260| (17730, 9690) |230| (17730, 9425) |0|
-// 
  
 //                       +------------+
 //  +--o--+              |+---+       |
@@ -399,7 +398,6 @@ TEST(PolyLineTest, What4) {
 //  |                     +-+-+
 //  |                       |
 //  +                       +
-//
 //TEST(PolyLineTest, OverlappingBulgeAtStart) {
 //  Point p_0 = {10, 10};
 //  Point p_1 = {2, 10};
@@ -408,7 +406,7 @@ TEST(PolyLineTest, What4) {
 //  line.SetWidth(2);
 //  LOG(INFO) << line.Describe();
 //  line.InsertBulge({6, 10}, 6, 12);
-//  LOG(INFO) << line.Describe();
+// LOG(INFO) << line.Describe();
 //  line.InsertBulge({2, 6}, 8, 12);
 //  LOG(INFO) << line.Describe();
 //  //line.InsertBulge(p_2, 240, 330);
@@ -432,6 +430,49 @@ TEST(PolyLineTest, What4) {
 //  }
 //  EXPECT_EQ(expected_widths, widths);
 //} 
+
+// What happens when bulges at the end of a line are bigger than the connecting
+// width?
+//
+//                                +------------+
+//           +--o--+              |+---+       |
+//           |                    ++---+-------+
+//           o                     |   |
+//           |                     |   |
+//           |                     |   |
+//           o                     |   |
+//           |                    ++---+-------+
+//           +--o--+              |+---+       |
+//                                +------------+
+//
+
+//             (170)
+// +---------------------------+
+//                             |  (170)
+//                             |
+//                             + <- bulge added here
+//
+//
+//                        +----------+
+// +----------------------+----+     |
+// |                      |    |     |
+// +----------------------+----+     |
+//                        |          |
+//                        +----------+
+TEST(PolyLineTest, BulgeAtEndLongerThanConnectingWidth) {
+  Point p_0 = Point(-665, 1475);
+  Point p_3 = Point(675, 1405);
+  PolyLine line = PolyLine(p_0, {
+      LineSegment {{675, 1475}, 170},
+      LineSegment {p_3, 170},
+  });
+
+  LOG(INFO) << line.Describe();
+
+  line.InsertBulge(p_3, 170, 330);
+
+  LOG(INFO) << line.Describe();
+}
 
 // w =  0     4     8     0     4     8
 //               +-----+           +-----+
