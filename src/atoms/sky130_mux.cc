@@ -1440,6 +1440,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   };
 
   std::unique_ptr<bfg::Layout> mux2_layout_n(GenerateMux2Layout(mux2_params_n));
+
+  LOG(INFO) << "generating mux2 p";
   std::unique_ptr<bfg::Layout> mux2_layout_p(GenerateMux2Layout(mux2_params_p));
 
   Rectangle mux2_n_bounding_box = mux2_layout_n->GetBoundingBox();
@@ -2075,8 +2077,14 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
         LineSegment {p_3, static_cast<uint64_t>(li_rules.min_width)},
         LineSegment {p_4, static_cast<uint64_t>(via_encap_width)}
     });
+
+    LOG(INFO) << "polyline: " << input_2_3_line.Describe();
+
     input_2_3_line.InsertBulge(p_0, via_encap_width, via_encap_length);
     input_2_3_line.InsertBulge(p_4, via_encap_width, via_encap_length);
+
+    LOG(INFO) << "polyline: " << input_2_3_line.Describe();
+
     layout->AddPolyLine(input_2_3_line);
     layout->SavePoint("li_corner_se_centre", p_2);
   }
@@ -2124,13 +2132,16 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
         LineSegment {p_4, static_cast<uint64_t>(li_rules.min_width)},
         LineSegment {p_5, static_cast<uint64_t>(via_encap_width)}
     });
+
     input_0_1_line.InsertBulge(p_0, via_encap_width, via_encap_length);
     input_0_1_line.InsertBulge(p_5, via_encap_width, via_encap_length);
 
     layout->AddPolyLine(input_0_1_line);
+
     layout->SavePoint("li_corner_ne_centre", p_5 + Point(0, via_encap_length));
   }
 
+  layout->SetActiveLayerByName(params.diff_contact_layer_name);
   Rectangle *via_3_1 = layout->AddSquare(
       selected_via_3_1_centre, via_side);
             // + dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure
