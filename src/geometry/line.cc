@@ -62,6 +62,7 @@ bool Line::Intersect(
   VLOG(11) << rhs.start() << " -> " << rhs.end()
            << ": y2 = " << m2 << "*x2 + " << c2;
 
+  // FIXME(aryap): What about antiparallel lines?
   if (m1 == m2) {
     // Return true if the offsets are the same, since that means the two lines
     // are the same.
@@ -260,6 +261,7 @@ double Line::Offset() const {
   return end_.y() - Gradient() * end_.x();
 }
 
+// This can return a positive or negative angle.
 double Line::AngleToHorizon() const {
   double dx = end_.x() - start_.x();
   double dy = end_.y() - start_.y();
@@ -276,14 +278,37 @@ double Line::AngleToHorizon() const {
   return theta;
 }
 
+// TODO(aryap): Is this right...?
+// Always returns an angle in [0, 2pi].
+//
+// The convention for reading this is as follow. Given two lines a and b:
+//
+//       b
 //     /
-//    /
-//   /
-//  / ) theta   a . b = ||a|| ||b|| cos (theta)
-// -----------
+//    / _
+//   / |\
+//  /    ) theta
+// ----------- a
+//
+// The angle "a to b" is the rotation from a to b. The angle "from b to a" is
+// the rotation the other way, always counter-clockwise:
+//
+//            b
+//          /
+//     __  /
+//    /  \/
+//   /   /
+//   \  ----------- a
+//    \_/|
+//
+// i.e. the angle "from a to b" and the angle "from b to a" always sum to 2 *
+// pi.
 double Line::AngleToLine(const Line &other) const {
-  LOG(FATAL) << "Not implemented.";
-  return 0.0;
+  double angle_rads = other.AngleToHorizon() - AngleToHorizon();
+  if (angle_rads < 0) {
+    angle_rads += 2 * kPi;
+  }
+  return angle_rads;
 }
 
 int64_t Line::DotProduct(const Line &with) const {
