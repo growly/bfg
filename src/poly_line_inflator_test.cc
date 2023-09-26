@@ -43,28 +43,9 @@ TEST(PolyLineInflatorTest, SharpCorner) {
   for (const auto &point : inflated->vertices()) {
     LOG(INFO) << point;
   }
-  EXPECT_TRUE(true);
 }
 
-// inflating: <0| (31510, 10785) |230| (31510, 10810) |230| (31510, 11075) |230| (31532, 11086) |0>
-//  into: (31395, 10785) (31395, 10870) (31395, 11145) (31481, 11188) (31532, 11086) (31583, 10984) (31625, 11005) (31625, 10870) (31625, 10785) 
-//
-//
-// <0| (18170, 6630) |140| (18070, 6630) |140| (18070, 6705) |230| (18070, 6995) |0>
-// point = (18170, 6630) w x l 230 x 290
-//            <0| (18315, 6630) |230| (18070, 6630) |140| (18070, 6745) |140| (18070, 6705) |230| (18070, 6995) |0>
-// inflating: <0| (18315, 6630) |230| (18070, 6630) |140| (18070, 6745) |140| (18070, 6705) |230| (18070, 6995) |0>
-//  into: (18315, 6515) (18000, 6515) (18000, 6745) (18140, 6745) (18140, 6705) (17955, 6705) (17955, 6995) (18070, 6995) (18185, 6995) (18185, 6705) (18000, 6705) (18000, 6745) (18140, 6745) (18140, 6745) (18315, 6745)
-
 TEST(PolyLineInflatorTest, OverhangCutOff) {
-  // This does not inflate correctly:
-  // (-665, 1713) |170| 
-  // (-665, 1475) |184| 
-  // (-580, 1475) |170| 
-  // (590, 1475) |170| 
-  // (675, 1475) |170|
-  // (675, 1405) |170| 
-  // (675, 1240)
   PolyLine line = PolyLine({-665, 1713}, {
       LineSegment {{-665, 1475}, 170},
       LineSegment {{-580, 1475}, 184},
@@ -81,11 +62,189 @@ TEST(PolyLineInflatorTest, OverhangCutOff) {
       inflator.InflatePolyLine(line);
 
   EXPECT_TRUE(inflated.has_value());
+}
 
+TEST(PolyLineInflatorTest, AnotherSharpCorner1) {
+  PolyLine line = PolyLine(
+      {60, 1135}, {
+      LineSegment {{335, 1135}, 170},
+      LineSegment {{335, 1050}, 170},
+      LineSegment {{335, 905}, 170},
+      LineSegment {{1015, 905}, 170}
+  });
+
+  PhysicalPropertiesDatabase db;
+  PolyLineInflator inflator(db);
+
+  std::optional<geometry::Polygon> inflated =
+      inflator.InflatePolyLine(line);
+
+  std::vector<geometry::Point> expected_vertices = {
+    {60, 1220},
+    {420, 1220},
+    {420, 990},
+    {1015, 990},
+    {1015, 820},
+    {250, 820},
+    {250, 1050},
+    {60, 1050}
+  };
+
+  EXPECT_TRUE(inflated.has_value());
+  EXPECT_EQ(expected_vertices, inflated->vertices());
+}
+
+TEST(PolyLineInflatorTest, AnotherSharpCorner2) {
+  PolyLine line = PolyLine(
+      {335, 905}, {
+      LineSegment {{1015, 905}, 170},
+      LineSegment {{1015, 1135}, 170},
+      LineSegment {{1155, 1135}, 170},
+      LineSegment {{1485, 1135}, 170}
+  });
+
+  PhysicalPropertiesDatabase db;
+  PolyLineInflator inflator(db);
+
+  std::optional<geometry::Polygon> inflated =
+      inflator.InflatePolyLine(line);
+
+  std::vector<geometry::Point> expected_vertices = {
+    {335, 990},
+    {930, 990},
+    {930, 1220},
+    {1485, 1220},
+    {1485, 1050},
+    {1100, 1050},
+    {1100, 820},
+    {335, 820}
+  };
+
+  EXPECT_TRUE(inflated.has_value());
+  EXPECT_EQ(expected_vertices, inflated->vertices());
+}
+
+TEST(PolyLineInflatorTest, TwoSharpCornersOnTheSameLine) {
+  PolyLine line = PolyLine(
+      {60, 1135}, {
+      LineSegment {{335, 1135}, 170},
+      LineSegment {{335, 1050}, 170},
+      LineSegment {{335, 905}, 170},
+      LineSegment {{1015, 905}, 170},
+      LineSegment {{1015, 1135}, 170},
+      LineSegment {{1155, 1135}, 170},
+      LineSegment {{1485, 1135}, 170}
+  });
+
+  PhysicalPropertiesDatabase db;
+  PolyLineInflator inflator(db);
+
+  std::optional<geometry::Polygon> inflated =
+      inflator.InflatePolyLine(line);
+
+  std::vector<geometry::Point> expected_vertices = {
+    {60, 1220},
+    {420, 1220},
+    {420, 990},
+    {930, 990},
+    {930, 1220},
+    {1485, 1220},
+    {1485, 1050},
+    {1100, 1050},
+    {1100, 820},
+    {250, 820},
+    {250, 1050},
+    {60, 1050}
+  };
+
+  EXPECT_TRUE(inflated.has_value());
   for (const auto &point : inflated->vertices()) {
     LOG(INFO) << point;
   }
-  EXPECT_TRUE(true);
+  EXPECT_EQ(expected_vertices, inflated->vertices());
+}
+
+TEST(PolyLineInflatorTest, ThisShouldNotBreak) {
+  // before bulges:
+  //  <0| (225, 1055) |170| (335, 1055) |170| (335, 985) |170| (1015, 985) |170| (1015, 1055) |170| (1320, 1055) |0>
+  // after bulges:
+  //  <0| (60, 1055) |170| (335, 1055) |170| (335, 970) |170| (335, 985) |170| (1015, 985) |170| (1015, 1055) |170| (1155, 1055) |170| (1485, 1055) |0>
+  PolyLine line = PolyLine(
+      {60, 1055}, {
+      LineSegment {{335, 1055}, 170},
+      LineSegment {{335, 970}, 170},
+      LineSegment {{335, 985}, 170},
+      LineSegment {{1015, 985}, 170},
+      LineSegment {{1015, 1055}, 170},
+      LineSegment {{1155, 1055}, 170},
+      LineSegment {{1485, 1055}, 170}
+  });
+
+  PhysicalPropertiesDatabase db;
+  PolyLineInflator inflator(db);
+
+  std::optional<geometry::Polygon> inflated =
+      inflator.InflatePolyLine(line);
+
+  std::vector<geometry::Point> expected_vertices = {
+    {60, 1220},
+    {420, 1220},
+    {420, 990},
+    {930, 990},
+    {930, 1220},
+    {1485, 1220},
+    {1485, 1050},
+    {1100, 1050},
+    {1100, 820},
+    {250, 820},
+    {250, 1050},
+    {60, 1050}
+  };
+
+  EXPECT_TRUE(inflated.has_value());
+  for (const auto &point : inflated->vertices()) {
+    LOG(INFO) << point;
+  }
+  EXPECT_EQ(expected_vertices, inflated->vertices());
+}
+
+TEST(PolyLineInflatorTest, ThisShouldNotBreak2) {
+  PolyLine line = PolyLine(
+      {60, 495}, {
+      LineSegment {{335, 495}, 170},
+      LineSegment {{335, 580}, 170},
+      LineSegment {{335, 565}, 170},
+      LineSegment {{2220, 565}, 170},
+      LineSegment {{2220, 890}, 170},
+      LineSegment {{2220, 1220}, 170}
+  });
+
+  PhysicalPropertiesDatabase db;
+  PolyLineInflator inflator(db);
+
+  std::optional<geometry::Polygon> inflated =
+      inflator.InflatePolyLine(line);
+
+  std::vector<geometry::Point> expected_vertices = {
+    {60, 1220},
+    {420, 1220},
+    {420, 990},
+    {930, 990},
+    {930, 1220},
+    {1485, 1220},
+    {1485, 1050},
+    {1100, 1050},
+    {1100, 820},
+    {250, 820},
+    {250, 1050},
+    {60, 1050}
+  };
+
+  EXPECT_TRUE(inflated.has_value());
+  for (const auto &point : inflated->vertices()) {
+    LOG(INFO) << point;
+  }
+  EXPECT_EQ(expected_vertices, inflated->vertices());
 }
 
 }  // namespace

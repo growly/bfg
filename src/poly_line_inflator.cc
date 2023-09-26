@@ -23,6 +23,26 @@ using geometry::Polygon;
 using geometry::Point;
 using geometry::Rectangle;
 
+static bool IntersectsInBoundsAnyInRange(
+    const Line &candidate,
+    std::vector<Line>::const_reverse_iterator end,
+    std::vector<Line>::const_reverse_iterator start) {
+  for (std::vector<Line>::const_reverse_iterator it = end;
+       it != start;
+       it++) {
+    bool incident = false;
+    bool is_start_or_end = false;
+    Point intersection;
+    if (candidate.IntersectsInBounds(*it,
+                                     &incident,
+                                     &is_start_or_end,
+                                     &intersection)) {
+      return false;
+    }
+  }
+  return false;
+}
+
 Layout *PolyLineInflator::Inflate(
     const RoutingGrid &routing_grid,
     const PolyLineCell &poly_line_cell) {
@@ -157,13 +177,57 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
   Polygon polygon;
 
   std::vector<Line> line_stack;
-  std::unique_ptr<Line> last_shifted_line;
+  std::vector<Line> forward_lines;
+  std::vector<Line> reverse_lines;
 
   // Since the PolyLine only stores the next point in each segment, we keep
   // track of the last one as we iterate through segments to create the lines
   // defined by (start, end) pairs.
   Point start = polyline.start();
 
+  // There is a very real problem when a line about-faces and goes back the
+  // way it came:
+  //
+  //
+  //                   |
+  //                   |
+  //                   |
+  //                   |
+  //                   |
+  //   (2)             v (1)
+  //   <------->-------
+  //        (3) |
+  //            |
+  //            |
+  //            |
+  //            v (4)
+  //
+  // This creates a loop, which makes sense since the lines go through 2*pi
+  // of turns, but it's not what we want.
+  //
+  // What's more, the treatment is different if the line (4) goes the other
+  // way:
+  //                   |
+  //        (4) ^      |
+  //            |      |
+  //            |      |
+  //            |      |
+  //   (2)      |      v (1)
+  //   <------->-------
+  //        (3)
+  //
+  // ... since now the loop is on the reverse side traversal, and the forward
+  // direction can proceed as normal. The treatment is different still if the
+  // about face appears on the other side of the first line (1), though that
+  // has symmetry to these cases but now for the reverse traversal.
+  //
+  // If we assume that about-faces don't happen one after the other (i.e. that
+  // if that happens the lines are simplified to redundant spans), then we
+  // should just be able to check if, immediately following an about-face, the
+  // shifted line we've generated intersects with any previously generated line,
+  // in bounds.
+
+  // Generate shifted lines in the forward direction.
   for (size_t i = 0; i < polyline.segments().size(); ++i) {
     const LineSegment &segment = polyline.segments().at(i);
     line_stack.emplace_back(start, segment.end);
@@ -181,33 +245,27 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
     double width = segment.width == 0 ?
         100 : static_cast<double>(segment.width);
 
-    last_shifted_line = std::move(ShiftAndAppendIntersection(
-          line, width, last_shifted_line.get(), &polygon));
+    std::unique_ptr<Line> shifted_line(GenerateShiftedLine(next_source, width));
+    forward_lines.push_back(*shifted_line);
+
     start = segment.end;
   }
-  polygon.AddVertex(last_shifted_line->end());
 
-  last_shifted_line = nullptr;
-  // TODO(aryap): lmao if you use size_t here it underflows and never exits
-  // the loop.
   for (int i = line_stack.size() - 1; i >= 0; --i) {
     Line &line = line_stack.at(i);
     line.Reverse();
-
-    if (i == line_stack.size() - 1) {
-      polygon.AddVertex(line.start());
-    }
 
     const LineSegment &segment = polyline.segments().at(i);
     double width = segment.width == 0 
         ? 100 : static_cast<double>(segment.width);
 
-    last_shifted_line = std::move(ShiftAndAppendIntersection(
-        line, width, last_shifted_line.get(), &polygon));
+    std::unique_ptr<Line> shifted_line(GenerateShiftedLine(next_source, width));
+    reverse_lines.push_back(*shifted_line);
   }
+
   // We flipped all the lines on the way back, so the last point is the 'end'
   // position of the first line in the list.
-  polygon.AddVertex(last_shifted_line->end());
+  polygon.AddVertex(reverse_lines.back().end());
   return polygon;
 }
 
@@ -245,51 +303,110 @@ Line *PolyLineInflator::GenerateShiftedLine(
   return shifted_line;
 }
 
-std::unique_ptr<Line> PolyLineInflator::ShiftAndAppendIntersection(
-    const Line &next_source, double width, Line *last_shifted_line,
+std::unique_ptr<Line> PolyLineInflator::AppendIntersections(
+    const std::vector<Line> &shiftes_lines,
+    const Line &next_source,
     Polygon *polygon) {
+  for (size_t i = 0; i < shifted_lines.size(); ++i) {
+    Line &current_line = shifted_lines.at(i);
 
-  std::unique_ptr<Line> shifted_line(GenerateShiftedLine(next_source, width));
-  VLOG(3) << "Shifted " << next_source << " to " << *shifted_line;
-  
-  if (last_shifted_line == nullptr) {
-    // Set the starting point.
-    polygon->AddVertex(shifted_line->start());
-    return shifted_line;
-  }
-
-  Point intersection;
-  bool incident;
-  if (Line::Intersect(
-        *last_shifted_line, *shifted_line, &incident, &intersection)) {
-    if (incident) {
-      // Compute the midpoint of the two lines as the intersection. Because?
-      const Line &lhs = *last_shifted_line;
-      const Line &rhs = *shifted_line;
-      double lhs_mid_y 
-          = (lhs.end().y() - lhs.start().y())/2.0 + lhs.start().y();
-      double rhs_mid_y 
-          = (rhs.end().y() - rhs.start().y())/2.0 + rhs.start().y();
-      double lhs_rhs_mid_y = (lhs_mid_y + rhs_mid_y) / 2.0;
-      intersection = Point(lhs.start().x(), lhs_rhs_mid_y);
+    if (i == 0) {
+      polygon->AddVertex(current_line.start());
+      continue;
     }
-    polygon->AddVertex(intersection);
-  } else {
-    // The lines never intersect, which means they're parallel. That also means
-    // that we can simply insert the end of the last line and the start of the
-    // next line as additional vertices to join the widths of the two:
-    //
-    //          v start
-    //          +-----------+
-    //          | next ^    |
-    // ---------+           +----------
-    // last ^   ^ end
-    polygon->AddVertex(last_shifted_line->end());
-    polygon->AddVertex(shifted_line->start());
+
+    Line &last_line = shifted_lines.at(i - 1);
+
+    if (current_line.AngleToLine(last_line) == Line::kPi) {
+      // Line turns 180 degrees to about-face. If this happens in the middle of
+      // a line in one direction then the line has a kink in it and we have to
+      //  - check for intersections of the current line with any past lines (in
+      //  bounds); and
+      //  - check for intersections of the _next line not parallel to the
+      //  current line_ with any past lines (also in bounds).
+
+      // Find the next line not parallel to this one:
+      Line *next_line = nullptr;
+      for (size_t j = i; i < shifted_lines.size(); ++j) {
+        if (shifted_lines.at(j).AngleToLine(current_line) == Line::0)
+          continue;
+
+        next_line = &shifted_lines.at(j);
+        break;
+      }
+
+      // See if the next_line intersects any of the previous lines:
+      bool next_line_intersects_any_past = next_line &&
+          IntersectsInBoundsAnyInRange(
+              *next_line,
+              shifted_lines.crend() - (i + 1),
+              shifted_lines.crend());
+
+      if (next_line_intersects_any_past) {
+        // Just ignore this line completely!
+        continue;
+      }
+    }
+
+    Point intersection;
+    bool incident;
+    if (Line::Intersect(last_line
+                        shifted_line,
+                        &incident,
+                        &intersection)) {
+      if (!incident) {
+        polygon->AddVertex(intersection);
+      }
+      // Since we treat lines as infinite when inflating PolyLines, two incident
+      // lines are effectively the same line and we do not need to record their
+      // intersection. We will use the later lines in the list for bounds where
+      // needed (i.e. at the start and end of the PolyLine).
+
+      //if (incident) {
+      //  // Compute the midpoint of the two lines as the intersection. Because?
+      //  // TODO(aryap): Does this need to be as compute-intensive as it is?
+      //  // Previously just fixing one dimension (x or y) to some point on either
+      //  // line (since they're incident) was sufficient.
+      //  const Line &lhs = *last_shifted_line;
+      //  const Line &rhs = *shifted_line;
+
+      //  double lhs_mid_y 
+      //      = (lhs.end().y() - lhs.start().y())/2.0 + lhs.start().y();
+      //  double rhs_mid_y 
+      //      = (rhs.end().y() - rhs.start().y())/2.0 + rhs.start().y();
+      //  double lhs_rhs_mid_y = (lhs_mid_y + rhs_mid_y) / 2.0;
+
+      //  double lhs_mid_x 
+      //      = (lhs.end().x() - lhs.start().x())/2.0 + lhs.start().x();
+      //  double rhs_mid_x 
+      //      = (rhs.end().x() - rhs.start().x())/2.0 + rhs.start().x();
+      //  double lhs_rhs_mid_x = (lhs_mid_x + rhs_mid_x) / 2.0;
+
+      //  intersection = Point(lhs_rhs_mid_x, lhs_rhs_mid_y);
+      //}
+      //polygon->AddVertex(intersection);
+    } else {
+      // The lines never intersect, which means they're parallel or anti-parallel.
+      // That also means that we can simply insert the end of the last line and
+      // the start of the next line as additional vertices to join the widths of
+      // the two:
+      //
+      //          v start
+      //          +-----------+
+      //            next ^
+      // ---------+           +----------
+      // last ^   ^ end
+      //
+      //
+      //      last ---------+ < end
+      //
+      //      next ---------+ <start
+      //
+      polygon->AddVertex(last_line.end());
+      polygon->AddVertex(line.start());
+    }
   }
-  
-  // I'm expecting copy elision here.
-  return shifted_line;
+
 }
 
 }  // namespace bfg

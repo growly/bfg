@@ -430,6 +430,21 @@ TEST(PolyLineTest, What4) {
 //  }
 //  EXPECT_EQ(expected_widths, widths);
 //} 
+//
+
+TEST(PolyLineTest, HowDidThisHappen) {
+  PolyLine line = PolyLine({225, 1055}, {
+    LineSegment {{335, 1055}, 170},
+    LineSegment {{335, 985}, 170},
+    LineSegment {{1015, 985}, 170},
+    LineSegment {{1015, 1055}, 170},
+    LineSegment {{1320, 1055}, 170}
+  });
+
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({225, 1055}, 170, 330);
+  LOG(INFO) << line.Describe();
+}
 
 // What happens when bulges at the end of a line are bigger than the connecting
 // width?

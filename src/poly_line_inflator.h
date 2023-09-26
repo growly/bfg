@@ -57,13 +57,19 @@ class PolyLineInflator {
     return GenerateShiftedLine(source, width, 0.0, 0.0);
   }
 
+  bool IntersectsInBoundsAnyInRange(
+      const Line &candidate,
+      std::vector<geometry::Line>::const_iterator start,
+      std::vector<geometry::Line>::const_iterator end);
+
   // Shifts next_source by half of the given width, then add the intersection
   // of the new line with *last_shifted_line to polygon. Returns the newly
   // shifted line. If last_shifted_line is nullptr, the start of next_source is
   // used.
-  std::unique_ptr<geometry::Line> ShiftAndAppendIntersection(
-    const geometry::Line &next_source, double width,
-    geometry::Line *last_shifted_line, geometry::Polygon *polygon);
+  void AppendIntersections(
+    const std::vector<geometry::Line> &shifted_lines,
+    const geometry::Line &next_source,
+    geometry::Polygon *polygon);
 
   // Provides some defaults and rules.
   const PhysicalPropertiesDatabase &physical_db_;

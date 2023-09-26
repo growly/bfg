@@ -22,6 +22,7 @@ geometry::Polygon *Layout::AddPolyLine(const geometry::PolyLine &line) {
   PolyLineInflator inflator(physical_db_);
   std::optional<geometry::Polygon> polygon = inflator.InflatePolyLine(line);
   if (polygon) {
+    LOG(INFO) << "polygon: " << polygon->Describe();
     return AddPolygon(*polygon);
   } else {
     return nullptr;
