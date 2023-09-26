@@ -1,4 +1,8 @@
+#include <cmath>
+
 #include <gtest/gtest.h>
+
+#include <glog/logging.h>
 
 #include "line.h"
 #include "point.h"
@@ -83,10 +87,62 @@ TEST(LineTest, PointOnLineAtDistance) {
   EXPECT_EQ(Point(0, 0), before);
 }
 
+TEST(LineTest, AngleToHorizon) {
+  Line a = Line({0, 0}, {1, 0});
+  EXPECT_EQ(a.AngleToHorizon(), 0);
+
+  Line b = Line({0, 0}, {0, 1});
+  EXPECT_EQ(b.AngleToHorizon(), Line::kPi / 2);
+
+  Line c = Line({0, 0}, {1, 1});
+  EXPECT_EQ(c.AngleToHorizon(), Line::kPi / 4);
+
+  Line d = Line({0, 0}, {-1, 0});
+  EXPECT_EQ(d.AngleToHorizon(), Line::kPi);
+
+  Line f = Line({0, 0}, {0, -1});
+  EXPECT_EQ(f.AngleToHorizon(), -Line::kPi / 2);
+
+  Line g = Line({0, 0}, {-1, -1});
+  EXPECT_EQ(g.AngleToHorizon(), 2 * Line::kPi -3 * Line::kPi / 4);
+}
+
+TEST(LineTest, AngleToLine) {
+  Line right = Line({0, 0}, {1, 0});
+  Line up = Line({0, 0}, {0, 1});
+
+  EXPECT_EQ(up.AngleToLine(up), 0.0);
+  EXPECT_EQ(right.AngleToLine(right), 0.0);
+  EXPECT_EQ(up.AngleToLine(right), 3 * Line::kPi / 2);
+  EXPECT_EQ(right.AngleToLine(up), Line::kPi / 2);
+
+  //     /
+  //    /
+  //   /
+  //  / ) theta   a . b = ||a|| ||b|| cos (theta)
+  // -----------
+  //
+  double from_inner_product = std::acos(
+      right.DotProduct(up) / (up.Length() * right.Length()));
+  EXPECT_EQ(right.AngleToLine(up), from_inner_product);
+
+  // This is not true, however, because the dot-product method always gives us
+  // the smaller of the angles between the two lines, and we make sure
+  // AngleToLine gives us the same angle of rotation.
+  EXPECT_NE(up.AngleToLine(right), from_inner_product);
+}
+
 TEST(LineTest, DotProduct) {
   Line left = Line({1, 1}, {1, 2});
   Line right = Line({3, 3}, {2, 3});
   EXPECT_EQ(0, left.DotProduct(right));
+}
+
+TEST(LineTest, Intersect) {
+  Line a = Line({0, 0}, {1, 1});
+  Line b = Line({0, 0}, {1, 1});
+
+  // TODO(aryap): Complete.
 }
 
 }  // namespace
