@@ -29,6 +29,10 @@ class Polygon : public Shape {
     vertices_.push_back(point);
   }
 
+  void AddVertex(const size_t offset, const Point &point) {
+    vertices_.insert(vertices_.begin() + offset, point);
+  }
+
   void IntersectingPoints(
       const Line &line,
       std::vector<std::pair<Point, Point>> *points) const;
