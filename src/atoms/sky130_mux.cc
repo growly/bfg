@@ -1122,6 +1122,9 @@ void GenerateOutput2To1MuxLayout(
             std::max(li_direct_width_left, li_direct_width_right))},
         LineSegment {p_3, static_cast<uint64_t>(li_direct_width_right)}
     });
+    LOG(INFO) << "here " << direct_li_line.Describe() << " " << mcon_via_point
+              << " " << li_mcon_via_encap_width
+              << " " << li_mcon_via_encap_length;
     direct_li_line.InsertBulge(mcon_via_point,
                                li_mcon_via_encap_width,
                                li_mcon_via_encap_length);

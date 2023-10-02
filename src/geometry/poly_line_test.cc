@@ -456,6 +456,16 @@ TEST(PolyLineTest, HowDidThisHappen2) {
   line.InsertBulge({2625, 1245}, 230, 290);
 }
 
+TEST(PolyLineTest, HowDidThisHappen3) {
+  PolyLine line = PolyLine({2765, 3355}, {
+    LineSegment {{3635, 3355}, 210},
+    LineSegment {{3635, 3315}, 290},
+    LineSegment {{4505, 3315}, 290}
+  });
+
+  line.InsertBulge({3635, 3335}, 230, 290);
+}
+
 // What happens when bulges at the end of a line are bigger than the connecting
 // width?
 //
