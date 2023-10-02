@@ -27,6 +27,8 @@ class Line {
   static bool Intersect(
       const Line &lhs, const Line &rhs, bool *incident, Point *point);
 
+  static bool AreAntiParallel(const Line &lhs, const Line &rhs);
+
   std::string Describe() const;
 
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
@@ -39,6 +41,8 @@ class Line {
 
   bool IntersectsInBounds(const Point &point) const;
 
+  // Tests if *this line intersects the other line within the bounds of this
+  // line. The other line is treated as infinitely long.
   bool IntersectsInBounds(const Line &other,
                           bool *incident,
                           bool *is_start_or_end,

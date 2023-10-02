@@ -194,17 +194,39 @@ void PolyLine::InsertForwardBulgePoint(
     // embark on, with the new width. As a special case, we check for
     // segments that in the same line but in a different width:
     LineSegment &next_segment = segments_[k + 1];
+    Line current_line = Line(insertion_start, segments_[k].end);
     Line next_line = Line(segments_[k].end, next_segment.end);
-    Point point_after = next_line.PointOnLineAtDistance(segments_[k].end, half_width);
 
-    // TODO(aryap): Check if next segment width is already too big?
-    segments_.insert(
-        segments_.begin() + k + 1,
-        LineSegment {
-          .end = point_after,
-          .width = std::max(
-              static_cast<uint64_t>(2.0 * overflow), next_segment.width)
-    });
+    // Let theta be the angle from the next line to the previous. Then the
+    // distance along the axis of the next segment to the next segment end point
+    // is half_width * sin(theta). The width of that segment must be at least
+    // overflow * sin(theta).
+    //
+    // The proof is as follows: just trust me bro
+    double theta = next_line.AngleToLine(current_line);
+    double overflow_length = std::abs(half_width * std::sin(theta));
+    double overflow_width = std::abs(
+        overflow * std::sin(theta) + half_width * std::cos(theta));
+
+    Point point_after = next_line.PointOnLineAtDistance(
+        segments_[k].end, overflow_length);
+
+    // As a special case, we must consider if the next point on the line of the
+    // next segment exceeds that segment's length! If it does, just give up
+    // and inflate the width of the next segment to subsume our overflow length.
+    if (!next_line.IntersectsInBounds(point_after)) {
+      next_segment.width = std::max(
+          static_cast<uint64_t>(2.0 * overflow_width), next_segment.width);
+    } else {
+      segments_.insert(
+          segments_.begin() + k + 1,
+          LineSegment {
+            .end = point_after,
+            .width = std::max(
+                static_cast<uint64_t>(2.0 * overflow_width),
+                next_segment.width)
+      });
+    }
   }
 }
 
@@ -275,6 +297,7 @@ void PolyLine::InsertBackwardBulgePoint(
     // The end of the last line is the start of this line. The start of the
     // last line is the end of the line before it.
     Line last_line = Line(last_line_start, last_segment.end);
+
     Point point_before = last_line.PointOnLineAtDistance(
         last_segment.end, -static_cast<int64_t>(half_width));
 

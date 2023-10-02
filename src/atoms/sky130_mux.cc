@@ -531,13 +531,17 @@ void GenerateOutput2To1MuxLayout(
   // upwards and place the li pours. Then we can place the diffusion pour so
   // that the poly encapsulation (larger than the gate length) doesn't overlap
   // the transistor diffusion.
-  int64_t top_li_track_centre_y =
-      main_layout->GetPoint("upper_left.li_corner_se_centre").y() - (
+  int64_t top_li_track_centre_y = std::min(
+          main_layout->GetPoint("upper_left.li_corner_se_centre").y(),
+          main_layout->GetPoint("upper_right.li_corner_se_centre").y()
+      ) - (
           li_rules.min_separation + li_mcon_rules.via_overhang +
           mcon_rules.via_width / 2 + li_rules.min_width / 2);
   int64_t bottom_li_track_centre_y =
-      main_layout->GetPoint("lower_left.li_corner_se_centre").y()
-          + li_pitch_optimistic;
+      std::max(
+          main_layout->GetPoint("lower_left.li_corner_se_centre").y(),
+          main_layout->GetPoint("lower_right.li_corner_se_centre").y())
+              + li_pitch_optimistic;
   int64_t second_bottom_li_track_centre_y =
       bottom_li_track_centre_y + li_pitch_optimistic;
 
@@ -775,13 +779,15 @@ void GenerateOutput2To1MuxLayout(
 
   // Lower left:
   //            destination
-  //              + p_5
+  //              + p_6
   //              |
-  // p_3  +-------/
+  // p_4  +-------/
   //      |
   //      |  
   //      |
-  // p_2  +--\
+  // p_3  +
+  //      |
+  // p_2  +--+ p_1
   //         |
   //         + p_0 (from lower left mux output)
   //           source
@@ -807,44 +813,77 @@ void GenerateOutput2To1MuxLayout(
     const std::string dcon_layer = dcon_layers[target];
     int64_t metal_x = metal_column_x_values[target];
 
+    const auto &li_dcon_rules = db.Rules("li.drawing", dcon_layer);
+    const auto &dcon_rules = db.Rules(dcon_layer);
+    int64_t via_side = dcon_rules.via_width;
+    int64_t li_mcon_via_encap_width =
+        via_side + 2 * li_mcon_rules.via_overhang_wide;
+    int64_t li_mcon_via_encap_length =
+        via_side + 2 * li_mcon_rules.via_overhang;
+    int64_t li_dcon_via_encap_width =
+        via_side + 2 * li_dcon_rules.via_overhang_wide;
+    int64_t li_dcon_via_encap_length =
+        via_side + 2 * li_dcon_rules.via_overhang;
+
     Point p_0 = main_layout->GetPoint(
         absl::StrCat(structure, ".output"));
     main_layout->MakeVia("licon.drawing", p_0);
 
-    Point p_5 = main_layout->GetPoint(destination_name);
+    Point p_6 = main_layout->GetPoint(destination_name);
 
     // Jog up a bit and connect to the metal track.
-    Point p_2 = Point(
-        metal_x, p_0.y() + li_rules.min_width);
     Point p_3 = Point(
+        metal_x, p_0.y() + li_rules.min_width);
+    Point p_4 = Point(
         metal_x,
         // This could also be something like
         //  main_layout->GetPort("output").centre();
         // if it had been added as a port.
         second_bottom_li_track_centre_y);
 
+    Point p_1 = Point(p_0.x(), (p_3.y() + p_0.y()) / 2);
+    Point p_2 = Point(p_3.x(), p_1.y());
+
     main_layout->SetActiveLayerByName("li.drawing");
     AddElbowPathBetweenLayers(
         db,
-        p_5, p_3,
+        p_6, p_4,
         "licon.drawing", "li.drawing", "mcon.drawing",
         main_layout);
 
-    main_layout->MakeVia("mcon.drawing", p_3);
+    main_layout->MakeVia("mcon.drawing", p_4);
     main_layout->SetActiveLayerByName("met1.drawing");
     StraightLineBetweenLayers(
         db,
-        p_3, p_2,
+        p_4, p_3,
         "mcon.drawing", "met1.drawing", "mcon.drawing",
         main_layout);
-    main_layout->MakeVia("mcon.drawing", p_2);
+    main_layout->MakeVia("mcon.drawing", p_3);
 
     main_layout->SetActiveLayerByName("li.drawing");
-    AddElbowPathBetweenLayers(
-        db,
-        p_0, p_2,
-        "licon.drawing", "li.drawing", "mcon.drawing",
-        main_layout);
+
+    PolyLine lower_output_jog = PolyLine(p_0, {
+        LineSegment {p_1, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_3, static_cast<uint64_t>(li_mcon_via_encap_width)}
+    });
+    LOG(INFO) << "pre bulge: " << lower_output_jog.Describe();
+    lower_output_jog.InsertBulge(p_3,
+                                 li_mcon_via_encap_width,
+                                 li_mcon_via_encap_length);
+    LOG(INFO) << li_mcon_via_encap_width;
+    LOG(INFO) << li_mcon_via_encap_length;
+    lower_output_jog.InsertBulge(p_0,
+                                 li_dcon_via_encap_width,
+                                 li_dcon_via_encap_length);
+    LOG(INFO) << li_dcon_via_encap_width;
+    LOG(INFO) << li_dcon_via_encap_length;
+    //main_layout->AddPolyLine(lower_output_jog);
+
+    LOG(INFO) << "poly line: " << lower_output_jog.Describe();
+    Polygon *added_jog = main_layout->AddPolygon(
+        InflatePolyLineOrDie(db, lower_output_jog));
+    LOG(INFO) << "inflates into: " << added_jog->Describe();
   }
 
   Polygon *left_right_poly_li_pour = nullptr;
@@ -1440,13 +1479,28 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   };
 
   std::unique_ptr<bfg::Layout> mux2_layout_n(GenerateMux2Layout(mux2_params_n));
-
-  LOG(INFO) << "generating mux2 p";
   std::unique_ptr<bfg::Layout> mux2_layout_p(GenerateMux2Layout(mux2_params_p));
 
   Rectangle mux2_n_bounding_box = mux2_layout_n->GetBoundingBox();
 
-  int64_t mux2_height = mux2_n_bounding_box.Height();
+  // TODO(aryap): We choose the min value here so that the polys from the upper
+  // and lower instances definitely touch or overlap. This is broken. We need to
+  // pick the max, and then connect the two poly pours on the side where a gap
+  // forms.
+  //
+  // Three ways to do this:
+  // 1) Architect generators such that their state can be updated and their
+  // output regenerated. This seems powerful and most general, but requires
+  // significant work, perhaps. Also it's unclear if this is really necessary.
+  // I should think about this more.
+  // 2) Fill in the poly gap from here, up in the design design hierarchy.
+  // 3) Provide named handles to generated objects of interest such that we can
+  // track them through generations, transformations and copies, and then
+  // directly modify them. This is a general facility that isn't mutually
+  // exclusive with (1) and which requires less work.
+  int64_t mux2_height = std::min(
+      mux2_layout_n->GetBoundingBox().Height(),
+      mux2_layout_p->GetBoundingBox().Height());
   int64_t vert_spacing = 0;
 
   mux2_layout_n->ResetOrigin();

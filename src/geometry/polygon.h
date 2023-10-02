@@ -33,6 +33,10 @@ class Polygon : public Shape {
     vertices_.insert(vertices_.begin() + offset, point);
   }
 
+  void RemoveLastVertex() {
+    vertices_.pop_back();
+  }
+
   void IntersectingPoints(
       const Line &line,
       std::vector<std::pair<Point, Point>> *points) const;

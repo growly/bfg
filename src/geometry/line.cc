@@ -16,6 +16,10 @@ std::string Line::Describe() const {
   return ss.str();
 }
 
+bool Line::AreAntiParallel(const Line &lhs, const Line &rhs) {
+  return lhs.AngleToLine(rhs) == kPi;
+}
+
 bool Line::Intersect(
     const Line &lhs, const Line &rhs, bool *incident, Point *point) {
   // (1) y1 = m1*x1 + c1
@@ -179,14 +183,19 @@ bool Line::IntersectsInMutualBounds(
   if (*incident) {
     // Check if the other line overlaps this line.
 
+    // TODO(aryap): I wrote this down a while ago but I don't remember my
+    // intentions with it:
+    //
     // Find the projection of each point onto the shared line.
     //      _ _      _   _   _   _     _
     // proj_s(v) = [(v . s)/(s . s)] * s
-
+    LOG(FATAL) << "Not implemented";
   }
 
-  // TODO(growly): This is incomplete?
-  return false;
+  if (!other.IntersectsInBounds(intersection_in_our_bounds))
+    return false;
+ 
+  return true;
 }
 
 //           _
