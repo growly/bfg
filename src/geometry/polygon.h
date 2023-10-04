@@ -26,10 +26,14 @@ class Polygon : public Shape {
   }
 
   void AddVertex(const Point &point) {
+    if (!vertices_.empty() && vertices_.back() == point)
+      return;
     vertices_.push_back(point);
   }
 
   void AddVertex(const size_t offset, const Point &point) {
+    if (*(vertices_.begin() + offset) == point)
+      return;
     vertices_.insert(vertices_.begin() + offset, point);
   }
 

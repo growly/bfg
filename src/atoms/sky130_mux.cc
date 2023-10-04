@@ -785,7 +785,7 @@ void GenerateOutput2To1MuxLayout(
   //      |
   //      |  
   //      |
-  // p_3  +
+  // p_3  + <- start of metal 1
   //      |
   // p_2  +--+ p_1
   //         |
@@ -867,23 +867,15 @@ void GenerateOutput2To1MuxLayout(
         LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
         LineSegment {p_3, static_cast<uint64_t>(li_mcon_via_encap_width)}
     });
-    LOG(INFO) << "pre bulge: " << lower_output_jog.Describe();
     lower_output_jog.InsertBulge(p_3,
                                  li_mcon_via_encap_width,
                                  li_mcon_via_encap_length);
-    LOG(INFO) << li_mcon_via_encap_width;
-    LOG(INFO) << li_mcon_via_encap_length;
     lower_output_jog.InsertBulge(p_0,
                                  li_dcon_via_encap_width,
                                  li_dcon_via_encap_length);
-    LOG(INFO) << li_dcon_via_encap_width;
-    LOG(INFO) << li_dcon_via_encap_length;
-    //main_layout->AddPolyLine(lower_output_jog);
-
-    LOG(INFO) << "poly line: " << lower_output_jog.Describe();
-    Polygon *added_jog = main_layout->AddPolygon(
-        InflatePolyLineOrDie(db, lower_output_jog));
-    LOG(INFO) << "inflates into: " << added_jog->Describe();
+    //Polygon *added_jog = main_layout->AddPolygon(
+    //    InflatePolyLineOrDie(db, lower_output_jog));
+    main_layout->AddPolyLine(lower_output_jog);
   }
 
   Polygon *left_right_poly_li_pour = nullptr;
@@ -1122,9 +1114,6 @@ void GenerateOutput2To1MuxLayout(
             std::max(li_direct_width_left, li_direct_width_right))},
         LineSegment {p_3, static_cast<uint64_t>(li_direct_width_right)}
     });
-    LOG(INFO) << "here " << direct_li_line.Describe() << " " << mcon_via_point
-              << " " << li_mcon_via_encap_width
-              << " " << li_mcon_via_encap_length;
     direct_li_line.InsertBulge(mcon_via_point,
                                li_mcon_via_encap_width,
                                li_mcon_via_encap_length);
