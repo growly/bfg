@@ -8,14 +8,16 @@
 #include <set>
 #include <vector>
 
-#include "layout.h"
 #include "geometry/layer.h"
-#include "physical_properties_database.h"
 #include "geometry/point.h"
 #include "geometry/poly_line.h"
-#include "poly_line_cell.h"
 #include "geometry/port.h"
 #include "geometry/rectangle.h"
+#include "layout.h"
+#include "physical_properties_database.h"
+#include "poly_line_cell.h"
+#include "routing_grid_geometry.h"
+#include "routing_layer_info.h"
 
 // TODO(aryap): Another version of this RoutingGrid should exist that uses a
 // more standard model of the routing fabric. Instead of generating 1 edge for
@@ -54,16 +56,6 @@ class RoutingTrack;
 class RoutingTrackBlockage;
 class RoutingPath;
 class RoutingVertex;
-
-struct RoutingLayerInfo {
-  geometry::Layer layer;
-  geometry::Rectangle area;
-  int64_t wire_width;
-  int64_t offset;
-  RoutingTrackDirection direction;
-  int64_t pitch;
-  int64_t via_width;
-};
 
 class RoutingGrid {
  public:
@@ -106,6 +98,9 @@ class RoutingGrid {
   // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
 
+  void ExportAvailableVerticesAsSquares(
+      const std::string &layer, Layout *layout) const;
+
   void AddRoutingViaInfo(const geometry::Layer &lhs,
                          const geometry::Layer &rhs,
                          const RoutingViaInfo &info);
@@ -132,17 +127,17 @@ class RoutingGrid {
 
   const PhysicalPropertiesDatabase &physical_db() const { return physical_db_; }
 
+  std::pair<std::reference_wrapper<const RoutingLayerInfo>,
+            std::reference_wrapper<const RoutingLayerInfo>>
+      PickHorizontalAndVertical(
+          const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
  private:
   struct CostedVertex {
     uint64_t cost;
     geometry::Layer layer;
     RoutingVertex *vertex;
   };
-
-  std::pair<std::reference_wrapper<const RoutingLayerInfo>,
-            std::reference_wrapper<const RoutingLayerInfo>>
-      PickHorizontalAndVertical(
-          const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
@@ -178,12 +173,18 @@ class RoutingGrid {
   // All Owned vertices.
   std::vector<RoutingVertex*> vertices_;
 
+  // All the vertices arranged into grid position, per layer.
+  std::map<geometry::Layer, std::vector<std::vector<RoutingVertex*>>>
+      vertices_by_grid_position;
+
   // All routing tracks (we own these).
   std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;
 
   // The list of all available vertices per layer.
   std::map<geometry::Layer,
            std::vector<RoutingVertex*>> available_vertices_by_layer_;
+
+  // TODO(aryap): Store RoutingGridGeometries
 
   const PhysicalPropertiesDatabase &physical_db_;
 };

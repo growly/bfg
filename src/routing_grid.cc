@@ -253,20 +253,6 @@ std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
   return it->second;
 }
 
-namespace {
-
-// C++ modulo is more 'remainder' than 'modulo' because of how negative numbers
-// are handled:
-//    mod(-3, 5) = 2
-//    rem(-3, 5) = -3 (since -3 / 5 = 0)
-// So we have to do this:
-int64_t modulo(int64_t a, int64_t b) {
-  int64_t remainder = a % b;
-  return remainder < 0 ? remainder + b : remainder;
-}
-
-}   // namespace
-
 void RoutingGrid::ConnectLayers(
     const geometry::Layer &first, const geometry::Layer &second) {
   // One layer has to be horizontal, and one has to be vertical.
@@ -274,36 +260,11 @@ void RoutingGrid::ConnectLayers(
   const RoutingLayerInfo &horizontal_info = split_directions.first;
   const RoutingLayerInfo &vertical_info = split_directions.second;
 
-  // Determine the area over which the grid is valid.
-  geometry:: Rectangle overlap =
-      horizontal_info.area.OverlapWith(vertical_info.area);
   LOG(INFO) << "Drawing grid between layers " << horizontal_info.layer
-            << ", " << vertical_info.layer << " over " << overlap;
-  
-  //                      x_min v   v x_start
-  //           |      |      |  +   |      |
-  //           |      |      |  +   |      |
-  //           |      |      |  +   |      |
-  //           |      |      |  +   |      |
-  //  origin   |      |      |  +   |      |
-  //  O -----> | ---> | ---> | -+-> | ---> |
-  //    offset   pitch          ^ start of grid boundary
-  //
-  int64_t x_offset = vertical_info.offset;
-  int64_t x_pitch = vertical_info.pitch;
-  LOG_IF(FATAL, x_pitch == 0)
-      << "Routing pitch for layer " << vertical_info.layer << " is 0";
-  int64_t x_min = overlap.lower_left().x();
-  int64_t x_start = x_min + (x_pitch - modulo(x_min - x_offset, x_pitch));
-  int64_t x_max = overlap.upper_right().x();
-  
-  int64_t y_offset = vertical_info.offset;
-  int64_t y_pitch = vertical_info.pitch;
-  LOG_IF(FATAL, y_pitch == 0)
-      << "Routing pitch for layer " << horizontal_info.layer << " is 0";
-  int64_t y_min = overlap.lower_left().y();
-  int64_t y_start = y_min + (y_pitch - modulo(y_min - y_offset, y_pitch));
-  int64_t y_max = overlap.upper_right().y();
+            << ", " << vertical_info.layer;
+
+  RoutingGridGeometry grid_geometry;
+  grid_geometry.ComputeForLayers(horizontal_info, vertical_info);
 
   std::vector<RoutingVertex*> &first_layer_vertices =
       GetAvailableVertices(first);
@@ -318,7 +279,9 @@ void RoutingGrid::ConnectLayers(
   std::map<int64_t, RoutingTrack*> horizontal_tracks;
 
   // Generate tracks to hold edges and vertices in each direction.
-  for (int64_t x = x_start; x < x_max; x += x_pitch) {
+  for (int64_t x = grid_geometry.x_start();
+       x < grid_geometry.x_max();
+       x += grid_geometry.x_pitch()) {
     RoutingTrack *track = new RoutingTrack(
         vertical_info.layer, RoutingTrackDirection::kTrackVertical, x);
     track->set_width(vertical_info.wire_width);
@@ -327,7 +290,9 @@ void RoutingGrid::ConnectLayers(
     num_x++;
   }
 
-  for (int64_t y = y_start; y < y_max; y += y_pitch) {
+  for (int64_t y = grid_geometry.y_start();
+       y < grid_geometry.y_max();
+       y += grid_geometry.y_pitch()) {
     RoutingTrack *track = new RoutingTrack(
         horizontal_info.layer,
         RoutingTrackDirection::kTrackHorizontal, y);
@@ -337,20 +302,28 @@ void RoutingGrid::ConnectLayers(
     num_y++;
   }
 
-  std::vector<std::vector<RoutingVertex*>> vertices(
-      num_x, std::vector<RoutingVertex*>(num_y, nullptr));
+  vertices_by_grid_position[first] =
+      std::vector<std::vector<RoutingVertex*>>(
+          num_x, std::vector<RoutingVertex*>(num_y, nullptr));
+
+  std::vector<std::vector<RoutingVertex*>> &vertices =
+      vertices_by_grid_position[first];
 
   // Generate a vertex at the intersection of every horizontal and vertical
   // track.
   size_t i = 0;
-  for (int64_t x = x_start; x < x_max; x += x_pitch) {
+  for (int64_t x = grid_geometry.x_start();
+       x < grid_geometry.x_max();
+       x += grid_geometry.x_pitch()) {
     // This (and the horizontal one) must exist by now, so we can make this
     // fatal.
     RoutingTrack *vertical_track = vertical_tracks.find(x)->second;
     LOG_IF(FATAL, !vertical_track) << "Vertical routing track is nullptr";
 
     size_t j = 0;
-    for (int64_t y = y_start; y < y_max; y += y_pitch) {
+    for (int64_t y = grid_geometry.y_start();
+         y < grid_geometry.y_max();
+         y += grid_geometry.y_pitch()) {
       RoutingTrack *horizontal_track = horizontal_tracks.find(y)->second;
       LOG_IF(FATAL, !horizontal_track) << "Horizontal routing track is nullptr";
 
@@ -369,6 +342,9 @@ void RoutingGrid::ConnectLayers(
 
       VLOG(10) << "Vertex created: " << vertex->centre() << " on layers: "
                << absl::StrJoin(vertex->connected_layers(), ", ");
+
+      vertex->set_grid_position_x(i);
+      vertex->set_grid_position_y(j);
 
       vertices[i][j] = vertex;
 
@@ -404,6 +380,9 @@ void RoutingGrid::ConnectLayers(
     }
     i++;
   }
+
+  // Take a copy for the references from the 2nd layer.
+  vertices_by_grid_position[second] = vertices;
 
   size_t num_edges = 0;
   for (auto entry : tracks_by_layer_)
@@ -919,6 +898,9 @@ void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
   for (RoutingTrack *track : it->second) {
     track->AddBlockage(rectangle, padding);
   }
+
+  // Find any possibly-blocked vertices and make them unavailable:
+  // TODO(aryap): This.
 }
 
 void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
@@ -941,6 +923,16 @@ void RoutingGrid::RemoveUnavailableVertices() {
       } else {
         ++it;
       }
+    }
+  }
+}
+
+void RoutingGrid::ExportAvailableVerticesAsSquares(
+    const std::string &layer, Layout *layout) const {
+  layout->SetActiveLayerByName(layer);
+  for (RoutingVertex *vertex : vertices_) {
+    if (vertex->available()) {
+      layout->AddSquare(vertex->centre(), 10);
     }
   }
 }

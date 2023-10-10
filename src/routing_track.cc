@@ -552,6 +552,8 @@ void RoutingTrack::SortBlockages() {
 
 void RoutingTrack::ApplyBlockage(const RoutingTrackBlockage &blockage) {
   for (RoutingVertex *vertex : vertices_) {
+    if (!vertex->available())
+      continue;
     if (IsBlockedBetween(vertex->centre(), vertex->centre())) {
       vertex->set_available(false);
     }

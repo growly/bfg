@@ -277,6 +277,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
   }
 
+  // Debug only.
+  routing_grid.ExportAvailableVerticesAsSquares("areaid.frame", layout.get());
+
   // Connect the scan chain.
   for (size_t i = 0; i < flip_flops.size(); ++i) {
     geometry::Instance *instance = flip_flops[i];
@@ -290,7 +293,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     ports.clear();
     next_in_chain->GetInstancePorts("D", &ports);
     geometry::Port *end = *ports.begin();
-    //routing_grid.AddRouteBetween(*start, *end);
+    routing_grid.AddRouteBetween(*start, *end);
     LOG(INFO) << i << " start port: " << *start << " end: " << *end;
   }
 
@@ -325,7 +328,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
       geometry::Port *first_port = *ports.begin();
       LOG(INFO) << "Adding routes for (ff, mux) = (" << j << ", " << mux_index << ")";
-      //routing_grid.AddRouteBetween(*start, *first_port, net_name);
+      routing_grid.AddRouteBetween(*start, *first_port, net_name);
 
       //auto it = ports.begin();
       //it++;  // Skip first port.
@@ -342,6 +345,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       j++;
     }
   }
+
+  // Debug only.
+  routing_grid.ExportAvailableVerticesAsSquares(
+      "areaid.frameRect", layout.get());
 
   std::unique_ptr<bfg::Layout> grid_layout(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");

@@ -1,6 +1,7 @@
 #ifndef ROUTING_VERTEX_H_
 #define ROUTING_VERTEX_H_
 
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -23,6 +24,8 @@ class RoutingVertex {
         horizontal_track_(nullptr),
         vertical_track_(nullptr),
         contextual_index_(-1),
+        grid_position_x_(std::nullopt),
+        grid_position_y_(std::nullopt),
         centre_(centre) {}
 
   void AddEdge(RoutingEdge *edge) { edges_.insert(edge); }
@@ -69,6 +72,20 @@ class RoutingVertex {
   std::set<RoutingVertex*> GetNeighbours(
       const geometry::Compass &position) const;
 
+  const std::optional<size_t> &grid_position_x() const {
+    return grid_position_x_;
+  }
+  void set_grid_position_x(const std::optional<size_t> &grid_position_x) {
+    grid_position_x_ = grid_position_x;
+  }
+
+  const std::optional<size_t> &grid_position_y() const {
+    return grid_position_y_;
+  }
+  void set_grid_position_y(const std::optional<size_t> &grid_position_y) {
+    grid_position_y_ = grid_position_y;
+  }
+
  private:
   struct NeighbouringVertex {
     geometry::Compass position;
@@ -94,7 +111,13 @@ class RoutingVertex {
   // RoutingVertex for the duration of whatever process requires it.
   size_t contextual_index_;
 
+  // Likewise, these are indices to track the vertex on a grid between two
+  // layers. Vertices only actually connect two layers.
+  std::optional<size_t> grid_position_x_;
+  std::optional<size_t> grid_position_y_;
+
   geometry::Point centre_;
+  // TODO(aryap): Vertices only actually connect two layers.
   std::vector<geometry::Layer> connected_layers_;
   std::set<RoutingEdge*> edges_;
 };

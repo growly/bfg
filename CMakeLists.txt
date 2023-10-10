@@ -48,6 +48,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry.cc
   ${PROJECT_SOURCE_DIR}/src/routing_path.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track_blockage.cc
@@ -257,6 +258,7 @@ set(GEOMETRY_TEST_SRC
 
 set(TEST_SRC
   ${GEOMETRY_TEST_SRC}
+  ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
 )
 
 enable_testing()
