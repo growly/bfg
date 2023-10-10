@@ -20,11 +20,13 @@ RoutingGridGeometry::RoutingGridGeometry()
       x_min_(0),
       x_max_(0),
       x_start_(0),
+      max_column_index_(0),
       y_offset_(0),
       y_pitch_(0),
       y_min_(0),
       y_max_(0),
       y_start_(0),
+      max_row_index_(0),
       horizontal_layer_(0),
       vertical_layer_(0) {}
 
