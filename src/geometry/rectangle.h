@@ -48,6 +48,8 @@ class Rectangle : public Shape {
   bool Overlaps(const Rectangle &other) const;
   const Rectangle OverlapWith(const Rectangle &other) const;
 
+  void GetBoundaryLines(std::vector<Line> *lines) const;
+
   uint64_t Width() const { return upper_right_.x() - lower_left_.x(); }
   uint64_t Height() const { return upper_right_.y() - lower_left_.y(); }
 

@@ -586,6 +586,42 @@ TEST(Polygon, OutsideVerticalEdgeSpanningEndAndStartPoints) {
   EXPECT_EQ(expected, intersections);
 }
 
+//         +--+       +---+
+//         |  |       |   |  <- polygon
+//         +--+       |   |
+//                    |   |
+//  (0, 4) +----------+   |
+//         |              |
+//  (0, 0) +--------------+
+TEST(Polygon, OverlapsRectangle_EntirelyInside1) {
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+
+  Rectangle bottom_right = Rectangle({7, 1}, {9, 3});
+
+  EXPECT_TRUE(big_l_shape.Overlaps(bottom_right));
+}
+
+TEST(Polygon, OverlapsRectangle_InBoundingBoxButOutside) {
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+
+  Rectangle top_left = Rectangle({0, 6}, {4, 10});
+  EXPECT_FALSE(big_l_shape.Overlaps(top_left));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

@@ -39,6 +39,7 @@ void Polygon::ResolveIntersectingPointsFrom(
     // We do not need to maintain a sorted structure; we only need the minimum
     // in the collection at a given time.
     std::function<bool (const PointOrChoice&, const PointOrChoice&)> comparator;
+    // TODO(aryap): These are the same. wtf.
     if (outside) {
       comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
         const Point left = lhs.ClosestPointTo(reference_point);
@@ -470,6 +471,107 @@ void Polygon::IntersectingPoints(
 //  // Go through all points and choices among points. 
 //  ResolveIntersectingPointsFrom(intersections, outside_point, points);
 //}
+
+bool Polygon::Overlaps(const Rectangle &rectangle) const {
+  Rectangle bounding_box = GetBoundingBox();
+  // If there rectangle doesn't overlap the Polygon's bounding box there is no
+  // chance of an intersection and we can quit early:
+  if (!rectangle.Overlaps(bounding_box)) {
+    return false;
+  }
+
+  // Now the possibility of an overlap is open.
+  //
+  // There are two special cases. The first is if the polygon is contained
+  // entirely within the rectangle:
+  if (rectangle.lower_left().x() < bounding_box.lower_left().x() &&
+      rectangle.lower_left().y() < bounding_box.lower_left().y() &&
+      rectangle.upper_right().x() > bounding_box.upper_right().x() &&
+      rectangle.upper_right().y() > bounding_box.upper_right().y()) {
+    return true;
+  }
+
+  // The regular case is is that some line on the rectangle intersects some line
+  // on the polygon:
+  std::vector<Line> rectangle_perimeter;
+  rectangle.GetBoundaryLines(&rectangle_perimeter);
+
+  for (size_t i = 0; i < vertices_.size(); ++i) {
+    // Check for intersects of any of the lines of the polygon with any of the
+    // lines of the Rectangle.
+    Line boundary_line = Line(
+        vertices_[i], vertices_[(i + 1) % vertices_.size()]);
+    for (Line &rectangle_perimeter : rectangle_perimeter) {
+      bool incident_unused;
+      Point point_unused;
+      if (rectangle_perimeter.IntersectsInMutualBounds(
+              boundary_line,
+              &incident_unused,
+              &point_unused)) {
+        return true;
+      }
+    }
+  }
+
+  // The second special case is if the rectangle is contained entirely within
+  // the polygon. At this point we know that the bounding box of the polygon and
+  // the rectangle overlap, and that none of their lines intersect, but we need
+  // to check if the rectangle is entirely nestled in some crevice not contained
+  // by the polygon proper. For example:
+  //
+  //  rectangle in bounding box of polygon but not contained by it:
+  //   |
+  //   v
+  //  +--+       +---+
+  //  |  |       |   |  <- polygon
+  //  +--+       |   |
+  //             |   |
+  //  +----------+   |
+  //  |              |
+  //  +--------------+
+
+  // Intersect the infinite line defined by the diagonal with the polygon. Since
+  // the polygon is closed we should always get pairs of intersections denoting
+  // entry/exit into the polygon. Sort these along the line from some point, and
+  // then iterate over them until we get to the points on the rectangle we're
+  // testing. If in the space between the two points of the rectangle we ever
+  // enter the polygon, we have a colision.
+  std::vector<Line> test_lines = {
+      Line(rectangle.lower_left(), rectangle.upper_right()),  // diagonal
+      Line(rectangle.UpperLeft(), rectangle.LowerRight())     // other diagonal
+  };
+
+  for (const auto &test : test_lines) {
+    // The projection back onto diagonal is measurable as a scalar coefficient
+    // multiplied by the original vector diagonal defines. As shorthand we just
+    // call these the 'coefficients'.
+    double start_coefficient = 0.0;  // Distance from start to start along the
+                                     // line is always zero.
+    double end_coefficient = test.ProjectionCoefficient(test.end());
+
+    std::vector<PointPair> points;
+    IntersectingPoints(test, &points);
+
+    for (const auto &point_pair : points) {
+      const Point &entry = point_pair.first;
+      const Point &exit = point_pair.second;
+
+      double entry_coefficient = test.ProjectionCoefficient(entry);
+      double exit_coefficient = test.ProjectionCoefficient(exit);
+
+      if (entry_coefficient <= start_coefficient &&
+              exit_coefficient >= start_coefficient) {
+        return true;
+      }
+      if (entry_coefficient <= end_coefficient &&
+              exit_coefficient >= end_coefficient) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 void Polygon::MirrorY() {
   for (Point &point : vertices_) {

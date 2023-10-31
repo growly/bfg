@@ -47,6 +47,9 @@ int64_t modulo(int64_t a, int64_t b) {
 void RoutingGridGeometry::ComputeForLayers(
     const RoutingLayerInfo &horizontal_info,
     const RoutingLayerInfo &vertical_info) {
+  horizontal_layer_ = horizontal_info.layer;
+  vertical_layer_ = vertical_info.layer;
+
   // Determine the area over which the grid is valid.
   geometry::Rectangle overlap =
       horizontal_info.area.OverlapWith(vertical_info.area);
@@ -69,7 +72,7 @@ void RoutingGridGeometry::ComputeForLayers(
   x_min_ = overlap.lower_left().x();
   x_start_ = x_min_ + (x_pitch_ - modulo(x_min_ - x_offset_, x_pitch_));
   x_max_ = overlap.upper_right().x();
-  max_column_index_ = (x_max_ - x_min_) / x_pitch_;
+  max_column_index_ = (x_max_ - x_start_) / x_pitch_;
   
   y_offset_ = horizontal_info.offset;
   y_pitch_ = horizontal_info.pitch;
@@ -78,12 +81,26 @@ void RoutingGridGeometry::ComputeForLayers(
   y_min_ = overlap.lower_left().y();
   y_start_ = y_min_ + (y_pitch_ - modulo(y_min_ - y_offset_, y_pitch_));
   y_max_ = overlap.upper_right().y();
-  max_row_index_ = (y_max_ - y_min_) / y_pitch_;
+  max_row_index_ = (y_max_ - y_start_) / y_pitch_;
+
+  vertices_by_grid_position_ = std::vector<std::vector<RoutingVertex*>>(
+      max_column_index_ + 1, std::vector<RoutingVertex*>(
+          max_row_index_ + 1, nullptr));
 }
 
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Point &point,
-    std::set<std::pair<size_t, size_t>> *vertices) const {
+    std::set<std::pair<size_t, size_t>> *vertices,
+    int64_t padding) const {
+  if (padding != 0) {
+    int64_t keep_out_width = 2 * padding;
+    geometry::Rectangle keep_out = geometry::Rectangle(
+        point - geometry::Point(padding, padding),
+        keep_out_width,
+        keep_out_width);
+    return EnvelopingVertexIndices(keep_out, vertices, 0);
+  }
+
   // If we continued the grid infinitely in the cartesian plane, all points
   // would land in a rectangle defined by four grid points closest to the point.
   // The lower left, upper left, lower right, upper right. When the grid isn't
@@ -97,14 +114,13 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
 
   // Find the bounding corner positions of an infinite grid:
   int64_t i_lower = std::floor(static_cast<double>(
-      point.x() - x_offset_) / static_cast<double>(x_pitch_));
-  int64_t i_upper = std::ceil(static_cast<double>(
-      point.x() - x_offset_) / static_cast<double>(x_pitch_));
+      point.x() - x_start_) / static_cast<double>(x_pitch_));
   int64_t j_lower = std::floor(static_cast<double>(
-      point.y() - y_offset_) / static_cast<double>(y_pitch_));
-
+      point.y() - y_start_) / static_cast<double>(y_pitch_));
+  int64_t i_upper = std::ceil(static_cast<double>(
+      point.x() - x_start_) / static_cast<double>(x_pitch_));
   int64_t j_upper = std::ceil(static_cast<double>(
-      point.y() - y_offset_) / static_cast<double>(y_pitch_));
+      point.y() - y_start_) / static_cast<double>(y_pitch_));
 
   // Now impose restriction of real bounded grid with indices [0, max]:
   i_lower = std::max(std::min(i_lower, max_column_index_), 0L);
@@ -134,18 +150,22 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
 
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Rectangle &rectangle,
-    std::set<std::pair<size_t, size_t>> *vertices) const {
-  // Find the bounding corner positions of an infinite grid:
-  int64_t i_lower = std::floor(static_cast<double>(
-      rectangle.lower_left().x() - x_offset_) / static_cast<double>(x_pitch_));
-  int64_t i_upper = std::ceil(static_cast<double>(
-      rectangle.upper_right().x() - x_offset_) / static_cast<double>(x_pitch_));
+    std::set<std::pair<size_t, size_t>> *vertices,
+    int64_t padding) const {
+  // Find the bounding corner indices of an infinite grid:
+  int64_t i_lower = std::floor(
+      static_cast<double>(rectangle.lower_left().x() - padding - x_start_) /
+      static_cast<double>(x_pitch_));
+  int64_t j_lower = std::floor(
+      static_cast<double>(rectangle.lower_left().y() - padding - y_start_) /
+      static_cast<double>(y_pitch_));
 
-  int64_t j_lower = std::floor(static_cast<double>(
-      rectangle.lower_left().y() - y_offset_) / static_cast<double>(y_pitch_));
-
-  int64_t j_upper = std::ceil(static_cast<double>(
-      rectangle.upper_right().y() - y_offset_) / static_cast<double>(y_pitch_));
+  int64_t i_upper = std::ceil(
+      static_cast<double>(rectangle.upper_right().x() + padding - x_start_) /
+      static_cast<double>(x_pitch_));
+  int64_t j_upper = std::ceil(
+      static_cast<double>(rectangle.upper_right().y() + padding - y_start_) /
+      static_cast<double>(y_pitch_));
 
   // Now impose restriction of real bounded grid with indices [0, max]:
   i_lower = std::max(std::min(i_lower, max_column_index_), 0L);
@@ -166,13 +186,46 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
 
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Polygon &polygon,
-    std::set<std::pair<size_t, size_t>> *vertices) const {
+    std::set<std::pair<size_t, size_t>> *vertices,
+    int64_t padding) const {
   // There is a smart way to do this, and then there is this way.
-  return EnvelopingVertexIndices(polygon.GetBoundingBox(), vertices);
+  return EnvelopingVertexIndices(polygon.GetBoundingBox(), vertices, padding);
 
   // The smart way is to do a sort of raster scan along all of the rows which
   // the polygon's bounding box spans. That will at least remove areas inside
   // large concave parts of the polygon.
+}
+
+void RoutingGridGeometry::VerticesAt(
+    const std::set<std::pair<size_t, size_t>> &indices,
+    std::set<RoutingVertex*> *vertices) const {
+  for (const auto index_pair : indices) {
+    RoutingVertex *vertex = VertexAt(index_pair.first, index_pair.second);
+    if (!vertex)
+      continue;
+    vertices->insert(vertex);
+  }
+}
+
+void RoutingGridGeometry::AssignVertexAt(
+    size_t column_index, size_t row_index, RoutingVertex *vertex) {
+  LOG_IF(FATAL, column_index > max_column_index_)
+    << "column_index (" << column_index << ") out of bounds (max: "
+    << max_column_index_ << ")";
+  LOG_IF(FATAL, row_index > max_row_index_)
+    << "row_index (" << row_index << ") out of bounds (max: "
+    << max_row_index_ << ")";
+  vertices_by_grid_position_[column_index][row_index] = vertex;
+}
+
+RoutingVertex *RoutingGridGeometry::VertexAt(
+    size_t column_index, size_t row_index) const {
+  if (column_index > max_column_index_ ||
+      row_index > max_row_index_) {
+    return nullptr;
+  }
+  RoutingVertex *vertex = vertices_by_grid_position_[column_index][row_index];
+  return vertex;
 }
 
 }   // namespace bfg

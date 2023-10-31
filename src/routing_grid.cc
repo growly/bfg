@@ -280,7 +280,7 @@ void RoutingGrid::ConnectLayers(
 
   // Generate tracks to hold edges and vertices in each direction.
   for (int64_t x = grid_geometry.x_start();
-       x < grid_geometry.x_max();
+       x <= grid_geometry.x_max();
        x += grid_geometry.x_pitch()) {
     RoutingTrack *track = new RoutingTrack(
         vertical_info.layer, RoutingTrackDirection::kTrackVertical, x);
@@ -291,7 +291,7 @@ void RoutingGrid::ConnectLayers(
   }
 
   for (int64_t y = grid_geometry.y_start();
-       y < grid_geometry.y_max();
+       y <= grid_geometry.y_max();
        y += grid_geometry.y_pitch()) {
     RoutingTrack *track = new RoutingTrack(
         horizontal_info.layer,
@@ -302,12 +302,8 @@ void RoutingGrid::ConnectLayers(
     num_y++;
   }
 
-  vertices_by_grid_position[first] =
-      std::vector<std::vector<RoutingVertex*>>(
-          num_x, std::vector<RoutingVertex*>(num_y, nullptr));
-
   std::vector<std::vector<RoutingVertex*>> &vertices =
-      vertices_by_grid_position[first];
+      grid_geometry.vertices_by_grid_position();
 
   // Generate a vertex at the intersection of every horizontal and vertical
   // track.
@@ -381,8 +377,10 @@ void RoutingGrid::ConnectLayers(
     i++;
   }
 
-  // Take a copy for the references from the 2nd layer.
-  vertices_by_grid_position[second] = vertices;
+  // This adds a copy of the object to our class's bookkeeping. It's kinda
+  // annoying. I'd rather create it on the fly to avoid the copy.
+  // TODO(aryap): Avoid this copy.
+  AddRoutingGridGeometry(first, second, grid_geometry);
 
   size_t num_edges = 0;
   for (auto entry : tracks_by_layer_)
@@ -892,7 +890,8 @@ void RoutingGrid::AddBlockages(
 
 void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
                               int64_t padding) {
-  auto it = tracks_by_layer_.find(rectangle.layer());
+  const geometry::Layer &layer = rectangle.layer();
+  auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())
     return;
   for (RoutingTrack *track : it->second) {
@@ -901,15 +900,52 @@ void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
 
   // Find any possibly-blocked vertices and make them unavailable:
   // TODO(aryap): This.
+  std::vector<RoutingGridGeometry*> grid_geometries;
+  FindRoutingGridGeometriesForLayer(layer, &grid_geometries);
+  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
+    std::set<RoutingVertex*> vertices;
+    grid_geometry->EnvelopingVertices(rectangle, &vertices);
+    for (RoutingVertex *vertex : vertices) {
+      if (ViaWouldIntersect(*vertex,
+                            grid_geometry->horizontal_layer(),
+                            grid_geometry->vertical_layer(),
+                            rectangle,
+                            padding)) {
+        vertex->set_available(false);
+        LOG(INFO) << "blockage: " << rectangle << " would block "
+                  << vertex;
+      }
+    }
+  }
 }
 
 void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
                               int64_t padding) {
-  auto it = tracks_by_layer_.find(polygon.layer());
+  const geometry::Layer &layer = polygon.layer();
+  auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())
     return;
   for (RoutingTrack *track : it->second) {
     track->AddBlockage(polygon, padding);
+  }
+
+  std::vector<RoutingGridGeometry*> grid_geometries;
+  FindRoutingGridGeometriesForLayer(layer, &grid_geometries);
+
+  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
+    std::set<RoutingVertex*> vertices;
+    grid_geometry->EnvelopingVertices(polygon, &vertices);
+    for (RoutingVertex *vertex : vertices) {
+      if (ViaWouldIntersect(*vertex,
+                            grid_geometry->horizontal_layer(),
+                            grid_geometry->vertical_layer(),
+                            polygon,
+                            padding)) {
+        vertex->set_available(false);
+        LOG(INFO) << "blockage: " << polygon << " would block "
+                  << vertex;
+      }
+    }
   }
 }
 
@@ -996,7 +1032,8 @@ const RoutingLayerInfo &RoutingGrid::GetRoutingLayerInfo(
   return it->second;
 }
 
-void RoutingGrid::AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer) {
+void RoutingGrid::AddTrackToLayer(
+    RoutingTrack *track, const geometry::Layer &layer) {
   // Create the first vector of tracks.
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end()) {
@@ -1020,6 +1057,54 @@ Layout *RoutingGrid::GenerateLayout() const {
   std::unique_ptr<bfg::Layout> grid_layout(
       inflator.Inflate(*this, *grid_lines));
   return grid_layout.release();
+}
+
+void RoutingGrid::AddRoutingGridGeometry(
+    const geometry::Layer &lhs, const geometry::Layer &rhs,
+    const RoutingGridGeometry &grid_geometry) {
+  std::pair<const Layer&, const Layer&> ordered_layers =
+      geometry::OrderFirstAndSecondLayers(lhs, rhs);
+  const Layer &first = ordered_layers.first;
+  const Layer &second = ordered_layers.second;
+  LOG_IF(FATAL,
+      grid_geometry_by_layers_.find(first) !=
+          grid_geometry_by_layers_.end() &&
+      grid_geometry_by_layers_[first].find(second) !=
+          grid_geometry_by_layers_[first].end())
+      << "Attempt to add RoutingGridGeometry for layers " << first << " and "
+      << second << " again.";
+  grid_geometry_by_layers_[first][second] = grid_geometry;
+}
+
+std::optional<std::reference_wrapper<RoutingGridGeometry>>
+    RoutingGrid::GetRoutingGridGeometry(
+        const geometry::Layer &lhs, const geometry::Layer &rhs) {
+  std::pair<const Layer&, const Layer&> ordered_layers =
+      geometry::OrderFirstAndSecondLayers(lhs, rhs);
+  const Layer &first = ordered_layers.first;
+  const Layer &second = ordered_layers.second;
+  auto first_it = grid_geometry_by_layers_.find(first);
+  if (first_it == grid_geometry_by_layers_.end())
+    return std::nullopt;
+  std::map<Layer, RoutingGridGeometry> &inner_map = first_it->second;
+  auto second_it = inner_map.find(second);
+  if (second_it == inner_map.end())
+    return std::nullopt;
+  return second_it->second;
+}
+
+void RoutingGrid::FindRoutingGridGeometriesForLayer(
+    const geometry::Layer layer,
+    std::vector<RoutingGridGeometry*> *grid_geometries) {
+  for (auto &entry : grid_geometry_by_layers_) {
+    const Layer &first = entry.first;
+    for (auto &inner : entry.second) {
+      const Layer &second = inner.first;
+      if (first != layer && second != layer)
+        continue;
+      grid_geometries->push_back(&inner.second);
+    }
+  }
 }
 
 } // namespace bfg

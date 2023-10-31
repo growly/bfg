@@ -139,11 +139,47 @@ class RoutingGrid {
     RoutingVertex *vertex;
   };
 
+  // TODO(aryap): It feels awkward putting these geometric functions here...?
+  // Maybe move them into RoutingVertex? That requires giving RoutingVertex
+  // awareness of geometry, which is like a loss of innocence y'know?
+  template<typename T>
+  bool ViaWouldIntersect(const RoutingVertex &vertex,
+                         const geometry::Layer &first_layer,
+                         const geometry::Layer &second_layer,
+                         const T &obstruction,
+                         int64_t padding = 0) const {
+    // Get the applicable via info for via sizing and encapsulation values:
+    const RoutingViaInfo &routing_via_info = GetRoutingViaInfoOrDie(
+        first_layer, second_layer);
+    int64_t via_width = std::max(
+        routing_via_info.width, routing_via_info.height) + 2 * std::max(
+        routing_via_info.overhang_length, routing_via_info.overhang_width) +
+        2 * padding;
+    geometry::Point lower_left = vertex.centre() - geometry::Point(
+        via_width / 2, via_width / 2);
+    geometry::Rectangle keep_out = geometry::Rectangle(
+        lower_left, via_width, via_width);
+    return obstruction.Overlaps(keep_out);
+  }
+
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
 
   RoutingVertex *GenerateGridVertexForPoint(
       const geometry::Point &point, const geometry::Layer &layer);
+
+  void AddRoutingGridGeometry(
+      const geometry::Layer &lhs, const geometry::Layer &rhs,
+      const RoutingGridGeometry &grid_geometry);
+
+  std::optional<std::reference_wrapper<RoutingGridGeometry>>
+      GetRoutingGridGeometry(
+          const geometry::Layer &lhs, const geometry::Layer &rhs);
+
+  // Hands out pointers to RoutingGridGeometries that involve the given layer.
+  void FindRoutingGridGeometriesForLayer(
+      const geometry::Layer layer,
+      std::vector<RoutingGridGeometry*> *grid_geometries);
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
@@ -173,10 +209,6 @@ class RoutingGrid {
   // All Owned vertices.
   std::vector<RoutingVertex*> vertices_;
 
-  // All the vertices arranged into grid position, per layer.
-  std::map<geometry::Layer, std::vector<std::vector<RoutingVertex*>>>
-      vertices_by_grid_position;
-
   // All routing tracks (we own these).
   std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;
 
@@ -184,7 +216,10 @@ class RoutingGrid {
   std::map<geometry::Layer,
            std::vector<RoutingVertex*>> available_vertices_by_layer_;
 
-  // TODO(aryap): Store RoutingGridGeometries
+  // The lesser layer is always indexed first to save space; make sure to order
+  // layer pairs before doing any lookups (same as with via_infos_).
+  std::map<geometry::Layer, std::map<geometry::Layer, RoutingGridGeometry>>
+      grid_geometry_by_layers_;
 
   const PhysicalPropertiesDatabase &physical_db_;
 };

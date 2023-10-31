@@ -32,7 +32,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
     .area = Rectangle({0, 0}, {200, 200}),
     .wire_width = 1,
     .offset = 10,
-    .direction = RoutingTrackDirection::kTrackHorizontal,
+    .direction = RoutingTrackDirection::kTrackVertical,
     .pitch = 10,
     .via_width = 10
   };
@@ -95,7 +95,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
     .area = Rectangle({0, 0}, {200, 200}),
     .wire_width = 1,
     .offset = 10,
-    .direction = RoutingTrackDirection::kTrackHorizontal,
+    .direction = RoutingTrackDirection::kTrackVertical,
     .pitch = 10,
     .via_width = 10
   };
@@ -137,6 +137,42 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
   nearest_vertices.clear();
 }
 
+TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
+  RoutingLayerInfo horizontal = RoutingLayerInfo {
+    .layer = 244,
+    .area = Rectangle({0, -600}, {39840, 11600}),
+    .wire_width = 140,
+    .offset = 50,
+    .direction = RoutingTrackDirection::kTrackHorizontal,
+    .pitch = 340
+  };
+
+  RoutingLayerInfo vertical = RoutingLayerInfo {
+    .layer = 220,
+    .area = Rectangle({0, -600}, {39840, 11600}),
+    .wire_width = 140,
+    .offset = 50,
+    .direction = RoutingTrackDirection::kTrackVertical,
+    .pitch = 340
+  };
+
+  RoutingGridGeometry grid_geometry;
+  grid_geometry.ComputeForLayers(horizontal, vertical);
+
+  std::set<std::pair<size_t, size_t>> nearest_vertices;
+
+  std::set<std::pair<size_t, size_t>> expected;
+  for (size_t i = 0; i <= 18; ++i) {
+    for (size_t j = 32; j <= 34; ++j) {
+      expected.insert({i, j});
+    }
+  }
+
+  grid_geometry.EnvelopingVertexIndices(
+      Rectangle({0, 10640}, {6000, 11120}), &nearest_vertices);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  nearest_vertices.clear();
+}
 
 }  // namespace
 }  // namespace geometry

@@ -30,6 +30,15 @@ const Rectangle Rectangle::OverlapWith(const Rectangle &other) const {
   return Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
 
+void Rectangle::GetBoundaryLines(std::vector<Line> *lines) const {
+  Point upper_left = UpperLeft();
+  Point lower_right = LowerRight();
+  lines->emplace_back(lower_left_, upper_left);
+  lines->emplace_back(upper_left, upper_right_);
+  lines->emplace_back(upper_right_, lower_right);
+  lines->emplace_back(lower_right, lower_left_);
+}
+
 void Rectangle::MirrorY() {
   Point new_upper_right(-lower_left_.x(), upper_right_.y());
   Point new_lower_left(-upper_right_.x(), lower_left_.y());

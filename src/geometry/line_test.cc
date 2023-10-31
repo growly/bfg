@@ -1,11 +1,14 @@
 #include <cmath>
 
+#include <optional>
+
 #include <gtest/gtest.h>
 
 #include <glog/logging.h>
 
 #include "line.h"
 #include "point.h"
+#include "rectangle.h"
 
 namespace bfg {
 namespace geometry {
@@ -143,6 +146,39 @@ TEST(LineTest, Intersect) {
   Line b = Line({0, 0}, {1, 1});
 
   // TODO(aryap): Complete.
+}
+
+TEST(LineTest, ProjectionCoefficient) {
+  Line projectee = Line({0, 1}, {2, 1});
+
+  EXPECT_EQ(0.5, projectee.ProjectionCoefficient({1, 1}));
+  EXPECT_EQ(-0.5, projectee.ProjectionCoefficient({-1, -1}));
+
+  // Move the same line to {123, 123}.
+  projectee = Line({123, 124}, {125, 124});
+  EXPECT_EQ(0.5, projectee.ProjectionCoefficient({124, 123}));
+  EXPECT_EQ(-0.5, projectee.ProjectionCoefficient({122, 120}));
+  EXPECT_EQ(-2.0, projectee.ProjectionCoefficient({119, 6}));
+}
+
+TEST(LineTest, ExtendToNearestIntersection) {
+  geometry::Rectangle rectangle = Rectangle({0, 0}, {20, 20});
+
+  std::vector<Line> boundary_lines;
+  rectangle.GetBoundaryLines(&boundary_lines);
+
+  for (const auto &line: boundary_lines) {
+    LOG(INFO) << line;
+  }
+
+  Line test = Line({3, 3}, {4, 4});
+  
+  std::optional<Line> extension = test.ExtendToNearestIntersection(
+      boundary_lines);
+
+  EXPECT_TRUE(extension);
+  EXPECT_EQ(Point({4, 4}), extension.value().start());
+  EXPECT_EQ(Point({20, 20}), extension.value().end());
 }
 
 }  // namespace

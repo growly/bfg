@@ -10,6 +10,7 @@
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 #include "routing_layer_info.h"
+#include "routing_vertex.h"
 
 namespace bfg {
 
@@ -21,17 +22,35 @@ class RoutingGridGeometry {
       const RoutingLayerInfo &horizontal_info,
       const RoutingLayerInfo &vertical_info);
 
+  template<typename T>
+  void EnvelopingVertices(
+      const T &shape,
+      std::set<RoutingVertex*> *vertices,
+      int64_t padding = 0) const {
+    std::set<std::pair<size_t, size_t>> indices;
+    EnvelopingVertexIndices(shape, &indices, padding);
+    VerticesAt(indices, vertices);
+  }
+
   void EnvelopingVertexIndices(
       const geometry::Point &point,
-      std::set<std::pair<size_t, size_t>> *vertices) const;
+      std::set<std::pair<size_t, size_t>> *vertices,
+      int64_t padding = 0) const;
 
   void EnvelopingVertexIndices(
       const geometry::Rectangle &rectangle,
-      std::set<std::pair<size_t, size_t>> *vertices) const;
+      std::set<std::pair<size_t, size_t>> *vertices,
+      int64_t padding = 0) const;
 
   void EnvelopingVertexIndices(
       const geometry::Polygon &polygon,
-      std::set<std::pair<size_t, size_t>> *vertices) const;
+      std::set<std::pair<size_t, size_t>> *vertices,
+      int64_t padding = 0) const;
+
+  RoutingVertex* VertexAt(size_t column_index, size_t row_index) const;
+
+  void AssignVertexAt(
+      size_t column_index, size_t row_index, RoutingVertex *vertex);
 
   int64_t x_offset() const {
     return x_offset_;
@@ -94,8 +113,33 @@ class RoutingGridGeometry {
   void set_y_start(int64_t y_start) {
     y_start_ = y_start;
   }
+  int64_t horizontal_layer() const {
+    return horizontal_layer_;
+  }
+  void set_horizontal_layer(int64_t horizontal_layer) {
+    horizontal_layer_ = horizontal_layer;
+  }
+  int64_t vertical_layer() const {
+    return vertical_layer_;
+  }
+  void set_vertical_layer(int64_t vertical_layer) {
+    vertical_layer_ = vertical_layer;
+  }
+
+  const std::vector<std::vector<RoutingVertex*>> &vertices_by_grid_position()
+      const {
+    return vertices_by_grid_position_;
+  }
+
+  std::vector<std::vector<RoutingVertex*>> &vertices_by_grid_position() {
+    return vertices_by_grid_position_;
+  }
 
  private:
+  void VerticesAt(
+      const std::set<std::pair<size_t, size_t>> &indices,
+      std::set<RoutingVertex*> *vertices) const; 
+
   int64_t x_offset_;
   int64_t x_pitch_;
   int64_t x_min_;
@@ -114,6 +158,10 @@ class RoutingGridGeometry {
 
   geometry::Layer horizontal_layer_;
   geometry::Layer vertical_layer_;
+
+  // All the vertices arranged into grid position, per layer. This class does
+  // not own the RoutingVertex*, they always belong to a RoutingGrid.
+  std::vector<std::vector<RoutingVertex*>> vertices_by_grid_position_;
 };
 
 }   // namespace bfg

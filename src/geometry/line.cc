@@ -1,9 +1,11 @@
+#include <optional>
 #include <glog/logging.h>
 #include <cmath>
 #include <sstream>
 
 #include "line.h"
 #include "point.h"
+#include "vector.h"
 
 namespace bfg {
 namespace geometry {
@@ -95,6 +97,119 @@ bool Line::Intersects(const Point &point) const {
   return y_error < 1.0;
 }
 
+bool Line::IntersectsWithAny(
+    const std::vector<Line> &lines,
+    IntersectionInfo *any_intersection) const {
+  for (const Line &line : lines) {
+    if (Line::Intersect(*this,
+                        line,
+                        &any_intersection->incident,
+                        &any_intersection->point)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Line::IntersectsWithAll(
+    const std::vector<Line> &lines,
+    std::vector<IntersectionInfo> *intersections) const {
+  for (const Line &line : lines) {
+    IntersectionInfo info;
+    if (Intersects(line, &info)) {
+      intersections->push_back(info);
+    }
+  }
+}
+
+// Projection of some point on to the line. Let vector v be the the vector from
+// the start of this line to the given point, and the vector s be the vector
+// from the start of *this line to the end. Then
+//
+//      _ _      _   _   _   _     _
+// proj_s(v) = [(v . s)/(s . s)] * s
+//
+//                _   _   _   _  
+// And we return (v . s)/(s . s).
+//
+// If the project is negative, the vector faces in the opposite direction of
+// the original.
+double Line::ProjectionCoefficient(const Point &point) const {
+  int64_t v_dot_s = DotProduct(Line(start_, point));  // *this dot (start,
+                                                      // point)
+  int64_t s_dot_s = DotProduct(*this);                // *this dot *this
+  double coeff = static_cast<double>(v_dot_s) / static_cast<double>(s_dot_s);
+  LOG(INFO) << "coefficient of vector s in projection is: " << coeff;
+  return coeff;
+}
+
+std::optional<Line> Line::ExtendToNearestIntersection(
+    const std::vector<Line> &intersectors) const {
+  std::vector<IntersectionInfo> intersections;
+  IntersectsWithAll(intersectors, &intersections);
+  if (intersections.empty()) {
+    return std::nullopt;
+  }
+
+  // Choose closest intersection to the start but not before it, assuming that
+  // since none of the intersections occur within the line, this is the closest
+  // intersection to the end (saves us having to measure distance to the end
+  // explicltly).
+  const Point *point = nullptr;
+  double projection_coefficient = 0;
+  for (const IntersectionInfo &info : intersections) {
+    double candidate_coefficient = ProjectionCoefficient(info.point);
+    if (candidate_coefficient < 0.0) {
+      // Skip projection that go behind start_ on *this line. We want
+      // intersections that appear out 
+      continue;
+    }
+    LOG_IF(WARNING, candidate_coefficient < 1.0)
+        << "Lines seem to intersect current line rather than need extensions";
+    if (!point || candidate_coefficient < projection_coefficient) {
+      point = &info.point;
+      projection_coefficient = candidate_coefficient;
+    }
+  }
+
+  return Line(end_, *point);
+}
+
+//   (lines defining boundary)
+//  +------------------------------7------------------------+
+//  |                             /                         |
+//  |                            / (extension to boundary)  |
+//  |                           L                           |
+//  |                    (end) 7                            |
+//  |                         /                             |
+//  |                        /                              |
+//  |                       /                               |
+//  |                      /                                |
+//  |                     / (line)                          |
+//  |                    /                                  |
+//  |                   /                                   |
+//  |          (start) +                                    |
+//  |                 7                                     |
+//  |                /                                      |
+//  |               / (other extension to boundary)         |
+//  |              /                                        |
+//  +-------------L-----------------------------------------+
+//
+// Assumes that the given line doesn't actually intersect any of the boundary
+// lines. If it does the picture would be quite different.
+void Line::GetExtensionsToBoundaries(
+    const std::vector<Line> &boundaries,
+    std::vector<Line> *extensions) const {
+  Line reversed = Reversed();
+  std::vector<const Line*> forward_and_backward = {this, &reversed};
+  for (const Line *line : forward_and_backward) {
+    std::optional<Line> first = line->ExtendToNearestIntersection(boundaries);
+    if (first) {
+      extensions->push_back(first.value());
+    }
+  }
+}
+
 bool Line::AreSameInfiniteLine(const Line &lhs, const Line &rhs) {
   if (lhs.IsVertical() && rhs.IsVertical()) {
     // Both lines are vertical. Check if they are at the same x:
@@ -180,16 +295,39 @@ bool Line::IntersectsInMutualBounds(
           other, incident, &ignored, &intersection_in_our_bounds))
     return false;
 
+  // TODO(aryap): What about anti-incident? Put that in IntersectionInfo and use
+  // it here.
   if (*incident) {
     // Check if the other line overlaps this line.
 
-    // TODO(aryap): I wrote this down a while ago but I don't remember my
-    // intentions with it:
+    // Convert all points to scalar distances along the mutual line:
     //
-    // Find the projection of each point onto the shared line.
-    //      _ _      _   _   _   _     _
-    // proj_s(v) = [(v . s)/(s . s)] * s
-    LOG(FATAL) << "Not implemented";
+    //                    start
+    // start --------->     -----------> end
+    //               end
+    //       |
+    //       v
+    //       0
+    //       |--------|-----|----------|---->
+
+    double start = 0.0;
+    double end = ProjectionCoefficient(end_);
+    double other_start = ProjectionCoefficient(other.start());
+    double other_end = ProjectionCoefficient(other.end());
+
+    // TODO(aryap): I swear I've written this somewhere else. Refactor.
+    if (other_start > end || start > other_end) {
+      // No intersection.
+      return false;
+    } else if (start >= other_start) {
+      *point = start_;
+      return true;
+    } else if (other_start >= start) {
+      *point = other.start();
+      return true;
+    }
+    LOG(FATAL) << "Did not account for overlap case where this: " << *this
+               << " other: " << other;
   }
 
   if (!other.IntersectsInBounds(intersection_in_our_bounds))
@@ -322,9 +460,10 @@ double Line::AngleToLine(const Line &other) const {
 
 int64_t Line::DotProduct(const Line &with) const {
   // Turn the lines into vectors by subtracting the starting point from the end
-  // point:
-  Point a = end_ - start_;
-  Point b = with.end() - with.start();
+  // point. Call them "Vectors" to make it clear what we're doing, even though
+  // Vectors are just Points (i.e. Points are Vectors from the origin (0, 0)).
+  Vector a = end_ - start_;
+  Vector b = with.end() - with.start();
   return a.x() * b.x() + a.y() * b.y();
 }
 

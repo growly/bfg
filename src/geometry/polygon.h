@@ -41,6 +41,8 @@ class Polygon : public Shape {
     vertices_.pop_back();
   }
 
+  bool Overlaps(const Rectangle &rectangle) const;
+
   void IntersectingPoints(
       const Line &line,
       std::vector<std::pair<Point, Point>> *points) const;

@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_LINE_H_
 #define GEOMETRY_LINE_H_
 
+#include <optional>
 #include <utility>
 
 #include "point.h"
@@ -15,6 +16,13 @@ namespace geometry {
 // line connecting only two points?
 class Line {
  public:
+  // TODO(aryap): Use this everywhere?
+  struct IntersectionInfo {
+    bool does_intersect;
+    bool incident;
+    Point point;
+  };
+
   Line() = default;
   Line(const Point &start, const Point &end)
       : start_(start), end_(end) {}
@@ -34,6 +42,28 @@ class Line {
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
 
   bool Intersects(const Point &point) const;
+
+  bool IntersectsWithAny(
+      const std::vector<Line> &lines,
+      IntersectionInfo *any_intersection) const;
+
+  void IntersectsWithAll(
+      const std::vector<Line> &lines,
+      std::vector<IntersectionInfo> *intersections) const;
+
+  std::optional<Line> ExtendToNearestIntersection(
+      const std::vector<Line> &intersectors) const;
+
+  // TODO(aryap): I think this is now pointless?
+  void GetExtensionsToBoundaries(
+      const std::vector<Line> &boundaries,
+      std::vector<Line> *extensions) const;
+
+  bool Intersects(const Line &other, IntersectionInfo *intersection) const {
+    intersection->does_intersect = Intersect(
+        *this, other, &intersection->incident, &intersection->point);
+    return intersection->does_intersect;
+  }
 
   bool Intersects(const Line &other, bool *incident, Point *point) const {
     return Intersect(*this, other, incident, point);
@@ -59,6 +89,8 @@ class Line {
 
   double Length() const;
 
+  double ProjectionCoefficient(const Point &point) const;
+
   Point PointOnLineAtDistance(const Point &start, double distance) const;
 
   void Shift(int64_t dx, int64_t dy) {
@@ -76,6 +108,12 @@ class Line {
 
   // Reverse the direction of this line.
   void Reverse() { std::swap(start_, end_); }
+
+  Line Reversed() const {
+    Line copy = *this;
+    copy.Reverse();
+    return copy;
+  }
 
   // If 'm' is not a number in y = m*x + c;
   bool IsVertical() const;
