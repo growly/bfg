@@ -37,8 +37,7 @@ class Sky130Buf: public Atom {
 
   Sky130Buf(const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
-        parameters_(parameters),
-        internal_units_per_nm_(1.0) {}
+        parameters_(parameters) {}
 
   // Caller takes ownership!
   bfg::Cell *Generate() override;
@@ -48,8 +47,6 @@ class Sky130Buf: public Atom {
   bfg::Circuit *GenerateCircuit();
 
   Parameters parameters_;
-
-  double internal_units_per_nm_;
 };
 
 }  // namespace atoms

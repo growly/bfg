@@ -111,9 +111,9 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(design_db_->physical_db()));
 
   uint64_t width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.width_nm);
+      design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
   uint64_t height =
-      internal_units_per_nm_ * static_cast<double>(parameters_.height_nm);
+      design_db_->physical_db().ToInternalUnits(parameters_.height_nm);
 
   // areaid.standardc 81/4
   layout->SetActiveLayerByName("areaid.standardc");
@@ -242,22 +242,22 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   layout->SetActiveLayerByName("diff.drawing");
   // X0
   uint64_t x0_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.nfet_0_width_nm);
+      design_db_->physical_db().ToInternalUnits(parameters_.nfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 235),
                                  Point(135 + 410 + 145, 235 + x0_width)));
   // X2
   uint64_t x2_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.nfet_1_width_nm);
+      design_db_->physical_db().ToInternalUnits(parameters_.nfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 235),
                                  Point(1245, 235 + x2_width)));
   // X1
   uint64_t x1_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.pfet_0_width_nm);
+      design_db_->physical_db().ToInternalUnits(parameters_.pfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 1695),
                                  Point(135 + 410 + 145, 1695 + x1_width)));
   // X3
   uint64_t x3_width =
-      internal_units_per_nm_ * static_cast<double>(parameters_.pfet_1_width_nm);
+      design_db_->physical_db().ToInternalUnits(parameters_.pfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 1695),
                                  Point(1245, 1695 + x3_width)));
 
