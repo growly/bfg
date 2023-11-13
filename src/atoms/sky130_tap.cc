@@ -269,7 +269,9 @@ bfg::Layout *Sky130Tap::GenerateLayout() {
   };
   Point nwell_ur = {
       power_tap->centre().x() + nwell_width / 2,
-      power_tap->upper_right().y() + tap_nwell_rules.min_enclosure
+      std::max(
+          power_tap->upper_right().y() + tap_nwell_rules.min_enclosure,
+          cell_height)
   };
   Rectangle *nwell = layout->AddRectangle(Rectangle(nwell_ll, nwell_ur));
 

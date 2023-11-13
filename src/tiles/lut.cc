@@ -179,36 +179,36 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
-  {
-    // Add input buffers.
-    int64_t buf_width = 0;
-    geometry::Point start_position = layout->GetPoint("bank_0.row_3_lr");
-    for (size_t i = 0; i < 4; ++i) {
-      std::string instance_name = absl::StrFormat("buf_%d", i);
-      std::string cell_name = absl::StrCat(instance_name, "_template");
-      atoms::Sky130Buf::Parameters buf_params = {
-        .width_nm = 1380,
-        .height_nm = 2720,
-        .nfet_0_width_nm = 520,
-        .nfet_1_width_nm = 520,
-        .pfet_0_width_nm = 790,
-        .pfet_1_width_nm = 790
-      };
-      atoms::Sky130Buf buf_generator(buf_params, design_db_);
-      bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
-      geometry::Instance *instance = layout->AddInstance(
-          geometry::Instance (
-              buf_cell->layout(),
-              start_position + geometry::Point(buf_width, 0)
-              //geometry::Point {
-              //-200, -200
-              //}
-          )
-      );
-      geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
-      buf_width += bounding_box.Width();
-    }
-  }
+  //{
+  //  // Add input buffers.
+  //  int64_t buf_width = 0;
+  //  geometry::Point start_position = layout->GetPoint("bank_0.row_3_lr");
+  //  for (size_t i = 0; i < 4; ++i) {
+  //    std::string instance_name = absl::StrFormat("buf_%d", i);
+  //    std::string cell_name = absl::StrCat(instance_name, "_template");
+  //    atoms::Sky130Buf::Parameters buf_params = {
+  //      .width_nm = 1380,
+  //      .height_nm = 2720,
+  //      .nfet_0_width_nm = 520,
+  //      .nfet_1_width_nm = 520,
+  //      .pfet_0_width_nm = 790,
+  //      .pfet_1_width_nm = 790
+  //    };
+  //    atoms::Sky130Buf buf_generator(buf_params, design_db_);
+  //    bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+  //    geometry::Instance *instance = layout->AddInstance(
+  //        geometry::Instance (
+  //            buf_cell->layout(),
+  //            start_position + geometry::Point(buf_width, 0)
+  //            //geometry::Point {
+  //            //-200, -200
+  //            //}
+  //        )
+  //    );
+  //    geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
+  //    buf_width += bounding_box.Width();
+  //  }
+  //}
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
 
@@ -309,7 +309,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     ports.clear();
     next_in_chain->GetInstancePorts("D", &ports);
     geometry::Port *end = *ports.begin();
-    routing_grid.AddRouteBetween(*start, *end);
+    //routing_grid.AddRouteBetween(*start, *end);
     LOG(INFO) << i << " start port: " << *start << " end: " << *end;
   }
 
@@ -344,7 +344,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
       geometry::Port *first_port = *ports.begin();
       LOG(INFO) << "Adding routes for (ff, mux) = (" << j << ", " << mux_index << ")";
-      routing_grid.AddRouteBetween(*start, *first_port, net_name);
+      //routing_grid.AddRouteBetween(*start, *first_port, net_name);
 
       //auto it = ports.begin();
       //it++;  // Skip first port.

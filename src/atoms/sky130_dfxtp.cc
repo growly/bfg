@@ -226,8 +226,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // met1.drawing [DRAWING] 68/20
   layout->SetActiveLayerByName("met1.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 2480), Point(6000, 2960)));
-  layout->AddRectangle(Rectangle(Point(0, -240), Point(6000, 240)));
+  layout->AddRectangle(Rectangle(Point(-80, 2480), Point(6000, 2960)));
+  layout->AddRectangle(Rectangle(Point(-80, -240), Point(6000, 240)));
   layout->AddPolygon(Polygon({//Point(0, 1800),
                               //Point(1310, 1800),
                               Point(1310, 1755),
