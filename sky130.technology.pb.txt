@@ -1443,6 +1443,15 @@ layers {
   index: 72
 }
 layers {
+  name: "tap"
+  purpose {
+    description: "drawing"
+    type: DRAWING
+  }
+  index: 65
+  sub_index: 44
+}
+layers {
   name: "diff"
   purpose {
     description: "drawing"

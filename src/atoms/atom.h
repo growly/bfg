@@ -18,8 +18,13 @@ class Atom : public tiles::Tile {
       : Tile(design_db) {}
 
   bfg::Cell *GenerateIntoDatabase(const std::string &name) override {
+    // The name of the generator, which does not necessarily have to be used by
+    // the Generate() function. (That's why we have to override it explicitly in
+    // the generated cell below.)
     name_ = name;
+
     bfg::Cell *cell = Generate();
+    cell->set_name(name);
     design_db_->ConsumeCell(cell);
     return cell;
   }

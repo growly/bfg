@@ -12,6 +12,9 @@
 #include "../atoms/sky130_buf.h"
 #include "../atoms/sky130_dfxtp.h"
 #include "../atoms/sky130_mux.h"
+#include "../atoms/sky130_tap.h"
+
+#include "../row_guide.h"
 
 namespace bfg {
 namespace tiles {
@@ -40,45 +43,58 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   int64_t buf_y_pos = 0;
 
+  bfg::atoms::Sky130Tap::Parameters tap_params = {
+    .height_nm = 2720,
+    .width_nm = 460
+  };
+  bfg::atoms::Sky130Tap tap_generator(tap_params, design_db_);
+  bfg::Cell *tap_cell = tap_generator.GenerateIntoDatabase(
+      "lut_dfxtp_tap_template");
+
   std::vector<geometry::Instance*> flip_flops;
   std::vector<std::unique_ptr<bfg::Layout>> bank_layouts;
   int64_t max_row_height = 0;
   for (size_t b = 0; b < layout_config.num_banks; ++b) {
     bfg::Layout *bank_layout = new bfg::Layout(db);
     bank_layouts.emplace_back(bank_layout);
+
     int64_t y_pos = 0;
+
     for (size_t j = 0; j < layout_config.bank_rows; j++) {
       size_t row_width = 0;
+
+      RowGuide row = RowGuide(
+          {0, y_pos},     // Row lower-left point.
+          bank_layout,
+          nullptr,        // FIXME
+          design_db_);
+
+      // Rotate j = 1, 3, 5, ...
+      row.set_rotate_instances(j % 2 != 0);
+
+      row.set_tap_cell(*tap_cell);
+      
       for (size_t i = 0; i < layout_config.bank_columns; i++) {
         std::string instance_name = absl::StrFormat(
             "lut_dfxtp_%d_%d_%d", b, i, j);
         std::string cell_name = absl::StrCat(instance_name, "_template");
         bfg::atoms::Sky130Dfxtp::Parameters params;
         bfg::atoms::Sky130Dfxtp generator(params, design_db_);
-        bfg::Cell *cell = generator.Generate();
-        cell->set_name(cell_name);
+        bfg::Cell *cell = generator.GenerateIntoDatabase(cell_name);
         //cell->layout()->ResetOrigin();
-        design_db_->ConsumeCell(cell);
-        geometry::Rectangle bounding_box = cell->layout()->GetTilingBounds();
-        int64_t height = static_cast<int64_t>(bounding_box.Height());
-        int64_t width = static_cast<int64_t>(bounding_box.Width());
-        row_width += width;
-        max_row_height = std::max(max_row_height, height);
-        // For every other row, place backwards from the end.
-        int64_t x_pos = (
-            j % 2 != 0 ? layout_config.bank_columns - 1 - i : i) * width;
-        y_pos = j * height;
-        LOG(INFO) << "placing " << instance_name;
-        geometry::Instance geo_instance(
-            cell->layout(), geometry::Point { x_pos, y_pos });
-        geo_instance.set_name(instance_name);
-        if (j % 2 != 0) {
-          geo_instance.set_rotation_degrees_ccw(180);
-          geo_instance.Translate(geometry::Point(width, height));
-        }
-        geometry::Instance *installed = bank_layout->AddInstance(geo_instance);
+
+        geometry::Instance *installed = row.InstantiateBack(cell->layout());
+
         flip_flops.push_back(installed);
       }
+
+      row.Place();
+
+      max_row_height = std::max(
+          max_row_height, static_cast<int64_t>(row.Height()));
+
+      y_pos += static_cast<int64_t>(row.Height());
+
       bank_layout->SavePoint(absl::StrCat("row_", j, "_lr"),
                              geometry::Point(row_width, y_pos));
     }
@@ -92,7 +108,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);
-  bfg::Cell *mux_cell = mux.GenerateIntoDatabase("mux_template");
+  bfg::Cell *mux_cell = mux.GenerateIntoDatabase("sky130_mux");
 
   std::vector<geometry::Instance*> mux_order;
 

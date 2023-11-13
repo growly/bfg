@@ -99,6 +99,10 @@ class PhysicalPropertiesDatabase {
   int64_t ToInternalUnits(const int64_t external_value) const {
     return external_value * internal_units_per_external_;
   }
+  int64_t ToSquareInternalUnits(const int64_t external_square_value) const {
+    return external_square_value *
+        internal_units_per_external_ * internal_units_per_external_;
+  }
   int64_t ToExternalUnits(const int64_t internal_value) const {
     return internal_value / internal_units_per_external_;
   }

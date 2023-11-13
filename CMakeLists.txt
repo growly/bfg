@@ -54,6 +54,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/routing_track_blockage.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex.cc
   ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
+  ${PROJECT_SOURCE_DIR}/src/row_guide.cc
 )
 
 set(TILES_SRC
@@ -64,6 +65,7 @@ set(ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_mux.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_tap.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/gf180mcu_mux.cc
 )
 

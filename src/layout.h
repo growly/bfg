@@ -73,7 +73,8 @@ class Layout : public geometry::Manipulable {
   void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out) const;
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
 
-  void MakeVia(const std::string &layer_name, const geometry::Point &centre);
+  geometry::Rectangle *MakeVia(
+      const std::string &layer_name, const geometry::Point &centre);
   void MakePort(const std::string &net_name,
                 const geometry::Point &centre,
                 const std::string &layer_name = "");

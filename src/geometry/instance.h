@@ -19,6 +19,7 @@ namespace geometry {
 
 class Instance : public Manipulable {
  public:
+  // TODO(aryap): We should only need a const &Layout here!
   Instance(bfg::Layout *template_layout,
            const Point &lower_left)
       : ports_generated_(false),
@@ -26,6 +27,9 @@ class Instance : public Manipulable {
         lower_left_(lower_left),
         reflect_vertical_(false),
         rotation_degrees_ccw_(0) {}
+
+  Instance(bfg::Layout *template_layout)
+      : Instance(template_layout, { 0, 0 }) {}
 
   Instance(const Instance &other)
       : ports_generated_(false),
@@ -41,6 +45,9 @@ class Instance : public Manipulable {
   void FlipVertical() override;
   void Translate(const Point &offset) override;
   void ResetOrigin() override;
+
+  uint64_t TilingHeight() const;
+  uint64_t TilingWidth() const;
 
   const Rectangle GetBoundingBox() const;
 
@@ -68,6 +75,7 @@ class Instance : public Manipulable {
 
   bfg::Layout *template_layout() const { return template_layout_; }
 
+  void set_lower_left(const Point &lower_left) { lower_left_ = lower_left; }
   const Point &lower_left() const { return lower_left_; }
 
   void set_reflect_vertical(bool reflect) {

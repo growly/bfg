@@ -13,20 +13,22 @@ class DesignDatabase;
 
 namespace atoms {
 
-// Generates a non-inverting buffer (from two inverters) for Sky130.
-//
-// This is an experimental class. I use it to figure out what kinds of features
-// these atoms need.
-//
-// TODO(growly):
-//  - Once transistors exceed a certain width, we have to be able to
-//  automatically split them into two parallel transistors of half that width
-//  each. When to do this depends on the maximum diffusion height.
-//  - Is an "Atom" any more than a "Generator"?
+// Generates a P- and N- tap structure that looks like the tap standard cells.
+// The top structure connects VDD from metal1 to an N- substrate (i.e. where a
+// P-diffusion would go), and the bottom structure connects VSS from metal1 to
+// a P+ substrate (i.e. where an N-diffusion would go).
 class Sky130Tap: public Atom {
  public:
-  Sky130Tap(DesignDatabase *design_db)
-      : Atom(design_db) {}
+  struct Parameters {
+    uint64_t height_nm = 2720;
+    uint64_t width_nm = 460;
+
+    uint64_t li_width_nm = 170;   // This is just the sky130 min width?
+    uint64_t metal_1_width_nm = 480;
+  };
+
+  Sky130Tap(const Parameters &parameters, DesignDatabase *design_db)
+      : Atom(design_db), parameters_(parameters) {}
 
   // Caller takes ownership!
   bfg::Cell *Generate() override;

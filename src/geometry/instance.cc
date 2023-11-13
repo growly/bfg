@@ -40,6 +40,14 @@ void Instance::ResetOrigin() {
   lower_left_ = Point(0, 0);
 }
 
+uint64_t Instance::TilingHeight() const {
+  return template_layout()->GetTilingBounds().Height();
+}
+
+uint64_t Instance::TilingWidth() const {
+  return template_layout()->GetTilingBounds().Width();
+}
+
 // We compute the bounding box assuming the instance has been rotated by
 // rotation_degrees_ccw_ about the origin in the frame of the template
 // cell; that is, about the lower left point of the instance.

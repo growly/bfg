@@ -354,12 +354,13 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   }
 }
 
-void Layout::MakeVia(
+geometry::Rectangle *Layout::MakeVia(
     const std::string &layer_name, const geometry::Point &centre) {
   SetActiveLayerByName(layer_name);
   int64_t via_side = physical_db_.Rules(layer_name).via_width;
-  AddSquare(centre, via_side);
+  geometry::Rectangle *via = AddSquare(centre, via_side);
   RestoreLastActiveLayer();
+  return via;
 }
 
 void Layout::MakePort(

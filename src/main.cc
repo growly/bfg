@@ -84,8 +84,9 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("li.drawing", intra_constraints);
   intra_constraints = {
+    .min_separation = db->ToInternalUnits(170),
     .min_width = db->ToInternalUnits(170),
-    .via_width = db->ToInternalUnits(170),
+    .via_width = db->ToInternalUnits(170)
   };
   db->AddRules("ncon.drawing", intra_constraints);
   db->AddRules("pcon.drawing", intra_constraints);
@@ -96,7 +97,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   intra_constraints = {
     .min_separation = db->ToInternalUnits(190),
     .min_width = db->ToInternalUnits(170),
-    .via_width = db->ToInternalUnits(170),
+    .via_width = db->ToInternalUnits(170)
   };
   db->AddRules("mcon.drawing", intra_constraints);
 
@@ -138,6 +139,12 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("li.drawing", "polycon.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(50),
+    .min_enclosure = db->ToInternalUnits(80),    // li.5.-
+    .via_overhang = db->ToInternalUnits(80),
+    .via_overhang_wide = db->ToInternalUnits(0)
+  };
   db->AddRules("li.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = db->ToInternalUnits(40),
@@ -175,6 +182,16 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   // Lazy but doesn't make sense:
   db->AddRules("met2.drawing", "via2.drawing", inter_constraints);
   db->AddRules("met3.drawing", "via2.drawing", inter_constraints);
+  inter_constraints = {
+    .via_overhang = db->ToInternalUnits(120),
+    .via_overhang_wide = 0
+  };
+  db->AddRules("tap.drawing", "licon.drawing", inter_constraints);
+  intra_constraints = {
+    // 0.07011 um^2 = 70110 nm^2.
+    .min_area = db->ToInternalUnits(70110)
+  };
+  db->AddRules("tap.drawing", intra_constraints);
   // TODO(growly): Need to alias these layer names so that they apply to any
   // process.
   inter_constraints = {
@@ -185,9 +202,24 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "nwell.drawing", inter_constraints);
   inter_constraints = {
-    .min_separation = db->ToInternalUnits(340)
+    .min_separation = db->ToInternalUnits(130),
+    .min_enclosure = db->ToInternalUnits(130)
+  };
+  db->AddRules("tap.drawing", "psdm.drawing", inter_constraints);
+  db->AddRules("tap.drawing", "nsdm.drawing", inter_constraints);
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(340),
   };
   db->AddRules("nsdm.drawing", "nwell.drawing", inter_constraints);
+  inter_constraints = {
+    .min_enclosure = db->ToInternalUnits(180)   // TODO(growly): What is this
+                                                // value?
+  };
+  db->AddRules("tap.drawing", "nwell.drawing", inter_constraints);
+  intra_constraints = {
+    .min_width = db->ToInternalUnits(840)
+  };
+  db->AddRules("nwell.drawing", intra_constraints);
 }
 
 void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
@@ -522,6 +554,10 @@ int main(int argc, char **argv) {
   design_db.WriteTop("sky130_mux",
                      "sky130_mux.library.pb",
                      "sky130_mux.package.pb",
+                     true);
+  design_db.WriteTop("lut_dfxtp_tap_template",
+                     "lut_dfxtp_tap_template.library.pb",
+                     "lut_dfxtp_tap_template.package.pb",
                      true);
 
   design_db.WriteTop(*top,
