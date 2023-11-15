@@ -189,8 +189,30 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // parameters in our Parameters struct. At the very least, the pertinent ones
   // we want to mess with (output buffer?)
 
-  // Layer 202/254, purpose unknown, but existing in the standard cell.
-  layout->AddRectangle(Rectangle(Point(-80, 0), Point(6000, 2720)));
+  // TODO(aryap): A fundamental problem with how these standard cells are
+  // constructed is that the mcon vias from met1 down to li need to overlap
+  // completely, otherwise they cause a DRC error.
+  //
+  // The cells are normally constructed in multiples of a site width (460 nm) so
+  // that all mcon vias always line up. But by truncating our flip flop we have
+  // to either squeeze into 1 unit of this width less, or sacrifice the wasted
+  // space of going 1 unit of width more.
+  //
+  // It might be possible to cut the flip-flop short and squish the li pour on
+  // the left side to accommodate, but this would cramp the access pin. Consider
+  // that the adjacent cell would have an output close by.
+  //
+  // I'm leaving this TODO for when we have the luxury of precision-manipulating
+  // the layouts for performance.
+  //
+  // An alternative idea, that breaks the standard-cell rules, is to simply omit
+  // mcon drawings on either the VSS or VDD rails when the cell is flipped for
+  // placement. This could be an option. I don't think that would violate
+  // spacing rules.
+  // int64_t x_min = 80;
+  int64_t x_min = 20 - 460;
+
+  layout->AddRectangle(Rectangle(Point(x_min, 0), Point(6000, 2720)));
 
   // mcon.drawing [DRAWING] 67/44
   layout->SetActiveLayerByName("mcon.drawing");
@@ -225,10 +247,18 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->AddRectangle(Rectangle(Point(2465, 2635), Point(2635, 2805)));
   layout->AddRectangle(Rectangle(Point(2005, 2635), Point(2175, 2805)));
 
+  // Additional mcon added to correct for cut in non-unit-widths:
+  layout->AddRectangle(Rectangle(
+        Point(x_min + 145, 2635),
+        Point(x_min + 145 + 170, 2805)));
+  layout->AddRectangle(Rectangle(
+        Point(x_min + 145, -85),
+        Point(x_min + 145 + 170, 85)));
+
   // met1.drawing [DRAWING] 68/20
   layout->SetActiveLayerByName("met1.drawing");
-  layout->AddRectangle(Rectangle(Point(-80, 2480), Point(6000, 2960)));
-  layout->AddRectangle(Rectangle(Point(-80, -240), Point(6000, 240)));
+  layout->AddRectangle(Rectangle(Point(x_min, 2480), Point(6000, 2960)));
+  layout->AddRectangle(Rectangle(Point(x_min, -240), Point(6000, 240)));
   layout->AddPolygon(Polygon({//Point(0, 1800),
                               //Point(1310, 1800),
                               Point(1310, 1755),
@@ -387,7 +417,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(3290, 1995),
                               Point(3290, 1035),
                               Point(3145, 1035)}));
-  layout->AddPolygon(Polygon({Point(-80, 2635),
+  layout->AddPolygon(Polygon({Point(x_min, 2635),
                               Point(80, 2635),
                               Point(80, 2175),
                               Point(345, 2175),
@@ -406,8 +436,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(5355, 2635),
                               Point(6000, 2635),
                               Point(6000, 2805),
-                              Point(-80, 2805)}));
-  layout->AddPolygon(Polygon({Point(-80, -85),
+                              Point(x_min, 2805)}));
+  layout->AddPolygon(Polygon({Point(x_min, -85),
                               Point(6000, -85),
                               Point(6000, 85),
                               Point(5365, 85),
@@ -426,7 +456,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(345, 545),
                               Point(95, 545),
                               Point(95, 85),
-                              Point(-80, 85)}));
+                              Point(x_min, 85)}));
   layout->AddPolygon(Polygon({Point(515, 365),
                               Point(850, 365),
                               Point(850, 535),
@@ -600,11 +630,11 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // nwell.drawing [DRAWING] 64/20
   layout->SetActiveLayerByName("nwell.drawing");
   //layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
-  layout->AddRectangle(Rectangle(Point(-80, 1305), Point(6000, 2910)));
+  layout->AddRectangle(Rectangle(Point(x_min, 1305), Point(6000, 2910)));
 
   // npc.drawing [DRAWING] 95/20
   layout->SetActiveLayerByName("npc.drawing");
-  layout->AddPolygon(Polygon({Point(0, 975),
+  layout->AddPolygon(Polygon({Point(x_min, 975),
                               Point(835, 975),
                               Point(835, 685),
                               Point(1545, 685),
@@ -629,25 +659,24 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(735, 1685),
                               Point(20, 1685),
                               Point(20, 1420),
-                              Point(0, 1420)}));
+                              Point(x_min, 1420)}));
 
   // nsdm.drawing [DRAWING] 93/44
   layout->SetActiveLayerByName("nsdm.drawing");
-  layout->AddRectangle(Rectangle(Point(-80, -190), Point(6000, 1015)));
+  layout->AddRectangle(Rectangle(Point(x_min, -190), Point(6000, 1015)));
 
   // hvtp.drawing [DRAWING] 78/44
   layout->SetActiveLayerByName("hvtp.drawing");
-  layout->AddRectangle(Rectangle(Point(-80, 1250), Point(6000, 2720)));
+  layout->AddRectangle(Rectangle(Point(x_min, 1250), Point(6000, 2720)));
 
   // areaid.standardc 81/4
   layout->SetActiveLayerByName("areaid.standardc");
-  Rectangle *tiling_bounds = layout->AddRectangle(
-      Rectangle(Point(-80, 0), Point(6000, 2720)));
+  Rectangle *tiling_bounds = layout->AddRectangle(Rectangle(Point(x_min, 0), Point(6000, 2720)));
   layout->SetTilingBounds(*tiling_bounds);
 
   // psdm.drawing [DRAWING] 94/20
   layout->SetActiveLayerByName("psdm.drawing");
-  layout->AddPolygon(Polygon({Point(-80, 1935),
+  layout->AddPolygon(Polygon({Point(x_min, 1935),
                               Point(1880, 1935),
                               Point(1880, 1605),
                               Point(3305, 1605),
@@ -656,7 +685,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(4570, 1355),
                               Point(6000, 1355),
                               Point(6000, 2910),
-                              Point(-80, 2910)}));
+                              Point(x_min, 2910)}));
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
@@ -683,7 +712,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->AddPort({
       Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLK"});
 
-  layout->Translate({80, 0});
+  layout->Translate(Point(-x_min, 0));
   return layout.release();
 }
 
