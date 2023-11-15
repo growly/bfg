@@ -189,7 +189,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // parameters in our Parameters struct. At the very least, the pertinent ones
   // we want to mess with (output buffer?)
 
-  layout->AddRectangle(Rectangle(Point(0, 0), Point(6000, 2720)));
+  // Layer 202/254, purpose unknown, but existing in the standard cell.
+  layout->AddRectangle(Rectangle(Point(-80, 0), Point(6000, 2720)));
 
   // mcon.drawing [DRAWING] 67/44
   layout->SetActiveLayerByName("mcon.drawing");
@@ -386,7 +387,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(3290, 1995),
                               Point(3290, 1035),
                               Point(3145, 1035)}));
-  layout->AddPolygon(Polygon({Point(0, 2635),
+  layout->AddPolygon(Polygon({Point(-80, 2635),
                               Point(80, 2635),
                               Point(80, 2175),
                               Point(345, 2175),
@@ -405,8 +406,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(5355, 2635),
                               Point(6000, 2635),
                               Point(6000, 2805),
-                              Point(0, 2805)}));
-  layout->AddPolygon(Polygon({Point(0, -85),
+                              Point(-80, 2805)}));
+  layout->AddPolygon(Polygon({Point(-80, -85),
                               Point(6000, -85),
                               Point(6000, 85),
                               Point(5365, 85),
@@ -425,7 +426,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(345, 545),
                               Point(95, 545),
                               Point(95, 85),
-                              Point(0, 85)}));
+                              Point(-80, 85)}));
   layout->AddPolygon(Polygon({Point(515, 365),
                               Point(850, 365),
                               Point(850, 535),
@@ -599,7 +600,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // nwell.drawing [DRAWING] 64/20
   layout->SetActiveLayerByName("nwell.drawing");
   //layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
-  layout->AddRectangle(Rectangle(Point(0, 1305), Point(6000, 2910)));
+  layout->AddRectangle(Rectangle(Point(-80, 1305), Point(6000, 2910)));
 
   // npc.drawing [DRAWING] 95/20
   layout->SetActiveLayerByName("npc.drawing");
@@ -632,20 +633,21 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // nsdm.drawing [DRAWING] 93/44
   layout->SetActiveLayerByName("nsdm.drawing");
-  layout->AddRectangle(Rectangle(Point(0, -190), Point(6000, 1015)));
+  layout->AddRectangle(Rectangle(Point(-80, -190), Point(6000, 1015)));
 
   // hvtp.drawing [DRAWING] 78/44
   layout->SetActiveLayerByName("hvtp.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 1250), Point(6000, 2720)));
+  layout->AddRectangle(Rectangle(Point(-80, 1250), Point(6000, 2720)));
 
   // areaid.standardc 81/4
   layout->SetActiveLayerByName("areaid.standardc");
-  Rectangle *tiling_bounds = layout->AddRectangle(Rectangle(Point(0, 0), Point(6000, 2720)));
+  Rectangle *tiling_bounds = layout->AddRectangle(
+      Rectangle(Point(-80, 0), Point(6000, 2720)));
   layout->SetTilingBounds(*tiling_bounds);
 
   // psdm.drawing [DRAWING] 94/20
   layout->SetActiveLayerByName("psdm.drawing");
-  layout->AddPolygon(Polygon({Point(0, 1935),
+  layout->AddPolygon(Polygon({Point(-80, 1935),
                               Point(1880, 1935),
                               Point(1880, 1605),
                               Point(3305, 1605),
@@ -654,7 +656,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(4570, 1355),
                               Point(6000, 1355),
                               Point(6000, 2910),
-                              Point(0, 2910)}));
+                              Point(-80, 2910)}));
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
@@ -681,6 +683,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->AddPort({
       Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLK"});
 
+  layout->Translate({80, 0});
   return layout.release();
 }
 
