@@ -1,7 +1,0 @@
-1) space contacts to mux further out (add padding) so that metal 1 doesn't get too close to the vertical columns
-2) fix disqualification of contacts on grid used to access off-grid points
-3) separate left/right side net names for contact?
-4) fix order of search?
-
-write hdl21 to simulate mux
-- should be scaffold, the generator should output the netlist itself and that should become the DUT

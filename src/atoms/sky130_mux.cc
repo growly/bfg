@@ -210,14 +210,12 @@ Polygon *ConnectPolyToMet1(
 
   switch (bulge_direction) {
     case BulgeDirection::LEFT:
-      LOG(INFO) << "translating left";
       poly_via_centre -= Point(via_overhang_wide, 0);
       break;
     case BulgeDirection::CENTRE:
       // Do nothing; pour starts centred.
       break;
     case BulgeDirection::RIGHT:
-      LOG(INFO) << "translating right";
       poly_via_centre += Point(via_overhang_wide, 0);
       break;
   }
@@ -1432,8 +1430,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_1 = std::nullopt,
     .input_2 = std::nullopt,
     .input_3 = std::nullopt,
-    .input_x_padding = db.ToInternalUnits(-300),
-    .input_y_padding = 0 //db.ToInternalUnits(200)
+    .input_x_padding = db.ToInternalUnits(-600),
+    .input_y_padding = db.ToInternalUnits(-200)
   };
 
   Mux2LayoutParameters mux2_params_p = {
@@ -1466,8 +1464,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_1 = std::nullopt,
     .input_2 = std::nullopt,
     .input_3 = std::nullopt,
-    .input_x_padding = db.ToInternalUnits(-300),
-    .input_y_padding = 0 //db.ToInternalUnits(200)
+    .input_x_padding = db.ToInternalUnits(-600),
+    .input_y_padding = db.ToInternalUnits(-200)
   };
 
   std::unique_ptr<bfg::Layout> mux2_layout_n(GenerateMux2Layout(mux2_params_n));

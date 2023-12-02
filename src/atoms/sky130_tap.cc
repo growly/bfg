@@ -58,10 +58,6 @@ int64_t HowManyViasFitInLiSpan(
   int64_t via_width = db.Rules("licon.drawing").via_width;
   int64_t via_spacing = db.Rules("licon.drawing").min_separation;
 
-  LOG(INFO) << "span = " << span << " "
-             << "via_width = " << via_width << " "
-             << "via_spacing = " << via_spacing;
-
   int64_t num_vias = (span + via_spacing) /
       (via_width + via_spacing);
   return num_vias;
@@ -136,8 +132,6 @@ bfg::Layout *Sky130Tap::GenerateLayout() {
 
   int64_t min_length = std::ceil(
       static_cast<double>(tap_rules.min_area) / static_cast<double>(li_width));
-
-  LOG(INFO) << "minlength = " << min_length;
 
   int64_t closest_via_ll_to_ground_y = std::max(
       li_ground_arm->lower_left().y() + via_enclosure,

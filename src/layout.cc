@@ -112,7 +112,6 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
     max_y = std::max(bb.upper_right().y(), max_y);
   }
   for (const auto &instance : instances_) {
-    LOG(INFO) << "Computing bounding box for " << instance->name();
     geometry::Rectangle bounding_box = instance->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
     const Point &upper_right = bounding_box.upper_right();
@@ -402,6 +401,17 @@ ShapeCollection *Layout::GetShapeCollection(const geometry::Layer &layer) const 
     return shapes_it->second.get();
   }
   return nullptr;
+}
+
+void Layout::GetInstancesByName(
+    std::unordered_map<std::string, geometry::Instance *const> *mapping)
+    const {
+  for (const auto &instance : instances_) {
+    if (instance->name().empty()) {
+      continue;
+    }
+    mapping->insert({instance->name(), instance.get()});
+  }
 }
 
 const std::set<geometry::Port*> Layout::Ports() const {

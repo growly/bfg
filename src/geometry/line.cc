@@ -139,7 +139,6 @@ double Line::ProjectionCoefficient(const Point &point) const {
                                                       // point)
   int64_t s_dot_s = DotProduct(*this);                // *this dot *this
   double coeff = static_cast<double>(v_dot_s) / static_cast<double>(s_dot_s);
-  LOG(INFO) << "coefficient of vector s in projection is: " << coeff;
   return coeff;
 }
 

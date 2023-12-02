@@ -282,7 +282,9 @@ void ShapeCollection::CopyPins(
     }
     count++;
   }
-  LOG_IF(WARNING, !ports_.empty()) << "vlsir does not support ports yet";
+  if (!ports_.empty()) {
+    LOG_EVERY_N(WARNING, 100) << "vlsir does not support ports yet";
+  }
 
   if (count_out) {
     *count_out = count;

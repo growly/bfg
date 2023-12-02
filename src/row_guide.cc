@@ -14,16 +14,20 @@ void RowGuide::PushFront(geometry::Instance *instance) {
   instances_.insert(instances_.begin(), instance);
 }
 
-geometry::Instance *RowGuide::InstantiateBack(Layout *template_layout) {
+geometry::Instance *RowGuide::InstantiateBack(
+    const std::string &name, Layout *template_layout) {
   geometry::Instance instance = geometry::Instance(
       template_layout, lower_left_);
+  instance.set_name(name);
   geometry::Instance *installed = layout_->AddInstance(instance);
   instances_.push_back(installed);
   return installed;
 }
 
-geometry::Instance *RowGuide::InstantiateFront(Layout *template_layout) {
+geometry::Instance *RowGuide::InstantiateFront(
+    const std::string &name, Layout *template_layout) {
   geometry::Instance instance(template_layout, lower_left_);
+  instance.set_name(name);
   geometry::Instance *installed = layout_->AddInstance(instance);
 
   instances_.insert(instances_.begin(), installed);
@@ -76,7 +80,6 @@ void RowGuide::Place() {
     if (tap_cell_.has_value() &&
         (distance_to_tap + next_width) >= 10000) {
       geometry::Instance tap_instance(tap_cell_.value().get().layout());
-      LOG(INFO) << "placing tap";
       Place(&tap_instance, &x_pos, &y_pos, &distance_to_tap);
       // FIXME(aryap): Add taps to circuit.
       geometry::Instance *installed = layout_->AddInstance(tap_instance);

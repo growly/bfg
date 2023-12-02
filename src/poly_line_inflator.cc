@@ -75,8 +75,6 @@ Layout *PolyLineInflator::Inflate(
             via->bottom_layer(), via->top_layer()),
         *via,
         &rectangle);
-    LOG(INFO) << "Creating via on layer "
-              << *physical_db_.GetLayerName(rectangle.layer());
     layout->set_active_layer(rectangle.layer());
     layout->AddRectangle(rectangle);
   }
@@ -94,7 +92,6 @@ void PolyLineInflator::InflateVia(const geometry::Layer layer,
                                   int64_t height,
                                   const AbstractVia &via,
                                   Rectangle *rectangle) {
-  LOG(INFO) << via;
   LOG_IF(FATAL, width == 0) << "Cannot create 0-width via.";
   LOG_IF(FATAL, height == 0) << "Cannot create 0-height via.";
 

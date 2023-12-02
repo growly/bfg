@@ -70,7 +70,8 @@ class Layout : public geometry::Manipulable {
   }
   geometry::Polygon *AddPolyLine(const geometry::PolyLine &line);
   void AddPort(const geometry::Port &port, const std::string &net_prefix = "");
-  void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out) const;
+  void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out)
+      const;
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
 
   geometry::Rectangle *MakeVia(
@@ -122,6 +123,10 @@ class Layout : public geometry::Manipulable {
   void GetShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
   ShapeCollection *GetShapeCollection(const geometry::Layer &layer) const;
+
+  void GetInstancesByName(
+      std::unordered_map<std::string, geometry::Instance *const> *mapping)
+      const;
 
   const std::string &NameOrParentName() const;
 

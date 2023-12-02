@@ -34,7 +34,7 @@ Circuit *Circuit::FromVLSIRModule(const vlsir::circuit::Module &module_pb) {
   }
   for (const auto &instance_pb : module_pb.instances()) {
     // FIXME(growly): This is missing.
-    LOG(WARNING) << "VLSIR circuit has instances which we ignore.";
+    LOG_EVERY_N(WARNING, 100) << "VLSIR circuit has instances which we ignore.";
   }
   for (const auto &param_pb : module_pb.parameters()) {
     Parameter parameter = Parameter::FromVLSIRParameter(param_pb);

@@ -40,8 +40,10 @@ class RowGuide {
   void PushBack(geometry::Instance *instance);
   void PushFront(geometry::Instance *instance);
 
-  geometry::Instance *InstantiateBack(Layout *template_layout);
-  geometry::Instance *InstantiateFront(Layout *template_layout);
+  geometry::Instance *InstantiateBack(
+      const std::string &name, Layout *template_layout);
+  geometry::Instance *InstantiateFront(
+      const std::string &name, Layout *template_layout);
 
   // Assign positions & orientations of instances in the stack according to
   // configuration. Tap cells, if enabled and needed, are inserted into the

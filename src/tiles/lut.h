@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "tile.h"
+
 #include "../design_database.h"
 
 namespace bfg {
@@ -11,6 +12,12 @@ namespace bfg {
 class Cell;
 class Layout;
 class Circuit;
+
+namespace geometry {
+
+class Instance;
+
+}  // namespace geometry
 
 namespace tiles {
 
@@ -29,6 +36,7 @@ class Lut : public Tile {
     size_t mux_area_rows;
     size_t mux_area_columns;
     int64_t mux_area_padding;
+    bool rotate_first_row;
   };
 
   Lut(DesignDatabase *design_db, size_t lut_size = 4)
@@ -40,6 +48,19 @@ class Lut : public Tile {
  protected:
   size_t lut_size_;
 
+  struct Bank {
+    std::unique_ptr<bfg::Layout> layout;
+ 
+    // Memory instance names by row and column. Major index is row, minor index
+    // is column.
+    std::vector<std::vector<std::string>> memory_names;
+
+    // Instances per row. Major index is row, minor index is column. These are
+    // pointers to Instances in the main layout, not the bank-specific temporary
+    // layout below.
+    std::vector<std::vector<geometry::Instance*>> memories;
+  };
+
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);
 
   // TODO(aryap): Figure out how to express mux arrangement statically.
@@ -50,7 +71,8 @@ class Lut : public Tile {
           .bank_columns = 2,
           .mux_area_rows = 2,
           .mux_area_columns = 2,
-          .mux_area_padding = 500
+          .mux_area_padding = 1500,
+          .rotate_first_row = true
       }},
       {5, LayoutConfig {
           .num_banks = 2,
@@ -58,7 +80,8 @@ class Lut : public Tile {
           .bank_columns = 2,
           .mux_area_rows = 4,
           .mux_area_columns = 2,
-          .mux_area_padding = 500
+          .mux_area_padding = 1000,
+          .rotate_first_row = true
       }},
       {6, LayoutConfig {
           .num_banks = 2,
@@ -66,7 +89,8 @@ class Lut : public Tile {
           .bank_columns = 4,
           .mux_area_rows = 4,
           .mux_area_columns = 4,
-          .mux_area_padding = 500
+          .mux_area_padding = 1000,
+          .rotate_first_row = true
       }}
   };
 };

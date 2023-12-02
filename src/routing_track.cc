@@ -411,10 +411,10 @@ bool RoutingTrack::Intersects(
     intersections->push_back({
         PointOnTrack(polygon_onto_track.first),
         PointOnTrack(polygon_onto_track.second)});
-    LOG(INFO) << "blockage " << polygon.Describe()
-              << " is entirely contained within track (" << direction_ << ") "
-              << offset_ << " between " << polygon_onto_track.first << " and "
-              <<polygon_onto_track.second;
+    DLOG(INFO) << "blockage " << polygon.Describe()
+               << " is entirely contained within track (" << direction_ << ") "
+               << offset_ << " between " << polygon_onto_track.first << " and "
+               <<polygon_onto_track.second;
     return true;
   }
 

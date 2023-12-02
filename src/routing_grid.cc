@@ -912,8 +912,7 @@ void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
                             rectangle,
                             padding)) {
         vertex->set_available(false);
-        LOG(INFO) << "blockage: " << rectangle << " would block "
-                  << vertex;
+        VLOG(15) << "blockage: " << rectangle << " would block " << vertex;
       }
     }
   }
@@ -942,8 +941,7 @@ void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
                             polygon,
                             padding)) {
         vertex->set_available(false);
-        LOG(INFO) << "blockage: " << polygon << " would block "
-                  << vertex;
+        VLOG(15) << "blockage: " << polygon << " would block " << vertex;
       }
     }
   }
