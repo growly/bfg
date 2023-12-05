@@ -5,6 +5,8 @@
 #include <set>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "geometry/compass.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
@@ -37,8 +39,10 @@ class RoutingVertex {
 
   void AddConnectedLayer(const geometry::Layer &layer) {
     connected_layers_.push_back(layer);
+    LOG_IF(FATAL, connected_layers_.size() > 2)
+        << "RoutingVertex can't connect more than 2 layers";
   }
-  const std::vector<geometry::Layer> &connected_layers() {
+  const std::vector<geometry::Layer> &connected_layers() const {
     return connected_layers_;
   }
 

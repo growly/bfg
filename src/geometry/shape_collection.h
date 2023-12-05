@@ -39,6 +39,8 @@ class ShapeCollection : public Manipulable {
 
   const Rectangle GetBoundingBox() const;
 
+  bool Overlaps(const Rectangle &rectangle) const;
+
   void CopyPins(
       const std::optional<Layer> expected_layer,
       std::unordered_map<

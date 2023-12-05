@@ -163,6 +163,22 @@ const Rectangle ShapeCollection::GetBoundingBox() const {
   return Rectangle({min_x, min_y}, {max_x, max_y});
 }
 
+bool ShapeCollection::Overlaps(const Rectangle &rectangle) const {
+  for (const auto &our_rectangle : rectangles_) {
+    if (our_rectangle->Overlaps(rectangle))
+      return true;
+  }
+  for (const auto &polygon : polygons_) {
+    if (polygon->Overlaps(rectangle))
+      return true;
+  }
+  for (const auto &port : ports_) {
+    if (port->Overlaps(rectangle))
+      return true;
+  }
+  LOG_IF(WARNING, !poly_lines_.empty())
+      << "Will not test if poly lines overlap rectangle";
+}
 
 namespace {
 

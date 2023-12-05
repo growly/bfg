@@ -1,5 +1,6 @@
 #include "instance.h"
 
+#include <algorithm>
 #include <cmath>
 #include <glog/logging.h>
 
@@ -95,6 +96,22 @@ void Instance::GetShapesOnLayer(const geometry::Layer &layer,
   instance_shapes.Rotate(rotation_degrees_ccw_);
   instance_shapes.Translate(lower_left_);
   shapes->Add(instance_shapes);
+}
+
+Port *Instance::GetNearestPortNamed(
+    const Port &to_port, const std::string &name) {
+  std::vector<Port*> matching_ports;
+  GetInstancePorts(name, &matching_ports);
+  if (matching_ports.empty()) {
+    return nullptr;
+  }
+
+  auto comp = [&](Port *lhs, Port *rhs) {
+    return lhs->centre().L2SquaredDistanceTo(to_port.centre()) <
+           rhs->centre().L2SquaredDistanceTo(to_port.centre());
+  };
+  std::sort(matching_ports.begin(), matching_ports.end(), comp);
+  return *matching_ports.begin();
 }
 
 }  // namespace geometry

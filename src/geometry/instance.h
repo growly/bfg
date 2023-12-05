@@ -67,6 +67,22 @@ class Instance : public Manipulable {
     }
   }
 
+  void GetInstancePorts(const std::string &name, std::vector<Port*> *out) {
+    std::set<Port*> ports;
+    GetInstancePorts(name, &ports);
+    out->insert(out->end(), ports.begin(), ports.end());
+  }
+
+  void GetInstancePorts(std::set<Port*> *out) {
+    for (auto &entry : instance_ports_) {
+      for (auto &uniq : entry.second) {
+        out->insert(uniq.get());
+      }
+    }
+  }
+
+  Port *GetNearestPortNamed(const Port &to_port, const std::string &name);
+
   void GetShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
 
@@ -91,8 +107,10 @@ class Instance : public Manipulable {
     rotation_degrees_ccw_;
   }
 
-  const std::unordered_map<
-      std::string, std::unique_ptr<Port>> InstancePorts() const;
+  const std::unordered_map<std::string, std::set<std::unique_ptr<Port>>>
+      &instance_ports() const {
+    return instance_ports_;
+  }
 
  private:
   bool ports_generated_;

@@ -239,6 +239,30 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   return nullptr;
 }
 
+std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
+    const RoutingVertex &vertex,
+    int64_t padding) const {
+  const std::vector<geometry::Layer> &layers = vertex.connected_layers();
+  if (layers.size() != 2) {
+    return std::nullopt;
+  }
+  const geometry::Layer &first_layer = layers.front();
+  const geometry::Layer &second_layer = layers.back();
+
+  // Get the applicable via info for via sizing and encapsulation values:
+  const RoutingViaInfo &routing_via_info = GetRoutingViaInfoOrDie(
+      first_layer, second_layer);
+  int64_t via_width = std::max(
+      routing_via_info.width, routing_via_info.height) + 2 * std::max(
+      routing_via_info.overhang_length, routing_via_info.overhang_width) +
+      2 * padding;
+  geometry::Point lower_left = vertex.centre() - geometry::Point(
+      via_width / 2, via_width / 2);
+  geometry::Rectangle footprint = geometry::Rectangle(
+      lower_left, via_width, via_width);
+  return footprint;
+}
+
 std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
     const geometry::Layer &layer) {
   auto it = available_vertices_by_layer_.find(layer);
@@ -412,7 +436,26 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
 bool RoutingGrid::AddRouteBetween(
     const geometry::Port &begin,
     const geometry::Port &end,
+    const std::set<geometry::Port*> &avoid,
     const std::string &net) {
+  auto usable_vertex = [&](RoutingVertex *vertex) {
+    if (!vertex->available()) return false;
+
+    std::optional<geometry::Rectangle> via_footprint = ViaFootprint(
+        *vertex,
+        100);   // FIXME(aryap): This padding value is the max of the
+                // min_separations on the top and bottom layers and should just
+                // be automatically found.
+    if (!via_footprint)
+      return true;
+
+    for (geometry::Port *port : avoid) {
+      if (port->Overlaps(via_footprint.value()))
+        return false;
+    }
+    return true;
+  };
+
   RoutingVertex *begin_vertex = GenerateGridVertexForPoint(
       begin.centre(), begin.layer());
   if (!begin_vertex) {
@@ -432,7 +475,7 @@ bool RoutingGrid::AddRouteBetween(
             << end_vertex->centre();
 
   std::unique_ptr<RoutingPath> shortest_path(
-      ShortestPath(begin_vertex, end_vertex));
+      ShortestPath(begin_vertex, end_vertex, usable_vertex));
 
   if (!shortest_path) {
     LOG(WARNING) << "No path found.";
@@ -585,13 +628,16 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
 }
 
 RoutingPath *RoutingGrid::ShortestPath(
-    RoutingVertex *begin, RoutingVertex *end) {
+    RoutingVertex *begin, 
+    RoutingVertex *end,
+    std::function<bool(RoutingVertex*)> usable_vertex,
+    std::function<bool(RoutingEdge*)> usable_edge) {
   // FIXME(aryap): This is very bad.
-  if (!begin->available()) {
+  if (!usable_vertex(begin)) {
     LOG(WARNING) << "Start vertex for path is not available";
     return nullptr;
   }
-  if (!end->available()) {
+  if (!usable_vertex(end)) {
     LOG(WARNING) << "End vertex for path is not available";
     return nullptr;
   }
@@ -663,7 +709,7 @@ RoutingPath *RoutingGrid::ShortestPath(
     }
 
     for (RoutingEdge *edge : current->edges()) {
-      if (!edge->available())
+      if (!usable_edge(edge))
         continue;
 
       // We don't know what direction we're using the edge in, and edges are
@@ -673,7 +719,7 @@ RoutingPath *RoutingGrid::ShortestPath(
       RoutingVertex *next =
           edge->first() == current ? edge->second() : edge->first();
 
-      if (!next->available())
+      if (!usable_vertex(next))
         continue;
 
       size_t next_index = next->contextual_index();
@@ -907,8 +953,8 @@ void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
     grid_geometry->EnvelopingVertices(rectangle, &vertices);
     for (RoutingVertex *vertex : vertices) {
       if (ViaWouldIntersect(*vertex,
-                            grid_geometry->horizontal_layer(),
-                            grid_geometry->vertical_layer(),
+                            // grid_geometry->horizontal_layer(),
+                            // grid_geometry->vertical_layer(),
                             rectangle,
                             padding)) {
         vertex->set_available(false);
@@ -936,8 +982,8 @@ void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
     grid_geometry->EnvelopingVertices(polygon, &vertices);
     for (RoutingVertex *vertex : vertices) {
       if (ViaWouldIntersect(*vertex,
-                            grid_geometry->horizontal_layer(),
-                            grid_geometry->vertical_layer(),
+                            // grid_geometry->horizontal_layer(),
+                            // grid_geometry->vertical_layer(),
                             polygon,
                             padding)) {
         vertex->set_available(false);

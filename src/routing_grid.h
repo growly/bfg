@@ -16,8 +16,10 @@
 #include "layout.h"
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
+#include "routing_edge.h"
 #include "routing_grid_geometry.h"
 #include "routing_layer_info.h"
+#include "routing_vertex.h"
 
 // TODO(aryap): Another version of this RoutingGrid should exist that uses a
 // more standard model of the routing fabric. Instead of generating 1 edge for
@@ -51,11 +53,9 @@ using geometry::Layer;
 using geometry::PolyLine;
 
 class PossessiveRoutingPath;
-class RoutingEdge;
 class RoutingTrack;
 class RoutingTrackBlockage;
 class RoutingPath;
-class RoutingVertex;
 
 class RoutingGrid {
  public:
@@ -74,6 +74,7 @@ class RoutingGrid {
   bool AddRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
+      const std::set<geometry::Port*> &avoid,
       const std::string &net = "");
   bool AddRouteToNet(
       const geometry::Port &begin, const std::string &net);
@@ -142,25 +143,26 @@ class RoutingGrid {
   // TODO(aryap): It feels awkward putting these geometric functions here...?
   // Maybe move them into RoutingVertex? That requires giving RoutingVertex
   // awareness of geometry, which is like a loss of innocence y'know?
+  //
+  // Test if a given obstructs overlaps an appropriately-sized via at the
+  // location of the given RoutingVertex.
   template<typename T>
   bool ViaWouldIntersect(const RoutingVertex &vertex,
-                         const geometry::Layer &first_layer,
-                         const geometry::Layer &second_layer,
                          const T &obstruction,
                          int64_t padding = 0) const {
-    // Get the applicable via info for via sizing and encapsulation values:
-    const RoutingViaInfo &routing_via_info = GetRoutingViaInfoOrDie(
-        first_layer, second_layer);
-    int64_t via_width = std::max(
-        routing_via_info.width, routing_via_info.height) + 2 * std::max(
-        routing_via_info.overhang_length, routing_via_info.overhang_width) +
-        2 * padding;
-    geometry::Point lower_left = vertex.centre() - geometry::Point(
-        via_width / 2, via_width / 2);
-    geometry::Rectangle keep_out = geometry::Rectangle(
-        lower_left, via_width, via_width);
-    return obstruction.Overlaps(keep_out);
+    std::optional<geometry::Rectangle> keep_out = ViaFootprint(vertex, padding);
+    if (!keep_out) {
+      // Vertex is not a valid via:
+      return false;
+    }
+    return obstruction.Overlaps(keep_out.value());
   }
+
+  // FIXME(aryap): The RoutingVertex should contain enough information to figure
+  // this out. It should at *least* always have its bottom and top layers
+  // (ordered). the "connected_layers_" field is hard to use.
+  std::optional<geometry::Rectangle> ViaFootprint(
+      const RoutingVertex &vertex, int64_t padding = 0) const;
 
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
@@ -183,7 +185,15 @@ class RoutingGrid {
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
-  RoutingPath *ShortestPath(RoutingVertex *begin, RoutingVertex *end);
+  RoutingPath *ShortestPath(
+      RoutingVertex *begin,
+      RoutingVertex *end,
+      std::function<bool(RoutingVertex*)> usable_vertex = [](RoutingVertex *v){
+        return v->available();
+      },
+      std::function<bool(RoutingEdge*)> usable_edge = [](RoutingEdge *e){
+        return e->available();
+      });
 
   RoutingPath *ShortestPath(RoutingVertex *from, const std::string &to_net);
 
