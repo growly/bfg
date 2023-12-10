@@ -41,6 +41,10 @@ struct LayerInfo {
 
   uint16_t gds_layer;
   uint16_t gds_datatype;
+
+  // For PIN layers in particular, we need to record which layer(s) they're
+  // providing acccess to:
+  std::optional<std::set<geometry::Layer>> accesses;
 };
 
 struct IntraLayerConstraints {
@@ -65,8 +69,14 @@ struct InterLayerConstraints {
   // 'overhang' in one axis, obviating the need for one of these.
   int64_t via_overhang;
   int64_t via_overhang_wide;
-};
 
+  // If the two layers described can be connected by a via, give the layer used
+  // to create that via:
+  // TODO(aryap): This doesn't seem that practical, since usually constraints
+  // are specified between routing layers and via layers, not routing layers and
+  // other routing layers.
+  std::optional<geometry::Layer> connecting_via_layer;
+};
 
 // Manages information about physical layout constraints.
 //
@@ -124,6 +134,12 @@ class PhysicalPropertiesDatabase {
       const std::string &left, const std::string &right) const;
   std::optional<const geometry::Layer> GetViaLayer(
       const geometry::Layer &left, const geometry::Layer &right) const;
+  void AddViaLayer(const std::string &first_layer,
+                   const std::string &second_layer,
+                   const std::string &via_layer);
+  void AddViaLayer(const geometry::Layer &first_layer,
+                   const geometry::Layer &second_layer,
+                   const geometry::Layer &via_layer);
 
   void AddRules(const std::string &first_layer,
                 const std::string &second_layer,
@@ -141,7 +157,16 @@ class PhysicalPropertiesDatabase {
   const IntraLayerConstraints &Rules(const std::string &layer_name) const;
   const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
 
+  // For a given pin layer, find the layers which can access it. This is
+  // transitive closure of all layers to which the pin layer provides direct
+  // access (i.e. li.pin accesses li.drawing) and all the layers which have
+  // access to those layers through vias (e.g. li.drawing can be reached by
+  // met1.drawing, diff.drawing).
+  const std::set<geometry::Layer>
+      FindReachableLayersByPinLayer(const geometry::Layer &pin_layer) const;
+
   std::string DescribeLayers() const;
+  std::string DescribeLayer(const geometry::Layer &layer) const;
 
   void set_internal_units_per_external(double new_value) {
     internal_units_per_external_ = new_value;
@@ -152,6 +177,9 @@ class PhysicalPropertiesDatabase {
 
  private:
   geometry::Layer GetNextInternalLayer();
+
+  std::optional<geometry::Layer> FindLayer(
+      uint16_t gds_layer, uint16_t gds_datatype);
 
   double internal_units_per_external_;
 
@@ -168,15 +196,21 @@ class PhysicalPropertiesDatabase {
       std::unordered_map<geometry::Layer, InterLayerConstraints>>
       inter_layer_constraints_;
 
+  // Also store a mapping of GDS layer number/datatype (a LayerKey in the proto)
+  // to the internal layer number.
+  std::map<uint16_t, std::map<uint16_t, geometry::Layer>> layers_by_layer_key_;
+
   // Stores the via layer required to get from the first indexed layer to the
   // second indexed layer.
-  std::unordered_map<geometry::Layer,
-      std::unordered_map<geometry::Layer, geometry::Layer>> via_layers_;
+  std::map<geometry::Layer,
+      std::map<geometry::Layer, geometry::Layer>> via_layers_;
 
   std::unordered_map<geometry::Layer, IntraLayerConstraints>
       intra_layer_constraints_;
 
-  const std::pair<geometry::Layer, geometry::Layer> GetTwoLayersAndSort(
+  const std::pair<geometry::Layer, geometry::Layer> OrderLayers(
+      const geometry::Layer &one, const geometry::Layer &another) const;
+  const std::pair<geometry::Layer, geometry::Layer> GetTwoLayersAndOrder(
       const std::string &left, const std::string &right) const;
 };
 

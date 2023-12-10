@@ -689,14 +689,15 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
-  Rectangle *d_port = layout->AddRectangle(
-      Rectangle(Point(85, 1105), Point(255, 1275)));
-  Rectangle *q_port = layout->AddRectangle(
-      Rectangle(Point(5590, 425), Point(5760, 595)));
+  layout->AddPort(
+      {Rectangle(Point(85, 1105), Point(255, 1275)), "D"});
+  layout->AddPort(
+      {Rectangle(Point(5590, 425), Point(5760, 595)), "Q"});
 
-  layout->SetActiveLayerByName("li.drawing");
-  layout->AddPort({*d_port, "D"});
-  layout->AddPort({*q_port, "Q"});
+  // These used to have to be on different layers!
+  // layout->SetActiveLayerByName("li.pin");
+  //layout->AddPort({*d_port, "D"});
+  //layout->AddPort({*q_port, "Q"});
 
   // nwell.pin [PIN] 64/16
   layout->SetActiveLayerByName("nwell.pin");

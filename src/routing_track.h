@@ -90,6 +90,15 @@ class RoutingTrack {
       const geometry::Polygon &polygon,
       int64_t padding = 0);
 
+  // Returns the edges, vertices blocked by the given shape, with optional
+  // padding, but does not create a permanent Blockage in the list of
+  // blockages_.
+  void AddTemporaryBlockage(
+      const geometry::Rectangle &rectangle,
+      int64_t padding = 0,
+      std::set<RoutingVertex*> *blocked_vertices = nullptr,
+      std::set<RoutingEdge*> *blocked_edges = nullptr);
+
   geometry::Line AsLine() const;
   std::pair<geometry::Line, geometry::Line> MajorAxisLines(
       int64_t padding) const;
@@ -127,9 +136,11 @@ class RoutingTrack {
 
   geometry::Point PointOnTrack(int64_t projection_onto_track) const;
 
-  RoutingTrackBlockage *CreateBlockage(
+  RoutingTrackBlockage *MergeIntoBlockage(
       const geometry::Point &one_end, const geometry::Point &other_end);
-  void ApplyBlockage(const RoutingTrackBlockage &blockage);
+  void ApplyBlockage(const RoutingTrackBlockage &blockage,
+                     std::set<RoutingVertex*> *blocked_vertices = nullptr,
+                     std::set<RoutingEdge*> *blocked_edges = nullptr);
 
   void SortBlockages();
 

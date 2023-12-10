@@ -1790,7 +1790,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       layout.get());
 
   // Translate ports in sub-layouts into external-facing ports:
-  layout->SetActiveLayerByName("li.drawing");
+  layout->SetActiveLayerByName("li.pin");
   std::vector<std::pair<std::string, std::string>> ports = {
     {"lower_left.input_0", "input_0"},
     {"lower_left.input_1", "input_1"},

@@ -1,974 +1,974 @@
 
-Sky130ª
+Sky130ª 
 annotateZ
-drawing¨Êøþª
+drawing²Êþª
 areaidZ	
-rfdiode¨Qø}ª
+rfdiode²Q}ª
 areaidZ
-	frameRect¨Qøª
+	frameRect²Qª
 areaidZ	
-hvnwell¨Qø?ª
+hvnwell²Q?ª
 areaidZ
 
-lvNative¨Qø<ª
+lvNative²Q<ª
 areaidZ
 
-fillWindow¨Qøª
+fillWindow²Qª
 areaidZ
-frame¨Qøª
+frame²Qª
 areaidZ
-	standardc¨Qøª
+	standardc²Qª
 areaidZ
-etest¨Qøeª
+etest²Qeª
 areaidZ
-core¨Qøª
+core²Qª
 areaidZ	
-critSid¨Qø4ª
+critSid²Q4ª 
 areaidZ
-extendedDrain¨Qø9ª
+extendedDrain²Q9ª 
 areaidZ
-lowTapDensity¨Qøª
+lowTapDensity²Qª
 areaidZ
-substrateCut¨Qø5ª
+substrateCut²Q5ª
 areaidZ
-	moduleCut¨Qø
-ª
+	moduleCut²Q
+ª
 areaidZ	
-deadZon¨Qø2ª
+deadZon²Q2ª
 areaidZ
-diode¨Qøª
+diode²Qª
 areaidZ
-rdlprobepad¨Qøª
+rdlprobepad²Qª
 areaidZ	
-opcDrop¨Qø6ª
+opcDrop²Q6ª
 areaidZ
-	injection¨Qøª
+	injection²Qª
 areaidZ
-notCritSide¨Qøª
+notCritSide²Qª
 areaidZ
-analog¨QøOª
+analog²QOª
 areaidZ
-dieCut¨Qøª
+dieCut²Qª
 areaidZ
-seal¨Qøª
+seal²Qª
 areaidZ
-esd¨Qøª
+esd²Qª
 areaidZ
 
-critCorner¨Qø3ª
+critCorner²Q3ª
 areaidZ
-photo¨QøQª
+photo²QQª
 areaidZ
-low_vt¨Qølª
+low_vt²Qlª
 areaidZ
 
-fabBlock¨QøRª
+fabBlock²QRª
 areaidZ
-	padLength¨QøCª
+	padLength²QCª
 areaidZ
-pad_io¨QøFª
+pad_io²QFª
 areaidZ	
-pad_pwr¨QøGª
+pad_pwr²QGª
 areaidZ	
-pad_gnd¨QøHª 
+pad_gnd²QHª!
 areaidZ
-guard_boundary¨QøIª
+guard_boundary²QIª
 areaidZ
-lv_net¨QøBª
+lv_net²QBª
 blankingZ
-drawing¨|ø(ª
+drawing²|(ª
 bumpZ
-drawing¨øª
+drawing²ª
 cap2mZ
-drawing¨aø,ª
+drawing²a,ª
 	capacitorZ
-drawing¨Rø@ª
+drawing²R@ª
 capmZ
-drawing¨Yø,ª
+drawing²Y,ª
 cbumpZ
-mask¨eª
+mask²eª
 cctm1Z
 
-maskDrop¨eø*ª
+maskDrop²e*ª
 cctm1Z
-mask¨#ª
+mask²#ª
 cctm1Z	
-maskAdd¨eø+ª
+maskAdd²e+ª
 cctm1Z
-drawing¨eø,ª
+drawing²e,ª
 ccu1mZ
-mask¨]ª
+mask²]ª
 cdnmZ
-drawing¨nøª
+drawing²nª
 cdnmZ
 
-maskDrop¨nøª
+maskDrop²nª
 cdnmZ	
-maskAdd¨nøª
+maskAdd²nª
 cdnmZ
-mask¨0ª
+mask²0ª
 ;fomZ
-dummy¨øª
+dummy²ª
 fomZ
-fill¨øcª
+fill²cª
 cfomZ	
-maskAdd¨øª
+maskAdd²ª
 cfomZ
-mask¨ª
+mask²ª
 cfomZ
 
-maskDrop¨øª
+maskDrop²ª
 cfomZ
 
-fill_block¨øª
+fill_block²ª
 cfomZ
-drawing¨øª
+drawing²ª
 chvntmZ	
-maskAdd¨&øª
+maskAdd²&ª
 chvntmZ
-mask¨'ª
+mask²'ª
 chvntmZ
 
-maskDrop¨&øª
+maskDrop²&ª
 chvntmZ
-drawing¨&øª
+drawing²&ª
 chvtpmZ
-drawing¨Xø,ª
+drawing²X,ª
 chvtpmZ
 
-maskDrop¨aø*ª
+maskDrop²a*ª
 chvtpmZ
-mask¨aª
+mask²aª
 chvtpmZ	
-maskAdd¨aø+ª
+maskAdd²a+ª
 chvtrmZ
-drawing¨bø,ª
+drawing²b,ª
 chvtrmZ	
-maskAdd¨bø+ª
+maskAdd²b+ª
 chvtrmZ
-mask¨bª
+mask²bª
 chvtrmZ
 
-maskDrop¨bø*ª
+maskDrop²b*ª
 cldntmZ
-drawing¨øª
+drawing²ª
 cldntmZ
-mask¨ª
+mask²ª
 cli1mZ
 
-maskDrop¨sø*ª
+maskDrop²s*ª
 cli1mZ
-mask¨8ª
+mask²8ª
 cli1mZ	
-maskAdd¨sø+ª
+maskAdd²s+ª
 cli1mZ
-drawing¨sø,ª
+drawing²s,ª
 clicm1Z
-drawing¨jø,ª
+drawing²j,ª
 clicm1Z
-mask¨+ª
+mask²+ª
 clicm1Z	
-maskAdd¨jø+ª
+maskAdd²j+ª
 clicm1Z
 
-maskDrop¨jø*ª
+maskDrop²j*ª
 clvomZ
-drawing¨-øª
+drawing²-ª
 clvomZ
 
-maskDrop¨-øª
+maskDrop²-ª
 clvomZ
-mask¨.ª
+mask².ª
 clvomZ	
-maskAdd¨-øª
+maskAdd²-ª
 clvtnmZ
-drawing¨ø,ª
+drawing²,ª
 clvtnmZ
 
-maskDrop¨ø*ª
+maskDrop²*ª
 clvtnmZ	
-maskAdd¨ø+ª
+maskAdd²+ª
 clvtnmZ
-mask¨ª
+mask²ª
 cmm1Z	
-maskAdd¨>øª
+maskAdd²>ª
 cmm1Z
-mask¨$ª
+mask²$ª
 cmm1Z
 
-maskDrop¨>øª
+maskDrop²>ª
 cmm1Z
 
-fill_block¨>øª
+fill_block²>ª
 cmm1Z
-drawing¨>øª
+drawing²>ª
 cmm2Z
 
-maskDrop¨iø*ª
+maskDrop²i*ª
 cmm2Z
-mask¨)ª
+mask²)ª
 cmm2Z	
-maskAdd¨iø+ª
+maskAdd²i+ª
 cmm2Z
 
-fill_block¨iø4ª
+fill_block²i4ª
 cmm2Z
-drawing¨iø,ª
+drawing²i,ª
 cmm3Z
-drawing¨køª
+drawing²kª
 cmm3Z
 
-fill_block¨køª
+fill_block²kª
 cmm3Z
-mask¨"ª
+mask²"ª
 cmm3Z	
-maskAdd¨køª
+maskAdd²kª
 cmm3Z
 
-maskDrop¨køª
+maskDrop²kª
 cmm4Z
 
-maskDrop¨pø*ª
+maskDrop²p*ª
 cmm4Z	
-maskAdd¨pø+ª
+maskAdd²p+ª
 cmm4Z
-mask¨3ª
+mask²3ª
 cmm4Z
 
-fill_block¨pøª
+fill_block²pª
 cmm5Z
 
-fill_block¨uøª
+fill_block²uª
 cmm5Z
-mask¨;ª
+mask²;ª
 cmtestZ
-drawing¨Jø,ª
+drawing²J,ª
 cmtestZ
-mask¨Jª
+mask²Jª
 cmtestZ
 
-maskDrop¨Jø*ª
+maskDrop²J*ª
 cncmZ
-drawing¨`ø,ª
+drawing²`,ª
 cncmZ
-mask¨ª
+mask²ª
 cnpcZ
-drawing¨,øª
+drawing²,ª
 cnpcZ
 
-maskDrop¨,ø*ª
+maskDrop²,*ª
 cnpcZ	
-maskAdd¨,ø+ª
+maskAdd²,+ª
 cnpcZ
-mask¨1ª
+mask²1ª
 cnsdmZ
 
-maskDrop¨øª
+maskDrop²ª
 cnsdmZ
-mask¨ª
+mask²ª
 cnsdmZ	
-maskAdd¨øª
+maskAdd²ª
 cnsdmZ
-drawing¨øª
+drawing²ª
 cnsmZ
-mask¨ª
+mask²ª
 cntmZ
-drawing¨øª
+drawing²ª
 cntmZ	
-maskAdd¨øª
+maskAdd²ª
 cntmZ
-mask¨ª
+mask²ª
 cntmZ
 
-maskDrop¨øª
+maskDrop²ª
 cnwmZ
 
-maskDrop¨mø*ª
+maskDrop²m*ª
 cnwmZ	
-maskAdd¨mø+ª
+maskAdd²m+ª
 cnwmZ
-mask¨ª
+mask²ª
 cnwmZ
-drawing¨mø,ª
+drawing²m,ª
 conomZ	
-maskAdd¨Wø+ª
+maskAdd²W+ª
 conomZ
-mask¨Xª
+mask²Xª
 conomZ
 
-maskDrop¨Wø*ª
+maskDrop²W*ª
 conomZ
-drawing¨Wø,ª
+drawing²W,ª
 cp1mZ
 
-fill_block¨!øª
+fill_block²!ª
 cp1mZ
-drawing¨!ø,ª
+drawing²!,ª
 cp1mZ
 
-maskDrop¨!ø*ª
+maskDrop²!*ª
 cp1mZ
-mask¨ª
+mask²ª
 cp1mZ	
-maskAdd¨!ø+ª
+maskAdd²!+ª
 cpboZ
-mask¨cª
+mask²cª
 cpdmZ
-mask¨%ª
+mask²%ª
 cpdmZ	
-maskAdd¨hø+ª
+maskAdd²h+ª
 cpdmZ
 
-maskDrop¨hø*ª
+maskDrop²h*ª
 cpdmZ
-drawing¨hø,ª
+drawing²h,ª
 cpmmZ
-drawing¨[ø,ª
+drawing²[,ª
 cpmm2Z
-mask¨^ª
+mask²^ª
 cpsdmZ
 
-maskDrop¨øª
+maskDrop²ª
 cpsdmZ	
-maskAdd¨øª
+maskAdd²ª
 cpsdmZ
-mask¨ ª
+mask² ª
 cpsdmZ
-drawing¨øª
+drawing²ª
 cpwbmZ
-mask¨ª
+mask²ª
 cpwdemZ
-mask¨@ª
+mask²@ª
 crpmZ
 
-maskDrop¨5ø*ª
+maskDrop²5*ª
 crpmZ
-mask¨`ª
+mask²`ª
 crpmZ	
-maskAdd¨5ø+ª
+maskAdd²5+ª
 crpmZ
-drawing¨5ø,ª
+drawing²5,ª
 crrpmZ
-mask¨fª
+mask²fª
 ctunmZ
-drawing¨`øª
+drawing²`ª
 ctunmZ
-mask¨ª
+mask²ª
 ctunmZ	
-maskAdd¨`øª
+maskAdd²`ª
 ctunmZ
 
-maskDrop¨`øª
+maskDrop²`ª
 cubmZ
-mask¨dª
+mask²dª
 curpmZ
-drawing¨Oø,ª
+drawing²O,ª
 curpmZ
-mask¨Oª
+mask²Oª
 cviamZ
-drawing¨iøª
+drawing²iª
 cviamZ	
-maskAdd¨iøª
+maskAdd²iª
 cviamZ
-mask¨(ª
+mask²(ª
 cviamZ
 
-maskDrop¨iøª
+maskDrop²iª
 cviam2Z	
-maskAdd¨løª
+maskAdd²lª
 cviam2Z
-mask¨,ª
+mask²,ª
 cviam2Z
 
-maskDrop¨løª
+maskDrop²lª
 cviam2Z
-drawing¨løª
+drawing²lª
 cviam3Z
-drawing¨pøª
+drawing²pª
 cviam3Z
-mask¨2ª
+mask²2ª
 cviam3Z	
-maskAdd¨pøª
+maskAdd²pª
 cviam3Z
 
-maskDrop¨pøª
+maskDrop²pª
 cviam4Z
 
-maskDrop¨uøª
+maskDrop²uª
 cviam4Z	
-maskAdd¨uøª
+maskAdd²uª
 cviam4Z
-mask¨:ª
+mask²:ª
 cviam4Z
-drawing¨uøª
+drawing²uª
 cviatopZ
-mask¨Hª
+mask²Hª
 tapZ
-drawing¨Aø,ª
+drawing²A,ª
 diffZ
-drawing¨Aøª
+drawing²Aª
 diffZ
-fill¨Aøcª
+fill²Acª
 diffZ
 
-fill_block¨Aøbª
+fill_block²Abª
 diffZ
-hv¨Aøª
+hv²Aª
 diffZ
-pin¨Aøª
+pin²Aª
 diffZ	
-label¨Aøª
+label²Aª
 diffZ
 
-boundary¨Aøª
+boundary²Aª
 diffZ
-res¨Aøª
+res²Aª
 diffZ
-net¨Aøª
+net²Aª
 dnwellZ
-drawing¨@øª
+drawing²@ª
 hvntmZ
-drawing¨}øª
+drawing²}ª
 hvtpZ
-drawing¨Nø,ª
+drawing²N,ª
 hvtrZ
-drawing¨øª
+drawing²ª
 inductorZ
-term1¨Røª
+term1²Rª
 inductorZ
-term3¨Røª
+term3²Rª
 inductorZ
-drawing¨Røª
+drawing²Rª
 inductorZ	
-label¨Røª
+label²Rª
 inductorZ
-term2¨Røª
+term2²Rª
 ldntmZ
-drawing¨ø,ª
+drawing²,ª
 liZ
-drawing¨Cøª
+drawing²Cª
 liZ
-blockage¨Cø
-ª
+blockage²C
+ª
 liZ
-fill¨Cøcª
+fill²Ccª
 liZ
-probe¨Cøª
+probe²Cª
 liZ
-res¨Cøª
+res²Cª"
 liZ
-pin¨Cøª
+pin²CúCúDª
 liZ
-net¨Cøª
+net²Cª
 liZ	
-label¨Cøª
+label²Cª
 liZ
 
-boundary¨Cøª
+boundary²Cª
 liconZ
-drawing¨Bø,ª
+drawing²B,ª
 liconZ
 
-boundary¨Bø<ª
+boundary²B<ª
 liconZ
-pin¨Bø:ª
+pin²B:ª
 liconZ
-net¨Bø)ª
+net²B)ª
 lvtnZ
-drawing¨}ø,ª
+drawing²},ª
 markerZ	
-warning¨Søª
+warning²Sª
 markerZ
-error¨Søª
+error²Sª
 mconZ
-drawing¨Cø,ª
+drawing²C,ª
 mconZ
-pin¨Cø0ª
+pin²C0ª
 mconZ
-net¨Cø)ª
+net²C)ª
 mconZ
 
-boundary¨Cø<ª
+boundary²C<ª
 met1Z
-drawing¨Døª
+drawing²Dª
 met1Z
-pin¨Døª
+pin²Dª
 met1Z	
-label¨Døª
+label²Dª
 met1Z
-res¨Døª
+res²Dª
 met1Z
-net¨Døª
+net²Dª
 met1Z
-fill¨Døcª
+fill²Dcª
 met1Z
 
-fill_block¨Døbª
+fill_block²Dbª
 met1Z
 
-boundary¨Døª
+boundary²Dª
 met1Z
-blockage¨Dø
-ª
+blockage²D
+ª
 met1Z
-probe¨Døª
+probe²Dª
 met1Z	
-option1¨Dø ª
+option1²D ª
 met1Z	
-option2¨Dø!ª
+option2²D!ª
 met1Z	
-option3¨Dø"ª
+option3²D"ª
 met1Z	
-option4¨Dø#ª
+option4²D#ª
 met1Z	
-option5¨Dø$ª
+option5²D$ª
 met1Z	
-option6¨Dø%ª
+option6²D%ª
 met1Z	
-option7¨Dø&ª
+option7²D&ª
 met1Z	
-option8¨Dø'ª
+option8²D'ª
 met1Z
-psa1¨DøXª
+psa1²DXª
 met1Z
-psa2¨DøYª
+psa2²DYª
 met1Z
-psa3¨DøZª
+psa3²DZª
 met1Z
-psa4¨Dø[ª
+psa4²D[ª
 met1Z
-psa5¨Dø\ª
+psa5²D\ª
 met1Z
-psa6¨Dø]ª
+psa6²D]ª
 met2Z
-drawing¨Eøª
+drawing²Eª
 met2Z
-pin¨Eøª
+pin²Eª
 met2Z	
-label¨Eøª
+label²Eª
 met2Z
-res¨Eøª
+res²Eª
 met2Z
-net¨Eøª
+net²Eª
 met2Z
-fill¨Eøcª
+fill²Ecª
 met2Z
 
-fill_block¨Eøbª
+fill_block²Ebª
 met2Z
 
-boundary¨Eøª
+boundary²Eª
 met2Z
-blockage¨Eø
-ª
+blockage²E
+ª
 met2Z
-probe¨Eøª
+probe²Eª
 met2Z	
-option1¨Eø ª
+option1²E ª
 met2Z	
-option2¨Eø!ª
+option2²E!ª
 met2Z	
-option3¨Eø"ª
+option3²E"ª
 met2Z	
-option4¨Eø#ª
+option4²E#ª
 met2Z	
-option5¨Eø$ª
+option5²E$ª
 met2Z	
-option6¨Eø%ª
+option6²E%ª
 met2Z	
-option7¨Eø&ª
+option7²E&ª
 met2Z	
-option8¨Eø'ª
+option8²E'ª
 met2Z
-psa1¨EøXª
+psa1²EXª
 met2Z
-psa2¨EøYª
+psa2²EYª
 met2Z
-psa3¨EøZª
+psa3²EZª
 met2Z
-psa4¨Eø[ª
+psa4²E[ª
 met2Z
-psa5¨Eø\ª
+psa5²E\ª
 met2Z
-psa6¨Eø]ª
+psa6²E]ª
 met3Z
-drawing¨Føª
+drawing²Fª
 met3Z
-pin¨Føª
+pin²Fª
 met3Z	
-label¨Føª
+label²Fª
 met3Z
-res¨Føª
+res²Fª
 met3Z
-net¨Føª
+net²Fª
 met3Z
-fuse¨Føª
+fuse²Fª
 met3Z
-fill¨Føcª
+fill²Fcª
 met3Z
 
-fill_block¨Føbª
+fill_block²Fbª
 met3Z
 
-boundary¨Føª
+boundary²Fª
 met3Z
-blockage¨Fø
-ª
+blockage²F
+ª
 met3Z
-probe¨Føª
+probe²Fª
 met3Z	
-option1¨Fø ª
+option1²F ª
 met3Z	
-option2¨Fø!ª
+option2²F!ª
 met3Z	
-option3¨Fø"ª
+option3²F"ª
 met3Z	
-option4¨Fø#ª
+option4²F#ª
 met3Z	
-option5¨Fø$ª
+option5²F$ª
 met3Z	
-option6¨Fø%ª
+option6²F%ª
 met3Z	
-option7¨Fø&ª
+option7²F&ª
 met3Z	
-option8¨Fø'ª
+option8²F'ª
 met3Z
-psa1¨FøXª
+psa1²FXª
 met3Z
-psa2¨FøYª
+psa2²FYª
 met3Z
-psa3¨FøZª
+psa3²FZª
 met3Z
-psa4¨Fø[ª
+psa4²F[ª
 met3Z
-psa5¨Fø\ª
+psa5²F\ª
 met3Z
-psa6¨Fø]ª
+psa6²F]ª
 met4Z
-drawing¨Gøª
+drawing²Gª
 met4Z
-pin¨Gøª
+pin²Gª
 met4Z	
-label¨Gøª
+label²Gª
 met4Z
-res¨Gøª
+res²Gª
 met4Z
-net¨Gøª
+net²Gª
 met4Z
-fuse¨Gøª
+fuse²Gª
 met4Z
-fill¨Gøcª
+fill²Gcª
 met4Z
 
-fill_block¨Gøbª
+fill_block²Gbª
 met4Z
 
-boundary¨Gøª
+boundary²Gª
 met4Z
-blockage¨Gø
-ª
+blockage²G
+ª
 met4Z
-probe¨Gøª
+probe²Gª
 met4Z	
-option1¨Gø ª
+option1²G ª
 met4Z	
-option2¨Gø!ª
+option2²G!ª
 met4Z	
-option3¨Gø"ª
+option3²G"ª
 met4Z	
-option4¨Gø#ª
+option4²G#ª
 met4Z	
-option5¨Gø$ª
+option5²G$ª
 met4Z	
-option6¨Gø%ª
+option6²G%ª
 met4Z	
-option7¨Gø&ª
+option7²G&ª
 met4Z	
-option8¨Gø'ª
+option8²G'ª
 met4Z
-psa1¨GøXª
+psa1²GXª
 met4Z
-psa2¨GøYª
+psa2²GYª
 met4Z
-psa3¨GøZª
+psa3²GZª
 met4Z
-psa4¨Gø[ª
+psa4²G[ª
 met4Z
-psa5¨Gø\ª
+psa5²G\ª
 met4Z
-psa6¨Gø]ª
+psa6²G]ª
 met5Z
-drawing¨Høª
+drawing²Hª
 met5Z
-pin¨Høª
+pin²Hª
 met5Z	
-label¨Høª
+label²Hª
 met5Z
-res¨Høª
+res²Hª
 met5Z
-net¨Høª
+net²Hª
 met5Z
-fuse¨Høª
+fuse²Hª
 met5Z
-fill¨Høcª
+fill²Hcª
 met5Z
 
-fill_block¨Høbª
+fill_block²Hbª
 met5Z
 
-boundary¨Høª
+boundary²Hª
 met5Z
-blockage¨Hø
-ª
+blockage²H
+ª
 met5Z
-probe¨Høª
+probe²Hª
 met5Z	
-option1¨Hø ª
+option1²H ª
 met5Z	
-option2¨Hø!ª
+option2²H!ª
 met5Z	
-option3¨Hø"ª
+option3²H"ª
 met5Z	
-option4¨Hø#ª
+option4²H#ª
 met5Z	
-option5¨Hø$ª
+option5²H$ª
 met5Z	
-option6¨Hø%ª
+option6²H%ª
 met5Z	
-option7¨Hø&ª
+option7²H&ª
 met5Z	
-option8¨Hø'ª
+option8²H'ª
 met5Z
-psa1¨HøXª
+psa1²HXª
 met5Z
-psa2¨HøYª
+psa2²HYª
 met5Z
-psa3¨HøZª
+psa3²HZª
 met5Z
-psa4¨Hø[ª
+psa4²H[ª
 met5Z
-psa5¨Hø\ª
+psa5²H\ª
 met5Z
-psa6¨Hø]ª
+psa6²H]ª
 mtestZ
-drawing¨Iøª
+drawing²Iª
 ncmZ
-drawing¨\ø,ª
+drawing²\,ª
 npcZ
-drawing¨_øª
+drawing²_ª
 npnZ
-drawing¨Røª
+drawing²Rª
 npnZ	
-label¨Røª
+label²Rª
 nsdmZ
-drawing¨]ø,ª
+drawing²],ª
 nsmZ
-drawing¨=øª
+drawing²=ª
 nwellZ
-drawing¨@øª
+drawing²@ª
 nwellZ
-pin¨@øª
+pin²@ª
 nwellZ	
-label¨@øª
+label²@ª
 nwellZ
-net¨Tøª
+net²Tª
 overlapZ
-drawing¨Zøª
+drawing²Zª
 overlapZ
 
-boundary¨Zøª
+boundary²Zª
 padZ
-drawing¨Løª
+drawing²Lª
 padZ
-pin¨Løª
+pin²Lª
 padZ	
-label¨Løª
+label²Lª
 pmmZ
-drawing¨Uø,ª
+drawing²U,ª
 pmm2Z
-drawing¨Møª
+drawing²Mª
 pnpZ	
-label¨Rø;ª
+label²R;ª
 pnpZ
-drawing¨Rø,ª
+drawing²R,ª
 polyZ
-drawing¨Bøª
+drawing²Bª
 polyZ
-pin¨Bøª
+pin²Bª
 polyZ	
-label¨Bøª
+label²Bª
 polyZ
-res¨Bøª
+res²Bª
 polyZ
-net¨Bøª
+net²Bª
 polyZ
 
-boundary¨Bøª
+boundary²Bª
 polyZ
-fill¨Bøcª
+fill²Bcª
 polyZ
 
-fill_block¨Bøbª
+fill_block²Bbª
 polyZ
-probe¨Bøª
+probe²Bª
 polyZ
-gate¨Bø	ª
+gate²B	ª
 polyZ
-model¨BøSª
+model²BSª 
 
 prBoundaryZ
 
-boundary¨ëøª 
+boundary²ëª!
 LVS_excludeZ
-drawing¨Tø,ª
+drawing²T,ª
 psdmZ
-drawing¨^øª
+drawing²^ª
 pwbmZ
-drawing¨ø,ª
+drawing²,ª
 pwdeZ
-drawing¨|øª
+drawing²|ª
 pwellZ
-pin¨zøª
+pin²zª
 pwellZ	
-label¨@ø;ª
+label²@;ª
 pwellZ
-res¨@øª
+res²@ª
 r1cZ
-drawing¨Éøª
+drawing²Éª
 r1cZ
-pin¨Éøûª
+pin²Éûª
 r1cZ	
-label¨Éøíª
+label²Éíª
 r1cZ
-res¨Éøª
+res²Éª
 r1cZ
-net¨Éøýª
+net²Éýª
 r1cZ
-mask¨Éª
+mask²Éª
 r1cZ
 
-fill_block¨Éøª
+fill_block²Éª
 r1cZ
-blockage¨Éøæª
+blockage²Éæª
 r1cZ
 
-boundary¨Éøª
+boundary²Éª
 r1vZ
-drawing¨Êøª
+drawing²Êª
 r1vZ
-pin¨Êøûª
+pin²Êûª
 r1vZ	
-label¨Êøíª
+label²Êíª
 r1vZ
-res¨Êøª
+res²Êª
 r1vZ
-net¨Êøýª
+net²Êýª
 r1vZ
-mask¨Êª
+mask²Êª
 r1vZ
 
-fill_block¨Êøª
+fill_block²Êª
 r1vZ
-blockage¨Êøæª
+blockage²Êæª
 r1vZ
 
-boundary¨Êøª
+boundary²Êª
 rdlZ
-drawing¨Jøª
+drawing²Jª
 rdlZ
-pin¨Jøª
+pin²Jª
 rdlZ	
-label¨Jøª
+label²Jª
 rdlZ
-res¨Jøª
+res²Jª
 rdlZ
-blockage¨Jø
-ª
+blockage²J
+ª
 rdlZ	
-option1¨Yø ª
+option1²Y ª
 rdlZ	
-option2¨Yø!ª
+option2²Y!ª
 rdlZ	
-option3¨Yø"ª
+option3²Y"ª
 rdlZ	
-option4¨Yø#ª
+option4²Y#ª
 rdlZ	
-option5¨Yø$ª
+option5²Y$ª
 rdlZ	
-option6¨Yø%ª
+option6²Y%ª
 rdlZ	
-option7¨Yø&ª
+option7²Y&ª
 rdlZ	
-option8¨Yø'ª
+option8²Y'ª
 rdlZ
-psa1¨JøXª
+psa1²JXª
 rdlZ
-psa2¨JøYª
+psa2²JYª
 rdlZ
-psa3¨JøZª
+psa3²JZª
 rdlZ
-psa4¨Jø[ª
+psa4²J[ª
 rdlZ
-psa5¨Jø\ª
+psa5²J\ª
 rdlZ
-psa6¨Jø]ª
+psa6²J]ª
 rpmZ
-drawing¨Vøª
+drawing²Vª
 rrpmZ
-drawing¨føª
+drawing²fª
 targetZ
-drawing¨Lø,ª
+drawing²L,ª
 textZ
-drawing¨Sø,ª
+drawing²S,ª
 thkoxZ
-drawing¨Køª
+drawing²Kª
 tunmZ
-drawing¨Pøª
+drawing²Pª
 ubmZ
-drawing¨øª
+drawing²ª
 urpmZ
-drawing¨Oøª
+drawing²Oª
 v12Z
-drawing¨Jøª
+drawing²Jª
 v20Z
-drawing¨Jøª
+drawing²Jª
 v5Z
-drawing¨Køª
+drawing²Kª
 via1Z
-drawing¨Dø,ª
+drawing²D,ª
 via1Z
-pin¨Dø:ª
+pin²D:ª
 via1Z
-net¨Dø)ª
+net²D)ª
 via1Z
 
-boundary¨Dø<ª
+boundary²D<ª
 via2Z
-drawing¨Eø,ª
+drawing²E,ª
 via2Z
-pin¨Eø:ª
+pin²E:ª
 via2Z
-net¨Eø)ª
+net²E)ª
 via2Z
 
-boundary¨Eø<ª
+boundary²E<ª
 via3Z
-drawing¨Fø,ª
+drawing²F,ª
 via3Z
-pin¨Fø0ª
+pin²F0ª
 via3Z
-net¨Fø)ª
+net²F)ª
 via3Z
 
-boundary¨Fø<ª
+boundary²F<ª
 via4Z
-drawing¨Gø,ª
+drawing²G,ª
 via4Z
-pin¨Gø0ª
+pin²G0ª
 via4Z
-net¨Gø)ª
+net²G)ª
 via4Z
 
-boundary¨Gø<ª
+boundary²G<ª
 viatopZ
-drawing¨Hø,
+drawing²H,

@@ -95,7 +95,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
     // Possible off-grid edge?
     return;
 
-  CreateBlockage(edge->first()->centre(), edge->second()->centre());
+  MergeIntoBlockage(edge->first()->centre(), edge->second()->centre());
 
   // Mark other edges that are blocked by this as used.
   for (RoutingEdge *edge : edges_) {
@@ -411,10 +411,10 @@ bool RoutingTrack::Intersects(
     intersections->push_back({
         PointOnTrack(polygon_onto_track.first),
         PointOnTrack(polygon_onto_track.second)});
-    DLOG(INFO) << "blockage " << polygon.Describe()
-               << " is entirely contained within track (" << direction_ << ") "
-               << offset_ << " between " << polygon_onto_track.first << " and "
-               <<polygon_onto_track.second;
+    VLOG(15) << "blockage " << polygon.Describe()
+             << " is entirely contained within track (" << direction_ << ") "
+             << offset_ << " between " << polygon_onto_track.first << " and "
+             <<polygon_onto_track.second;
     return true;
   }
 
@@ -443,7 +443,7 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding) {
   if (Intersects(rectangle, padding)) {
-    RoutingTrackBlockage *blockage = CreateBlockage(
+    RoutingTrackBlockage *blockage = MergeIntoBlockage(
         rectangle.lower_left(), rectangle.upper_right());
     if (blockage) {
       ApplyBlockage(*blockage);
@@ -462,20 +462,34 @@ void RoutingTrack::AddBlockage(
   Intersects(polygon, &intersections, padding);
 
   for (const auto &pair : intersections) {
-    RoutingTrackBlockage *blockage = CreateBlockage(
-        pair.first, pair.second);
+    RoutingTrackBlockage *blockage = MergeIntoBlockage(pair.first, pair.second);
     if (blockage) {
       ApplyBlockage(*blockage);
     }
   }
 }
 
-RoutingTrackBlockage *RoutingTrack::CreateBlockage(
+void RoutingTrack::AddTemporaryBlockage(
+    const geometry::Rectangle &rectangle,
+    int64_t padding,
+    std::set<RoutingVertex*> *blocked_vertices,
+    std::set<RoutingEdge*> *blocked_edges) {
+  if (Intersects(rectangle, padding)) {
+    std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(
+        rectangle.lower_left(), rectangle.upper_right());
+
+    RoutingTrackBlockage temporary_blockage = RoutingTrackBlockage(
+        low_high.first, low_high.second);
+    ApplyBlockage(temporary_blockage, blocked_vertices, blocked_edges);
+  }
+}
+
+
+RoutingTrackBlockage *RoutingTrack::MergeIntoBlockage(
     const geometry::Point &one_end, const geometry::Point &other_end) {
-  int64_t low = ProjectOntoTrack(one_end);
-  int64_t high = ProjectOntoTrack(other_end);
-  if (low > high)
-    std::swap(low, high);
+  std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(one_end, other_end);
+  int64_t low = low_high.first;
+  int64_t high = low_high.second;
 
   if (blockages_.empty()) {
     RoutingTrackBlockage *blockage = new RoutingTrackBlockage(low, high);
@@ -518,7 +532,8 @@ RoutingTrackBlockage *RoutingTrack::CreateBlockage(
   }
 
   // Remove elements [first, last] from blockages after combining them into one
-  // blockage spanned by the new one. We rely on the sorted order of the blockages.
+  // blockage spanned by the new one. We rely on the sorted order of the
+  // blockages.
   RoutingTrackBlockage *blockage = new RoutingTrackBlockage(
       std::min(low, (*first)->start()),
       std::max(high, (*last)->end()));
@@ -550,17 +565,26 @@ void RoutingTrack::SortBlockages() {
   std::sort(blockages_.begin(), blockages_.end(), comp);
 }
 
-void RoutingTrack::ApplyBlockage(const RoutingTrackBlockage &blockage) {
+void RoutingTrack::ApplyBlockage(
+    const RoutingTrackBlockage &blockage,
+    std::set<RoutingVertex*> *blocked_vertices,
+    std::set<RoutingEdge*> *blocked_edges) {
   for (RoutingVertex *vertex : vertices_) {
     if (!vertex->available())
       continue;
     if (IsBlockedBetween(vertex->centre(), vertex->centre())) {
       vertex->set_available(false);
+      if (blocked_vertices)
+        blocked_vertices->insert(vertex);
     }
   }
   for (RoutingEdge *edge : edges_) {
+    if (!edge->available())
+      continue;
     if (IsBlockedBetween(edge->first()->centre(), edge->second()->centre())) {
       edge->set_available(false);
+      if (blocked_edges)
+        blocked_edges->insert(edge);
     }
   }
 }

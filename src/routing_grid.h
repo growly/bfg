@@ -91,11 +91,15 @@ class RoutingGrid {
   // Add permanent blockages. Ports need special consideration and are not
   // added from the ShapeCollection by default.
   void AddBlockages(const geometry::ShapeCollection &shapes,
-                    int64_t padding = 0);
+                    int64_t padding = 0,
+                    std::set<RoutingVertex*> *changed_out = nullptr);
   void AddBlockage(const geometry::Rectangle &rectangle,
-                   int64_t padding = 0);
+                   int64_t padding = 0,
+                   std::set<RoutingVertex*> *blocked_vertices = nullptr,
+                   std::set<RoutingEdge*> *blocked_edges = nullptr);
   void AddBlockage(const geometry::Polygon &polygon,
-                   int64_t padding = 0);
+                   int64_t padding = 0,
+                   std::set<RoutingVertex*> *changed_out = nullptr);
   // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
 
@@ -166,6 +170,9 @@ class RoutingGrid {
 
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
+
+  std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
+  GenerateGridVertexForPort(const geometry::Port &port);
 
   RoutingVertex *GenerateGridVertexForPoint(
       const geometry::Point &point, const geometry::Layer &layer);

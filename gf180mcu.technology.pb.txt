@@ -5,8 +5,10 @@ layers {
     description: "pr_boundary"
     type: DRAWING
   }
-  index: 0
-  sub_index: 0
+  index {
+    major: 0
+    minor: 0
+  }
 }
 layers {
   name: "comp"
@@ -14,8 +16,10 @@ layers {
     description: "comp"
     type: DRAWING
   }
-  index: 22
-  sub_index: 0
+  index {
+    major: 22
+    minor: 0
+  }
 }
 layers {
   name: "dualgate"
@@ -23,8 +27,10 @@ layers {
     description: "dualgate"
     type: DRAWING
   }
-  index: 55
-  sub_index: 0
+  index {
+    major: 55
+    minor: 0
+  }
 }
 layers {
   name: "v5def"
@@ -32,8 +38,10 @@ layers {
     description: "v5def"
     type: DRAWING
   }
-  index: 112
-  sub_index: 1
+  index {
+    major: 112
+    minor: 1
+  }
 }
 layers {
   name: "sramdef"
@@ -41,8 +49,10 @@ layers {
     description: "sramdef"
     type: DRAWING
   }
-  index: 108
-  sub_index: 5
+  index {
+    major: 108
+    minor: 5
+  }
 }
 layers {
   name: "poly2"
@@ -50,8 +60,10 @@ layers {
     description: "poly2"
     type: DRAWING
   }
-  index: 30
-  sub_index: 0
+  index {
+    major: 30
+    minor: 0
+  }
 }
 layers {
   name: "nwell"
@@ -59,8 +71,10 @@ layers {
     description: "nwell"
     type: DRAWING
   }
-  index: 21
-  sub_index: 0
+  index {
+    major: 21
+    minor: 0
+  }
 }
 layers {
   name: "nplus"
@@ -68,8 +82,10 @@ layers {
     description: "nplus"
     type: DRAWING
   }
-  index: 32
-  sub_index: 0
+  index {
+    major: 32
+    minor: 0
+  }
 }
 layers {
   name: "esd"
@@ -77,8 +93,10 @@ layers {
     description: "esd"
     type: DRAWING
   }
-  index: 24
-  sub_index: 0
+  index {
+    major: 24
+    minor: 0
+  }
 }
 layers {
   name: "bound"
@@ -86,8 +104,10 @@ layers {
     description: "bound"
     type: DRAWING
   }
-  index: 63
-  sub_index: 0
+  index {
+    major: 63
+    minor: 0
+  }
 }
 layers {
   name: "sab"
@@ -95,8 +115,10 @@ layers {
     description: "sab"
     type: DRAWING
   }
-  index: 49
-  sub_index: 0
+  index {
+    major: 49
+    minor: 0
+  }
 }
 layers {
   name: "pplus"
@@ -104,8 +126,10 @@ layers {
     description: "pplus"
     type: DRAWING
   }
-  index: 31
-  sub_index: 0
+  index {
+    major: 31
+    minor: 0
+  }
 }
 layers {
   name: "contact"
@@ -113,8 +137,10 @@ layers {
     description: "contact"
     type: DRAWING
   }
-  index: 33
-  sub_index: 0
+  index {
+    major: 33
+    minor: 0
+  }
 }
 layers {
   name: "metal1"
@@ -122,8 +148,10 @@ layers {
     description: "metal1"
     type: DRAWING
   }
-  index: 34
-  sub_index: 0
+  index {
+    major: 34
+    minor: 0
+  }
 }
 layers {
   name: "via1"
@@ -131,8 +159,10 @@ layers {
     description: "via1"
     type: DRAWING
   }
-  index: 35
-  sub_index: 0
+  index {
+    major: 35
+    minor: 0
+  }
 }
 layers {
   name: "metal2"
@@ -140,8 +170,10 @@ layers {
     description: "metal2"
     type: DRAWING
   }
-  index: 36
-  sub_index: 0
+  index {
+    major: 36
+    minor: 0
+  }
 }
 layers {
   name: "via2"
@@ -149,8 +181,10 @@ layers {
     description: "via2"
     type: DRAWING
   }
-  index: 38
-  sub_index: 0
+  index {
+    major: 38
+    minor: 0
+  }
 }
 layers {
   name: "metal3"
@@ -158,8 +192,10 @@ layers {
     description: "metal3"
     type: DRAWING
   }
-  index: 42
-  sub_index: 0
+  index {
+    major: 42
+    minor: 0
+  }
 }
 layers {
   name: "via3"
@@ -167,8 +203,10 @@ layers {
     description: "via3"
     type: DRAWING
   }
-  index: 40
-  sub_index: 0
+  index {
+    major: 40
+    minor: 0
+  }
 }
 layers {
   name: "metal4"
@@ -176,8 +214,10 @@ layers {
     description: "metal4"
     type: DRAWING
   }
-  index: 46
-  sub_index: 0
+  index {
+    major: 46
+    minor: 0
+  }
 }
 layers {
   name: "via4"
@@ -185,8 +225,10 @@ layers {
     description: "via4"
     type: DRAWING
   }
-  index: 41
-  sub_index: 0
+  index {
+    major: 41
+    minor: 0
+  }
 }
 layers {
   name: "metal5"
@@ -194,8 +236,10 @@ layers {
     description: "metal5"
     type: DRAWING
   }
-  index: 81
-  sub_index: 0
+  index {
+    major: 81
+    minor: 0
+  }
 }
 layers {
   name: "via5"
@@ -203,8 +247,10 @@ layers {
     description: "via5"
     type: DRAWING
   }
-  index: 82
-  sub_index: 0
+  index {
+    major: 82
+    minor: 0
+  }
 }
 layers {
   name: "metal6"
@@ -212,8 +258,10 @@ layers {
     description: "metal6"
     type: DRAWING
   }
-  index: 126
-  sub_index: 0
+  index {
+    major: 126
+    minor: 0
+  }
 }
 layers {
   name: "via6"
@@ -221,8 +269,10 @@ layers {
     description: "via6"
     type: DRAWING
   }
-  index: 127
-  sub_index: 0
+  index {
+    major: 127
+    minor: 0
+  }
 }
 layers {
   name: "metal7"
@@ -230,8 +280,10 @@ layers {
     description: "metal7"
     type: DRAWING
   }
-  index: 128
-  sub_index: 0
+  index {
+    major: 128
+    minor: 0
+  }
 }
 layers {
   name: "viatv"
@@ -239,8 +291,10 @@ layers {
     description: "viatv"
     type: DRAWING
   }
-  index: 129
-  sub_index: 0
+  index {
+    major: 129
+    minor: 0
+  }
 }
 layers {
   name: "metalmt"
@@ -248,8 +302,10 @@ layers {
     description: "metalmt"
     type: DRAWING
   }
-  index: 53
-  sub_index: 0
+  index {
+    major: 53
+    minor: 0
+  }
 }
 layers {
   name: "pad"
@@ -257,8 +313,10 @@ layers {
     description: "pad"
     type: DRAWING
   }
-  index: 37
-  sub_index: 0
+  index {
+    major: 37
+    minor: 0
+  }
 }
 layers {
   name: "hvt"
@@ -266,8 +324,10 @@ layers {
     description: "hvt"
     type: DRAWING
   }
-  index: 187
-  sub_index: 0
+  index {
+    major: 187
+    minor: 0
+  }
 }
 layers {
   name: "dnwell"
@@ -275,8 +335,10 @@ layers {
     description: "dnwell"
     type: DRAWING
   }
-  index: 12
-  sub_index: 0
+  index {
+    major: 12
+    minor: 0
+  }
 }
 layers {
   name: "res"
@@ -284,8 +346,10 @@ layers {
     description: "res"
     type: DRAWING
   }
-  index: 62
-  sub_index: 0
+  index {
+    major: 62
+    minor: 0
+  }
 }
 layers {
   name: "fusebot"
@@ -293,8 +357,10 @@ layers {
     description: "fusebot"
     type: DRAWING
   }
-  index: 138
-  sub_index: 0
+  index {
+    major: 138
+    minor: 0
+  }
 }
 layers {
   name: "fusetop"
@@ -302,8 +368,10 @@ layers {
     description: "fusetop"
     type: DRAWING
   }
-  index: 75
-  sub_index: 0
+  index {
+    major: 75
+    minor: 0
+  }
 }
 layers {
   name: "capdef"
@@ -311,8 +379,10 @@ layers {
     description: "capdef"
     type: DRAWING
   }
-  index: 117
-  sub_index: 5
+  index {
+    major: 117
+    minor: 5
+  }
 }
 layers {
   name: "lvt"
@@ -320,8 +390,10 @@ layers {
     description: "lvt"
     type: DRAWING
   }
-  index: 87
-  sub_index: 0
+  index {
+    major: 87
+    minor: 0
+  }
 }
 layers {
   name: "nat"
@@ -329,8 +401,10 @@ layers {
     description: "nat"
     type: DRAWING
   }
-  index: 05
-  sub_index: 0
+  index {
+    major: 05
+    minor: 0
+  }
 }
 layers {
   name: "bjt"
@@ -338,8 +412,10 @@ layers {
     description: "bjt"
     type: DRAWING
   }
-  index: 118
-  sub_index: 5
+  index {
+    major: 118
+    minor: 5
+  }
 }
 layers {
   name: "diode"
@@ -347,8 +423,10 @@ layers {
     description: "diode"
     type: DRAWING
   }
-  index: 115
-  sub_index: 5
+  index {
+    major: 115
+    minor: 5
+  }
 }
 layers {
   name: "resdef"
@@ -356,8 +434,10 @@ layers {
     description: "resdef"
     type: DRAWING
   }
-  index: 110
-  sub_index: 5
+  index {
+    major: 110
+    minor: 5
+  }
 }
 layers {
   name: "text"
@@ -365,6 +445,8 @@ layers {
     description: "text"
     type: LABEL
   }
-  index: 63
-  sub_index: 63
+  index {
+    major: 63
+    minor: 63
+  }
 }

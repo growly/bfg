@@ -220,6 +220,16 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .min_width = db->ToInternalUnits(840)
   };
   db->AddRules("nwell.drawing", intra_constraints);
+
+  db->AddViaLayer("ndiff.drawing", "li.drawing", "licon.drawing");
+  db->AddViaLayer("pdiff.drawing", "li.drawing", "licon.drawing");
+  db->AddViaLayer("li.drawing", "met1.drawing", "mcon.drawing");
+  db->AddViaLayer("met1.drawing", "met2.drawing", "via1.drawing");
+  db->AddViaLayer("met2.drawing", "met3.drawing", "via2.drawing");
+  db->AddViaLayer("capm.drawing", "met4.drawing", "via3.drawing");
+  db->AddViaLayer("met3.drawing", "met4.drawing", "via3.drawing");
+  db->AddViaLayer("cap2m.drawing", "met5.drawing", "via4.drawing");
+  db->AddViaLayer("met4.drawing", "met5.drawing", "via4.drawing");
 }
 
 void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {

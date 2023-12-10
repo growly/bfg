@@ -8,7 +8,8 @@
 namespace bfg {
 namespace geometry {
 
-// TODO(aryap): Is a port an abstract shape or not?
+// A port, or pin, defines an access region either on the given layer or on
+// adjacent layers (mapped by PhysicalPropertiesDatabase).
 class Port : public Rectangle {
  public:
   Port() {}

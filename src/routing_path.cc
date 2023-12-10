@@ -97,9 +97,9 @@ void RoutingPath::ToPolyLinesAndVias(
   // Connect the start and end of the PolyLine to the appropriate layer with
   // appropriate encapsulation.
   PolyLine *front = generated_lines.front().get();
-  if (start_port_ && front->layer() != start_port_->layer()) {
+  if (start_port_ && front->layer() != start_access_layer_) {
     AbstractVia *via = new AbstractVia(
-        start_port_->centre(), front->layer(), start_port_->layer());
+        start_port_->centre(), front->layer(), start_access_layer_);
     vias->emplace_back(via);
 
     front->InsertBulge(start_port_->centre(), bulge_width, bulge_length);
@@ -107,9 +107,9 @@ void RoutingPath::ToPolyLinesAndVias(
   front->set_start_port(start_port_);
 
   PolyLine *back = generated_lines.back().get();
-  if (end_port_ && front != back && back->layer() != end_port_->layer()) {
+  if (end_port_ && front != back && back->layer() != end_access_layer_) {
     AbstractVia *via = new AbstractVia(
-        end_port_->centre(), back->layer(), end_port_->layer());
+        end_port_->centre(), back->layer(), end_access_layer_);
     vias->emplace_back(via);
 
     back->InsertBulge(end_port_->centre(), bulge_width, bulge_length);

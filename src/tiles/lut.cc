@@ -435,7 +435,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
-    LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
+    // LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
     alt_routing_grid.AddBlockages(
         shapes, db.Rules("met1.drawing").min_separation);
@@ -443,7 +443,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   {
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
-    LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
+    // LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
     alt_routing_grid.AddBlockages(
         shapes, db.Rules("met2.drawing").min_separation);

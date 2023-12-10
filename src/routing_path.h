@@ -44,6 +44,20 @@ class RoutingPath {
   const geometry::Port *end_port() const { return end_port_; }
   void set_end_port(const geometry::Port *port) { end_port_ = port; }
 
+  const geometry::Layer &start_access_layer() const {
+    return start_access_layer_;
+  }
+  void set_start_access_layer(const geometry::Layer &layer) {
+    start_access_layer_ = layer;
+  }
+
+  const geometry::Layer &end_access_layer() const {
+    return end_access_layer_;
+  }
+  void set_end_access_layer(const geometry::Layer &layer) {
+    end_access_layer_ = layer;
+  }
+
   void set_net(const std::string &net) { net_ = net; }
   const std::string &net() const { return net_; }
 
@@ -54,7 +68,9 @@ class RoutingPath {
   // If these ports are provided, a via will be generated or the edge on the
   // given layer extended to correctly connect to them.
   const geometry::Port *start_port_;
+  geometry::Layer start_access_layer_;
   const geometry::Port *end_port_;
+  geometry::Layer end_access_layer_;
 
   std::string net_;
 

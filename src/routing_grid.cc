@@ -87,6 +87,23 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
       lhs_info, rhs_info);
 }
 
+std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
+RoutingGrid::GenerateGridVertexForPort(
+    const geometry::Port &port) {
+  const std::set<geometry::Layer> layers =
+      physical_db_.FindReachableLayersByPinLayer(port.layer());
+  for (const geometry::Layer &layer : layers) {
+    LOG(INFO) << "checking for grid vertex on layer " << layer;
+    RoutingVertex *vertex = GenerateGridVertexForPoint(port.centre(), layer);
+    if (vertex) {
+      // This is
+      //  std::optional<std::pair<RoutingVertex*, const geometry::Layer>>({vertex, layer});
+      return {{vertex, layer}};
+    }
+  }
+  return std::nullopt;
+}
+
 RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     const geometry::Point &point, const geometry::Layer &layer) {
   // A key function of this class is to determine an appropriate starting point
@@ -108,6 +125,9 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   // The first cut of this algorithm is to just find the closest of all the
   // available vertices on the given layer.
 
+  geometry::Point target_point = point;
+  target_point.set_layer(layer);
+
   std::vector<CostedVertex> costed_vertices;
   for (const auto &entry : available_vertices_by_layer_) {
     // Is this layer reachable from the target?
@@ -116,13 +136,13 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
       needs_via = GetRoutingViaInfo(entry.first, layer);
       if (!needs_via)
         continue;
-      LOG(INFO) << "layer " << *physical_db_.GetLayerName(layer)
+      LOG(INFO) << "layer " << physical_db_.DescribeLayer(layer)
                 << " is accessible for routing via layer "
-                << *physical_db_.GetLayerName(needs_via->get().layer);
+                << physical_db_.DescribeLayer(needs_via->get().layer);
     }
 
     for (RoutingVertex *vertex : entry.second) {
-      uint64_t vertex_cost = vertex->L1DistanceTo(point);
+      uint64_t vertex_cost = vertex->L1DistanceTo(target_point);
       if (needs_via) {
         vertex_cost += (10.0 * needs_via->get().cost);
       }
@@ -199,7 +219,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     RoutingVertex *bridging_vertex = nullptr;
     for (size_t i = 0; i < tracks.size() && bridging_vertex == nullptr; ++i) {
       bridging_vertex = tracks[i]->CreateNearestVertexAndConnect(
-          point, candidate);
+          target_point, candidate);
     }
     if (bridging_vertex == nullptr)
       continue;
@@ -217,7 +237,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
       AddVertex(bridging_vertex);
     }
 
-    RoutingVertex *off_grid = new RoutingVertex(point);
+    RoutingVertex *off_grid = new RoutingVertex(target_point);
     off_grid->AddConnectedLayer(vertex_layer);
     AddVertex(off_grid);
 
@@ -438,44 +458,80 @@ bool RoutingGrid::AddRouteBetween(
     const geometry::Port &end,
     const std::set<geometry::Port*> &avoid,
     const std::string &net) {
-  auto usable_vertex = [&](RoutingVertex *vertex) {
-    if (!vertex->available()) return false;
+  // Override the vertex availability check for this search to avoid
+  // obstructions in the given avoid set. Useful since it doesn't mutate the
+  // global starting state for the purpose of the search, but we have to
+  // serialise searches to ensure determinism anyway, making it kind of
+  // a pointless feature. It's also noticeably slower, since now a boolean check
+  // per graph entity is replaced by a container lookup.
+  //
+  // Instead, we could temporarily mark the effected vertices unavailable and
+  // reset them after.
+  // TODO(aryap): That doesn't work today because RoutingTrack has a very
+  // complicated way of managing, sorting and merging blockages, and temporary
+  // blockages would need to be freshly supported. Probably not worth the
+  // complexity just to avoid temporarily blockages like pins.
+  //auto usable_vertex = [&](RoutingVertex *vertex) {
+  //  if (!vertex->available()) return false;
 
-    std::optional<geometry::Rectangle> via_footprint = ViaFootprint(
-        *vertex,
-        100);   // FIXME(aryap): This padding value is the max of the
-                // min_separations on the top and bottom layers and should just
-                // be automatically found.
-    if (!via_footprint)
-      return true;
+  //  std::optional<geometry::Rectangle> via_footprint = ViaFootprint(
+  //      *vertex,
+  //      100);   // FIXME(aryap): This padding value is the max of the
+  //              // min_separations on the top and bottom layers and should just
+  //              // be automatically found.
+  //  if (!via_footprint)
+  //    return true;
 
-    for (geometry::Port *port : avoid) {
-      if (port->Overlaps(via_footprint.value()))
-        return false;
+  //  for (geometry::Port *port : avoid) {
+  //    if (port->Overlaps(via_footprint.value()))
+  //      return false;
+  //  }
+  //  return true;
+  //};
+  std::set<RoutingVertex*> blocked_vertices;
+  std::set<RoutingEdge*> blocked_edges;
+  for (geometry::Port *port : avoid) {
+    auto pin_access = physical_db_.FindReachableLayersByPinLayer(port->layer());
+    if (pin_access.empty()) {
+      LOG(WARNING)
+          << "Pin " << *port << " has no known pin accesss layers; "
+          << "avoiding just the pin layer itself: " << port->layer();
+      geometry::Rectangle pin_projection = *port;
+      pin_projection.set_layer(port->layer());
+      AddBlockage(
+          pin_projection, 100 /* FIXME */, &blocked_vertices, &blocked_edges);
+      continue;
     }
-    return true;
-  };
+    for (const geometry::Layer &layer : pin_access) {
+      geometry::Rectangle pin_projection = *port;
+      pin_projection.set_layer(layer);
+      AddBlockage(
+          pin_projection, 100 /* FIXME */, &blocked_vertices, &blocked_edges);
+    }
+    LOG(INFO) << "avoiding " << blocked_vertices.size() << " vertices and "
+              << blocked_edges.size() << " edges";
+  }
 
-  RoutingVertex *begin_vertex = GenerateGridVertexForPoint(
-      begin.centre(), begin.layer());
-  if (!begin_vertex) {
+  auto begin_vertex_and_access_layer = GenerateGridVertexForPort(begin);
+  if (!begin_vertex_and_access_layer) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
     return false;
   }
+  RoutingVertex *begin_vertex = begin_vertex_and_access_layer->first;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
             << begin_vertex->centre();
 
-  RoutingVertex *end_vertex = GenerateGridVertexForPoint(
-      end.centre(), end.layer());
-  if (!end_vertex) {
+  auto end_vertex_and_access_layer = GenerateGridVertexForPort(end);
+  if (!end_vertex_and_access_layer) {
     LOG(ERROR) << "Could not find available vertex for end port.";
     return false;
   }
+  RoutingVertex *end_vertex = end_vertex_and_access_layer->first;
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
             << end_vertex->centre();
 
   std::unique_ptr<RoutingPath> shortest_path(
-      ShortestPath(begin_vertex, end_vertex, usable_vertex));
+      ShortestPath(begin_vertex, end_vertex));
 
   if (!shortest_path) {
     LOG(WARNING) << "No path found.";
@@ -483,8 +539,13 @@ bool RoutingGrid::AddRouteBetween(
   }
 
   // Remember the ports to which the path should connect.
+  //
+  // Ports are typically on port layers (i.e. PINs), but for convenience we also
+  // record the layer we need to use to access said ports:
   shortest_path->set_start_port(&begin);
+  shortest_path->set_start_access_layer(begin_vertex_and_access_layer->second);
   shortest_path->set_end_port(&end);
+  shortest_path->set_end_access_layer(end_vertex_and_access_layer->second);
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
@@ -493,6 +554,13 @@ bool RoutingGrid::AddRouteBetween(
     shortest_path->set_net(net);
 
   InstallPath(shortest_path.release());
+
+  for (RoutingVertex *vertex : blocked_vertices) {
+    vertex->set_available(true);
+  }
+  for (RoutingEdge *edge : blocked_edges) {
+    edge->set_available(true);
+  }
 
   return true;
 }
@@ -919,12 +987,13 @@ RoutingPath *RoutingGrid::ShortestPath(
 
 void RoutingGrid::AddBlockages(
     const geometry::ShapeCollection &shapes,
-    int64_t padding) {
+    int64_t padding,
+    std::set<RoutingVertex*> *changed_out) {
   for (const auto &rectangle : shapes.rectangles()) {
-    AddBlockage(*rectangle, padding);
+    AddBlockage(*rectangle, padding, changed_out);
   }
   for (const auto &polygon : shapes.polygons()) {
-    AddBlockage(*polygon, padding);
+    AddBlockage(*polygon, padding, changed_out);
   }
   // Do not add ports as permanent blockages. They must be considered
   // route-by-route, since some ports might be needed for connection.
@@ -934,30 +1003,41 @@ void RoutingGrid::AddBlockages(
   //}
 }
 
-void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
-                              int64_t padding) {
+void RoutingGrid::AddBlockage(
+    const geometry::Rectangle &rectangle,
+    int64_t padding,
+    std::set<RoutingVertex*> *blocked_vertices,
+    std::set<RoutingEdge*> *blocked_edges) {
   const geometry::Layer &layer = rectangle.layer();
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())
     return;
   for (RoutingTrack *track : it->second) {
-    track->AddBlockage(rectangle, padding);
+    if (blocked_vertices || blocked_edges) {
+      track->AddTemporaryBlockage(
+          rectangle, padding, blocked_vertices, blocked_edges);
+    } else {
+      // Add permanent blockage.
+      track->AddBlockage(rectangle, padding);
+    }
   }
 
   // Find any possibly-blocked vertices and make them unavailable:
-  // TODO(aryap): This.
   std::vector<RoutingGridGeometry*> grid_geometries;
   FindRoutingGridGeometriesForLayer(layer, &grid_geometries);
   for (RoutingGridGeometry *grid_geometry : grid_geometries) {
     std::set<RoutingVertex*> vertices;
     grid_geometry->EnvelopingVertices(rectangle, &vertices);
     for (RoutingVertex *vertex : vertices) {
+      if (!vertex->available())
+        continue;
       if (ViaWouldIntersect(*vertex,
-                            // grid_geometry->horizontal_layer(),
-                            // grid_geometry->vertical_layer(),
                             rectangle,
                             padding)) {
         vertex->set_available(false);
+        if (blocked_vertices) {
+          blocked_vertices->insert(vertex);
+        }
         VLOG(15) << "blockage: " << rectangle << " would block " << vertex;
       }
     }
@@ -965,7 +1045,8 @@ void RoutingGrid::AddBlockage(const geometry::Rectangle &rectangle,
 }
 
 void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
-                              int64_t padding) {
+                              int64_t padding,
+                              std::set<RoutingVertex*> *changed_out) {
   const geometry::Layer &layer = polygon.layer();
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())
@@ -981,12 +1062,15 @@ void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
     std::set<RoutingVertex*> vertices;
     grid_geometry->EnvelopingVertices(polygon, &vertices);
     for (RoutingVertex *vertex : vertices) {
+      if (!vertex->available())
+        continue;
       if (ViaWouldIntersect(*vertex,
-                            // grid_geometry->horizontal_layer(),
-                            // grid_geometry->vertical_layer(),
                             polygon,
                             padding)) {
         vertex->set_available(false);
+        if (changed_out) {
+          changed_out->insert(vertex);
+        }
         VLOG(15) << "blockage: " << polygon << " would block " << vertex;
       }
     }
@@ -1038,8 +1122,7 @@ const RoutingViaInfo &RoutingGrid::GetRoutingViaInfoOrDie(
     const Layer &lhs, const Layer &rhs) const {
   auto via_info = GetRoutingViaInfo(lhs, rhs);
   LOG_IF(FATAL, !via_info)
-      << "No known connectiion between layer " << lhs
-      << " and layer " << rhs;
+      << "No known connection between layer " << lhs << " and layer " << rhs;
   return *via_info;
 }
 

@@ -9,6 +9,7 @@
 #include <utility>
 #include <glog/logging.h>
 #include <absl/strings/str_cat.h>
+#include <absl/strings/str_join.h>
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_split.h>
 
@@ -21,16 +22,44 @@ using geometry::Layer;
 
 void PhysicalPropertiesDatabase::LoadTechnology(
     const vlsir::tech::Technology &pdk) {
-  for (const auto &layer_info : pdk.layers()) {
-
-    VLOG(3) << "Loading layer from proto: \"" << layer_info.name() << "\"";
+  for (const auto &info_pb : pdk.layers()) {
+    VLOG(3) << "Loading layer from proto: \"" << info_pb.name() << "\"";
     LayerInfo info {
-        .name = layer_info.name(),
-        .purpose = layer_info.purpose().description(),
-        .gds_layer = static_cast<uint16_t>(layer_info.index()),
-        .gds_datatype = static_cast<uint16_t>(layer_info.sub_index())
+        .name = info_pb.name(),
+        .purpose = info_pb.purpose().description(),
+        .gds_layer = static_cast<uint16_t>(info_pb.index().major()),
+        .gds_datatype = static_cast<uint16_t>(info_pb.index().minor())
     };
     AddLayerInfo(info);
+  }
+
+  // Do a second pass, translating any references into their internal layer
+  // number.
+  for (const auto &info_pb : pdk.layers()) {
+    std::optional<Layer> layer = FindLayer(info_pb.index().major(),
+                                           info_pb.index().minor());
+    LOG_IF(FATAL, !layer)
+        << "Layer should have been mapped on first pass through technology: "
+        << info_pb.index().major() << "/" << info_pb.index().minor();
+    auto it = layer_infos_.find(layer.value());
+    LOG_IF(FATAL, it == layer_infos_.end())
+        << "Layer info should have been created by 2nd pass: " << layer.value();
+    auto &layer_info = it->second;
+
+    for (const auto &ref_key : info_pb.pin_access_for()) {
+      std::optional<Layer> access_layer = FindLayer(ref_key.major(),
+                                                    ref_key.minor());
+      LOG_IF(FATAL, !access_layer)
+          << "Reference for pin access not added on first pass through "
+          << "technology: "
+          << ref_key.major() << "/"
+          << ref_key.minor();
+      if (!layer_info.accesses) {
+        layer_info.accesses = std::set<Layer>{*access_layer};
+      } else {
+        layer_info.accesses->insert(*access_layer);
+      }
+    }
   }
 }
 
@@ -47,7 +76,7 @@ void PhysicalPropertiesDatabase::AddLayerAlias(
   layers_by_name_.insert({alias, target.value()});
 }
 
-std::optional<const geometry::Layer> PhysicalPropertiesDatabase::FindLayer(
+std::optional<const Layer> PhysicalPropertiesDatabase::FindLayer(
     const std::string &name) const {
   auto name_it = layers_by_name_.find(name);
   if (name_it == layers_by_name_.end())
@@ -57,7 +86,7 @@ std::optional<const geometry::Layer> PhysicalPropertiesDatabase::FindLayer(
 
 const Layer PhysicalPropertiesDatabase::GetLayer(
     const std::string &name) const {
-  std::optional<const geometry::Layer> layer = FindLayer(name);
+  std::optional<const Layer> layer = FindLayer(name);
 
   LOG_IF(FATAL, !layer) << "Could not find layer: " << name;
 
@@ -98,6 +127,8 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
   layer_names_.insert({layer, internal_name});
   layers_by_name_.insert({internal_name, layer});
 
+  layers_by_layer_key_[info.gds_layer][info.gds_datatype] = layer;
+
   VLOG(3) << "Added layer " << layer << ", name: " << info.name
           << ", purpose: " << info.purpose;
 }
@@ -116,9 +147,36 @@ const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
   return GetLayerInfo(layer);
 }
 
+void PhysicalPropertiesDatabase::AddViaLayer(
+    const std::string &one_layer,
+    const std::string &another_layer,
+    const std::string &via_layer) {
+  AddViaLayer(GetLayer(one_layer),
+              GetLayer(another_layer),
+              GetLayer(via_layer));
+}
+
+void PhysicalPropertiesDatabase::AddViaLayer(
+    const geometry::Layer &one_layer,
+    const geometry::Layer &another_layer,
+    const geometry::Layer &via_layer) {
+  std::optional<const Layer> existing = GetViaLayer(one_layer, another_layer);
+  if (existing) {
+    LOG_IF(FATAL, existing.value() != via_layer)
+        << "Layer " << DescribeLayer(one_layer) << " and "
+        << DescribeLayer(another_layer)
+        << " are already connected by via layer " << DescribeLayer(via_layer);
+    // If the existing layer matches, do nothing.
+    return;
+  }
+
+  const auto layers = OrderLayers(one_layer, another_layer);
+  via_layers_[layers.first][layers.second] = via_layer;
+}
+
 std::optional<const Layer> PhysicalPropertiesDatabase::GetViaLayer(
-      const std::string &left, const std::string &right) const {
-  const auto layers = GetTwoLayersAndSort(left, right);
+    const std::string &left, const std::string &right) const {
+  const auto layers = GetTwoLayersAndOrder(left, right);
   auto outer_it = via_layers_.find(layers.first);
   if (outer_it == via_layers_.end())
     return std::nullopt;
@@ -129,7 +187,7 @@ std::optional<const Layer> PhysicalPropertiesDatabase::GetViaLayer(
 }
 
 std::optional<const Layer> PhysicalPropertiesDatabase::GetViaLayer(
-      const geometry::Layer &left, const geometry::Layer &right) const {
+      const Layer &left, const Layer &right) const {
   std::pair<const Layer&, const Layer&> ordered_layers =
       geometry::OrderFirstAndSecondLayers(left, right);
   auto outer_it = via_layers_.find(ordered_layers.first);
@@ -144,13 +202,19 @@ void PhysicalPropertiesDatabase::AddRules(
     const std::string &first_layer,
     const std::string &second_layer,
     const InterLayerConstraints &constraints) {
-  const auto layers = GetTwoLayersAndSort(first_layer, second_layer);
+  const auto layers = GetTwoLayersAndOrder(first_layer, second_layer);
   inter_layer_constraints_[layers.first][layers.second] = constraints;
+
+  if (constraints.connecting_via_layer) {
+    AddViaLayer(layers.first,
+                layers.second,
+                constraints.connecting_via_layer.value());
+  }
 }
 
 const InterLayerConstraints &PhysicalPropertiesDatabase::Rules(
     const std::string &left, const std::string &right) const {
-  const auto layers = GetTwoLayersAndSort(left, right);
+  const auto layers = GetTwoLayersAndOrder(left, right);
   const auto first_it = inter_layer_constraints_.find(layers.first);
   LOG_IF(FATAL, first_it == inter_layer_constraints_.end())
       << "No inter-layer constraints for " << left << "/" << right;
@@ -196,11 +260,39 @@ PhysicalPropertiesDatabase::GetRules(
   return map_it->second;
 }
 
+const std::set<geometry::Layer>
+PhysicalPropertiesDatabase::FindReachableLayersByPinLayer(
+    const geometry::Layer &pin_layer) const {
+  std::set<geometry::Layer> accessible;
+  const auto &layer_info = GetLayerInfo(pin_layer);
+  if (!layer_info.accesses) {
+    return accessible;
+  }
+  for (const auto &directly_accessible_layer : layer_info.accesses.value()) {
+    for (const auto &outer_entry : via_layers_) {
+      const geometry::Layer &outer_layer = outer_entry.first;
+      for (const auto &inner_entry : outer_entry.second) {
+        const geometry::Layer &inner_layer = inner_entry.first;
+
+        // If they exist in this mapping, they are connecting. We do need the
+        // detail of which via layer connects them.
+
+        if (inner_layer == directly_accessible_layer) {
+          accessible.insert(outer_layer);
+        } else if (outer_layer == directly_accessible_layer) {
+          accessible.insert(inner_layer);
+        }
+      }
+    }
+  }
+  return accessible;
+}
+
 std::string PhysicalPropertiesDatabase::DescribeLayers() const {
   std::stringstream ss;
   ss << "Physical properties database layer information:" << std::endl;
   for (const auto &entry : layer_names_) {
-    const geometry::Layer &layer = entry.first;
+    const Layer &layer = entry.first;
     const std::string &name = entry.second;
     const uint16_t gds_layer = GetLayerInfo(layer).gds_layer;
     const uint16_t gds_datatype = GetLayerInfo(layer).gds_datatype;
@@ -213,22 +305,29 @@ std::string PhysicalPropertiesDatabase::DescribeLayers() const {
      << std::endl;
   for (const auto &entry : layers_by_name_) {
     const std::string &name = entry.first;
-    const geometry::Layer &layer = entry.second;
+    const Layer &layer = entry.second;
     std::string canonical_name = GetLayerName(layer).value();
     ss << absl::StrFormat("%-30s: %u (%s)\n", name, layer, canonical_name);
   }
   return ss.str();
 }
 
-const std::pair<Layer, Layer>
-PhysicalPropertiesDatabase::GetTwoLayersAndSort(
-    const std::string &left, const std::string &right) const {
-  Layer first = GetLayer(left);
-  Layer second = GetLayer(right);
+
+const std::pair<geometry::Layer, geometry::Layer>
+PhysicalPropertiesDatabase::OrderLayers(
+    const geometry::Layer &one, const geometry::Layer &another) const {
+  Layer first = one;
+  Layer second = another;
   if (second < first) {
     std::swap(first, second);
   }
   return {first, second};
+}
+
+const std::pair<Layer, Layer>
+PhysicalPropertiesDatabase::GetTwoLayersAndOrder(
+    const std::string &left, const std::string &right) const {
+  return OrderLayers(GetLayer(left), GetLayer(right));
 }
 
 Layer PhysicalPropertiesDatabase::GetNextInternalLayer() {
@@ -237,6 +336,32 @@ Layer PhysicalPropertiesDatabase::GetNextInternalLayer() {
   LOG_IF(FATAL, next_internal_layer_ == 0)
       << "Ran out of internal layer numbers!";
   return next;
+}
+
+std::optional<Layer> PhysicalPropertiesDatabase::FindLayer(
+    uint16_t gds_layer, uint16_t gds_datatype) {
+  auto outer_it = layers_by_layer_key_.find(gds_layer);
+  if (outer_it == layers_by_layer_key_.end()) {
+    return std::nullopt;
+  }
+
+  std::map<uint16_t, geometry::Layer> &inner = outer_it->second;
+  auto inner_it = inner.find(gds_datatype);
+  if (inner_it == inner.end()) {
+    return std::nullopt;
+  }
+  return inner_it->second;
+}
+
+std::string PhysicalPropertiesDatabase::DescribeLayer(
+    const geometry::Layer &layer) const {
+  std::stringstream ss;
+  auto name = GetLayerName(layer);
+  ss << layer;
+  if (name) {
+    ss << " (" << name.value() << ")";
+  }
+  return ss.str();
 }
 
 std::ostream &operator<<(std::ostream &os,

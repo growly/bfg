@@ -5,280 +5,350 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 202
-  sub_index: 254
+  index {
+    major: 202
+    minor: 254
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "rfdiode"
   }
-  index: 81
-  sub_index: 125
+  index {
+    major: 81
+    minor: 125
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "frameRect"
   }
-  index: 81
-  sub_index: 12
+  index {
+    major: 81
+    minor: 12
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "hvnwell"
   }
-  index: 81
-  sub_index: 63
+  index {
+    major: 81
+    minor: 63
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "lvNative"
   }
-  index: 81
-  sub_index: 60
+  index {
+    major: 81
+    minor: 60
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "fillWindow"
   }
-  index: 81
-  sub_index: 13
+  index {
+    major: 81
+    minor: 13
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "frame"
   }
-  index: 81
-  sub_index: 3
+  index {
+    major: 81
+    minor: 3
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "standardc"
   }
-  index: 81
-  sub_index: 4
+  index {
+    major: 81
+    minor: 4
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "etest"
   }
-  index: 81
-  sub_index: 101
+  index {
+    major: 81
+    minor: 101
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "core"
   }
-  index: 81
-  sub_index: 2
+  index {
+    major: 81
+    minor: 2
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "critSid"
   }
-  index: 81
-  sub_index: 52
+  index {
+    major: 81
+    minor: 52
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "extendedDrain"
   }
-  index: 81
-  sub_index: 57
+  index {
+    major: 81
+    minor: 57
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "lowTapDensity"
   }
-  index: 81
-  sub_index: 14
+  index {
+    major: 81
+    minor: 14
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "substrateCut"
   }
-  index: 81
-  sub_index: 53
+  index {
+    major: 81
+    minor: 53
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "moduleCut"
   }
-  index: 81
-  sub_index: 10
+  index {
+    major: 81
+    minor: 10
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "deadZon"
   }
-  index: 81
-  sub_index: 50
+  index {
+    major: 81
+    minor: 50
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "diode"
   }
-  index: 81
-  sub_index: 23
+  index {
+    major: 81
+    minor: 23
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "rdlprobepad"
   }
-  index: 81
-  sub_index: 27
+  index {
+    major: 81
+    minor: 27
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "opcDrop"
   }
-  index: 81
-  sub_index: 54
+  index {
+    major: 81
+    minor: 54
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "injection"
   }
-  index: 81
-  sub_index: 17
+  index {
+    major: 81
+    minor: 17
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "notCritSide"
   }
-  index: 81
-  sub_index: 15
+  index {
+    major: 81
+    minor: 15
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "analog"
   }
-  index: 81
-  sub_index: 79
+  index {
+    major: 81
+    minor: 79
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "dieCut"
   }
-  index: 81
-  sub_index: 11
+  index {
+    major: 81
+    minor: 11
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "seal"
   }
-  index: 81
-  sub_index: 1
+  index {
+    major: 81
+    minor: 1
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "esd"
   }
-  index: 81
-  sub_index: 19
+  index {
+    major: 81
+    minor: 19
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "critCorner"
   }
-  index: 81
-  sub_index: 51
+  index {
+    major: 81
+    minor: 51
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "photo"
   }
-  index: 81
-  sub_index: 81
+  index {
+    major: 81
+    minor: 81
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "low_vt"
   }
-  index: 81
-  sub_index: 108
+  index {
+    major: 81
+    minor: 108
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "fabBlock"
   }
-  index: 81
-  sub_index: 82
+  index {
+    major: 81
+    minor: 82
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "padLength"
   }
-  index: 81
-  sub_index: 67
+  index {
+    major: 81
+    minor: 67
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "pad_io"
   }
-  index: 81
-  sub_index: 70
+  index {
+    major: 81
+    minor: 70
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "pad_pwr"
   }
-  index: 81
-  sub_index: 71
+  index {
+    major: 81
+    minor: 71
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "pad_gnd"
   }
-  index: 81
-  sub_index: 72
+  index {
+    major: 81
+    minor: 72
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "guard_boundary"
   }
-  index: 81
-  sub_index: 73
+  index {
+    major: 81
+    minor: 73
+  }
 }
 layers {
   name: "areaid"
   purpose {
     description: "lv_net"
   }
-  index: 81
-  sub_index: 66
+  index {
+    major: 81
+    minor: 66
+  }
 }
 layers {
   name: "blanking"
@@ -286,8 +356,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 124
-  sub_index: 40
+  index {
+    major: 124
+    minor: 40
+  }
 }
 layers {
   name: "bump"
@@ -295,8 +367,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 127
-  sub_index: 22
+  index {
+    major: 127
+    minor: 22
+  }
 }
 layers {
   name: "cap2m"
@@ -304,8 +378,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 97
-  sub_index: 44
+  index {
+    major: 97
+    minor: 44
+  }
 }
 layers {
   name: "capacitor"
@@ -313,8 +389,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 82
-  sub_index: 64
+  index {
+    major: 82
+    minor: 64
+  }
 }
 layers {
   name: "capm"
@@ -322,38 +400,50 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 89
-  sub_index: 44
+  index {
+    major: 89
+    minor: 44
+  }
 }
 layers {
   name: "cbump"
   purpose {
     description: "mask"
   }
-  index: 101
+  index: {
+    major: 101
+    minor: 0
+  }
 }
 layers {
   name: "cctm1"
   purpose {
     description: "maskDrop"
   }
-  index: 101
-  sub_index: 42
+  index {
+    major: 101
+    minor: 42
+  }
 }
 layers {
   name: "cctm1"
   purpose {
     description: "mask"
   }
-  index: 35
+  index {
+    major: 35
+    minor: 0
+  }
 }
 layers {
   name: "cctm1"
   purpose {
     description: "maskAdd"
   }
-  index: 101
-  sub_index: 43
+  index {
+    major: 101
+    minor: 43
+  }
 }
 layers {
   name: "cctm1"
@@ -361,15 +451,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 101
-  sub_index: 44
+  index {
+    major: 101
+    minor: 44
+  }
 }
 layers {
   name: "ccu1m"
   purpose {
     description: "mask"
   }
-  index: 93
+  index {
+    major: 93
+    minor: 0
+  }
 }
 layers {
   name: "cdnm"
@@ -377,78 +472,100 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 110
-  sub_index: 20
+  index {
+    major: 110
+    minor: 20
+  }
 }
 layers {
   name: "cdnm"
   purpose {
     description: "maskDrop"
   }
-  index: 110
-  sub_index: 22
+  index {
+    major: 110
+    minor: 22
+  }
 }
 layers {
   name: "cdnm"
   purpose {
     description: "maskAdd"
   }
-  index: 110
-  sub_index: 21
+  index {
+    major: 110
+    minor: 21
+  }
 }
 layers {
   name: "cdnm"
   purpose {
     description: "mask"
   }
-  index: 48
+  index {
+    major: 48
+    minor: 0
+  }
 }
 layers {
   name: ";fom"
   purpose {
     description: "dummy"
   }
-  index: 22
-  sub_index: 23
+  index {
+    major: 22
+    minor: 23
+  }
 }
 layers {
   name: "fom"
   purpose {
     description: "fill"
   }
-  index: 22
-  sub_index: 99
+  index {
+    major: 22
+    minor: 99
+  }
 }
 layers {
   name: "cfom"
   purpose {
     description: "maskAdd"
   }
-  index: 22
-  sub_index: 21
+  index {
+    major: 22
+    minor: 21
+  }
 }
 layers {
   name: "cfom"
   purpose {
     description: "mask"
   }
-  index: 23
+  index {
+    major: 23
+    minor: 0
+  }
 }
 layers {
   name: "cfom"
   purpose {
     description: "maskDrop"
   }
-  index: 22
-  sub_index: 22
+  index {
+    major: 22
+    minor: 22
+  }
 }
 layers {
   name: "cfom"
   purpose {
     description: "fill_block"
   }
-  index: 22
-  sub_index: 24
+  index {
+    major: 22
+    minor: 24
+  }
 }
 layers {
   name: "cfom"
@@ -456,31 +573,40 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 22
-  sub_index: 20
+  index {
+    major: 22
+    minor: 20
+  }
 }
 layers {
   name: "chvntm"
   purpose {
     description: "maskAdd"
   }
-  index: 38
-  sub_index: 21
+  index {
+    major: 38
+    minor: 21
+  }
 }
 layers {
   name: "chvntm"
   purpose {
     description: "mask"
   }
-  index: 39
+  index {
+    major: 39
+    minor: 0
+  }
 }
 layers {
   name: "chvntm"
   purpose {
     description: "maskDrop"
   }
-  index: 38
-  sub_index: 22
+  index {
+    major: 38
+    minor: 22
+  }
 }
 layers {
   name: "chvntm"
@@ -488,8 +614,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 38
-  sub_index: 20
+  index {
+    major: 38
+    minor: 20
+  }
 }
 layers {
   name: "chvtpm"
@@ -497,31 +625,40 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 88
-  sub_index: 44
+  index {
+    major: 88
+    minor: 44
+  }
 }
 layers {
   name: "chvtpm"
   purpose {
     description: "maskDrop"
   }
-  index: 97
-  sub_index: 42
+  index {
+    major: 97
+    minor: 42
+  }
 }
 layers {
   name: "chvtpm"
   purpose {
     description: "mask"
   }
-  index: 97
+  index {
+    major: 97
+    minor: 0
+  }
 }
 layers {
   name: "chvtpm"
   purpose {
     description: "maskAdd"
   }
-  index: 97
-  sub_index: 43
+  index {
+    major: 97
+    minor: 43
+  }
 }
 layers {
   name: "chvtrm"
@@ -529,31 +666,40 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 98
-  sub_index: 44
+  index {
+    major: 98
+    minor: 44
+  }
 }
 layers {
   name: "chvtrm"
   purpose {
     description: "maskAdd"
   }
-  index: 98
-  sub_index: 43
+  index {
+    major: 98
+    minor: 43
+  }
 }
 layers {
   name: "chvtrm"
   purpose {
     description: "mask"
   }
-  index: 98
+  index {
+    major: 98
+    minor: 0
+  }
 }
 layers {
   name: "chvtrm"
   purpose {
     description: "maskDrop"
   }
-  index: 98
-  sub_index: 42
+  index {
+    major: 98
+    minor: 42
+  }
 }
 layers {
   name: "cldntm"
@@ -561,38 +707,50 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 11
-  sub_index: 20
+  index {
+    major: 11
+    minor: 20
+  }
 }
 layers {
   name: "cldntm"
   purpose {
     description: "mask"
   }
-  index: 11
+  index {
+    major: 11
+    minor: 0
+  }
 }
 layers {
   name: "cli1m"
   purpose {
     description: "maskDrop"
   }
-  index: 115
-  sub_index: 42
+  index {
+    major: 115
+    minor: 42
+  }
 }
 layers {
   name: "cli1m"
   purpose {
     description: "mask"
   }
-  index: 56
+  index {
+    major: 56
+    minor: 0
+  }
 }
 layers {
   name: "cli1m"
   purpose {
     description: "maskAdd"
   }
-  index: 115
-  sub_index: 43
+  index {
+    major: 115
+    minor: 43
+  }
 }
 layers {
   name: "cli1m"
@@ -600,8 +758,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 115
-  sub_index: 44
+  index {
+    major: 115
+    minor: 44
+  }
 }
 layers {
   name: "clicm1"
@@ -609,31 +769,40 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 106
-  sub_index: 44
+  index {
+    major: 106
+    minor: 44
+  }
 }
 layers {
   name: "clicm1"
   purpose {
     description: "mask"
   }
-  index: 43
+  index {
+    major: 43
+    minor: 0
+  }
 }
 layers {
   name: "clicm1"
   purpose {
     description: "maskAdd"
   }
-  index: 106
-  sub_index: 43
+  index {
+    major: 106
+    minor: 43
+  }
 }
 layers {
   name: "clicm1"
   purpose {
     description: "maskDrop"
   }
-  index: 106
-  sub_index: 42
+  index {
+    major: 106
+    minor: 42
+  }
 }
 layers {
   name: "clvom"
@@ -641,31 +810,40 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 45
-  sub_index: 20
+  index {
+    major: 45
+    minor: 20
+  }
 }
 layers {
   name: "clvom"
   purpose {
     description: "maskDrop"
   }
-  index: 45
-  sub_index: 22
+  index {
+    major: 45
+    minor: 22
+  }
 }
 layers {
   name: "clvom"
   purpose {
     description: "mask"
   }
-  index: 46
+  index {
+    major: 46
+    minor: 0
+  }
 }
 layers {
   name: "clvom"
   purpose {
     description: "maskAdd"
   }
-  index: 45
-  sub_index: 21
+  index {
+    major: 45
+    minor: 21
+  }
 }
 layers {
   name: "clvtnm"
@@ -673,62 +851,80 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 25
-  sub_index: 44
+  index {
+    major: 25
+    minor: 44
+  }
 }
 layers {
   name: "clvtnm"
   purpose {
     description: "maskDrop"
   }
-  index: 25
-  sub_index: 42
+  index {
+    major: 25
+    minor: 42
+  }
 }
 layers {
   name: "clvtnm"
   purpose {
     description: "maskAdd"
   }
-  index: 25
-  sub_index: 43
+  index {
+    major: 25
+    minor: 43
+  }
 }
 layers {
   name: "clvtnm"
   purpose {
     description: "mask"
   }
-  index: 25
+  index {
+    major: 25
+    minor: 0
+  }
 }
 layers {
   name: "cmm1"
   purpose {
     description: "maskAdd"
   }
-  index: 62
-  sub_index: 21
+  index {
+    major: 62
+    minor: 21
+  }
 }
 layers {
   name: "cmm1"
   purpose {
     description: "mask"
   }
-  index: 36
+  index {
+    major: 36
+    minor: 0
+  }
 }
 layers {
   name: "cmm1"
   purpose {
     description: "maskDrop"
   }
-  index: 62
-  sub_index: 22
+  index {
+    major: 62
+    minor: 22
+  }
 }
 layers {
   name: "cmm1"
   purpose {
     description: "fill_block"
   }
-  index: 62
-  sub_index: 24
+  index {
+    major: 62
+    minor: 24
+  }
 }
 layers {
   name: "cmm1"
@@ -736,39 +932,50 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 62
-  sub_index: 20
+  index {
+    major: 62
+    minor: 20
+  }
 }
 layers {
   name: "cmm2"
   purpose {
     description: "maskDrop"
   }
-  index: 105
-  sub_index: 42
+  index {
+    major: 105
+    minor: 42
+  }
 }
 layers {
   name: "cmm2"
   purpose {
     description: "mask"
   }
-  index: 41
+  index {
+    major: 41
+    minor: 0
+  }
 }
 layers {
   name: "cmm2"
   purpose {
     description: "maskAdd"
   }
-  index: 105
-  sub_index: 43
+  index {
+    major: 105
+    minor: 43
+  }
 }
 layers {
   name: "cmm2"
   purpose {
     description: "fill_block"
   }
-  index: 105
-  sub_index: 52
+  index {
+    major: 105
+    minor: 52
+  }
 }
 layers {
   name: "cmm2"
@@ -776,8 +983,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 105
-  sub_index: 44
+  index {
+    major: 105
+    minor: 44
+  }
 }
 layers {
   name: "cmm3"
@@ -785,85 +994,110 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 107
-  sub_index: 20
+  index {
+    major: 107
+    minor: 20
+  }
 }
 layers {
   name: "cmm3"
   purpose {
     description: "fill_block"
   }
-  index: 107
-  sub_index: 24
+  index {
+    major: 107
+    minor: 24
+  }
 }
 layers {
   name: "cmm3"
   purpose {
     description: "mask"
   }
-  index: 34
+  index {
+    major: 34
+    minor: 0
+  }
 }
 layers {
   name: "cmm3"
   purpose {
     description: "maskAdd"
   }
-  index: 107
-  sub_index: 21
+  index {
+    major: 107
+    minor: 21
+  }
 }
 layers {
   name: "cmm3"
   purpose {
     description: "maskDrop"
   }
-  index: 107
-  sub_index: 22
+  index {
+    major: 107
+    minor: 22
+  }
 }
 layers {
   name: "cmm4"
   purpose {
     description: "maskDrop"
   }
-  index: 112
-  sub_index: 42
+  index {
+    major: 112
+    minor: 42
+  }
 }
 layers {
   name: "cmm4"
   purpose {
     description: "maskAdd"
   }
-  index: 112
-  sub_index: 43
+  index {
+    major: 112
+    minor: 43
+  }
 }
 layers {
   name: "cmm4"
   purpose {
     description: "mask"
   }
-  index: 51
+  index {
+    major: 51
+    minor: 0
+  }
 }
 layers {
   name: "cmm4"
   purpose {
     description: "fill_block"
   }
-  index: 112
-  sub_index: 4
+  index {
+    major: 112
+    minor: 4
+  }
 }
 layers {
   name: "cmm5"
   purpose {
     description: "fill_block"
   }
-  index: 117
-  sub_index: 4
+  index {
+    major: 117
+    minor: 4
+  }
 }
 layers {
   name: "cmm5"
   purpose {
     description: "mask"
   }
-  index: 59
+  index {
+    major: 59
+    minor: 0
+  }
 }
 layers {
   name: "cmtest"
@@ -871,23 +1105,30 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 74
-  sub_index: 44
+  index {
+    major: 74
+    minor: 44
+  }
 }
 layers {
   name: "cmtest"
   purpose {
     description: "mask"
   }
-  index: 74
+  index {
+    major: 74
+    minor: 0
+  }
 }
 layers {
   name: "cmtest"
   purpose {
     description: "maskDrop"
   }
-  index: 74
-  sub_index: 42
+  index {
+    major: 74
+    minor: 42
+  }
 }
 layers {
   name: "cncm"
@@ -895,15 +1136,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 96
-  sub_index: 44
+  index {
+    major: 96
+    minor: 44
+  }
 }
 layers {
   name: "cncm"
   purpose {
     description: "mask"
   }
-  index: 17
+  index {
+    major: 17
+    minor: 0
+  }
 }
 layers {
   name: "cnpc"
@@ -911,54 +1157,70 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 44
-  sub_index: 20
+  index {
+    major: 44
+    minor: 20
+  }
 }
 layers {
   name: "cnpc"
   purpose {
     description: "maskDrop"
   }
-  index: 44
-  sub_index: 42
+  index {
+    major: 44
+    minor: 42
+  }
 }
 layers {
   name: "cnpc"
   purpose {
     description: "maskAdd"
   }
-  index: 44
-  sub_index: 43
+  index {
+    major: 44
+    minor: 43
+  }
 }
 layers {
   name: "cnpc"
   purpose {
     description: "mask"
   }
-  index: 49
+  index {
+    major: 49
+    minor: 0
+  }
 }
 layers {
   name: "cnsdm"
   purpose {
     description: "maskDrop"
   }
-  index: 29
-  sub_index: 22
+  index {
+    major: 29
+    minor: 22
+  }
 }
 layers {
   name: "cnsdm"
   purpose {
     description: "mask"
   }
-  index: 30
+  index {
+    major: 30
+    minor: 0
+  }
 }
 layers {
   name: "cnsdm"
   purpose {
     description: "maskAdd"
   }
-  index: 29
-  sub_index: 21
+  index {
+    major: 29
+    minor: 21
+  }
 }
 layers {
   name: "cnsdm"
@@ -966,15 +1228,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 29
-  sub_index: 20
+  index {
+    major: 29
+    minor: 20
+  }
 }
 layers {
   name: "cnsm"
   purpose {
     description: "mask"
   }
-  index: 22
+  index {
+    major: 22
+    minor: 0
+  }
 }
 layers {
   name: "cntm"
@@ -982,54 +1249,70 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 26
-  sub_index: 20
+  index {
+    major: 26
+    minor: 20
+  }
 }
 layers {
   name: "cntm"
   purpose {
     description: "maskAdd"
   }
-  index: 26
-  sub_index: 21
+  index {
+    major: 26
+    minor: 21
+  }
 }
 layers {
   name: "cntm"
   purpose {
     description: "mask"
   }
-  index: 27
+  index {
+    major: 27
+    minor: 0
+  }
 }
 layers {
   name: "cntm"
   purpose {
     description: "maskDrop"
   }
-  index: 26
-  sub_index: 22
+  index {
+    major: 26
+    minor: 22
+  }
 }
 layers {
   name: "cnwm"
   purpose {
     description: "maskDrop"
   }
-  index: 109
-  sub_index: 42
+  index {
+    major: 109
+    minor: 42
+  }
 }
 layers {
   name: "cnwm"
   purpose {
     description: "maskAdd"
   }
-  index: 109
-  sub_index: 43
+  index {
+    major: 109
+    minor: 43
+  }
 }
 layers {
   name: "cnwm"
   purpose {
     description: "mask"
   }
-  index: 21
+  index {
+    major: 21
+    minor: 0
+  }
 }
 layers {
   name: "cnwm"
@@ -1037,31 +1320,40 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 109
-  sub_index: 44
+  index {
+    major: 109
+    minor: 44
+  }
 }
 layers {
   name: "conom"
   purpose {
     description: "maskAdd"
   }
-  index: 87
-  sub_index: 43
+  index {
+    major: 87
+    minor: 43
+  }
 }
 layers {
   name: "conom"
   purpose {
     description: "mask"
   }
-  index: 88
+  index {
+    major: 88
+    minor: 0
+  }
 }
 layers {
   name: "conom"
   purpose {
     description: "maskDrop"
   }
-  index: 87
-  sub_index: 42
+  index {
+    major: 87
+    minor: 42
+  }
 }
 layers {
   name: "conom"
@@ -1069,16 +1361,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 87
-  sub_index: 44
+  index {
+    major: 87
+    minor: 44
+  }
 }
 layers {
   name: "cp1m"
   purpose {
     description: "fill_block"
   }
-  index: 33
-  sub_index: 24
+  index {
+    major: 33
+    minor: 24
+  }
 }
 layers {
   name: "cp1m"
@@ -1086,61 +1382,80 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 33
-  sub_index: 44
+  index {
+    major: 33
+    minor: 44
+  }
 }
 layers {
   name: "cp1m"
   purpose {
     description: "maskDrop"
   }
-  index: 33
-  sub_index: 42
+  index {
+    major: 33
+    minor: 42
+  }
 }
 layers {
   name: "cp1m"
   purpose {
     description: "mask"
   }
-  index: 28
+  index {
+    major: 28
+    minor: 0
+  }
 }
 layers {
   name: "cp1m"
   purpose {
     description: "maskAdd"
   }
-  index: 33
-  sub_index: 43
+  index {
+    major: 33
+    minor: 43
+  }
 }
 layers {
   name: "cpbo"
   purpose {
     description: "mask"
   }
-  index: 99
+  index {
+    major: 99
+    minor: 0
+  }
 }
 layers {
   name: "cpdm"
   purpose {
     description: "mask"
   }
-  index: 37
+  index {
+    major: 37
+    minor: 0
+  }
 }
 layers {
   name: "cpdm"
   purpose {
     description: "maskAdd"
   }
-  index: 104
-  sub_index: 43
+  index {
+    major: 104
+    minor: 43
+  }
 }
 layers {
   name: "cpdm"
   purpose {
     description: "maskDrop"
   }
-  index: 104
-  sub_index: 42
+  index {
+    major: 104
+    minor: 42
+  }
 }
 layers {
   name: "cpdm"
@@ -1148,8 +1463,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 104
-  sub_index: 44
+  index {
+    major: 104
+    minor: 44
+  }
 }
 layers {
   name: "cpmm"
@@ -1157,38 +1474,50 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 91
-  sub_index: 44
+  index {
+    major: 91
+    minor: 44
+  }
 }
 layers {
   name: "cpmm2"
   purpose {
     description: "mask"
   }
-  index: 94
+  index {
+    major: 94
+    minor: 0
+  }
 }
 layers {
   name: "cpsdm"
   purpose {
     description: "maskDrop"
   }
-  index: 31
-  sub_index: 22
+  index {
+    major: 31
+    minor: 22
+  }
 }
 layers {
   name: "cpsdm"
   purpose {
     description: "maskAdd"
   }
-  index: 31
-  sub_index: 21
+  index {
+    major: 31
+    minor: 21
+  }
 }
 layers {
   name: "cpsdm"
   purpose {
     description: "mask"
   }
-  index: 32
+  index {
+    major: 32
+    minor: 0
+  }
 }
 layers {
   name: "cpsdm"
@@ -1196,45 +1525,60 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 31
-  sub_index: 20
+  index {
+    major: 31
+    minor: 20
+  }
 }
 layers {
   name: "cpwbm"
   purpose {
     description: "mask"
   }
-  index: 19
+  index {
+    major: 19
+    minor: 0
+  }
 }
 layers {
   name: "cpwdem"
   purpose {
     description: "mask"
   }
-  index: 64
+  index {
+    major: 64
+    minor: 0
+  }
 }
 layers {
   name: "crpm"
   purpose {
     description: "maskDrop"
   }
-  index: 53
-  sub_index: 42
+  index {
+    major: 53
+    minor: 42
+  }
 }
 layers {
   name: "crpm"
   purpose {
     description: "mask"
   }
-  index: 96
+  index {
+    major: 96
+    minor: 0
+  }
 }
 layers {
   name: "crpm"
   purpose {
     description: "maskAdd"
   }
-  index: 53
-  sub_index: 43
+  index {
+    major: 53
+    minor: 43
+  }
 }
 layers {
   name: "crpm"
@@ -1242,15 +1586,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 53
-  sub_index: 44
+  index {
+    major: 53
+    minor: 44
+  }
 }
 layers {
   name: "crrpm"
   purpose {
     description: "mask"
   }
-  index: 102
+  index {
+    major: 102
+    minor: 0
+  }
 }
 layers {
   name: "ctunm"
@@ -1258,38 +1607,50 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 96
-  sub_index: 20
+  index {
+    major: 96
+    minor: 20
+  }
 }
 layers {
   name: "ctunm"
   purpose {
     description: "mask"
   }
-  index: 20
+  index {
+    major: 20
+    minor: 0
+  }
 }
 layers {
   name: "ctunm"
   purpose {
     description: "maskAdd"
   }
-  index: 96
-  sub_index: 21
+  index {
+    major: 96
+    minor: 21
+  }
 }
 layers {
   name: "ctunm"
   purpose {
     description: "maskDrop"
   }
-  index: 96
-  sub_index: 22
+  index {
+    major: 96
+    minor: 22
+  }
 }
 layers {
   name: "cubm"
   purpose {
     description: "mask"
   }
-  index: 100
+  index {
+    major: 100
+    minor: 0
+  }
 }
 layers {
   name: "curpm"
@@ -1297,15 +1658,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 79
-  sub_index: 44
+  index {
+    major: 79
+    minor: 44
+  }
 }
 layers {
   name: "curpm"
   purpose {
     description: "mask"
   }
-  index: 79
+  index {
+    major: 79
+    minor: 0
+  }
 }
 layers {
   name: "cviam"
@@ -1313,54 +1679,70 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 105
-  sub_index: 20
+  index {
+    major: 105
+    minor: 20
+  }
 }
 layers {
   name: "cviam"
   purpose {
     description: "maskAdd"
   }
-  index: 105
-  sub_index: 21
+  index {
+    major: 105
+    minor: 21
+  }
 }
 layers {
   name: "cviam"
   purpose {
     description: "mask"
   }
-  index: 40
+  index {
+    major: 40
+    minor: 0
+  }
 }
 layers {
   name: "cviam"
   purpose {
     description: "maskDrop"
   }
-  index: 105
-  sub_index: 22
+  index {
+    major: 105
+    minor: 22
+  }
 }
 layers {
   name: "cviam2"
   purpose {
     description: "maskAdd"
   }
-  index: 108
-  sub_index: 21
+  index {
+    major: 108
+    minor: 21
+  }
 }
 layers {
   name: "cviam2"
   purpose {
     description: "mask"
   }
-  index: 44
+  index {
+    major: 44
+    minor: 0
+  }
 }
 layers {
   name: "cviam2"
   purpose {
     description: "maskDrop"
   }
-  index: 108
-  sub_index: 22
+  index {
+    major: 108
+    minor: 22
+  }
 }
 layers {
   name: "cviam2"
@@ -1368,8 +1750,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 108
-  sub_index: 20
+  index {
+    major: 108
+    minor: 20
+  }
 }
 layers {
   name: "cviam3"
@@ -1377,54 +1761,70 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 112
-  sub_index: 20
+  index {
+    major: 112
+    minor: 20
+  }
 }
 layers {
   name: "cviam3"
   purpose {
     description: "mask"
   }
-  index: 50
+  index {
+    major: 50
+    minor: 0
+  }
 }
 layers {
   name: "cviam3"
   purpose {
     description: "maskAdd"
   }
-  index: 112
-  sub_index: 21
+  index {
+    major: 112
+    minor: 21
+  }
 }
 layers {
   name: "cviam3"
   purpose {
     description: "maskDrop"
   }
-  index: 112
-  sub_index: 22
+  index {
+    major: 112
+    minor: 22
+  }
 }
 layers {
   name: "cviam4"
   purpose {
     description: "maskDrop"
   }
-  index: 117
-  sub_index: 22
+  index {
+    major: 117
+    minor: 22
+  }
 }
 layers {
   name: "cviam4"
   purpose {
     description: "maskAdd"
   }
-  index: 117
-  sub_index: 21
+  index {
+    major: 117
+    minor: 21
+  }
 }
 layers {
   name: "cviam4"
   purpose {
     description: "mask"
   }
-  index: 58
+  index {
+    major: 58
+    minor: 0
+  }
 }
 layers {
   name: "cviam4"
@@ -1432,15 +1832,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 117
-  sub_index: 20
+  index {
+    major: 117
+    minor: 20
+  }
 }
 layers {
   name: "cviatop"
   purpose {
     description: "mask"
   }
-  index: 72
+  index {
+    major: 72
+    minor: 0
+  }
 }
 layers {
   name: "tap"
@@ -1448,8 +1853,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 65
-  sub_index: 44
+  index {
+    major: 65
+    minor: 44
+  }
 }
 layers {
   name: "diff"
@@ -1457,32 +1864,40 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 65
-  sub_index: 20
+  index {
+    major: 65
+    minor: 20
+  }
 }
 layers {
   name: "diff"
   purpose {
     description: "fill"
   }
-  index: 65
-  sub_index: 99
+  index {
+    major: 65
+    minor: 99
+  }
 }
 layers {
   name: "diff"
   purpose {
     description: "fill_block"
   }
-  index: 65
-  sub_index: 98
+  index {
+    major: 65
+    minor: 98
+  }
 }
 layers {
   name: "diff"
   purpose {
     description: "hv"
   }
-  index: 65
-  sub_index: 8
+  index {
+    major: 65
+    minor: 8
+  }
 }
 layers {
   name: "diff"
@@ -1490,8 +1905,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 65
-  sub_index: 16
+  index {
+    major: 65
+    minor: 16
+  }
 }
 layers {
   name: "diff"
@@ -1499,32 +1916,40 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 65
-  sub_index: 6
+  index {
+    major: 65
+    minor: 6
+  }
 }
 layers {
   name: "diff"
   purpose {
     description: "boundary"
   }
-  index: 65
-  sub_index: 4
+  index {
+    major: 65
+    minor: 4
+  }
 }
 layers {
   name: "diff"
   purpose {
     description: "res"
   }
-  index: 65
-  sub_index: 13
+  index {
+    major: 65
+    minor: 13
+  }
 }
 layers {
   name: "diff"
   purpose {
     description: "net"
   }
-  index: 65
-  sub_index: 23
+  index {
+    major: 65
+    minor: 23
+  }
 }
 layers {
   name: "dnwell"
@@ -1532,8 +1957,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 64
-  sub_index: 18
+  index {
+    major: 64
+    minor: 18
+  }
 }
 layers {
   name: "hvntm"
@@ -1541,8 +1968,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 125
-  sub_index: 20
+  index {
+    major: 125
+    minor: 20
+  }
 }
 layers {
   name: "hvtp"
@@ -1550,8 +1979,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 78
-  sub_index: 44
+  index {
+    major: 78
+    minor: 44
+  }
 }
 layers {
   name: "hvtr"
@@ -1559,24 +1990,30 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 18
-  sub_index: 20
+  index {
+    major: 18
+    minor: 20
+  }
 }
 layers {
   name: "inductor"
   purpose {
     description: "term1"
   }
-  index: 82
-  sub_index: 26
+  index {
+    major: 82
+    minor: 26
+  }
 }
 layers {
   name: "inductor"
   purpose {
     description: "term3"
   }
-  index: 82
-  sub_index: 28
+  index {
+    major: 82
+    minor: 28
+  }
 }
 layers {
   name: "inductor"
@@ -1584,8 +2021,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 82
-  sub_index: 24
+  index {
+    major: 82
+    minor: 24
+  }
 }
 layers {
   name: "inductor"
@@ -1593,16 +2032,20 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 82
-  sub_index: 25
+  index {
+    major: 82
+    minor: 25
+  }
 }
 layers {
   name: "inductor"
   purpose {
     description: "term2"
   }
-  index: 82
-  sub_index: 27
+  index {
+    major: 82
+    minor: 27
+  }
 }
 layers {
   name: "ldntm"
@@ -1610,8 +2053,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 11
-  sub_index: 44
+  index {
+    major: 11
+    minor: 44
+  }
 }
 layers {
   name: "li"
@@ -1619,8 +2064,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 67
-  sub_index: 20
+  index {
+    major: 67
+    minor: 20
+  }
 }
 layers {
   name: "li"
@@ -1628,32 +2075,40 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 67
-  sub_index: 10
+  index {
+    major: 67
+    minor: 10
+  }
 }
 layers {
   name: "li"
   purpose {
     description: "fill"
   }
-  index: 67
-  sub_index: 99
+  index {
+    major: 67
+    minor: 99
+  }
 }
 layers {
   name: "li"
   purpose {
     description: "probe"
   }
-  index: 67
-  sub_index: 25
+  index {
+    major: 67
+    minor: 25
+  }
 }
 layers {
   name: "li"
   purpose {
     description: "res"
   }
-  index: 67
-  sub_index: 13
+  index {
+    major: 67
+    minor: 13
+  }
 }
 layers {
   name: "li"
@@ -1661,16 +2116,24 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 67
-  sub_index: 16
+  index {
+    major: 67
+    minor: 16
+  }
+  pin_access_for {
+    major: 67
+    minor: 20
+  }
 }
 layers {
   name: "li"
   purpose {
     description: "net"
   }
-  index: 67
-  sub_index: 23
+  index {
+    major: 67
+    minor: 23
+  }
 }
 layers {
   name: "li"
@@ -1678,16 +2141,20 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 67
-  sub_index: 5
+  index {
+    major: 67
+    minor: 5
+  }
 }
 layers {
   name: "li"
   purpose {
     description: "boundary"
   }
-  index: 67
-  sub_index: 4
+  index {
+    major: 67
+    minor: 4
+  }
 }
 layers {
   name: "licon"
@@ -1695,16 +2162,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 66
-  sub_index: 44
+  index {
+    major: 66
+    minor: 44
+  }
 }
 layers {
   name: "licon"
   purpose {
     description: "boundary"
   }
-  index: 66
-  sub_index: 60
+  index {
+    major: 66
+    minor: 60
+  }
 }
 layers {
   name: "licon"
@@ -1712,16 +2183,20 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 66
-  sub_index: 58
+  index {
+    major: 66
+    minor: 58
+  }
 }
 layers {
   name: "licon"
   purpose {
     description: "net"
   }
-  index: 66
-  sub_index: 41
+  index {
+    major: 66
+    minor: 41
+  }
 }
 layers {
   name: "lvtn"
@@ -1729,24 +2204,30 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 125
-  sub_index: 44
+  index {
+    major: 125
+    minor: 44
+  }
 }
 layers {
   name: "marker"
   purpose {
     description: "warning"
   }
-  index: 83
-  sub_index: 7
+  index {
+    major: 83
+    minor: 7
+  }
 }
 layers {
   name: "marker"
   purpose {
     description: "error"
   }
-  index: 83
-  sub_index: 6
+  index {
+    major: 83
+    minor: 6
+  }
 }
 layers {
   name: "mcon"
@@ -1754,8 +2235,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 67
-  sub_index: 44
+  index {
+    major: 67
+    minor: 44
+  }
 }
 layers {
   name: "mcon"
@@ -1763,24 +2246,30 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 67
-  sub_index: 48
+  index {
+    major: 67
+    minor: 48
+  }
 }
 layers {
   name: "mcon"
   purpose {
     description: "net"
   }
-  index: 67
-  sub_index: 41
+  index {
+    major: 67
+    minor: 41
+  }
 }
 layers {
   name: "mcon"
   purpose {
     description: "boundary"
   }
-  index: 67
-  sub_index: 60
+  index {
+    major: 67
+    minor: 60
+  }
 }
 layers {
   name: "met1"
@@ -1788,8 +2277,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 68
-  sub_index: 20
+  index {
+    major: 68
+    minor: 20
+  }
 }
 layers {
   name: "met1"
@@ -1797,8 +2288,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 68
-  sub_index: 16
+  index {
+    major: 68
+    minor: 16
+  }
 }
 layers {
   name: "met1"
@@ -1806,48 +2299,60 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 68
-  sub_index: 5
+  index {
+    major: 68
+    minor: 5
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "res"
   }
-  index: 68
-  sub_index: 13
+  index {
+    major: 68
+    minor: 13
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "net"
   }
-  index: 68
-  sub_index: 23
+  index {
+    major: 68
+    minor: 23
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "fill"
   }
-  index: 68
-  sub_index: 99
+  index {
+    major: 68
+    minor: 99
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "fill_block"
   }
-  index: 68
-  sub_index: 98
+  index {
+    major: 68
+    minor: 98
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "boundary"
   }
-  index: 68
-  sub_index: 4
+  index {
+    major: 68
+    minor: 4
+  }
 }
 layers {
   name: "met1"
@@ -1855,128 +2360,160 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 68
-  sub_index: 10
+  index {
+    major: 68
+    minor: 10
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "probe"
   }
-  index: 68
-  sub_index: 25
+  index {
+    major: 68
+    minor: 25
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option1"
   }
-  index: 68
-  sub_index: 32
+  index {
+    major: 68
+    minor: 32
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option2"
   }
-  index: 68
-  sub_index: 33
+  index {
+    major: 68
+    minor: 33
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option3"
   }
-  index: 68
-  sub_index: 34
+  index {
+    major: 68
+    minor: 34
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option4"
   }
-  index: 68
-  sub_index: 35
+  index {
+    major: 68
+    minor: 35
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option5"
   }
-  index: 68
-  sub_index: 36
+  index {
+    major: 68
+    minor: 36
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option6"
   }
-  index: 68
-  sub_index: 37
+  index {
+    major: 68
+    minor: 37
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option7"
   }
-  index: 68
-  sub_index: 38
+  index {
+    major: 68
+    minor: 38
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "option8"
   }
-  index: 68
-  sub_index: 39
+  index {
+    major: 68
+    minor: 39
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "psa1"
   }
-  index: 68
-  sub_index: 88
+  index {
+    major: 68
+    minor: 88
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "psa2"
   }
-  index: 68
-  sub_index: 89
+  index {
+    major: 68
+    minor: 89
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "psa3"
   }
-  index: 68
-  sub_index: 90
+  index {
+    major: 68
+    minor: 90
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "psa4"
   }
-  index: 68
-  sub_index: 91
+  index {
+    major: 68
+    minor: 91
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "psa5"
   }
-  index: 68
-  sub_index: 92
+  index {
+    major: 68
+    minor: 92
+  }
 }
 layers {
   name: "met1"
   purpose {
     description: "psa6"
   }
-  index: 68
-  sub_index: 93
+  index {
+    major: 68
+    minor: 93
+  }
 }
 layers {
   name: "met2"
@@ -1984,8 +2521,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 69
-  sub_index: 20
+  index {
+    major: 69
+    minor: 20
+  }
 }
 layers {
   name: "met2"
@@ -1993,8 +2532,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 69
-  sub_index: 16
+  index {
+    major: 69
+    minor: 16
+  }
 }
 layers {
   name: "met2"
@@ -2002,48 +2543,60 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 69
-  sub_index: 5
+  index {
+    major: 69
+    minor: 5
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "res"
   }
-  index: 69
-  sub_index: 13
+  index {
+    major: 69
+    minor: 13
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "net"
   }
-  index: 69
-  sub_index: 23
+  index {
+    major: 69
+    minor: 23
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "fill"
   }
-  index: 69
-  sub_index: 99
+  index {
+    major: 69
+    minor: 99
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "fill_block"
   }
-  index: 69
-  sub_index: 98
+  index {
+    major: 69
+    minor: 98
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "boundary"
   }
-  index: 69
-  sub_index: 4
+  index {
+    major: 69
+    minor: 4
+  }
 }
 layers {
   name: "met2"
@@ -2051,128 +2604,160 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 69
-  sub_index: 10
+  index {
+    major: 69
+    minor: 10
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "probe"
   }
-  index: 69
-  sub_index: 25
+  index {
+    major: 69
+    minor: 25
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option1"
   }
-  index: 69
-  sub_index: 32
+  index {
+    major: 69
+    minor: 32
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option2"
   }
-  index: 69
-  sub_index: 33
+  index {
+    major: 69
+    minor: 33
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option3"
   }
-  index: 69
-  sub_index: 34
+  index {
+    major: 69
+    minor: 34
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option4"
   }
-  index: 69
-  sub_index: 35
+  index {
+    major: 69
+    minor: 35
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option5"
   }
-  index: 69
-  sub_index: 36
+  index {
+    major: 69
+    minor: 36
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option6"
   }
-  index: 69
-  sub_index: 37
+  index {
+    major: 69
+    minor: 37
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option7"
   }
-  index: 69
-  sub_index: 38
+  index {
+    major: 69
+    minor: 38
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "option8"
   }
-  index: 69
-  sub_index: 39
+  index {
+    major: 69
+    minor: 39
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "psa1"
   }
-  index: 69
-  sub_index: 88
+  index {
+    major: 69
+    minor: 88
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "psa2"
   }
-  index: 69
-  sub_index: 89
+  index {
+    major: 69
+    minor: 89
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "psa3"
   }
-  index: 69
-  sub_index: 90
+  index {
+    major: 69
+    minor: 90
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "psa4"
   }
-  index: 69
-  sub_index: 91
+  index {
+    major: 69
+    minor: 91
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "psa5"
   }
-  index: 69
-  sub_index: 92
+  index {
+    major: 69
+    minor: 92
+  }
 }
 layers {
   name: "met2"
   purpose {
     description: "psa6"
   }
-  index: 69
-  sub_index: 93
+  index {
+    major: 69
+    minor: 93
+  }
 }
 layers {
   name: "met3"
@@ -2180,8 +2765,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 70
-  sub_index: 20
+  index {
+    major: 70
+    minor: 20
+  }
 }
 layers {
   name: "met3"
@@ -2189,8 +2776,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 70
-  sub_index: 16
+  index {
+    major: 70
+    minor: 16
+  }
 }
 layers {
   name: "met3"
@@ -2198,56 +2787,70 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 70
-  sub_index: 5
+  index {
+    major: 70
+    minor: 5
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "res"
   }
-  index: 70
-  sub_index: 13
+  index {
+    major: 70
+    minor: 13
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "net"
   }
-  index: 70
-  sub_index: 23
+  index {
+    major: 70
+    minor: 23
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "fuse"
   }
-  index: 70
-  sub_index: 17
+  index {
+    major: 70
+    minor: 17
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "fill"
   }
-  index: 70
-  sub_index: 99
+  index {
+    major: 70
+    minor: 99
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "fill_block"
   }
-  index: 70
-  sub_index: 98
+  index {
+    major: 70
+    minor: 98
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "boundary"
   }
-  index: 70
-  sub_index: 4
+  index {
+    major: 70
+    minor: 4
+  }
 }
 layers {
   name: "met3"
@@ -2255,128 +2858,160 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 70
-  sub_index: 10
+  index {
+    major: 70
+    minor: 10
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "probe"
   }
-  index: 70
-  sub_index: 25
+  index {
+    major: 70
+    minor: 25
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option1"
   }
-  index: 70
-  sub_index: 32
+  index {
+    major: 70
+    minor: 32
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option2"
   }
-  index: 70
-  sub_index: 33
+  index {
+    major: 70
+    minor: 33
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option3"
   }
-  index: 70
-  sub_index: 34
+  index {
+    major: 70
+    minor: 34
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option4"
   }
-  index: 70
-  sub_index: 35
+  index {
+    major: 70
+    minor: 35
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option5"
   }
-  index: 70
-  sub_index: 36
+  index {
+    major: 70
+    minor: 36
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option6"
   }
-  index: 70
-  sub_index: 37
+  index {
+    major: 70
+    minor: 37
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option7"
   }
-  index: 70
-  sub_index: 38
+  index {
+    major: 70
+    minor: 38
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "option8"
   }
-  index: 70
-  sub_index: 39
+  index {
+    major: 70
+    minor: 39
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "psa1"
   }
-  index: 70
-  sub_index: 88
+  index {
+    major: 70
+    minor: 88
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "psa2"
   }
-  index: 70
-  sub_index: 89
+  index {
+    major: 70
+    minor: 89
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "psa3"
   }
-  index: 70
-  sub_index: 90
+  index {
+    major: 70
+    minor: 90
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "psa4"
   }
-  index: 70
-  sub_index: 91
+  index {
+    major: 70
+    minor: 91
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "psa5"
   }
-  index: 70
-  sub_index: 92
+  index {
+    major: 70
+    minor: 92
+  }
 }
 layers {
   name: "met3"
   purpose {
     description: "psa6"
   }
-  index: 70
-  sub_index: 93
+  index {
+    major: 70
+    minor: 93
+  }
 }
 layers {
   name: "met4"
@@ -2384,8 +3019,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 71
-  sub_index: 20
+  index {
+    major: 71
+    minor: 20
+  }
 }
 layers {
   name: "met4"
@@ -2393,8 +3030,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 71
-  sub_index: 16
+  index {
+    major: 71
+    minor: 16
+  }
 }
 layers {
   name: "met4"
@@ -2402,56 +3041,70 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 71
-  sub_index: 5
+  index {
+    major: 71
+    minor: 5
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "res"
   }
-  index: 71
-  sub_index: 13
+  index {
+    major: 71
+    minor: 13
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "net"
   }
-  index: 71
-  sub_index: 23
+  index {
+    major: 71
+    minor: 23
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "fuse"
   }
-  index: 71
-  sub_index: 17
+  index {
+    major: 71
+    minor: 17
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "fill"
   }
-  index: 71
-  sub_index: 99
+  index {
+    major: 71
+    minor: 99
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "fill_block"
   }
-  index: 71
-  sub_index: 98
+  index {
+    major: 71
+    minor: 98
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "boundary"
   }
-  index: 71
-  sub_index: 4
+  index {
+    major: 71
+    minor: 4
+  }
 }
 layers {
   name: "met4"
@@ -2459,128 +3112,160 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 71
-  sub_index: 10
+  index {
+    major: 71
+    minor: 10
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "probe"
   }
-  index: 71
-  sub_index: 25
+  index {
+    major: 71
+    minor: 25
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option1"
   }
-  index: 71
-  sub_index: 32
+  index {
+    major: 71
+    minor: 32
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option2"
   }
-  index: 71
-  sub_index: 33
+  index {
+    major: 71
+    minor: 33
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option3"
   }
-  index: 71
-  sub_index: 34
+  index {
+    major: 71
+    minor: 34
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option4"
   }
-  index: 71
-  sub_index: 35
+  index {
+    major: 71
+    minor: 35
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option5"
   }
-  index: 71
-  sub_index: 36
+  index {
+    major: 71
+    minor: 36
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option6"
   }
-  index: 71
-  sub_index: 37
+  index {
+    major: 71
+    minor: 37
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option7"
   }
-  index: 71
-  sub_index: 38
+  index {
+    major: 71
+    minor: 38
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "option8"
   }
-  index: 71
-  sub_index: 39
+  index {
+    major: 71
+    minor: 39
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "psa1"
   }
-  index: 71
-  sub_index: 88
+  index {
+    major: 71
+    minor: 88
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "psa2"
   }
-  index: 71
-  sub_index: 89
+  index {
+    major: 71
+    minor: 89
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "psa3"
   }
-  index: 71
-  sub_index: 90
+  index {
+    major: 71
+    minor: 90
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "psa4"
   }
-  index: 71
-  sub_index: 91
+  index {
+    major: 71
+    minor: 91
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "psa5"
   }
-  index: 71
-  sub_index: 92
+  index {
+    major: 71
+    minor: 92
+  }
 }
 layers {
   name: "met4"
   purpose {
     description: "psa6"
   }
-  index: 71
-  sub_index: 93
+  index {
+    major: 71
+    minor: 93
+  }
 }
 layers {
   name: "met5"
@@ -2588,8 +3273,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 72
-  sub_index: 20
+  index {
+    major: 72
+    minor: 20
+  }
 }
 layers {
   name: "met5"
@@ -2597,8 +3284,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 72
-  sub_index: 16
+  index {
+    major: 72
+    minor: 16
+  }
 }
 layers {
   name: "met5"
@@ -2606,56 +3295,70 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 72
-  sub_index: 5
+  index {
+    major: 72
+    minor: 5
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "res"
   }
-  index: 72
-  sub_index: 13
+  index {
+    major: 72
+    minor: 13
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "net"
   }
-  index: 72
-  sub_index: 23
+  index {
+    major: 72
+    minor: 23
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "fuse"
   }
-  index: 72
-  sub_index: 17
+  index {
+    major: 72
+    minor: 17
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "fill"
   }
-  index: 72
-  sub_index: 99
+  index {
+    major: 72
+    minor: 99
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "fill_block"
   }
-  index: 72
-  sub_index: 98
+  index {
+    major: 72
+    minor: 98
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "boundary"
   }
-  index: 72
-  sub_index: 4
+  index {
+    major: 72
+    minor: 4
+  }
 }
 layers {
   name: "met5"
@@ -2663,128 +3366,160 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 72
-  sub_index: 10
+  index {
+    major: 72
+    minor: 10
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "probe"
   }
-  index: 72
-  sub_index: 25
+  index {
+    major: 72
+    minor: 25
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option1"
   }
-  index: 72
-  sub_index: 32
+  index {
+    major: 72
+    minor: 32
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option2"
   }
-  index: 72
-  sub_index: 33
+  index {
+    major: 72
+    minor: 33
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option3"
   }
-  index: 72
-  sub_index: 34
+  index {
+    major: 72
+    minor: 34
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option4"
   }
-  index: 72
-  sub_index: 35
+  index {
+    major: 72
+    minor: 35
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option5"
   }
-  index: 72
-  sub_index: 36
+  index {
+    major: 72
+    minor: 36
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option6"
   }
-  index: 72
-  sub_index: 37
+  index {
+    major: 72
+    minor: 37
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option7"
   }
-  index: 72
-  sub_index: 38
+  index {
+    major: 72
+    minor: 38
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "option8"
   }
-  index: 72
-  sub_index: 39
+  index {
+    major: 72
+    minor: 39
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "psa1"
   }
-  index: 72
-  sub_index: 88
+  index {
+    major: 72
+    minor: 88
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "psa2"
   }
-  index: 72
-  sub_index: 89
+  index {
+    major: 72
+    minor: 89
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "psa3"
   }
-  index: 72
-  sub_index: 90
+  index {
+    major: 72
+    minor: 90
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "psa4"
   }
-  index: 72
-  sub_index: 91
+  index {
+    major: 72
+    minor: 91
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "psa5"
   }
-  index: 72
-  sub_index: 92
+  index {
+    major: 72
+    minor: 92
+  }
 }
 layers {
   name: "met5"
   purpose {
     description: "psa6"
   }
-  index: 72
-  sub_index: 93
+  index {
+    major: 72
+    minor: 93
+  }
 }
 layers {
   name: "mtest"
@@ -2792,8 +3527,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 73
-  sub_index: 20
+  index {
+    major: 73
+    minor: 20
+  }
 }
 layers {
   name: "ncm"
@@ -2801,8 +3538,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 92
-  sub_index: 44
+  index {
+    major: 92
+    minor: 44
+  }
 }
 layers {
   name: "npc"
@@ -2810,8 +3549,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 95
-  sub_index: 20
+  index {
+    major: 95
+    minor: 20
+  }
 }
 layers {
   name: "npn"
@@ -2819,8 +3560,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 82
-  sub_index: 20
+  index {
+    major: 82
+    minor: 20
+  }
 }
 layers {
   name: "npn"
@@ -2828,8 +3571,10 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 82
-  sub_index: 5
+  index {
+    major: 82
+    minor: 5
+  }
 }
 layers {
   name: "nsdm"
@@ -2837,8 +3582,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 93
-  sub_index: 44
+  index {
+    major: 93
+    minor: 44
+  }
 }
 layers {
   name: "nsm"
@@ -2846,8 +3593,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 61
-  sub_index: 20
+  index {
+    major: 61
+    minor: 20
+  }
 }
 layers {
   name: "nwell"
@@ -2855,8 +3604,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 64
-  sub_index: 20
+  index {
+    major: 64
+    minor: 20
+  }
 }
 layers {
   name: "nwell"
@@ -2864,8 +3615,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 64
-  sub_index: 16
+  index {
+    major: 64
+    minor: 16
+  }
 }
 layers {
   name: "nwell"
@@ -2873,16 +3626,20 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 64
-  sub_index: 5
+  index {
+    major: 64
+    minor: 5
+  }
 }
 layers {
   name: "nwell"
   purpose {
     description: "net"
   }
-  index: 84
-  sub_index: 23
+  index {
+    major: 84
+    minor: 23
+  }
 }
 layers {
   name: "overlap"
@@ -2890,16 +3647,20 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 90
-  sub_index: 20
+  index {
+    major: 90
+    minor: 20
+  }
 }
 layers {
   name: "overlap"
   purpose {
     description: "boundary"
   }
-  index: 90
-  sub_index: 4
+  index {
+    major: 90
+    minor: 4
+  }
 }
 layers {
   name: "pad"
@@ -2907,8 +3668,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 76
-  sub_index: 20
+  index {
+    major: 76
+    minor: 20
+  }
 }
 layers {
   name: "pad"
@@ -2916,8 +3679,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 76
-  sub_index: 16
+  index {
+    major: 76
+    minor: 16
+  }
 }
 layers {
   name: "pad"
@@ -2925,8 +3690,10 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 76
-  sub_index: 5
+  index {
+    major: 76
+    minor: 5
+  }
 }
 layers {
   name: "pmm"
@@ -2934,8 +3701,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 85
-  sub_index: 44
+  index {
+    major: 85
+    minor: 44
+  }
 }
 layers {
   name: "pmm2"
@@ -2943,8 +3712,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 77
-  sub_index: 20
+  index {
+    major: 77
+    minor: 20
+  }
 }
 layers {
   name: "pnp"
@@ -2952,8 +3723,10 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 82
-  sub_index: 59
+  index {
+    major: 82
+    minor: 59
+  }
 }
 layers {
   name: "pnp"
@@ -2961,8 +3734,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 82
-  sub_index: 44
+  index {
+    major: 82
+    minor: 44
+  }
 }
 layers {
   name: "poly"
@@ -2970,8 +3745,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 66
-  sub_index: 20
+  index {
+    major: 66
+    minor: 20
+  }
 }
 layers {
   name: "poly"
@@ -2979,8 +3756,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 66
-  sub_index: 16
+  index {
+    major: 66
+    minor: 16
+  }
 }
 layers {
   name: "poly"
@@ -2988,80 +3767,100 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 66
-  sub_index: 5
+  index {
+    major: 66
+    minor: 5
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "res"
   }
-  index: 66
-  sub_index: 13
+  index {
+    major: 66
+    minor: 13
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "net"
   }
-  index: 66
-  sub_index: 23
+  index {
+    major: 66
+    minor: 23
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "boundary"
   }
-  index: 66
-  sub_index: 4
+  index {
+    major: 66
+    minor: 4
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "fill"
   }
-  index: 66
-  sub_index: 99
+  index {
+    major: 66
+    minor: 99
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "fill_block"
   }
-  index: 66
-  sub_index: 98
+  index {
+    major: 66
+    minor: 98
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "probe"
   }
-  index: 66
-  sub_index: 25
+  index {
+    major: 66
+    minor: 25
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "gate"
   }
-  index: 66
-  sub_index: 9
+  index {
+    major: 66
+    minor: 9
+  }
 }
 layers {
   name: "poly"
   purpose {
     description: "model"
   }
-  index: 66
-  sub_index: 83
+  index {
+    major: 66
+    minor: 83
+  }
 }
 layers {
   name: "prBoundary"
   purpose {
     description: "boundary"
   }
-  index: 235
-  sub_index: 4
+  index {
+    major: 235
+    minor: 4
+  }
 }
 layers {
   name: "LVS_exclude"
@@ -3069,8 +3868,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 84
-  sub_index: 44
+  index {
+    major: 84
+    minor: 44
+  }
 }
 layers {
   name: "psdm"
@@ -3078,8 +3879,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 94
-  sub_index: 20
+  index {
+    major: 94
+    minor: 20
+  }
 }
 layers {
   name: "pwbm"
@@ -3087,8 +3890,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 19
-  sub_index: 44
+  index {
+    major: 19
+    minor: 44
+  }
 }
 layers {
   name: "pwde"
@@ -3096,8 +3901,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 124
-  sub_index: 20
+  index {
+    major: 124
+    minor: 20
+  }
 }
 layers {
   name: "pwell"
@@ -3105,8 +3912,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 122
-  sub_index: 16
+  index {
+    major: 122
+    minor: 16
+  }
 }
 layers {
   name: "pwell"
@@ -3114,16 +3923,20 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 64
-  sub_index: 59
+  index {
+    major: 64
+    minor: 59
+  }
 }
 layers {
   name: "pwell"
   purpose {
     description: "res"
   }
-  index: 64
-  sub_index: 13
+  index {
+    major: 64
+    minor: 13
+  }
 }
 layers {
   name: "r1c"
@@ -3131,8 +3944,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 201
-  sub_index: 20
+  index {
+    major: 201
+    minor: 20
+  }
 }
 layers {
   name: "r1c"
@@ -3140,8 +3955,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 201
-  sub_index: 251
+  index {
+    major: 201
+    minor: 251
+  }
 }
 layers {
   name: "r1c"
@@ -3149,39 +3966,50 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 201
-  sub_index: 237
+  index {
+    major: 201
+    minor: 237
+  }
 }
 layers {
   name: "r1c"
   purpose {
     description: "res"
   }
-  index: 201
-  sub_index: 16
+  index {
+    major: 201
+    minor: 16
+  }
 }
 layers {
   name: "r1c"
   purpose {
     description: "net"
   }
-  index: 201
-  sub_index: 253
+  index {
+    major: 201
+    minor: 253
+  }
 }
 layers {
   name: "r1c"
   purpose {
     description: "mask"
   }
-  index: 201
+  index {
+    major: 201
+    minor: 0
+  }
 }
 layers {
   name: "r1c"
   purpose {
     description: "fill_block"
   }
-  index: 201
-  sub_index: 24
+  index {
+    major: 201
+    minor: 24
+  }
 }
 layers {
   name: "r1c"
@@ -3189,16 +4017,20 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 201
-  sub_index: 230
+  index {
+    major: 201
+    minor: 230
+  }
 }
 layers {
   name: "r1c"
   purpose {
     description: "boundary"
   }
-  index: 201
-  sub_index: 4
+  index {
+    major: 201
+    minor: 4
+  }
 }
 layers {
   name: "r1v"
@@ -3206,8 +4038,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 202
-  sub_index: 20
+  index {
+    major: 202
+    minor: 20
+  }
 }
 layers {
   name: "r1v"
@@ -3215,8 +4049,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 202
-  sub_index: 251
+  index {
+    major: 202
+    minor: 251
+  }
 }
 layers {
   name: "r1v"
@@ -3224,39 +4060,50 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 202
-  sub_index: 237
+  index {
+    major: 202
+    minor: 237
+  }
 }
 layers {
   name: "r1v"
   purpose {
     description: "res"
   }
-  index: 202
-  sub_index: 16
+  index {
+    major: 202
+    minor: 16
+  }
 }
 layers {
   name: "r1v"
   purpose {
     description: "net"
   }
-  index: 202
-  sub_index: 253
+  index {
+    major: 202
+    minor: 253
+  }
 }
 layers {
   name: "r1v"
   purpose {
     description: "mask"
   }
-  index: 202
+  index {
+    major: 202
+    minor: 0
+  }
 }
 layers {
   name: "r1v"
   purpose {
     description: "fill_block"
   }
-  index: 202
-  sub_index: 24
+  index {
+    major: 202
+    minor: 24
+  }
 }
 layers {
   name: "r1v"
@@ -3264,16 +4111,20 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 202
-  sub_index: 230
+  index {
+    major: 202
+    minor: 230
+  }
 }
 layers {
   name: "r1v"
   purpose {
     description: "boundary"
   }
-  index: 202
-  sub_index: 4
+  index {
+    major: 202
+    minor: 4
+  }
 }
 layers {
   name: "rdl"
@@ -3281,8 +4132,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 74
-  sub_index: 20
+  index {
+    major: 74
+    minor: 20
+  }
 }
 layers {
   name: "rdl"
@@ -3290,8 +4143,10 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 74
-  sub_index: 16
+  index {
+    major: 74
+    minor: 16
+  }
 }
 layers {
   name: "rdl"
@@ -3299,16 +4154,20 @@ layers {
     description: "label"
     type: LABEL
   }
-  index: 74
-  sub_index: 5
+  index {
+    major: 74
+    minor: 5
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "res"
   }
-  index: 74
-  sub_index: 13
+  index {
+    major: 74
+    minor: 13
+  }
 }
 layers {
   name: "rdl"
@@ -3316,120 +4175,150 @@ layers {
     description: "blockage"
     type: OBSTRUCTION
   }
-  index: 74
-  sub_index: 10
+  index {
+    major: 74
+    minor: 10
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option1"
   }
-  index: 89
-  sub_index: 32
+  index {
+    major: 89
+    minor: 32
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option2"
   }
-  index: 89
-  sub_index: 33
+  index {
+    major: 89
+    minor: 33
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option3"
   }
-  index: 89
-  sub_index: 34
+  index {
+    major: 89
+    minor: 34
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option4"
   }
-  index: 89
-  sub_index: 35
+  index {
+    major: 89
+    minor: 35
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option5"
   }
-  index: 89
-  sub_index: 36
+  index {
+    major: 89
+    minor: 36
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option6"
   }
-  index: 89
-  sub_index: 37
+  index {
+    major: 89
+    minor: 37
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option7"
   }
-  index: 89
-  sub_index: 38
+  index {
+    major: 89
+    minor: 38
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "option8"
   }
-  index: 89
-  sub_index: 39
+  index {
+    major: 89
+    minor: 39
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "psa1"
   }
-  index: 74
-  sub_index: 88
+  index {
+    major: 74
+    minor: 88
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "psa2"
   }
-  index: 74
-  sub_index: 89
+  index {
+    major: 74
+    minor: 89
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "psa3"
   }
-  index: 74
-  sub_index: 90
+  index {
+    major: 74
+    minor: 90
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "psa4"
   }
-  index: 74
-  sub_index: 91
+  index {
+    major: 74
+    minor: 91
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "psa5"
   }
-  index: 74
-  sub_index: 92
+  index {
+    major: 74
+    minor: 92
+  }
 }
 layers {
   name: "rdl"
   purpose {
     description: "psa6"
   }
-  index: 74
-  sub_index: 93
+  index {
+    major: 74
+    minor: 93
+  }
 }
 layers {
   name: "rpm"
@@ -3437,8 +4326,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 86
-  sub_index: 20
+  index {
+    major: 86
+    minor: 20
+  }
 }
 layers {
   name: "rrpm"
@@ -3446,8 +4337,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 102
-  sub_index: 20
+  index {
+    major: 102
+    minor: 20
+  }
 }
 layers {
   name: "target"
@@ -3455,8 +4348,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 76
-  sub_index: 44
+  index {
+    major: 76
+    minor: 44
+  }
 }
 layers {
   name: "text"
@@ -3464,8 +4359,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 83
-  sub_index: 44
+  index {
+    major: 83
+    minor: 44
+  }
 }
 layers {
   name: "thkox"
@@ -3473,8 +4370,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 75
-  sub_index: 21
+  index {
+    major: 75
+    minor: 21
+  }
 }
 layers {
   name: "tunm"
@@ -3482,8 +4381,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 80
-  sub_index: 20
+  index {
+    major: 80
+    minor: 20
+  }
 }
 layers {
   name: "ubm"
@@ -3491,8 +4392,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 127
-  sub_index: 21
+  index {
+    major: 127
+    minor: 21
+  }
 }
 layers {
   name: "urpm"
@@ -3500,8 +4403,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 79
-  sub_index: 20
+  index {
+    major: 79
+    minor: 20
+  }
 }
 layers {
   name: "v12"
@@ -3509,8 +4414,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 74
-  sub_index: 21
+  index {
+    major: 74
+    minor: 21
+  }
 }
 layers {
   name: "v20"
@@ -3518,8 +4425,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 74
-  sub_index: 22
+  index {
+    major: 74
+    minor: 22
+  }
 }
 layers {
   name: "v5"
@@ -3527,8 +4436,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 75
-  sub_index: 20
+  index {
+    major: 75
+    minor: 20
+  }
 }
 layers {
   name: "via1"
@@ -3536,8 +4447,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 68
-  sub_index: 44
+  index {
+    major: 68
+    minor: 44
+  }
 }
 layers {
   name: "via1"
@@ -3545,24 +4458,30 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 68
-  sub_index: 58
+  index {
+    major: 68
+    minor: 58
+  }
 }
 layers {
   name: "via1"
   purpose {
     description: "net"
   }
-  index: 68
-  sub_index: 41
+  index {
+    major: 68
+    minor: 41
+  }
 }
 layers {
   name: "via1"
   purpose {
     description: "boundary"
   }
-  index: 68
-  sub_index: 60
+  index {
+    major: 68
+    minor: 60
+  }
 }
 layers {
   name: "via2"
@@ -3570,8 +4489,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 69
-  sub_index: 44
+  index {
+    major: 69
+    minor: 44
+  }
 }
 layers {
   name: "via2"
@@ -3579,24 +4500,30 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 69
-  sub_index: 58
+  index {
+    major: 69
+    minor: 58
+  }
 }
 layers {
   name: "via2"
   purpose {
     description: "net"
   }
-  index: 69
-  sub_index: 41
+  index {
+    major: 69
+    minor: 41
+  }
 }
 layers {
   name: "via2"
   purpose {
     description: "boundary"
   }
-  index: 69
-  sub_index: 60
+  index {
+    major: 69
+    minor: 60
+  }
 }
 layers {
   name: "via3"
@@ -3604,8 +4531,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 70
-  sub_index: 44
+  index {
+    major: 70
+    minor: 44
+  }
 }
 layers {
   name: "via3"
@@ -3613,24 +4542,30 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 70
-  sub_index: 48
+  index {
+    major: 70
+    minor: 48
+  }
 }
 layers {
   name: "via3"
   purpose {
     description: "net"
   }
-  index: 70
-  sub_index: 41
+  index {
+    major: 70
+    minor: 41
+  }
 }
 layers {
   name: "via3"
   purpose {
     description: "boundary"
   }
-  index: 70
-  sub_index: 60
+  index {
+    major: 70
+    minor: 60
+  }
 }
 layers {
   name: "via4"
@@ -3638,8 +4573,10 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 71
-  sub_index: 44
+  index {
+    major: 71
+    minor: 44
+  }
 }
 layers {
   name: "via4"
@@ -3647,24 +4584,30 @@ layers {
     description: "pin"
     type: PIN
   }
-  index: 71
-  sub_index: 48
+  index {
+    major: 71
+    minor: 48
+  }
 }
 layers {
   name: "via4"
   purpose {
     description: "net"
   }
-  index: 71
-  sub_index: 41
+  index {
+    major: 71
+    minor: 41
+  }
 }
 layers {
   name: "via4"
   purpose {
     description: "boundary"
   }
-  index: 71
-  sub_index: 60
+  index {
+    major: 71
+    minor: 60
+  }
 }
 layers {
   name: "viatop"
@@ -3672,6 +4615,8 @@ layers {
     description: "drawing"
     type: DRAWING
   }
-  index: 72
-  sub_index: 44
+  index {
+    major: 72
+    minor: 44
+  }
 }
