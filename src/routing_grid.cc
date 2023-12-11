@@ -549,18 +549,21 @@ bool RoutingGrid::AddRouteBetween(
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
-  // Assign net and install:
-  if (!net.empty())
-    shortest_path->set_net(net);
-
-  InstallPath(shortest_path.release());
-
+  // Once the path is found, but _before_ it is installed, the temporarily
+  // blocked nodes should be re-enabled. This might be permanently blocked by
+  // installing the path finally!
   for (RoutingVertex *vertex : blocked_vertices) {
     vertex->set_available(true);
   }
   for (RoutingEdge *edge : blocked_edges) {
     edge->set_available(true);
   }
+
+  // Assign net and install:
+  if (!net.empty())
+    shortest_path->set_net(net);
+
+  InstallPath(shortest_path.release());
 
   return true;
 }
@@ -656,8 +659,8 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
 
   LOG_IF(FATAL, path->vertices().size() != path->edges().size() + 1)
       << "Path vertices and edges mismatched. There are "
-      << path->edges().size() << " edges and " << path->vertices().size()
-      << " vertices";
+      << path->edges().size() << " edges and "
+      << path->vertices().size() << " vertices";
 
   size_t i = 0;
   RoutingEdge *edge = nullptr;

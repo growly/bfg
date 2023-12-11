@@ -579,8 +579,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // Auto-route order:
   std::vector<geometry::Instance*> auto_route_order = {
     banks[0].memories[0][0],
-    banks[0].memories[0][1],
-    banks[0].memories[1][0]
+    //banks[0].memories[0][1],
+    //banks[0].memories[1][0]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {
