@@ -109,6 +109,11 @@ Rectangle Rectangle::BoundingBoxIfRotated(
   return rotated;
 }
 
+Rectangle Rectangle::WithPadding(int64_t padding) const {
+  return {{lower_left_ - Point {padding, padding},
+           upper_right_ + Point {padding, padding}}};
+}
+
 ::vlsir::raw::Rectangle Rectangle::ToVLSIRRectangle(
     const PhysicalPropertiesDatabase &db) const {
   ::vlsir::raw::Rectangle rect_pb;

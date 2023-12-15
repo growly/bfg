@@ -14,11 +14,11 @@ class RoutingTrackBlockage {
         << "RoutingTrackBlockage start must be before end.";
   }
 
-  bool Contains(int64_t position);
-  bool IsAfter(int64_t position);
-  bool IsBefore(int64_t position);
+  bool Contains(int64_t position) const;
+  bool IsAfter(int64_t position) const;
+  bool IsBefore(int64_t position) const;
 
-  bool Blocks(int64_t low, int64_t high);
+  bool Blocks(int64_t low, int64_t high) const;
 
   void set_start(int64_t start) { start_ = start; }
   void set_end(int64_t end) { end_ = end; }

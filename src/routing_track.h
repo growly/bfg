@@ -124,6 +124,7 @@ class RoutingTrack {
   }
   bool IsBlockedBetween(
       const geometry::Point &one_end, const geometry::Point &other_end) const;
+
   bool EdgeSpansVertex(
       const RoutingEdge &edge, const RoutingVertex &vertex) const;
 
@@ -136,7 +137,7 @@ class RoutingTrack {
 
   geometry::Point PointOnTrack(int64_t projection_onto_track) const;
 
-  RoutingTrackBlockage *MergeIntoBlockage(
+  RoutingTrackBlockage *MergeNewBlockage(
       const geometry::Point &one_end, const geometry::Point &other_end);
   void ApplyBlockage(const RoutingTrackBlockage &blockage,
                      std::set<RoutingVertex*> *blocked_vertices = nullptr,

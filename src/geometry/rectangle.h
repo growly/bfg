@@ -65,6 +65,9 @@ class Rectangle : public Shape {
   Point PointOnLineOutside(const Line &line) const;
   Rectangle BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) const;
 
+  // The rectangle you get if you adding padding to each side of this rectangle.
+  Rectangle WithPadding(int64_t padding) const;
+
   // TODO(aryap): To be able to reotate arbitrarily, we have to store the
   // upper_left and lower_right values explicitly OR store the rotation angle so
   // that we can compute these when asked.

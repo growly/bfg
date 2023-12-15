@@ -57,6 +57,9 @@ class RoutingTrack;
 class RoutingTrackBlockage;
 class RoutingPath;
 
+template<typename T>
+class RoutingGridBlockage;
+
 class RoutingGrid {
  public:
   RoutingGrid(const PhysicalPropertiesDatabase &physical_db)
@@ -93,13 +96,30 @@ class RoutingGrid {
   void AddBlockages(const geometry::ShapeCollection &shapes,
                     int64_t padding = 0,
                     std::set<RoutingVertex*> *changed_out = nullptr);
-  void AddBlockage(const geometry::Rectangle &rectangle,
+  RoutingGridBlockage<geometry::Rectangle> *AddBlockage(
+      const geometry::Rectangle &rectangle,
+      int64_t padding = 0,
+      std::set<RoutingVertex*> *blocked_vertices = nullptr,
+      std::set<RoutingEdge*> *blocked_edges = nullptr);
+  RoutingGridBlockage<geometry::Polygon> *AddBlockage(const geometry::Polygon &polygon,
                    int64_t padding = 0,
-                   std::set<RoutingVertex*> *blocked_vertices = nullptr,
-                   std::set<RoutingEdge*> *blocked_edges = nullptr);
-  void AddBlockage(const geometry::Polygon &polygon,
-                   int64_t padding = 0,
-                   std::set<RoutingVertex*> *changed_out = nullptr);
+                   std::set<RoutingVertex*> *blocked_vertices = nullptr);
+
+  // Removes the blockage from the list of known blockages, but does not undo
+  // any effects of the blockage if they've already been applied.
+  template <typename T>
+  void ForgetBlockage(RoutingGridBlockage<T> *blockage);
+
+  // TODO(aryap): Why do I always use templates instead of polymorphism? This
+  // isn't what CS101 taught me. Am I sick?
+  template<typename T>
+  void ApplyBlockage(
+      const RoutingGridBlockage<T> &blockage,
+      std::set<RoutingVertex*> *blocked_vertices = nullptr);
+
+  template<typename T>
+  bool ValidAgainstKnownBlockages(const T &vertex) const;
+
   // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
 
@@ -162,11 +182,30 @@ class RoutingGrid {
     return obstruction.Overlaps(keep_out.value());
   }
 
+  template<typename T>
+  bool WireWouldIntersect(const RoutingEdge &edge,
+                          const T &obstruction,
+                          int64_t padding = 0) const {
+    // Consider the edge as a rectangle of the appropriate width for that edge
+    // (i.e. given the wire width rules for its layer), and see if it collides
+    // with the obstruction.
+    std::optional<geometry::Rectangle> keep_out = TrackFootprint(edge, padding);
+    if (!keep_out) {
+      return false;
+    }
+    return obstruction.Overlaps(keep_out.value());
+  }
+
+  template<typename T>
+  void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
+
   // FIXME(aryap): The RoutingVertex should contain enough information to figure
   // this out. It should at *least* always have its bottom and top layers
   // (ordered). the "connected_layers_" field is hard to use.
   std::optional<geometry::Rectangle> ViaFootprint(
       const RoutingVertex &vertex, int64_t padding = 0) const;
+  std::optional<geometry::Rectangle> TrackFootprint(
+      const RoutingEdge &edge, int64_t padding = 0) const;
 
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
@@ -238,7 +277,37 @@ class RoutingGrid {
   std::map<geometry::Layer, std::map<geometry::Layer, RoutingGridGeometry>>
       grid_geometry_by_layers_;
 
+  std::vector<std::unique_ptr<RoutingGridBlockage<geometry::Rectangle>>>
+      rectangle_blockages_;
+  std::vector<std::unique_ptr<RoutingGridBlockage<geometry::Polygon>>>
+      polygon_blockages_;
+
   const PhysicalPropertiesDatabase &physical_db_;
+
+  template<typename T>
+  friend class RoutingGridBlockage;
+};
+
+template<typename T>
+class RoutingGridBlockage {
+ public:
+  RoutingGridBlockage(
+      const RoutingGrid &routing_grid, const T& shape, int64_t padding)
+      : routing_grid_(routing_grid),
+        shape_(shape),
+        padding_(padding) {}
+
+  bool Blocks(const RoutingVertex &vertex) const;
+  bool Blocks(const RoutingEdge &edge) const;
+
+  const T& shape() const { return shape_; }
+
+ private:
+  const RoutingGrid &routing_grid_;
+  // We store a copy of the shape. We can't store a reference because callers do
+  // cowboy shit.
+  const T shape_;
+  int64_t padding_;
 };
 
 }  // namespace bfg

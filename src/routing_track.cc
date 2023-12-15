@@ -95,7 +95,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
     // Possible off-grid edge?
     return;
 
-  MergeIntoBlockage(edge->first()->centre(), edge->second()->centre());
+  MergeNewBlockage(edge->first()->centre(), edge->second()->centre());
 
   // Mark other edges that are blocked by this as used.
   for (RoutingEdge *edge : edges_) {
@@ -443,7 +443,7 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding) {
   if (Intersects(rectangle, padding)) {
-    RoutingTrackBlockage *blockage = MergeIntoBlockage(
+    RoutingTrackBlockage *blockage = MergeNewBlockage(
         rectangle.lower_left(), rectangle.upper_right());
     if (blockage) {
       ApplyBlockage(*blockage);
@@ -462,7 +462,7 @@ void RoutingTrack::AddBlockage(
   Intersects(polygon, &intersections, padding);
 
   for (const auto &pair : intersections) {
-    RoutingTrackBlockage *blockage = MergeIntoBlockage(pair.first, pair.second);
+    RoutingTrackBlockage *blockage = MergeNewBlockage(pair.first, pair.second);
     if (blockage) {
       ApplyBlockage(*blockage);
     }
@@ -478,6 +478,8 @@ void RoutingTrack::AddTemporaryBlockage(
     std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(
         rectangle.lower_left(), rectangle.upper_right());
 
+    // TODO(aryap): I think we need to add the padding in the on-axis direction
+    // too, so these limits need to be pushed out:
     RoutingTrackBlockage temporary_blockage = RoutingTrackBlockage(
         low_high.first, low_high.second);
     ApplyBlockage(temporary_blockage, blocked_vertices, blocked_edges);
@@ -485,7 +487,7 @@ void RoutingTrack::AddTemporaryBlockage(
 }
 
 
-RoutingTrackBlockage *RoutingTrack::MergeIntoBlockage(
+RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
     const geometry::Point &one_end, const geometry::Point &other_end) {
   std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(one_end, other_end);
   int64_t low = low_high.first;
@@ -572,7 +574,8 @@ void RoutingTrack::ApplyBlockage(
   for (RoutingVertex *vertex : vertices_) {
     if (!vertex->available())
       continue;
-    if (IsBlockedBetween(vertex->centre(), vertex->centre())) {
+    auto low_high = ProjectOntoTrack(vertex->centre(), vertex->centre());
+    if (blockage.Blocks(low_high.first, low_high.second)) {
       vertex->set_available(false);
       if (blocked_vertices)
         blocked_vertices->insert(vertex);
@@ -581,7 +584,9 @@ void RoutingTrack::ApplyBlockage(
   for (RoutingEdge *edge : edges_) {
     if (!edge->available())
       continue;
-    if (IsBlockedBetween(edge->first()->centre(), edge->second()->centre())) {
+    auto low_high = ProjectOntoTrack(
+        edge->first()->centre(), edge->second()->centre());
+    if (blockage.Blocks(low_high.first, low_high.second)) {
       edge->set_available(false);
       if (blocked_edges)
         blocked_edges->insert(edge);

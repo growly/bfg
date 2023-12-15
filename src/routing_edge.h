@@ -1,10 +1,12 @@
 #ifndef ROUTING_EDGE_H_
 #define ROUTING_EDGE_H_
 
+#include <optional>
 #include <set>
 #include <vector>
 
 #include "geometry/layer.h"
+#include "geometry/rectangle.h"
 
 namespace bfg {
 
@@ -32,10 +34,15 @@ class RoutingEdge {
   RoutingVertex *first() const { return first_; }
   RoutingVertex *second() const { return second_; }
 
+  // Self-contained utility for imagining this edge as a rectilinear rectangle
+  // of the given width.
+  std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
+
   void set_available(bool available) { available_ = available; }
   bool available() { return available_; }
 
   void set_layer(const geometry::Layer &layer) { layer_ = layer; }
+  const geometry::Layer &layer() const { return layer_; }
 
   const geometry::Layer &ExplicitOrTrackLayer() const;
 

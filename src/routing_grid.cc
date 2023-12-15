@@ -43,6 +43,102 @@ using bfg::geometry::Compass;
 
 namespace bfg {
 
+// These partial specialisations need to occur before any use because dem's the
+// rulz.
+//
+// We have a specialisation for {Rectangle, Polygon} X {Vertex, Edge}.
+template<>
+bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
+    const RoutingVertex &vertex) const {
+  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding_);
+}
+
+template<>
+bool RoutingGridBlockage<geometry::Polygon>::Blocks(
+    const RoutingVertex &vertex) const {
+  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding_);
+}
+
+template<>
+bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
+    const RoutingEdge &edge) const {
+  return routing_grid_.WireWouldIntersect(edge, shape_, padding_);
+}
+
+template<>
+bool RoutingGridBlockage<geometry::Polygon>::Blocks(
+    const RoutingEdge &edge) const {
+  return routing_grid_.WireWouldIntersect(edge, shape_, padding_);
+}
+
+template<typename T>
+void RoutingGrid::ApplyBlockage(
+    const RoutingGridBlockage<T> &blockage,
+    std::set<RoutingVertex*> *blocked_vertices) {
+  const geometry::Layer &layer = blockage.shape().layer();
+  // Find any possibly-blocked vertices and make them unavailable:
+  std::vector<RoutingGridGeometry*> grid_geometries;
+  FindRoutingGridGeometriesForLayer(layer, &grid_geometries);
+  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
+    std::set<RoutingVertex*> vertices;
+    grid_geometry->EnvelopingVertices(blockage.shape(), &vertices);
+    for (RoutingVertex *vertex : vertices) {
+      if (!vertex->available())
+        continue;
+      if (blockage.Blocks(*vertex)) {
+        vertex->set_available(false);
+        if (blocked_vertices) {
+          blocked_vertices->insert(vertex);
+        }
+        VLOG(15) << "blockage: " << blockage.shape()
+                 << " would block " << vertex;
+      }
+    }
+  }
+}
+
+template<>
+void RoutingGrid::ForgetBlockage(
+    RoutingGridBlockage<geometry::Rectangle> *blockage) {
+  auto predicate = [&](
+      const std::unique_ptr<RoutingGridBlockage<geometry::Rectangle>> &entry) {
+      return entry.get() == blockage;
+  };
+  auto it = std::find_if(
+      rectangle_blockages_.begin(), rectangle_blockages_.end(), predicate);
+  if (it == rectangle_blockages_.end())
+    return;
+  rectangle_blockages_.erase(it);
+}
+
+template<>
+void RoutingGrid::ForgetBlockage(
+    RoutingGridBlockage<geometry::Polygon> *blockage) {
+  auto predicate = [&](
+      const std::unique_ptr<RoutingGridBlockage<geometry::Polygon>> &entry) {
+      return entry.get() == blockage;
+  };
+  auto it = std::find_if(
+      polygon_blockages_.begin(), polygon_blockages_.end(), predicate);
+  if (it == polygon_blockages_.end())
+    return;
+  polygon_blockages_.erase(it);
+}
+
+template<typename T>
+bool RoutingGrid::ValidAgainstKnownBlockages(const T &shape) const {
+  // *snicker* Cute opportunity for std::any_of here:
+  for (const auto &blockage : rectangle_blockages_) {
+    if (blockage->Blocks(shape))
+      return false;
+  }
+  for (const auto &blockage : polygon_blockages_) {
+    if (blockage->Blocks(shape))
+      return false;
+  }
+  return true;
+}
+
 RoutingGrid::~RoutingGrid()  {
   for (auto entry : tracks_by_layer_) {
     for (RoutingTrack *track : entry.second) {
@@ -142,6 +238,9 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     }
 
     for (RoutingVertex *vertex : entry.second) {
+      // Do not consider unavailable vertices!
+      if (!vertex->available())
+        continue;
       uint64_t vertex_cost = vertex->L1DistanceTo(target_point);
       if (needs_via) {
         vertex_cost += (10.0 * needs_via->get().cost);
@@ -199,8 +298,10 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     const geometry::Layer vertex_layer = costed_vertices.back().layer;
     costed_vertices.pop_back();
 
-    LOG(INFO) << "vertex " << candidate->centre() << " layer " << vertex_layer
-              << " cost " << costed_vertices.back().cost;
+    VLOG(10) << "searching "  << costed_vertices.size() << " vertex "
+             << candidate << " centre " << candidate->centre()
+             << " layer " << vertex_layer
+             << " cost " << costed_vertices.back().cost;
 
     if (candidate->vertical_track() == nullptr) {
       // FIXME(aryap): Is this a problem?
@@ -217,9 +318,14 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     std::vector<RoutingTrack*> tracks = {
       candidate->vertical_track(), candidate->horizontal_track()};
     RoutingVertex *bridging_vertex = nullptr;
-    for (size_t i = 0; i < tracks.size() && bridging_vertex == nullptr; ++i) {
+    size_t track = 0;
+    for (size_t i = 0; i < tracks.size(); ++i) {
       bridging_vertex = tracks[i]->CreateNearestVertexAndConnect(
           target_point, candidate);
+      if (bridging_vertex) {
+        track = i;
+        break;
+      }
     }
     if (bridging_vertex == nullptr)
       continue;
@@ -238,11 +344,30 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     }
 
     RoutingVertex *off_grid = new RoutingVertex(target_point);
+    if (!ValidAgainstKnownBlockages(*off_grid)) {
+      LOG(INFO) << "invalid off grid candidate at " << off_grid->centre();
+      // Rollback!
+      RemoveVertex(bridging_vertex,
+                   true);  // and delete!
+      delete off_grid;
+      continue;
+    }
     off_grid->AddConnectedLayer(vertex_layer);
     AddVertex(off_grid);
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
     edge->set_layer(vertex_layer);
+    if (!ValidAgainstKnownBlockages(*edge)) {
+      LOG(INFO) << "invalid off grid edge between " << bridging_vertex->centre()
+                << " and " << off_grid->centre();
+      // Rollback extra hard!
+      RemoveVertex(bridging_vertex,
+                   true);  // and delete!
+      RemoveVertex(off_grid,
+                   true);  // and delete!
+      delete edge;    
+      continue;
+    }
     LOG(INFO) << "connected new vertex " << bridging_vertex->centre()
               << " on layer " << edge->ExplicitOrTrackLayer();
     bridging_vertex->AddEdge(edge);
@@ -260,8 +385,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
-    const RoutingVertex &vertex,
-    int64_t padding) const {
+    const RoutingVertex &vertex, int64_t padding) const {
   const std::vector<geometry::Layer> &layers = vertex.connected_layers();
   if (layers.size() != 2) {
     return std::nullopt;
@@ -281,6 +405,19 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
   geometry::Rectangle footprint = geometry::Rectangle(
       lower_left, via_width, via_width);
   return footprint;
+}
+
+std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
+    const RoutingEdge &edge, int64_t padding) const {
+  const geometry::Layer &layer = edge.layer();
+  const RoutingLayerInfo &layer_info = GetRoutingLayerInfo(layer);
+  auto edge_as_rectangle = edge.AsRectangle(layer_info.wire_width);
+  if (!edge_as_rectangle)
+    return std::nullopt;
+  if (padding == 0)
+    return edge_as_rectangle;
+  geometry::Rectangle &rectangle = edge_as_rectangle.value();
+  return rectangle.WithPadding(padding);
 }
 
 std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
@@ -309,11 +446,6 @@ void RoutingGrid::ConnectLayers(
 
   RoutingGridGeometry grid_geometry;
   grid_geometry.ComputeForLayers(horizontal_info, vertical_info);
-
-  std::vector<RoutingVertex*> &first_layer_vertices =
-      GetAvailableVertices(first);
-  std::vector<RoutingVertex*> &second_layer_vertices =
-      GetAvailableVertices(second);
 
   size_t num_vertices = 0;
   size_t num_x = 0;
@@ -449,6 +581,7 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     std::vector<RoutingVertex*> &available = GetAvailableVertices(layer);
     available.push_back(vertex);
+    // LOG(INFO) << "available (" << layer << "): " << available.size();
   }
   vertices_.push_back(vertex);  // The class owns all of these.
 }
@@ -488,6 +621,7 @@ bool RoutingGrid::AddRouteBetween(
   //  }
   //  return true;
   //};
+  std::vector<RoutingGridBlockage<geometry::Rectangle>*> pin_blockages;
   std::set<RoutingVertex*> blocked_vertices;
   std::set<RoutingEdge*> blocked_edges;
   for (geometry::Port *port : avoid) {
@@ -498,15 +632,19 @@ bool RoutingGrid::AddRouteBetween(
           << "avoiding just the pin layer itself: " << port->layer();
       geometry::Rectangle pin_projection = *port;
       pin_projection.set_layer(port->layer());
-      AddBlockage(
+      RoutingGridBlockage<geometry::Rectangle> *pin_blockage = AddBlockage(
           pin_projection, 100 /* FIXME */, &blocked_vertices, &blocked_edges);
+      if (pin_blockage)
+        pin_blockages.push_back(pin_blockage);
       continue;
     }
     for (const geometry::Layer &layer : pin_access) {
       geometry::Rectangle pin_projection = *port;
       pin_projection.set_layer(layer);
-      AddBlockage(
+      RoutingGridBlockage<geometry::Rectangle> *pin_blockage = AddBlockage(
           pin_projection, 100 /* FIXME */, &blocked_vertices, &blocked_edges);
+      if (pin_blockage)
+        pin_blockages.push_back(pin_blockage);
     }
     LOG(INFO) << "avoiding " << blocked_vertices.size() << " vertices and "
               << blocked_edges.size() << " edges";
@@ -557,6 +695,9 @@ bool RoutingGrid::AddRouteBetween(
   }
   for (RoutingEdge *edge : blocked_edges) {
     edge->set_available(true);
+  }
+  for (RoutingGridBlockage<geometry::Rectangle> *blockage : pin_blockages) {
+    ForgetBlockage(blockage);
   }
 
   // Assign net and install:
@@ -849,7 +990,8 @@ RoutingPath *RoutingGrid::ShortestPath(
 
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin, const std::string &to_net) {
-  LOG_IF(WARNING, !begin->available()) << "Start vertex for path is not available";
+  LOG_IF(WARNING, !begin->available())
+      << "Start vertex for path is not available";
 
   // Give everything its index for the duration of this algorithm.
   for (size_t i = 0; i < vertices_.size(); ++i) {
@@ -1006,7 +1148,7 @@ void RoutingGrid::AddBlockages(
   //}
 }
 
-void RoutingGrid::AddBlockage(
+RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,
     std::set<RoutingVertex*> *blocked_vertices,
@@ -1014,7 +1156,7 @@ void RoutingGrid::AddBlockage(
   const geometry::Layer &layer = rectangle.layer();
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())
-    return;
+    return nullptr;
   for (RoutingTrack *track : it->second) {
     if (blocked_vertices || blocked_edges) {
       track->AddTemporaryBlockage(
@@ -1025,59 +1167,34 @@ void RoutingGrid::AddBlockage(
     }
   }
 
-  // Find any possibly-blocked vertices and make them unavailable:
-  std::vector<RoutingGridGeometry*> grid_geometries;
-  FindRoutingGridGeometriesForLayer(layer, &grid_geometries);
-  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
-    std::set<RoutingVertex*> vertices;
-    grid_geometry->EnvelopingVertices(rectangle, &vertices);
-    for (RoutingVertex *vertex : vertices) {
-      if (!vertex->available())
-        continue;
-      if (ViaWouldIntersect(*vertex,
-                            rectangle,
-                            padding)) {
-        vertex->set_available(false);
-        if (blocked_vertices) {
-          blocked_vertices->insert(vertex);
-        }
-        VLOG(15) << "blockage: " << rectangle << " would block " << vertex;
-      }
-    }
-  }
+  // Create and save the blockage:
+  RoutingGridBlockage<geometry::Rectangle> *blockage =
+      new RoutingGridBlockage<geometry::Rectangle>(*this, rectangle, padding);
+  rectangle_blockages_.emplace_back(blockage);
+
+  ApplyBlockage(*blockage, blocked_vertices);
+  return blockage;
 }
 
-void RoutingGrid::AddBlockage(const geometry::Polygon &polygon,
-                              int64_t padding,
-                              std::set<RoutingVertex*> *changed_out) {
+RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
+    const geometry::Polygon &polygon,
+    int64_t padding,
+    std::set<RoutingVertex*> *blocked_vertices) {
   const geometry::Layer &layer = polygon.layer();
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())
-    return;
+    return nullptr;
   for (RoutingTrack *track : it->second) {
     track->AddBlockage(polygon, padding);
   }
 
-  std::vector<RoutingGridGeometry*> grid_geometries;
-  FindRoutingGridGeometriesForLayer(layer, &grid_geometries);
+  // Create and save the blockage:
+  RoutingGridBlockage<geometry::Polygon> *blockage =
+      new RoutingGridBlockage<geometry::Polygon>(*this, polygon, padding);
+  polygon_blockages_.emplace_back(blockage);
 
-  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
-    std::set<RoutingVertex*> vertices;
-    grid_geometry->EnvelopingVertices(polygon, &vertices);
-    for (RoutingVertex *vertex : vertices) {
-      if (!vertex->available())
-        continue;
-      if (ViaWouldIntersect(*vertex,
-                            polygon,
-                            padding)) {
-        vertex->set_available(false);
-        if (changed_out) {
-          changed_out->insert(vertex);
-        }
-        VLOG(15) << "blockage: " << polygon << " would block " << vertex;
-      }
-    }
-  }
+  ApplyBlockage(*blockage, blocked_vertices);
+  return blockage;
 }
 
 void RoutingGrid::RemoveUnavailableVertices() {
