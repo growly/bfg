@@ -13,6 +13,7 @@
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_split.h>
 
+#include "routing_layer_info.h"
 #include "geometry/layer.h"
 #include "vlsir/tech.pb.h"
 
@@ -214,7 +215,12 @@ void PhysicalPropertiesDatabase::AddRules(
 
 const InterLayerConstraints &PhysicalPropertiesDatabase::Rules(
     const std::string &left, const std::string &right) const {
-  const auto layers = GetTwoLayersAndOrder(left, right);
+  return Rules(GetLayer(left), GetLayer(right));
+}
+
+const InterLayerConstraints &PhysicalPropertiesDatabase::Rules(
+    const geometry::Layer &left, const geometry::Layer &right) const {
+  const auto layers = OrderLayers(left, right);
   const auto first_it = inter_layer_constraints_.find(layers.first);
   LOG_IF(FATAL, first_it == inter_layer_constraints_.end())
       << "No inter-layer constraints for " << left << "/" << right;
@@ -258,6 +264,45 @@ PhysicalPropertiesDatabase::GetRules(
     return std::nullopt;
   }
   return map_it->second;
+}
+
+void PhysicalPropertiesDatabase::GetRoutingLayerInfo(
+    const std::string &routing_layer_name,
+    RoutingLayerInfo *routing_info) const {
+  routing_info->layer = GetLayer(routing_layer_name);
+  const IntraLayerConstraints layer_rules = Rules(routing_layer_name);
+  routing_info->wire_width = layer_rules.min_width;
+  routing_info->pitch = layer_rules.min_pitch;
+  routing_info->min_separation = layer_rules.min_separation;
+}
+
+void PhysicalPropertiesDatabase::GetRoutingViaInfo(
+    const std::string &routing_layer,
+    const std::string &other_routing_layer,
+    RoutingViaInfo *routing_via_info) const {
+  const geometry::Layer first_layer = GetLayer(routing_layer);
+  const geometry::Layer second_layer = GetLayer(other_routing_layer);
+
+  auto via_layer = GetViaLayer(routing_layer, other_routing_layer);
+  LOG_IF(FATAL, !via_layer)
+      << "No via layer found connecting " << routing_layer << " and "
+      << other_routing_layer;
+
+  routing_via_info->layer = *via_layer;
+  const IntraLayerConstraints &via_rules = Rules(*via_layer);
+  routing_via_info->width = via_rules.via_width;
+  routing_via_info->height = via_rules.via_width;
+
+  const InterLayerConstraints &via_to_first_layer_rules =
+      Rules(first_layer, *via_layer);
+  const InterLayerConstraints &via_to_second_layer_rules =
+      Rules(second_layer, *via_layer);
+  routing_via_info->overhang_length = std::max(
+      via_to_first_layer_rules.via_overhang,
+      via_to_second_layer_rules.via_overhang);
+  routing_via_info->overhang_width = std::max(
+      via_to_first_layer_rules.via_overhang_wide,
+      via_to_second_layer_rules.via_overhang_wide);
 }
 
 const std::set<geometry::Layer>

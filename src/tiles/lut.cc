@@ -353,69 +353,39 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   RoutingGrid alt_routing_grid(db);
 
   // Set every property the RoutingGrid needs.
-  // TODO(aryap): Probably need a simpler interface to this.
   bfg::RoutingLayerInfo vertical_routing;
-  vertical_routing.layer = db.GetLayer("met1.drawing");
-  const IntraLayerConstraints vertical_rules = db.Rules("met2.drawing");
+  db.GetRoutingLayerInfo("met1.drawing", &vertical_routing);
   vertical_routing.direction = bfg::RoutingTrackDirection::kTrackVertical;
   vertical_routing.area = pre_route_bounds;
-  vertical_routing.wire_width = vertical_rules.min_width;
   vertical_routing.offset = 50;
-  vertical_routing.pitch = vertical_rules.min_pitch;
-  vertical_routing.min_separation = vertical_rules.min_separation;
 
   bfg::RoutingLayerInfo horizontal_routing;
-  horizontal_routing.layer = db.GetLayer("met2.drawing");
-  const IntraLayerConstraints horizontal_rules =
-      db.Rules("met2.drawing");
+  db.GetRoutingLayerInfo("met2.drawing", &horizontal_routing);
   horizontal_routing.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
   horizontal_routing.area = pre_route_bounds;
-  horizontal_routing.wire_width = horizontal_rules.min_width;
   horizontal_routing.offset = 50;
-  horizontal_routing.pitch = horizontal_rules.min_pitch;
-  vertical_routing.min_separation = vertical_rules.min_separation;
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.
   bfg::RoutingViaInfo routing_via_info;
-  //routing_via_info.layer = db.GetViaLayer("met1.drawing", "met2.drawing");
-  routing_via_info.layer = db.GetLayer("via1.drawing");
-  IntraLayerConstraints via_rules = db.Rules("via1.drawing");
+  db.GetRoutingViaInfo("met1.drawing", "met2.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
-  routing_via_info.width = via_rules.via_width;
-  routing_via_info.height = via_rules.via_width;
-  routing_via_info.overhang_length = db.Rules(
-      "via1.drawing", "met2.drawing").via_overhang;
-  routing_via_info.overhang_width = db.Rules(
-      "via1.drawing", "met2.drawing").via_overhang_wide;
   routing_grid.AddRoutingViaInfo(
       vertical_routing.layer, horizontal_routing.layer, routing_via_info);
   alt_routing_grid.AddRoutingViaInfo(
       vertical_routing.layer, horizontal_routing.layer, routing_via_info);
 
-  routing_via_info.layer = db.GetLayer("mcon.drawing");
-  via_rules = db.Rules("mcon.drawing");
+  routing_via_info = {0};
+  db.GetRoutingViaInfo("li.drawing", "met1.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
-  routing_via_info.width = via_rules.via_width;
-  routing_via_info.height = via_rules.via_width;
-  routing_via_info.overhang_length = db.Rules(
-      "mcon.drawing", "met1.drawing").via_overhang;
-  routing_via_info.overhang_width = db.Rules(
-      "mcon.drawing", "met1.drawing").via_overhang_wide;
   routing_grid.AddRoutingViaInfo(
       vertical_routing.layer, db.GetLayer("li.drawing"), routing_via_info);
   alt_routing_grid.AddRoutingViaInfo(
       vertical_routing.layer, db.GetLayer("li.drawing"), routing_via_info);
 
-  routing_via_info.layer = db.GetLayer("via2.drawing");
-  via_rules = db.Rules("via2.drawing");
+  routing_via_info = {0};
+  db.GetRoutingViaInfo("met2.drawing", "met3.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
-  routing_via_info.width = via_rules.via_width;
-  routing_via_info.height = via_rules.via_width;
-  routing_via_info.overhang_length = db.Rules(
-      "via2.drawing", "met3.drawing").via_overhang;
-  routing_via_info.overhang_width = db.Rules(
-      "via2.drawing", "met3.drawing").via_overhang_wide;
   routing_grid.AddRoutingViaInfo(
       db.GetLayer("met3.drawing"), horizontal_routing.layer, routing_via_info);
   alt_routing_grid.AddRoutingViaInfo(

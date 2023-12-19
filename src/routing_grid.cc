@@ -910,6 +910,9 @@ RoutingPath *RoutingGrid::ShortestPath(
   // path. If RoutingEdge* is nullptr then this is invalid. The index into this
   // array is the index of the sink node, the entry gives the path back to the
   // source.
+  // TODO(aryap): Apparently using pairs everywhere is bad style and I should
+  // use structs:
+  // https://google.github.io/styleguide/cppguide.html#Structs_vs._Classes
   std::vector<std::pair<size_t, RoutingEdge*>> prev(vertices_.size());
 
   // We want the lowest value at the back of the array. But in a priority_queue,
@@ -922,13 +925,7 @@ RoutingPath *RoutingGrid::ShortestPath(
   std::priority_queue<RoutingVertex*,
                       std::vector<RoutingVertex*>,
                       decltype(vertex_sort_fn)> queue(vertex_sort_fn);
-  // TODO(aryap): Why did I use a set for this one and a priority queue for the
-  // last one?
-  auto target_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
-    return cost[a->contextual_index()] < cost[b->contextual_index()];
-  };
-  std::set<RoutingVertex*,
-           decltype(target_sort_fn)> found_targets(target_sort_fn);
+  std::set<RoutingVertex*> found_targets;
 
   size_t begin_index = begin->contextual_index();
 
@@ -1017,9 +1014,14 @@ RoutingPath *RoutingGrid::ShortestPath(
   if (found_targets.empty())
     return nullptr;
 
-  // The found_targets priority_queue should have surfaced the best target for
-  // us.
-  RoutingVertex *end_target = *found_targets.begin();
+  // Sort all of the found targets according to their final cost:
+  std::vector<RoutingVertex*> sorted_targets(
+      found_targets.begin(), found_targets.end());
+  auto target_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
+    return cost[a->contextual_index()] < cost[b->contextual_index()];
+  };
+  std::sort(sorted_targets.begin(), sorted_targets.end(), target_sort_fn);
+  RoutingVertex *end_target = sorted_targets.front();
   size_t end_index = end_target->contextual_index();
 
   std::deque<RoutingEdge*> shortest_edges;

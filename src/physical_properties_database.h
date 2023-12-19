@@ -12,6 +12,8 @@
 
 namespace bfg {
 
+class RoutingLayerInfo;
+
 enum RoutingTrackDirection {
   kTrackHorizontal,
   kTrackVertical
@@ -155,8 +157,16 @@ class PhysicalPropertiesDatabase {
   // These look up methods are fatal if the given layer is not found.
   const InterLayerConstraints &Rules(
       const std::string &left, const std::string &right) const;
+  const InterLayerConstraints &Rules(
+      const geometry::Layer &left, const geometry::Layer &right) const;
   const IntraLayerConstraints &Rules(const std::string &layer_name) const;
   const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
+
+  void GetRoutingLayerInfo(const std::string &routing_layer_name,
+                           RoutingLayerInfo *routing_info) const;
+  void GetRoutingViaInfo(const std::string &routing_layer,
+                         const std::string &other_routing_layer,
+                         RoutingViaInfo *routing_via_info) const;
 
   // For a given pin layer, find the layers which can access it. This is
   // transitive closure of all layers to which the pin layer provides direct
