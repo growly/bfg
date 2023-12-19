@@ -396,8 +396,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   routing_grid.ConnectLayers(vertical_routing.layer, horizontal_routing.layer);
 
   // Swap direction for the alt routing grid:
-  vertical_routing.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-  horizontal_routing.direction = bfg::RoutingTrackDirection::kTrackVertical;
+  std::swap(vertical_routing.direction, horizontal_routing.direction);
   alt_routing_grid.AddRoutingLayerInfo(vertical_routing);
   alt_routing_grid.AddRoutingLayerInfo(horizontal_routing);
   alt_routing_grid.ConnectLayers(
