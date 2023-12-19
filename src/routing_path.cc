@@ -13,7 +13,8 @@
 namespace bfg {
 
 RoutingPath::RoutingPath(
-    RoutingVertex *start, const std::deque<RoutingEdge*> edges)
+    RoutingVertex *start,
+    const std::deque<RoutingEdge*> edges)
     : edges_(edges.begin(), edges.end()) {
   vertices_.push_back(start);
   RoutingVertex *last = start;
@@ -40,11 +41,37 @@ void RoutingPath::ToPolyLinesAndVias(
   int64_t bulge_length = 0;
   int64_t bulge_width = 0;
   for (size_t i = 0; i < vertices_.size() - 1; ++i) {
+    RoutingVertex *last_vertex = i > 1 ? vertices_.at(i - 1) : nullptr;
     RoutingVertex *current = vertices_.at(i);
     edge = edges_.at(i);
     const geometry::Layer &layer = edge->ExplicitOrTrackLayer();
 
     const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfo(layer);
+
+    // We look for and try to eliminate wires that are too short:
+    //
+    //    +-------+
+    //    |       +---
+    //    |     layer N
+    //    |       +---
+    //    +-------+
+    //      |   |     <- connecting wire on layer (N - 1) or (N + 1) is
+    //    +-------+      too short. We should just connect on layer N.
+    // ---+       |
+    //   layer N  |
+    // ---+       |
+    //    +-------+
+    //
+    // By construction successive vertices should fall on the same horizontal or
+    // vertical track, so we don't check that here. What we really care about is
+    // that the distance between the vias at the vertex locations is sufficient
+    // for DRC correctness, but since the grid set up is not up to us, we
+    // instead check that the vias are on adjacent tracks.
+    if (last_vertex) {
+      if (routing_grid.VerticesAreTooCloseForVias(*last_vertex, *current)) {
+        LOG(INFO) << "ruh roh";
+      }
+    }
 
     if (!last || last->layer() != layer) {
       // TODO(aryap): Is this even an 'abstract' via still? We seem to have all

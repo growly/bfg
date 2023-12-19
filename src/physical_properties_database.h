@@ -27,7 +27,8 @@ struct RoutingViaInfo {
   int64_t width;
   int64_t height;
 
-  // TODO(aryap): I'm not sure how this generalises.
+  // These are the via encapsulations in the axis of the bulge and the
+  // orthogonal axis respectively.
   int64_t overhang_length;
   int64_t overhang_width;
 };

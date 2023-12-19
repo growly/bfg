@@ -83,21 +83,28 @@ class RoutingTrack {
       const geometry::Polygon &polygon,
       std::vector<geometry::PointPair> *intersections,
       int64_t within_halo = 0) const;
-  RoutingTrackBlockage *AddBlockage(
-      const geometry::Rectangle &rectangle,
-      int64_t padding = 0);
-  void AddBlockage(
-      const geometry::Polygon &polygon,
-      int64_t padding = 0);
+
+  // Rectangle blockages create single RoutingTrackBlockages or none at all, so
+  // we can return one or nullptr here:
+  RoutingTrackBlockage *AddBlockage(const geometry::Rectangle &rectangle,
+                                    int64_t padding = 0);
+  // By contrast, polygons can create multiple blockages on a single track, and
+  // need to return more creatively, if desired.
+  void AddBlockage(const geometry::Polygon &polygon,
+                   int64_t padding = 0);
 
   // Returns the edges, vertices blocked by the given shape, with optional
   // padding, but does not create a permanent Blockage in the list of
   // blockages_.
-  void AddTemporaryBlockage(
+  RoutingTrackBlockage *AddTemporaryBlockage(
       const geometry::Rectangle &rectangle,
       int64_t padding = 0,
       std::set<RoutingVertex*> *blocked_vertices = nullptr,
       std::set<RoutingEdge*> *blocked_edges = nullptr);
+
+  bool RemoveTemporaryBlockage(RoutingTrackBlockage *blockage);
+
+  void ClearTemporaryBlockages();
 
   geometry::Line AsLine() const;
   std::pair<geometry::Line, geometry::Line> MajorAxisLines(
@@ -166,6 +173,16 @@ class RoutingTrack {
   // std::set we can't mutate the objects (since they will not automatically be
   // re-sorted). Instead we keep a vector and make sure to sort it ourselves.
   std::vector<RoutingTrackBlockage*> blockages_;
+
+  // We need a separate plane of blockages for temporary obstructions, perhaps
+  // those that only apply in one path search but not the next (e.g. pins).
+  // These blockages might usefully be merged together but not together with the
+  // permanent ones. Since there usually aren't many of these it doesn't matter
+  // so much.
+  //
+  // These can be cleared by pointer or all at once. The caller takes ownership
+  // of the object.
+  std::vector<RoutingTrackBlockage*> temporary_blockages_;
 };
 
 std::ostream &operator<<(std::ostream &os, const RoutingTrack &track);

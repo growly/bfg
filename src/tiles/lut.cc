@@ -362,6 +362,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   vertical_routing.wire_width = vertical_rules.min_width;
   vertical_routing.offset = 50;
   vertical_routing.pitch = vertical_rules.min_pitch;
+  vertical_routing.min_separation = vertical_rules.min_separation;
 
   bfg::RoutingLayerInfo horizontal_routing;
   horizontal_routing.layer = db.GetLayer("met2.drawing");
@@ -372,6 +373,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   horizontal_routing.wire_width = horizontal_rules.min_width;
   horizontal_routing.offset = 50;
   horizontal_routing.pitch = horizontal_rules.min_pitch;
+  vertical_routing.min_separation = vertical_rules.min_separation;
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.
@@ -581,7 +583,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     banks[0].memories[0][0],
     banks[0].memories[0][1],
     banks[0].memories[1][0],
-    //banks[0].memories[1][1]
+    banks[0].memories[1][1]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {

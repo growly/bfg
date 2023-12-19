@@ -16,7 +16,7 @@ struct RoutingLayerInfo {
   int64_t offset;
   RoutingTrackDirection direction;
   int64_t pitch;
-  int64_t via_width;
+  int64_t min_separation;
 };
 
 }   // namespace bfg

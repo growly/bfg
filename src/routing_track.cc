@@ -117,6 +117,11 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
   }
 }
 
+// FIXME: This needs to support permanent/temporary blockages in the way that
+// RoutingGrid now does. Need to return handles to the caller. That means the
+// orchestrator needs to manage handles to two different types of blockage.
+// Maybe they just get stored in the RoutingGridBlockage? That makes sense. Then
+// we don't need to own them here. "Child track blockages..."?
 RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
     const geometry::Point &point,
     RoutingVertex *target) {
@@ -301,6 +306,10 @@ bool RoutingTrack::IsBlockedBetween(
   for (RoutingTrackBlockage *blockage : blockages_) {
     if (blockage->Blocks(low, high)) return true;
   }
+
+  for (RoutingTrackBlockage *blockage : temporary_blockages_) {
+    if (blockage->Blocks(low, high)) return true;
+  }
   // Does not overlap, start or stop in any blockages.
   return false;
 }
@@ -447,6 +456,7 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
         rectangle.lower_left(), rectangle.upper_right());
     if (blockage) {
       ApplyBlockage(*blockage);
+      return blockage;
     }
   }
   return nullptr;
@@ -469,7 +479,7 @@ void RoutingTrack::AddBlockage(
   }
 }
 
-void RoutingTrack::AddTemporaryBlockage(
+RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,
     std::set<RoutingVertex*> *blocked_vertices,
@@ -478,14 +488,14 @@ void RoutingTrack::AddTemporaryBlockage(
     std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(
         rectangle.lower_left(), rectangle.upper_right());
 
-    // TODO(aryap): I think we need to add the padding in the on-axis direction
-    // too, so these limits need to be pushed out:
-    RoutingTrackBlockage temporary_blockage = RoutingTrackBlockage(
+    RoutingTrackBlockage *temporary_blockage = new RoutingTrackBlockage(
         low_high.first, low_high.second);
-    ApplyBlockage(temporary_blockage, blocked_vertices, blocked_edges);
+    temporary_blockages_.push_back(temporary_blockage);
+    ApplyBlockage(*temporary_blockage, blocked_vertices, blocked_edges);
+    return temporary_blockage;
   }
+  return nullptr;
 }
-
 
 RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
     const geometry::Point &one_end, const geometry::Point &other_end) {
@@ -565,6 +575,21 @@ void RoutingTrack::SortBlockages() {
         lhs->start() < rhs->start() : lhs->end() < rhs->end();
   };
   std::sort(blockages_.begin(), blockages_.end(), comp);
+}
+
+bool RoutingTrack::RemoveTemporaryBlockage(RoutingTrackBlockage *blockage) {
+  auto it = std::find(
+      temporary_blockages_.begin(), temporary_blockages_.end(), blockage);
+  if (it == temporary_blockages_.end()) {
+    return false;
+  }
+  temporary_blockages_.erase(it);
+  return true;
+}
+
+void RoutingTrack::ClearTemporaryBlockages() {
+  // We don't own these, so we just clear them.
+  temporary_blockages_.clear();
 }
 
 void RoutingTrack::ApplyBlockage(

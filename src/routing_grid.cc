@@ -72,6 +72,32 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
 }
 
 template<typename T>
+void RoutingGridBlockage<T>::AddChildTrackBlockage(
+    RoutingTrack *track, RoutingTrackBlockage *blockage) {
+  child_track_blockages_.emplace_back(
+      track, 
+      std::unique_ptr<RoutingTrackBlockage>(blockage));
+}
+
+template<typename T>
+void RoutingGridBlockage<T>::ClearChildTrackBlockages() {
+  for (auto &entry : child_track_blockages_) {
+    RoutingTrack *track = entry.first;
+    RoutingTrackBlockage *blockage = entry.second.get();
+    // NOTE(aryap): It is conceivable that RoutingGridBlockage would want to
+    // store 'child' blockages which aren't temporary, but this is not the
+    // case today.
+    track->RemoveTemporaryBlockage(blockage);
+  }
+}
+
+template<typename T>
+RoutingGridBlockage<T>::~RoutingGridBlockage() {
+  ClearChildTrackBlockages();
+  // Objects destroyed.
+}
+
+template<typename T>
 void RoutingGrid::ApplyBlockage(
     const RoutingGridBlockage<T> &blockage,
     std::set<RoutingVertex*> *blocked_vertices) {
@@ -241,7 +267,8 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
       // Do not consider unavailable vertices!
       if (!vertex->available())
         continue;
-      uint64_t vertex_cost = vertex->L1DistanceTo(target_point);
+      uint64_t vertex_cost = static_cast<uint64_t>(
+          vertex->L1DistanceTo(target_point));
       if (needs_via) {
         vertex_cost += (10.0 * needs_via->get().cost);
       }
@@ -632,8 +659,12 @@ bool RoutingGrid::AddRouteBetween(
           << "avoiding just the pin layer itself: " << port->layer();
       geometry::Rectangle pin_projection = *port;
       pin_projection.set_layer(port->layer());
-      RoutingGridBlockage<geometry::Rectangle> *pin_blockage = AddBlockage(
-          pin_projection, 100 /* FIXME */, &blocked_vertices, &blocked_edges);
+      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
+          AddBlockage(pin_projection,
+                      100,  // FIXME: padding.
+                      true, // Temporary blockage.
+                      &blocked_vertices,
+                      &blocked_edges);
       if (pin_blockage)
         pin_blockages.push_back(pin_blockage);
       continue;
@@ -641,8 +672,12 @@ bool RoutingGrid::AddRouteBetween(
     for (const geometry::Layer &layer : pin_access) {
       geometry::Rectangle pin_projection = *port;
       pin_projection.set_layer(layer);
-      RoutingGridBlockage<geometry::Rectangle> *pin_blockage = AddBlockage(
-          pin_projection, 100 /* FIXME */, &blocked_vertices, &blocked_edges);
+      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
+          AddBlockage(pin_projection,
+                      100,  // FIXME: padding.
+                      true, // Temporary blockage.
+                      &blocked_vertices,
+                      &blocked_edges);
       if (pin_blockage)
         pin_blockages.push_back(pin_blockage);
     }
@@ -720,8 +755,7 @@ bool RoutingGrid::AddRouteToNet(
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
             << begin_vertex->centre();
 
-  std::unique_ptr<RoutingPath> shortest_path(
-      ShortestPath(begin_vertex, net));
+  std::unique_ptr<RoutingPath> shortest_path(ShortestPath(begin_vertex, net));
 
   if (!shortest_path) {
     LOG(WARNING) << "No path found to net " << net << ".";
@@ -844,13 +878,22 @@ RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *end,
     std::function<bool(RoutingVertex*)> usable_vertex,
     std::function<bool(RoutingEdge*)> usable_edge) {
+  return ShortestPath(begin,
+                      [=](RoutingVertex *v) { return v == end; },
+                      usable_vertex,
+                      usable_edge,
+                      true);
+}
+
+RoutingPath *RoutingGrid::ShortestPath(
+    RoutingVertex *begin, 
+    std::function<bool(RoutingVertex*)> is_target,
+    std::function<bool(RoutingVertex*)> usable_vertex,
+    std::function<bool(RoutingEdge*)> usable_edge,
+    bool target_must_be_usable) {
   // FIXME(aryap): This is very bad.
   if (!usable_vertex(begin)) {
     LOG(WARNING) << "Start vertex for path is not available";
-    return nullptr;
-  }
-  if (!usable_vertex(end)) {
-    LOG(WARNING) << "End vertex for path is not available";
     return nullptr;
   }
 
@@ -859,30 +902,35 @@ RoutingPath *RoutingGrid::ShortestPath(
     vertices_[i]->set_contextual_index(i);
   }
 
+  // Prefer consistent C++/STLisms over e.g. bool seen[vertices_.size()];
   std::vector<double> cost(vertices_.size());
-  // TODO(aryap): This is marginally faster?
-  //double cost[vertices_.size()];
+  std::vector<bool> seen(vertices_.size());
 
-  // Recording the edge to take back to the start that makes the shortest path,
-  // as well as the vertex it leads to. If RoutingEdge* is nullptr then this is
-  // invalid.
+  // Records the edges to follow backward to the start, forming the shortest
+  // path. If RoutingEdge* is nullptr then this is invalid. The index into this
+  // array is the index of the sink node, the entry gives the path back to the
+  // source.
   std::vector<std::pair<size_t, RoutingEdge*>> prev(vertices_.size());
 
+  // We want the lowest value at the back of the array. But in a priority_queue,
+  // we want the highest value at the start of the collection so that the
+  // 'least' element is popped first (because that's how priority_queue works).
   auto vertex_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
-    // We want the lowest value at the back of the array.
-    // But in a priority_queue, we want the highest value at the start of the
-    // collection so that the least element is popped first (because that's how
-    // priorit_queue works).
     return cost[a->contextual_index()] > cost[b->contextual_index()];
   };
   // All vertices sorted according to their cost.
   std::priority_queue<RoutingVertex*,
                       std::vector<RoutingVertex*>,
                       decltype(vertex_sort_fn)> queue(vertex_sort_fn);
-  bool seen[vertices_.size()];
+  // TODO(aryap): Why did I use a set for this one and a priority queue for the
+  // last one?
+  auto target_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
+    return cost[a->contextual_index()] < cost[b->contextual_index()];
+  };
+  std::set<RoutingVertex*,
+           decltype(target_sort_fn)> found_targets(target_sort_fn);
 
   size_t begin_index = begin->contextual_index();
-  size_t end_index = end->contextual_index();
 
   cost[begin_index] = 0;
 
@@ -912,13 +960,29 @@ RoutingPath *RoutingGrid::ShortestPath(
 
     RoutingVertex *current = queue.top();
     queue.pop();
-    size_t current_index = current->contextual_index();
 
-    // NOTE: We assume current is available, otherwise we will never have it
-    // added to the queue to detect goal completion here.
-    if (current == end) {
-      continue;
+    if (target_must_be_usable) {
+      // If the target must be usable for a valid route (e.g. point to point
+      // routing from vertex to vertex), we ignore unusable nodes as possible
+      // targets.
+      if (!usable_vertex(current))
+        continue;
+      if (is_target(current)) {
+        found_targets.insert(current);
+        continue;
+      }
+    } else {
+      // If the target doesn't necessarily have to be usable, we check for a
+      // valid target _before_ culling unusable nodes.
+      if (is_target(current)) {
+        found_targets.insert(current);
+        continue;
+      }
+      if (!usable_vertex(current))
+        continue;
     }
+
+    size_t current_index = current->contextual_index();
 
     for (RoutingEdge *edge : current->edges()) {
       if (!usable_edge(edge))
@@ -930,9 +994,6 @@ RoutingPath *RoutingGrid::ShortestPath(
       // TODO(aryap): Maybe bake this into the RoutingEdge.
       RoutingVertex *next =
           edge->first() == current ? edge->second() : edge->first();
-
-      if (!usable_vertex(next))
-        continue;
 
       size_t next_index = next->contextual_index();
 
@@ -952,6 +1013,14 @@ RoutingPath *RoutingGrid::ShortestPath(
       }
     }
   }
+
+  if (found_targets.empty())
+    return nullptr;
+
+  // The found_targets priority_queue should have surfaced the best target for
+  // us.
+  RoutingVertex *end_target = *found_targets.begin();
+  size_t end_index = end_target->contextual_index();
 
   std::deque<RoutingEdge*> shortest_edges;
 
@@ -989,156 +1058,29 @@ RoutingPath *RoutingGrid::ShortestPath(
 }
 
 RoutingPath *RoutingGrid::ShortestPath(
-    RoutingVertex *begin, const std::string &to_net) {
-  LOG_IF(WARNING, !begin->available())
-      << "Start vertex for path is not available";
-
-  // Give everything its index for the duration of this algorithm.
-  for (size_t i = 0; i < vertices_.size(); ++i) {
-    vertices_[i]->set_contextual_index(i);
-  }
-
-  auto is_target = [&](RoutingVertex *candidate) {
-    return candidate->net() == to_net;
-  };
-
-  double cost[vertices_.size()];
-  bool seen[vertices_.size()];
-
-  // Recording the edge to take back to the start that makes the shortest path,
-  // as well as the vertex it leads to. If RoutingEdge* is nullptr then this is
-  // invalid.
-  std::vector<std::pair<size_t, RoutingEdge*>> prev(vertices_.size());
-
-  auto vertex_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
-    // We want the lowest value at the back of the array.
-    // But in a priority_queue, we want the highest value at the start of the
-    // collection so that the least element is popped first (because that's how
-    // priorit_queue works).
-    return cost[a->contextual_index()] > cost[b->contextual_index()];
-  };
-  // All vertices sorted according to their cost.
-  std::priority_queue<RoutingVertex*,
-                      std::vector<RoutingVertex*>,
-                      decltype(vertex_sort_fn)> queue(vertex_sort_fn);
-
-  auto target_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
-    return cost[a->contextual_index()] < cost[b->contextual_index()];
-  };
-  std::set<RoutingVertex*,
-           decltype(target_sort_fn)> found_targets(target_sort_fn);
-
-  size_t begin_index = begin->contextual_index();
-  cost[begin_index] = 0;
-
-  for (size_t i = 0; i < vertices_.size(); ++i) {
-    RoutingVertex *vertex = vertices_[i];
-    LOG_IF(FATAL, i != vertex->contextual_index())
-      << "Vertex " << i << " no longer matches its index "
-      << vertex->contextual_index();
-    prev[i].second = nullptr;
-    if (i == begin_index)
-      continue;
-    cost[i] = std::numeric_limits<double>::max();
-    seen[i] = false;
-  }
-
-  queue.push(begin);
-  seen[begin_index] = true;
-
-  while (!queue.empty()) {
-    RoutingVertex *current = queue.top();
-    queue.pop();
-
-    if (is_target(current)) {
-      found_targets.insert(current);
-      continue;
-    }
-
-    if (!current->available()) {
-      continue;
-    }
-
-    size_t current_index = current->contextual_index();
-
-    for (RoutingEdge *edge : current->edges()) {
-      if (!edge->available())
-        continue;
-
-      // We don't know what direction we're using the edge in, and edges are
-      // not directional per se, so pick the side that isn't the one we came in
-      // on:
-      // TODO(aryap): Maybe bake this into the RoutingEdge.
-      RoutingVertex *next =
-          edge->first() == current ? edge->second() : edge->first();
-
-      size_t next_index = next->contextual_index();
-
-      double next_cost = cost[current_index] + edge->cost() + next->cost();
-
-      if (next_cost < cost[next_index]) {
-        cost[next_index] = next_cost;
-        prev[next_index] = std::make_pair(current_index, edge);
-
-        // If we haven't seen this node before we should definitely visit it.
-        if (!seen[next_index]) {
-          queue.push(next);
-          seen[next_index] = true;
-        }
-      }
-    }
-  }
-
-  if (found_targets.empty())
-    return nullptr;
-
-  // Pick the lowest-cost target:
-  RoutingVertex *end_target = *found_targets.begin();
-  size_t end_index = end_target->contextual_index();
-
-  std::deque<RoutingEdge*> shortest_edges;
-
-  RoutingEdge *last_edge = prev[end_index].second;
-  size_t last_index = prev[end_index].first;
-  while (last_edge != nullptr) {
-    LOG_IF(FATAL, (last_edge->first() != vertices_[last_index] &&
-                   last_edge->second() != vertices_[last_index]))
-        << "last_edge does not land back at source vertex";
-
-    shortest_edges.push_front(last_edge);
-
-    if (last_index == begin_index) {
-      // We found our way back.
-      break;
-    }
-
-    auto &last_entry = prev[last_index];
-    last_index = last_entry.first;
-
-    last_edge = last_entry.second;
-  }
-
-  if (shortest_edges.empty()) {
-    return nullptr;
-  } else if (shortest_edges.front()->first() != begin &&
-             shortest_edges.front()->second() != begin) {
-    LOG(FATAL) << "Did not find beginning vertex.";
-    return nullptr;
-  }
-
-  RoutingPath *path = new RoutingPath(begin, shortest_edges);
-  return path;
+    RoutingVertex *begin,
+    const std::string &to_net,
+    std::function<bool(RoutingVertex*)> usable_vertex,
+    std::function<bool(RoutingEdge*)> usable_edge) {
+  return ShortestPath(
+      begin,
+      [&](RoutingVertex *v) { return v->net() == to_net; },
+      usable_vertex,
+      usable_edge,
+      false);   // Targets don't have to be 'usable', since we actually expect
+                // them already be used by the target net.
 }
 
 void RoutingGrid::AddBlockages(
     const geometry::ShapeCollection &shapes,
     int64_t padding,
+    bool is_temporary,
     std::set<RoutingVertex*> *changed_out) {
   for (const auto &rectangle : shapes.rectangles()) {
-    AddBlockage(*rectangle, padding, changed_out);
+    AddBlockage(*rectangle, padding, is_temporary, changed_out);
   }
   for (const auto &polygon : shapes.polygons()) {
-    AddBlockage(*polygon, padding, changed_out);
+    AddBlockage(*polygon, padding, is_temporary, changed_out);
   }
   // Do not add ports as permanent blockages. They must be considered
   // route-by-route, since some ports might be needed for connection.
@@ -1151,26 +1093,29 @@ void RoutingGrid::AddBlockages(
 RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,
+    bool is_temporary,
     std::set<RoutingVertex*> *blocked_vertices,
     std::set<RoutingEdge*> *blocked_edges) {
   const geometry::Layer &layer = rectangle.layer();
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())
     return nullptr;
-  for (RoutingTrack *track : it->second) {
-    if (blocked_vertices || blocked_edges) {
-      track->AddTemporaryBlockage(
-          rectangle, padding, blocked_vertices, blocked_edges);
-    } else {
-      // Add permanent blockage.
-      track->AddBlockage(rectangle, padding);
-    }
-  }
 
   // Create and save the blockage:
   RoutingGridBlockage<geometry::Rectangle> *blockage =
       new RoutingGridBlockage<geometry::Rectangle>(*this, rectangle, padding);
   rectangle_blockages_.emplace_back(blockage);
+
+  for (RoutingTrack *track : it->second) {
+    if (is_temporary) {
+      RoutingTrackBlockage* track_blockage = track->AddTemporaryBlockage(
+          rectangle, padding, blocked_vertices, blocked_edges);
+      blockage->AddChildTrackBlockage(track, track_blockage);
+    } else {
+      // Add permanent blockage.
+      track->AddBlockage(rectangle, padding);
+    }
+  }
 
   ApplyBlockage(*blockage, blocked_vertices);
   return blockage;
@@ -1179,19 +1124,24 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
 RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
     const geometry::Polygon &polygon,
     int64_t padding,
+    bool is_temporary,
     std::set<RoutingVertex*> *blocked_vertices) {
   const geometry::Layer &layer = polygon.layer();
-  auto it = tracks_by_layer_.find(layer);
-  if (it == tracks_by_layer_.end())
-    return nullptr;
-  for (RoutingTrack *track : it->second) {
-    track->AddBlockage(polygon, padding);
-  }
 
   // Create and save the blockage:
   RoutingGridBlockage<geometry::Polygon> *blockage =
       new RoutingGridBlockage<geometry::Polygon>(*this, polygon, padding);
   polygon_blockages_.emplace_back(blockage);
+
+  // Tracks don't suppor temporary Polygon blockages, so for now we just skip:
+  if (!is_temporary) {
+    auto it = tracks_by_layer_.find(layer);
+    if (it == tracks_by_layer_.end())
+      return nullptr;
+    for (RoutingTrack *track : it->second) {
+      track->AddBlockage(polygon, padding);
+    }
+  }
 
   ApplyBlockage(*blockage, blocked_vertices);
   return blockage;
@@ -1288,6 +1238,89 @@ void RoutingGrid::AddTrackToLayer(
     return;
   }
   it->second.push_back(track);
+}
+
+bool RoutingGrid::VerticesAreTooCloseForVias(
+    const RoutingVertex &lhs, const RoutingVertex &rhs) const {
+  std::set<geometry::Layer> lhs_layers(
+      lhs.connected_layers().begin(), lhs.connected_layers().end());
+  std::set<geometry::Layer> rhs_layers(
+      rhs.connected_layers().begin(), rhs.connected_layers().end());
+  std::set<geometry::Layer> shared_layers;
+  std::set_intersection(lhs_layers.begin(), lhs_layers.end(),
+                        rhs_layers.begin(), rhs_layers.end(),
+                        std::inserter(shared_layers, shared_layers.begin()));
+  if (shared_layers.empty())
+    return false;
+
+  if (lhs.horizontal_track() == rhs.horizontal_track() &&
+      lhs.grid_position_x() &&
+      rhs.grid_position_x()) {
+    // They might be horizontal neighbours:
+    size_t diff = std::max(*lhs.grid_position_x(), *rhs.grid_position_x()) -
+        std::min(*lhs.grid_position_x(), *rhs.grid_position_x());
+    return diff == 1U;
+  } else if (lhs.vertical_track() == rhs.vertical_track()) {
+    // They might be vertical neighbours:
+    size_t diff = std::max(*lhs.grid_position_y(), *rhs.grid_position_y()) -
+        std::min(*lhs.grid_position_y(), *rhs.grid_position_y());
+    return diff == 1U;
+  }
+
+  // Just whether check that the geometric distance can accommodate vias on
+  // either of the adjoining layers:
+  int64_t separation = static_cast<int64_t>(
+      lhs.centre().L2DistanceTo(rhs.centre()));
+  for (const geometry::Layer &source_layer : shared_layers) {
+    const RoutingLayerInfo &shared_layer_info = GetRoutingLayerInfo(
+        source_layer);
+    for (const geometry::Layer &lhs_connectee : lhs.connected_layers()) {
+      if (lhs_connectee == source_layer)
+        continue;
+      auto maybe_lhs_via = GetRoutingViaInfo(source_layer, lhs_connectee);
+      if (!maybe_lhs_via)
+        continue;
+      for (const geometry::Layer &rhs_connectee : rhs.connected_layers()) {
+        if (rhs_connectee == source_layer)
+          continue;
+        auto maybe_rhs_via = GetRoutingViaInfo(source_layer, rhs_connectee);
+        if (!maybe_rhs_via)
+          continue;
+
+        const RoutingViaInfo &lhs_via = *maybe_lhs_via;
+        const RoutingViaInfo &rhs_via = *maybe_rhs_via;
+        
+        int64_t lhs_max_via_half_width = std::max(
+            lhs_via.width, lhs_via.height) / 2;
+        int64_t lhs_max_via_overhang = std::max(
+            lhs_via.overhang_length, lhs_via.overhang_width);
+
+        int64_t rhs_max_via_half_width = std::max(
+            rhs_via.width, rhs_via.height) / 2;
+        int64_t rhs_max_via_overhang = std::max(
+            rhs_via.overhang_length, rhs_via.overhang_width);
+
+        int64_t min_separation = shared_layer_info.min_separation;
+
+        int64_t required =
+            lhs_max_via_half_width + lhs_max_via_overhang +
+            min_separation +
+            rhs_max_via_half_width + rhs_max_via_overhang;
+        if (separation < required) {
+          LOG(INFO)
+              << "Via between " << source_layer << " and " << lhs_connectee
+              << " requires at least " << required << " units to via between "
+              << source_layer << " and " << rhs_connectee
+              << ", but there are only " << separation << " units; therefore "
+              << lhs.centre() << " and " << rhs.centre()
+              << " are too close together.";
+          return false;
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 PolyLineCell *RoutingGrid::CreatePolyLineCell() const {

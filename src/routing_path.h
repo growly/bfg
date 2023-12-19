@@ -74,6 +74,10 @@ class RoutingPath {
 
   std::string net_;
 
+  // If true, join paths that are too short directly on the preceding/succeeding
+  // layer (which must be the same).
+  bool abbreviate_paths_;
+
   // The ordered list of vertices making up the path. The edges alone, since
   // they are undirected, do not yield this directional information.
   // These vertices are NOT OWNED by RoutingPath.

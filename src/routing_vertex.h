@@ -35,7 +35,7 @@ class RoutingVertex {
 
   //const std::set<RoutingEdge*> &edges() { return edges_; }
 
-  uint64_t L1DistanceTo(const geometry::Point &point);
+  int64_t L1DistanceTo(const geometry::Point &point);
 
   void AddConnectedLayer(const geometry::Layer &layer) {
     connected_layers_.push_back(layer);

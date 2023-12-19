@@ -14,6 +14,11 @@ class RoutingTrackBlockage {
         << "RoutingTrackBlockage start must be before end.";
   }
 
+  ~RoutingTrackBlockage() {
+    //LOG(INFO) << "Blockage (" << start_ << ", " << end_
+    //          << ") is being destroyed";
+  }
+
   bool Contains(int64_t position) const;
   bool IsAfter(int64_t position) const;
   bool IsBefore(int64_t position) const;

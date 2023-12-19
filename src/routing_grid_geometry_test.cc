@@ -24,7 +24,6 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
     .offset = 10,
     .direction = RoutingTrackDirection::kTrackHorizontal,
     .pitch = 10,
-    .via_width = 10
   };
 
   RoutingLayerInfo vertical = RoutingLayerInfo {
@@ -34,7 +33,6 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
     .offset = 10,
     .direction = RoutingTrackDirection::kTrackVertical,
     .pitch = 10,
-    .via_width = 10
   };
 
   RoutingGridGeometry grid_geometry;
@@ -87,7 +85,6 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
     .offset = 10,
     .direction = RoutingTrackDirection::kTrackHorizontal,
     .pitch = 10,
-    .via_width = 10
   };
 
   RoutingLayerInfo vertical = RoutingLayerInfo {
@@ -97,7 +94,6 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
     .offset = 10,
     .direction = RoutingTrackDirection::kTrackVertical,
     .pitch = 10,
-    .via_width = 10
   };
 
   RoutingGridGeometry grid_geometry;

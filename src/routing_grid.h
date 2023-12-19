@@ -18,6 +18,7 @@
 #include "poly_line_cell.h"
 #include "routing_edge.h"
 #include "routing_grid_geometry.h"
+#include "routing_track_blockage.h"
 #include "routing_layer_info.h"
 #include "routing_vertex.h"
 
@@ -54,7 +55,6 @@ using geometry::PolyLine;
 
 class PossessiveRoutingPath;
 class RoutingTrack;
-class RoutingTrackBlockage;
 class RoutingPath;
 
 template<typename T>
@@ -95,15 +95,19 @@ class RoutingGrid {
   // added from the ShapeCollection by default.
   void AddBlockages(const geometry::ShapeCollection &shapes,
                     int64_t padding = 0,
+                    bool is_temporary = false,
                     std::set<RoutingVertex*> *changed_out = nullptr);
   RoutingGridBlockage<geometry::Rectangle> *AddBlockage(
       const geometry::Rectangle &rectangle,
       int64_t padding = 0,
+      bool is_temporary = false,
       std::set<RoutingVertex*> *blocked_vertices = nullptr,
       std::set<RoutingEdge*> *blocked_edges = nullptr);
-  RoutingGridBlockage<geometry::Polygon> *AddBlockage(const geometry::Polygon &polygon,
-                   int64_t padding = 0,
-                   std::set<RoutingVertex*> *blocked_vertices = nullptr);
+  RoutingGridBlockage<geometry::Polygon> *AddBlockage(
+      const geometry::Polygon &polygon,
+      int64_t padding = 0,
+      bool is_temporary = false,
+       std::set<RoutingVertex*> *blocked_vertices = nullptr);
 
   // Removes the blockage from the list of known blockages, but does not undo
   // any effects of the blockage if they've already been applied.
@@ -241,11 +245,29 @@ class RoutingGrid {
         return e->available();
       });
 
-  RoutingPath *ShortestPath(RoutingVertex *from, const std::string &to_net);
+  RoutingPath *ShortestPath(
+      RoutingVertex *from,
+      const std::string &to_net,
+      std::function<bool(RoutingVertex*)> usable_vertex = [](RoutingVertex *v) {
+        return v->available();
+      },
+      std::function<bool(RoutingEdge*)> usable_edge = [](RoutingEdge *e){
+        return e->available();
+      });
+
+  RoutingPath *ShortestPath(
+      RoutingVertex *start,
+      std::function<bool(RoutingVertex*)> is_target,
+      std::function<bool(RoutingVertex*)> usable_vertex,
+      std::function<bool(RoutingEdge*)> usable_edge,
+      bool target_must_be_usable);
 
   void InstallPath(RoutingPath *path);
 
   void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
+
+  bool VerticesAreTooCloseForVias(
+      const RoutingVertex &lhs, const RoutingVertex &rhs) const;
 
   // Stores the connection info between the ith (first index) and jth (second
   // index) layers. The "lesser" layer (std::less) should always be used to
@@ -286,6 +308,8 @@ class RoutingGrid {
 
   template<typename T>
   friend class RoutingGridBlockage;
+
+  friend class RoutingPath;
 };
 
 template<typename T>
@@ -297,8 +321,17 @@ class RoutingGridBlockage {
         shape_(shape),
         padding_(padding) {}
 
+  ~RoutingGridBlockage();
+
   bool Blocks(const RoutingVertex &vertex) const;
   bool Blocks(const RoutingEdge &edge) const;
+
+  // Takes ownership of the given RoutingTrackBlockage. Store the RoutingTrack
+  // so that we can remove the blockage from the track if we need do.
+  void AddChildTrackBlockage(
+      RoutingTrack *track, RoutingTrackBlockage *blockage);
+
+  void ClearChildTrackBlockages();
 
   const T& shape() const { return shape_; }
 
@@ -308,6 +341,9 @@ class RoutingGridBlockage {
   // cowboy shit.
   const T shape_;
   int64_t padding_;
+
+  std::vector<std::pair<RoutingTrack*, std::unique_ptr<RoutingTrackBlockage>>>
+      child_track_blockages_;
 };
 
 }  // namespace bfg

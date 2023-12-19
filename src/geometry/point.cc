@@ -54,6 +54,13 @@ void Point::Rotate(double theta_radians) {
   y_ = std::llround(x * std::sin(theta_radians) + y * std::cos(theta_radians));
 }
 
+// The L-1 norm, or Manhattan distance.
+int64_t Point::L1DistanceTo(const Point &point) const {
+  int64_t dx = point.x() - x_;
+  int64_t dy = point.y() - y_;
+  return std::abs(dx) + std::abs(dy);
+}
+
 int64_t Point::L2SquaredDistanceTo(const Point &other) const {
   int64_t dx = x_ - other.x_;
   int64_t dy = y_ - other.y_;

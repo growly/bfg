@@ -11,11 +11,8 @@ bool RoutingVertex::RemoveEdge(RoutingEdge *edge) {
   return erased > 0;
 }
 
-uint64_t RoutingVertex::L1DistanceTo(const geometry::Point &point) {
-  // The L-1 norm, or Manhattan distance.
-  int64_t dx = point.x() - centre_.x();
-  int64_t dy = point.y() - centre_.y();
-  return std::abs(dx) + std::abs(dy);
+int64_t RoutingVertex::L1DistanceTo(const geometry::Point &point) {
+  return centre_.L1DistanceTo(point);
 }
 
 void RoutingVertex::AddNeighbour(const geometry::Compass &position,
