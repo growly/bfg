@@ -9,6 +9,7 @@
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_vertex.h"
+#include "routing_track.h"
 
 namespace bfg {
 
@@ -40,40 +41,51 @@ void RoutingPath::ToPolyLinesAndVias(
   std::vector<std::unique_ptr<PolyLine>> generated_lines;
   int64_t bulge_length = 0;
   int64_t bulge_width = 0;
+
+  std::set<RoutingVertex*> skip_vias;
+  // We look for and try to eliminate wires that are too short:
+  //
+  //    +-------+
+  //    |       +---
+  //    |     layer N
+  //    |       +---
+  //    +-------+
+  //      |   |     <- connecting wire on layer (N - 1) or (N + 1) is
+  //    +-------+      too short. We should just connect on layer N.
+  // ---+       |
+  //   layer N  |
+  // ---+       |
+  //    +-------+
+  for (size_t i = 2; i < vertices_.size() - 2; ++i) {
+    // Edge i connects vertex i and (i + 1).
+    RoutingEdge *last_edge = edges_.at(i - 2);
+    RoutingEdge *current_edge = edges_.at(i - 1);
+    RoutingEdge *next_edge = edges_.at(i);
+    RoutingVertex *last_vertex = vertices_.at(i - 1);
+    RoutingVertex *current_vertex = vertices_.at(i);
+
+    // last_vertex and current_vertex span current_edge.
+    if (routing_grid.VerticesAreTooCloseForVias(
+            *last_vertex, *current_vertex) &&
+        last_edge->ExplicitOrTrackLayer() ==
+            next_edge->ExplicitOrTrackLayer()) {
+      skip_vias.insert(last_vertex);
+      skip_vias.insert(current_vertex);
+    }
+  }
+
   for (size_t i = 0; i < vertices_.size() - 1; ++i) {
-    RoutingVertex *last_vertex = i > 1 ? vertices_.at(i - 1) : nullptr;
     RoutingVertex *current = vertices_.at(i);
     edge = edges_.at(i);
     const geometry::Layer &layer = edge->ExplicitOrTrackLayer();
 
     const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfo(layer);
 
-    // We look for and try to eliminate wires that are too short:
-    //
-    //    +-------+
-    //    |       +---
-    //    |     layer N
-    //    |       +---
-    //    +-------+
-    //      |   |     <- connecting wire on layer (N - 1) or (N + 1) is
-    //    +-------+      too short. We should just connect on layer N.
-    // ---+       |
-    //   layer N  |
-    // ---+       |
-    //    +-------+
-    //
-    // By construction successive vertices should fall on the same horizontal or
-    // vertical track, so we don't check that here. What we really care about is
-    // that the distance between the vias at the vertex locations is sufficient
-    // for DRC correctness, but since the grid set up is not up to us, we
-    // instead check that the vias are on adjacent tracks.
-    if (last_vertex) {
-      if (routing_grid.VerticesAreTooCloseForVias(*last_vertex, *current)) {
-        LOG(INFO) << "ruh roh";
-      }
-    }
+    auto it = skip_vias.find(current);
 
-    if (!last || last->layer() != layer) {
+    // Insert a new PolyLine at layer crossings (or the start). Layer crossings
+    // also require a via, unless the vertex via is skipped.
+    if (!last || (last->layer() != layer && it == skip_vias.end())) {
       // TODO(aryap): Is this even an 'abstract' via still? We seem to have all
       // the concrete details in here.
       // TODO(aryap): It's more straightforward to assign all the vias and then
