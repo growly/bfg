@@ -379,6 +379,13 @@ void PolyLine::InsertBulge(
     return;
   }
 
+  // We have to take an explicit copy of the point we're given, because it's
+  // possible (i.e. it happened once) that the reference be to some value in
+  // this line that we're about to modify. E.g. if you
+  // poly_line.InsertBulge(poly_line.End()), you will modify the underlying
+  // value half way.
+  const Point point_copy = point;
+
   // TODO(aryap): This doesn't quite work yet, so I'm leaving these here:
   // LOG(INFO) << Describe();
   // LOG(INFO) << "point = " << point << " w x l " << coaxial_width << " x " << coaxial_length;
@@ -392,12 +399,12 @@ void PolyLine::InsertBulge(
   uint64_t previous_width = segments_[intersection_index].width;
 
   InsertForwardBulgePoint(
-      point, coaxial_width, coaxial_length, intersection_index, line);
+      point_copy, coaxial_width, coaxial_length, intersection_index, line);
   //LOG(INFO) << "after forwards (" << coaxial_width << ", " << coaxial_length
   //          << "): " << Describe();
 
   InsertBackwardBulgePoint(
-      point, coaxial_width, coaxial_length, intersection_index, line,
+      point_copy, coaxial_width, coaxial_length, intersection_index, line,
       previous_width);
   //LOG(INFO) << "after backwards (" << coaxial_width << ", " << coaxial_length
   //          << "): " << Describe();

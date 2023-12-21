@@ -477,6 +477,22 @@ TEST(PolyLineTest, HowDidThisHappen4) {
   line.InsertBulge({2625, 1245}, 230, 290);
 }
 
+TEST(PolyLineTest, HowDidThisHappen5) {
+  PolyLine line = PolyLine({16030, 5830}, {
+    LineSegment {{13990, 5830}, 140}
+  });
+  line.InsertBulge({16030, 5830}, 260, 320);
+  line.InsertBulge({13990, 5830}, 260, 320);
+
+  std::vector<Point> expected = {
+      {16030 + 160, 5830},
+      {16030 - 160, 5830},
+      {13990 + 160, 5830},
+      {13990 - 160, 5830}
+  };
+  EXPECT_EQ(expected, line.Vertices());
+}
+
 // What happens when bulges at the end of a line are bigger than the connecting
 // width?
 //

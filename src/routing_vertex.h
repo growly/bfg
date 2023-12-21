@@ -98,7 +98,8 @@ class RoutingVertex {
 
   // If the vertex is in use by some route, the name of the net should be here,
   // available_ should be false. in_edge and out_edge should point to the
-  // incoming and outgoing edges used for the route through this vertex.
+  // incoming and outgoing edges used for the route through this vertex. If the
+  // edge spans this vertex, in_edge_ == out_edge_ == that edge.
   std::string net_;
   bool available_;
   RoutingEdge *in_edge_;

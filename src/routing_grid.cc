@@ -648,46 +648,13 @@ bool RoutingGrid::AddRouteBetween(
   //  }
   //  return true;
   //};
-  std::vector<RoutingGridBlockage<geometry::Rectangle>*> pin_blockages;
-  std::set<RoutingVertex*> blocked_vertices;
-  std::set<RoutingEdge*> blocked_edges;
-  for (geometry::Port *port : avoid) {
-    auto pin_access = physical_db_.FindReachableLayersByPinLayer(port->layer());
-    if (pin_access.empty()) {
-      LOG(WARNING)
-          << "Pin " << *port << " has no known pin accesss layers; "
-          << "avoiding just the pin layer itself: " << port->layer();
-      geometry::Rectangle pin_projection = *port;
-      pin_projection.set_layer(port->layer());
-      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
-          AddBlockage(pin_projection,
-                      100,  // FIXME: padding.
-                      true, // Temporary blockage.
-                      &blocked_vertices,
-                      &blocked_edges);
-      if (pin_blockage)
-        pin_blockages.push_back(pin_blockage);
-      continue;
-    }
-    for (const geometry::Layer &layer : pin_access) {
-      geometry::Rectangle pin_projection = *port;
-      pin_projection.set_layer(layer);
-      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
-          AddBlockage(pin_projection,
-                      100,  // FIXME: padding.
-                      true, // Temporary blockage.
-                      &blocked_vertices,
-                      &blocked_edges);
-      if (pin_blockage)
-        pin_blockages.push_back(pin_blockage);
-    }
-    LOG(INFO) << "avoiding " << blocked_vertices.size() << " vertices and "
-              << blocked_edges.size() << " edges";
-  }
+  TemporaryBlockageInfo temporary_blockages;
+  SetUpTemporaryBlockages(avoid, &temporary_blockages);
 
   auto begin_vertex_and_access_layer = GenerateGridVertexForPort(begin);
   if (!begin_vertex_and_access_layer) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
+    TearDownTemporaryBlockages(temporary_blockages);
     return false;
   }
   RoutingVertex *begin_vertex = begin_vertex_and_access_layer->first;
@@ -697,6 +664,7 @@ bool RoutingGrid::AddRouteBetween(
   auto end_vertex_and_access_layer = GenerateGridVertexForPort(end);
   if (!end_vertex_and_access_layer) {
     LOG(ERROR) << "Could not find available vertex for end port.";
+    TearDownTemporaryBlockages(temporary_blockages);
     return false;
   }
   RoutingVertex *end_vertex = end_vertex_and_access_layer->first;
@@ -708,6 +676,7 @@ bool RoutingGrid::AddRouteBetween(
 
   if (!shortest_path) {
     LOG(WARNING) << "No path found.";
+    TearDownTemporaryBlockages(temporary_blockages);
     return false;
   }
 
@@ -725,15 +694,7 @@ bool RoutingGrid::AddRouteBetween(
   // Once the path is found, but _before_ it is installed, the temporarily
   // blocked nodes should be re-enabled. This might be permanently blocked by
   // installing the path finally!
-  for (RoutingVertex *vertex : blocked_vertices) {
-    vertex->set_available(true);
-  }
-  for (RoutingEdge *edge : blocked_edges) {
-    edge->set_available(true);
-  }
-  for (RoutingGridBlockage<geometry::Rectangle> *blockage : pin_blockages) {
-    ForgetBlockage(blockage);
-  }
+  TearDownTemporaryBlockages(temporary_blockages);
 
   // Assign net and install:
   if (!net.empty())
@@ -745,31 +706,45 @@ bool RoutingGrid::AddRouteBetween(
 }
 
 bool RoutingGrid::AddRouteToNet(
-    const geometry::Port &begin, const std::string &net) {
-  RoutingVertex *begin_vertex = GenerateGridVertexForPoint(
-      begin.centre(), begin.layer());
-  if (!begin_vertex) {
+    const geometry::Port &begin,
+    const std::string &net,
+    const std::set<geometry::Port*> &avoid) {
+  TemporaryBlockageInfo temporary_blockages;
+  SetUpTemporaryBlockages(avoid, &temporary_blockages);
+
+  auto begin_vertex_and_access_layer = GenerateGridVertexForPort(begin);
+  if (!begin_vertex_and_access_layer) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
+    TearDownTemporaryBlockages(temporary_blockages);
     return false;
   }
+  RoutingVertex *begin_vertex = begin_vertex_and_access_layer->first;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
             << begin_vertex->centre();
 
-  std::unique_ptr<RoutingPath> shortest_path(ShortestPath(begin_vertex, net));
+  RoutingVertex *end_vertex;
+  std::unique_ptr<RoutingPath> shortest_path(
+      ShortestPath(begin_vertex, net, &end_vertex));
 
   if (!shortest_path) {
     LOG(WARNING) << "No path found to net " << net << ".";
+    TearDownTemporaryBlockages(temporary_blockages);
     return false;
   }
 
   // Remember the ports to which the path should connect.
   shortest_path->set_start_port(&begin);
+  shortest_path->set_start_access_layer(begin_vertex_and_access_layer->second);
+
+  const geometry::Layer &end_layer = end_vertex->in_edge()->layer();
+  shortest_path->set_end_access_layer(end_layer);
 
   LOG(INFO) << "Found path: " << *shortest_path;
-  //LOG(INFO) << "final vertex is on layer " << shortest_path->vertices().end()->layer();
 
   // Assign net and install:
   shortest_path->set_net(net);
+
+  TearDownTemporaryBlockages(temporary_blockages);
 
   InstallPath(shortest_path.release());
 
@@ -880,6 +855,7 @@ RoutingPath *RoutingGrid::ShortestPath(
     std::function<bool(RoutingEdge*)> usable_edge) {
   return ShortestPath(begin,
                       [=](RoutingVertex *v) { return v == end; },
+                      nullptr,
                       usable_vertex,
                       usable_edge,
                       true);
@@ -888,6 +864,7 @@ RoutingPath *RoutingGrid::ShortestPath(
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin, 
     std::function<bool(RoutingVertex*)> is_target,
+    RoutingVertex **discovered_target,
     std::function<bool(RoutingVertex*)> usable_vertex,
     std::function<bool(RoutingEdge*)> usable_edge,
     bool target_must_be_usable) {
@@ -1024,6 +1001,9 @@ RoutingPath *RoutingGrid::ShortestPath(
   RoutingVertex *end_target = sorted_targets.front();
   size_t end_index = end_target->contextual_index();
 
+  if (discovered_target)
+    *discovered_target = end_target;
+
   std::deque<RoutingEdge*> shortest_edges;
 
   size_t last_index = prev[end_index].first;
@@ -1062,11 +1042,13 @@ RoutingPath *RoutingGrid::ShortestPath(
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin,
     const std::string &to_net,
+    RoutingVertex **discovered_target,
     std::function<bool(RoutingVertex*)> usable_vertex,
     std::function<bool(RoutingEdge*)> usable_edge) {
   return ShortestPath(
       begin,
       [&](RoutingVertex *v) { return v->net() == to_net; },
+      discovered_target,
       usable_vertex,
       usable_edge,
       false);   // Targets don't have to be 'usable', since we actually expect
@@ -1323,6 +1305,59 @@ bool RoutingGrid::VerticesAreTooCloseForVias(
   }
 
   return false;
+}
+
+void RoutingGrid::SetUpTemporaryBlockages(
+    const std::set<geometry::Port*> &avoid,
+    TemporaryBlockageInfo *blockage_info) {
+  for (geometry::Port *port : avoid) {
+    auto pin_access = physical_db_.FindReachableLayersByPinLayer(port->layer());
+    if (pin_access.empty()) {
+      LOG(WARNING)
+          << "Pin " << *port << " has no known pin accesss layers; "
+          << "avoiding just the pin layer itself: " << port->layer();
+      geometry::Rectangle pin_projection = *port;
+      pin_projection.set_layer(port->layer());
+      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
+          AddBlockage(pin_projection,
+                      100,  // FIXME: padding.
+                      true, // Temporary blockage.
+                      &blockage_info->blocked_vertices,
+                      &blockage_info->blocked_edges);
+      if (pin_blockage)
+        blockage_info->pin_blockages.push_back(pin_blockage);
+      continue;
+    }
+    for (const geometry::Layer &layer : pin_access) {
+      geometry::Rectangle pin_projection = *port;
+      pin_projection.set_layer(layer);
+      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
+          AddBlockage(pin_projection,
+                      100,  // FIXME: padding.
+                      true, // Temporary blockage.
+                      &blockage_info->blocked_vertices,
+                      &blockage_info->blocked_edges);
+      if (pin_blockage)
+        blockage_info->pin_blockages.push_back(pin_blockage);
+    }
+    VLOG(13) << "avoiding "
+             << blockage_info->blocked_vertices.size() << " vertices and "
+             << blockage_info->blocked_edges.size() << " edges";
+  }
+}
+
+void RoutingGrid::TearDownTemporaryBlockages(
+    const TemporaryBlockageInfo &blockage_info) {
+  for (RoutingVertex *const vertex : blockage_info.blocked_vertices) {
+    vertex->set_available(true);
+  }
+  for (RoutingEdge *const edge : blockage_info.blocked_edges) {
+    edge->set_available(true);
+  }
+  for (RoutingGridBlockage<geometry::Rectangle> *const blockage :
+          blockage_info.pin_blockages) {
+    ForgetBlockage(blockage);
+  }
 }
 
 PolyLineCell *RoutingGrid::CreatePolyLineCell() const {

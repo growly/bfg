@@ -80,7 +80,9 @@ class RoutingGrid {
       const std::set<geometry::Port*> &avoid,
       const std::string &net = "");
   bool AddRouteToNet(
-      const geometry::Port &begin, const std::string &net);
+      const geometry::Port &begin,
+      const std::string &net,
+      const std::set<geometry::Port*> &avoid);
 
   void AddVertex(RoutingVertex *vertex);
 
@@ -168,6 +170,12 @@ class RoutingGrid {
     RoutingVertex *vertex;
   };
 
+  struct TemporaryBlockageInfo {
+    std::vector<RoutingGridBlockage<geometry::Rectangle>*> pin_blockages;
+    std::set<RoutingVertex*> blocked_vertices;
+    std::set<RoutingEdge*> blocked_edges;
+  };
+
   // TODO(aryap): It feels awkward putting these geometric functions here...?
   // Maybe move them into RoutingVertex? That requires giving RoutingVertex
   // awareness of geometry, which is like a loss of innocence y'know?
@@ -248,6 +256,7 @@ class RoutingGrid {
   RoutingPath *ShortestPath(
       RoutingVertex *from,
       const std::string &to_net,
+      RoutingVertex **discovered_target,
       std::function<bool(RoutingVertex*)> usable_vertex = [](RoutingVertex *v) {
         return v->available();
       },
@@ -258,6 +267,7 @@ class RoutingGrid {
   RoutingPath *ShortestPath(
       RoutingVertex *start,
       std::function<bool(RoutingVertex*)> is_target,
+      RoutingVertex **discovered_target,
       std::function<bool(RoutingVertex*)> usable_vertex,
       std::function<bool(RoutingEdge*)> usable_edge,
       bool target_must_be_usable);
@@ -268,6 +278,12 @@ class RoutingGrid {
 
   bool VerticesAreTooCloseForVias(
       const RoutingVertex &lhs, const RoutingVertex &rhs) const;
+
+  void SetUpTemporaryBlockages(
+      const std::set<geometry::Port*> &avoid,
+      TemporaryBlockageInfo *blockage_info);
+
+  void TearDownTemporaryBlockages(const TemporaryBlockageInfo &blockage_info);
 
   // Stores the connection info between the ith (first index) and jth (second
   // index) layers. The "lesser" layer (std::less) should always be used to

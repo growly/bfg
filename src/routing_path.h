@@ -44,17 +44,17 @@ class RoutingPath {
   const geometry::Port *end_port() const { return end_port_; }
   void set_end_port(const geometry::Port *port) { end_port_ = port; }
 
-  const geometry::Layer &start_access_layer() const {
+  const std::optional<geometry::Layer> &start_access_layer() const {
     return start_access_layer_;
   }
-  void set_start_access_layer(const geometry::Layer &layer) {
+  void set_start_access_layer(const std::optional<geometry::Layer> &layer) {
     start_access_layer_ = layer;
   }
 
-  const geometry::Layer &end_access_layer() const {
+  const std::optional<geometry::Layer> &end_access_layer() const {
     return end_access_layer_;
   }
-  void set_end_access_layer(const geometry::Layer &layer) {
+  void set_end_access_layer(const std::optional<geometry::Layer> &layer) {
     end_access_layer_ = layer;
   }
 
@@ -65,12 +65,18 @@ class RoutingPath {
   const std::vector<RoutingEdge*> edges() const { return edges_; }
 
  private:
-  // If these ports are provided, a via will be generated or the edge on the
-  // given layer extended to correctly connect to them.
+  // TODO(aryap): I don't think these port objects are needed? We get most of
+  // the info from start/end layer. Possibly if these are provided are they are
+  // non-standard we need to provide bigger pours on the layers that connect to
+  // them. Then again, the port defines the access region, not the via, that is
+  // defined by the RoutingViaInfo object given to RoutingGrid. So no, these are
+  // basically useless?
   const geometry::Port *start_port_;
-  geometry::Layer start_access_layer_;
   const geometry::Port *end_port_;
-  geometry::Layer end_access_layer_;
+  // The start and end layers inform where vias need to be created in order for
+  // the start and end points to be reachable.
+  std::optional<geometry::Layer> start_access_layer_;
+  std::optional<geometry::Layer> end_access_layer_;
 
   std::string net_;
 

@@ -453,6 +453,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // TODO(aryap): Why not just determine that these particular scan connections
   // require the alternate routing mode at the time of determining the scan
   // connections above? Seems like repeated logic :/
+  std::map<geometry::Instance*, std::string> memory_output_net_names;
   {
     for (size_t b = 0; b < layout_config.num_banks; ++b) {
       const auto &memories = banks[b].memories;
@@ -480,7 +481,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         sink->GetInstancePorts("D", &ports);
         geometry::Port *end = *ports.begin();
 
-        alt_routing_grid.AddRouteBetween(*start, *end, {}, "");
+        std::string net_name = absl::StrCat(source->name(), "_Q");
+        memory_output_net_names[source] = net_name;
+
+        alt_routing_grid.AddRouteBetween(*start, *end, {}, net_name);
 
         LOG(INFO) << i << " start port: " << *start << " end: " << *end;
 
@@ -512,7 +516,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     sink->GetInstancePorts("D", &ports);
     geometry::Port *end = *ports.begin();
 
-    routing_grid.AddRouteBetween(*start, *end, {}, "");
+    std::string net_name = absl::StrCat(source->name(), "_Q");
+    memory_output_net_names[source] = net_name;
+
+    routing_grid.AddRouteBetween(*start, *end, {}, net_name);
   }
 
   // Connect memory outputs to the muxes in order:
@@ -539,9 +546,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         geometry::Instance *mux = mux_order[i];
         std::set<geometry::Port*> ports;
         mux->GetInstancePorts(mux_input_order[j], &ports);
-        for (geometry::Port *port : ports) {
-          LOG(INFO) << port->net();
-        }
       }
     }
   }
@@ -562,15 +566,15 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     LOG(INFO) << "connecting " << memory->name() << " to " << mux->name()
               << " port " << input_name;
 
-
-    std::set<geometry::Port*> memory_ports;
-    memory->GetInstancePorts("Q", &memory_ports);
-    geometry::Port *memory_output = *memory_ports.begin();
-
-
     std::set<geometry::Port*> all_other_mux_ports;
     mux->GetInstancePorts(&all_other_mux_ports);
 
+    // Heuristically determine which mux port to use based on which which is
+    // closest to the memory output, even if we're routing to the memory output
+    // net instead of the port specifically.
+    std::set<geometry::Port*> memory_ports;
+    memory->GetInstancePorts("Q", &memory_ports);
+    geometry::Port *memory_output = *memory_ports.begin();
     geometry::Port *mux_port = mux->GetNearestPortNamed(*memory_output,
                                                         input_name);
     if (!mux_port) {
@@ -578,14 +582,17 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
     all_other_mux_ports.erase(mux_port);
 
-    for (auto &port : all_other_mux_ports) {
-      LOG(INFO) << "temporarily avoiding: " << port->centre() << " " << port->net();
+    auto named_output_it = memory_output_net_names.find(memory);
+    if (named_output_it == memory_output_net_names.end()) {
+      std::string net_name = absl::StrCat(memory->name(), "_Q");
+      memory_output_net_names[memory] = net_name;
+      routing_grid.AddRouteBetween(
+          *mux_port, *memory_output, all_other_mux_ports, net_name);
+    } else {
+      const std::string &target_net = named_output_it->second;
+      routing_grid.AddRouteToNet(
+          *mux_port, target_net, all_other_mux_ports);
     }
-
-    std::string net_name = absl::StrCat("net_", 0, "_", i);
-
-    routing_grid.AddRouteBetween(
-        *memory_output, *mux_port, all_other_mux_ports, net_name);
   }
 
   //size_t j = 0;

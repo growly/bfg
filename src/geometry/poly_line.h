@@ -96,6 +96,7 @@ class PolyLine : public Shape {
   AbstractVia *end_via() const { return end_via_; }
   void set_end_via(AbstractVia *via) { end_via_ = via; }
 
+  // TODO(aryap): I don't think these port objects are needed.
   const Port *start_port() const { return start_port_; }
   void set_start_port(const Port *port) { start_port_ = port; }
   const Port *end_port() const { return end_port_; }

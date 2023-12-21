@@ -16,7 +16,9 @@ namespace bfg {
 RoutingPath::RoutingPath(
     RoutingVertex *start,
     const std::deque<RoutingEdge*> edges)
-    : edges_(edges.begin(), edges.end()) {
+    : edges_(edges.begin(), edges.end()),
+      start_port_(nullptr),
+      end_port_(nullptr) {
   vertices_.push_back(start);
   RoutingVertex *last = start;
   for (RoutingEdge *edge : edges) {
@@ -42,7 +44,7 @@ void RoutingPath::ToPolyLinesAndVias(
   int64_t bulge_length = 0;
   int64_t bulge_width = 0;
 
-  std::set<RoutingVertex*> skip_vias;
+  std::set<RoutingVertex*> skipped_vias;
   // We look for and try to eliminate wires that are too short:
   //
   //    +-------+
@@ -69,8 +71,8 @@ void RoutingPath::ToPolyLinesAndVias(
             *last_vertex, *current_vertex) &&
         last_edge->ExplicitOrTrackLayer() ==
             next_edge->ExplicitOrTrackLayer()) {
-      skip_vias.insert(last_vertex);
-      skip_vias.insert(current_vertex);
+      skipped_vias.insert(last_vertex);
+      skipped_vias.insert(current_vertex);
     }
   }
 
@@ -81,11 +83,11 @@ void RoutingPath::ToPolyLinesAndVias(
 
     const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfo(layer);
 
-    auto it = skip_vias.find(current);
+    auto it = skipped_vias.find(current);
 
     // Insert a new PolyLine at layer crossings (or the start). Layer crossings
     // also require a via, unless the vertex via is skipped.
-    if (!last || (last->layer() != layer && it == skip_vias.end())) {
+    if (!last || (last->layer() != layer && it == skipped_vias.end())) {
       // TODO(aryap): Is this even an 'abstract' via still? We seem to have all
       // the concrete details in here.
       // TODO(aryap): It's more straightforward to assign all the vias and then
@@ -136,22 +138,27 @@ void RoutingPath::ToPolyLinesAndVias(
   // Connect the start and end of the PolyLine to the appropriate layer with
   // appropriate encapsulation.
   PolyLine *front = generated_lines.front().get();
-  if (start_port_ && front->layer() != start_access_layer_) {
+  const geometry::Point &start_point = front->start();
+  if (start_access_layer_ &&
+      front->layer() != *start_access_layer_) {
     AbstractVia *via = new AbstractVia(
-        start_port_->centre(), front->layer(), start_access_layer_);
+        start_point, front->layer(), *start_access_layer_);
     vias->emplace_back(via);
 
-    front->InsertBulge(start_port_->centre(), bulge_width, bulge_length);
+    front->InsertBulge(start_point, bulge_width, bulge_length);
   }
   front->set_start_port(start_port_);
 
   PolyLine *back = generated_lines.back().get();
-  if (end_port_ && front != back && back->layer() != end_access_layer_) {
+  const geometry::Point &end_point = back->End();
+  if (end_access_layer_ &&
+      front != back && back->layer() != *end_access_layer_) {
     AbstractVia *via = new AbstractVia(
-        end_port_->centre(), back->layer(), end_access_layer_);
+        end_point, back->layer(), *end_access_layer_);
     vias->emplace_back(via);
 
-    back->InsertBulge(end_port_->centre(), bulge_width, bulge_length);
+    LOG(INFO) << end_point << " " << bulge_width << " " << bulge_length;
+    back->InsertBulge(end_point, bulge_width, bulge_length);
   }
   back->set_end_port(end_port_);
 
