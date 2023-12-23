@@ -15,6 +15,14 @@
 
 namespace bfg {
 
+void RoutingEdge::set_in_use_by_net(
+    const std::optional<std::string> &in_use_by_net) {
+  if (in_use_by_net_) {
+    LOG(INFO) << *this << " now used by " << *in_use_by_net;
+  }
+  in_use_by_net_ = in_use_by_net;
+}
+
 std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(
     int64_t width) const {
   const geometry::Point &one_end = first_->centre();

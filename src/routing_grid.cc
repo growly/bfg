@@ -798,6 +798,8 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
 void RoutingGrid::InstallPath(RoutingPath *path) {
   LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
 
+  LOG(INFO) << "installing path " << *path << " with net " << path->net();
+
   // Remove edges from the track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {
@@ -856,7 +858,8 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin, 
     RoutingVertex *end,
-    std::function<bool(RoutingVertex*)> usable_vertex, std::function<bool(RoutingEdge*)> usable_edge) {
+    std::function<bool(RoutingVertex*)> usable_vertex,
+    std::function<bool(RoutingEdge*)> usable_edge) {
   return ShortestPath(begin,
                       [=](RoutingVertex *v) { return v == end; },
                       nullptr,
@@ -879,7 +882,11 @@ RoutingPath *RoutingGrid::ShortestPath(
       [&](RoutingEdge *e) {
         if (usable_edge(e)) return true;
         if (e->blocked()) return false;
-        if (e->in_use_by_net() && *e->in_use_by_net() == to_net) return true;
+        if (e->in_use_by_net() && *e->in_use_by_net() == to_net) {
+          return true;
+        } else {
+          LOG(INFO) << "cannot use edge " << *e << " for net " << to_net;
+        }
         return false;
       },
       false);   // Targets don't have to be 'usable', since we actually expect
@@ -985,7 +992,6 @@ RoutingPath *RoutingGrid::ShortestPath(
 
     for (RoutingEdge *edge : current->edges()) {
       if (!usable_edge(edge)) {
-        LOG(INFO) << "cannot use edge " << *edge;
         continue;
       }
 

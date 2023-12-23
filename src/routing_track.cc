@@ -90,12 +90,17 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
 
 void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   edge->set_in_use_by_net(net);
+  LOG(INFO) << "assigning edge " << *edge;
 
   if (edges_.find(edge) == edges_.end())
     // Possible off-grid edge?
     return;
 
-  MergeNewBlockage(edge->first()->centre(), edge->second()->centre());
+  // TODO(aryap): This could be a problem because if the current edge merges
+  // with an existing blockage, we will treat that blockage as touching this
+  // net!
+  RoutingTrackBlockage *current_blockage = MergeNewBlockage(
+      edge->first()->centre(), edge->second()->centre());
 
   // Since we add a new blockage of strictly edge's size without any keep-out
   // padding, we are testing for edges that touch this one. Those edges must be
@@ -104,12 +109,11 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   for (RoutingEdge *other_edge : edges_) {
     if (other_edge == edge)
       continue;
-    if (IsBlockedBetween(other_edge->first()->centre(),
-                         other_edge->second()->centre())) {
-      // FIXME(aryap): Ok, there should be an optional "in_use_by_net" which
-      // both indicates whether the edge is in use and by which net. I think
-      // it's still correct to rely on vertex nets at either end of the edge but
-      // this is just clearer.
+    // FIXME: THIS IS NOT THE SAME AS "IS BLOCKED BY edge THAT WE JUST GOT"
+    if (BlockageBlocks(
+          *current_blockage,
+          other_edge->first()->centre(),
+          other_edge->second()->centre())) {
       other_edge->set_in_use_by_net(net);
     }
   }
@@ -300,6 +304,14 @@ bool RoutingTrack::EdgeSpansVertex(
   int64_t high = points.second;
 
   return low <= pos && pos <= high;
+}
+
+bool RoutingTrack::BlockageBlocks(
+    const RoutingTrackBlockage &blockage,
+    const geometry::Point &one_end,
+    const geometry::Point &other_end) const {
+  auto low_high = ProjectOntoTrack(one_end, other_end);
+  return blockage.Blocks(low_high.first, low_high.second);
 }
 
 bool RoutingTrack::IsBlockedBetween(
@@ -606,8 +618,7 @@ void RoutingTrack::ApplyBlockage(
   for (RoutingVertex *vertex : vertices_) {
     if (!vertex->available())
       continue;
-    auto low_high = ProjectOntoTrack(vertex->centre(), vertex->centre());
-    if (blockage.Blocks(low_high.first, low_high.second)) {
+    if (BlockageBlocks(blockage, vertex->centre(), vertex->centre())) {
       vertex->set_available(false);
       if (blocked_vertices)
         blocked_vertices->insert(vertex);
@@ -616,9 +627,8 @@ void RoutingTrack::ApplyBlockage(
   for (RoutingEdge *edge : edges_) {
     if (edge->blocked())
       continue;
-    auto low_high = ProjectOntoTrack(
-        edge->first()->centre(), edge->second()->centre());
-    if (blockage.Blocks(low_high.first, low_high.second)) {
+    if (BlockageBlocks(
+          blockage, edge->first()->centre(), edge->second()->centre())) {
       edge->set_blocked(true);
       if (blocked_edges)
         blocked_edges->insert(edge);

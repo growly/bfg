@@ -124,6 +124,11 @@ class RoutingTrack {
   // TODO(aryap): Maybe we sort edges and vertices by their starting/centre
   // positions?
   //static bool EdgeComp(RoutingEdge *lhs, RoutingEdge *rhs);
+ 
+  bool BlockageBlocks(
+      const RoutingTrackBlockage &blockage,
+      const geometry::Point &one_end,
+      const geometry::Point &other_end) const;
 
   bool IsBlocked(const geometry::Point &point) const {
     return IsBlockedBetween(point, point);

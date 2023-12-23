@@ -39,9 +39,7 @@ class RoutingEdge {
   // of the given width.
   std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
 
-  void set_in_use_by_net(const std::optional<std::string> &in_use_by_net) {
-    in_use_by_net_ = in_use_by_net;
-  }
+  void set_in_use_by_net(const std::optional<std::string> &in_use_by_net);
   const std::optional<std::string> &in_use_by_net() const {
     return in_use_by_net_;
   }
