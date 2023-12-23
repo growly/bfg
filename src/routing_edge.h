@@ -16,7 +16,7 @@ class RoutingVertex;
 class RoutingEdge {
  public:
   RoutingEdge(RoutingVertex *first, RoutingVertex *second)
-    : in_use_(false),
+    : in_use_by_net_(std::nullopt),
       blocked_(false),
       track_(nullptr),
       layer_(-1),
@@ -39,14 +39,18 @@ class RoutingEdge {
   // of the given width.
   std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
 
-  void set_in_use(bool in_use) { in_use_ = in_use; }
-  bool in_use() const { return in_use_; }
+  void set_in_use_by_net(const std::optional<std::string> &in_use_by_net) {
+    in_use_by_net_ = in_use_by_net;
+  }
+  const std::optional<std::string> &in_use_by_net() const {
+    return in_use_by_net_;
+  }
   void set_blocked(bool blocked) { blocked_ = blocked; }
   bool blocked() const { return blocked_; }
 
-  bool Available() const { return !blocked_ && !in_use_; }
+  bool Available() const { return !blocked_ && !in_use_by_net_; }
   void ResetStatus() {
-    in_use_ = false;
+    in_use_by_net_ = std::nullopt;
     blocked_ = false;
   }
 
@@ -54,7 +58,6 @@ class RoutingEdge {
   const geometry::Layer &layer() const { return layer_; }
 
   const geometry::Layer &ExplicitOrTrackLayer() const;
-  std::optional<std::string> Net() const;
 
   // Off-grid edges do not have tracks.
   void set_track(RoutingTrack *track);
@@ -65,7 +68,7 @@ class RoutingEdge {
  private:
   void ApproximateCost();
 
-  bool in_use_;
+  std::optional<std::string> in_use_by_net_;
   bool blocked_;
 
   RoutingTrack *track_;

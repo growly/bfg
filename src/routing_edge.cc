@@ -45,16 +45,6 @@ const geometry::Layer &RoutingEdge::ExplicitOrTrackLayer() const {
   return layer_;
 }
 
-std::optional<std::string> RoutingEdge::Net() const {
-  if (first_->net() != "" && second_->net() == "")
-    return first_->net();
-  if (first_->net() == "" && second_->net() != "")
-    return second_->net();
-  if (first_->net() == second_->net())
-    return second_->net();
-  return std::nullopt;
-}
-
 void RoutingEdge::PrepareForRemoval() {
   if (first_)
     first_->RemoveEdge(this);
@@ -88,8 +78,8 @@ std::ostream &operator<<(std::ostream &os, const RoutingEdge &edge) {
   } else {
     os << "nullptr";
   }
-  if (edge.in_use()) {
-    os << " used by net: " << (edge.Net() ? absl::StrCat("\"", *edge.Net(), "\"") : "none");
+  if (edge.in_use_by_net()) {
+    os << " used by net: " << *edge.in_use_by_net();
   }
   if (edge.blocked()) {
     os << " blocked";

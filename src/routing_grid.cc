@@ -801,10 +801,9 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
   // Remove edges from the track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {
-      edge->track()->MarkEdgeAsUsed(
-          edge, path->net() == "" ? nullptr : &path->net());
+      edge->track()->MarkEdgeAsUsed(edge, path->net());
     } else {
-      edge->set_in_use(true);
+      edge->set_in_use_by_net(path->net());
     }
   }
 
@@ -880,7 +879,7 @@ RoutingPath *RoutingGrid::ShortestPath(
       [&](RoutingEdge *e) {
         if (usable_edge(e)) return true;
         if (e->blocked()) return false;
-        if (e->in_use() && e->Net() == to_net) return true;
+        if (e->in_use_by_net() && *e->in_use_by_net() == to_net) return true;
         return false;
       },
       false);   // Targets don't have to be 'usable', since we actually expect

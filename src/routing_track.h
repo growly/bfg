@@ -54,8 +54,7 @@ class RoutingTrack {
   // Remove the vertex from this track, and remove any edge that uses it.
   bool RemoveVertex(RoutingVertex *vertex);
 
-  // 
-  void MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net);
+  void MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net);
 
   // Tries to connect the target vertex to a candidate vertex placed at the
   // nearest point on the track to the given point (O). If successful, the new

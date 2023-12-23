@@ -88,8 +88,8 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
   return true;
 }
 
-void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
-  edge->set_in_use(true);
+void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
+  edge->set_in_use_by_net(net);
 
   if (edges_.find(edge) == edges_.end())
     // Possible off-grid edge?
@@ -110,7 +110,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
       // both indicates whether the edge is in use and by which net. I think
       // it's still correct to rely on vertex nets at either end of the edge but
       // this is just clearer.
-      other_edge->set_in_use(true);
+      other_edge->set_in_use_by_net(net);
     }
   }
 
@@ -124,7 +124,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
       vertex->set_available(false);
       vertex->set_in_edge(edge);
       vertex->set_out_edge(edge);
-      if (net) vertex->set_net(*net);
+      vertex->set_net(net);
     }
   }
 }
