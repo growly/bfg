@@ -60,7 +60,7 @@ class RoutingVertex {
   const std::string &net() const { return net_; }
 
   void set_available(bool available) { available_ = available; }
-  bool available() { return available_; }
+  bool available() const { return available_; }
 
   void set_in_edge(RoutingEdge *edge) { in_edge_ = edge; }
   RoutingEdge *in_edge() const { return in_edge_; }
@@ -127,6 +127,7 @@ class RoutingVertex {
   std::set<RoutingEdge*> edges_;
 };
 
+std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex);
 
 }  // namespace bfg
 

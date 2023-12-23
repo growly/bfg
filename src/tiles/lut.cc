@@ -553,18 +553,16 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   // Auto-route order:
   std::vector<geometry::Instance*> auto_route_order = {
-    banks[0].memories[0][0],
+    //banks[0].memories[0][0],
     banks[0].memories[0][1],
     banks[0].memories[1][0],
-    banks[0].memories[1][1]
+    //banks[0].memories[1][1]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {
     geometry::Instance *memory = auto_route_order[i];
     geometry::Instance *mux = mux_order[i / kMuxSize];
     std::string input_name = mux_input_order[i % kMuxSize];
-    LOG(INFO) << "connecting " << memory->name() << " to " << mux->name()
-              << " port " << input_name;
 
     std::set<geometry::Port*> all_other_mux_ports;
     mux->GetInstancePorts(&all_other_mux_ports);
@@ -586,10 +584,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     if (named_output_it == memory_output_net_names.end()) {
       std::string net_name = absl::StrCat(memory->name(), "_Q");
       memory_output_net_names[memory] = net_name;
+      LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                << " to " << memory->name();
       routing_grid.AddRouteBetween(
           *mux_port, *memory_output, all_other_mux_ports, net_name);
     } else {
       const std::string &target_net = named_output_it->second;
+      LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                << " to net " << target_net;
       routing_grid.AddRouteToNet(
           *mux_port, target_net, all_other_mux_ports);
     }

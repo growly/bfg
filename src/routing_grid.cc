@@ -803,8 +803,9 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     if (edge->track() != nullptr) {
       edge->track()->MarkEdgeAsUsed(
           edge, path->net() == "" ? nullptr : &path->net());
+    } else {
+      edge->set_in_use(true);
     }
-    edge->set_available(false);
   }
 
   LOG_IF(FATAL, path->vertices().size() != path->edges().size() + 1)
@@ -822,8 +823,14 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     last_vertex->set_out_edge(edge);
     next_vertex->set_in_edge(edge);
     next_vertex->set_available(false);
+    next_vertex->set_net(path->net());
+    ++i;
+  }
 
-    // Disable neighbours.
+  for (RoutingVertex *vertex : path->vertices()) {
+    // TODO(aryap): Disable neighbours for all of the path vertices, since
+    // that's where we expect vias? Although they might get "optimised" out, so
+    // this entirely sane?
     static const std::vector<Compass> kDisabledNeighbours = {
       Compass::UPPER_LEFT,
       Compass::UPPER,
@@ -836,13 +843,12 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     };
     for (const auto &position : kDisabledNeighbours) {
       std::set<RoutingVertex*> neighbours =
-          next_vertex->GetNeighbours(position);
+          vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
-        neighbour->set_available(false);
+        if (neighbour->available())
+          neighbour->set_available(false);
       }
     };
-
-    ++i;
   }
   
   paths_.push_back(path);
@@ -851,14 +857,34 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin, 
     RoutingVertex *end,
-    std::function<bool(RoutingVertex*)> usable_vertex,
-    std::function<bool(RoutingEdge*)> usable_edge) {
+    std::function<bool(RoutingVertex*)> usable_vertex, std::function<bool(RoutingEdge*)> usable_edge) {
   return ShortestPath(begin,
                       [=](RoutingVertex *v) { return v == end; },
                       nullptr,
                       usable_vertex,
                       usable_edge,
                       true);
+}
+
+RoutingPath *RoutingGrid::ShortestPath(
+    RoutingVertex *begin,
+    const std::string &to_net,
+    RoutingVertex **discovered_target,
+    std::function<bool(RoutingVertex*)> usable_vertex,
+    std::function<bool(RoutingEdge*)> usable_edge) {
+  return ShortestPath(
+      begin,
+      [&](RoutingVertex *v) { return v->net() == to_net; },
+      discovered_target,
+      usable_vertex,
+      [&](RoutingEdge *e) {
+        if (usable_edge(e)) return true;
+        if (e->blocked()) return false;
+        if (e->in_use() && e->Net() == to_net) return true;
+        return false;
+      },
+      false);   // Targets don't have to be 'usable', since we actually expect
+                // them already be used by the target net.
 }
 
 RoutingPath *RoutingGrid::ShortestPath(
@@ -959,8 +985,10 @@ RoutingPath *RoutingGrid::ShortestPath(
     size_t current_index = current->contextual_index();
 
     for (RoutingEdge *edge : current->edges()) {
-      if (!usable_edge(edge))
+      if (!usable_edge(edge)) {
+        LOG(INFO) << "cannot use edge " << *edge;
         continue;
+      }
 
       // We don't know what direction we're using the edge in, and edges are
       // not directional per se, so pick the side that isn't the one we came in
@@ -998,6 +1026,9 @@ RoutingPath *RoutingGrid::ShortestPath(
     return cost[a->contextual_index()] < cost[b->contextual_index()];
   };
   std::sort(sorted_targets.begin(), sorted_targets.end(), target_sort_fn);
+  for (RoutingVertex *target : sorted_targets) {
+    LOG(INFO) << target->centre() << " " << cost[target->contextual_index()];
+  }
   RoutingVertex *end_target = sorted_targets.front();
   size_t end_index = end_target->contextual_index();
 
@@ -1037,22 +1068,6 @@ RoutingPath *RoutingGrid::ShortestPath(
 
   RoutingPath *path = new RoutingPath(begin, shortest_edges);
   return path;
-}
-
-RoutingPath *RoutingGrid::ShortestPath(
-    RoutingVertex *begin,
-    const std::string &to_net,
-    RoutingVertex **discovered_target,
-    std::function<bool(RoutingVertex*)> usable_vertex,
-    std::function<bool(RoutingEdge*)> usable_edge) {
-  return ShortestPath(
-      begin,
-      [&](RoutingVertex *v) { return v->net() == to_net; },
-      discovered_target,
-      usable_vertex,
-      usable_edge,
-      false);   // Targets don't have to be 'usable', since we actually expect
-                // them already be used by the target net.
 }
 
 void RoutingGrid::AddBlockages(
@@ -1352,7 +1367,7 @@ void RoutingGrid::TearDownTemporaryBlockages(
     vertex->set_available(true);
   }
   for (RoutingEdge *const edge : blockage_info.blocked_edges) {
-    edge->set_available(true);
+    edge->set_blocked(false);
   }
   for (RoutingGridBlockage<geometry::Rectangle> *const blockage :
           blockage_info.pin_blockages) {

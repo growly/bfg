@@ -89,7 +89,7 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
 }
 
 void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
-  edge->set_available(true);
+  edge->set_in_use(true);
 
   if (edges_.find(edge) == edges_.end())
     // Possible off-grid edge?
@@ -97,17 +97,29 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
 
   MergeNewBlockage(edge->first()->centre(), edge->second()->centre());
 
-  // Mark other edges that are blocked by this as used.
-  for (RoutingEdge *edge : edges_) {
-    if (IsBlockedBetween(edge->first()->centre(), edge->second()->centre())) {
-      // Ownership of other blocked edges is not transferred; they are just
-      // removed.
-      edge->set_available(false);
+  // Since we add a new blockage of strictly edge's size without any keep-out
+  // padding, we are testing for edges that touch this one. Those edges must be
+  // marked as 'in use' by the same net as this one, since they can still be
+  // used to connect to the given net.
+  for (RoutingEdge *other_edge : edges_) {
+    if (other_edge == edge)
+      continue;
+    if (IsBlockedBetween(other_edge->first()->centre(),
+                         other_edge->second()->centre())) {
+      // FIXME(aryap): Ok, there should be an optional "in_use_by_net" which
+      // both indicates whether the edge is in use and by which net. I think
+      // it's still correct to rely on vertex nets at either end of the edge but
+      // this is just clearer.
+      other_edge->set_in_use(true);
     }
   }
 
   // Remove other vertices that are blocked by this.
   for (RoutingVertex *vertex : vertices_) {
+    // NOTE: This will set the in- and out-edge of the vertex even if the vertex
+    // is the start or end vertex of the edge; something else (the caller) must
+    // correct this if the edge participates in a RoutingPath or if the in- and
+    // out-edges must otherwise be adjusted.
     if (EdgeSpansVertex(*edge, *vertex)) {
       vertex->set_available(false);
       vertex->set_in_edge(edge);
@@ -117,11 +129,6 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string *net) {
   }
 }
 
-// FIXME: This needs to support permanent/temporary blockages in the way that
-// RoutingGrid now does. Need to return handles to the caller. That means the
-// orchestrator needs to manage handles to two different types of blockage.
-// Maybe they just get stored in the RoutingGridBlockage? That makes sense. Then
-// we don't need to own them here. "Child track blockages..."?
 RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
     const geometry::Point &point,
     RoutingVertex *target) {
@@ -177,7 +184,7 @@ void RoutingTrack::ReportAvailableEdges(
       edges_.begin(),
       edges_.end(),
       edges_out->begin(),
-      [](RoutingEdge* edge) { return edge->available(); });
+      [](RoutingEdge* edge) { return edge->Available(); });
 }
 
 void RoutingTrack::ReportAvailableVertices(
@@ -607,12 +614,12 @@ void RoutingTrack::ApplyBlockage(
     }
   }
   for (RoutingEdge *edge : edges_) {
-    if (!edge->available())
+    if (edge->blocked())
       continue;
     auto low_high = ProjectOntoTrack(
         edge->first()->centre(), edge->second()->centre());
     if (blockage.Blocks(low_high.first, low_high.second)) {
-      edge->set_available(false);
+      edge->set_blocked(true);
       if (blocked_edges)
         blocked_edges->insert(edge);
     }

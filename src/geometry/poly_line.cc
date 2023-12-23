@@ -373,7 +373,7 @@ void PolyLine::InsertBackwardBulgePoint(
 //      o <- want this point before
 //     /
 void PolyLine::InsertBulge(
-    const Point &point, uint64_t coaxial_width, uint64_t coaxial_length) {
+    const Point point, uint64_t coaxial_width, uint64_t coaxial_length) {
   size_t intersection_index = 0;
   if (!Intersects(point, &intersection_index)) {
     return;
@@ -384,7 +384,6 @@ void PolyLine::InsertBulge(
   // this line that we're about to modify. E.g. if you
   // poly_line.InsertBulge(poly_line.End()), you will modify the underlying
   // value half way.
-  const Point point_copy = point;
 
   // TODO(aryap): This doesn't quite work yet, so I'm leaving these here:
   // LOG(INFO) << Describe();
@@ -399,12 +398,12 @@ void PolyLine::InsertBulge(
   uint64_t previous_width = segments_[intersection_index].width;
 
   InsertForwardBulgePoint(
-      point_copy, coaxial_width, coaxial_length, intersection_index, line);
+      point, coaxial_width, coaxial_length, intersection_index, line);
   //LOG(INFO) << "after forwards (" << coaxial_width << ", " << coaxial_length
   //          << "): " << Describe();
 
   InsertBackwardBulgePoint(
-      point_copy, coaxial_width, coaxial_length, intersection_index, line,
+      point, coaxial_width, coaxial_length, intersection_index, line,
       previous_width);
   //LOG(INFO) << "after backwards (" << coaxial_width << ", " << coaxial_length
   //          << "): " << Describe();

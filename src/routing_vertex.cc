@@ -37,4 +37,12 @@ std::set<RoutingVertex*> RoutingVertex::GetNeighbours(
   return neighbours;
 }
 
+std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
+  os << vertex.centre();
+  if (!vertex.available()) {
+    os << " net: \"" << vertex.net() << "\"";
+  }
+  return os;
+}
+
 }  // namespace bfg

@@ -16,7 +16,8 @@ class RoutingVertex;
 class RoutingEdge {
  public:
   RoutingEdge(RoutingVertex *first, RoutingVertex *second)
-    : available_(true),
+    : in_use_(false),
+      blocked_(false),
       track_(nullptr),
       layer_(-1),
       first_(first),
@@ -38,13 +39,22 @@ class RoutingEdge {
   // of the given width.
   std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
 
-  void set_available(bool available) { available_ = available; }
-  bool available() { return available_; }
+  void set_in_use(bool in_use) { in_use_ = in_use; }
+  bool in_use() const { return in_use_; }
+  void set_blocked(bool blocked) { blocked_ = blocked; }
+  bool blocked() const { return blocked_; }
+
+  bool Available() const { return !blocked_ && !in_use_; }
+  void ResetStatus() {
+    in_use_ = false;
+    blocked_ = false;
+  }
 
   void set_layer(const geometry::Layer &layer) { layer_ = layer; }
   const geometry::Layer &layer() const { return layer_; }
 
   const geometry::Layer &ExplicitOrTrackLayer() const;
+  std::optional<std::string> Net() const;
 
   // Off-grid edges do not have tracks.
   void set_track(RoutingTrack *track);
@@ -55,7 +65,8 @@ class RoutingEdge {
  private:
   void ApproximateCost();
 
-  bool available_;
+  bool in_use_;
+  bool blocked_;
 
   RoutingTrack *track_;
   geometry::Layer layer_;
@@ -67,6 +78,8 @@ class RoutingEdge {
   // length, sheet resistance). This also needs to be computed only once...
   double cost_;
 };
+
+std::ostream &operator<<(std::ostream &os, const RoutingEdge &edge);
 
 }  // namespace bfg
 

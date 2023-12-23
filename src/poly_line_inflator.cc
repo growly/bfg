@@ -12,7 +12,6 @@
 #include "geometry/line.h"
 #include "geometry/poly_line.h"
 #include "geometry/polygon.h"
-#include "inflator_rules.pb.h"
 
 namespace bfg {
 

@@ -22,10 +22,10 @@ set(BUILD_DEPS true)
 
 include_directories(${GTEST_INCLUDE_DIR})
 
-set(PROTO_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
-set(PROTO_SRC
-  ${PROTO_SRC_DIR}/inflator_rules.proto
-)
+#set(PROTO_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
+#set(PROTO_SRC
+#  ${PROTO_SRC_DIR}/inflator_rules.proto
+#)
 
 set(VLSIR_SRC_DIR ${PROJECT_SOURCE_DIR}/vlsir/protos)
 file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
@@ -186,13 +186,13 @@ target_include_directories(vlsir_lib PRIVATE ${VLSIR_OUT_DIR})
 #
 # Included directly as code in our main library.
 
-file(RELATIVE_PATH proto_src_relative ${PROJECT_SOURCE_DIR} ${PROTO_SRC_DIR})
-set(PROTO_OUT_DIR ${PROJECT_BINARY_DIR}/${proto_src_relative})
-set(GENERATED_PROTO_SRCS)
-set(GENERATED_PROTO_HDRS)
-generate_protos(${PROTO_SRC_DIR} "${PROTO_SRC}" ${PROJECT_BINARY_DIR})
-set(PROTO_GENERATED_HDRS ${GENERATED_PROTO_HDRS})
-set(PROTO_GENERATED_SRCS ${GENERATED_PROTO_SRCS})
+#file(RELATIVE_PATH proto_src_relative ${PROJECT_SOURCE_DIR} ${PROTO_SRC_DIR})
+#set(PROTO_OUT_DIR ${PROJECT_BINARY_DIR}/${proto_src_relative})
+#set(GENERATED_PROTO_SRCS)
+#set(GENERATED_PROTO_HDRS)
+#generate_protos(${PROTO_SRC_DIR} "${PROTO_SRC}" ${PROJECT_BINARY_DIR})
+#set(PROTO_GENERATED_HDRS ${GENERATED_PROTO_HDRS})
+#set(PROTO_GENERATED_SRCS ${GENERATED_PROTO_SRCS})
 
 # bfg library
 # -----------

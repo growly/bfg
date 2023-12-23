@@ -5,6 +5,8 @@
 #include <set>
 #include <vector>
 
+#include <absl/strings/str_cat.h>
+
 #include "geometry/point.h"
 #include "geometry/rectangle.h"
 #include "routing_edge.h"
@@ -43,6 +45,16 @@ const geometry::Layer &RoutingEdge::ExplicitOrTrackLayer() const {
   return layer_;
 }
 
+std::optional<std::string> RoutingEdge::Net() const {
+  if (first_->net() != "" && second_->net() == "")
+    return first_->net();
+  if (first_->net() == "" && second_->net() != "")
+    return second_->net();
+  if (first_->net() == second_->net())
+    return second_->net();
+  return std::nullopt;
+}
+
 void RoutingEdge::PrepareForRemoval() {
   if (first_)
     first_->RemoveEdge(this);
@@ -62,6 +74,27 @@ void RoutingEdge::ApproximateCost() {
   cost_ = std::log(distance);
   // LOG(INFO) << "edge " << first_->centre() << " to " << second_->centre()
   //           << " cost is " << cost_;
+}
+
+std::ostream &operator<<(std::ostream &os, const RoutingEdge &edge) {
+  if (edge.first()) {
+    os << edge.first()->centre();
+  } else {
+    os << "nullptr";
+  }
+  os << " to ";
+  if (edge.second()) {
+    os << edge.second()->centre();
+  } else {
+    os << "nullptr";
+  }
+  if (edge.in_use()) {
+    os << " used by net: " << (edge.Net() ? absl::StrCat("\"", *edge.Net(), "\"") : "none");
+  }
+  if (edge.blocked()) {
+    os << " blocked";
+  }
+  return os;
 }
 
 }  // namespace bfg

@@ -157,7 +157,6 @@ void RoutingPath::ToPolyLinesAndVias(
         end_point, back->layer(), *end_access_layer_);
     vias->emplace_back(via);
 
-    LOG(INFO) << end_point << " " << bulge_width << " " << bulge_length;
     back->InsertBulge(end_point, bulge_width, bulge_length);
   }
   back->set_end_port(end_port_);

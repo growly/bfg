@@ -250,7 +250,7 @@ class RoutingGrid {
         return v->available();
       },
       std::function<bool(RoutingEdge*)> usable_edge = [](RoutingEdge *e){
-        return e->available();
+        return e->Available();
       });
 
   RoutingPath *ShortestPath(
@@ -261,7 +261,7 @@ class RoutingGrid {
         return v->available();
       },
       std::function<bool(RoutingEdge*)> usable_edge = [](RoutingEdge *e){
-        return e->available();
+        return e->Available();
       });
 
   RoutingPath *ShortestPath(

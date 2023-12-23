@@ -70,8 +70,14 @@ class PolyLine : public Shape {
   // Inserts what will become a rectangular bulge into the PolyLine by creating
   // the appropriate segments. The width and length are coaxial: width is
   // distance orthogonal to the direction of the line and length is parallel.
+  //
+  // We are deliberately taking a copy of the point we're given, because it's
+  // possible (i.e. it happened once) that the reference be to some value in
+  // this line that we're about to modify. E.g. if you
+  // poly_line.InsertBulge(poly_line.End()), you would modify the underlying
+  // value half way.
   void InsertBulge(
-      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length);
+      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
 
   void SetWidth(const uint64_t width);
   const std::vector<Point> Vertices() const;
