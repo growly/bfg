@@ -353,8 +353,8 @@ class RoutingGridBlockage {
 
  private:
   const RoutingGrid &routing_grid_;
-  // We store a copy of the shape. We can't store a reference because callers do
-  // cowboy shit.
+  // We store a copy of the shape. We can't store a reference because callers
+  // can do cowboy shit.
   const T shape_;
   int64_t padding_;
 

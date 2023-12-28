@@ -885,7 +885,7 @@ RoutingPath *RoutingGrid::ShortestPath(
         if (e->in_use_by_net() && *e->in_use_by_net() == to_net) {
           return true;
         } else {
-          LOG(INFO) << "cannot use edge " << *e << " for net " << to_net;
+          VLOG(14) << "cannot use edge " << *e << " for net " << to_net;
         }
         return false;
       },

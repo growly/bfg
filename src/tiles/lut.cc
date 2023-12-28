@@ -486,7 +486,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
         alt_routing_grid.AddRouteBetween(*start, *end, {}, net_name);
 
-        LOG(INFO) << i << " start port: " << *start << " end: " << *end;
+        LOG(INFO) << "b=" << b << ", j=" << j << ", i=" << i << " "
+                  << source->name() << " -> " << sink->name()
+                  << " start port: " << *start << " end: " << *end;
 
         scan_chain_pairs.erase({source->name(), sink->name()});
       }
@@ -553,8 +555,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   // Auto-route order:
   std::vector<geometry::Instance*> auto_route_order = {
-    //banks[0].memories[0][0],
-    banks[0].memories[0][1],
+    banks[0].memories[0][0],
+    //banks[0].memories[0][1],
     //banks[0].memories[1][0],
     //banks[0].memories[1][1]
   };
