@@ -171,6 +171,8 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
     return InflatePoint(polyline.start(), half_side, half_side);
   }
   Polygon polygon;
+  // Carry over the net label.
+  polygon.set_net(polyline.net());
 
   std::vector<Line> line_stack;
   std::vector<Line> forward_lines;

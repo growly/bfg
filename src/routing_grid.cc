@@ -49,26 +49,26 @@ namespace bfg {
 // We have a specialisation for {Rectangle, Polygon} X {Vertex, Edge}.
 template<>
 bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
-    const RoutingVertex &vertex) const {
-  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding_);
+    const RoutingVertex &vertex, int64_t padding) const {
+  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding);
 }
 
 template<>
 bool RoutingGridBlockage<geometry::Polygon>::Blocks(
-    const RoutingVertex &vertex) const {
-  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding_);
+    const RoutingVertex &vertex, int64_t padding) const {
+  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding);
 }
 
 template<>
 bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
-    const RoutingEdge &edge) const {
-  return routing_grid_.WireWouldIntersect(edge, shape_, padding_);
+    const RoutingEdge &edge, int64_t padding) const {
+  return routing_grid_.WireWouldIntersect(edge, shape_, padding);
 }
 
 template<>
 bool RoutingGridBlockage<geometry::Polygon>::Blocks(
-    const RoutingEdge &edge) const {
-  return routing_grid_.WireWouldIntersect(edge, shape_, padding_);
+    const RoutingEdge &edge, int64_t padding) const {
+  return routing_grid_.WireWouldIntersect(edge, shape_, padding);
 }
 
 template<typename T>
@@ -111,13 +111,30 @@ void RoutingGrid::ApplyBlockage(
     for (RoutingVertex *vertex : vertices) {
       if (!vertex->available())
         continue;
-      if (blockage.Blocks(*vertex)) {
+
+      const std::string &net = blockage.shape().net();
+      bool blocked_at_all = false;
+      if (blockage.BlocksWithoutPadding(*vertex)) {
+        blocked_at_all = true;
+        vertex->set_net(blockage.shape().net());
+        LOG(INFO) << "blockage: " << blockage.shape()
+                 << " blocks " << vertex->centre()
+                 << " directly (without padding)";
+      } else if (blockage.Blocks(*vertex)) {
+        blocked_at_all = true;
+        if (net != "") {
+          vertex->set_connectable_net(net);
+        }
+        LOG(INFO) << "blockage: " << blockage.shape()
+                 << " blocks " << vertex->centre()
+                 << " with padding=" << blockage.padding();
+      }
+
+      if (blocked_at_all) {
         vertex->set_available(false);
         if (blocked_vertices) {
           blocked_vertices->insert(vertex);
         }
-        VLOG(15) << "blockage: " << blockage.shape()
-                 << " would block " << vertex;
       }
     }
   }
@@ -412,7 +429,9 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
-    const RoutingVertex &vertex, int64_t padding) const {
+    const RoutingVertex &vertex,
+    const geometry::Layer &layer,
+    int64_t padding) const {
   const std::vector<geometry::Layer> &layers = vertex.connected_layers();
   if (layers.size() != 2) {
     return std::nullopt;
@@ -539,7 +558,7 @@ void RoutingGrid::ConnectLayers(
 
       AddVertex(vertex);
 
-      VLOG(10) << "Vertex created: " << vertex->centre() << " on layers: "
+      VLOG(20) << "Vertex created: " << vertex->centre() << " on layers: "
                << absl::StrJoin(vertex->connected_layers(), ", ");
 
       vertex->set_grid_position_x(i);
@@ -856,31 +875,31 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
 }
 
 RoutingPath *RoutingGrid::ShortestPath(
-    RoutingVertex *begin, 
-    RoutingVertex *end,
-    std::function<bool(RoutingVertex*)> usable_vertex,
-    std::function<bool(RoutingEdge*)> usable_edge) {
-  return ShortestPath(begin,
-                      [=](RoutingVertex *v) { return v == end; },
-                      nullptr,
-                      usable_vertex,
-                      usable_edge,
-                      true);
+    RoutingVertex *begin, RoutingVertex *end) {
+  return ShortestPath(
+      begin,
+      [=](RoutingVertex *v) { return v == end; },   // The target.
+      nullptr,
+      [](RoutingVertex *v) { return v->available(); },
+      [](RoutingEdge *e) { return e->Available(); },
+      true);
 }
 
 RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin,
     const std::string &to_net,
-    RoutingVertex **discovered_target,
-    std::function<bool(RoutingVertex*)> usable_vertex,
-    std::function<bool(RoutingEdge*)> usable_edge) {
+    RoutingVertex **discovered_target) {
   return ShortestPath(
       begin,
       [&](RoutingVertex *v) { return v->net() == to_net; },
       discovered_target,
-      usable_vertex,
+      // Usable vertices are:
+      [&](RoutingVertex *v) {
+        return v->available() || (
+            v->connectable_net() && *v->connectable_net() == to_net);
+      },
+      // Usable edges are:
       [&](RoutingEdge *e) {
-        if (usable_edge(e)) return true;
         if (e->blocked()) return false;
         if (e->in_use_by_net() && *e->in_use_by_net() == to_net) {
           return true;

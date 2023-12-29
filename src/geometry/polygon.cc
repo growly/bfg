@@ -206,7 +206,7 @@ void Polygon::IntersectingPoints(
     // Get next point, wrapping around to the front if we're at the end.
     point = &vertices_[i % vertices_.size()];
     segment = Line(*last_point, *point);
-    VLOG(12) << "Checking " << segment;
+    VLOG(16) << "Checking " << segment;
     segments.push_back(segment);
     Point intersection;
     bool incident;

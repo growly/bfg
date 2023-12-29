@@ -121,6 +121,7 @@ void RoutingPath::ToPolyLinesAndVias(
       last->set_layer(layer);
       last->set_start(current->centre());
       last->set_min_separation(info.min_separation);
+      last->set_net(net_);
       //last->set_start_via(via);
       continue;
     }

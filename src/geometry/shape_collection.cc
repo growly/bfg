@@ -26,12 +26,19 @@ std::string ShapeCollection::Describe() const {
     ss << "    rect " << rectangle->lower_left().x() << " "
        << rectangle->lower_left().y() << " "
        << rectangle->upper_right().x() << " "
-       << rectangle->upper_right().y() << std::endl;
+       << rectangle->upper_right().y();
+    if (rectangle->net() != "") {
+      ss << " net: " << rectangle->net();
+    }
+    ss << std::endl;
   }
   for (const auto &poly : polygons_) {
     ss << "    polygon ";
     for (const geometry::Point &point : poly->vertices()) {
       ss << "(" << point.x() << ", " << point.y() << ") ";
+    }
+    if (poly->net() != "") {
+      ss << " net: " << poly->net();
     }
     ss << std::endl;
   }
@@ -39,7 +46,11 @@ std::string ShapeCollection::Describe() const {
     ss << "    port " << port->lower_left().x() << " "
        << port->lower_left().y() << " "
        << port->upper_right().x() << " "
-       << port->upper_right().y() << std::endl;
+       << port->upper_right().y();
+    if (port->net() != "") {
+      ss << " net: " << port->net();
+    }
+    ss << std::endl;
   }
   for (const auto &line : poly_lines_) {
     ss << "    poly line " << line->Describe() << std::endl;
@@ -178,6 +189,7 @@ bool ShapeCollection::Overlaps(const Rectangle &rectangle) const {
   }
   LOG_IF(WARNING, !poly_lines_.empty())
       << "Will not test if poly lines overlap rectangle";
+  return false;
 }
 
 namespace {

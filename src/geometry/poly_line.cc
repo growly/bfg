@@ -22,6 +22,9 @@ std::string PolyLine::Describe() const {
     ss << " |" << segment.width << "| " << segment.end;
   }
   ss << " |" << overhang_end_ << ">";
+  if (net_ != "") {
+    ss << " net: " << net_;
+  }
   return ss.str();
 }
 

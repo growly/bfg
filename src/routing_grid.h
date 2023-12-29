@@ -176,6 +176,20 @@ class RoutingGrid {
     std::set<RoutingEdge*> blocked_edges;
   };
 
+  // FIXME(aryap): We take a via's footprint to the max of the metal overlap on
+  // either side, in either direction. The test for whether we can access a via
+  // actually depends on the metal layer we're connecting to it from. Given a
+  // blockage on a layer, we need to know what the rules are for metal cover of
+  // the via on that layer. We also need to be able to force connection to a via
+  // in a certain direction to allow certain configuration and disallow others.
+  // E.g. we might be forced to only allow horizontal connections at a via
+  // because of a nearby blockage vertically. This means we have to give
+  // vertices allowable directions of connection, which removes edges in other
+  // directions. We store directions of neighbours so this is half done. More
+  // annoyingly, a Via "footprint" is no longer a simple function, and this
+  // function must return allowable directions. The obstruction encodes the
+  // layer we need to connect form already so that's good.
+
   // TODO(aryap): It feels awkward putting these geometric functions here...?
   // Maybe move them into RoutingVertex? That requires giving RoutingVertex
   // awareness of geometry, which is like a loss of innocence y'know?
@@ -186,7 +200,27 @@ class RoutingGrid {
   bool ViaWouldIntersect(const RoutingVertex &vertex,
                          const T &obstruction,
                          int64_t padding = 0) const {
-    std::optional<geometry::Rectangle> keep_out = ViaFootprint(vertex, padding);
+    // Note that we subtract 1 from the padding. This is because spacing rules
+    // between objects seem to implicitly be inclusive of the end points.  Given
+    // two rectangles with boundaries at x = 5 and x = 10, for example:
+    //
+    //        x=5     x=10
+    //         v       v
+    // --------+       +--------
+    //         |       |
+    //         |       |
+    //         |       |
+    // --------+       +--------
+    //
+    // The difference between them is 10 - 5 = 5, which is how the minimum
+    // separation is calculated. But there are actually only 4 pixels
+    // (unit-area-positions) between them! Testing for collisions within the
+    // keep out requires testing for the rectangle inflated by 5 - 1 = 4, not by
+    // just 5.
+    std::optional<geometry::Rectangle> keep_out = ViaFootprint(
+        vertex,
+        obstruction.layer(),
+        padding > 0 ? padding - 1 : padding);
     if (!keep_out) {
       // Vertex is not a valid via:
       return false;
@@ -201,7 +235,8 @@ class RoutingGrid {
     // Consider the edge as a rectangle of the appropriate width for that edge
     // (i.e. given the wire width rules for its layer), and see if it collides
     // with the obstruction.
-    std::optional<geometry::Rectangle> keep_out = TrackFootprint(edge, padding);
+    std::optional<geometry::Rectangle> keep_out =
+        TrackFootprint(edge, padding > 0 ? padding - 1: padding);
     if (!keep_out) {
       return false;
     }
@@ -215,7 +250,9 @@ class RoutingGrid {
   // this out. It should at *least* always have its bottom and top layers
   // (ordered). the "connected_layers_" field is hard to use.
   std::optional<geometry::Rectangle> ViaFootprint(
-      const RoutingVertex &vertex, int64_t padding = 0) const;
+      const RoutingVertex &vertex,
+      const geometry::Layer &layer,
+      int64_t padding = 0) const;
   std::optional<geometry::Rectangle> TrackFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
 
@@ -243,27 +280,20 @@ class RoutingGrid {
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
-  RoutingPath *ShortestPath(
-      RoutingVertex *begin,
-      RoutingVertex *end,
-      std::function<bool(RoutingVertex*)> usable_vertex = [](RoutingVertex *v){
-        return v->available();
-      },
-      std::function<bool(RoutingEdge*)> usable_edge = [](RoutingEdge *e){
-        return e->Available();
-      });
+  RoutingPath *ShortestPath(RoutingVertex *begin, RoutingVertex *end);
 
+  // Returns nullptr if no path found. If a RoutingPath is found, the caller
+  // now owns the object. Places the actual target eventually decided on into
+  // *discovered_target.
   RoutingPath *ShortestPath(
       RoutingVertex *from,
       const std::string &to_net,
-      RoutingVertex **discovered_target,
-      std::function<bool(RoutingVertex*)> usable_vertex = [](RoutingVertex *v) {
-        return v->available();
-      },
-      std::function<bool(RoutingEdge*)> usable_edge = [](RoutingEdge *e){
-        return e->Available();
-      });
+      RoutingVertex **discovered_target);
 
+  // Returns nullptr if no path found. If a RoutingPath is found, the caller
+  // now owns the object. Places the actual target eventually decided on into
+  // *discovered_target. The various lambdas control what counts as a target and
+  // which vertices and edges are valid for traversal.
   RoutingPath *ShortestPath(
       RoutingVertex *start,
       std::function<bool(RoutingVertex*)> is_target,
@@ -339,8 +369,19 @@ class RoutingGridBlockage {
 
   ~RoutingGridBlockage();
 
-  bool Blocks(const RoutingVertex &vertex) const;
-  bool Blocks(const RoutingEdge &edge) const;
+  bool BlocksWithoutPadding(const RoutingVertex &vertex) const {
+    return Blocks(vertex, 0);
+  }
+  bool BlocksWithoutPadding(const RoutingEdge &edge) const {
+    return Blocks(edge, 0);
+  }
+
+  bool Blocks(const RoutingVertex &vertex) const {
+    return Blocks(vertex, padding_);
+  }
+  bool Blocks(const RoutingEdge &edge) const {
+    return Blocks(edge, padding_);
+  }
 
   // Takes ownership of the given RoutingTrackBlockage. Store the RoutingTrack
   // so that we can remove the blockage from the track if we need do.
@@ -350,8 +391,12 @@ class RoutingGridBlockage {
   void ClearChildTrackBlockages();
 
   const T& shape() const { return shape_; }
+  const int64_t &padding() const { return padding_; }
 
  private:
+  bool Blocks(const RoutingVertex &vertex, int64_t padding) const;
+  bool Blocks(const RoutingEdge &edge, int64_t padding) const;
+
   const RoutingGrid &routing_grid_;
   // We store a copy of the shape. We can't store a reference because callers
   // can do cowboy shit.

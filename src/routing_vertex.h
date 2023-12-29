@@ -67,6 +67,13 @@ class RoutingVertex {
   void set_out_edge(RoutingEdge *edge) { out_edge_ = edge; }
   RoutingEdge *out_edge() const { return out_edge_; }
 
+  void set_connectable_net(const std::optional<std::string> &connectable_net) {
+    connectable_net_ = connectable_net;
+  }
+  const std::optional<std::string> &connectable_net() const {
+    return connectable_net_;
+  }
+
   void set_horizontal_track(RoutingTrack *track) { horizontal_track_ = track; }
   RoutingTrack *horizontal_track() const { return horizontal_track_; }
   void set_vertical_track(RoutingTrack *track) { vertical_track_ = track; }
@@ -104,6 +111,8 @@ class RoutingVertex {
   bool available_;
   RoutingEdge *in_edge_;
   RoutingEdge *out_edge_;
+
+  std::optional<std::string> connectable_net_;
 
   RoutingTrack *horizontal_track_;
   RoutingTrack *vertical_track_;

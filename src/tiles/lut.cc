@@ -482,7 +482,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         geometry::Port *end = *ports.begin();
 
         std::string net_name = absl::StrCat(source->name(), "_Q");
-        memory_output_net_names[source] = net_name;
+        //memory_output_net_names[source] = net_name;
 
         alt_routing_grid.AddRouteBetween(*start, *end, {}, net_name);
 
@@ -493,6 +493,31 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         scan_chain_pairs.erase({source->name(), sink->name()});
       }
     }
+  }
+
+  // Now that we're done with the alt routing grid, add its shapes to the main
+  // layout and update the regular routing grid with the alternate one's shapes
+  // as blockages.
+  std::unique_ptr<bfg::Layout> grid_layout(alt_routing_grid.GenerateLayout());
+  layout->AddLayout(*grid_layout, "routing_alt");
+
+  // TODO(aryap): This seems to be a common enough op to factor out. Would be 1
+  // step nicer with GetShapesOnLayer returning the ShapeCollection directly,
+  // and would be 2 steps nicer with RoutingGrid having the facility to
+  // automatically add blockages from a Layout (for all the layers it itself
+  // uses for routing).
+  {
+    // Add blockages from all existing shapes.
+    geometry::ShapeCollection shapes;
+    grid_layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+    LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
+    routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
+  }
+  {
+    geometry::ShapeCollection shapes;
+    grid_layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+    LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
+    routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
   }
 
   // Connect the scan chain.
@@ -556,9 +581,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // Auto-route order:
   std::vector<geometry::Instance*> auto_route_order = {
     banks[0].memories[0][0],
-    //banks[0].memories[0][1],
+    banks[0].memories[0][1],
     //banks[0].memories[1][0],
-    //banks[0].memories[1][1]
+    //banks[0].memories[1][1],
+    //banks[0].memories[2][0],
+    //banks[0].memories[2][1],
+    //banks[0].memories[3][0],
+    //banks[0].memories[3][1]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {
@@ -641,11 +670,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   routing_grid.ExportAvailableVerticesAsSquares(
       "areaid.frameRect", layout.get());
 
-  std::unique_ptr<bfg::Layout> grid_layout(routing_grid.GenerateLayout());
+  grid_layout.reset(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");
-
-  grid_layout.reset(alt_routing_grid.GenerateLayout());
-  layout->AddLayout(*grid_layout, "routing_alt");
 
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());
