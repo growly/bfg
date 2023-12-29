@@ -900,6 +900,7 @@ RoutingPath *RoutingGrid::ShortestPath(
       },
       // Usable edges are:
       [&](RoutingEdge *e) {
+        if (e->Available()) return true;
         if (e->blocked()) return false;
         if (e->in_use_by_net() && *e->in_use_by_net() == to_net) {
           return true;
