@@ -71,7 +71,7 @@ class Lut : public Tile {
           .bank_columns = 2,
           .mux_area_rows = 2,
           .mux_area_columns = 2,
-          .mux_area_padding = 1500,
+          .mux_area_padding = 2500,
           .rotate_first_row = true
       }},
       {5, LayoutConfig {
@@ -80,7 +80,7 @@ class Lut : public Tile {
           .bank_columns = 2,
           .mux_area_rows = 4,
           .mux_area_columns = 2,
-          .mux_area_padding = 1000,
+          .mux_area_padding = 2500,
           .rotate_first_row = true
       }},
       {6, LayoutConfig {
@@ -89,7 +89,7 @@ class Lut : public Tile {
           .bank_columns = 4,
           .mux_area_rows = 4,
           .mux_area_columns = 4,
-          .mux_area_padding = 1000,
+          .mux_area_padding = 2500,
           .rotate_first_row = true
       }}
   };

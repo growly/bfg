@@ -117,17 +117,17 @@ void RoutingGrid::ApplyBlockage(
       if (blockage.BlocksWithoutPadding(*vertex)) {
         blocked_at_all = true;
         vertex->set_net(blockage.shape().net());
-        LOG(INFO) << "blockage: " << blockage.shape()
-                 << " blocks " << vertex->centre()
-                 << " directly (without padding)";
+        //LOG(INFO) << "blockage: " << blockage.shape()
+        //         << " blocks " << vertex->centre()
+        //         << " directly (without padding)";
       } else if (blockage.Blocks(*vertex)) {
         blocked_at_all = true;
         if (net != "") {
           vertex->set_connectable_net(net);
         }
-        LOG(INFO) << "blockage: " << blockage.shape()
-                 << " blocks " << vertex->centre()
-                 << " with padding=" << blockage.padding();
+        //LOG(INFO) << "blockage: " << blockage.shape()
+        //         << " blocks " << vertex->centre()
+        //         << " with padding=" << blockage.padding();
       }
 
       if (blocked_at_all) {
@@ -1051,9 +1051,6 @@ RoutingPath *RoutingGrid::ShortestPath(
     return cost[a->contextual_index()] < cost[b->contextual_index()];
   };
   std::sort(sorted_targets.begin(), sorted_targets.end(), target_sort_fn);
-  for (RoutingVertex *target : sorted_targets) {
-    LOG(INFO) << target->centre() << " " << cost[target->contextual_index()];
-  }
   RoutingVertex *end_target = sorted_targets.front();
   size_t end_index = end_target->contextual_index();
 

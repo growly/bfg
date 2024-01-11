@@ -90,7 +90,7 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
 
 void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   edge->set_in_use_by_net(net);
-  LOG(INFO) << "assigning edge " << *edge;
+  //LOG(INFO) << "assigning edge " << *edge;
 
   if (edges_.find(edge) == edges_.end())
     // Possible off-grid edge?

@@ -306,10 +306,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         }
       }
     }
-
-
   }
-
 
   {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
@@ -582,12 +579,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   std::vector<geometry::Instance*> auto_route_order = {
     banks[0].memories[0][0],
     banks[0].memories[0][1],
-    //banks[0].memories[1][0],
-    //banks[0].memories[1][1],
-    //banks[0].memories[2][0],
-    //banks[0].memories[2][1],
-    //banks[0].memories[3][0],
-    //banks[0].memories[3][1]
+    banks[0].memories[1][0],
+    banks[0].memories[1][1],
+    banks[0].memories[2][0],
+    banks[0].memories[2][1],
+    banks[0].memories[3][0],
+    banks[0].memories[3][1]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {
