@@ -31,9 +31,14 @@ RoutingPath::RoutingPath(
 
 namespace {
 
+struct BulgeDimensions {
+  int64_t width;
+  int64_t length;
+};
+
 // TODO(aryap): There are different rules for overhanging from the layer above
 // and below.
-std::pair<int64_t, int64_t> GetBulgeWidthAndLengthForViaBetweenLayers(
+BulgeDimensions GetBulgeWidthAndLengthForViaBetweenLayers(
     const RoutingGrid &routing_grid,
     const geometry::Layer &first_layer,
     const geometry::Layer &second_layer) {
@@ -41,9 +46,10 @@ std::pair<int64_t, int64_t> GetBulgeWidthAndLengthForViaBetweenLayers(
       routing_grid.GetRoutingViaInfoOrDie(first_layer, second_layer);
   int64_t via_width = std::max(
       routing_via_info.width, routing_via_info.height);
-  int64_t bulge_width = via_width + 2 * routing_via_info.overhang_width;
-  int64_t bulge_length = via_width + 2 * routing_via_info.overhang_length;
-  return {bulge_width, bulge_length};
+  return BulgeDimensions {
+    .width = via_width + 2 * routing_via_info.overhang_width,
+    .length = via_width + 2 * routing_via_info.overhang_length
+  };
 }
 
 }   // namespace
@@ -64,7 +70,8 @@ void RoutingPath::ToPolyLinesAndVias(
   int64_t bulge_width = 0;
 
   std::set<RoutingVertex*> skipped_vias;
-  // We look for and try to eliminate wires that are too short:
+  // We look for and try to eliminate wires that are too short to allow another
+  // layer N wire over the top:
   //
   //    +-------+
   //    |       +---
@@ -118,10 +125,10 @@ void RoutingPath::ToPolyLinesAndVias(
         via = new AbstractVia(current->centre(), last->layer(), layer);
         vias->emplace_back(via);
         //last->set_end_via(via);
-        auto bulge_width_and_length = GetBulgeWidthAndLengthForViaBetweenLayers(
+        auto bulge = GetBulgeWidthAndLengthForViaBetweenLayers(
             routing_grid, last->layer(), layer);
-        bulge_width = bulge_width_and_length.first;
-        bulge_length = bulge_width_and_length.second;
+        bulge_width = bulge.width;
+        bulge_length = bulge.length;
         last->InsertBulge(current->centre(), bulge_width, bulge_length);
 
         if (i > 2) {
@@ -162,11 +169,9 @@ void RoutingPath::ToPolyLinesAndVias(
         start_point, front->layer(), *start_access_layer_);
     vias->emplace_back(via);
 
-    auto bulge_width_and_length = GetBulgeWidthAndLengthForViaBetweenLayers(
+    auto bulge = GetBulgeWidthAndLengthForViaBetweenLayers(
         routing_grid, front->layer(), *start_access_layer_);
-    bulge_width = bulge_width_and_length.first;
-    bulge_length = bulge_width_and_length.second;
-    front->InsertBulge(start_point, bulge_width, bulge_length);
+    front->InsertBulge(start_point, bulge.width, bulge.length);
   }
   front->set_start_port(start_port_);
 
@@ -178,11 +183,9 @@ void RoutingPath::ToPolyLinesAndVias(
         end_point, back->layer(), *end_access_layer_);
     vias->emplace_back(via);
 
-    auto bulge_width_and_length = GetBulgeWidthAndLengthForViaBetweenLayers(
+    auto bulge = GetBulgeWidthAndLengthForViaBetweenLayers(
         routing_grid, back->layer(), *end_access_layer_);
-    bulge_width = bulge_width_and_length.first;
-    bulge_length = bulge_width_and_length.second;
-    back->InsertBulge(end_point, bulge_width, bulge_length);
+    back->InsertBulge(end_point, bulge.width, bulge.length);
   }
   back->set_end_port(end_port_);
 

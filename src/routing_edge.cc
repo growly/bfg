@@ -23,20 +23,37 @@ void RoutingEdge::set_in_use_by_net(
 
 std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(
     int64_t width) const {
-  const geometry::Point &one_end = first_->centre();
-  const geometry::Point &other_end = second_->centre();
+  // There is no guaranteed order of first_ and second_, so we have to make sure
+  // we have the lower left and upper right points the right way around. If we
+  // put them in a vector and impose an ordering, we get this conceptually very
+  // simply:
+  std::vector<std::reference_wrapper<const geometry::Point>> points = {
+      first_->centre(), second_->centre()
+  };
+  std::sort(points.begin(), points.end(),
+            [](const geometry::Point &lhs, const geometry::Point &rhs) {
+              if (lhs.x() == rhs.x()) {
+                return lhs.y() < rhs.y();
+              }
+              return lhs.x() < rhs.x();
+            });
+
+  const geometry::Point &lower_left = points.front().get();
+  const geometry::Point &upper_right = points.back().get();
 
   int64_t half_width = width / 2;
+  int64_t remaining_width = width - half_width;
 
-  if (one_end.x() == other_end.x()) {
+  if (lower_left.x() == upper_right.x()) {
     // Vertical rectangle.
-    return {{{one_end.x() - half_width, one_end.y()},
-             {other_end.x() + (1 - half_width), other_end.y()}}};
-  } else if (one_end.y() == other_end.y()) {
+    return {{{lower_left.x() - half_width, lower_left.y()},
+             {upper_right.x() + remaining_width, upper_right.y()}}};
+  } else if (lower_left.y() == upper_right.y()) {
     // Horizontal rectangle.
-    return {{{one_end.x(), one_end.y() - half_width},
-             {other_end.x(), other_end.y() - (1 - half_width)}}};
+    return {{{lower_left.x(), lower_left.y() - half_width},
+             {upper_right.x(), upper_right.y() + remaining_width}}};
   }
+
   return std::nullopt;
 }
 
@@ -70,6 +87,12 @@ void RoutingEdge::ApproximateCost() {
   cost_ = std::log(distance);
   // LOG(INFO) << "edge " << first_->centre() << " to " << second_->centre()
   //           << " cost is " << cost_;
+}
+
+bool RoutingEdge::IsRectilinear() const {
+  return first_ && second_ && (
+      first_->centre().x() == second_->centre().x() ||
+      first_->centre().y() == second_->centre().y());
 }
 
 std::ostream &operator<<(std::ostream &os, const RoutingEdge &edge) {

@@ -264,6 +264,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   // The first cut of this algorithm is to just find the closest of all the
   // available vertices on the given layer.
 
+  // We need a copy to manipulate the layer:
   geometry::Point target_point = point;
   target_point.set_layer(layer);
 
@@ -374,7 +375,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     if (bridging_vertex == nullptr)
       continue;
 
-    // TODO(aryap): Need a way to roll back this temporary objects in case the
+    // TODO(aryap): Need a way to roll back these temporary objects in case the
     // caller's entire process fails - i.e. a vertex can be created for the
     // starting point but not for the ending point.
 
@@ -389,10 +390,9 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 
     RoutingVertex *off_grid = new RoutingVertex(target_point);
     if (!ValidAgainstKnownBlockages(*off_grid)) {
-      LOG(INFO) << "invalid off grid candidate at " << off_grid->centre();
+      VLOG(15) << "invalid off grid candidate at " << off_grid->centre();
       // Rollback!
-      RemoveVertex(bridging_vertex,
-                   true);  // and delete!
+      RemoveVertex(bridging_vertex, true);  // and delete!
       delete off_grid;
       continue;
     }
@@ -402,13 +402,11 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
     edge->set_layer(vertex_layer);
     if (!ValidAgainstKnownBlockages(*edge)) {
-      LOG(INFO) << "invalid off grid edge between " << bridging_vertex->centre()
-                << " and " << off_grid->centre();
+      VLOG(15) << "invalid off grid edge between " << bridging_vertex->centre()
+               << " and " << off_grid->centre();
       // Rollback extra hard!
-      RemoveVertex(bridging_vertex,
-                   true);  // and delete!
-      RemoveVertex(off_grid,
-                   true);  // and delete!
+      RemoveVertex(bridging_vertex, true);  // and delete!
+      RemoveVertex(off_grid, true);  // and delete!
       delete edge;    
       continue;
     }
@@ -901,7 +899,10 @@ RoutingPath *RoutingGrid::ShortestPath(
       // Usable edges are:
       [&](RoutingEdge *e) {
         if (e->Available()) return true;
-        if (e->blocked()) return false;
+        if (e->blocked()) {
+          VLOG(14) << "edge " << *e << " is blocked";
+          return false;
+        }
         if (e->in_use_by_net() && *e->in_use_by_net() == to_net) {
           return true;
         } else {

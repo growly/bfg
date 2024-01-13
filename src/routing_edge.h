@@ -66,6 +66,8 @@ class RoutingEdge {
  private:
   void ApproximateCost();
 
+  bool IsRectilinear() const;
+
   std::optional<std::string> in_use_by_net_;
   bool blocked_;
 

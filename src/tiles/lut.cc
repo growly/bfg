@@ -4,6 +4,7 @@
 
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_format.h>
+#include <absl/strings/str_join.h>
 
 #include "../poly_line_cell.h"
 #include "../poly_line_inflator.h"
@@ -20,6 +21,28 @@
 
 namespace bfg {
 namespace tiles {
+
+
+namespace {
+
+std::string DescribePorts(const std::set<geometry::Port*> &ports) {
+  std::vector<geometry::Port*> sorted_ports(ports.begin(), ports.end());
+  std::sort(sorted_ports.begin(), sorted_ports.end(),
+            [](geometry::Port *lhs, geometry::Port *rhs) {
+              if (lhs->centre().x() == rhs->centre().x()) {
+                return lhs->centre().y() < rhs->centre().y();
+              }
+              return lhs->centre().x() < rhs->centre().x();
+            });
+  std::vector<std::string> port_descriptions;
+  for (geometry::Port *port : sorted_ports) {
+    port_descriptions.push_back(
+        absl::StrFormat("(%d, %d)", port->centre().x(), port->centre().y()));
+  }
+  return absl::StrJoin(port_descriptions, ", ");
+}
+
+}  // namespace
 
 const Lut::LayoutConfig *Lut::GetLayoutConfiguration(size_t lut_size) {
   size_t num_configurations =
@@ -584,7 +607,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     banks[0].memories[2][0],
     banks[0].memories[2][1],
     banks[0].memories[3][0],
-    banks[0].memories[3][1]
+    //banks[0].memories[3][1]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {
@@ -601,12 +624,27 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     std::set<geometry::Port*> memory_ports;
     memory->GetInstancePorts("Q", &memory_ports);
     geometry::Port *memory_output = *memory_ports.begin();
+
+    std::set<geometry::Port*> mux_ports_on_net;
+    mux->GetInstancePorts(input_name, &mux_ports_on_net);
+
     geometry::Port *mux_port = mux->GetNearestPortNamed(*memory_output,
                                                         input_name);
     if (!mux_port) {
       continue;
     }
-    all_other_mux_ports.erase(mux_port);
+    LOG_IF(FATAL, mux_ports_on_net.find(mux_port) == mux_ports_on_net.end())
+        << "Nearest port named " << input_name
+        << " did not appear in list of all ports for same name";
+
+    // Do not avoid any ports with the given name, since presumably they are
+    // connectible.
+    for (geometry::Port *port : mux_ports_on_net) {
+      all_other_mux_ports.erase(port);
+    }
+
+    LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+              << " avoiding " << DescribePorts(all_other_mux_ports);
 
     auto named_output_it = memory_output_net_names.find(memory);
     if (named_output_it == memory_output_net_names.end()) {
