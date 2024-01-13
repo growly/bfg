@@ -261,6 +261,7 @@ set(GEOMETRY_TEST_SRC
 set(TEST_SRC
   ${GEOMETRY_TEST_SRC}
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc
 )
 
 enable_testing()
