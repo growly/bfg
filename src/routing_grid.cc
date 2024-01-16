@@ -389,6 +389,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     }
 
     RoutingVertex *off_grid = new RoutingVertex(target_point);
+    // FIXME: This function needs to allow collisions for same-net shapes!
     if (!ValidAgainstKnownBlockages(*off_grid)) {
       VLOG(15) << "invalid off grid candidate at " << off_grid->centre();
       // Rollback!

@@ -128,6 +128,13 @@ class Layout : public geometry::Manipulable {
       std::unordered_map<std::string, geometry::Instance *const> *mapping)
       const;
 
+  void GetAllPorts(
+      std::set<geometry::Port*> *ports) const;
+
+  void GetAllPortsExceptNamed(
+      std::set<geometry::Port*> *ports,
+      const std::string &named) const;
+
   const std::string &NameOrParentName() const;
 
   const std::string &name() const { return name_; }

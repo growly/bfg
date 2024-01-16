@@ -414,6 +414,27 @@ void Layout::GetInstancesByName(
   }
 }
 
+void Layout::GetAllPorts(std::set<geometry::Port*> *ports) const {
+  for (const auto &instance : instances_) {
+    instance->GetInstancePorts(ports);
+  }
+}
+
+void Layout::GetAllPortsExceptNamed(
+    std::set<geometry::Port*> *ports,
+    const std::string &named) const {
+  for (const auto &instance : instances_) {
+    for (const auto &entry : instance->instance_ports()) {
+      const std::string &port_name = entry.first;
+      if (port_name == named)
+        continue;
+      for (const auto &uniq : entry.second) {
+        ports->insert(uniq.get());
+      }
+    }
+  }
+}
+
 const std::set<geometry::Port*> Layout::Ports() const {
   std::set<geometry::Port*> all_ports;
   for (const auto &entry : shapes_) {

@@ -604,19 +604,24 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     banks[0].memories[0][1],
     banks[0].memories[1][0],
     banks[0].memories[1][1],
-    banks[0].memories[2][0],
-    banks[0].memories[2][1],
-    banks[0].memories[3][0],
+    //banks[0].memories[2][0],
+    //banks[0].memories[2][1],
+    //banks[0].memories[3][0],
     //banks[0].memories[3][1]
   };
+
+  std::set<geometry::Port*> all_mux_ports;
+  for (geometry::Instance *mux : mux_order) {
+    mux->GetInstancePorts(&all_mux_ports);
+  }
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {
     geometry::Instance *memory = auto_route_order[i];
     geometry::Instance *mux = mux_order[i / kMuxSize];
     std::string input_name = mux_input_order[i % kMuxSize];
 
-    std::set<geometry::Port*> all_other_mux_ports;
-    mux->GetInstancePorts(&all_other_mux_ports);
+    std::set<geometry::Port*> all_other_mux_ports(
+        all_mux_ports.begin(), all_mux_ports.end());
 
     // Heuristically determine which mux port to use based on which which is
     // closest to the memory output, even if we're routing to the memory output
