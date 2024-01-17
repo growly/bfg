@@ -114,7 +114,16 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
           *current_blockage,
           other_edge->first()->centre(),
           other_edge->second()->centre())) {
-      other_edge->set_in_use_by_net(net);
+      if (other_edge->blocked())
+        continue;
+      // If the edge touches two different nets, it cannot be used for either
+      // and must be blocked.
+      if (other_edge->in_use_by_net() && *other_edge->in_use_by_net() != net) {
+        other_edge->set_blocked(true);
+        other_edge->set_in_use_by_net(std::nullopt);
+      } else {
+        other_edge->set_in_use_by_net(net);
+      }
     }
   }
 

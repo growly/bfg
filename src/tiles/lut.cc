@@ -604,10 +604,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     banks[0].memories[0][1],
     banks[0].memories[1][0],
     banks[0].memories[1][1],
-    //banks[0].memories[2][0],
-    //banks[0].memories[2][1],
-    //banks[0].memories[3][0],
-    //banks[0].memories[3][1]
+    banks[0].memories[2][0],
+    banks[0].memories[2][1],
+    banks[0].memories[3][0],
+    banks[0].memories[3][1]
   };
 
   std::set<geometry::Port*> all_mux_ports;
