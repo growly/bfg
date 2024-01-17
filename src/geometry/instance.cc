@@ -107,8 +107,9 @@ Port *Instance::GetNearestPortNamed(
   }
 
   auto comp = [&](Port *lhs, Port *rhs) {
-    return lhs->centre().L2SquaredDistanceTo(to_port.centre()) <
-           rhs->centre().L2SquaredDistanceTo(to_port.centre());
+    int64_t lhs_distance = lhs->centre().L2SquaredDistanceTo(to_port.centre());
+    int64_t rhs_distance = rhs->centre().L2SquaredDistanceTo(to_port.centre());
+    return lhs_distance < rhs_distance;
   };
   std::sort(matching_ports.begin(), matching_ports.end(), comp);
   return *matching_ports.begin();
