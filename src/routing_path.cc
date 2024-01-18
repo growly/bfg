@@ -63,11 +63,6 @@ void RoutingPath::ToPolyLinesAndVias(
 
   LOG_IF(FATAL, vertices_.size() != edges_.size() + 1)
       << "There should be one more vertex than there are edges.";
-  std::unique_ptr<PolyLine> last;
-  RoutingEdge *edge = nullptr;
-  std::vector<std::unique_ptr<PolyLine>> generated_lines;
-  int64_t bulge_length = 0;
-  int64_t bulge_width = 0;
 
   std::set<RoutingVertex*> skipped_vias;
   // We look for and try to eliminate wires that are too short to allow another
@@ -102,6 +97,12 @@ void RoutingPath::ToPolyLinesAndVias(
     }
   }
 
+  std::unique_ptr<PolyLine> last;
+  bool last_poly_line_was_first = true;
+  RoutingEdge *edge = nullptr;
+  std::vector<std::unique_ptr<PolyLine>> generated_lines;
+  int64_t bulge_length = 0;
+  int64_t bulge_width = 0;
   for (size_t i = 0; i < vertices_.size() - 1; ++i) {
     RoutingVertex *current = vertices_.at(i);
     edge = edges_.at(i);
@@ -110,7 +111,6 @@ void RoutingPath::ToPolyLinesAndVias(
     const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfo(layer);
 
     auto it = skipped_vias.find(current);
-
     // Insert a new PolyLine at layer crossings (or the start). Layer crossings
     // also require a via, unless the vertex via is skipped.
     if (!last || (last->layer() != layer && it == skipped_vias.end())) {
@@ -131,8 +131,12 @@ void RoutingPath::ToPolyLinesAndVias(
         bulge_length = bulge.length;
         last->InsertBulge(current->centre(), bulge_width, bulge_length);
 
-        if (i > 2) {
+        // Insert the starting bulge on the last poly line unless it was the
+        // first one:
+        if (!last_poly_line_was_first) {
           last->InsertBulge(last->start(), bulge_width, bulge_length);
+        } else {
+          last_poly_line_was_first = false;
         }
         generated_lines.push_back(std::move(last));
       }

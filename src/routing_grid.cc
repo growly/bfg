@@ -513,9 +513,9 @@ void RoutingGrid::ConnectLayers(
   std::map<int64_t, RoutingTrack*> horizontal_tracks;
 
   // The minimum separation between the ends of two edges on a track is the
-  // closest possible spacing of vertices on the track, i.e. the amount of space
-  // required to fit a via at the end of each used edge. The worst case is given
-  // by:
+  // closest possible spacing of used vertices on the track, i.e. the amount of
+  // space required to fit a via at the end of each used edge. The worst case is
+  // given by:
   int64_t horizontal_track_min_vertex_separation =
       horizontal_info.min_separation + std::max(
           routing_via_info.width,
