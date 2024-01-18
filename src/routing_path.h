@@ -61,8 +61,8 @@ class RoutingPath {
   void set_net(const std::string &net) { net_ = net; }
   const std::string &net() const { return net_; }
 
-  const std::vector<RoutingVertex*> vertices() const { return vertices_; }
-  const std::vector<RoutingEdge*> edges() const { return edges_; }
+  const std::vector<RoutingVertex*> &vertices() const { return vertices_; }
+  const std::vector<RoutingEdge*> &edges() const { return edges_; }
 
  private:
   // TODO(aryap): I don't think these port objects are needed? We get most of
