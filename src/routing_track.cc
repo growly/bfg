@@ -100,7 +100,9 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   // with an existing blockage, we will treat that blockage as touching this
   // net!
   RoutingTrackBlockage *current_blockage = MergeNewBlockage(
-      edge->first()->centre(), edge->second()->centre());
+      edge->first()->centre(),
+      edge->second()->centre(),
+      min_separation_);
 
   // Since we add a new blockage of strictly edge's size without any keep-out
   // padding, we are testing for edges that touch this one. Those edges must be
@@ -163,10 +165,10 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
     return target;
   }
 
-  if (IsBlocked(candidate_centre))
+  if (IsBlocked(candidate_centre, min_separation_))
     return nullptr;
 
-  if (IsBlockedBetween(candidate_centre, target->centre()))
+  if (IsBlockedBetween(candidate_centre, target->centre(), min_separation_))
     return nullptr;
 
   RoutingVertex *bridging_vertex = new RoutingVertex(candidate_centre);
@@ -324,12 +326,17 @@ bool RoutingTrack::BlockageBlocks(
 }
 
 bool RoutingTrack::IsBlockedBetween(
-    const geometry::Point &one_end, const geometry::Point &other_end) const {
+    const geometry::Point &one_end,
+    const geometry::Point &other_end,
+    int64_t margin) const {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
 
   if (low > high)
     std::swap(low, high);
+
+  low -= (margin - 1);
+  high += (margin - 1);
 
   for (RoutingTrackBlockage *blockage : blockages_) {
     if (blockage->Blocks(low, high)) return true;
@@ -526,7 +533,9 @@ RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
 }
 
 RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
-    const geometry::Point &one_end, const geometry::Point &other_end) {
+    const geometry::Point &one_end,
+    const geometry::Point &other_end,
+    int64_t margin) {
   std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(one_end, other_end);
   int64_t low = low_high.first;
   int64_t high = low_high.second;
@@ -540,6 +549,9 @@ RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
   // RoutingTrackBlockages should already be sorted in ascending order of
   // position.
   //
+  // We will merge the given obstruction into an existing blockage if we falling
+  // within `margin` of one.
+  //
   // TODO(aryap): I'm trying to find a range of consecutive values for which
   // some predicate is true. I can't find a helpful standard library
   // implementation that isn't just storing a bunch of iterators returned by
@@ -549,7 +561,7 @@ RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
   auto last = blockages_.end();
   for (auto it = blockages_.begin(); it != blockages_.end(); ++it) {
     RoutingTrackBlockage *blockage = *it;
-    if (blockage->Blocks(low, high)) {
+    if (blockage->Blocks(low - (margin - 1), high + (margin - 1))) {
       if (first == blockages_.end())
         first = it;
       else if (it == std::next(last)) {

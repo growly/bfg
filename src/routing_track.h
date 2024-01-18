@@ -32,8 +32,12 @@ class RoutingTrack {
  public:
   RoutingTrack(const geometry::Layer &layer,
                const RoutingTrackDirection &direction,
+               int64_t min_separation,
                int64_t offset)
-      : layer_(layer), direction_(direction), offset_(offset) {}
+      : layer_(layer),
+        direction_(direction),
+        offset_(offset),
+        min_separation_(min_separation) {}
 
   ~RoutingTrack();
 
@@ -130,11 +134,13 @@ class RoutingTrack {
       const geometry::Point &one_end,
       const geometry::Point &other_end) const;
 
-  bool IsBlocked(const geometry::Point &point) const {
-    return IsBlockedBetween(point, point);
+  bool IsBlocked(const geometry::Point &point, int64_t margin = 0) const {
+    return IsBlockedBetween(point, point, margin);
   }
   bool IsBlockedBetween(
-      const geometry::Point &one_end, const geometry::Point &other_end) const;
+      const geometry::Point &one_end,
+      const geometry::Point &other_end,
+      int64_t margin = 0) const;
 
   bool EdgeSpansVertex(
       const RoutingEdge &edge, const RoutingVertex &vertex) const;
@@ -149,7 +155,9 @@ class RoutingTrack {
   geometry::Point PointOnTrack(int64_t projection_onto_track) const;
 
   RoutingTrackBlockage *MergeNewBlockage(
-      const geometry::Point &one_end, const geometry::Point &other_end);
+      const geometry::Point &one_end,
+      const geometry::Point &other_end,
+      int64_t margin = 0);
   void ApplyBlockage(const RoutingTrackBlockage &blockage,
                      std::set<RoutingVertex*> *blocked_vertices = nullptr,
                      std::set<RoutingEdge*> *blocked_edges = nullptr);
@@ -172,6 +180,9 @@ class RoutingTrack {
 
   // The working width of this track.
   int64_t width_;
+
+  // Minimum separation of wires on this track.
+  int64_t min_separation_;
 
   // We want to keep a sorted list of blockages, but if we keep them as a
   // std::set we can't mutate the objects (since they will not automatically be

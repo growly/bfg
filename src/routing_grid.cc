@@ -169,14 +169,14 @@ void RoutingGrid::ForgetBlockage(
 }
 
 template<typename T>
-bool RoutingGrid::ValidAgainstKnownBlockages(const T &shape) const {
+bool RoutingGrid::ValidAgainstKnownBlockages(const T &routing_object) const {
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
-    if (blockage->Blocks(shape))
+    if (blockage->Blocks(routing_object))
       return false;
   }
   for (const auto &blockage : polygon_blockages_) {
-    if (blockage->Blocks(shape))
+    if (blockage->Blocks(routing_object))
       return false;
   }
   return true;
@@ -300,6 +300,10 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 
   // Should sort automatically based on operator< for first and second entries
   // in pairs.
+  //
+  // This inequality goes the wrong way because we pop from the back of the
+  // vector, not the front, and that's where we want the lowest-cost elements to
+  // end up.
   static auto comp = [](const CostedVertex &lhs,
                         const CostedVertex &rhs) {
     return lhs.cost > rhs.cost;
@@ -311,13 +315,13 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   // Consider 4 vertices X on the RoutingGrid surrounding the port O.
   //
   //     (A)
-  //    X---+       X
+  //    X---+       X           X
   // (B)|   |(B')
   //    +---O
   //     (A')
   //
   //
-  //    X           X
+  //    X           X           X
   //
   // To access O we must go off-grid and beat a path on the layer closest to
   // it. We should not need to hop between horizontal/vertical track layers
@@ -367,6 +371,10 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     for (size_t i = 0; i < tracks.size(); ++i) {
       bridging_vertex = tracks[i]->CreateNearestVertexAndConnect(
           target_point, candidate);
+      // FIXME(aryap): This should fail if the vertex is too close to an
+      // existing edge on the track, hence avoiding blockages. However, it does
+      // not seem to take into account minimum separation rules. IT MUST!
+      // I think if I fix this I don't need IsUnobstructed etc (see header).
       if (bridging_vertex) {
         track = i;
         break;
@@ -390,6 +398,8 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 
     RoutingVertex *off_grid = new RoutingVertex(target_point);
     // FIXME: This function needs to allow collisions for same-net shapes!
+    // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
+    // go too close to in-use edges and vertices!
     if (!ValidAgainstKnownBlockages(*off_grid)) {
       VLOG(15) << "invalid off grid candidate at " << off_grid->centre();
       // Rollback!
@@ -486,6 +496,9 @@ void RoutingGrid::ConnectLayers(
   const RoutingLayerInfo &horizontal_info = split_directions.first;
   const RoutingLayerInfo &vertical_info = split_directions.second;
 
+  const RoutingViaInfo &routing_via_info =
+      GetRoutingViaInfoOrDie(first, second);
+
   LOG(INFO) << "Drawing grid between layers " << horizontal_info.layer
             << ", " << vertical_info.layer;
 
@@ -499,12 +512,33 @@ void RoutingGrid::ConnectLayers(
   std::map<int64_t, RoutingTrack*> vertical_tracks;
   std::map<int64_t, RoutingTrack*> horizontal_tracks;
 
+  // The minimum separation between the ends of two edges on a track is the
+  // closest possible spacing of vertices on the track, i.e. the amount of space
+  // required to fit a via at the end of each used edge. The worst case is given
+  // by:
+  int64_t horizontal_track_min_vertex_separation =
+      horizontal_info.min_separation + std::max(
+          routing_via_info.width,
+          routing_via_info.height) + 2 * std::max(
+          routing_via_info.overhang_width,
+          routing_via_info.overhang_length);
+ 
+  int64_t vertical_track_min_vertex_separation =
+      vertical_info.min_separation + std::max(
+          routing_via_info.width,
+          routing_via_info.height) + 2 * std::max(
+          routing_via_info.overhang_width,
+          routing_via_info.overhang_length);
+
   // Generate tracks to hold edges and vertices in each direction.
   for (int64_t x = grid_geometry.x_start();
        x <= grid_geometry.x_max();
        x += grid_geometry.x_pitch()) {
     RoutingTrack *track = new RoutingTrack(
-        vertical_info.layer, RoutingTrackDirection::kTrackVertical, x);
+        vertical_info.layer,
+        RoutingTrackDirection::kTrackVertical,
+        vertical_track_min_vertex_separation,
+        x);
     track->set_width(vertical_info.wire_width);
     vertical_tracks.insert({x, track});
     AddTrackToLayer(track, vertical_info.layer);
@@ -516,7 +550,9 @@ void RoutingGrid::ConnectLayers(
        y += grid_geometry.y_pitch()) {
     RoutingTrack *track = new RoutingTrack(
         horizontal_info.layer,
-        RoutingTrackDirection::kTrackHorizontal, y);
+        RoutingTrackDirection::kTrackHorizontal,
+        horizontal_track_min_vertex_separation,
+        y);
     track->set_width(horizontal_info.wire_width);
     horizontal_tracks.insert({y, track});
     AddTrackToLayer(track, horizontal_info.layer);

@@ -123,8 +123,10 @@ class RoutingGrid {
       const RoutingGridBlockage<T> &blockage,
       std::set<RoutingVertex*> *blocked_vertices = nullptr);
 
+  // Check if the given routing vertex or edge clears all known explicit
+  // blockages.
   template<typename T>
-  bool ValidAgainstKnownBlockages(const T &vertex) const;
+  bool ValidAgainstKnownBlockages(const T &routing_object) const;
 
   // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
