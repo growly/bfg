@@ -181,6 +181,24 @@ TEST(LineTest, ExtendToNearestIntersection) {
   EXPECT_EQ(Point({20, 20}), extension.value().end());
 }
 
+TEST(LineTest, PointOnLineClosestTo) {
+  Line line = Line({2, 2}, {4, 2});
+
+  EXPECT_EQ(Point({2, 2}), line.PointOnLineClosestTo({0, 0}));
+  EXPECT_EQ(Point({4, 2}), line.PointOnLineClosestTo({9, 9}));
+  EXPECT_EQ(Point({3, 2}), line.PointOnLineClosestTo({3, 3}));
+  EXPECT_EQ(Point({3, 2}), line.PointOnLineClosestTo({3, 1}));
+}
+
+TEST(LineTest, PointOnInfiniteLineClosestTo) {
+  Line line = Line({2, 2}, {4, 2});
+
+  EXPECT_EQ(Point({0, 2}), line.PointOnInfiniteLineClosestTo({0, 0}));
+  EXPECT_EQ(Point({9, 2}), line.PointOnInfiniteLineClosestTo({9, 9}));
+  EXPECT_EQ(Point({3, 2}), line.PointOnInfiniteLineClosestTo({3, 3}));
+  EXPECT_EQ(Point({3, 2}), line.PointOnInfiniteLineClosestTo({3, 1}));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

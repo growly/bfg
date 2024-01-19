@@ -42,6 +42,8 @@ class Point : public AbstractShape, public Manipulable {
   void Translate(const Point &offset) override;
   void ResetOrigin() override {}    // No-op for a point.
 
+  void Scale(double scalar);
+
   void Rotate(double theta_radians);
   void Rotate(int32_t degrees_ccw) override;
 
@@ -58,6 +60,8 @@ class Point : public AbstractShape, public Manipulable {
 };
 
 // Treat the point as a vector from the origin, then add element-wise.
+Point operator*(const Point &lhs, double &rhs);
+Point operator*(double &lhs, const Point &rhs);
 Point operator+(const Point &lhs, const Point &rhs);
 Point operator-(const Point &lhs, const Point &rhs);
 Point operator-(const Point &rhs);

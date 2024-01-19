@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <glog/logging.h>
 
 #include "rectangle.h"
 
@@ -32,11 +33,28 @@ TEST(RectangleTest, Centre) {
   // EXPECT_EQ(Point(250, 325), rect_a.centre());
 }
 
-TEST(Rectangle, BoundingBoxIfRotated) {
+TEST(RectangleTest, BoundingBoxIfRotated) {
   Rectangle initial(Point(1, 1), Point(2, 2));
   Rectangle rotated = initial.BoundingBoxIfRotated(
       Point(0, 0), 180);
   EXPECT_TRUE(Rectangle(Point(-2, -2), Point(-1, -1)) == rotated);
+}
+
+TEST(RectangleTest, ClosestDistanceBetween) {
+  Rectangle anchor = Rectangle({-1, -1}, {1, 1});
+
+  EXPECT_EQ(0, Rectangle::ClosestDistanceBetween(
+      anchor, Rectangle({1, 1}, {2, 2})));
+  // sqrt(2)
+  LOG(INFO) << Rectangle::ClosestDistanceBetween(
+      anchor, Rectangle({2, 2}, {3, 3}));
+  EXPECT_EQ(1, Rectangle::ClosestDistanceBetween(
+      anchor, Rectangle({2, 1}, {3, 3})));
+  // sqrt(2)
+  LOG(INFO) << Rectangle::ClosestDistanceBetween(
+      anchor, Rectangle({2, -3}, {3, -2}));
+  EXPECT_EQ(3, Rectangle::ClosestDistanceBetween(
+      anchor, Rectangle({-4, -5}, {2, -4})));
 }
 
 }  // namespace

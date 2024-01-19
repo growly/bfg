@@ -182,6 +182,39 @@ bool RoutingGrid::ValidAgainstKnownBlockages(const T &routing_object) const {
   return true;
 }
 
+bool RoutingGrid::ValidAgainstInstalledPaths(
+    const RoutingVertex &candidate) const {
+  // In this case we have to do labourious check for proximity to all used paths
+  // and vertices.
+  std::set<RoutingVertex*> used_vertices;
+  for (RoutingPath *path : paths_) {
+    used_vertices.insert(path->vertices().begin(), path->vertices().end());
+  }
+
+  //std::optional<geometry::Rectangle> via_encap = ViaFootprint(
+  //    current, layer, 0);
+
+  for (RoutingVertex *other : used_vertices) {
+    if (other == &candidate) {
+      continue;
+    }
+    // TODO ok so we have to check each connected layer of candidate to see if
+    // the metal pours would interset
+    for (const geometry::Layer &layer : candidate.connected_layers()) {
+      int64_t min_separation = GetRoutingLayerInfo(layer).min_separation;
+
+
+      for (const geometry::Layer &other_layer : other->connected_layers()) {
+        if (layer != other_layer) {
+          continue;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
 RoutingGrid::~RoutingGrid()  {
   for (auto entry : tracks_by_layer_) {
     for (RoutingTrack *track : entry.second) {
@@ -400,7 +433,8 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     // FIXME: This function needs to allow collisions for same-net shapes!
     // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
     // go too close to in-use edges and vertices!
-    if (!ValidAgainstKnownBlockages(*off_grid)) {
+    if (!ValidAgainstKnownBlockages(*off_grid) ||
+        !ValidAgainstInstalledPaths(*off_grid)) {
       VLOG(15) << "invalid off grid candidate at " << off_grid->centre();
       // Rollback!
       RemoveVertex(bridging_vertex, true);  // and delete!
@@ -882,28 +916,46 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     ++i;
   }
 
+  // Disable neighbouring vertices now that this one is in use.
   for (RoutingVertex *vertex : path->vertices()) {
     // TODO(aryap): Disable neighbours for all of the path vertices, since
     // that's where we expect vias? Although they might get "optimised" out, so
     // this entirely sane?
-    static const std::vector<Compass> kDisabledNeighbours = {
-      Compass::UPPER_LEFT,
-      Compass::UPPER,
-      Compass::UPPER_RIGHT,
-      Compass::LEFT,
-      Compass::RIGHT,
-      Compass::LOWER_LEFT,
-      Compass::LOWER,
-      Compass::LOWER_RIGHT,
-    };
-    for (const auto &position : kDisabledNeighbours) {
-      std::set<RoutingVertex*> neighbours =
-          vertex->GetNeighbours(position);
-      for (RoutingVertex *neighbour : neighbours) {
-        if (neighbour->available())
-          neighbour->set_available(false);
+    if (vertex->horizontal_track() && vertex->vertical_track()) {
+      // If the vertex is on the grid, we only disable the recorded neighbours.
+      static const std::vector<Compass> kDisabledNeighbours = {
+        Compass::UPPER_LEFT,
+        Compass::UPPER,
+        Compass::UPPER_RIGHT,
+        Compass::LEFT,
+        Compass::RIGHT,
+        Compass::LOWER_LEFT,
+        Compass::LOWER,
+        Compass::LOWER_RIGHT,
+      };
+      for (const auto &position : kDisabledNeighbours) {
+        std::set<RoutingVertex*> neighbours =
+            vertex->GetNeighbours(position);
+        for (RoutingVertex *neighbour : neighbours) {
+          if (neighbour->available())
+            neighbour->set_available(false);
+        }
+      };
+      continue;
+    }
+    // If the vertex is off-grid, we have to search for affected neighbours
+    // more painstakingly:
+    std::set<RoutingVertex*> vertices;
+    for (const geometry::Layer &layer : vertex->connected_layers()) {
+      std::vector<RoutingGridGeometry*> grid_geometries;
+      FindRoutingGridGeometriesForLayer(layer, &grid_geometries);
+      for (RoutingGridGeometry *grid_geometry : grid_geometries) {
+        grid_geometry->EnvelopingVertices(vertex->centre(), &vertices);
       }
-    };
+    }
+    for (RoutingVertex *enveloping_vertex : vertices) {
+      enveloping_vertex->set_available(false);
+    }
   }
   
   paths_.push_back(path);

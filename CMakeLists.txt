@@ -252,9 +252,10 @@ target_link_libraries(bfg_bin PUBLIC bfg
 set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance_test.cc
-  ${PROJECT_SOURCE_DIR}/src/geometry/polygon_test.cc
-  ${PROJECT_SOURCE_DIR}/src/geometry/poly_line_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/point_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/poly_line_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/polygon_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle_test.cc
 )
 

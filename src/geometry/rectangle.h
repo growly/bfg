@@ -23,6 +23,9 @@ namespace geometry {
 // A rectilinear rectangle.
 class Rectangle : public Shape {
  public:
+  static double ClosestDistanceBetween(
+      const Rectangle &lhs, const Rectangle &rhs);
+
   Rectangle() : Shape(0, "") {}
   Rectangle(const Point &lower_left, uint64_t width, uint64_t height)
       : lower_left_(lower_left),
@@ -61,6 +64,10 @@ class Rectangle : public Shape {
   void FlipVertical() override {}   // No-op for rectangle.
   void MoveLowerLeftTo(const Point &point) override { Translate(point); }
   void Rotate(int32_t degrees_ccw) override;
+
+  double ClosestDistanceTo(const Rectangle &other) const {
+    return ClosestDistanceBetween(*this, other);
+  }
 
   Point PointOnLineOutside(const Line &line) const;
   Rectangle BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) const;

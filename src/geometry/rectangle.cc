@@ -10,6 +10,57 @@
 namespace bfg {
 namespace geometry {
 
+double Rectangle::ClosestDistanceBetween(
+    const Rectangle &lhs, const Rectangle &rhs) {
+  if (lhs.Overlaps(rhs))
+    return 0;
+
+  // Don't overthink it. If the two rectangles do not overlap, there are only a
+  // few places they can be relative to one another:
+  //
+  //
+  //
+  //                |                |
+  //      top       |                |     top
+  //      left      |                |     right
+  //                |                |
+  // ---------------+----------------+----------------
+  //                |                |
+  //                |      lhs       |     right
+  //                |   rectangle    |
+  //                |                |
+  // ---------------+----------------+----------------
+  //                |                |
+  //                |                |     bottom
+  //                |                |     right
+  //                |                |
+  bool top = lhs.upper_right().y() < rhs.lower_left().y();
+  bool bottom = lhs.lower_left().y() > rhs.upper_right().y();
+  bool right = lhs.upper_right().x() < rhs.lower_left().x();
+  bool left = lhs.lower_left().x() > rhs.upper_right().x();
+  if (top && right) {
+    return lhs.upper_right().L2DistanceTo(rhs.lower_left());
+  } else if (bottom && right) {
+    return lhs.LowerRight().L2DistanceTo(rhs.UpperLeft());
+  } else if (bottom && left) {
+    return lhs.lower_left().L2DistanceTo(rhs.upper_right());
+  } else if (top && left) {
+    return lhs.UpperLeft().L2DistanceTo(rhs.LowerRight());
+  } else if (right) {
+    return rhs.lower_left().x() - lhs.upper_right().x();
+  } else if (bottom) {
+    return lhs.lower_left().y() - rhs.upper_right().y();
+  } else if (left) {
+    return lhs.lower_left().x() - rhs.upper_right().x();
+  } else if (top) {
+    return rhs.lower_left().y() - rhs.upper_right().y();
+  } else {
+    LOG(FATAL) << "If " << lhs << " and " << rhs << " don't overlap, "
+               << "how did we get here?";
+  }
+  return 0;
+}
+
 bool Rectangle::Overlaps(const Rectangle &other) const {
   if (other.upper_right().x() < lower_left_.x() ||
       other.upper_right().y() < lower_left_.y() ||

@@ -93,6 +93,13 @@ class Line {
 
   Point PointOnLineAtDistance(const Point &start, double distance) const;
 
+  Point PointOnInfiniteLineClosestTo(const Point &mark) {
+    return PointOnLineClosestTo(mark, true);
+  }
+  Point PointOnLineClosestTo(const Point &mark) {
+    return PointOnLineClosestTo(mark, false);
+  }
+
   void Shift(int64_t dx, int64_t dy) {
     ShiftStart(dx, dy);
     ShiftEnd(dx, dy);
@@ -140,6 +147,8 @@ class Line {
   const Point &end() const { return end_; }
 
  private:
+  Point PointOnLineClosestTo(const Point &mark, bool treat_as_infinite) const;
+
   Point start_;
   Point end_;
 };

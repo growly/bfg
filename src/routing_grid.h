@@ -128,6 +128,8 @@ class RoutingGrid {
   template<typename T>
   bool ValidAgainstKnownBlockages(const T &routing_object) const;
 
+  bool ValidAgainstInstalledPaths(const RoutingVertex &vertex) const;
+
   // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
 

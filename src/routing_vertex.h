@@ -131,8 +131,11 @@ class RoutingVertex {
   std::optional<size_t> grid_position_y_;
 
   geometry::Point centre_;
-  // TODO(aryap): Vertices only actually connect two layers.
+
+  // TODO(aryap): A vertex can only ever connect 2 layers. A second vertex in
+  // the same position is needed to connect to another layer.
   std::vector<geometry::Layer> connected_layers_;
+
   std::set<RoutingEdge*> edges_;
 };
 

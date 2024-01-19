@@ -135,9 +135,9 @@ void Line::IntersectsWithAll(
 // If the project is negative, the vector faces in the opposite direction of
 // the original.
 double Line::ProjectionCoefficient(const Point &point) const {
-  int64_t v_dot_s = DotProduct(Line(start_, point));  // *this dot (start,
-                                                      // point)
-  int64_t s_dot_s = DotProduct(*this);                // *this dot *this
+  int64_t v_dot_s = this->DotProduct(Line(start_, point));  // *this dot (start,
+                                                            // point)
+  int64_t s_dot_s = this->DotProduct(*this);                // *this dot *this
   double coeff = static_cast<double>(v_dot_s) / static_cast<double>(s_dot_s);
   return coeff;
 }
@@ -401,6 +401,25 @@ Point Line::PointOnLineAtDistance(const Point &start, double distance) const {
   int64_t dx = std::round(distance * std::cos(theta));
   int64_t dy = std::round(distance * std::sin(theta));
   return start + Point(dx, dy);
+}
+
+Point Line::PointOnLineClosestTo(const Point &mark,
+                                 bool treat_as_infinite) const {
+  // Treating all points as vectors from the origin, we can define points along
+  // *this line segment as start + t * (end - start), where start and end are
+  // such vectors and t is a scalar coefficient.
+  //                              _                                _
+  // The projection of the vector v = (mark - start) onto the line s = (end -
+  // start) gives us the value of t for the closest point to `mark` in this
+  // parametric formulation.
+  double t = ProjectionCoefficient(mark);
+  if (!treat_as_infinite) {
+    if (t < 0.0)
+      return start_;
+    if (t > 1.0)
+      return end_;
+  }
+  return start_ + t * (end_ - start_);
 }
 
 double Line::Offset() const {

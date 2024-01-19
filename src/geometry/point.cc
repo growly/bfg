@@ -54,6 +54,11 @@ void Point::Rotate(double theta_radians) {
   y_ = std::llround(x * std::sin(theta_radians) + y * std::cos(theta_radians));
 }
 
+void Point::Scale(double scalar) {
+  x_ = std::llround(static_cast<double>(x_) * scalar);
+  y_ = std::llround(static_cast<double>(y_) * scalar);
+}
+
 // The L-1 norm, or Manhattan distance.
 int64_t Point::L1DistanceTo(const Point &point) const {
   int64_t dx = point.x() - x_;
@@ -71,6 +76,16 @@ double Point::L2DistanceTo(const Point &other) const {
   double dx = x_ - other.x_;
   double dy = y_ - other.y_;
   return std::sqrt(std::pow(dx, 2.0) + std::pow(dy, 2.0));
+}
+
+Point operator*(const Point &lhs, double &rhs) {
+  Point copy(lhs);
+  copy.Scale(rhs);
+  return copy;
+}
+Point operator*(double &lhs, const Point &rhs) {
+  // Call above.
+  return rhs * lhs;
 }
 
 Point operator+(const Point &lhs, const Point &rhs) {
