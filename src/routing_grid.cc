@@ -191,22 +191,44 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
     used_vertices.insert(path->vertices().begin(), path->vertices().end());
   }
 
-  //std::optional<geometry::Rectangle> via_encap = ViaFootprint(
-  //    current, layer, 0);
+  for (const geometry::Layer &candidate_layer :
+       candidate.connected_layers()) {
+    int64_t min_separation =
+        GetRoutingLayerInfo(candidate_layer).min_separation;
 
-  for (RoutingVertex *other : used_vertices) {
-    if (other == &candidate) {
+    std::optional<geometry::Rectangle> via_encap = ViaFootprint(
+        candidate, candidate_layer, 0);   // No additional padding.
+
+    if (!via_encap) {
       continue;
     }
-    // TODO ok so we have to check each connected layer of candidate to see if
-    // the metal pours would interset
-    for (const geometry::Layer &layer : candidate.connected_layers()) {
-      int64_t min_separation = GetRoutingLayerInfo(layer).min_separation;
 
+    for (RoutingVertex *other : used_vertices) {
+      if (other == &candidate) {
+        continue;
+      }
 
       for (const geometry::Layer &other_layer : other->connected_layers()) {
-        if (layer != other_layer) {
+        if (candidate_layer != other_layer) {
           continue;
+        }
+
+        std::optional<geometry::Rectangle> other_via_encap = ViaFootprint(
+           *other, other_layer, 0);
+
+        int64_t distance = static_cast<int64_t>(
+            std::ceil(via_encap->ClosestDistanceTo(*other_via_encap)));
+        if (distance < min_separation) {
+          LOG(INFO) << "Candidate vertex " << candidate.centre()
+                    << " is too close to " << other->centre() << " on layer "
+                    << candidate_layer << " (distance " << distance <<
+                    " < min separation " << min_separation << ")";
+          return false;
+        } else if (VLOG_IS_ON(16)) {
+          LOG(INFO) << "Candidate vertex " << candidate.centre()
+                    << " is ok with " << other->centre() << " on layer "
+                    << candidate_layer << " (distance " << distance <<
+                    " >= min separation " << min_separation << ")";
         }
       }
     }
@@ -403,7 +425,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     size_t track = 0;
     for (size_t i = 0; i < tracks.size(); ++i) {
       bridging_vertex = tracks[i]->CreateNearestVertexAndConnect(
-          target_point, candidate);
+          *this, target_point, vertex_layer, candidate);
       // FIXME(aryap): This should fail if the vertex is too close to an
       // existing edge on the track, hence avoiding blockages. However, it does
       // not seem to take into account minimum separation rules. IT MUST!
@@ -424,12 +446,11 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
     if (bridging_vertex != candidate) {
       // If the closest vertex was the candidate itself, no bridging vertex is
       // necessary. Otherwise:
-
-      bridging_vertex->AddConnectedLayer(vertex_layer);
       AddVertex(bridging_vertex);
     }
 
     RoutingVertex *off_grid = new RoutingVertex(target_point);
+    off_grid->AddConnectedLayer(vertex_layer);
     // FIXME: This function needs to allow collisions for same-net shapes!
     // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
     // go too close to in-use edges and vertices!
@@ -441,7 +462,6 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
       delete off_grid;
       continue;
     }
-    off_grid->AddConnectedLayer(vertex_layer);
     AddVertex(off_grid);
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);

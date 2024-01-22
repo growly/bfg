@@ -8,6 +8,7 @@
 #include "geometry/polygon.h"
 #include "geometry/rectangle.h"
 #include "routing_edge.h"
+#include "routing_grid.h"
 #include "routing_vertex.h"
 #include "routing_track_blockage.h"
 #include "physical_properties_database.h"
@@ -145,7 +146,9 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
 }
 
 RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
+    const RoutingGrid &grid,
     const geometry::Point &point,
+    const geometry::Layer &target_layer,
     RoutingVertex *target) {
   // Candidate position:
   geometry::Point candidate_centre;
@@ -172,6 +175,32 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
     return nullptr;
 
   RoutingVertex *bridging_vertex = new RoutingVertex(candidate_centre);
+
+  // We need to ask if this candidate fits in with other installed vertices.
+  // This is specifically to check that vertices on adjacent tracks to not
+  // violate spacing rules. The track itself only ensures correct spacing along
+  // its dimension. Consider these horizontal tracks:
+  // 
+  // -------------A----------------
+  //
+  //             +-----+
+  // ------------|--B--|-----------
+  //             +-----+
+  //
+  // The candidate x might collide with the existing B on the neighbouring
+  // track.
+  bridging_vertex->AddConnectedLayer(layer_);
+  if (target_layer != layer_) {
+    bridging_vertex->AddConnectedLayer(target_layer);
+  }
+  if (!grid.ValidAgainstInstalledPaths(*bridging_vertex)) {
+    LOG(WARNING) << "Bridging vertex " << bridging_vertex->centre()
+                 << " on " << Debug()
+                 << " is not valid against other installed paths";
+    delete bridging_vertex;
+    return nullptr;
+  }
+
   if (!AddVertex(bridging_vertex)) {
     delete bridging_vertex;
     LOG(FATAL) << "I thought we made sure this couldn't happen already.";
@@ -224,11 +253,11 @@ std::string RoutingTrack::Debug() const {
       ss << "unknown direction";
       break;
   }
-  ss << " routing track offset=" << offset_
+  ss << " routing track offset=" << offset_;
      //<< " start=" << start_
      //<< " end=" << end_
-     << " #edges=" << edges_.size() << " #vertices="
-     << vertices_.size();
+     //<< " #edges=" << edges_.size() << " #vertices="
+     //<< vertices_.size();
   return ss.str();
 }
 

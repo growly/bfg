@@ -20,6 +20,7 @@ namespace bfg {
 // spanned vertices in the track.
 
 class RoutingTrackBlockage;
+class RoutingGrid;
 
 // RoutingTracks keep track of the edges, which are physical spans, that could
 // fall on them. When such an edge is used for a route, the RoutingTrack
@@ -74,7 +75,9 @@ class RoutingTrack {
   //          |
   //          created vertex position
   RoutingVertex *CreateNearestVertexAndConnect(
+      const RoutingGrid &grid,
       const geometry::Point &point,
+      const geometry::Layer &target_layer,
       RoutingVertex *target);
 
   void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out);
