@@ -229,11 +229,11 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(985, 105)}));
 
   // nsdm.drawing 93/44
-  layout->SetActiveLayerByName("nsdm.drawing");
+  layout->SetActiveLayerByName("psdm.drawing");
   layout->AddRectangle({{0, 1420}, {1380, 2910}});
 
   // psdm.drawing 94/20
-  layout->SetActiveLayerByName("psdm.drawing");
+  layout->SetActiveLayerByName("nsdm.drawing");
   layout->AddRectangle({{0, -190}, {1380, 1015}});
 
   // diff.drawing 65/20
