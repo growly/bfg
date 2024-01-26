@@ -69,11 +69,6 @@ class RoutingPath {
   }
   bool encap_end_port() const { return encap_end_port_; }
 
-  void set_default_encap_direction(
-      const RoutingTrackDirection &default_encap_direction) {
-    default_encap_direction_ = default_encap_direction;
-  }
-
   void set_net(const std::string &net) { net_ = net; }
   const std::string &net() const { return net_; }
 
@@ -81,14 +76,20 @@ class RoutingPath {
   const std::vector<RoutingEdge*> &edges() const { return edges_; }
 
  private:
-  void BuildVias(
+  static void BuildVias(
       const RoutingGrid &routing_grid,
       geometry::PolyLine *from_poly_line,
       const geometry::Point &at_point,
       const geometry::Layer &to_layer,
       bool encap_last_layer,
+      RoutingTrackDirection encap_direction,
       std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
-      std::vector<std::unique_ptr<AbstractVia>> *vias) const;
+      std::vector<std::unique_ptr<AbstractVia>> *vias);
+
+  void CheckEdgeInPolyLineForIncidenceOfOtherPaths(
+      const RoutingGrid &routing_grid,
+      geometry::PolyLine *last,
+      RoutingEdge *edge) const;
 
   // TODO(aryap): I don't think these port objects are needed? We get most of
   // the info from start/end layer. Possibly if these are provided are they are
@@ -111,7 +112,6 @@ class RoutingPath {
 
   bool encap_start_port_;
   bool encap_end_port_;
-  RoutingTrackDirection default_encap_direction_;
 
   // The ordered list of vertices making up the path. The edges alone, since
   // they are undirected, do not yield this directional information.

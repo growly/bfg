@@ -45,6 +45,9 @@
 // which edges span it so we can check which net it will belong to, and each
 // edge needs to know which vertex it spans.
 //
+// This is the (rectilinear) steiner tree problem:
+//    https://en.wikipedia.org/wiki/Rectilinear_Steiner_tree
+//
 // In the short term it will be enough to give users a way to simply connect a
 // point to an existing net, I think?
 

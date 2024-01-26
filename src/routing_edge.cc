@@ -57,6 +57,14 @@ std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(
   return std::nullopt;
 }
 
+std::vector<RoutingVertex*> RoutingEdge::SpannedVertices() const {
+  if (!track_) {
+    return {first_, second_};
+  }
+
+  return track_->VerticesInSpan(first_->centre(), second_->centre());
+}
+
 void RoutingEdge::set_track(RoutingTrack *track) {
   track_ = track;
   if (track_ != nullptr) set_layer(track_->layer());

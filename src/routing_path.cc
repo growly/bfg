@@ -23,8 +23,7 @@ RoutingPath::RoutingPath(
       start_port_(nullptr),
       end_port_(nullptr),
       encap_start_port_(false), 
-      encap_end_port_(false),
-      default_encap_direction_(RoutingTrackDirection::kTrackHorizontal) {
+      encap_end_port_(false) {
   vertices_.push_back(start);
   RoutingVertex *last = start;
   for (RoutingEdge *edge : edges) {
@@ -53,28 +52,69 @@ BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
   };
 }
 
-}   // namespace
+}    // namespace
+
+void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
+    const RoutingGrid &routing_grid,
+    geometry::PolyLine *last,
+    RoutingEdge *edge) const {
+  // Add bulges where vertices have multiple paths landing:
+  //
+  // TODO(aryap): We might have to differentiate where vertices imply vias,
+  // because they're at the end of edges, which require bulges, and where
+  // they do not!
+  for (RoutingVertex *vertex : edge->SpannedVertices()) {
+    auto &installed_in_paths = vertex->installed_in_paths();
+    LOG(INFO) << "Vertex " << vertex->centre() << " is installed in "
+              << installed_in_paths.size() << " paths";
+    for (auto &entry : installed_in_paths) {
+      // This structure tells us the paths that are using the given vertex
+      // and through which edge.
+      RoutingPath *path = entry.first;
+      if (path == this) {
+        continue;
+      }
+      std::set<RoutingEdge*> &edges  = entry.second;
+      int64_t bulge_width = 0;
+      int64_t bulge_length = 0;
+      for (RoutingEdge *other_edge : edges) {
+        LOG(INFO) << "Path " << path << " via " << *other_edge;
+        if (other_edge->layer() == last->layer()) {
+          continue;
+        }
+        auto bulge = GetBulgeDimensions(routing_grid.GetRoutingViaInfoOrDie(
+            last->layer(), other_edge->layer()));
+        bulge_width = std::max(bulge_width, bulge.width);
+        bulge_length = std::max(bulge_length, bulge.length);
+      }
+      if (bulge_width > 0 && bulge_length > 0) {
+        last->InsertBulge(vertex->centre(), bulge_width, bulge_length);
+      }
+    }
+  }
+}
 
 void RoutingPath::BuildVias(
     const RoutingGrid &routing_grid,
     geometry::PolyLine *from_poly_line,
     const geometry::Point &at_point,
-    const geometry::Layer &to_layer,
+    const geometry::Layer &last_layer,
     bool encap_last_layer,
+    RoutingTrackDirection encap_direction,
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
-    std::vector<std::unique_ptr<AbstractVia>> *vias) const {
+    std::vector<std::unique_ptr<AbstractVia>> *vias) {
   const geometry::Layer &from_layer = from_poly_line->layer();
-  if (from_layer == to_layer) {
+  if (from_layer == last_layer) {
     // Nothing to do.
     return;
   }
-  // We need to find the stack of vias necessary to get to `to_layer` from
+  // We need to find the stack of vias necessary to get to `last_layer` from
   // `from_layer`.
   std::vector<RoutingViaInfo> via_layers =
-      routing_grid.FindViaStack(from_layer, to_layer);
+      routing_grid.FindViaStack(from_layer, last_layer);
 
   std::map<geometry::Layer, BulgeDimensions> metal_pours;
-  LOG(INFO) << "Building via stack from " << from_layer << " to " << to_layer;
+  LOG(INFO) << "Building via stack from " << from_layer << " to " << last_layer;
 
   // Collect the dimensions required for metal pours interfacing with vias on
   // each layer in the stack, increasing the maximum-known to cover the most
@@ -111,7 +151,7 @@ void RoutingPath::BuildVias(
       // Insert a bulge on the from_poly_line.
       from_poly_line->InsertBulge(at_point, bulge.width, bulge.length);
       continue;
-    } else if (!encap_last_layer && layer == to_layer) {
+    } else if (!encap_last_layer && layer == last_layer) {
       // Skip.
       continue;
     }
@@ -120,15 +160,14 @@ void RoutingPath::BuildVias(
     int64_t half_width = bulge.width / 2;
     geometry::Point start;
     geometry::Point end;
-    if (default_encap_direction_ == RoutingTrackDirection::kTrackHorizontal) {
+    if (encap_direction == RoutingTrackDirection::kTrackHorizontal) {
       start = at_point - geometry::Point {half_length, 0};
       end = start + geometry::Point {bulge.length, 0};
-    } else if (default_encap_direction_ ==
-                   RoutingTrackDirection::kTrackVertical) {
+    } else if (encap_direction == RoutingTrackDirection::kTrackVertical) {
       start = at_point - geometry::Point {0, half_length};
       end = start + geometry::Point {0, bulge.length};
     } else {
-      LOG(FATAL) << "Unknown encap_direction: " << default_encap_direction_;
+      LOG(FATAL) << "Unknown encap_direction: " << encap_direction;
     }
 
     geometry::PolyLine *metal_pour = new geometry::PolyLine(
@@ -190,14 +229,16 @@ void RoutingPath::ToPolyLinesAndVias(
 
   std::unique_ptr<geometry::PolyLine> last;
   bool last_poly_line_was_first = true;
-  RoutingEdge *edge = nullptr;
+  RoutingEdge *last_edge = nullptr;
+  RoutingEdge *next_edge = nullptr;
   std::vector<std::unique_ptr<geometry::PolyLine>> generated_lines;
   int64_t bulge_length = 0;
   int64_t bulge_width = 0;
   for (size_t i = 0; i < vertices_.size() - 1; ++i) {
     RoutingVertex *current = vertices_.at(i);
-    edge = edges_.at(i);
-    const geometry::Layer &layer = edge->ExplicitOrTrackLayer();
+    last_edge = next_edge;
+    next_edge = edges_.at(i);
+    const geometry::Layer &layer = next_edge->ExplicitOrTrackLayer();
 
     const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfo(layer);
 
@@ -213,6 +254,7 @@ void RoutingPath::ToPolyLinesAndVias(
       if (last) {
         // This is a change in layer, so we finish the last line and store it.
         last->AddSegment(current->centre(), info.wire_width);
+
         via = new AbstractVia(current->centre(), last->layer(), layer);
         vias->emplace_back(via);
         //last->set_end_via(via);
@@ -229,6 +271,15 @@ void RoutingPath::ToPolyLinesAndVias(
         } else {
           last_poly_line_was_first = false;
         }
+
+        // When switching to a new PolyLine, this is the only place where we
+        // know the final edge in the last PolyLine (last_edge) and the segment
+        // for that corresponding edge has been added:
+        if (last_edge) {
+          CheckEdgeInPolyLineForIncidenceOfOtherPaths(
+              routing_grid, last.get(), last_edge);
+        }
+    
         generated_lines.push_back(std::move(last));
       }
       // Start a new line.
@@ -239,19 +290,40 @@ void RoutingPath::ToPolyLinesAndVias(
       last->set_start(current->centre());
       last->set_min_separation(info.min_separation);
       last->set_net(net_);
-      //last->set_start_via(via);
       continue;
     }
     last->AddSegment(current->centre(), info.wire_width);
+
+    // 
+    if (last_edge) {
+      CheckEdgeInPolyLineForIncidenceOfOtherPaths(
+          routing_grid, last.get(), last_edge);
+    }
   }
+
+  // FIXME: what the fuck is going on here
+  //
+  // ok ok ok 
+  //
+  // previously the edge was only used to determine the layer for the polyline
+  // when it was created.
+  //
+  // now we need to associate each edge with a segment of a polyline; we can
+  // only perform the incidence check after the polyline has had the new segment
+  // appended to it. it might be too gnarly to add this to the loop, but on a
+  // second loop we'd quickly lose the segment, edge association.
 
   if (generated_lines.empty() && !last)
     return;
 
   const RoutingLayerInfo &last_info = routing_grid.GetRoutingLayerInfo(
-      edge->ExplicitOrTrackLayer());
+      next_edge->ExplicitOrTrackLayer());
   last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
   last->InsertBulge(last->start(), bulge_width, bulge_length);
+
+  CheckEdgeInPolyLineForIncidenceOfOtherPaths(
+      routing_grid, last.get(), next_edge);
+
   generated_lines.push_back(std::move(last));
 
   // Connect the start and end of the PolyLine to the appropriate layer with
@@ -265,6 +337,7 @@ void RoutingPath::ToPolyLinesAndVias(
               vertices_.front()->centre(),
               *start_access_layer_,
               encap_start_port_,
+              RoutingTrackDirection::kTrackHorizontal,
               polylines,
               vias);
   }
@@ -278,6 +351,7 @@ void RoutingPath::ToPolyLinesAndVias(
               vertices_.back()->centre(),
               *end_access_layer_,
               encap_end_port_,
+              RoutingTrackDirection::kTrackHorizontal,
               polylines,
               vias);
   }

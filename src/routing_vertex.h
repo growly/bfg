@@ -15,6 +15,7 @@ namespace bfg {
 
 class RoutingEdge;
 class RoutingTrack;
+class RoutingPath;
 
 class RoutingVertex {
  public:
@@ -55,6 +56,13 @@ class RoutingVertex {
   size_t contextual_index() const { return contextual_index_; }
 
   const std::set<RoutingEdge*> edges() const { return edges_; }
+
+  const std::map<RoutingPath*, std::set<RoutingEdge*>> &installed_in_paths() const {
+    return installed_in_paths_;
+  }
+  std::map<RoutingPath*, std::set<RoutingEdge*>> &installed_in_paths() {
+    return installed_in_paths_;
+  }
 
   const geometry::Point &centre() const { return centre_; }
 
@@ -105,6 +113,8 @@ class RoutingVertex {
     RoutingVertex *vertex;
   };
 
+  // TODO(aryap): 
+
   // If the vertex is in use by some route, the name of the net should be here,
   // available_ should be false. in_edge and out_edge should point to the
   // incoming and outgoing edges used for the route through this vertex. If the
@@ -135,10 +145,15 @@ class RoutingVertex {
   std::optional<size_t> grid_position_x_;
   std::optional<size_t> grid_position_y_;
 
+  // The paths in which this vertex participates. This is every spanned vertex
+  // in the path. When multiple paths join, the shared vertex will have mutliple
+  // installed paths here.
+  std::map<RoutingPath*, std::set<RoutingEdge*>> installed_in_paths_;
+
   geometry::Point centre_;
 
-  // TODO(aryap): A vertex can only ever connect 2 layers. A second vertex in
-  // the same position is needed to connect to another layer.
+  // NOTE: A vertex can only ever connect 2 layers. A second vertex in the same
+  // position is needed to connect to another layer.
   std::vector<geometry::Layer> connected_layers_;
 
   std::set<RoutingEdge*> edges_;

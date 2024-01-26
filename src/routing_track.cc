@@ -346,6 +346,23 @@ bool RoutingTrack::EdgeSpansVertex(
   return low <= pos && pos <= high;
 }
 
+std::vector<RoutingVertex*> RoutingTrack::VerticesInSpan(
+    const geometry::Point &one_end,
+    const geometry::Point &other_end) const {
+  auto low_high = ProjectOntoTrack(one_end, other_end);
+
+  // Since we don't have a geometric index for the vertex list, we have to check
+  // every single one, O(n). So we might as well do it this way.
+  std::vector<RoutingVertex*> spanned;
+  for (RoutingVertex *vertex : vertices_) {
+    int64_t position = ProjectOntoTrack(vertex->centre());
+    if (position >= low_high.first && position <= low_high.second) {
+      spanned.push_back(vertex);
+    }
+  }
+  return spanned;
+}
+
 bool RoutingTrack::BlockageBlocks(
     const RoutingTrackBlockage &blockage,
     const geometry::Point &one_end,

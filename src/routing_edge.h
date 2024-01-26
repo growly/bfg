@@ -29,6 +29,8 @@ class RoutingEdge {
 
   void PrepareForRemoval();
 
+  std::vector<RoutingVertex*> SpannedVertices() const;
+
   void set_cost(double cost) { cost_ = cost; }
   double cost() const { return cost_; }
 
@@ -60,8 +62,6 @@ class RoutingEdge {
   // Off-grid edges do not have tracks.
   void set_track(RoutingTrack *track);
   RoutingTrack *track() const { return track_; }
-
-  std::vector<RoutingVertex*> VertexList() const;
 
  private:
   void ApproximateCost();

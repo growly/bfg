@@ -80,6 +80,10 @@ class RoutingTrack {
       const geometry::Layer &target_layer,
       RoutingVertex *target);
 
+  std::vector<RoutingVertex*> VerticesInSpan(
+      const geometry::Point &one_end,
+      const geometry::Point &other_end) const;
+
   void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out);
   void ReportAvailableVertices(std::vector<RoutingVertex*> *vertices_out);
 

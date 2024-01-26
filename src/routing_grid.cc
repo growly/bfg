@@ -928,6 +928,11 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     } else {
       edge->set_in_use_by_net(path->net());
     }
+
+    std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();
+    for (RoutingVertex *vertex : spanned_vertices) {
+      vertex->installed_in_paths()[path].insert(edge);
+    }
   }
 
   LOG_IF(FATAL, path->vertices().size() != path->edges().size() + 1)
@@ -1034,9 +1039,10 @@ RoutingPath *RoutingGrid::ShortestPath(
       },
       false);   // Targets don't have to be 'usable', since we actually expect
                 // them already be used by the target net.
-  if (path) {
-    path->set_encap_end_port(true);
-  }
+  // TODO(aryap): InstallPath obviates this.
+  //if (path) {
+  //  path->set_encap_end_port(true);
+  //}
   return path;
 }
 
@@ -1175,7 +1181,7 @@ RoutingPath *RoutingGrid::ShortestPath(
   std::vector<RoutingVertex*> sorted_targets(
       found_targets.begin(), found_targets.end());
   auto target_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
-    //double cost_to_complete = RoutingVertex *
+    //double cost_to_complete = 
     return cost[a->contextual_index()] < cost[b->contextual_index()];
   };
   std::sort(sorted_targets.begin(), sorted_targets.end(), target_sort_fn);

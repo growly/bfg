@@ -373,17 +373,17 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   RoutingGrid alt_routing_grid(db);
 
   // Set every property the RoutingGrid needs.
-  bfg::RoutingLayerInfo vertical_routing;
-  db.GetRoutingLayerInfo("met1.drawing", &vertical_routing);
-  vertical_routing.direction = bfg::RoutingTrackDirection::kTrackVertical;
-  vertical_routing.area = pre_route_bounds;
-  vertical_routing.offset = 50;
+  bfg::RoutingLayerInfo met1_layer_info;
+  db.GetRoutingLayerInfo("met1.drawing", &met1_layer_info);
+  met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+  met1_layer_info.area = pre_route_bounds;
+  met1_layer_info.offset = 50;
 
-  bfg::RoutingLayerInfo horizontal_routing;
-  db.GetRoutingLayerInfo("met2.drawing", &horizontal_routing);
-  horizontal_routing.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-  horizontal_routing.area = pre_route_bounds;
-  horizontal_routing.offset = 50;
+  bfg::RoutingLayerInfo met2_layer_info;
+  db.GetRoutingLayerInfo("met2.drawing", &met2_layer_info);
+  met2_layer_info.direction = bfg::RoutingTrackDirection::kTrackVertical;
+  met2_layer_info.area = pre_route_bounds;
+  met2_layer_info.offset = 50;
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.
@@ -391,36 +391,36 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   db.GetRoutingViaInfo("met1.drawing", "met2.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
   routing_grid.AddRoutingViaInfo(
-      vertical_routing.layer, horizontal_routing.layer, routing_via_info);
+      met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
   alt_routing_grid.AddRoutingViaInfo(
-      vertical_routing.layer, horizontal_routing.layer, routing_via_info);
+      met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
 
   routing_via_info = {0};
   db.GetRoutingViaInfo("li.drawing", "met1.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
   routing_grid.AddRoutingViaInfo(
-      vertical_routing.layer, db.GetLayer("li.drawing"), routing_via_info);
+      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
   alt_routing_grid.AddRoutingViaInfo(
-      vertical_routing.layer, db.GetLayer("li.drawing"), routing_via_info);
+      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
 
   routing_via_info = {0};
   db.GetRoutingViaInfo("met2.drawing", "met3.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
   routing_grid.AddRoutingViaInfo(
-      db.GetLayer("met3.drawing"), horizontal_routing.layer, routing_via_info);
+      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
   alt_routing_grid.AddRoutingViaInfo(
-      db.GetLayer("met3.drawing"), horizontal_routing.layer, routing_via_info);
+      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
 
-  routing_grid.AddRoutingLayerInfo(vertical_routing);
-  routing_grid.AddRoutingLayerInfo(horizontal_routing);
-  routing_grid.ConnectLayers(vertical_routing.layer, horizontal_routing.layer);
+  routing_grid.AddRoutingLayerInfo(met1_layer_info);
+  routing_grid.AddRoutingLayerInfo(met2_layer_info);
+  routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer);
 
   // Swap direction for the alt routing grid:
-  std::swap(vertical_routing.direction, horizontal_routing.direction);
-  alt_routing_grid.AddRoutingLayerInfo(vertical_routing);
-  alt_routing_grid.AddRoutingLayerInfo(horizontal_routing);
+  //std::swap(met1_layer_info.direction, met2_layer_info.direction);
+  alt_routing_grid.AddRoutingLayerInfo(met1_layer_info);
+  alt_routing_grid.AddRoutingLayerInfo(met2_layer_info);
   alt_routing_grid.ConnectLayers(
-      vertical_routing.layer, horizontal_routing.layer);
+      met1_layer_info.layer, met2_layer_info.layer);
 
   {
     // Add blockages from all existing shapes.
