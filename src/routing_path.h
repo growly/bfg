@@ -5,15 +5,14 @@
 #include <vector>
 #include <memory>
 
+#include "geometry/poly_line.h"
+#include "geometry/port.h"
 #include "routing_vertex.h"
 #include "routing_edge.h"
 
 namespace bfg {
 
 namespace geometry {
-
-class Port;
-class PolyLine;
 
 }  // namespace geometry
 
@@ -23,7 +22,9 @@ class RoutingGrid;
 // Edges are NOT directed.
 class RoutingPath {
  public:
-  RoutingPath(RoutingVertex *start, const std::deque<RoutingEdge*> edges);
+  RoutingPath(
+      RoutingVertex *start,
+      const std::deque<RoutingEdge*> edges);
 
   RoutingVertex *Begin() const {
     return Empty() ? nullptr : vertices_.front();
@@ -58,6 +59,21 @@ class RoutingPath {
     end_access_layer_ = layer;
   }
 
+  void set_encap_start_port(bool encap_start_port) {
+    encap_start_port_ = encap_start_port;
+  }
+  bool encap_start_port() const { return encap_start_port_; }
+
+  void set_encap_end_port(bool encap_end_port) {
+    encap_end_port_ = encap_end_port;
+  }
+  bool encap_end_port() const { return encap_end_port_; }
+
+  void set_default_encap_direction(
+      const RoutingTrackDirection &default_encap_direction) {
+    default_encap_direction_ = default_encap_direction;
+  }
+
   void set_net(const std::string &net) { net_ = net; }
   const std::string &net() const { return net_; }
 
@@ -65,6 +81,15 @@ class RoutingPath {
   const std::vector<RoutingEdge*> &edges() const { return edges_; }
 
  private:
+  void BuildVias(
+      const RoutingGrid &routing_grid,
+      geometry::PolyLine *from_poly_line,
+      const geometry::Point &at_point,
+      const geometry::Layer &to_layer,
+      bool encap_last_layer,
+      std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
+      std::vector<std::unique_ptr<AbstractVia>> *vias) const;
+
   // TODO(aryap): I don't think these port objects are needed? We get most of
   // the info from start/end layer. Possibly if these are provided are they are
   // non-standard we need to provide bigger pours on the layers that connect to
@@ -83,6 +108,10 @@ class RoutingPath {
   // If true, join paths that are too short directly on the preceding/succeeding
   // layer (which must be the same).
   bool abbreviate_paths_;
+
+  bool encap_start_port_;
+  bool encap_end_port_;
+  RoutingTrackDirection default_encap_direction_;
 
   // The ordered list of vertices making up the path. The edges alone, since
   // they are undirected, do not yield this directional information.

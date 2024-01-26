@@ -130,6 +130,9 @@ class RoutingGrid {
 
   bool ValidAgainstInstalledPaths(const RoutingVertex &vertex) const;
 
+  std::vector<RoutingViaInfo> FindViaStack(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
   // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
 
@@ -172,6 +175,11 @@ class RoutingGrid {
     uint64_t cost;
     geometry::Layer layer;
     RoutingVertex *vertex;
+  };
+
+  struct ReachableLayer {
+    geometry::Layer layer;
+    double cost;
   };
 
   struct TemporaryBlockageInfo {
@@ -260,6 +268,11 @@ class RoutingGrid {
   std::optional<geometry::Rectangle> TrackFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
 
+  // Returns the via layer (first entry) and cost (second entry) if a via is
+  // necessary/available to connect the given layers.
+  std::optional<std::pair<geometry::Layer, double>> ViaLayerAndCost(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
 
@@ -318,6 +331,9 @@ class RoutingGrid {
       TemporaryBlockageInfo *blockage_info);
 
   void TearDownTemporaryBlockages(const TemporaryBlockageInfo &blockage_info);
+
+  std::vector<ReachableLayer> LayersReachableByVia(
+      const geometry::Layer &from_layer) const;
 
   // Stores the connection info between the ith (first index) and jth (second
   // index) layers. The "lesser" layer (std::less) should always be used to

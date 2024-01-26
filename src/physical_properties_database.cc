@@ -303,6 +303,9 @@ void PhysicalPropertiesDatabase::GetRoutingViaInfo(
   routing_via_info->overhang_width = std::max(
       via_to_first_layer_rules.via_overhang_wide,
       via_to_second_layer_rules.via_overhang_wide);
+
+  routing_via_info->connected_layers[0] = first_layer;
+  routing_via_info->connected_layers[1] = second_layer;
 }
 
 const std::set<geometry::Layer>

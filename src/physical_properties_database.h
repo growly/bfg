@@ -33,6 +33,11 @@ struct RoutingViaInfo {
   // orthogonal axis respectively.
   int64_t overhang_length;
   int64_t overhang_width;
+
+  // TODO(aryap): Where to put the notion of min area for encapsulating metal
+  // pours?
+
+  std::array<geometry::Layer, 2> connected_layers;
 };
 
 struct LayerInfo {
@@ -137,11 +142,11 @@ class PhysicalPropertiesDatabase {
       const std::string &left, const std::string &right) const;
   std::optional<const geometry::Layer> GetViaLayer(
       const geometry::Layer &left, const geometry::Layer &right) const;
-  void AddViaLayer(const std::string &first_layer,
-                   const std::string &second_layer,
+  void AddViaLayer(const std::string &one_layer,
+                   const std::string &another_layer,
                    const std::string &via_layer);
-  void AddViaLayer(const geometry::Layer &first_layer,
-                   const geometry::Layer &second_layer,
+  void AddViaLayer(const geometry::Layer &one_layer,
+                   const geometry::Layer &another_layer,
                    const geometry::Layer &via_layer);
 
   void AddRules(const std::string &first_layer,

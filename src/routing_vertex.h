@@ -23,6 +23,7 @@ class RoutingVertex {
         available_(true),
         in_edge_(nullptr),
         out_edge_(nullptr),
+        cost_(0.0),
         horizontal_track_(nullptr),
         vertical_track_(nullptr),
         contextual_index_(-1),
@@ -47,7 +48,8 @@ class RoutingVertex {
   }
 
   // This is the cost of connecting through this vertex (i.e. a via).
-  double cost() const { return 1.0; }
+  double cost() const { return cost_; }
+  void set_cost(const double cost) { cost_ = cost; }
 
   void set_contextual_index(size_t index) { contextual_index_ = index; }
   size_t contextual_index() const { return contextual_index_; }
@@ -111,6 +113,9 @@ class RoutingVertex {
   bool available_;
   RoutingEdge *in_edge_;
   RoutingEdge *out_edge_;
+
+  // This is the cost of changing layer at this vertex.
+  double cost_;
 
   std::optional<std::string> connectable_net_;
 

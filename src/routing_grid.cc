@@ -326,14 +326,14 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
   std::vector<CostedVertex> costed_vertices;
   for (const auto &entry : available_vertices_by_layer_) {
     // Is this layer reachable from the target?
-    std::optional<std::reference_wrapper<const RoutingViaInfo>> needs_via;
+    std::optional<std::pair<geometry::Layer, double>> needs_via;
     if (entry.first != layer) {
-      needs_via = GetRoutingViaInfo(entry.first, layer);
+      needs_via = ViaLayerAndCost(entry.first, layer);
       if (!needs_via)
         continue;
       LOG(INFO) << "layer " << physical_db_.DescribeLayer(layer)
                 << " is accessible for routing via layer "
-                << physical_db_.DescribeLayer(needs_via->get().layer);
+                << physical_db_.DescribeLayer(needs_via->first);
     }
 
     for (RoutingVertex *vertex : entry.second) {
@@ -343,7 +343,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
       uint64_t vertex_cost = static_cast<uint64_t>(
           vertex->L1DistanceTo(target_point));
       if (needs_via) {
-        vertex_cost += (10.0 * needs_via->get().cost);
+        vertex_cost += (10.0 * needs_via->second);
       }
       costed_vertices.emplace_back(CostedVertex {
           .cost = vertex_cost,
@@ -541,6 +541,19 @@ std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
   }
   // Gotta dereference the iterator to get to the goods!
   return it->second;
+}
+
+std::optional<std::pair<geometry::Layer, double>> RoutingGrid::ViaLayerAndCost(
+    const geometry::Layer &lhs, const geometry::Layer &rhs) const {
+  if (lhs == rhs)
+    return std::nullopt;
+
+  std::optional<std::reference_wrapper<const RoutingViaInfo>> needs_via =
+      GetRoutingViaInfo(lhs, rhs);
+  if (!needs_via) {
+    return std::nullopt;
+  }
+  return std::make_pair(needs_via->get().layer, needs_via->get().cost);
 }
 
 void RoutingGrid::ConnectLayers(
@@ -996,7 +1009,7 @@ RoutingPath *RoutingGrid::ShortestPath(
     RoutingVertex *begin,
     const std::string &to_net,
     RoutingVertex **discovered_target) {
-  return ShortestPath(
+  RoutingPath *path = ShortestPath(
       begin,
       [&](RoutingVertex *v) { return v->net() == to_net; },
       discovered_target,
@@ -1021,6 +1034,10 @@ RoutingPath *RoutingGrid::ShortestPath(
       },
       false);   // Targets don't have to be 'usable', since we actually expect
                 // them already be used by the target net.
+  if (path) {
+    path->set_encap_end_port(true);
+  }
+  return path;
 }
 
 RoutingPath *RoutingGrid::ShortestPath(
@@ -1158,6 +1175,7 @@ RoutingPath *RoutingGrid::ShortestPath(
   std::vector<RoutingVertex*> sorted_targets(
       found_targets.begin(), found_targets.end());
   auto target_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
+    //double cost_to_complete = RoutingVertex *
     return cost[a->contextual_index()] < cost[b->contextual_index()];
   };
   std::sort(sorted_targets.begin(), sorted_targets.end(), target_sort_fn);
@@ -1505,6 +1523,128 @@ void RoutingGrid::TearDownTemporaryBlockages(
           blockage_info.pin_blockages) {
     ForgetBlockage(blockage);
   }
+}
+
+std::vector<RoutingGrid::ReachableLayer> RoutingGrid::LayersReachableByVia(
+    const geometry::Layer &from_layer) const {
+  std::vector<RoutingGrid::ReachableLayer> reachable;
+
+  // Greater (in the std::less sense) layers are found directly:
+  auto it = via_infos_.find(from_layer);
+  if (it != via_infos_.end()) {
+    for (const auto &inner : it->second) {
+      const geometry::Layer &to = inner.first;
+      double cost = inner.second.cost;
+      reachable.push_back({to, cost});
+    }
+  }
+
+  // Lesser layers are found indirectly:
+  for (const auto &outer : via_infos_) {
+    const geometry::Layer &maybe_reachable = outer.first;
+    if (maybe_reachable == from_layer)
+      continue;
+    for (const auto &inner : outer.second) {
+      if (inner.first == from_layer) {
+        double cost = inner.second.cost;
+        reachable.push_back({maybe_reachable, cost});
+      }
+    }
+  }
+  return reachable;
+}
+
+std::vector<RoutingViaInfo> RoutingGrid::FindViaStack(
+    const geometry::Layer &lhs, const geometry::Layer &rhs) const {
+  std::vector<RoutingViaInfo> via_stack;
+  if (lhs == rhs) {
+    return via_stack;
+  }
+
+  std::pair<const Layer&, const Layer&> ordered_layers =
+      geometry::OrderFirstAndSecondLayers(lhs, rhs);
+  const geometry::Layer &from = ordered_layers.first;
+  const geometry::Layer &to = ordered_layers.second;
+
+  // Dijkstra's shortest path but over the graph of via connectivity.
+
+  // Best-known cost so far to get to the given layer from `from`.
+  std::map<geometry::Layer, double> cost;
+  std::map<geometry::Layer, geometry::Layer> previous;
+  std::set<geometry::Layer> seen;
+
+  // We can't easily enumerate all known layers from our given structures, so we
+  // make the various bookkeeping sparse:
+  auto get_cost = [&](const geometry::Layer &layer) {
+    auto it = cost.find(layer);
+    return it == cost.end() ? std::numeric_limits<double>::max() : it->second;
+  };
+  auto layer_sort_fn = [&](const geometry::Layer &from,
+                           const geometry::Layer &to) {
+    return get_cost(from) > get_cost(to);
+  };
+  std::priority_queue<geometry::Layer,
+                      std::vector<geometry::Layer>,
+                      decltype(layer_sort_fn)> queue(layer_sort_fn);
+
+  cost[from] = 0.0;
+  queue.push(from);
+
+  while (!queue.empty()) {
+    const geometry::Layer &current = queue.top();
+    queue.pop();
+
+    if (current == to) {
+      break;
+    }
+
+    std::vector<ReachableLayer> reachable = LayersReachableByVia(current);
+
+    for (const auto &next : reachable) {
+      const geometry::Layer &next_layer = next.layer;
+      double next_cost = get_cost(current) + next.cost;
+      if (next_cost < get_cost(next_layer)) {
+        cost[next_layer] = next_cost;
+        previous[next_layer] = current;
+
+        if (seen.find(next_layer) == seen.end()) {
+          queue.push(next_layer);
+          seen.insert(next_layer);
+        }
+      }
+    }
+  }
+
+  // Walk backwards to find the 'shortest path'.
+  if (previous.find(to) == previous.end()) {
+    // No path.
+    return via_stack;
+  }
+
+  // [to, intermediary, other_intermediary, from]
+  std::vector<geometry::Layer> layer_stack;
+  auto it = previous.find(to);
+  layer_stack.push_back(to);
+  while (it != previous.end()) {
+    geometry::Layer next_previous = it->second;
+    layer_stack.push_back(next_previous);
+    if (next_previous == from) {
+      break;
+    }
+    it = previous.find(next_previous);
+  }
+  if (layer_stack.back() != from) {
+    // No path found.
+    return via_stack;
+  }
+  
+  for (size_t i = layer_stack.size() - 1; i > 0; --i) {
+    const geometry::Layer &rhs = layer_stack.at(i);
+    const geometry::Layer &lhs = layer_stack.at(i - 1);
+    const RoutingViaInfo &via_info = GetRoutingViaInfoOrDie(lhs, rhs);
+    via_stack.push_back(via_info);
+  }
+  return via_stack;
 }
 
 PolyLineCell *RoutingGrid::CreatePolyLineCell() const {

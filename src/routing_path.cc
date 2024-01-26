@@ -5,11 +5,14 @@
 #include <vector>
 #include <memory>
 
+#include "geometry/poly_line.h"
+#include "geometry/port.h"
 #include "abstract_via.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_vertex.h"
 #include "routing_track.h"
+#include "physical_properties_database.h"
 
 namespace bfg {
 
@@ -18,7 +21,10 @@ RoutingPath::RoutingPath(
     const std::deque<RoutingEdge*> edges)
     : edges_(edges.begin(), edges.end()),
       start_port_(nullptr),
-      end_port_(nullptr) {
+      end_port_(nullptr),
+      encap_start_port_(false), 
+      encap_end_port_(false),
+      default_encap_direction_(RoutingTrackDirection::kTrackHorizontal) {
   vertices_.push_back(start);
   RoutingVertex *last = start;
   for (RoutingEdge *edge : edges) {
@@ -38,12 +44,7 @@ struct BulgeDimensions {
 
 // TODO(aryap): There are different rules for overhanging from the layer above
 // and below.
-BulgeDimensions GetBulgeWidthAndLengthForViaBetweenLayers(
-    const RoutingGrid &routing_grid,
-    const geometry::Layer &first_layer,
-    const geometry::Layer &second_layer) {
-  const RoutingViaInfo &routing_via_info =
-      routing_grid.GetRoutingViaInfoOrDie(first_layer, second_layer);
+BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
   int64_t via_width = std::max(
       routing_via_info.width, routing_via_info.height);
   return BulgeDimensions {
@@ -54,9 +55,99 @@ BulgeDimensions GetBulgeWidthAndLengthForViaBetweenLayers(
 
 }   // namespace
 
+void RoutingPath::BuildVias(
+    const RoutingGrid &routing_grid,
+    geometry::PolyLine *from_poly_line,
+    const geometry::Point &at_point,
+    const geometry::Layer &to_layer,
+    bool encap_last_layer,
+    std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
+    std::vector<std::unique_ptr<AbstractVia>> *vias) const {
+  const geometry::Layer &from_layer = from_poly_line->layer();
+  if (from_layer == to_layer) {
+    // Nothing to do.
+    return;
+  }
+  // We need to find the stack of vias necessary to get to `to_layer` from
+  // `from_layer`.
+  std::vector<RoutingViaInfo> via_layers =
+      routing_grid.FindViaStack(from_layer, to_layer);
+
+  std::map<geometry::Layer, BulgeDimensions> metal_pours;
+  LOG(INFO) << "Building via stack from " << from_layer << " to " << to_layer;
+
+  // Collect the dimensions required for metal pours interfacing with vias on
+  // each layer in the stack, increasing the maximum-known to cover the most
+  // restrictive case.
+  for (const RoutingViaInfo &info : via_layers) {
+    AbstractVia *via = new AbstractVia(
+        at_point, info.connected_layers[0], info.connected_layers[1]);
+    vias->emplace_back(via);
+    LOG(INFO) << "Inserting via between layers ("
+              << info.connected_layers[0] << ", "
+              << info.connected_layers[1] << ") at "
+              << at_point;
+
+    const BulgeDimensions bulge = GetBulgeDimensions(info);
+
+    const geometry::Layer &via_layer = info.layer;
+    for (const geometry::Layer &layer : info.connected_layers) {
+      // Otherwise, just insert a big-enough metal pour on the connected layer.
+      auto it = metal_pours.find(layer);
+      if (it == metal_pours.end()) {
+        metal_pours[layer] = bulge;
+      } else {
+        it->second.width = std::max(it->second.width, bulge.width);
+        it->second.length = std::max(it->second.length, bulge.length);
+      }
+    }
+  }
+
+  for (const auto &entry : metal_pours) {
+    const geometry::Layer &layer = entry.first;
+    const BulgeDimensions &bulge = entry.second;
+
+    if (layer == from_layer) {
+      // Insert a bulge on the from_poly_line.
+      from_poly_line->InsertBulge(at_point, bulge.width, bulge.length);
+      continue;
+    } else if (!encap_last_layer && layer == to_layer) {
+      // Skip.
+      continue;
+    }
+
+    int64_t half_length = bulge.length / 2;
+    int64_t half_width = bulge.width / 2;
+    geometry::Point start;
+    geometry::Point end;
+    if (default_encap_direction_ == RoutingTrackDirection::kTrackHorizontal) {
+      start = at_point - geometry::Point {half_length, 0};
+      end = start + geometry::Point {bulge.length, 0};
+    } else if (default_encap_direction_ ==
+                   RoutingTrackDirection::kTrackVertical) {
+      start = at_point - geometry::Point {0, half_length};
+      end = start + geometry::Point {0, bulge.length};
+    } else {
+      LOG(FATAL) << "Unknown encap_direction: " << default_encap_direction_;
+    }
+
+    geometry::PolyLine *metal_pour = new geometry::PolyLine(
+        start,
+        {geometry::LineSegment {end, static_cast<uint64_t>(bulge.width)}});
+    metal_pour->set_layer(layer);
+    polylines->emplace_back(metal_pour);
+
+    LOG(INFO) << "Inserting PolyLine for metal pour ("
+              << bulge.width << ", " << bulge.length << ") on layer " << layer
+              << " at " << at_point;
+  }
+
+  return;
+}
+
 void RoutingPath::ToPolyLinesAndVias(
     const RoutingGrid &routing_grid,
-    std::vector<std::unique_ptr<PolyLine>> *polylines,
+    std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
     std::vector<std::unique_ptr<AbstractVia>> *vias) const {
   if (Empty())
     return;
@@ -97,10 +188,10 @@ void RoutingPath::ToPolyLinesAndVias(
     }
   }
 
-  std::unique_ptr<PolyLine> last;
+  std::unique_ptr<geometry::PolyLine> last;
   bool last_poly_line_was_first = true;
   RoutingEdge *edge = nullptr;
-  std::vector<std::unique_ptr<PolyLine>> generated_lines;
+  std::vector<std::unique_ptr<geometry::PolyLine>> generated_lines;
   int64_t bulge_length = 0;
   int64_t bulge_width = 0;
   for (size_t i = 0; i < vertices_.size() - 1; ++i) {
@@ -125,8 +216,8 @@ void RoutingPath::ToPolyLinesAndVias(
         via = new AbstractVia(current->centre(), last->layer(), layer);
         vias->emplace_back(via);
         //last->set_end_via(via);
-        auto bulge = GetBulgeWidthAndLengthForViaBetweenLayers(
-            routing_grid, last->layer(), layer);
+        auto bulge = GetBulgeDimensions(
+            routing_grid.GetRoutingViaInfoOrDie(last->layer(), layer));
         bulge_width = bulge.width;
         bulge_length = bulge.length;
         last->InsertBulge(current->centre(), bulge_width, bulge_length);
@@ -141,7 +232,7 @@ void RoutingPath::ToPolyLinesAndVias(
         generated_lines.push_back(std::move(last));
       }
       // Start a new line.
-      last.reset(new PolyLine());
+      last.reset(new geometry::PolyLine());
       last->set_overhang_start(0);
       last->set_overhang_end(0);
       last->set_layer(layer);
@@ -165,31 +256,30 @@ void RoutingPath::ToPolyLinesAndVias(
 
   // Connect the start and end of the PolyLine to the appropriate layer with
   // appropriate encapsulation.
-  PolyLine *front = generated_lines.front().get();
-  const geometry::Point &start_point = front->start();
+  geometry::PolyLine *front = generated_lines.front().get();
+
   if (start_access_layer_ &&
       front->layer() != *start_access_layer_) {
-    AbstractVia *via = new AbstractVia(
-        start_point, front->layer(), *start_access_layer_);
-    vias->emplace_back(via);
-
-    auto bulge = GetBulgeWidthAndLengthForViaBetweenLayers(
-        routing_grid, front->layer(), *start_access_layer_);
-    front->InsertBulge(start_point, bulge.width, bulge.length);
+    BuildVias(routing_grid,
+              front,
+              vertices_.front()->centre(),
+              *start_access_layer_,
+              encap_start_port_,
+              polylines,
+              vias);
   }
   front->set_start_port(start_port_);
 
-  PolyLine *back = generated_lines.back().get();
-  const geometry::Point &end_point = back->End();
+  geometry::PolyLine *back = generated_lines.back().get();
   if (end_access_layer_ &&
       back->layer() != *end_access_layer_) {
-    AbstractVia *via = new AbstractVia(
-        end_point, back->layer(), *end_access_layer_);
-    vias->emplace_back(via);
-
-    auto bulge = GetBulgeWidthAndLengthForViaBetweenLayers(
-        routing_grid, back->layer(), *end_access_layer_);
-    back->InsertBulge(end_point, bulge.width, bulge.length);
+    BuildVias(routing_grid,
+              back,
+              vertices_.back()->centre(),
+              *end_access_layer_,
+              encap_end_port_,
+              polylines,
+              vias);
   }
   back->set_end_port(end_port_);
 
