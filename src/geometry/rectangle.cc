@@ -18,15 +18,13 @@ double Rectangle::ClosestDistanceBetween(
   // Don't overthink it. If the two rectangles do not overlap, there are only a
   // few places they can be relative to one another:
   //
-  //
-  //
   //                |                |
   //      top       |                |     top
   //      left      |                |     right
   //                |                |
   // ---------------+----------------+----------------
   //                |                |
-  //                |      lhs       |     right
+  //                |     'lhs'      |     right
   //                |   rectangle    |
   //                |                |
   // ---------------+----------------+----------------
@@ -47,13 +45,13 @@ double Rectangle::ClosestDistanceBetween(
   } else if (top && left) {
     return lhs.UpperLeft().L2DistanceTo(rhs.LowerRight());
   } else if (right) {
-    return rhs.lower_left().x() - lhs.upper_right().x();
+    return std::abs(rhs.lower_left().x() - lhs.upper_right().x());
   } else if (bottom) {
-    return lhs.lower_left().y() - rhs.upper_right().y();
+    return std::abs(lhs.lower_left().y() - rhs.upper_right().y());
   } else if (left) {
-    return lhs.lower_left().x() - rhs.upper_right().x();
+    return std::abs(lhs.lower_left().x() - rhs.upper_right().x());
   } else if (top) {
-    return rhs.lower_left().y() - rhs.upper_right().y();
+    return std::abs(rhs.lower_left().y() - rhs.upper_right().y());
   } else {
     LOG(FATAL) << "If " << lhs << " and " << rhs << " don't overlap, "
                << "how did we get here?";
