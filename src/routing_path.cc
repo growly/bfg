@@ -67,11 +67,16 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     auto &installed_in_paths = vertex->installed_in_paths();
     LOG(INFO) << "Vertex " << vertex->centre() << " is installed in "
               << installed_in_paths.size() << " paths";
+    std::optional<std::string> same_net = net_;
     for (auto &entry : installed_in_paths) {
       // This structure tells us the paths that are using the given vertex
       // and through which edge.
       RoutingPath *path = entry.first;
       if (path == this) {
+        continue;
+      }
+      if (path->net() != same_net.value()) {
+        // Ignore other paths crossing this vertex that aren't on the same net as us.
         continue;
       }
       std::set<RoutingEdge*> &edges  = entry.second;
