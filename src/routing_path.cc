@@ -65,8 +65,8 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   // they do not!
   for (RoutingVertex *vertex : edge->SpannedVertices()) {
     auto &installed_in_paths = vertex->installed_in_paths();
-    LOG(INFO) << "Vertex " << vertex->centre() << " is installed in "
-              << installed_in_paths.size() << " paths";
+    VLOG(12) << "Vertex " << vertex->centre() << " is installed in "
+             << installed_in_paths.size() << " paths";
     std::optional<std::string> same_net = net_;
     for (auto &entry : installed_in_paths) {
       // This structure tells us the paths that are using the given vertex
@@ -305,18 +305,6 @@ void RoutingPath::ToPolyLinesAndVias(
           routing_grid, last.get(), last_edge);
     }
   }
-
-  // FIXME: what the fuck is going on here
-  //
-  // ok ok ok 
-  //
-  // previously the edge was only used to determine the layer for the polyline
-  // when it was created.
-  //
-  // now we need to associate each edge with a segment of a polyline; we can
-  // only perform the incidence check after the polyline has had the new segment
-  // appended to it. it might be too gnarly to add this to the loop, but on a
-  // second loop we'd quickly lose the segment, edge association.
 
   if (generated_lines.empty() && !last)
     return;

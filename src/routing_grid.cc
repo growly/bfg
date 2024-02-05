@@ -219,16 +219,16 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
         int64_t distance = static_cast<int64_t>(
             std::ceil(via_encap->ClosestDistanceTo(*other_via_encap)));
         if (distance < min_separation) {
-          LOG(INFO) << "Candidate vertex " << candidate.centre()
-                    << " is too close to " << other->centre() << " on layer "
-                    << candidate_layer << " (distance " << distance <<
-                    " < min separation " << min_separation << ")";
+          VLOG(12) << "Candidate vertex " << candidate.centre()
+                   << " is too close to " << other->centre() << " on layer "
+                   << candidate_layer << " (distance " << distance <<
+                   " < min separation " << min_separation << ")";
           return false;
         } else if (VLOG_IS_ON(16)) {
-          LOG(INFO) << "Candidate vertex " << candidate.centre()
-                    << " is ok with " << other->centre() << " on layer "
-                    << candidate_layer << " (distance " << distance <<
-                    " >= min separation " << min_separation << ")";
+          VLOG(12) << "Candidate vertex " << candidate.centre()
+                   << " is ok with " << other->centre() << " on layer "
+                   << candidate_layer << " (distance " << distance <<
+                   " >= min separation " << min_separation << ")";
         }
       }
     }
@@ -1408,6 +1408,7 @@ bool RoutingGrid::VerticesAreTooCloseForVias(
   if (shared_layers.empty())
     return false;
 
+  // Shortcuts for on-grid vertices:
   if (lhs.horizontal_track() == rhs.horizontal_track() &&
       lhs.grid_position_x() &&
       rhs.grid_position_x()) {
@@ -1415,15 +1416,26 @@ bool RoutingGrid::VerticesAreTooCloseForVias(
     size_t diff = std::max(*lhs.grid_position_x(), *rhs.grid_position_x()) -
         std::min(*lhs.grid_position_x(), *rhs.grid_position_x());
     return diff == 1U;
-  } else if (lhs.vertical_track() == rhs.vertical_track()) {
+    // (This is the same as:
+    //  int64_t diff = std::abs(static_cast<int64_t>(*lhs.grid_position_x()) -
+    //      static_cast<int64_t>(*rhs.grid_position_x()));
+    //  return diff == 1;
+    // )
+  } else if (lhs.vertical_track() == rhs.vertical_track() &&
+             lhs.grid_position_y() &&
+             rhs.grid_position_y()) {
     // They might be vertical neighbours:
     size_t diff = std::max(*lhs.grid_position_y(), *rhs.grid_position_y()) -
         std::min(*lhs.grid_position_y(), *rhs.grid_position_y());
     return diff == 1U;
   }
 
-  // Just whether check that the geometric distance can accommodate vias on
-  // either of the adjoining layers:
+  // Check that the distance between the two vertices can accommodate vias on
+  // each of the shared vias. To do this we have to get the rules the vias
+  // placeable on each `shared_layer`, which means getting the rules for via
+  // encapsulation and such. That means means we need to get a handle to all
+  // vias between `shared_layer` and every connectable layer, then figure out
+  // if the rules for that via would cause a violation.
   int64_t separation = static_cast<int64_t>(
       lhs.centre().L2DistanceTo(rhs.centre()));
   for (const geometry::Layer &source_layer : shared_layers) {
@@ -1469,7 +1481,7 @@ bool RoutingGrid::VerticesAreTooCloseForVias(
               << ", but there are only " << separation << " units; therefore "
               << lhs.centre() << " and " << rhs.centre()
               << " are too close together.";
-          return false;
+          return true;
         }
       }
     }
