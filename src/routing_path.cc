@@ -214,7 +214,7 @@ void RoutingPath::ToPolyLinesAndVias(
   //   layer N  |
   // ---+       |
   //    +-------+
-  for (size_t i = 2; i < vertices_.size(); ++i) {
+  for (size_t i = 2; i < vertices_.size() - 1; ++i) {
     // Edge i connects vertex i and (i + 1).
     RoutingEdge *last_edge = edges_.at(i - 2);
     RoutingEdge *current_edge = edges_.at(i - 1);
