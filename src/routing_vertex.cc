@@ -37,6 +37,14 @@ std::set<RoutingVertex*> RoutingVertex::GetNeighbours(
   return neighbours;
 }
 
+std::set<RoutingVertex*> RoutingVertex::GetNeighbours() const {
+  std::set<RoutingVertex*> neighbours;
+  for (const auto &neighbour : neighbours_) {
+    neighbours.insert(neighbour.vertex);
+  }
+  return neighbours;
+}
+
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
   os << vertex.centre();
   if (!vertex.available()) {

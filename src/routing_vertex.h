@@ -92,6 +92,9 @@ class RoutingVertex {
   void AddNeighbour(const geometry::Compass &position, RoutingVertex *vertex);
   std::set<RoutingVertex*> GetNeighbours(
       const geometry::Compass &position) const;
+  std::set<RoutingVertex*> GetNeighbours() const;
+
+  bool ChangesEdge() const { return in_edge_ != out_edge_; }
 
   const std::optional<size_t> &grid_position_x() const {
     return grid_position_x_;

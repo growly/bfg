@@ -972,8 +972,7 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
         Compass::LOWER_RIGHT,
       };
       for (const auto &position : kDisabledNeighbours) {
-        std::set<RoutingVertex*> neighbours =
-            vertex->GetNeighbours(position);
+        std::set<RoutingVertex*> neighbours = vertex->GetNeighbours(position);
         for (RoutingVertex *neighbour : neighbours) {
           if (neighbour->available())
             neighbour->set_available(false);
@@ -1017,6 +1016,19 @@ RoutingPath *RoutingGrid::ShortestPath(
   RoutingPath *path = ShortestPath(
       begin,
       [&](RoutingVertex *v) {
+        // Check that putting a via at this position doesn't conflict with vias
+        // for other nets (since the encapsulating metal layers would
+        // conflict):
+        std::set<RoutingVertex*> neighbours = v->GetNeighbours();
+        // ChangesEdge is a proxy for a vertex that might become a via.
+        // NOTE: It's not the *same* as a vertex that might become a via, but
+        // that isn't decided til RoutingPath has to export geometry :/
+        for (RoutingVertex *neighbour : neighbours) {
+          if (!neighbour->available() &&
+              neighbour->ChangesEdge() &&
+              neighbour->net() != to_net)
+            return false;
+        }
         return v->net() == to_net;
       },
       discovered_target,
@@ -1545,9 +1557,9 @@ void RoutingGrid::TearDownTemporaryBlockages(
   }
 }
 
-std::vector<RoutingGrid::ReachableLayer> RoutingGrid::LayersReachableByVia(
+std::vector<RoutingGrid::CostedLayer> RoutingGrid::LayersReachableByVia(
     const geometry::Layer &from_layer) const {
-  std::vector<RoutingGrid::ReachableLayer> reachable;
+  std::vector<RoutingGrid::CostedLayer> reachable;
 
   // Greater (in the std::less sense) layers are found directly:
   auto it = via_infos_.find(from_layer);
@@ -1618,7 +1630,7 @@ std::vector<RoutingViaInfo> RoutingGrid::FindViaStack(
       break;
     }
 
-    std::vector<ReachableLayer> reachable = LayersReachableByVia(current);
+    std::vector<CostedLayer> reachable = LayersReachableByVia(current);
 
     for (const auto &next : reachable) {
       const geometry::Layer &next_layer = next.layer;

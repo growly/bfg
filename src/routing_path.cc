@@ -93,7 +93,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
         bulge_length = std::max(bulge_length, bulge.length);
       }
       if (bulge_width > 0 && bulge_length > 0) {
-        last->InsertBulge(vertex->centre(), bulge_width, bulge_length);
+        last->InsertBulgeLater(vertex->centre(), bulge_width, bulge_length);
       }
     }
   }
@@ -267,12 +267,12 @@ void RoutingPath::ToPolyLinesAndVias(
             routing_grid.GetRoutingViaInfoOrDie(last->layer(), layer));
         bulge_width = bulge.width;
         bulge_length = bulge.length;
-        last->InsertBulge(current->centre(), bulge_width, bulge_length);
+        last->InsertBulgeLater(current->centre(), bulge_width, bulge_length);
 
         // Insert the starting bulge on the last poly line unless it was the
         // first one:
         if (!last_poly_line_was_first) {
-          last->InsertBulge(last->start(), bulge_width, bulge_length);
+          last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
         } else {
           last_poly_line_was_first = false;
         }
@@ -299,7 +299,6 @@ void RoutingPath::ToPolyLinesAndVias(
     }
     last->AddSegment(current->centre(), info.wire_width);
 
-    // 
     if (last_edge) {
       CheckEdgeInPolyLineForIncidenceOfOtherPaths(
           routing_grid, last.get(), last_edge);
@@ -312,12 +311,17 @@ void RoutingPath::ToPolyLinesAndVias(
   const RoutingLayerInfo &last_info = routing_grid.GetRoutingLayerInfo(
       next_edge->ExplicitOrTrackLayer());
   last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
-  last->InsertBulge(last->start(), bulge_width, bulge_length);
+  last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
 
   CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       routing_grid, last.get(), next_edge);
 
   generated_lines.push_back(std::move(last));
+
+  // Apply all deferred bulges now that spine of each line should have been created.
+  for (auto &line : generated_lines) {
+    line->ApplyDeferredBulges();
+  }
 
   // Connect the start and end of the PolyLine to the appropriate layer with
   // appropriate encapsulation.

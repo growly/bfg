@@ -414,6 +414,19 @@ void PolyLine::InsertBulge(
   EnforceInvariants();
 }
 
+void PolyLine::InsertBulgeLater(
+    const Point point, uint64_t coaxial_width, uint64_t coaxial_length) {
+  deferred_bulges_.push_back(
+      DeferredBulge {point, coaxial_width, coaxial_length});
+}
+
+void PolyLine::ApplyDeferredBulges() {
+  for (const DeferredBulge &deferred : deferred_bulges_) {
+    InsertBulge(deferred.position, deferred.width, deferred.length);
+  }
+  deferred_bulges_.clear();
+}
+
 void PolyLine::SetWidth(const uint64_t width) {
   for (LineSegment &segment : segments_) {
     segment.width = width;

@@ -136,7 +136,6 @@ class RoutingGrid {
   std::vector<RoutingViaInfo> FindViaStack(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
-  // TODO(aryap): This might be a useful optimisation.
   void RemoveUnavailableVertices();
 
   void ExportAvailableVerticesAsSquares(
@@ -180,7 +179,7 @@ class RoutingGrid {
     RoutingVertex *vertex;
   };
 
-  struct ReachableLayer {
+  struct CostedLayer {
     geometry::Layer layer;
     double cost;
   };
@@ -335,7 +334,7 @@ class RoutingGrid {
 
   void TearDownTemporaryBlockages(const TemporaryBlockageInfo &blockage_info);
 
-  std::vector<ReachableLayer> LayersReachableByVia(
+  std::vector<CostedLayer> LayersReachableByVia(
       const geometry::Layer &from_layer) const;
 
   // Stores the connection info between the ith (first index) and jth (second

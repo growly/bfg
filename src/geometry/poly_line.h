@@ -78,6 +78,11 @@ class PolyLine : public Shape {
   // value half way.
   void InsertBulge(
       const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+  // As above, but will not be applied until ApplyDeferredBulges() call.
+  void InsertBulgeLater(
+      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+
+  void ApplyDeferredBulges();
 
   void SetWidth(const uint64_t width);
   const std::vector<Point> Vertices() const;
@@ -111,6 +116,12 @@ class PolyLine : public Shape {
   const std::vector<LineSegment> &segments() const { return segments_; }
 
  private:
+  struct DeferredBulge {
+    Point position;
+    uint64_t width;
+    uint64_t length;
+  };
+
   void EnforceInvariants();
   void InsertForwardBulgePoint(
       const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
@@ -146,6 +157,8 @@ class PolyLine : public Shape {
   const Port *end_port_;
 
   std::vector<LineSegment> segments_;
+
+  std::vector<DeferredBulge> deferred_bulges_;
 };
 
 }  // namespace geometry
