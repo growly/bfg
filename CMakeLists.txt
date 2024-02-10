@@ -53,6 +53,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/routing_track.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track_blockage.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector.cc
   ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide.cc
 )

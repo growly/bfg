@@ -80,6 +80,8 @@ class RoutingTrack {
       const geometry::Layer &target_layer,
       RoutingVertex *target);
 
+  // Returned vertices will be in order of their position along the track, but
+  // the direction is not guaranteed.
   std::vector<RoutingVertex*> VerticesInSpan(
       const geometry::Point &one_end,
       const geometry::Point &other_end) const;

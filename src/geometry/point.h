@@ -1,8 +1,10 @@
 #ifndef GEOMETRY_POINT_H_
 #define GEOMETRY_POINT_H_
 
-#include <ostream>
 #include <cstdint>
+#include <ostream>
+#include <sstream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -46,6 +48,8 @@ class Point : public AbstractShape, public Manipulable {
 
   void Rotate(double theta_radians);
   void Rotate(int32_t degrees_ccw) override;
+
+  std::string Describe() const;
 
   int64_t L2SquaredDistanceTo(const Point &other) const;
   double L2DistanceTo(const Point &other) const;

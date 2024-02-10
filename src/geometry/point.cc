@@ -1,5 +1,7 @@
 #include <cmath>
 #include <ostream>
+#include <sstream>
+#include <string>
 
 #include <glog/logging.h>
 
@@ -78,6 +80,12 @@ double Point::L2DistanceTo(const Point &other) const {
   return std::sqrt(std::pow(dx, 2.0) + std::pow(dy, 2.0));
 }
 
+std::string Point::Describe() const {
+  std::stringstream ss;
+  ss << "(" << x_ << ", " << y_ << ")";
+  return ss.str();
+}
+
 Point operator*(const Point &lhs, double &rhs) {
   Point copy(lhs);
   copy.Scale(rhs);
@@ -118,7 +126,7 @@ bool operator!=(const Point &lhs, const Point &rhs) {
 }  // namespace geometry
 
 std::ostream &operator<<(std::ostream &os, const geometry::Point &point) {
-  os << "(" << point.x() << ", " << point.y() << ")";
+  os << point.Describe();
   return os;
 }
 

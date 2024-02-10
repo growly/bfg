@@ -1,5 +1,6 @@
 #include "routing_track.h"
 
+#include <queue>
 #include <set>
 #include <vector>
 
@@ -353,14 +354,27 @@ std::vector<RoutingVertex*> RoutingTrack::VerticesInSpan(
 
   // Since we don't have a geometric index for the vertex list, we have to check
   // every single one, O(n). So we might as well do it this way.
-  std::vector<RoutingVertex*> spanned;
+  auto vertex_sort_fn = [&](RoutingVertex *a, RoutingVertex *b) {
+    int64_t projection_a = ProjectOntoTrack(a->centre());
+    int64_t projection_b = ProjectOntoTrack(b->centre());
+    return projection_a < projection_b;
+  };
+  std::priority_queue<RoutingVertex*,
+                      std::vector<RoutingVertex*>,
+                      decltype(vertex_sort_fn)> spanned(vertex_sort_fn);
   for (RoutingVertex *vertex : vertices_) {
     int64_t position = ProjectOntoTrack(vertex->centre());
     if (position >= low_high.first && position <= low_high.second) {
-      spanned.push_back(vertex);
+      spanned.push(vertex);
     }
   }
-  return spanned;
+  // TODO(aryap): With internet: is there a nicer API for this?
+  std::vector<RoutingVertex*> spanned_as_vector;
+  while (!spanned.empty()) {
+    spanned_as_vector.push_back(spanned.top());
+    spanned.pop();
+  }
+  return spanned_as_vector;
 }
 
 bool RoutingTrack::BlockageBlocks(

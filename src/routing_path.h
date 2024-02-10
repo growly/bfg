@@ -12,10 +12,6 @@
 
 namespace bfg {
 
-namespace geometry {
-
-}  // namespace geometry
-
 class AbstractVia;
 class RoutingGrid;
 

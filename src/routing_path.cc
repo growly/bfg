@@ -5,12 +5,15 @@
 #include <vector>
 #include <memory>
 
+#include <absl/strings/str_join.h>
+
 #include "geometry/poly_line.h"
 #include "geometry/port.h"
 #include "abstract_via.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_vertex.h"
+#include "routing_vertex_collector.h"
 #include "routing_track.h"
 #include "physical_properties_database.h"
 
@@ -56,21 +59,50 @@ BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
 
 void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     const RoutingGrid &routing_grid,
-    geometry::PolyLine *last,
+    geometry::PolyLine *poly_line,
     RoutingEdge *edge) const {
-  // Add bulges where vertices have multiple paths landing:
+  // Add bulges where vertices are crossed by multiple paths on the same net.
   //
-  // TODO(aryap): We might have to differentiate where vertices imply vias,
-  // because they're at the end of edges, which require bulges, and where
-  // they do not!
+  // NOTE(aryap): We do not differentiate where vertices imply vias, because
+  // they're at the end of edges, which require bulges, and where they do not.
+  // That is, the following routine will insert bulges anytime vertices in a
+  // path are crossed by vertices in another path on the same net. We might not
+  // *want* to add via in such those cases.
+  //
+  // Inserting bulges too close to each other should result in final geometry
+  // that avoids notches, or gaps between metal shapes that are larger than the
+  // minimum separation allowed. This is taken care of by PolyLine. A separate
+  // problem is created on the layers above or below that PolyLine, where the
+  // metal typically runs orthogonally. We have to insert shapes to connect the
+  // bulges on these layers or cover them with another PolyLine:
+  //
+  //      | A |
+  //      |   |
+  //    +-------+
+  //    |       +---
+  //    |     layer N, path B
+  //    |       +---
+  //    +-------+
+  //      |   |     <- Avoiding the notch on layer N +/- 1 is taken care of by
+  //    +-------+      PolyLine, but we have to do something about layer N.
+  // ---+       |
+  //   layer N, path A
+  // ---+       |
+  //    +-------+
+  //
+  // The list of sets of vertices which are too close together. Well, it would
+  // be a set, but we need to keep the order of the vertices to save us some
+  // computation later.
+  std::map<geometry::Layer, RoutingVertexCollector> vias_too_close_together_per_layer;
+
   for (RoutingVertex *vertex : edge->SpannedVertices()) {
     auto &installed_in_paths = vertex->installed_in_paths();
     VLOG(12) << "Vertex " << vertex->centre() << " is installed in "
              << installed_in_paths.size() << " paths";
     std::optional<std::string> same_net = net_;
     for (auto &entry : installed_in_paths) {
-      // This structure tells us the paths that are using the given vertex
-      // and through which edge.
+      // This structure tells us the paths that are using the given vertex and
+      // through which edge.
       RoutingPath *path = entry.first;
       if (path == this) {
         continue;
@@ -84,19 +116,33 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       int64_t bulge_length = 0;
       for (RoutingEdge *other_edge : edges) {
         LOG(INFO) << "Path " << path << " via " << *other_edge;
-        if (other_edge->layer() == last->layer()) {
+        if (other_edge->layer() == poly_line->layer()) {
           continue;
         }
         auto bulge = GetBulgeDimensions(routing_grid.GetRoutingViaInfoOrDie(
-            last->layer(), other_edge->layer()));
+            poly_line->layer(), other_edge->layer()));
         bulge_width = std::max(bulge_width, bulge.width);
         bulge_length = std::max(bulge_length, bulge.length);
       }
       if (bulge_width > 0 && bulge_length > 0) {
-        last->InsertBulgeLater(vertex->centre(), bulge_width, bulge_length);
+        poly_line->InsertBulgeLater(vertex->centre(), bulge_width, bulge_length);
       }
     }
   }
+
+  //for (const auto &entry : vias_too_close_together_per_layer) {
+  //  const geometry::Layer &layer = entry.first;
+  //  const auto &collections = entry.second;
+  //  for (const auto &list : collections) {
+  //    std::vector<std::string> vertex_centres;
+  //    for (RoutingVertex *const vertex : list) {
+  //      vertex_centres.push_back(vertex->centre().Describe());
+  //    }
+  //    LOG(INFO) << "layer " << layer
+  //              << " has off-poly-line vias too close together: {"
+  //              << absl::StrJoin(vertex_centres, ", ") << "}";
+  //  }
+  //}
 }
 
 void RoutingPath::BuildVias(
