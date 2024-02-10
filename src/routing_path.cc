@@ -129,20 +129,6 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       }
     }
   }
-
-  //for (const auto &entry : vias_too_close_together_per_layer) {
-  //  const geometry::Layer &layer = entry.first;
-  //  const auto &collections = entry.second;
-  //  for (const auto &list : collections) {
-  //    std::vector<std::string> vertex_centres;
-  //    for (RoutingVertex *const vertex : list) {
-  //      vertex_centres.push_back(vertex->centre().Describe());
-  //    }
-  //    LOG(INFO) << "layer " << layer
-  //              << " has off-poly-line vias too close together: {"
-  //              << absl::StrJoin(vertex_centres, ", ") << "}";
-  //  }
-  //}
 }
 
 void RoutingPath::BuildVias(

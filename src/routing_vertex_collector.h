@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 
+#include "geometry/layer.h"
 #include "routing_vertex.h"
 
 namespace bfg {
@@ -18,17 +19,46 @@ class RoutingVertexCollector {
  public:
   RoutingVertexCollector(
       std::function<bool(RoutingVertex*, RoutingVertex*)> same_group)
-    : same_group_(same_group) {}
+      : previous_offer_(nullptr),
+        needs_new_group_(true),
+        same_group_(same_group) {}
 
   void Offer(RoutingVertex *vertex);
+
+  std::string Describe() const;
 
   const std::vector<std::vector<RoutingVertex*>> &groups() const {
     return groups_;
   }
 
  private:
+  RoutingVertex *previous_offer_;
+  bool needs_new_group_;
   std::function<bool(RoutingVertex*, RoutingVertex*)> same_group_;
   std::vector<std::vector<RoutingVertex*>> groups_;
+};
+
+class LayeredRoutingVertexCollectors {
+ public:
+  LayeredRoutingVertexCollectors(
+      std::function<bool(const geometry::Layer &, RoutingVertex*, RoutingVertex*)>
+          same_group)
+      : same_group_(same_group) {}
+  
+  void Offer(const geometry::Layer &layer, RoutingVertex *vertex);
+
+  std::map<geometry::Layer, std::vector<std::vector<RoutingVertex*>>>
+      GroupsByLayer();
+
+  const std::map<geometry::Layer, RoutingVertexCollector> &collectors_by_layer()
+      const {
+    return collectors_by_layer_;
+  }
+
+ private:
+  std::function<bool(const geometry::Layer &, RoutingVertex*, RoutingVertex*)>
+      same_group_;
+  std::map<geometry::Layer, RoutingVertexCollector> collectors_by_layer_;
 };
 
 }  // namespace bfg
