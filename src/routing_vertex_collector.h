@@ -16,6 +16,10 @@ namespace bfg {
 // vertices were offered.
 class RoutingVertexCollector {
  public:
+  RoutingVertexCollector(
+      std::function<bool(RoutingVertex*, RoutingVertex*)> same_group)
+    : same_group_(same_group) {}
+
   void Offer(RoutingVertex *vertex);
 
   const std::vector<std::vector<RoutingVertex*>> &groups() const {
@@ -23,6 +27,7 @@ class RoutingVertexCollector {
   }
 
  private:
+  std::function<bool(RoutingVertex*, RoutingVertex*)> same_group_;
   std::vector<std::vector<RoutingVertex*>> groups_;
 };
 
