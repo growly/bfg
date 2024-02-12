@@ -7,6 +7,12 @@
 namespace bfg {
 
 void RoutingVertexCollector::Offer(RoutingVertex *offer) {
+  LOG_IF(FATAL, !offer) << "Offering nullptr doesn't make any sense.";
+  if (offer == previous_offer_) {
+    // Ignore duplicates because that's easier than tracking offers at the
+    // client end:
+    return;
+  }
   if (!previous_offer_ || !same_group_(previous_offer_, offer)) {
     // Initially no previous offers are made (and needs_new_group_ should
     // already be true). So we just have to record the first offer. Otherwise,
@@ -38,15 +44,28 @@ void LayeredRoutingVertexCollectors::Offer(
             [=](RoutingVertex *lhs, RoutingVertex *rhs) {
               return same_group_(layer, lhs, rhs);
             })});
-    LOG_IF(FATAL, !insertion_it.second)
-        << "Insertion into a map failed?!";
+    LOG_IF(FATAL, !insertion_it.second) << "Insertion into a map failed?!";
     it = insertion_it.first;
   }
   it->second.Offer(vertex);
 }
 
+std::map<geometry::Layer, std::vector<std::vector<RoutingVertex*>>>
+    LayeredRoutingVertexCollectors::GroupsByLayer() const {
+  std::map<geometry::Layer, std::vector<std::vector<RoutingVertex*>>>
+      groups_by_layer;
+  for (const auto &entry : collectors_by_layer_) {
+    groups_by_layer[entry.first] = entry.second.groups();
+  }
+  return groups_by_layer;
+}
+
 std::string RoutingVertexCollector::Describe() const {
   std::stringstream ss;
+  if (groups_.empty()) {
+    ss << "No groups";
+    return ss.str();
+  }
   for (size_t i = 0; i < groups_.size(); ++i) {
     const std::vector<RoutingVertex*> &list = groups_.at(i);
     std::vector<std::string> vertex_centres;

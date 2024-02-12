@@ -93,13 +93,30 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   // The list of sets of vertices which are too close together. Well, it would
   // be a set, but we need to keep the order of the vertices to save us some
   // computation later.
-  std::map<geometry::Layer, RoutingVertexCollector> vias_too_close_together_per_layer;
+  auto vertices_too_close_for_vias =
+      [&routing_grid](const geometry::Layer &unused_layer,
+                      RoutingVertex *lhs,
+                      RoutingVertex *rhs) {
+    return routing_grid.VerticesAreTooCloseForVias(*lhs, *rhs);
+  };
+  LayeredRoutingVertexCollectors close_vertices =
+      LayeredRoutingVertexCollectors(vertices_too_close_for_vias);
 
-  for (RoutingVertex *vertex : edge->SpannedVertices()) {
+  std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();
+  for (size_t i = 0; i < spanned_vertices.size(); ++i) {
+    RoutingVertex *vertex = spanned_vertices.at(i);
     auto &installed_in_paths = vertex->installed_in_paths();
     VLOG(12) << "Vertex " << vertex->centre() << " is installed in "
              << installed_in_paths.size() << " paths";
     std::optional<std::string> same_net = net_;
+
+    // The first and last edges are explicitly considered as via candidates:
+    if (i == 0 || i == spanned_vertices.size() - 1) {
+      for (const geometry::Layer &layer : vertex->connected_layers()) {
+        close_vertices.Offer(layer, vertex);
+      }
+    }
+
     for (auto &entry : installed_in_paths) {
       // This structure tells us the paths that are using the given vertex and
       // through which edge.
@@ -123,9 +140,22 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
             poly_line->layer(), other_edge->layer()));
         bulge_width = std::max(bulge_width, bulge.width);
         bulge_length = std::max(bulge_length, bulge.length);
+
+        close_vertices.Offer(other_edge->layer(), vertex);
       }
       if (bulge_width > 0 && bulge_length > 0) {
         poly_line->InsertBulgeLater(vertex->centre(), bulge_width, bulge_length);
+      }
+    }
+  }
+
+  for (const auto &entry : close_vertices.GroupsByLayer()) {
+    const geometry::Layer &layer = entry.first;
+    for (const auto &group : entry.second) {
+      if (group.empty()) continue;
+      LOG(INFO) << "on layer " << layer << " need to deal with ";
+      for (RoutingVertex *const vertex : group) {
+        LOG(INFO) << vertex->centre().Describe();
       }
     }
   }

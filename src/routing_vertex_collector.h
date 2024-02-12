@@ -48,7 +48,7 @@ class LayeredRoutingVertexCollectors {
   void Offer(const geometry::Layer &layer, RoutingVertex *vertex);
 
   std::map<geometry::Layer, std::vector<std::vector<RoutingVertex*>>>
-      GroupsByLayer();
+      GroupsByLayer() const;
 
   const std::map<geometry::Layer, RoutingVertexCollector> &collectors_by_layer()
       const {

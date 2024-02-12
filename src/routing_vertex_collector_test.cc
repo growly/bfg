@@ -97,11 +97,13 @@ TEST(RoutingVertexCollectorTest, OfferOrderBreaksGrouping) {
 TEST(LayeredRoutingVertexCollectors, OfferByLayers) {
   // Layer 0:
   RoutingVertex a = RoutingVertex(geometry::Point(1, 2));
-  RoutingVertex b = RoutingVertex(geometry::Point(1, 3));
+  RoutingVertex b1 = RoutingVertex(geometry::Point(1, 3));
+  RoutingVertex b2 = RoutingVertex(geometry::Point(1, 4));
+  RoutingVertex b3 = RoutingVertex(geometry::Point(1, 5));
   RoutingVertex c = RoutingVertex(geometry::Point(2, 5));
 
   // Layer 1
-  RoutingVertex d = RoutingVertex(geometry::Point(1, 4));
+  RoutingVertex d = RoutingVertex(geometry::Point(1, 6));
   RoutingVertex e = RoutingVertex(geometry::Point(2, 7));
   RoutingVertex f = RoutingVertex(geometry::Point(2, 6));
 
@@ -116,7 +118,7 @@ TEST(LayeredRoutingVertexCollectors, OfferByLayers) {
   LayeredRoutingVertexCollectors collectors(same_x);
 
   // Order only matters within a layer:
-  for (RoutingVertex *v : {&a, &b, &e}) {
+  for (RoutingVertex *v : {&a, &b1, &b2, &b3, &e}) {
     collectors.Offer(0, v);
   }
   for (RoutingVertex *v : {&d, &e, &f}) {
@@ -125,6 +127,48 @@ TEST(LayeredRoutingVertexCollectors, OfferByLayers) {
 
   for (const auto &entry : collectors.collectors_by_layer()) {
     LOG(INFO) << "Layer " << entry.first << "; " << entry.second.Describe();
+  }
+}
+
+TEST(LayeredRoutingVertexCollectors, GroupsByLayer) {
+  // Layer 0:
+  RoutingVertex a = RoutingVertex(geometry::Point(1, 2));
+  RoutingVertex b1 = RoutingVertex(geometry::Point(1, 3));
+  RoutingVertex b2 = RoutingVertex(geometry::Point(1, 4));
+  RoutingVertex b3 = RoutingVertex(geometry::Point(1, 5));
+  RoutingVertex c = RoutingVertex(geometry::Point(2, 5));
+
+  // Layer 1
+  RoutingVertex d = RoutingVertex(geometry::Point(1, 6));
+  RoutingVertex e = RoutingVertex(geometry::Point(2, 7));
+  RoutingVertex f = RoutingVertex(geometry::Point(2, 6));
+
+  auto same_x = [](
+      const geometry::Layer &ignored_layer,
+      RoutingVertex *lhs,
+      RoutingVertex *rhs) {
+    return lhs->centre().x() == rhs->centre().x();
+  };
+
+  LayeredRoutingVertexCollectors collectors(same_x);
+
+  // Order only matters within a layer:
+  for (RoutingVertex *v : {&a, &b1, &b2, &b3, &e}) {
+    collectors.Offer(0, v);
+  }
+  for (RoutingVertex *v : {&d, &e, &f}) {
+    collectors.Offer(1, v);
+  }
+
+  for (const auto &entry : collectors.GroupsByLayer()) {
+    size_t list_counter = 0;
+    for (const auto &list : entry.second) {
+      for (const RoutingVertex *const vertex : list) {
+        LOG(INFO) << "Layer " << entry.first << " group "
+                  << list_counter << " entry " << vertex->centre().Describe();
+      }
+      ++list_counter;
+    }
   }
 }
 
