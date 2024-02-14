@@ -45,14 +45,14 @@ void Polygon::ResolveIntersectingPointsFrom(
         const Point left = lhs.ClosestPointTo(reference_point);
         const Point right = rhs.ClosestPointTo(reference_point);
         return reference_point.L2SquaredDistanceTo(
-            left) > reference_point.L2SquaredDistanceTo(right);
+            left) < reference_point.L2SquaredDistanceTo(right);
       };
     } else {
       comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
-        const Point left = lhs.ClosestPointTo(reference_point);
-        const Point right = rhs.ClosestPointTo(reference_point);
+        const Point left = lhs.FurthestPointFrom(reference_point);
+        const Point right = rhs.FurthestPointFrom(reference_point);
         return reference_point.L2SquaredDistanceTo(
-            left) > reference_point.L2SquaredDistanceTo(right);
+            left) < reference_point.L2SquaredDistanceTo(right);
       };
     }
     auto it = std::min_element(

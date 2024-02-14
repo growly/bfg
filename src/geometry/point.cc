@@ -71,6 +71,8 @@ int64_t Point::L1DistanceTo(const Point &point) const {
 int64_t Point::L2SquaredDistanceTo(const Point &other) const {
   int64_t dx = std::abs(x_ - other.x_);
   int64_t dy = std::abs(y_ - other.y_);
+  // dx^2 + dy^2. We can do the shift trick because we forced dx, dy to be
+  // positive.
   return (dx << 1) + (dy << 1);
 }
 
