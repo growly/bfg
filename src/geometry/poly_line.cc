@@ -212,7 +212,7 @@ void PolyLine::InsertForwardBulgePoint(
     // (Also note that since sin(theta) = -sin(2*pi - theta) we can simplify
     // life by just taking the absolute value and not worrying about the
     // relative angle.)
-    double theta = next_line.AngleToLine(current_line);
+    double theta = next_line.AngleToLineCounterClockwise(current_line);
     double sin_theta = std::sin(theta);
 
     // Minimum length of the new segment, found by project the width of this
@@ -332,7 +332,7 @@ void PolyLine::InsertBackwardBulgePoint(
     // last line is the end of the line before it.
     Line last_line = Line(last_line_start, last_segment.end);
 
-    double theta = last_line.AngleToLine(current_line);
+    double theta = last_line.AngleToLineCounterClockwise(current_line);
     double sin_theta = std::sin(theta);
     double minimum_length = sin_theta == 0 ?
         overflow : std::abs(half_width / sin_theta);
@@ -346,8 +346,8 @@ void PolyLine::InsertBackwardBulgePoint(
     Point point_before = last_line.PointOnLineAtDistance(
         last_segment.end, -minimum_length);
 
+    last_segment.width = std::max(overflow_width, previous_width);
     if (last_line.IntersectsInBounds(point_before)) {
-      last_segment.width = std::max(overflow_width, previous_width);
       segments_.insert(
           segments_.begin() + k - 1,
           LineSegment {
@@ -355,8 +355,6 @@ void PolyLine::InsertBackwardBulgePoint(
             .width = previous_width
           });
     } else {
-      last_segment.width = std::max(overflow_width, previous_width);
-
       if (k - 1 > 0) {
         segments_[k - 2].width = std::max(
             remaining_width, segments_[k - 2].width);

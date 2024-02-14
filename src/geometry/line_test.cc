@@ -110,14 +110,14 @@ TEST(LineTest, AngleToHorizon) {
   EXPECT_EQ(g.AngleToHorizon(), 2 * Line::kPi -3 * Line::kPi / 4);
 }
 
-TEST(LineTest, AngleToLine) {
+TEST(LineTest, AngleToLineCounterClockwise) {
   Line right = Line({0, 0}, {1, 0});
   Line up = Line({0, 0}, {0, 1});
 
-  EXPECT_EQ(up.AngleToLine(up), 0.0);
-  EXPECT_EQ(right.AngleToLine(right), 0.0);
-  EXPECT_EQ(up.AngleToLine(right), 3 * Line::kPi / 2);
-  EXPECT_EQ(right.AngleToLine(up), Line::kPi / 2);
+  EXPECT_EQ(up.AngleToLineCounterClockwise(up), 0.0);
+  EXPECT_EQ(right.AngleToLineCounterClockwise(right), 0.0);
+  EXPECT_EQ(up.AngleToLineCounterClockwise(right), 3 * Line::kPi / 2);
+  EXPECT_EQ(right.AngleToLineCounterClockwise(up), Line::kPi / 2);
 
   //     /
   //    /
@@ -127,12 +127,27 @@ TEST(LineTest, AngleToLine) {
   //
   double from_inner_product = std::acos(
       right.DotProduct(up) / (up.Length() * right.Length()));
-  EXPECT_EQ(right.AngleToLine(up), from_inner_product);
+  EXPECT_EQ(right.AngleToLineCounterClockwise(up), from_inner_product);
 
   // This is not true, however, because the dot-product method always gives us
   // the smaller of the angles between the two lines, and we make sure
-  // AngleToLine gives us the same angle of rotation.
-  EXPECT_NE(up.AngleToLine(right), from_inner_product);
+  // AngleToLineCounterClockwise gives us the same angle of rotation.
+  EXPECT_NE(up.AngleToLineCounterClockwise(right), from_inner_product);
+}
+
+TEST(LineTest, AngleToLineCounterClockwise_Others) {
+  Line right = Line({0, 2}, {1, 2});
+  Line slant_down_right = Line({1, 2}, {2, 1});
+  Line slant_down_left = Line({2, 1}, {1, 0});
+
+  EXPECT_EQ(right.AngleToLineCounterClockwise(slant_down_right),
+            7 * Line::kPi / 4);
+  EXPECT_EQ(slant_down_right.AngleToLineCounterClockwise(right),
+            Line::kPi / 4);
+  EXPECT_EQ(slant_down_right.AngleToLineCounterClockwise(slant_down_left),
+            3 * Line::kPi / 2);
+  EXPECT_EQ(slant_down_left.AngleToLineCounterClockwise(slant_down_right),
+            Line::kPi / 2);
 }
 
 TEST(LineTest, DotProduct) {

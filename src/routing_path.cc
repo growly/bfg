@@ -60,7 +60,8 @@ BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
 void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     const RoutingGrid &routing_grid,
     geometry::PolyLine *poly_line,
-    RoutingEdge *edge) const {
+    RoutingEdge *edge,
+    std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const {
   // Add bulges where vertices are crossed by multiple paths on the same net.
   //
   // NOTE(aryap): We do not differentiate where vertices imply vias, because
@@ -102,6 +103,8 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   LayeredRoutingVertexCollectors close_vertices =
       LayeredRoutingVertexCollectors(vertices_too_close_for_vias);
 
+  std::map<geometry::Layer, int64_t> max_bulge_length_by_layer;
+
   std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();
   for (size_t i = 0; i < spanned_vertices.size(); ++i) {
     RoutingVertex *vertex = spanned_vertices.at(i);
@@ -125,7 +128,8 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
         continue;
       }
       if (path->net() != same_net.value()) {
-        // Ignore other paths crossing this vertex that aren't on the same net as us.
+        // Ignore other paths crossing this vertex that aren't on the same net
+        // as us.
         continue;
       }
       std::set<RoutingEdge*> &edges  = entry.second;
@@ -138,25 +142,50 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
         }
         auto bulge = GetBulgeDimensions(routing_grid.GetRoutingViaInfoOrDie(
             poly_line->layer(), other_edge->layer()));
+        max_bulge_length_by_layer[other_edge->layer()] = std::max(
+            max_bulge_length_by_layer[other_edge->layer()], bulge.length);
         bulge_width = std::max(bulge_width, bulge.width);
         bulge_length = std::max(bulge_length, bulge.length);
 
         close_vertices.Offer(other_edge->layer(), vertex);
       }
+      max_bulge_length_by_layer[poly_line->layer()] = bulge_length;
       if (bulge_width > 0 && bulge_length > 0) {
-        poly_line->InsertBulgeLater(vertex->centre(), bulge_width, bulge_length);
+        poly_line->InsertBulgeLater(
+            vertex->centre(), bulge_width, bulge_length);
       }
     }
   }
 
-  for (const auto &entry : close_vertices.GroupsByLayer()) {
+  for (const auto &entry : close_vertices.collectors_by_layer()) {
+    const RoutingVertexCollector &collector = entry.second;
+    if (collector.num_offers() <= 2) {
+      // We only care about super-close vias on the off-edge layers if more than
+      // 2 were considered, since there should always be at least the start and
+      // end vertices on the edge (and those are taken care of by the edge
+      // PolyLine itself). Each offer to the collector is a vertex we suppose
+      // might become a via.
+      continue;
+    }
+
     const geometry::Layer &layer = entry.first;
-    for (const auto &group : entry.second) {
+    for (const std::vector<RoutingVertex*> &group : collector.groups()) {
       if (group.empty()) continue;
-      LOG(INFO) << "on layer " << layer << " need to deal with ";
-      for (RoutingVertex *const vertex : group) {
-        LOG(INFO) << vertex->centre().Describe();
-      }
+
+
+      // TODO: This but not stupid
+      geometry::PolyLine *cover = new geometry::PolyLine(
+          {group.front()->centre(), group.back()->centre()});
+
+      cover->set_layer(layer);
+      cover->SetWidth(max_bulge_length_by_layer[layer]);
+
+      poly_lines->emplace_back(cover);
+
+      //LOG(INFO) << "on layer " << layer << " need to deal with ";
+      //for (RoutingVertex *const vertex : group) {
+      //  LOG(INFO) << vertex->centre().Describe();
+      //}
     }
   }
 }
@@ -344,7 +373,7 @@ void RoutingPath::ToPolyLinesAndVias(
         // for that corresponding edge has been added:
         if (last_edge) {
           CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-              routing_grid, last.get(), last_edge);
+              routing_grid, last.get(), last_edge, polylines);
         }
     
         generated_lines.push_back(std::move(last));
@@ -363,7 +392,7 @@ void RoutingPath::ToPolyLinesAndVias(
 
     if (last_edge) {
       CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-          routing_grid, last.get(), last_edge);
+          routing_grid, last.get(), last_edge, polylines);
     }
   }
 
@@ -376,7 +405,7 @@ void RoutingPath::ToPolyLinesAndVias(
   last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
 
   CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-      routing_grid, last.get(), next_edge);
+      routing_grid, last.get(), next_edge, polylines);
 
   generated_lines.push_back(std::move(last));
 

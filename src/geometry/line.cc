@@ -19,7 +19,7 @@ std::string Line::Describe() const {
 }
 
 bool Line::AreAntiParallel(const Line &lhs, const Line &rhs) {
-  return lhs.AngleToLine(rhs) == kPi;
+  return lhs.AngleToLineCounterClockwise(rhs) == kPi;
 }
 
 bool Line::Intersect(
@@ -468,7 +468,7 @@ double Line::AngleToHorizon() const {
 //
 // i.e. the angle "from a to b" and the angle "from b to a" always sum to 2 *
 // pi.
-double Line::AngleToLine(const Line &other) const {
+double Line::AngleToLineCounterClockwise(const Line &other) const {
   double angle_rads = other.AngleToHorizon() - AngleToHorizon();
   if (angle_rads < 0) {
     angle_rads += 2 * kPi;

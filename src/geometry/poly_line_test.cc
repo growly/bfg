@@ -654,6 +654,21 @@ TEST(PolyLineTest, BulgeOverlapsSameLineDifferentWidthSegments) {
   EXPECT_EQ(expected_widths, widths);
 }
 
+    // "<0| (6010, 4130) |260| (6330, 4130) |140| (7530, 4130) |140| (7530, 4150) |140| (7510, 4150) |0> net: lut_dfxtp_0_2_Q"
+TEST(PolyLineTest, Unclear) {
+  PolyLine line = PolyLine(
+      {6010, 4130}, {
+      LineSegment {{6330, 4130}, 140},
+      LineSegment {{7530, 4130}, 140},
+      LineSegment {{7530, 4150}, 140},
+      LineSegment {{7510, 4150}, 140}
+  });
+
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({7510, 4150}, 230, 290);
+  LOG(INFO) << line.Describe();
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

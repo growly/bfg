@@ -85,7 +85,8 @@ class RoutingPath {
   void CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       const RoutingGrid &routing_grid,
       geometry::PolyLine *last,
-      RoutingEdge *edge) const;
+      RoutingEdge *edge,
+      std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
 
   // TODO(aryap): I don't think these port objects are needed? We get most of
   // the info from start/end layer. Possibly if these are provided are they are

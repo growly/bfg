@@ -135,8 +135,18 @@ class Line {
   // horizontally to the right. Returns the angle in radians.
   double AngleToHorizon() const;
 
-  // Angle in radians.
-  double AngleToLine(const Line &other) const;
+  // The angle from this line, counter-clockwise, to the other line. Result in
+  // radians.
+  //
+  // other            this
+  // ^                ^
+  // | _ pi/4         |
+  // |  \           / |
+  //  ----> this    |  ----> other
+  //                \__/
+  //                  3*pi/2
+  //
+  double AngleToLineCounterClockwise(const Line &other) const;
 
   int64_t DotProduct(const Line &with) const;
 

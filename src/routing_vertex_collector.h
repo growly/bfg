@@ -19,7 +19,8 @@ class RoutingVertexCollector {
  public:
   RoutingVertexCollector(
       std::function<bool(RoutingVertex*, RoutingVertex*)> same_group)
-      : previous_offer_(nullptr),
+      : num_offers_(0),
+        previous_offer_(nullptr),
         needs_new_group_(true),
         same_group_(same_group) {}
 
@@ -31,7 +32,10 @@ class RoutingVertexCollector {
     return groups_;
   }
 
+  size_t num_offers() const { return num_offers_; }
+
  private:
+  size_t num_offers_;
   RoutingVertex *previous_offer_;
   bool needs_new_group_;
   std::function<bool(RoutingVertex*, RoutingVertex*)> same_group_;
@@ -41,8 +45,9 @@ class RoutingVertexCollector {
 class LayeredRoutingVertexCollectors {
  public:
   LayeredRoutingVertexCollectors(
-      std::function<bool(const geometry::Layer &, RoutingVertex*, RoutingVertex*)>
-          same_group)
+      std::function<
+          bool(const geometry::Layer &, RoutingVertex*, RoutingVertex*)>
+              same_group)
       : same_group_(same_group) {}
   
   void Offer(const geometry::Layer &layer, RoutingVertex *vertex);

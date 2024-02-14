@@ -2,6 +2,7 @@
 
 #include "routing_vertex_collector.h"
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/strings/str_join.h"
 
 namespace bfg {
@@ -13,15 +14,20 @@ void RoutingVertexCollector::Offer(RoutingVertex *offer) {
     // client end:
     return;
   }
+  num_offers_++;
+
+  // absl::Cleanup implements the scope guard idiom ("defer" in modern
+  // languages).
+  //
+  // No matter what happens from here, we must rotate the offer to previous!
+  absl::Cleanup rotate_offer = [this, offer] { previous_offer_ = offer; };
+
   if (!previous_offer_ || !same_group_(previous_offer_, offer)) {
     // Initially no previous offers are made (and needs_new_group_ should
     // already be true). So we just have to record the first offer. Otherwise,
     // there is a break in consecutive grouping and we need to mark that a new
     // group is needed for next time. In all cases we must rotate the offer to
     // the previous.
-    // TODO(aryap): Good candidate for a "defer". Maybe absl has the thing that
-    // does this at end of scope? Or Maybe it's in c++ now?
-    previous_offer_ = offer;
     needs_new_group_ = true;
     return;
   }
@@ -31,7 +37,6 @@ void RoutingVertexCollector::Offer(RoutingVertex *offer) {
   } else {
     groups_.back().push_back(offer);
   }
-  previous_offer_ = offer;
   return;
 }
 
