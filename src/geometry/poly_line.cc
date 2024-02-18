@@ -257,6 +257,51 @@ void PolyLine::InsertForwardBulgePoint(
   }
 }
 
+void PolyLine::InsertBackwardBulgePoint2(
+    const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
+    size_t intersection_index, const Line &intersected_line,
+    uint64_t intersected_previous_width) {
+
+  const Point &start =
+      intersection_index == 0 ? start_ : segments_[intersection_index - 1].end;
+
+  double half_length = static_cast<double>(coaxial_length) / 2.0;
+
+  double d_start = point.L2DistanceTo(start);
+  double d_insertion = half_length;
+  double overflow = d_insertion - d_start;
+
+  size_t k = intersection_index;
+  while (k > 0) {
+    // In the direction traversing the PolyLine forwards, like intersected_line.
+    Line previous_line = Line(
+        k == 1 ? start_ : segments_[k - 2].end,
+        segments_[k - 1].end);
+
+    double theta = previous_line.AngleToLineCounterClockwise(intersected_line);
+    double sin_theta = std::sin(theta);
+    double cos_theta = std::cos(theta);
+
+    double previous_line_length = previous_line.Length();
+    double previous_line_length_in_bulge_axis =
+        previous_line_length * cos_theta;
+
+    // If the previous direction is antiparallel..
+
+    if (theta == 0.0) {
+    }
+
+    if (overflow <= 0) {
+      break;
+    }
+
+    d_insertion = overflow;
+    overflow -= previous_line_length;
+
+    --k;
+  }
+}
+
 void PolyLine::InsertBackwardBulgePoint(
     const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
     size_t intersection_index, const Line &intersected_line,
@@ -271,6 +316,15 @@ void PolyLine::InsertBackwardBulgePoint(
   double d_insertion = half_length;
   double overflow = d_insertion - d_start;
 
+  // NOTE(aryap): For this and InsertForwardBulgePoint, the general problem to
+  // solve is that of modifying PolyLine segments so that, in the resulting
+  // polygon, a rectangular bulge of at least the given width and length is
+  // covered around the given point `point`.
+  //
+  // To do this most generally, we need to follow line segments out from the
+  // bulge centre point until we find one that lands outside. We have to modify
+  // the widths (and sometimes lengths) of segments to ensure the bulge appears
+  // correctly.
   size_t k = intersection_index;
   while (k > 0) {
     Line previous_line = Line(
@@ -473,6 +527,12 @@ void PolyLine::EnforceInvariants() {
       ++it;
     }
   }
+
+  // TODO(aryap): Remove consecutive segments that form continuations of the
+  // same infinite line with the same width.
+  //
+  // TODO(aryap): Remove anti-parallel segments that overlap parallel
+  // segments...?
 
   // If min_separation_ is defined, also remove segments in a straight line
   // that would a violation of min_separation between the segments before and
