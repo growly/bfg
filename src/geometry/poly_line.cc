@@ -262,14 +262,14 @@ void PolyLine::InsertBackwardBulgePoint2(
     size_t intersection_index, const Line &intersected_line,
     uint64_t intersected_previous_width) {
 
-  const Point &start =
+  // The starting point for the line we've intersected.
+  const Point &line_start =
       intersection_index == 0 ? start_ : segments_[intersection_index - 1].end;
 
-  double half_length = static_cast<double>(coaxial_length) / 2.0;
+  double d_start = point.L2DistanceTo(line_start);
 
-  double d_start = point.L2DistanceTo(start);
-  double d_insertion = half_length;
-  double overflow = d_insertion - d_start;
+  double on_axis_overflow = 
+  double off_axis_overflow = static_cast<double>(coaxial_width) / 2.0;
 
   size_t k = intersection_index;
   while (k > 0) {
@@ -282,9 +282,15 @@ void PolyLine::InsertBackwardBulgePoint2(
     double sin_theta = std::sin(theta);
     double cos_theta = std::cos(theta);
 
+    // s_i
     double previous_line_length = previous_line.Length();
     double previous_line_length_in_bulge_axis =
         previous_line_length * cos_theta;
+
+    double required_width = std::abs(
+        overflow * sin_theta + 
+
+
 
     // If the previous direction is antiparallel..
 
