@@ -38,23 +38,13 @@ void Polygon::ResolveIntersectingPointsFrom(
     //
     // We do not need to maintain a sorted structure; we only need the minimum
     // in the collection at a given time.
-    std::function<bool (const PointOrChoice&, const PointOrChoice&)> comparator;
-    // TODO(aryap): These are the same. wtf.
-    if (outside) {
-      comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
-        const Point left = lhs.ClosestPointTo(reference_point);
-        const Point right = rhs.ClosestPointTo(reference_point);
-        return reference_point.L2SquaredDistanceTo(
-            left) < reference_point.L2SquaredDistanceTo(right);
-      };
-    } else {
-      comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
-        const Point left = lhs.FurthestPointFrom(reference_point);
-        const Point right = rhs.FurthestPointFrom(reference_point);
-        return reference_point.L2SquaredDistanceTo(
-            left) < reference_point.L2SquaredDistanceTo(right);
-      };
-    }
+    std::function<bool (const PointOrChoice&, const PointOrChoice&)>
+        comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
+      const Point left = lhs.ClosestPointTo(reference_point);
+      const Point right = rhs.ClosestPointTo(reference_point);
+      return reference_point.L2SquaredDistanceTo(
+          left) < reference_point.L2SquaredDistanceTo(right);
+    };
     auto it = std::min_element(
         choices_copy.begin(), choices_copy.end(), comparator);
     LOG_IF(FATAL, it == choices_copy.end())
