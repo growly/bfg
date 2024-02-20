@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include <absl/strings/str_format.h>
+
 #include "../physical_properties_database.h"
 #include "abstract_shape.h"
 #include "manipulable.h"
@@ -59,6 +61,11 @@ class Point : public AbstractShape, public Manipulable {
   Point &operator-=(const Point &other);
 
  private:
+  // https://google.github.io/googletest/advanced.html#teaching-googletest-how-to-print-your-values
+  friend void PrintTo(const Point &point, std::ostream *os) {
+    *os << point.Describe();
+  }
+
   int64_t x_;
   int64_t y_;
 };
