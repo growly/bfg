@@ -58,6 +58,7 @@ Polygon *AddElbowPath(
   // How to avoid constantly copying this?
   Point elbow = {start.x(), end.y()};
   PolyLine line = PolyLine({start, elbow, end});
+  LOG(INFO) << line.Describe();
   line.SetWidth(width);
   line.InsertBulge(start, start_encap_width, start_encap_length);
   line.InsertBulge(end, end_encap_width, end_encap_length);
@@ -86,8 +87,7 @@ Polygon *AddElbowPathBetweenLayers(
   // separation distance for the layer. This is most elegantly solved as an
   // automatic feature of the PolyLine which should automatically widen widths
   // to avoid divets.
-  const int64_t width = std::max({
-      db.Rules(path_layer).min_width, end_encap_width});
+  const int64_t width = std::max({ db.Rules(path_layer).min_width, end_encap_width});
   LOG(INFO) << "Adding elbow (" << start_layer << ") " << start << " -("
             << path_layer << ")-> " << end << " (" << end_layer << ") "
             << width << " "
@@ -1821,7 +1821,6 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   return layout.release();
 }
-
 
 // Stack up for our purposes:
 //  top    - met1

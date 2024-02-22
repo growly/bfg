@@ -20,7 +20,8 @@ class PolyLine : public Shape {
   PolyLine() = default;
 
   PolyLine(const std::vector<Point> &points)
-      : start_({0, 0}), overhang_start_(0), overhang_end_(0),
+      : enable_narrowing_extensions_(false),
+        start_({0, 0}), overhang_start_(0), overhang_end_(0),
         start_via_(nullptr), end_via_(nullptr),
         start_port_(nullptr), end_port_(nullptr) {
     if (points.empty()) return;
@@ -32,7 +33,8 @@ class PolyLine : public Shape {
   }
 
   PolyLine(const PolyLine &other)
-      : start_(other.start_),
+      : enable_narrowing_extensions_(false),
+        start_(other.start_),
         overhang_start_(other.overhang_start_),
         overhang_end_(other.overhang_end_),
         start_via_(nullptr),  // TODO(aryap): Should these be copied?
@@ -44,7 +46,8 @@ class PolyLine : public Shape {
   // This constructor skips the segment sanity checks in AddSegment.
   PolyLine(const Point &start,
            const std::vector<LineSegment> &segments)
-      : start_(start), overhang_start_(0), overhang_end_(0),
+      : enable_narrowing_extensions_(false),
+        start_(start), overhang_start_(0), overhang_end_(0),
         start_via_(nullptr), end_via_(nullptr),
         start_port_(nullptr), end_port_(nullptr),
         segments_(segments.begin(), segments.end()) {}
@@ -77,6 +80,9 @@ class PolyLine : public Shape {
   // poly_line.InsertBulge(poly_line.End()), you would modify the underlying
   // value half way.
   void InsertBulge(
+      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+  // FIXME(aryap): REMOVE
+  void InsertBulge2(
       const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
   // As above, but will not be applied until ApplyDeferredBulges() call.
   void InsertBulgeLater(
@@ -130,6 +136,20 @@ class PolyLine : public Shape {
       const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
       size_t intersection_index, const Line &intersected_line,
       uint64_t intersected_previous_width);
+
+  // FIXME(aryap): REMOVE
+  void InsertForwardBulgePoint2(
+      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
+      size_t intersection_index, const Line &intersected_line);
+  void InsertBackwardBulgePoint2(
+      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
+      size_t intersection_index, const Line &intersected_line,
+      uint64_t intersected_previous_width);
+
+  // It often doesn't make sense to create a protrusion from the line which
+  // is narrower than the existing line just for a bulge, so we explicitly
+  // disable it.
+  bool enable_narrowing_extensions_;
 
   Point start_;
 
