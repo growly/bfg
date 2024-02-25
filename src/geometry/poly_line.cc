@@ -157,29 +157,21 @@ void PolyLine::InsertForwardBulgePoint2(
     // creating smaller segments that contradict the thicker segments originally
     // around them. See the InsertBulge_DoesNotCreateNotch test.
     if (previous_segment_original_width) {
-      LineSegment &previous_segment = segments_[k - 1];
-      Line previous_line = Line(previous_segment.end, current_segment.end);
+      LOG_IF(FATAL, k == 0)
+          << "Assume k > 0 here because previous_segment_original_width not set "
+          << "until k incremented";
+      Line previous_line = Line(
+          k > 1 ? segments_[k - 2].end : start_, segments_[k - 1].end);
       double alpha = previous_line.AngleToLineCounterClockwise(current_line);
       double sin_alpha = std::sin(alpha);
 
-      double old_required_length = required_length;
-
-      double half_previous_segment_width = 
-          static_cast<double>(*previous_segment_original_width) / 2.0;
-      double previous_width_projection =
-          std::round(half_previous_segment_width);
       if (sin_alpha != 0) {
-        previous_width_projection = 
+        double half_previous_segment_width =
+            static_cast<double>(*previous_segment_original_width) / 2.0;
+        double previous_width_projection =
             std::round(std::abs(half_previous_segment_width / sin_alpha));
+        required_length = std::max(required_length, previous_width_projection);
       }
-      required_length = std::max(required_length, previous_width_projection);
-      LOG_IF(INFO, previous_width_projection != (*previous_segment_original_width / 2.0)) << "previous segment width: "
-                << (*previous_segment_original_width / 2.0)
-                << " previous_width_projection: " << previous_width_projection
-                << " alpha: " << alpha
-                << " sin_alpha: " << sin_alpha
-                << " required_length: " << required_length
-                << " vs prev. " << old_required_length;
     }
 
     if (current_length > required_length) {
@@ -463,34 +455,23 @@ void PolyLine::InsertBackwardBulgePoint2(
     current_segment.width = std::max(current_segment.width, new_width);
 
     if (previous_segment_original_width) {
-      LineSegment &previous_segment = segments_[k + 1];
-      Line previous_line = Line(current_segment.end, previous_segment.end);
+      LOG_IF(FATAL, k == segments_.size() - 1)
+          << "Assume k < final here because previous_segment_original_width not set "
+          << "until k incremented";
+      Line previous_line = Line(segments_[k].end, segments_[k + 1].end);
       double alpha = previous_line.AngleToLineCounterClockwise(current_line);
       double sin_alpha = std::sin(alpha);
 
-      double old_required_length = required_length;
-
-      double half_previous_segment_width = 
-          static_cast<double>(*previous_segment_original_width) / 2.0;
-      double previous_width_projection =
-          std::round(half_previous_segment_width);
       if (sin_alpha != 0) {
-        previous_width_projection = 
+        double half_previous_segment_width = 
+            static_cast<double>(*previous_segment_original_width) / 2.0;
+        double previous_width_projection =
             std::round(std::abs(half_previous_segment_width / sin_alpha));
+        required_length = std::max(required_length, previous_width_projection);
       }
-      // FIXME: why does this work unless a change is made for sin_alpha == 0?
-      required_length = std::max(required_length, previous_width_projection);
-      LOG_IF(INFO, previous_width_projection != (*previous_segment_original_width / 2.0)) << "previous segment width: "
-                << (*previous_segment_original_width / 2.0)
-                << " previous_width_projection: " << previous_width_projection
-                << " alpha: " << alpha
-                << " sin_alpha: " << sin_alpha
-                << " required_length: " << required_length
-                << " vs prev. " << old_required_length;
     }
 
     if (current_length > required_length) {
-
       // Only insert a new segment if the existing width was exceeded.
       if (new_width > current_segment_original_width) {
         Point new_boundary = current_line.PointOnLineAtDistance(

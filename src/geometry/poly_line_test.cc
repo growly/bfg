@@ -739,7 +739,21 @@ TEST(PolyLineTest, InsertBulge_SBlock) {
   };
   EXPECT_EQ(expected, line.Vertices());
 
-  std::vector<uint64_t> expected_widths = {170, 170, 230};
+  //    D +
+  //      |
+  //      |
+  //      |
+  //      |
+  //      |     w = 170
+  //    C +----/----+ B = (4970, 1160)
+  //                |
+  //                |
+  //              A + start_ = (4970, 1075)
+  //
+  // The width of segment BC overlaps (touches) A, so when the bulge at D is
+  // inserted and a segment needs to be added between A and B, the width of the
+  // entire AB segment is increased (instead of splitting it).
+  std::vector<uint64_t> expected_widths = {180, 170, 230};
   std::vector<uint64_t> widths;
   for (const auto &segment : line.segments()) {
     widths.push_back(segment.width);
@@ -757,6 +771,19 @@ TEST(PolyLineTest, InsertBulge_TODO_NeedsName12) {
   });
 
   line.InsertBulge({41890, 9590}, 230, 290);
+  LOG(INFO) << line.Describe();
+}
+
+TEST(PolyLineTest, InsertBulg_TODO_NeedsName13) {
+  PolyLine line = PolyLine(
+      {4970, 4985}, {
+      LineSegment {{4970, 5005}, 230},
+      LineSegment {{5405, 5005}, 230},
+  });
+
+  line.InsertBulge({4970, 4985}, 170, 330);
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({5405, 5005}, 230, 290);
   LOG(INFO) << line.Describe();
 }
 
