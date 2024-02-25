@@ -129,9 +129,9 @@ void PolyLine::InsertForwardBulgePoint2(
     double cos_theta = std::cos(theta);
 
     // The length required of this segment to "escape" the bulge.
-    double required_length =
+    double required_length = std::round(
         std::abs(on_axis_overflow * cos_theta) +
-        std::abs(off_axis_overflow * sin_theta);
+        std::abs(off_axis_overflow * sin_theta));
     double half_required_width =
         std::abs(on_axis_overflow * sin_theta) +
         std::abs(off_axis_overflow * cos_theta);
@@ -157,11 +157,29 @@ void PolyLine::InsertForwardBulgePoint2(
     // creating smaller segments that contradict the thicker segments originally
     // around them. See the InsertBulge_DoesNotCreateNotch test.
     if (previous_segment_original_width) {
-      required_length = std::max(
-          required_length,
-          std::abs(
-            static_cast<double>(*previous_segment_original_width) / 2.0 *
-            sin_theta));
+      LineSegment &previous_segment = segments_[k - 1];
+      Line previous_line = Line(previous_segment.end, current_segment.end);
+      double alpha = previous_line.AngleToLineCounterClockwise(current_line);
+      double sin_alpha = std::sin(alpha);
+
+      double old_required_length = required_length;
+
+      double half_previous_segment_width = 
+          static_cast<double>(*previous_segment_original_width) / 2.0;
+      double previous_width_projection =
+          std::round(half_previous_segment_width);
+      if (sin_alpha != 0) {
+        previous_width_projection = 
+            std::round(std::abs(half_previous_segment_width / sin_alpha));
+      }
+      required_length = std::max(required_length, previous_width_projection);
+      LOG_IF(INFO, previous_width_projection != (*previous_segment_original_width / 2.0)) << "previous segment width: "
+                << (*previous_segment_original_width / 2.0)
+                << " previous_width_projection: " << previous_width_projection
+                << " alpha: " << alpha
+                << " sin_alpha: " << sin_alpha
+                << " required_length: " << required_length
+                << " vs prev. " << old_required_length;
     }
 
     if (current_length > required_length) {
@@ -421,9 +439,9 @@ void PolyLine::InsertBackwardBulgePoint2(
     double sin_theta = std::sin(theta);
     double cos_theta = std::cos(theta);
 
-    double required_length =
+    double required_length = std::round(
         std::abs(on_axis_overflow * cos_theta) +
-        std::abs(off_axis_overflow * sin_theta);
+        std::abs(off_axis_overflow * sin_theta));
     double half_required_width =
         std::abs(on_axis_overflow * sin_theta) +
         std::abs(off_axis_overflow * cos_theta);
@@ -445,11 +463,30 @@ void PolyLine::InsertBackwardBulgePoint2(
     current_segment.width = std::max(current_segment.width, new_width);
 
     if (previous_segment_original_width) {
-      required_length = std::max(
-          required_length,
-          std::abs(
-            static_cast<double>(*previous_segment_original_width) / 2.0 *
-            sin_theta));
+      LineSegment &previous_segment = segments_[k + 1];
+      Line previous_line = Line(current_segment.end, previous_segment.end);
+      double alpha = previous_line.AngleToLineCounterClockwise(current_line);
+      double sin_alpha = std::sin(alpha);
+
+      double old_required_length = required_length;
+
+      double half_previous_segment_width = 
+          static_cast<double>(*previous_segment_original_width) / 2.0;
+      double previous_width_projection =
+          std::round(half_previous_segment_width);
+      if (sin_alpha != 0) {
+        previous_width_projection = 
+            std::round(std::abs(half_previous_segment_width / sin_alpha));
+      }
+      // FIXME: why does this work unless a change is made for sin_alpha == 0?
+      required_length = std::max(required_length, previous_width_projection);
+      LOG_IF(INFO, previous_width_projection != (*previous_segment_original_width / 2.0)) << "previous segment width: "
+                << (*previous_segment_original_width / 2.0)
+                << " previous_width_projection: " << previous_width_projection
+                << " alpha: " << alpha
+                << " sin_alpha: " << sin_alpha
+                << " required_length: " << required_length
+                << " vs prev. " << old_required_length;
     }
 
     if (current_length > required_length) {
