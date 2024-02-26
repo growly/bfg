@@ -744,11 +744,11 @@ TEST(PolyLineTest, InsertBulge_SBlock) {
   //      |
   //      |
   //      |
-  //      |     w = 170
-  //    C +----/----+ B = (4970, 1160)
-  //                |
-  //                |
-  //              A + start_ = (4970, 1075)
+  //      |  w = 170
+  //    C +--/------+ B = (4970, 1160)
+  //         |      |
+  //      85 |      |
+  //         v    A + start_ = (4970, 1075)
   //
   // The width of segment BC overlaps (touches) A, so when the bulge at D is
   // inserted and a segment needs to be added between A and B, the width of the

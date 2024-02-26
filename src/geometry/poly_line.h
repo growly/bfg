@@ -137,14 +137,18 @@ class PolyLine : public Shape {
       size_t intersection_index, const Line &intersected_line,
       uint64_t intersected_previous_width);
 
-  // FIXME(aryap): REMOVE
-  void InsertForwardBulgePoint2(
-      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
-      size_t intersection_index, const Line &intersected_line);
-  void InsertBackwardBulgePoint2(
-      const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
-      size_t intersection_index, const Line &intersected_line,
-      uint64_t intersected_previous_width);
+  double ComputeRequiredLengthForLastSegmentWidth(
+      uint64_t previous_segment_original_width,
+      const Line &current_line,
+      const Line &previous_line,
+      double required_length);
+  // Returns (required length, new width, sin theta, cos theta).
+  std::tuple<double, uint64_t, double, double>
+      ComputeRequiredLengthAndWidth(
+          const Line &intersected_line,
+          const Line &current_line,
+          double on_axis_overflow,
+          double off_axis_overflow);
 
   // It often doesn't make sense to create a protrusion from the line which
   // is narrower than the existing line just for a bulge, so we explicitly
