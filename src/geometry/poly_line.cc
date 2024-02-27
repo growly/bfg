@@ -236,8 +236,8 @@ void PolyLine::InsertForwardBulgePoint(
 
     // TODO(aryap): This does not consider overhang_end_. The easiest way to do
     // that is to treat the end point of the final segment as being pushed out
-    // by overhang_end_ distance along the final segment. Likewise for the
-    // start.
+    // by overhang_end_ distance along the final segment. Likewise for
+    // overhang_start_ at the start.
     if (k == segments_.size() - 1) {
       // We hit the last segment without getting out of the bulge. Elongate the
       // segment by shifting the final end point. But, if the final segment was

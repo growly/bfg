@@ -2,6 +2,7 @@
 #define ROUTING_PATH_H_
 
 #include <deque>
+#include <sstream>
 #include <vector>
 #include <memory>
 
@@ -70,6 +71,8 @@ class RoutingPath {
 
   const std::vector<RoutingVertex*> &vertices() const { return vertices_; }
   const std::vector<RoutingEdge*> &edges() const { return edges_; }
+
+  std::string Describe() const;
 
  private:
   static void BuildVias(

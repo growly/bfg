@@ -313,6 +313,15 @@ void RoutingPath::ToPolyLinesAndVias(
     RoutingVertex *last_vertex = vertices_.at(i - 1);
     RoutingVertex *current_vertex = vertices_.at(i);
 
+    // If either of the pair of vertices under consideration already appears in
+    // the skip list, we must skip this to avoid inadvertently switching the
+    // layer of an adjacent edge. (Also, since one of the vias is skipped it's
+    // moot that they're too close together.)
+    if (skipped_vias.find(last_vertex) != skipped_vias.end() ||
+        skipped_vias.find(current_vertex) != skipped_vias.end()) {
+      continue;
+    }
+
     // last_vertex and current_vertex span current_edge.
     if (routing_grid.VerticesAreTooCloseForVias(
             *last_vertex, *current_vertex) &&
@@ -450,14 +459,22 @@ void RoutingPath::ToPolyLinesAndVias(
   }
 }
 
+std::string RoutingPath::Describe() const {
+  std::stringstream ss;
+  if (Empty()) {
+    ss << "empty path";
+    return ss.str();
+  }
+  std::vector<std::string> vertex_centres;
+  for (RoutingVertex *vertex : vertices_) {
+    vertex_centres.push_back(vertex->centre().Describe());
+  }
+  ss << absl::StrJoin(vertex_centres, ", ");
+  return ss.str();
+}
+
 std::ostream &operator<<(std::ostream &os, const RoutingPath &path) {
-  if (path.Empty()) {
-    os << "empty path";
-    return os;
-  }
-  for (RoutingVertex *vertex : path.vertices()) {
-    os << vertex->centre() << " ";
-  }
+  os << path.Describe();
   return os;
 }
 
