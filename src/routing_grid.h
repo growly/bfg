@@ -156,8 +156,10 @@ class RoutingGrid {
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   void AddRoutingLayerInfo(const RoutingLayerInfo &info);
-  const RoutingLayerInfo &GetRoutingLayerInfo(
+  const RoutingLayerInfo &GetRoutingLayerInfoOrDie(
       const geometry::Layer &layer) const;
+  std::optional<std::reference_wrapper<const RoutingLayerInfo>>
+      GetRoutingLayerInfo(const geometry::Layer &layer) const;
 
   const std::vector<RoutingPath*> &paths() const { return paths_; }
   const std::set<RoutingEdge*> &off_grid_edges() const {
@@ -323,8 +325,16 @@ class RoutingGrid {
 
   void InstallPath(RoutingPath *path);
 
+  void InstallVertexInPath(RoutingVertex *vertex);
+
   void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
 
+  bool PointsAreTooCloseForVias(
+      const geometry::Layer &shared_layer,
+      const geometry::Point &lhs,
+      const geometry::Layer &lhs_connectee,
+      const geometry::Point &rhs,
+      const geometry::Layer &rhs_connectee) const;
   bool VerticesAreTooCloseForVias(
       const RoutingVertex &lhs, const RoutingVertex &rhs) const;
 

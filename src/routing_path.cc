@@ -305,11 +305,18 @@ void RoutingPath::ToPolyLinesAndVias(
   //   layer N  |
   // ---+       |
   //    +-------+
-  for (size_t i = 2; i < vertices_.size() - 1; ++i) {
+  for (size_t i = 1; i < vertices_.size(); ++i) {
     // Edge i connects vertex i and (i + 1).
-    RoutingEdge *last_edge = edges_.at(i - 2);
-    RoutingEdge *current_edge = edges_.at(i - 1);
-    RoutingEdge *next_edge = edges_.at(i);
+    if (i == 1 && !start_access_layer_)
+      continue;
+    geometry::Layer last_layer = i == 1 ?
+        *start_access_layer_ : edges_.at(i - 2)->ExplicitOrTrackLayer();
+
+    if (i == vertices_.size() - 1 && !end_access_layer_)
+      continue;
+    geometry::Layer next_layer = i == vertices_.size() - 1 ? // c.f. edges_.size
+        *end_access_layer_ : edges_.at(i)->ExplicitOrTrackLayer();
+
     RoutingVertex *last_vertex = vertices_.at(i - 1);
     RoutingVertex *current_vertex = vertices_.at(i);
 
@@ -325,8 +332,7 @@ void RoutingPath::ToPolyLinesAndVias(
     // last_vertex and current_vertex span current_edge.
     if (routing_grid.VerticesAreTooCloseForVias(
             *last_vertex, *current_vertex) &&
-        last_edge->ExplicitOrTrackLayer() ==
-            next_edge->ExplicitOrTrackLayer()) {
+        last_layer == next_layer) {
       skipped_vias.insert(last_vertex);
       skipped_vias.insert(current_vertex);
     }
@@ -345,7 +351,7 @@ void RoutingPath::ToPolyLinesAndVias(
     next_edge = edges_.at(i);
     const geometry::Layer &layer = next_edge->ExplicitOrTrackLayer();
 
-    const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfo(layer);
+    const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfoOrDie(layer);
 
     auto it = skipped_vias.find(current);
     // Insert a new PolyLine at layer crossings (or the start). Layer crossings
@@ -408,7 +414,7 @@ void RoutingPath::ToPolyLinesAndVias(
   if (generated_lines.empty() && !last)
     return;
 
-  const RoutingLayerInfo &last_info = routing_grid.GetRoutingLayerInfo(
+  const RoutingLayerInfo &last_info = routing_grid.GetRoutingLayerInfoOrDie(
       next_edge->ExplicitOrTrackLayer());
   last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
   last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
@@ -418,7 +424,8 @@ void RoutingPath::ToPolyLinesAndVias(
 
   generated_lines.push_back(std::move(last));
 
-  // Apply all deferred bulges now that spine of each line should have been created.
+  // Apply all deferred bulges now that spine of each line should have been
+  // created.
   for (auto &line : generated_lines) {
     line->ApplyDeferredBulges();
   }

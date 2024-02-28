@@ -57,7 +57,8 @@ class RoutingVertex {
 
   const std::set<RoutingEdge*> edges() const { return edges_; }
 
-  const std::map<RoutingPath*, std::set<RoutingEdge*>> &installed_in_paths() const {
+  const std::map<RoutingPath*, std::set<RoutingEdge*>> &installed_in_paths()
+      const {
     return installed_in_paths_;
   }
   std::map<RoutingPath*, std::set<RoutingEdge*>> &installed_in_paths() {
