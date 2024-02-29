@@ -122,6 +122,18 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
   int64_t j_upper = std::ceil(static_cast<double>(
       point.y() - y_start_) / static_cast<double>(y_pitch_));
 
+  // If the point ends up on a multiple of pitch exactly, there will be no
+  // spread in one dimension. We explicitly widen the spread to include +/-1
+  // pitch position.
+  if (i_upper == i_lower) {
+    i_lower = std::max(std::min(i_lower - 1, max_column_index_), 0L);
+    i_upper = std::max(std::min(i_upper + 1, max_column_index_), 0L);
+  }
+  if (j_upper == j_lower) {
+    j_lower = std::max(std::min(j_lower - 1, max_row_index_), 0L);
+    j_upper = std::max(std::min(j_upper + 1, max_row_index_), 0L);
+  }
+
   // Now impose restriction of real bounded grid with indices [0, max]:
   i_lower = std::max(std::min(i_lower, max_column_index_), 0L);
   i_upper = std::max(std::min(i_upper, max_column_index_), 0L);
@@ -142,10 +154,11 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
   //     {i_upper, j_upper}
   // };
   // vertices->insert(corners.begin(), corners.end());
-  vertices->insert({i_lower, j_lower});
-  vertices->insert({i_lower, j_upper});
-  vertices->insert({i_upper, j_lower});
-  vertices->insert({i_upper, j_upper});
+  for (int64_t i = i_lower; i <= i_upper; ++i) {
+    for (int64_t j = j_lower; j <= j_upper; ++j) {
+      vertices->insert({i, j});
+    }
+  }
 }
 
 void RoutingGridGeometry::EnvelopingVertexIndices(

@@ -65,15 +65,67 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
   nearest_vertices.clear();
 
   expected = {
-      {4, 4}
+      {3, 3},
+      {3, 4},
+      {3, 5},
+      {4, 3},
+      {4, 4},
+      {4, 5},
+      {5, 3},
+      {5, 4},
+      {5, 5}
   };
   grid_geometry.EnvelopingVertexIndices({50, 50}, &nearest_vertices);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
   nearest_vertices.clear();
 
   expected = {
-      {20, 20}
+      {19, 19}
   };
   grid_geometry.EnvelopingVertexIndices({210, 210}, &nearest_vertices);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  nearest_vertices.clear();
+
+  expected = {  // { x,  y}
+      {0, 0},   // {10, 10}
+      {0, 1},   // {10, 20}
+      {1, 0},   // {20, 10}
+      {1, 1},   // {20, 20}
+      {2, 0},   // {30, 10}
+      {2, 1}    // {30, 20}
+  };
+  grid_geometry.EnvelopingVertexIndices({20, 15}, &nearest_vertices);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  nearest_vertices.clear();
+
+  expected = {  // { x,  y}
+      {1, 1},   // {20, 20}
+      {1, 2},   // {20, 30}
+      {1, 3},   // {20, 40}
+      {2, 1},   // {30, 20}
+      {2, 2},   // {30, 30}
+      {2, 3}    // {30, 40}
+  };
+  grid_geometry.EnvelopingVertexIndices({25, 30}, &nearest_vertices);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  nearest_vertices.clear();
+
+  expected = {
+      {0, 0},  // {10, 10}
+      {1, 0},  // {20, 10}
+      {2, 0},  // {30, 10}
+  };
+  grid_geometry.EnvelopingVertexIndices({20, 0}, &nearest_vertices);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  nearest_vertices.clear();
+
+  expected = {
+      {19, 8},
+      {19, 9},
+      {19, 10},
+  };
+  grid_geometry.EnvelopingVertexIndices({205, 100}, &nearest_vertices);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
   nearest_vertices.clear();
 }
 
