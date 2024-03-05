@@ -44,6 +44,73 @@ int64_t modulo(int64_t a, int64_t b) {
 
 }   // namespace
 
+std::tuple<int64_t, int64_t, int64_t, int64_t>
+RoutingGridGeometry::MapPointToBoundingGridIndices(
+    const geometry::Point &point) const {
+  int64_t column_lower = std::floor(static_cast<double>(
+      point.x() - x_start_) / static_cast<double>(x_pitch_));
+  int64_t row_lower = std::floor(static_cast<double>(
+      point.y() - y_start_) / static_cast<double>(y_pitch_));
+  int64_t column_upper = std::ceil(static_cast<double>(
+      point.x() - x_start_) / static_cast<double>(x_pitch_));
+  int64_t row_upper = std::ceil(static_cast<double>(
+      point.y() - y_start_) / static_cast<double>(y_pitch_));
+
+  return std::make_tuple(column_lower, column_upper, row_lower, row_upper);
+}
+
+void RoutingGridGeometry::BoundGridIndices(int64_t *column_lower,
+                                           int64_t *column_upper,
+                                           int64_t *row_lower,
+                                           int64_t *row_upper) const {
+  // Impose restriction of real bounded grid with indices [0, max]:
+  *column_lower = std::max(std::min(*column_lower, max_column_index_), 0L);
+  *column_upper = std::max(std::min(*column_upper, max_column_index_), 0L);
+  *row_lower = std::max(std::min(*row_lower, max_row_index_), 0L);
+  *row_upper = std::max(std::min(*row_upper, max_row_index_), 0L);
+}
+
+void RoutingGridGeometry::NearestTracks(
+    const geometry::Point &point,
+    std::set<RoutingTrack*> *horizontal,
+    std::set<RoutingTrack*> *vertical) const {
+  std::set<size_t> horizontal_indices;
+  std::set<size_t> vertical_indices;
+  NearestTrackIndices(point, &horizontal_indices, &vertical_indices);
+
+  for (size_t index : horizontal_indices) {
+    if (index >= horizontal_tracks_by_index_.size())
+      continue;
+    horizontal->insert(horizontal_tracks_by_index_[index]);
+  }
+  for (size_t index : vertical_indices) {
+    if (index >= vertical_tracks_by_index_.size())
+      continue;
+    vertical->insert(vertical_tracks_by_index_[index]);
+  }
+}
+
+void RoutingGridGeometry::NearestTrackIndices(
+    const geometry::Point &point,
+    std::set<size_t> *horizontal,
+    std::set<size_t> *vertical) const {
+  // This departure from the style used elsewhere in the code is a personal
+  // experiment to see if I like the sauce:
+  auto [column_lower, column_upper, row_lower, row_upper] = 
+      MapPointToBoundingGridIndices(point);
+  // (I think I like the sauce.)
+
+  BoundGridIndices(&column_lower, &column_upper, &row_lower, &row_upper);
+
+  // Columns (vertical tracks):
+  vertical->insert(column_lower);
+  vertical->insert(column_upper);
+
+  // Rows (horizontal tracks):
+  horizontal->insert(row_lower);
+  horizontal->insert(row_upper);
+}
+
 void RoutingGridGeometry::ComputeForLayers(
     const RoutingLayerInfo &horizontal_info,
     const RoutingLayerInfo &vertical_info) {
@@ -113,14 +180,8 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
   // to x-position), increasing up and right.
 
   // Find the bounding corner positions of an infinite grid:
-  int64_t i_lower = std::floor(static_cast<double>(
-      point.x() - x_start_) / static_cast<double>(x_pitch_));
-  int64_t j_lower = std::floor(static_cast<double>(
-      point.y() - y_start_) / static_cast<double>(y_pitch_));
-  int64_t i_upper = std::ceil(static_cast<double>(
-      point.x() - x_start_) / static_cast<double>(x_pitch_));
-  int64_t j_upper = std::ceil(static_cast<double>(
-      point.y() - y_start_) / static_cast<double>(y_pitch_));
+  auto [i_lower, i_upper, j_lower, j_upper] = 
+      MapPointToBoundingGridIndices(point);
 
   // If the point ends up on a multiple of pitch exactly, there will be no
   // spread in one dimension. We explicitly widen the spread to include +/-1
@@ -134,11 +195,7 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
     j_upper = std::max(std::min(j_upper + 1, max_row_index_), 0L);
   }
 
-  // Now impose restriction of real bounded grid with indices [0, max]:
-  i_lower = std::max(std::min(i_lower, max_column_index_), 0L);
-  i_upper = std::max(std::min(i_upper, max_column_index_), 0L);
-  j_lower = std::max(std::min(j_lower, max_row_index_), 0L);
-  j_upper = std::max(std::min(j_upper, max_row_index_), 0L);
+  BoundGridIndices(&i_lower, &i_upper, &j_lower, &j_upper);
 
   VLOG(13) << point << ": "
            << i_lower << " <= i <= " << i_upper << "; "
@@ -180,11 +237,7 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
       static_cast<double>(rectangle.upper_right().y() + padding - y_start_) /
       static_cast<double>(y_pitch_));
 
-  // Now impose restriction of real bounded grid with indices [0, max]:
-  i_lower = std::max(std::min(i_lower, max_column_index_), 0L);
-  i_upper = std::max(std::min(i_upper, max_column_index_), 0L);
-  j_lower = std::max(std::min(j_lower, max_row_index_), 0L);
-  j_upper = std::max(std::min(j_upper, max_row_index_), 0L);
+  BoundGridIndices(&i_lower, &i_upper, &j_lower, &j_upper);
 
   VLOG(13) << rectangle << ": "
            << i_lower << " <= i <= " << i_upper << "; "

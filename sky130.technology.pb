@@ -455,9 +455,9 @@ fill_block²Abª
 liZ
 probe²Cª
 liZ
-res²Cª"
+res²Cª
 liZ
-pin²CúCúDª
+pin²CúCª
 liZ
 net²Cª
 liZ	

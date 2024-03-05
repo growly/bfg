@@ -222,6 +222,76 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
   nearest_vertices.clear();
 }
 
+class RoutingGridGeometryTestFixture : public testing::Test {
+ protected:
+  void SetUp() override {
+    RoutingLayerInfo horizontal = RoutingLayerInfo {
+      .layer = 0,
+      .area = Rectangle({0, 0}, {200, 200}),
+      .wire_width = 1,
+      .offset = 10,
+      .direction = RoutingTrackDirection::kTrackHorizontal,
+      .pitch = 10,
+    };
+
+    RoutingLayerInfo vertical = RoutingLayerInfo {
+      .layer = 1,
+      .area = Rectangle({0, 0}, {200, 200}),
+      .wire_width = 1,
+      .offset = 10,
+      .direction = RoutingTrackDirection::kTrackVertical,
+      .pitch = 10,
+    };
+
+    grid_geometry_.ComputeForLayers(horizontal, vertical);
+  }
+
+  RoutingGridGeometry grid_geometry_;
+};
+
+TEST_F(RoutingGridGeometryTestFixture, NearestTrackIndices_OnRowAndCol) {
+  std::set<size_t> horizontal;
+  std::set<size_t> vertical;
+
+  std::set<size_t> expected = {0};
+  grid_geometry_.NearestTrackIndices({10, 10}, &horizontal, &vertical);
+  EXPECT_THAT(horizontal, ContainerEq(expected));
+  EXPECT_THAT(vertical, ContainerEq(expected));
+}
+
+TEST_F(RoutingGridGeometryTestFixture, NearestTrackIndices_OnColumn) {
+  std::set<size_t> horizontal;
+  std::set<size_t> vertical;
+
+  std::set<size_t> expected_horizontal = {0, 1};
+  std::set<size_t> expected_vertical = {0};
+  grid_geometry_.NearestTrackIndices({10, 15}, &horizontal, &vertical);
+  EXPECT_THAT(horizontal, ContainerEq(expected_horizontal));
+  EXPECT_THAT(vertical, ContainerEq(expected_vertical));
+}
+
+TEST_F(RoutingGridGeometryTestFixture, NearestTrackIndices_OnRow) {
+  std::set<size_t> horizontal;
+  std::set<size_t> vertical;
+
+  std::set<size_t> expected_horizontal = {1};
+  std::set<size_t> expected_vertical = {1, 2};
+  grid_geometry_.NearestTrackIndices({25, 20}, &horizontal, &vertical);
+  EXPECT_THAT(horizontal, ContainerEq(expected_horizontal));
+  EXPECT_THAT(vertical, ContainerEq(expected_vertical));
+}
+
+TEST_F(RoutingGridGeometryTestFixture, NearestTrackIndices_OffGrid) {
+  std::set<size_t> horizontal;
+  std::set<size_t> vertical;
+
+  std::set<size_t> expected_horizontal = {4, 5};
+  std::set<size_t> expected_vertical = {3, 4};
+  grid_geometry_.NearestTrackIndices({45, 55}, &horizontal, &vertical);
+  EXPECT_THAT(horizontal, ContainerEq(expected_horizontal));
+  EXPECT_THAT(vertical, ContainerEq(expected_vertical));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

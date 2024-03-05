@@ -165,15 +165,18 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
                  << "RoutingTrackDirection: " << direction_;
   }
 
+  if (target) {
+    if (candidate_centre == point)
+      return target;
+    if (IsBlockedBetween(candidate_centre, target->centre(), min_separation_))
+      return nullptr;
+  } else if (IsBlocked(candidate_centre)) {
+    return nullptr;
+  }
+
   if (candidate_centre == point) {
     return target;
   }
-
-  if (IsBlocked(candidate_centre, min_separation_))
-    return nullptr;
-
-  if (IsBlockedBetween(candidate_centre, target->centre(), min_separation_))
-    return nullptr;
 
   RoutingVertex *bridging_vertex = new RoutingVertex(candidate_centre);
 
@@ -204,7 +207,6 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
 
   if (!AddVertex(bridging_vertex)) {
     delete bridging_vertex;
-    LOG(FATAL) << "I thought we made sure this couldn't happen already.";
     return nullptr;
   }
 

@@ -133,7 +133,9 @@ class RoutingGrid {
 
   bool ValidAgainstInstalledPaths(const RoutingVertex &vertex) const;
 
-  std::vector<RoutingViaInfo> FindViaStack(
+  std::optional<double> FindViaStackCost(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+  std::optional<std::vector<RoutingViaInfo>> FindViaStack(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   void RemoveUnavailableVertices();
@@ -262,6 +264,11 @@ class RoutingGrid {
   template<typename T>
   void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
 
+  bool ConnectToSurroundingTracks(
+      const RoutingGridGeometry &grid_geometry,
+      const geometry::Layer &access_layer,
+      RoutingVertex *off_grid);
+
   // FIXME(aryap): The RoutingVertex should contain enough information to figure
   // this out. It should at *least* always have its bottom and top layers
   // (ordered). the "connected_layers_" field is hard to use.
@@ -281,6 +288,10 @@ class RoutingGrid {
       const geometry::Layer &layer);
 
   std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
+  AddAccessVerticesForPoint(const geometry::Point &point,
+                            const geometry::Layer &layer);
+
+  std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
   GenerateGridVertexForPort(const geometry::Port &port);
 
   RoutingVertex *GenerateGridVertexForPoint(
@@ -294,10 +305,10 @@ class RoutingGrid {
       GetRoutingGridGeometry(
           const geometry::Layer &lhs, const geometry::Layer &rhs);
 
-  // Hands out pointers to RoutingGridGeometries that involve the given layer.
-  void FindRoutingGridGeometriesForLayer(
-      const geometry::Layer layer,
-      std::vector<RoutingGridGeometry*> *grid_geometries);
+  // Hands out pointers to RoutingGridGeometries that have tracks in either the
+  // horizontal or vertical direction on the given layer.
+  std::vector<RoutingGridGeometry*> FindRoutingGridGeometriesUsingLayer(
+      const geometry::Layer &layer);
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.

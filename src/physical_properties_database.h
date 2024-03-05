@@ -173,13 +173,15 @@ class PhysicalPropertiesDatabase {
                          const std::string &other_routing_layer,
                          RoutingViaInfo *routing_via_info) const;
 
-  // For a given pin layer, find the layers which can access it. This is
-  // transitive closure of all layers to which the pin layer provides direct
-  // access (i.e. li.pin accesses li.drawing) and all the layers which have
-  // access to those layers through vias (e.g. li.drawing can be reached by
-  // met1.drawing, diff.drawing).
-  const std::set<geometry::Layer>
+  // For a given pin layer, find the layers which can access it. The pin layer
+  // represents access to a given layer, which is the first entry. For each of
+  // those we have a set of layers which can be accessed through one more via.
+  const std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
       FindReachableLayersByPinLayer(const geometry::Layer &pin_layer) const;
+
+  const std::set<geometry::Layer>
+      FindLayersReachableThroughOneViaFrom(const geometry::Layer &routing_layer)
+      const;
 
   std::string DescribeLayers() const;
   std::string DescribeLayer(const geometry::Layer &layer) const;
@@ -217,7 +219,10 @@ class PhysicalPropertiesDatabase {
   std::map<uint16_t, std::map<uint16_t, geometry::Layer>> layers_by_layer_key_;
 
   // Stores the via layer required to get from the first indexed layer to the
-  // second indexed layer.
+  // second indexed layer. If an via layer exists between two layers, we assume
+  // that those layers can be connected through that single via layer. If no
+  // entry exists, we take that to mean that two layers cannot be directly
+  // connected by a via.
   std::map<geometry::Layer,
       std::map<geometry::Layer, geometry::Layer>> via_layers_;
 

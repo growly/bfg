@@ -32,6 +32,16 @@ class RoutingGridGeometry {
     VerticesAt(indices, vertices);
   }
 
+  void NearestTracks(
+      const geometry::Point &point,
+      std::set<RoutingTrack*> *horizontal,
+      std::set<RoutingTrack*> *vertical) const;
+
+  void NearestTrackIndices(
+      const geometry::Point &point,
+      std::set<size_t> *horizontal,
+      std::set<size_t> *vertical) const;
+
   void EnvelopingVertexIndices(
       const geometry::Point &point,
       std::set<std::pair<size_t, size_t>> *vertices,
@@ -46,6 +56,14 @@ class RoutingGridGeometry {
       const geometry::Polygon &polygon,
       std::set<std::pair<size_t, size_t>> *vertices,
       int64_t padding = 0) const;
+
+  std::tuple<int64_t, int64_t, int64_t, int64_t> MapPointToBoundingGridIndices(
+      const geometry::Point &point) const;
+
+  void BoundGridIndices(int64_t *column_lower,
+                        int64_t *column_upper,
+                        int64_t *row_lower,
+                        int64_t *row_upper) const;
 
   RoutingVertex* VertexAt(size_t column_index, size_t row_index) const;
 
@@ -135,6 +153,22 @@ class RoutingGridGeometry {
     return vertices_by_grid_position_;
   }
 
+  const std::vector<RoutingTrack*> &horizontal_tracks_by_index() const {
+    return horizontal_tracks_by_index_;
+  }
+
+  std::vector<RoutingTrack*> &horizontal_tracks_by_index() {
+    return horizontal_tracks_by_index_;
+  }
+
+  const std::vector<RoutingTrack*> &vertical_tracks_by_index() const {
+    return vertical_tracks_by_index_;
+  }
+
+  std::vector<RoutingTrack*> &vertical_tracks_by_index() {
+    return vertical_tracks_by_index_;
+  }
+
  private:
   void VerticesAt(
       const std::set<std::pair<size_t, size_t>> &indices,
@@ -162,6 +196,9 @@ class RoutingGridGeometry {
   // All the vertices arranged into grid position, per layer. This class does
   // not own the RoutingVertex*, they always belong to a RoutingGrid.
   std::vector<std::vector<RoutingVertex*>> vertices_by_grid_position_;
+
+  std::vector<RoutingTrack*> horizontal_tracks_by_index_;
+  std::vector<RoutingTrack*> vertical_tracks_by_index_;
 };
 
 }   // namespace bfg

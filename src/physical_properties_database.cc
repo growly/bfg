@@ -308,28 +308,46 @@ void PhysicalPropertiesDatabase::GetRoutingViaInfo(
   routing_via_info->connected_layers[1] = second_layer;
 }
 
-const std::set<geometry::Layer>
+//                    7    --------- some routing layer
+//          accesses /         ^
+//                  /          | connected through some via layer
+//   pin layer ----------      |                   L
+//                             | ---------- the via layer
+//                             |
+//                             v
+//                         --------- some other routing layer
+const std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
 PhysicalPropertiesDatabase::FindReachableLayersByPinLayer(
     const geometry::Layer &pin_layer) const {
   std::set<geometry::Layer> accessible;
   const auto &layer_info = GetLayerInfo(pin_layer);
+  std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
+      accessibility_by_access_layer;
   if (!layer_info.accesses) {
-    return accessible;
+    return accessibility_by_access_layer;
   }
-  for (const auto &directly_accessible_layer : layer_info.accesses.value()) {
-    for (const auto &outer_entry : via_layers_) {
-      const geometry::Layer &outer_layer = outer_entry.first;
-      for (const auto &inner_entry : outer_entry.second) {
-        const geometry::Layer &inner_layer = inner_entry.first;
+  for (const auto &directly_accessible_layer : *layer_info.accesses) {
+    std::set<geometry::Layer> accessible_through_at_most_one_via =
+        FindLayersReachableThroughOneViaFrom(directly_accessible_layer);
+    accessible_through_at_most_one_via.insert(directly_accessible_layer);
+    accessibility_by_access_layer.push_back(
+        {directly_accessible_layer, accessible_through_at_most_one_via});
+  }
+  return accessibility_by_access_layer;;
+}
 
-        // If they exist in this mapping, they are connecting. We do need the
-        // detail of which via layer connects them.
-
-        if (inner_layer == directly_accessible_layer) {
-          accessible.insert(outer_layer);
-        } else if (outer_layer == directly_accessible_layer) {
-          accessible.insert(inner_layer);
-        }
+const std::set<geometry::Layer>
+PhysicalPropertiesDatabase::FindLayersReachableThroughOneViaFrom(
+    const geometry::Layer &routing_layer) const {
+  std::set<geometry::Layer> accessible;
+  for (const auto &outer : via_layers_) {
+    const geometry::Layer &outer_layer = outer.first;
+    for (const auto &inner : outer.second) {
+      const geometry::Layer &inner_layer = inner.first;
+      if (outer_layer == routing_layer) {
+        accessible.insert(inner_layer);
+      } else if (inner_layer == routing_layer) {
+        accessible.insert(outer_layer);
       }
     }
   }

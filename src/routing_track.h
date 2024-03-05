@@ -61,10 +61,14 @@ class RoutingTrack {
 
   void MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net);
 
-  // Tries to connect the target vertex to a candidate vertex placed at the
-  // nearest point on the track to the given point (O). If successful, the new
-  // vertex is returned, otherwise nullptr. The return vertex is property of
-  // the caller and any generated edge is property of the track.
+  // Makes sure the target vertex can be connected to a candidate vertex placed
+  // at the nearest point on the track to the given point (O). If successful,
+  // the new vertex is returned, otherwise nullptr. The return vertex is
+  // property of the caller and any generated edge is property of the track.
+  //
+  // If target is not specified (is nullptr) the criteria for success is that
+  // any edge is succesfully added to connect the candidate vertex to another
+  // vertex on the track.
   //
   //
   //          O
@@ -78,7 +82,7 @@ class RoutingTrack {
       const RoutingGrid &grid,
       const geometry::Point &point,
       const geometry::Layer &target_layer,
-      RoutingVertex *target);
+      RoutingVertex *target = nullptr);
 
   // Returned vertices will be in order of their position along the track, but
   // the direction is not guaranteed.

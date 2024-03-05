@@ -172,8 +172,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     for (const std::vector<RoutingVertex*> &group : collector.groups()) {
       if (group.empty()) continue;
 
-
-      // TODO: This but not stupid
+      // TODO: This works but it hurts.
       geometry::PolyLine *cover = new geometry::PolyLine(
           {group.front()->centre(), group.back()->centre()});
 
@@ -181,11 +180,6 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       cover->SetWidth(max_bulge_length_by_layer[layer]);
 
       poly_lines->emplace_back(cover);
-
-      //LOG(INFO) << "on layer " << layer << " need to deal with ";
-      //for (RoutingVertex *const vertex : group) {
-      //  LOG(INFO) << vertex->centre().Describe();
-      //}
     }
   }
 }
@@ -206,8 +200,13 @@ void RoutingPath::BuildVias(
   }
   // We need to find the stack of vias necessary to get to `last_layer` from
   // `from_layer`.
-  std::vector<RoutingViaInfo> via_layers =
+  std::optional<std::vector<RoutingViaInfo>> via_layers =
       routing_grid.FindViaStack(from_layer, last_layer);
+  if (!via_layers) {
+    LOG(ERROR) << "No known via stack from " << from_layer << " to "
+               << last_layer;
+    return;
+  }
 
   std::map<geometry::Layer, BulgeDimensions> metal_pours;
   LOG(INFO) << "Building via stack from " << from_layer << " to " << last_layer;
@@ -215,7 +214,7 @@ void RoutingPath::BuildVias(
   // Collect the dimensions required for metal pours interfacing with vias on
   // each layer in the stack, increasing the maximum-known to cover the most
   // restrictive case.
-  for (const RoutingViaInfo &info : via_layers) {
+  for (const RoutingViaInfo &info : *via_layers) {
     AbstractVia *via = new AbstractVia(
         at_point, info.connected_layers[0], info.connected_layers[1]);
     vias->emplace_back(via);
