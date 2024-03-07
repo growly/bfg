@@ -506,6 +506,19 @@ void PolyLine::RemoveNotchesAroundCorners() {
   // previous segments and the original, for each original in the list of
   // segments. Another way is to generate the boundary lines and find the
   // distance between them, basically pre-empting the inflation process itself.
+  //
+  // Ok the principle of this algorithm is as follows:
+  //  - find the axis between the end of a starting line and the start of
+  //  another line (at least 2 segments away)
+  //  - find the angles of the starting and subsequent lines to the intervening
+  //  axis
+  //  - project the widths of lines at each end onto the intervening axis,
+  //  these are the quantities by which the space between the lines is reduced
+  //  in the worst case
+  //
+  // TODO(aryap): Currently use std::abs to avoid this problem, but is treatment
+  // of various angles around the unit circle (where sin becomes negative)
+  // correct?
   if (!min_separation_)
     return;
   for (size_t i = 0; i < segments_.size() - 1; ++i) {
