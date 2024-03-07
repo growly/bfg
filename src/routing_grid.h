@@ -142,6 +142,8 @@ class RoutingGrid {
 
   void ExportAvailableVerticesAsSquares(
       const std::string &layer, Layout *layout) const;
+  void ExportAvailableEdgesAsRectangles(
+      const std::string &layer, Layout *layout) const;
 
   void AddRoutingViaInfo(const geometry::Layer &lhs,
                          const geometry::Layer &rhs,

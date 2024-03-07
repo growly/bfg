@@ -774,7 +774,7 @@ TEST(PolyLineTest, InsertBulge_TODO_NeedsName12) {
   LOG(INFO) << line.Describe();
 }
 
-TEST(PolyLineTest, InsertBulg_TODO_NeedsName13) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName13) {
   PolyLine line = PolyLine(
       {4970, 4985}, {
       LineSegment {{4970, 5005}, 230},
@@ -788,5 +788,21 @@ TEST(PolyLineTest, InsertBulg_TODO_NeedsName13) {
 }
 
 }  // namespace
+
+TEST(PolyLineTest, NotchAroundCorner) {
+  // This line contains a notch around a corner:
+  PolyLine line = PolyLine(
+      {16005, 2000}, {
+      LineSegment {{16005, 2290}, 230},
+      LineSegment {{16005, 2430}, 140},
+      LineSegment {{13810, 2430}, 140},
+      LineSegment {{13490, 2430}, 260},
+  });
+  line.set_min_separation(140);
+
+  // We need to make sure it's removed!
+  line.RemoveNotchesAroundCorners();
+}
+
 }  // namespace geometry
 }  // namespace bfg

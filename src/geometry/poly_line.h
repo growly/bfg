@@ -5,6 +5,8 @@
 #include <memory>
 #include <optional>
 
+#include <gtest/gtest.h>
+
 #include "line_segment.h"
 #include "point.h"
 #include "port.h"
@@ -128,6 +130,11 @@ class PolyLine : public Shape {
     uint64_t length;
   };
 
+  void ReplaceDuplicateEndPointsWithWidest();
+  void RemoveRedundantSegments();
+  void RemoveNotchesInAStraightLine();
+  void RemoveNotchesAroundCorners();
+
   void EnforceInvariants();
   void InsertForwardBulgePoint(
       const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
@@ -183,6 +190,8 @@ class PolyLine : public Shape {
   std::vector<LineSegment> segments_;
 
   std::vector<DeferredBulge> deferred_bulges_;
+
+  FRIEND_TEST(PolyLineTest, NotchAroundCorner);
 };
 
 }  // namespace geometry

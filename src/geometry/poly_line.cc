@@ -482,49 +482,101 @@ bool PolyLine::Intersects(const Point &point, size_t *segment_index) const {
   return k >= 0;
 }
 
-void PolyLine::EnforceInvariants() {
-  // Remove duplicate segment end-points, enlarging the remaining to the max of
-  // all the segment widths which had the same end-point.
-  Point last = start_;
-  auto last_segment = segments_.end();
-  for (auto it = segments_.begin(); it != segments_.end();) {
-    if (it->end == last) {
-      if (last_segment != segments_.end()) {
-        last_segment->width = std::max(last_segment->width, it->width);
-      }
-      it = segments_.erase(it);
-    } else {
-      last = it->end;
-      last_segment = it;
-      ++it;
-    }
-  }
+void PolyLine::RemoveNotchesAroundCorners() {
+  //
+  //             /        /
+  //            /        /
+  //           /        /
+  //          /        / ^
+  //         +        +  |
+  //         |        |  | does this notch violate min_separation_?
+  //         |        |  |
+  //         |        |  v
+  //    +----+        +----+
+  //    |                  |
+  //    |                  |
+  //    |                  |
 
-  // FIXME(aryap): This should definitely be its own funtion.
-  // Remove successive segments in a line with the same width.
-  if (!segments_.empty()) {
-    Line previous_line = Line(start_, segments_[0].end);
-    for (auto it = segments_.begin() + 1; it != segments_.end();) {
-      LineSegment &previous_segment = *(it - 1);
-      LineSegment &current_segment = *it;
-      Line current_line = Line(previous_segment.end, current_segment.end);
-      absl::Cleanup rotate_line = [&]() {
-        previous_line = current_line;
-      };
-      if (!current_line.IsSameInfiniteLine(previous_line) ||
-          current_segment.width != previous_segment.width) {
-        ++it;
+  // In the most general case, we have to check all pairs of segments that are
+  // not adjacent to see if they violate min_separation_. This can occur if the
+  // two segments are in a straight line and the maximum width of any segment
+  // between them is less than both of their widths, _or_ if of the othe
+  // segments is at a non-zero angle to the other. One way of doing this is to
+  // track the change in spacing with each successive segment given its angle to
+  // previous segments and the original, for each original in the list of
+  // segments. Another way is to generate the boundary lines and find the
+  // distance between them, basically pre-empting the inflation process itself.
+  if (!min_separation_)
+    return;
+  for (size_t i = 0; i < segments_.size() - 1; ++i) {
+    LineSegment &first_segment = segments_[i];
+    Line first_line = Line(i == 0 ? start_ : segments_[i - 1].end,
+                           first_segment.end);
+
+    if (i + 1 >= segments_.size()) {
+      break;
+    }
+    if (segments_[i + 1].width >= first_segment.width) {
+      continue;
+    }
+
+    uint64_t intervening_width = segments_[i + 1].width;
+
+    for (size_t j = i + 2; j < segments_.size(); ++j) {
+      LineSegment &last_segment = segments_[j - 1];
+      LineSegment &next_segment = segments_[j];
+
+      LOG(INFO) << "i: " << i << ", " << "j: " << j << std::endl;
+      intervening_width = next_segment.width;
+
+      Line next_line = Line(segments_[j - 1].end, next_segment.end);
+      Line intervening_line = Line(first_line.end(), next_line.start());
+
+      double theta_first =
+          intervening_line.AngleToLineCounterClockwise(first_line);
+      double theta_next =
+          next_line.AngleToLineCounterClockwise(intervening_line);
+
+      double intervening_length = intervening_line.Length();
+
+      double first_projection_onto_intervening =
+          std::abs(std::sin(theta_first) *
+              static_cast<double>(first_segment.width) / 2.0);
+      double next_projection_onto_intervening =
+          std::abs(std::sin(theta_next) *
+              static_cast<double>(next_segment.width) / 2.0);
+
+      double spacing = intervening_length - (
+          first_projection_onto_intervening + next_projection_onto_intervening);
+
+      LOG(INFO) << "first_segment: " << first_segment.end << std::endl
+                << "last_segment: " << last_segment.end << std::endl
+                << "next_segment: " << next_segment.end << std::endl
+                << "first_line: " << first_line << std::endl
+                << "intervening_line: " << intervening_line << std::endl
+                << "next_line: " << next_line << std::endl
+                << "theta_first: " << theta_first << std::endl
+                << "theta_next: " << theta_next << std::endl
+                << "intervening_length: " << intervening_length << std::endl
+                << "first_projection_onto_intervening: "
+                << first_projection_onto_intervening << std::endl
+                << "next_projection_onto_intervening: "
+                << next_projection_onto_intervening << std::endl
+                << "spacing: " << spacing;
+      if (spacing >= *min_separation_) {
+        // Nothing to do.
         continue;
       }
-      previous_segment.end = current_segment.end;
-      it = segments_.erase(it);
+
+      // Widen all intervening segments to the width of the first:
+      for (size_t k = i + 1; i <= j; ++i) {
+        segments_[k].width = std::max(segments_[k].width, first_segment.width);
+      }
     }
   }
+}
 
-
-  // TODO(aryap): Remove anti-parallel segments that overlap parallel
-  // segments...?
-
+void PolyLine::RemoveNotchesInAStraightLine() {
   // If min_separation_ is defined, also remove segments in a straight line
   // that would a violation of min_separation between the segments before and
   // after due to contracting/expanding widths:
@@ -563,6 +615,56 @@ void PolyLine::EnforceInvariants() {
       --i;
     }
   }
+}
+
+void PolyLine::ReplaceDuplicateEndPointsWithWidest() {
+  // Remove duplicate segment end-points, enlarging the remaining to the max of
+  // all the segment widths which had the same end-point.
+  Point last = start_;
+  auto last_segment = segments_.end();
+  for (auto it = segments_.begin(); it != segments_.end();) {
+    if (it->end == last) {
+      if (last_segment != segments_.end()) {
+        last_segment->width = std::max(last_segment->width, it->width);
+      }
+      it = segments_.erase(it);
+    } else {
+      last = it->end;
+      last_segment = it;
+      ++it;
+    }
+  }
+}
+
+void PolyLine::RemoveRedundantSegments() {
+  // Remove successive segments in a line with the same width.
+  if (!segments_.empty()) {
+    Line previous_line = Line(start_, segments_[0].end);
+    for (auto it = segments_.begin() + 1; it != segments_.end();) {
+      LineSegment &previous_segment = *(it - 1);
+      LineSegment &current_segment = *it;
+      Line current_line = Line(previous_segment.end, current_segment.end);
+      absl::Cleanup rotate_line = [&]() {
+        previous_line = current_line;
+      };
+      if (!current_line.IsSameInfiniteLine(previous_line) ||
+          current_segment.width != previous_segment.width) {
+        ++it;
+        continue;
+      }
+      previous_segment.end = current_segment.end;
+      it = segments_.erase(it);
+    }
+  }
+}
+
+void PolyLine::EnforceInvariants() {
+  ReplaceDuplicateEndPointsWithWidest();
+  RemoveRedundantSegments();
+  RemoveNotchesInAStraightLine();
+  RemoveNotchesAroundCorners();
+  // TODO(aryap): Remove anti-parallel segments that overlap parallel
+  // segments...?
 }
 
 }  // namespace geometry

@@ -1547,6 +1547,18 @@ void RoutingGrid::RemoveUnavailableVertices() {
   }
 }
 
+void RoutingGrid::ExportAvailableEdgesAsRectangles(
+    const std::string &layer, Layout *layout) const {
+  layout->SetActiveLayerByName(layer);
+
+  // FIXME(aryap): Complete this!
+  //for (RoutingVertex *vertex : vertices_) {
+  //  if (vertex->available()) {
+  //    layout->AddSquare(vertex->centre(), 10);
+  //  }
+  //}
+}
+
 void RoutingGrid::ExportAvailableVerticesAsSquares(
     const std::string &layer, Layout *layout) const {
   layout->SetActiveLayerByName(layer);
