@@ -1144,17 +1144,62 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   }
   // If the vertex is off-grid, we have to search for affected neighbours
   // more painstakingly.
+  //
+  // There are two different sets of surrounding vertices on the grid:
+  //
+  //      |E           |I           |K           |M
+  //  ----x------------x------------x------------x-----
+  //      |            |            |            |
+  //      |            |            |            |
+  //      |            |            |            |
+  //      |            |            |            |
+  //      |F           |A           |C           |N
+  //  ----x------------x------------x------------x-----
+  //      |            |            |            |
+  //      |            |     O      |            |
+  //      |            |     x      |            |
+  //      |            |            |            |
+  //      |G           |B           |D           |O
+  //  --- x -----------x -----------x -----------x-----
+  //      |            |            |            |
+  //      |            |            |            |
+  //      |            |            |            |
+  //      |            |            |            |
+  //      |H           |J           |L           |P
+  //  ----x------------x-----(1)----x------------x-----
+  //      |            |            |            |
+  //
+  // The inner vertices surrounding O (A, B, C, D) will definitely conflict, so
+  // we don't bother to check the distance between a via at O and a via at any
+  // of their positions. The outer vertices (E - P) will only conflict if the
+  // via at O is positioned in a certain way within the ABDC rectangle, so we
+  // have to check those explicitly.
   std::set<RoutingVertex*> vertices;
+  std::set<RoutingVertex*> inner_vertices;
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     std::vector<RoutingGridGeometry*> grid_geometries =
         FindRoutingGridGeometriesUsingLayer(layer);
     for (RoutingGridGeometry *grid_geometry : grid_geometries) {
-      grid_geometry->EnvelopingVertices(vertex->centre(), &vertices);
+      grid_geometry->EnvelopingVertices(
+          vertex->centre(),
+          &vertices,
+          0,
+          2);   // num_concentric_layers = 2 yields vertices A - P in the above
+                // example.
+      grid_geometry->EnvelopingVertices(
+          vertex->centre(),
+          &inner_vertices,
+          0,
+          1);   // num_concentric_layers = 1 yields vertices A - D.
     }
   }
+  std::vector<RoutingVertex*> outer_vertices;
+  std::set_difference(vertices.begin(), vertices.end(),
+                      inner_vertices.begin(), inner_vertices.end(),
+                      std::back_inserter(outer_vertices));
 
   std::set<RoutingTrack*> blocked_tracks;
-  for (RoutingVertex *enveloping_vertex : vertices) {
+  for (RoutingVertex *enveloping_vertex : inner_vertices) {
     enveloping_vertex->set_available(false);
     // We also have to add blockages to the tracks on which these vertices
     // appear, since by being off-grid we're _presumably_ too close to
@@ -1187,10 +1232,9 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   blocked_tracks.erase(vertex->horizontal_track());
   blocked_tracks.erase(vertex->vertical_track());
 
-  std::set<RoutingEdge*> edges = {vertex->in_edge(), vertex->out_edge()};
-  edges.erase(nullptr);
-
-  for (RoutingEdge *edge : edges) {
+  std::set<RoutingEdge*> vertex_edges = {vertex->in_edge(), vertex->out_edge()};
+  vertex_edges.erase(nullptr);
+  for (RoutingEdge *edge : vertex_edges) {
     const geometry::Layer &layer = edge->ExplicitOrTrackLayer();
     const RoutingTrackDirection direction = edge->Direction();
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
@@ -1204,6 +1248,16 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
       if (track->layer() != layer)
         continue;
       track->AddBlockage(*via_encap, min_separation);
+    }
+
+    for (RoutingVertex *enveloping_vertex : outer_vertices) {
+      std::optional<geometry::Rectangle> outer_via_encap = ViaFootprint(
+          *enveloping_vertex, layer, 0);
+      int64_t min_distance = static_cast<int64_t>(std::ceil(
+          via_encap->ClosestDistanceTo(*outer_via_encap)));
+      if (min_distance < min_separation) {
+        enveloping_vertex->set_available(false);
+      }
     }
   }
 }

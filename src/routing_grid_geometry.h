@@ -26,9 +26,10 @@ class RoutingGridGeometry {
   void EnvelopingVertices(
       const T &shape,
       std::set<RoutingVertex*> *vertices,
-      int64_t padding = 0) const {
+      int64_t padding = 0,
+      int64_t num_concentric_layers = 1) const {
     std::set<std::pair<size_t, size_t>> indices;
-    EnvelopingVertexIndices(shape, &indices, padding);
+    EnvelopingVertexIndices(shape, &indices, padding, num_concentric_layers);
     VerticesAt(indices, vertices);
   }
 

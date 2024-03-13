@@ -449,7 +449,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   }
 
   // Debug only.
-  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
+  //routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
 
   // Connect the weird scan chain jumps across VDD/VSS met1 rails. Use layout
   // config to deduce where this ought to occur (instead of looking at it).
@@ -724,7 +724,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   //}
 
   // Debug only.
-  routing_grid.ExportVerticesAsSquares("areaid.frameRect", false, layout.get());
+  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
+  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout.get());
 
   grid_layout.reset(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");
