@@ -1147,32 +1147,23 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   //
   // There are two different sets of surrounding vertices on the grid:
   //
-  //      |E           |I           |K           |M
-  //  ----x------------x------------x------------x-----
-  //      |            |            |            |
-  //      |            |            |            |
-  //      |            |            |            |
-  //      |            |            |            |
-  //      |F           |A           |C           |N
-  //  ----x------------x------------x------------x-----
-  //      |            |            |            |
-  //      |            |     O      |            |
-  //      |            |     x      |            |
-  //      |            |            |            |
-  //      |G           |B           |D           |O
-  //  --- x -----------x -----------x -----------x-----
-  //      |            |            |            |
-  //      |            |            |            |
-  //      |            |            |            |
-  //      |            |            |            |
-  //      |H           |J           |L           |P
-  //  ----x------------x-----(1)----x------------x-----
-  //      |            |            |            |
+  //      |E     |I     |K     |M
+  //  ----x------x------x------x-----
+  //      |      |      |      |
+  //      |F     |A     |C     |N
+  //  ----x------x------x------x-----
+  //      |      |  x <------------------ Z, off-grid point
+  //      |G     |B     |D     |O
+  //  ----x------x------x------x-----
+  //      |      |      |      |
+  //      |H     |J     |L     |P
+  //  ----x------x------x------x-----
+  //      |      |      |      |
   //
-  // The inner vertices surrounding O (A, B, C, D) will definitely conflict, so
+  // The inner vertices surrounding Z (A, B, C, D) will definitely conflict, so
   // we don't bother to check the distance between a via at O and a via at any
   // of their positions. The outer vertices (E - P) will only conflict if the
-  // via at O is positioned in a certain way within the ABDC rectangle, so we
+  // via at Z is positioned in a certain way within the ABDC rectangle, so we
   // have to check those explicitly.
   std::set<RoutingVertex*> vertices;
   std::set<RoutingVertex*> inner_vertices;
@@ -1241,8 +1232,8 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
        *vertex, layer, 0, direction);
     if (!via_encap)
       continue;
-    LOG(INFO) << "via encap: " << *via_encap << " about " << vertex->centre()
-              << " layer " << layer << " for edge " << *edge;
+    //LOG(INFO) << "via encap: " << *via_encap << " about " << vertex->centre()
+    //          << " layer " << layer << " for edge " << *edge;
     int64_t min_separation = physical_db_.Rules(layer).min_separation;
     for (RoutingTrack *track : blocked_tracks) {
       if (track->layer() != layer)
@@ -1256,6 +1247,10 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
       int64_t min_distance = static_cast<int64_t>(std::ceil(
           via_encap->ClosestDistanceTo(*outer_via_encap)));
       if (min_distance < min_separation) {
+        //LOG(INFO) << "vertex " << enveloping_vertex->centre()
+        //          << " is too close (" << min_distance << " < "
+        //          << min_separation << ") to "
+        //          << *via_encap << " at " << vertex->centre();
         enveloping_vertex->set_available(false);
       }
     }

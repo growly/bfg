@@ -398,24 +398,24 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   routing_via_info.cost = 0.5;
   routing_grid.AddRoutingViaInfo(
       met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
-  alt_routing_grid.AddRoutingViaInfo(
-      met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
+  //alt_routing_grid.AddRoutingViaInfo(
+  //    met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
 
   routing_via_info = {0};
   db.GetRoutingViaInfo("li.drawing", "met1.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
   routing_grid.AddRoutingViaInfo(
       met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
-  alt_routing_grid.AddRoutingViaInfo(
-      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
+  //alt_routing_grid.AddRoutingViaInfo(
+  //    met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
 
   routing_via_info = {0};
   db.GetRoutingViaInfo("met2.drawing", "met3.drawing", &routing_via_info);
   routing_via_info.cost = 0.5;
   routing_grid.AddRoutingViaInfo(
       db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
-  alt_routing_grid.AddRoutingViaInfo(
-      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
+  //alt_routing_grid.AddRoutingViaInfo(
+  //    db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
 
   //routing_grid.AddRoutingLayerInfo(li_layer_info);
   routing_grid.AddRoutingLayerInfo(met1_layer_info);
@@ -424,11 +424,11 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer);
 
   // Swap direction for the alt routing grid:
-  //std::swap(met1_layer_info.direction, met2_layer_info.direction);
-  alt_routing_grid.AddRoutingLayerInfo(met1_layer_info);
-  alt_routing_grid.AddRoutingLayerInfo(met2_layer_info);
-  alt_routing_grid.ConnectLayers(
-      met1_layer_info.layer, met2_layer_info.layer);
+  ////std::swap(met1_layer_info.direction, met2_layer_info.direction);
+  //alt_routing_grid.AddRoutingLayerInfo(met1_layer_info);
+  //alt_routing_grid.AddRoutingLayerInfo(met2_layer_info);
+  //alt_routing_grid.ConnectLayers(
+  //    met1_layer_info.layer, met2_layer_info.layer);
 
   {
     // Add blockages from all existing shapes.
@@ -436,16 +436,16 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
     // LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
-    alt_routing_grid.AddBlockages(
-        shapes, db.Rules("met1.drawing").min_separation);
+    //alt_routing_grid.AddBlockages(
+    //    shapes, db.Rules("met1.drawing").min_separation);
   }
   {
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
     // LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
-    alt_routing_grid.AddBlockages(
-        shapes, db.Rules("met2.drawing").min_separation);
+    //alt_routing_grid.AddBlockages(
+    //    shapes, db.Rules("met2.drawing").min_separation);
   }
 
   // Debug only.
@@ -512,7 +512,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         std::string net_name = absl::StrCat(source->name(), "_Q");
         //memory_output_net_names[source] = net_name;
 
-        alt_routing_grid.AddRouteBetween(*start, *end, {}, net_name);
+        routing_grid.AddRouteBetween(*start, *end, {}, net_name);
 
         LOG(INFO) << "b=" << b << ", j=" << j << ", i=" << i << " "
                   << source->name() << " -> " << sink->name()
@@ -523,30 +523,31 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
+  std::unique_ptr<bfg::Layout> grid_layout;
   // Now that we're done with the alt routing grid, add its shapes to the main
   // layout and update the regular routing grid with the alternate one's shapes
   // as blockages.
-  std::unique_ptr<bfg::Layout> grid_layout(alt_routing_grid.GenerateLayout());
-  layout->AddLayout(*grid_layout, "routing_alt");
+  //std::unique_ptr<bfg::Layout> grid_layout(alt_routing_grid.GenerateLayout());
+  //layout->AddLayout(*grid_layout, "routing_alt");
 
   // TODO(aryap): This seems to be a common enough op to factor out. Would be 1
   // step nicer with GetShapesOnLayer returning the ShapeCollection directly,
   // and would be 2 steps nicer with RoutingGrid having the facility to
   // automatically add blockages from a Layout (for all the layers it itself
   // uses for routing).
-  {
-    // Add blockages from all existing shapes.
-    geometry::ShapeCollection shapes;
-    grid_layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
-    LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
-    routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
-  }
-  {
-    geometry::ShapeCollection shapes;
-    grid_layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
-    LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
-    routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
-  }
+  //{
+  //  // Add blockages from all existing shapes.
+  //  geometry::ShapeCollection shapes;
+  //  grid_layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+  //  LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
+  //  routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
+  //}
+  //{
+  //  geometry::ShapeCollection shapes;
+  //  grid_layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+  //  LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
+  //  routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
+  //}
 
   // Connect the scan chain.
   for (const auto &pair : scan_chain_pairs) {
