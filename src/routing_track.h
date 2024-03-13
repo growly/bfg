@@ -132,6 +132,8 @@ class RoutingTrack {
 
   const geometry::Layer &layer() const { return layer_; }
 
+  RoutingTrackDirection direction() const { return direction_; }
+
   int64_t offset() const { return offset_; }
 
   int64_t width() const { return width_; }

@@ -7,6 +7,7 @@
 
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
+#include "physical_properties_database.h"
 
 namespace bfg {
 
@@ -58,6 +59,7 @@ class RoutingEdge {
   const geometry::Layer &layer() const { return layer_; }
 
   const geometry::Layer &ExplicitOrTrackLayer() const;
+  RoutingTrackDirection Direction() const;
 
   // Off-grid edges do not have tracks.
   void set_track(RoutingTrack *track);

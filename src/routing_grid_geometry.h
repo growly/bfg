@@ -45,22 +45,26 @@ class RoutingGridGeometry {
   void EnvelopingVertexIndices(
       const geometry::Point &point,
       std::set<std::pair<size_t, size_t>> *vertices,
-      int64_t padding = 0) const;
+      int64_t padding = 0,
+      int64_t num_concentric_layers = 1) const;
 
   void EnvelopingVertexIndices(
       const geometry::Rectangle &rectangle,
       std::set<std::pair<size_t, size_t>> *vertices,
-      int64_t padding = 0) const;
+      int64_t padding = 0,
+      int64_t num_concentric_layers = 1) const;
 
   void EnvelopingVertexIndices(
       const geometry::Polygon &polygon,
       std::set<std::pair<size_t, size_t>> *vertices,
-      int64_t padding = 0) const;
+      int64_t padding = 0,
+      int64_t num_concentric_layers = 1) const;
 
   std::tuple<int64_t, int64_t, int64_t, int64_t> MapPointToBoundingGridIndices(
       const geometry::Point &point) const;
 
-  void BoundGridIndices(int64_t *column_lower,
+  void BoundGridIndices(int64_t num_concentric_layers,
+                        int64_t *column_lower,
                         int64_t *column_upper,
                         int64_t *row_lower,
                         int64_t *row_upper) const;

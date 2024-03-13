@@ -59,15 +59,24 @@ RoutingGridGeometry::MapPointToBoundingGridIndices(
   return std::make_tuple(column_lower, column_upper, row_lower, row_upper);
 }
 
-void RoutingGridGeometry::BoundGridIndices(int64_t *column_lower,
+void RoutingGridGeometry::BoundGridIndices(int64_t num_concentric_layers,
+                                           int64_t *column_lower,
                                            int64_t *column_upper,
                                            int64_t *row_lower,
                                            int64_t *row_upper) const {
-  // Impose restriction of real bounded grid with indices [0, max]:
-  *column_lower = std::max(std::min(*column_lower, max_column_index_), 0L);
-  *column_upper = std::max(std::min(*column_upper, max_column_index_), 0L);
-  *row_lower = std::max(std::min(*row_lower, max_row_index_), 0L);
-  *row_upper = std::max(std::min(*row_upper, max_row_index_), 0L);
+  // Impose restriction of real bounded grid with indices [0, max]. Push out
+  // limits by (num_concentric_layers - 1) to include (num_concentric_layers -
+  // 1) additional layers of grid indices beyond the first encapsulating layer.
+  --num_concentric_layers;
+
+  *column_lower = std::max(std::min(
+      (*column_lower - num_concentric_layers), max_column_index_), 0L);
+  *column_upper = std::max(std::min(
+      (*column_upper + num_concentric_layers), max_column_index_), 0L);
+  *row_lower = std::max(std::min(
+      (*row_lower - num_concentric_layers), max_row_index_), 0L);
+  *row_upper = std::max(std::min(
+      (*row_upper + num_concentric_layers), max_row_index_), 0L);
 }
 
 void RoutingGridGeometry::NearestTracks(
@@ -100,7 +109,7 @@ void RoutingGridGeometry::NearestTrackIndices(
       MapPointToBoundingGridIndices(point);
   // (I think I like the sauce.)
 
-  BoundGridIndices(&column_lower, &column_upper, &row_lower, &row_upper);
+  BoundGridIndices(1, &column_lower, &column_upper, &row_lower, &row_upper);
 
   // Columns (vertical tracks):
   vertical->insert(column_lower);
@@ -158,7 +167,8 @@ void RoutingGridGeometry::ComputeForLayers(
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Point &point,
     std::set<std::pair<size_t, size_t>> *vertices,
-    int64_t padding) const {
+    int64_t padding,
+    int64_t num_concentric_layers) const {
   if (padding != 0) {
     int64_t keep_out_width = 2 * padding;
     geometry::Rectangle keep_out = geometry::Rectangle(
@@ -195,7 +205,8 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
     j_upper = std::max(std::min(j_upper + 1, max_row_index_), 0L);
   }
 
-  BoundGridIndices(&i_lower, &i_upper, &j_lower, &j_upper);
+  BoundGridIndices(
+      num_concentric_layers, &i_lower, &i_upper, &j_lower, &j_upper);
 
   VLOG(13) << point << ": "
            << i_lower << " <= i <= " << i_upper << "; "
@@ -221,7 +232,8 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Rectangle &rectangle,
     std::set<std::pair<size_t, size_t>> *vertices,
-    int64_t padding) const {
+    int64_t padding,
+    int64_t num_concentric_layers) const {
   // Find the bounding corner indices of an infinite grid:
   int64_t i_lower = std::floor(
       static_cast<double>(rectangle.lower_left().x() - padding - x_start_) /
@@ -237,7 +249,8 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
       static_cast<double>(rectangle.upper_right().y() + padding - y_start_) /
       static_cast<double>(y_pitch_));
 
-  BoundGridIndices(&i_lower, &i_upper, &j_lower, &j_upper);
+  BoundGridIndices(
+      num_concentric_layers, &i_lower, &i_upper, &j_lower, &j_upper);
 
   VLOG(13) << rectangle << ": "
            << i_lower << " <= i <= " << i_upper << "; "
@@ -253,7 +266,8 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Polygon &polygon,
     std::set<std::pair<size_t, size_t>> *vertices,
-    int64_t padding) const {
+    int64_t padding,
+    int64_t num_concentric_layers) const {
   // There is a smart way to do this, and then there is this way.
   return EnvelopingVertexIndices(polygon.GetBoundingBox(), vertices, padding);
 

@@ -140,10 +140,14 @@ class RoutingGrid {
 
   void RemoveUnavailableVertices();
 
-  void ExportAvailableVerticesAsSquares(
-      const std::string &layer, Layout *layout) const;
-  void ExportAvailableEdgesAsRectangles(
-      const std::string &layer, Layout *layout) const;
+  void ExportVerticesAsSquares(
+      const std::string &layer,
+      bool available_only,
+      Layout *layout) const;
+  void ExportEdgesAsRectangles(
+      const std::string &layer,
+      bool available_only,
+      Layout *layout) const;
 
   void AddRoutingViaInfo(const geometry::Layer &lhs,
                          const geometry::Layer &rhs,
@@ -271,13 +275,20 @@ class RoutingGrid {
       const geometry::Layer &access_layer,
       RoutingVertex *off_grid);
 
+  std::optional<geometry::Rectangle> ViaFootprint(
+      const geometry::Point &centre,
+      const geometry::Layer &first_layer,
+      const geometry::Layer &second_layer,
+      int64_t padding = 0,
+      std::optional<RoutingTrackDirection> direction = std::nullopt) const;
   // FIXME(aryap): The RoutingVertex should contain enough information to figure
   // this out. It should at *least* always have its bottom and top layers
   // (ordered). the "connected_layers_" field is hard to use.
   std::optional<geometry::Rectangle> ViaFootprint(
       const RoutingVertex &vertex,
       const geometry::Layer &layer,
-      int64_t padding = 0) const;
+      int64_t padding = 0,
+      std::optional<RoutingTrackDirection> direction = std::nullopt) const;
   std::optional<geometry::Rectangle> TrackFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
 
@@ -394,6 +405,11 @@ class RoutingGrid {
       rectangle_blockages_;
   std::vector<std::unique_ptr<RoutingGridBlockage<geometry::Polygon>>>
       polygon_blockages_;
+
+  // TODO(aryap): We need to track which directions a vertex can be used in,
+  // since sometimes a horizontal via encap will fit but a vertical one will
+  // not.
+  std::set<RoutingTrackDirection> connectable_directions_;
 
   const PhysicalPropertiesDatabase &physical_db_;
 

@@ -27,6 +27,8 @@ struct RoutingViaInfo {
   // sheet resistance).
   double cost;
   int64_t width;
+
+  // TODO(aryap): Rename this to length like it is everywhere else.
   int64_t height;
 
   // These are the via encapsulations in the axis of the bulge and the

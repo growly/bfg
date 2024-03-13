@@ -4,6 +4,8 @@
 #include <set>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
+
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/polygon.h"
@@ -178,7 +180,8 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
     return target;
   }
 
-  RoutingVertex *bridging_vertex = new RoutingVertex(candidate_centre);
+  std::unique_ptr<RoutingVertex> bridging_vertex(
+      new RoutingVertex(candidate_centre));
 
   // We need to ask if this candidate fits in with other installed vertices.
   // This is specifically to check that vertices on adjacent tracks to not
@@ -201,12 +204,10 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
     LOG(WARNING) << "Bridging vertex " << bridging_vertex->centre()
                  << " on " << Debug()
                  << " is not valid against other installed paths";
-    delete bridging_vertex;
     return nullptr;
   }
 
-  if (!AddVertex(bridging_vertex)) {
-    delete bridging_vertex;
+  if (!AddVertex(bridging_vertex.get())) {
     return nullptr;
   }
 
@@ -222,7 +223,7 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
                  << "RoutingTrackDirection: " << direction_;
   }
 
-  return bridging_vertex;
+  return bridging_vertex.release();
 }
 
 void RoutingTrack::ReportAvailableEdges(

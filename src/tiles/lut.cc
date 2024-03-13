@@ -373,6 +373,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   RoutingGrid alt_routing_grid(db);
 
   // Set every property the RoutingGrid needs.
+  //bfg::RoutingLayerInfo li_layer_info;
+  //db.GetRoutingLayerInfo("li.drawing", &li_layer_info);
+  //li_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+  //li_layer_info.area = pre_route_bounds;
+  //li_layer_info.offset = 50;
+
   bfg::RoutingLayerInfo met1_layer_info;
   db.GetRoutingLayerInfo("met1.drawing", &met1_layer_info);
   met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
@@ -411,8 +417,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   alt_routing_grid.AddRoutingViaInfo(
       db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
 
+  //routing_grid.AddRoutingLayerInfo(li_layer_info);
   routing_grid.AddRoutingLayerInfo(met1_layer_info);
   routing_grid.AddRoutingLayerInfo(met2_layer_info);
+
   routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer);
 
   // Swap direction for the alt routing grid:
@@ -441,7 +449,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   }
 
   // Debug only.
-  routing_grid.ExportAvailableVerticesAsSquares("areaid.frame", layout.get());
+  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
 
   // Connect the weird scan chain jumps across VDD/VSS met1 rails. Use layout
   // config to deduce where this ought to occur (instead of looking at it).
@@ -716,8 +724,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   //}
 
   // Debug only.
-  routing_grid.ExportAvailableVerticesAsSquares(
-      "areaid.frameRect", layout.get());
+  routing_grid.ExportVerticesAsSquares("areaid.frameRect", false, layout.get());
 
   grid_layout.reset(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");

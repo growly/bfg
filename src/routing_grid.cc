@@ -194,8 +194,12 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
 
   for (const geometry::Layer &candidate_layer :
        candidate.connected_layers()) {
-    int64_t min_separation =
-        GetRoutingLayerInfoOrDie(candidate_layer).min_separation;
+    auto routing_layer_info = GetRoutingLayerInfo(candidate_layer);
+    if (!routing_layer_info) {
+      // No routing layer info, probably not a routing layer.
+      continue;
+    }
+    int64_t min_separation = routing_layer_info->get().min_separation;
 
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
         candidate, candidate_layer, 0);   // No additional padding.
@@ -413,6 +417,7 @@ RoutingGrid::AddAccessVerticesForPoint(
               << " with via cost " << option.total_via_cost;
 
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(point));
+    off_grid->AddConnectedLayer(target_layer);
     if (!ValidAgainstKnownBlockages(*off_grid) ||
         !ValidAgainstInstalledPaths(*off_grid)) {
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
@@ -647,9 +652,45 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
+    const geometry::Point &centre,
+    const geometry::Layer &first_layer,
+    const geometry::Layer &second_layer,
+    int64_t padding,
+    std::optional<RoutingTrackDirection> direction) const {
+  // Get the applicable via info for via sizing and encapsulation values:
+  const RoutingViaInfo &routing_via_info = GetRoutingViaInfoOrDie(
+      first_layer, second_layer);
+  int64_t via_width = routing_via_info.width +
+      2 * routing_via_info.overhang_width + 2 * padding;
+  int64_t via_length = routing_via_info.height +
+      2 * routing_via_info.overhang_length + 2 * padding;
+
+  geometry::Point lower_left;
+
+  if (!direction) {
+    int64_t square_width = std::max(via_width, via_length);
+    lower_left = centre - geometry::Point(square_width / 2, square_width / 2);
+    return geometry::Rectangle(lower_left, square_width, square_width);
+  }
+
+  switch (*direction) {
+    case RoutingTrackDirection::kTrackVertical:
+      lower_left = centre - geometry::Point(via_width / 2, via_length / 2);
+      return geometry::Rectangle(lower_left, via_width, via_length);
+    case RoutingTrackDirection::kTrackHorizontal:
+      lower_left = centre - geometry::Point(via_length / 2, via_width / 2);
+      return geometry::Rectangle(lower_left, via_length, via_width);
+    default:
+      LOG(FATAL) << "Unknown RoutingTrackDirection: " << *direction;
+  }
+  return std::nullopt;
+}
+
+std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
     const RoutingVertex &vertex,
     const geometry::Layer &layer,
-    int64_t padding) const {
+    int64_t padding,
+    std::optional<RoutingTrackDirection> direction) const {
   const std::vector<geometry::Layer> &layers = vertex.connected_layers();
   if (layers.size() != 2) {
     return std::nullopt;
@@ -657,18 +698,8 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
   const geometry::Layer &first_layer = layers.front();
   const geometry::Layer &second_layer = layers.back();
 
-  // Get the applicable via info for via sizing and encapsulation values:
-  const RoutingViaInfo &routing_via_info = GetRoutingViaInfoOrDie(
-      first_layer, second_layer);
-  int64_t via_width = std::max(
-      routing_via_info.width, routing_via_info.height) + 2 * std::max(
-      routing_via_info.overhang_length, routing_via_info.overhang_width) +
-      2 * padding;
-  geometry::Point lower_left = vertex.centre() - geometry::Point(
-      via_width / 2, via_width / 2);
-  geometry::Rectangle footprint = geometry::Rectangle(
-      lower_left, via_width, via_width);
-  return footprint;
+  return ViaFootprint(
+      vertex.centre(), first_layer, second_layer, padding, direction);
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
@@ -1156,11 +1187,18 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   blocked_tracks.erase(vertex->horizontal_track());
   blocked_tracks.erase(vertex->vertical_track());
 
-  for (const geometry::Layer &layer : vertex->connected_layers()) {
+  std::set<RoutingEdge*> edges = {vertex->in_edge(), vertex->out_edge()};
+  edges.erase(nullptr);
+
+  for (RoutingEdge *edge : edges) {
+    const geometry::Layer &layer = edge->ExplicitOrTrackLayer();
+    const RoutingTrackDirection direction = edge->Direction();
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
-       *vertex, layer, 0);
+       *vertex, layer, 0, direction);
     if (!via_encap)
       continue;
+    LOG(INFO) << "via encap: " << *via_encap << " about " << vertex->centre()
+              << " layer " << layer << " for edge " << *edge;
     int64_t min_separation = physical_db_.Rules(layer).min_separation;
     for (RoutingTrack *track : blocked_tracks) {
       if (track->layer() != layer)
@@ -1175,7 +1213,7 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
 
   LOG(INFO) << "installing path " << *path << " with net " << path->net();
 
-  // Mark edges as unavailable in with track which owns them.
+  // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {
       edge->track()->MarkEdgeAsUsed(edge, path->net());
@@ -1268,8 +1306,8 @@ RoutingPath *RoutingGrid::ShortestPath(
         }
         return false;
       },
-      false);   // Targets don't have to be 'usable', since we actually expect
-                // them already be used by the target net.
+      false);   // Targets don't have to be 'usable', since we expect them to
+                // already be used by the target net.
   // TODO(aryap): InstallPath obviates this.
   //if (path) {
   //  path->set_encap_end_port(true);
@@ -1547,8 +1585,8 @@ void RoutingGrid::RemoveUnavailableVertices() {
   }
 }
 
-void RoutingGrid::ExportAvailableEdgesAsRectangles(
-    const std::string &layer, Layout *layout) const {
+void RoutingGrid::ExportEdgesAsRectangles(
+    const std::string &layer, bool available_only, Layout *layout) const {
   layout->SetActiveLayerByName(layer);
 
   // FIXME(aryap): Complete this!
@@ -1559,11 +1597,11 @@ void RoutingGrid::ExportAvailableEdgesAsRectangles(
   //}
 }
 
-void RoutingGrid::ExportAvailableVerticesAsSquares(
-    const std::string &layer, Layout *layout) const {
+void RoutingGrid::ExportVerticesAsSquares(
+    const std::string &layer, bool available_only, Layout *layout) const {
   layout->SetActiveLayerByName(layer);
   for (RoutingVertex *vertex : vertices_) {
-    if (vertex->available()) {
+    if (!available_only || vertex->available()) {
       layout->AddSquare(vertex->centre(), 10);
     }
   }

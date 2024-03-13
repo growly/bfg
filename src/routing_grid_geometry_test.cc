@@ -129,6 +129,134 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
   nearest_vertices.clear();
 }
 
+TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point_2ConcentricLayers) {
+  RoutingLayerInfo horizontal = RoutingLayerInfo {
+    .layer = 0,
+    .area = Rectangle({0, 0}, {200, 200}),
+    .wire_width = 1,
+    .offset = 10,
+    .direction = RoutingTrackDirection::kTrackHorizontal,
+    .pitch = 10,
+  };
+
+  RoutingLayerInfo vertical = RoutingLayerInfo {
+    .layer = 1,
+    .area = Rectangle({0, 0}, {200, 200}),
+    .wire_width = 1,
+    .offset = 10,
+    .direction = RoutingTrackDirection::kTrackVertical,
+    .pitch = 10,
+  };
+
+  RoutingGridGeometry grid_geometry;
+  grid_geometry.ComputeForLayers(horizontal, vertical);
+
+  std::set<std::pair<size_t, size_t>> nearest_vertices;
+
+  std::set<std::pair<size_t, size_t>> expected = {
+      {0, 0},
+      {1, 0},
+      {2, 0},
+      {3, 0},
+      {0, 1},
+      {1, 1},
+      {2, 1},
+      {3, 1},
+      {0, 2},
+      {1, 2},
+      {2, 2},
+      {3, 2}
+  };
+  grid_geometry.EnvelopingVertexIndices(
+      {25, 15},
+      &nearest_vertices,
+      0,    // No padding.
+      2);   // 2 concentric layers, one more than the default of 1.
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  nearest_vertices.clear();
+
+  expected = {
+      {0, 0},
+      {1, 0},
+      {0, 1},
+      {1, 1}
+  };
+  grid_geometry.EnvelopingVertexIndices({5, 5}, &nearest_vertices, 0, 2);
+  EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  nearest_vertices.clear();
+
+  //expected = {
+  //    {0, 0}
+  //};
+  //grid_geometry.EnvelopingVertexIndices({0, 0}, &nearest_vertices);
+  //EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  //nearest_vertices.clear();
+
+  //expected = {
+  //    {3, 3},
+  //    {3, 4},
+  //    {3, 5},
+  //    {4, 3},
+  //    {4, 4},
+  //    {4, 5},
+  //    {5, 3},
+  //    {5, 4},
+  //    {5, 5}
+  //};
+  //grid_geometry.EnvelopingVertexIndices({50, 50}, &nearest_vertices);
+  //EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  //nearest_vertices.clear();
+
+  //expected = {
+  //    {19, 19}
+  //};
+  //grid_geometry.EnvelopingVertexIndices({210, 210}, &nearest_vertices);
+  //EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  //nearest_vertices.clear();
+
+  //expected = {  // { x,  y}
+  //    {0, 0},   // {10, 10}
+  //    {0, 1},   // {10, 20}
+  //    {1, 0},   // {20, 10}
+  //    {1, 1},   // {20, 20}
+  //    {2, 0},   // {30, 10}
+  //    {2, 1}    // {30, 20}
+  //};
+  //grid_geometry.EnvelopingVertexIndices({20, 15}, &nearest_vertices);
+  //EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  //nearest_vertices.clear();
+
+  //expected = {  // { x,  y}
+  //    {1, 1},   // {20, 20}
+  //    {1, 2},   // {20, 30}
+  //    {1, 3},   // {20, 40}
+  //    {2, 1},   // {30, 20}
+  //    {2, 2},   // {30, 30}
+  //    {2, 3}    // {30, 40}
+  //};
+  //grid_geometry.EnvelopingVertexIndices({25, 30}, &nearest_vertices);
+  //EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  //nearest_vertices.clear();
+
+  //expected = {
+  //    {0, 0},  // {10, 10}
+  //    {1, 0},  // {20, 10}
+  //    {2, 0},  // {30, 10}
+  //};
+  //grid_geometry.EnvelopingVertexIndices({20, 0}, &nearest_vertices);
+  //EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  //nearest_vertices.clear();
+
+  //expected = {
+  //    {19, 8},
+  //    {19, 9},
+  //    {19, 10},
+  //};
+  //grid_geometry.EnvelopingVertexIndices({205, 100}, &nearest_vertices);
+  //EXPECT_THAT(nearest_vertices, ContainerEq(expected));
+  //nearest_vertices.clear();
+}
+
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
   RoutingLayerInfo horizontal = RoutingLayerInfo {
     .layer = 0,

@@ -117,8 +117,6 @@ class RoutingVertex {
     RoutingVertex *vertex;
   };
 
-  // TODO(aryap): 
-
   // If the vertex is in use by some route, the name of the net should be here,
   // available_ should be false. in_edge and out_edge should point to the
   // incoming and outgoing edges used for the route through this vertex. If the

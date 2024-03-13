@@ -9,6 +9,7 @@
 
 #include "geometry/point.h"
 #include "geometry/rectangle.h"
+#include "physical_properties_database.h"
 #include "routing_edge.h"
 #include "routing_vertex.h"
 #include "routing_track.h"
@@ -74,6 +75,19 @@ const geometry::Layer &RoutingEdge::ExplicitOrTrackLayer() const {
   if (track_ != nullptr)
     return track_->layer();
   return layer_;
+}
+
+RoutingTrackDirection RoutingEdge::Direction() const {
+  if (track_) {
+    return track_->direction();
+  }
+  // Off-grid, so attempt to determine what our direction is:
+  if (first_->centre().x() == second_->centre().x()) {
+    return RoutingTrackDirection::kTrackVertical;
+  }
+  LOG_IF(FATAL, first_->centre().y() != second_->centre().y())
+      << "Track " << *this << " is not horizontal or vertical";
+  return RoutingTrackDirection::kTrackHorizontal;
 }
 
 void RoutingEdge::PrepareForRemoval() {
