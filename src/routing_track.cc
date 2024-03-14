@@ -6,6 +6,7 @@
 
 #include <absl/cleanup/cleanup.h>
 
+#include "layout.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/polygon.h"
@@ -227,7 +228,7 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
 }
 
 void RoutingTrack::ReportAvailableEdges(
-    std::vector<RoutingEdge*> *edges_out) {
+    std::vector<RoutingEdge*> *edges_out) const {
   std::copy_if(
       edges_.begin(),
       edges_.end(),
@@ -236,12 +237,27 @@ void RoutingTrack::ReportAvailableEdges(
 }
 
 void RoutingTrack::ReportAvailableVertices(
-    std::vector<RoutingVertex*> *vertices_out) {
+    std::vector<RoutingVertex*> *vertices_out) const {
   std::copy_if(
       vertices_.begin(),
       vertices_.end(),
       vertices_out->begin(),
       [](RoutingVertex* vertex) { return vertex->available(); });
+}
+
+void RoutingTrack::ExportEdgesAsRectangles(
+    const std::string &layer,
+    bool available_only,
+    Layout *layout) const {
+  const int64_t kPadding = 2;
+  for (RoutingEdge *edge : edges_) {
+    if (available_only && edge->blocked())
+      continue;
+    auto rectangle = edge->AsRectangle(kPadding);
+    if (!rectangle)
+      continue;
+    layout->AddRectangle(*rectangle);
+  }
 }
 
 std::string RoutingTrack::Debug() const {
@@ -451,7 +467,7 @@ int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
 //
 // The y-axis is the offset axis because the track runs horizontally.
 //
-// TODO(growly): These lines aren't actually infinite. We need to make sure
+// TODO(growly): Track lines aren't actually infinite. We need to make sure
 // shapes outside of the routing grid are not accidentally counted as
 // intersections.
 bool RoutingTrack::Intersects(
@@ -464,10 +480,6 @@ bool RoutingTrack::Intersects(
   if (offset_axis_low > offset_axis_high)
     std::swap(offset_axis_low, offset_axis_high);
 
-  offset_axis_low -= within_halo;
-  offset_axis_high += within_halo;
-
-  // FIXME(aryap): I think adding the halo again here is double counting it:
   int64_t low = offset_ - (width_ - width_ / 2) - within_halo;
   int64_t high = offset_ + width_ / 2 + within_halo;
 

@@ -118,17 +118,17 @@ void RoutingGrid::ApplyBlockage(
       if (blockage.BlocksWithoutPadding(*vertex)) {
         blocked_at_all = true;
         vertex->set_net(blockage.shape().net());
-        //LOG(INFO) << "blockage: " << blockage.shape()
-        //         << " blocks " << vertex->centre()
-        //         << " directly (without padding)";
+        VLOG(16) << "Blockage: " << blockage.shape()
+                 << " blocks " << vertex->centre()
+                 << " directly (without padding)";
       } else if (blockage.Blocks(*vertex)) {
         blocked_at_all = true;
         if (net != "") {
           vertex->set_connectable_net(net);
         }
-        //LOG(INFO) << "blockage: " << blockage.shape()
-        //         << " blocks " << vertex->centre()
-        //         << " with padding=" << blockage.padding();
+        VLOG(16) << "Blockage: " << blockage.shape()
+                 << " blocks " << vertex->centre()
+                 << " with padding=" << blockage.padding();
       }
 
       if (blocked_at_all) {
@@ -1049,7 +1049,10 @@ bool RoutingGrid::AddRouteToNet(
   shortest_path->set_start_port(&begin);
   shortest_path->set_start_access_layer(begin_vertex_and_access_layer->second);
 
-  const geometry::Layer &end_layer = end_vertex->in_edge()->layer();
+  // Because we haven't called InstallPath yet, vertices have not been assigned
+  // permanent in/out_edge() values. The final edge will become
+  // end_vertex->in_edge().
+  const geometry::Layer &end_layer = shortest_path->edges().back()->layer();
   shortest_path->set_end_access_layer(end_layer);
 
   LOG(INFO) << "Found path: " << *shortest_path;
@@ -1136,8 +1139,10 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
     for (const auto &position : kDisabledNeighbours) {
       std::set<RoutingVertex*> neighbours = vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
-        if (neighbour->available())
+        if (neighbour->available()) {
           neighbour->set_available(false);
+          neighbour->set_connectable_net(vertex->net());
+        }
       }
     };
     return;
@@ -1192,6 +1197,7 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   std::set<RoutingTrack*> blocked_tracks;
   for (RoutingVertex *enveloping_vertex : inner_vertices) {
     enveloping_vertex->set_available(false);
+    enveloping_vertex->set_connectable_net(vertex->net());
     // We also have to add blockages to the tracks on which these vertices
     // appear, since by being off-grid we're _presumably_ too close to
     // accomodate both a via and an edge next to each other.
@@ -1252,6 +1258,7 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
         //          << min_separation << ") to "
         //          << *via_encap << " at " << vertex->centre();
         enveloping_vertex->set_available(false);
+        enveloping_vertex->set_connectable_net(vertex->net());
       }
     }
   }
@@ -1260,7 +1267,7 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
 void RoutingGrid::InstallPath(RoutingPath *path) {
   LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
 
-  LOG(INFO) << "installing path " << *path << " with net " << path->net();
+  LOG(INFO) << "Installing path " << *path << " with net " << path->net();
 
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
@@ -1555,9 +1562,8 @@ void RoutingGrid::AddBlockages(
   for (const auto &polygon : shapes.polygons()) {
     AddBlockage(*polygon, padding, is_temporary, changed_out);
   }
-  // Do not add ports as permanent blockages. They must be considered
-  // route-by-route, since some ports might be needed for connection.
-  // FIXME(aryap): Need to add temporary blockages during search.
+  // Do not add ports as permanent blockages. They are temporary blockages
+  // considered route-by-route, since some ports might be needed for connection.
   //for (const auto &port : shapes.ports()) {
   //  AddBlockage(*port, padding);
   //}
@@ -1638,12 +1644,23 @@ void RoutingGrid::ExportEdgesAsRectangles(
     const std::string &layer, bool available_only, Layout *layout) const {
   layout->SetActiveLayerByName(layer);
 
-  // FIXME(aryap): Complete this!
-  //for (RoutingVertex *vertex : vertices_) {
-  //  if (vertex->available()) {
-  //    layout->AddSquare(vertex->centre(), 10);
-  //  }
-  //}
+  const int64_t kPadding = 2;
+
+  for (const auto &entry : tracks_by_layer_) {
+    const geometry::Layer &track_layer = entry.first;
+    for (const RoutingTrack *track : entry.second) {
+      track->ExportEdgesAsRectangles(layer, available_only, layout);
+    }
+  }
+
+  for (RoutingEdge *edge : off_grid_edges_) {
+    if (available_only && edge->blocked())
+      continue;
+    auto rectangle = edge->AsRectangle(kPadding);
+    if (!rectangle)
+      continue;
+    layout->AddRectangle(*rectangle);
+  }
 }
 
 void RoutingGrid::ExportVerticesAsSquares(

@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "layout.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/polygon.h"
@@ -90,8 +91,12 @@ class RoutingTrack {
       const geometry::Point &one_end,
       const geometry::Point &other_end) const;
 
-  void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out);
-  void ReportAvailableVertices(std::vector<RoutingVertex*> *vertices_out);
+  void ReportAvailableEdges(std::vector<RoutingEdge*> *edges_out) const;
+  void ReportAvailableVertices(std::vector<RoutingVertex*> *vertices_out) const;
+  void ExportEdgesAsRectangles(
+      const std::string &layer,
+      bool available_only,
+      Layout *layout) const;
 
   bool Intersects(const geometry::Rectangle &rectangle,
                   int64_t within_halo = 0) const;

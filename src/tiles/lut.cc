@@ -510,7 +510,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         geometry::Port *end = *ports.begin();
 
         std::string net_name = absl::StrCat(source->name(), "_Q");
-        //memory_output_net_names[source] = net_name;
+        memory_output_net_names[source] = net_name;
 
         routing_grid.AddRouteBetween(*start, *end, {}, net_name);
 
@@ -727,6 +727,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
   routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout.get());
+  //routing_grid.ExportEdgesAsRectangles("areaid.frameRect", true, layout.get());
 
   grid_layout.reset(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");

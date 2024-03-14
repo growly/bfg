@@ -539,7 +539,6 @@ void PolyLine::RemoveNotchesAroundCorners() {
       LineSegment &last_segment = segments_[j - 1];
       LineSegment &next_segment = segments_[j];
 
-      LOG(INFO) << "i: " << i << ", " << "j: " << j << std::endl;
       intervening_width = next_segment.width;
 
       Line next_line = Line(segments_[j - 1].end, next_segment.end);
@@ -562,20 +561,21 @@ void PolyLine::RemoveNotchesAroundCorners() {
       double spacing = intervening_length - (
           first_projection_onto_intervening + next_projection_onto_intervening);
 
-      LOG(INFO) << "first_segment: " << first_segment.end << std::endl
-                << "last_segment: " << last_segment.end << std::endl
-                << "next_segment: " << next_segment.end << std::endl
-                << "first_line: " << first_line << std::endl
-                << "intervening_line: " << intervening_line << std::endl
-                << "next_line: " << next_line << std::endl
-                << "theta_first: " << theta_first << std::endl
-                << "theta_next: " << theta_next << std::endl
-                << "intervening_length: " << intervening_length << std::endl
-                << "first_projection_onto_intervening: "
-                << first_projection_onto_intervening << std::endl
-                << "next_projection_onto_intervening: "
-                << next_projection_onto_intervening << std::endl
-                << "spacing: " << spacing;
+      VLOG(16) << "i: " << i << ", " << "j: " << j << std::endl
+               << "first_segment: " << first_segment.end << std::endl
+               << "last_segment: " << last_segment.end << std::endl
+               << "next_segment: " << next_segment.end << std::endl
+               << "first_line: " << first_line << std::endl
+               << "intervening_line: " << intervening_line << std::endl
+               << "next_line: " << next_line << std::endl
+               << "theta_first: " << theta_first << std::endl
+               << "theta_next: " << theta_next << std::endl
+               << "intervening_length: " << intervening_length << std::endl
+               << "first_projection_onto_intervening: "
+               << first_projection_onto_intervening << std::endl
+               << "next_projection_onto_intervening: "
+               << next_projection_onto_intervening << std::endl
+               << "spacing: " << spacing;
       if (spacing >= *min_separation_) {
         // Nothing to do.
         continue;

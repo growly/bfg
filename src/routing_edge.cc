@@ -27,20 +27,14 @@ std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(
   // There is no guaranteed order of first_ and second_, so we have to make sure
   // we have the lower left and upper right points the right way around. If we
   // put them in a vector and impose an ordering, we get this conceptually very
-  // simply:
-  std::vector<std::reference_wrapper<const geometry::Point>> points = {
-      first_->centre(), second_->centre()
-  };
-  std::sort(points.begin(), points.end(),
-            [](const geometry::Point &lhs, const geometry::Point &rhs) {
-              if (lhs.x() == rhs.x()) {
-                return lhs.y() < rhs.y();
-              }
-              return lhs.x() < rhs.x();
-            });
-
-  const geometry::Point &lower_left = points.front().get();
-  const geometry::Point &upper_right = points.back().get();
+  // simply, but also the code is overcomplicated so we're not doing that
+  // anymore. Instead:
+  geometry::Point lower_left = {
+      std::min(first_->centre().x(), second_->centre().x()),
+      std::min(first_->centre().y(), second_->centre().y())};
+  geometry::Point upper_right = {
+      std::max(first_->centre().x(), second_->centre().x()),
+      std::max(first_->centre().y(), second_->centre().y())};
 
   int64_t half_width = width / 2;
   int64_t remaining_width = width - half_width;
@@ -106,7 +100,7 @@ void RoutingEdge::ApproximateCost() {
     cost_ = 0;
     return;
   }
-  cost_ = std::log(distance);
+  cost_ = distance; //std::log(distance);
   // LOG(INFO) << "edge " << first_->centre() << " to " << second_->centre()
   //           << " cost is " << cost_;
 }
