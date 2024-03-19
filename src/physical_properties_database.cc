@@ -13,8 +13,9 @@
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_split.h>
 
-#include "routing_layer_info.h"
 #include "geometry/layer.h"
+#include "routing_layer_info.h"
+#include "routing_via_info.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {
@@ -276,10 +277,9 @@ void PhysicalPropertiesDatabase::GetRoutingLayerInfo(
   routing_info->min_separation = layer_rules.min_separation;
 }
 
-void PhysicalPropertiesDatabase::GetRoutingViaInfo(
+RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfo(
     const std::string &routing_layer,
-    const std::string &other_routing_layer,
-    RoutingViaInfo *routing_via_info) const {
+    const std::string &other_routing_layer) const {
   const geometry::Layer first_layer = GetLayer(routing_layer);
   const geometry::Layer second_layer = GetLayer(other_routing_layer);
 
@@ -288,24 +288,29 @@ void PhysicalPropertiesDatabase::GetRoutingViaInfo(
       << "No via layer found connecting " << routing_layer << " and "
       << other_routing_layer;
 
-  routing_via_info->layer = *via_layer;
   const IntraLayerConstraints &via_rules = Rules(*via_layer);
-  routing_via_info->width = via_rules.via_width;
-  routing_via_info->height = via_rules.via_width;
+
+  RoutingViaInfo routing_via_info;
+  routing_via_info.set_layer(*via_layer);
+  routing_via_info.set_width(via_rules.via_width);
+  routing_via_info.set_height(via_rules.via_width);
 
   const InterLayerConstraints &via_to_first_layer_rules =
       Rules(first_layer, *via_layer);
+  RoutingViaEncapInfo first_layer_encap;
+  first_layer_encap.overhang_length = via_to_first_layer_rules.via_overhang;
+  first_layer_encap.overhang_width = via_to_first_layer_rules.via_overhang_wide;
+
   const InterLayerConstraints &via_to_second_layer_rules =
       Rules(second_layer, *via_layer);
-  routing_via_info->overhang_length = std::max(
-      via_to_first_layer_rules.via_overhang,
-      via_to_second_layer_rules.via_overhang);
-  routing_via_info->overhang_width = std::max(
-      via_to_first_layer_rules.via_overhang_wide,
-      via_to_second_layer_rules.via_overhang_wide);
+  RoutingViaEncapInfo second_layer_encap;
+  second_layer_encap.overhang_length = via_to_second_layer_rules.via_overhang;
+  second_layer_encap.overhang_width =
+      via_to_second_layer_rules.via_overhang_wide;
 
-  routing_via_info->connected_layers[0] = first_layer;
-  routing_via_info->connected_layers[1] = second_layer;
+  routing_via_info.AddRoutingViaEncapInfo(first_layer, first_layer_encap);
+  routing_via_info.AddRoutingViaEncapInfo(second_layer, second_layer_encap);
+  return routing_via_info;
 }
 
 //                    7    --------- some routing layer

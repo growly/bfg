@@ -45,13 +45,11 @@ struct BulgeDimensions {
 };
 
 // TODO(aryap): There are different rules for overhanging from the layer above
-// and below.
+// and below. RoutingViaInfo now differentiates these, so we should use them.
 BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
-  int64_t via_width = std::max(
-      routing_via_info.width, routing_via_info.height);
   return BulgeDimensions {
-    .width = via_width + 2 * routing_via_info.overhang_width,
-    .length = via_width + 2 * routing_via_info.overhang_length
+    .width = routing_via_info.MaxEncapWidth(),
+    .length = routing_via_info.MaxEncapLength()
   };
 }
 
@@ -215,18 +213,20 @@ void RoutingPath::BuildVias(
   // each layer in the stack, increasing the maximum-known to cover the most
   // restrictive case.
   for (const RoutingViaInfo &info : *via_layers) {
+    const std::vector<geometry::Layer> connected_layers =
+        info.ConnectedLayers();
     AbstractVia *via = new AbstractVia(
-        at_point, info.connected_layers[0], info.connected_layers[1]);
+        at_point, connected_layers[0], connected_layers[1]);
     vias->emplace_back(via);
     LOG(INFO) << "Inserting via between layers ("
-              << info.connected_layers[0] << ", "
-              << info.connected_layers[1] << ") at "
+              << connected_layers[0] << ", "
+              << connected_layers[1] << ") at "
               << at_point;
 
     const BulgeDimensions bulge = GetBulgeDimensions(info);
 
-    const geometry::Layer &via_layer = info.layer;
-    for (const geometry::Layer &layer : info.connected_layers) {
+    const geometry::Layer &via_layer = info.layer();
+    for (const geometry::Layer &layer : connected_layers) {
       // Otherwise, just insert a big-enough metal pour on the connected layer.
       auto it = metal_pours.find(layer);
       if (it == metal_pours.end()) {

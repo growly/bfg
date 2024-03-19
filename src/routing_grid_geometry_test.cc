@@ -393,7 +393,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
 
   std::set<std::pair<size_t, size_t>> expected;
   for (size_t i = 0; i <= 18; ++i) {
-    for (size_t j = 32; j <= 34; ++j) {
+    for (size_t j = 32; j <= 35; ++j) {
       expected.insert({i, j});
     }
   }

@@ -132,21 +132,35 @@ void RoutingGridGeometry::ComputeForLayers(
   LOG(INFO) << "Layers " << horizontal_info.layer
             << ", " << vertical_info.layer << " overlap on " << overlap;
   
-  //                      x_min v   v x_start
+  // We used to calculate 'offset' as a difference from the origin, making the
+  // routing area a sort of mask that removes tracks outside the defined bounds.
+  // Then finding the start coordinate was a matter of finding the first
+  // track position that would've landed within the masked area, as follows:
+  //
+  //                        x_min   x_start
+  //                            v   v
   //           |      |      |  +   |      |
   //           |      |      |  +   |      |
   //           |      |      |  +   |      |
   //           |      |      |  +   |      |
   //  origin   |      |      |  +   |      |
   //  O -----> | ---> | ---> | -+-> | ---> |
-  //    offset   pitch          ^ start of grid boundary
+  //    x_offset x_pitch        ^
+  //                            start of grid boundary
   //
+  // x_start = x_min + (x_pitch - modulo(x_min - x_offset, x_pitch));
+  //
+  // But it turns out that this not at all intuitive, so instead we just treat
+  // the offset as relative to the start of the routing area bounds. Clients of
+  // this code should understand where their routing area is going to end up, so
+  // setting offset in this way has a more direct relationship with where the
+  // tracks end up.
   x_offset_ = vertical_info.offset;
   x_pitch_ = vertical_info.pitch;
   LOG_IF(FATAL, x_pitch_ == 0)
       << "Routing pitch for layer " << vertical_info.layer << " is 0";
   x_min_ = overlap.lower_left().x();
-  x_start_ = x_min_ + (x_pitch_ - modulo(x_min_ - x_offset_, x_pitch_));
+  x_start_ = x_min_ + x_offset_;
   x_max_ = overlap.upper_right().x();
   max_column_index_ = (x_max_ - x_start_) / x_pitch_;
   
@@ -155,7 +169,7 @@ void RoutingGridGeometry::ComputeForLayers(
   LOG_IF(FATAL, y_pitch_ == 0)
       << "Routing pitch for layer " << horizontal_info.layer << " is 0";
   y_min_ = overlap.lower_left().y();
-  y_start_ = y_min_ + (y_pitch_ - modulo(y_min_ - y_offset_, y_pitch_));
+  y_start_ = y_min_ + y_offset_;
   y_max_ = overlap.upper_right().y();
   max_row_index_ = (y_max_ - y_start_) / y_pitch_;
 

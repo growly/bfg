@@ -21,6 +21,7 @@
 #include "routing_track_blockage.h"
 #include "routing_layer_info.h"
 #include "routing_vertex.h"
+#include "routing_via_info.h"
 
 // TODO(aryap): Another version of this RoutingGrid should exist that uses a
 // more standard model of the routing fabric. Instead of generating 1 edge for
@@ -128,10 +129,17 @@ class RoutingGrid {
 
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
-  template<typename T>
-  bool ValidAgainstKnownBlockages(const T &routing_object) const;
+  bool ValidAgainstKnownBlockages(const RoutingEdge &edge) const;
 
-  bool ValidAgainstInstalledPaths(const RoutingVertex &vertex) const;
+  bool ValidAgainstKnownBlockages(
+      const RoutingVertex &vertex,
+      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const;
+
+  bool ValidAgainstInstalledPaths(
+      const RoutingVertex &vertex,
+      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const;
 
   std::optional<double> FindViaStackCost(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
@@ -221,9 +229,12 @@ class RoutingGrid {
   // Test if a given obstructs overlaps an appropriately-sized via at the
   // location of the given RoutingVertex.
   template<typename T>
-  bool ViaWouldIntersect(const RoutingVertex &vertex,
-                         const T &obstruction,
-                         int64_t padding = 0) const {
+  bool ViaWouldIntersect(
+      const RoutingVertex &vertex,
+      const T &obstruction,
+      int64_t padding = 0,
+      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const {
     // Note that we subtract 1 from the padding. This is because spacing rules
     // between objects seem to implicitly be inclusive of the end points.  Given
     // two rectangles with boundaries at x = 5 and x = 10, for example:
@@ -244,7 +255,8 @@ class RoutingGrid {
     std::optional<geometry::Rectangle> keep_out = ViaFootprint(
         vertex,
         obstruction.layer(),
-        padding > 0 ? padding - 1 : padding);
+        std::max(padding - 1, 0L),
+        access_direction);
     if (!keep_out) {
       // Vertex is not a valid via:
       return false;
@@ -273,6 +285,9 @@ class RoutingGrid {
   bool ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,
       const geometry::Layer &access_layer,
+      std::optional<
+          std::reference_wrapper<
+              const std::set<RoutingTrackDirection>>> directions,
       RoutingVertex *off_grid);
 
   std::optional<geometry::Rectangle> ViaFootprint(
@@ -430,15 +445,21 @@ class RoutingGridBlockage {
 
   ~RoutingGridBlockage();
 
-  bool BlocksWithoutPadding(const RoutingVertex &vertex) const {
-    return Blocks(vertex, 0);
+  bool BlocksWithoutPadding(
+      const RoutingVertex &vertex,
+      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const {
+    return Blocks(vertex, 0, access_direction);
   }
   bool BlocksWithoutPadding(const RoutingEdge &edge) const {
     return Blocks(edge, 0);
   }
 
-  bool Blocks(const RoutingVertex &vertex) const {
-    return Blocks(vertex, padding_);
+  bool Blocks(
+      const RoutingVertex &vertex,
+      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const {
+    return Blocks(vertex, padding_, access_direction);
   }
   bool Blocks(const RoutingEdge &edge) const {
     return Blocks(edge, padding_);
@@ -455,7 +476,10 @@ class RoutingGridBlockage {
   const int64_t &padding() const { return padding_; }
 
  private:
-  bool Blocks(const RoutingVertex &vertex, int64_t padding) const;
+  bool Blocks(
+      const RoutingVertex &vertex,
+      int64_t padding,
+      std::optional<RoutingTrackDirection> access_direction) const;
   bool Blocks(const RoutingEdge &edge, int64_t padding) const;
 
   const RoutingGrid &routing_grid_;

@@ -16,7 +16,7 @@
 #include "../atoms/sky130_dfxtp.h"
 #include "../atoms/sky130_mux.h"
 #include "../atoms/sky130_tap.h"
-
+#include "../routing_via_info.h"
 #include "../row_guide.h"
 
 namespace bfg {
@@ -364,6 +364,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   }
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
+  LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
 
   RoutingGrid routing_grid(db);
   
@@ -383,7 +384,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   db.GetRoutingLayerInfo("met1.drawing", &met1_layer_info);
   met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
   met1_layer_info.area = pre_route_bounds;
-  met1_layer_info.offset = 50;
+  // TODO(aryap): If we want y = 735 to be on the grid, and we know the offset
+  // is relative to the pre_route_bounds LL y = -600, 
+  // (735 - (-190)) / 340 (the pitch) = 3.9265
+  //    offset = .3.9265 * 340
+  //           = 315
+  met1_layer_info.offset = 315;
 
   bfg::RoutingLayerInfo met2_layer_info;
   db.GetRoutingLayerInfo("met2.drawing", &met2_layer_info);
@@ -393,25 +399,23 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.
-  bfg::RoutingViaInfo routing_via_info;
-  db.GetRoutingViaInfo("met1.drawing", "met2.drawing", &routing_via_info);
-  routing_via_info.cost = 0.5;
+  bfg::RoutingViaInfo routing_via_info =
+      db.GetRoutingViaInfo("met1.drawing", "met2.drawing");
+  routing_via_info.set_cost(0.5);
   routing_grid.AddRoutingViaInfo(
       met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
   //alt_routing_grid.AddRoutingViaInfo(
   //    met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
 
-  routing_via_info = {0};
-  db.GetRoutingViaInfo("li.drawing", "met1.drawing", &routing_via_info);
-  routing_via_info.cost = 0.5;
+  routing_via_info = db.GetRoutingViaInfo("li.drawing", "met1.drawing");
+  routing_via_info.set_cost(0.5);
   routing_grid.AddRoutingViaInfo(
       met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
   //alt_routing_grid.AddRoutingViaInfo(
   //    met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
 
-  routing_via_info = {0};
-  db.GetRoutingViaInfo("met2.drawing", "met3.drawing", &routing_via_info);
-  routing_via_info.cost = 0.5;
+  routing_via_info = db.GetRoutingViaInfo("met2.drawing", "met3.drawing");
+  routing_via_info.set_cost(0.5);
   routing_grid.AddRoutingViaInfo(
       db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
   //alt_routing_grid.AddRoutingViaInfo(

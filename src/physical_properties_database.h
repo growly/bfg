@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "geometry/layer.h"
+#include "routing_via_info.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {
@@ -17,29 +18,6 @@ class RoutingLayerInfo;
 enum RoutingTrackDirection {
   kTrackHorizontal,
   kTrackVertical
-};
-
-struct RoutingViaInfo {
-  // Vias have their own layer.
-  geometry::Layer layer;
-  // Need some measure of cost for connecting between these two layers. Maybe
-  // a function that describes the cost based on something (like length,
-  // sheet resistance).
-  double cost;
-  int64_t width;
-
-  // TODO(aryap): Rename this to length like it is everywhere else.
-  int64_t height;
-
-  // These are the via encapsulations in the axis of the bulge and the
-  // orthogonal axis respectively.
-  int64_t overhang_length;
-  int64_t overhang_width;
-
-  // TODO(aryap): Where to put the notion of min area for encapsulating metal
-  // pours?
-
-  std::array<geometry::Layer, 2> connected_layers;
 };
 
 struct LayerInfo {
@@ -171,9 +149,9 @@ class PhysicalPropertiesDatabase {
 
   void GetRoutingLayerInfo(const std::string &routing_layer_name,
                            RoutingLayerInfo *routing_info) const;
-  void GetRoutingViaInfo(const std::string &routing_layer,
-                         const std::string &other_routing_layer,
-                         RoutingViaInfo *routing_via_info) const;
+  RoutingViaInfo GetRoutingViaInfo(
+      const std::string &routing_layer,
+      const std::string &other_routing_layer) const;
 
   // For a given pin layer, find the layers which can access it. The pin layer
   // represents access to a given layer, which is the first entry. For each of

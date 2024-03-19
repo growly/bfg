@@ -37,13 +37,14 @@ file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
 #)
 
 set(SRC
+  ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
   ${PROJECT_SOURCE_DIR}/src/cell.cc
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
   ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc
-  ${PROJECT_SOURCE_DIR}/src/layout.cc
   ${PROJECT_SOURCE_DIR}/src/design_database.cc
-  ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
+  ${PROJECT_SOURCE_DIR}/src/layout.cc
   ${PROJECT_SOURCE_DIR}/src/parameter.cc
+  ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge.cc
@@ -54,7 +55,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/routing_track_blockage.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector.cc
-  ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_via_info.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide.cc
 )
 

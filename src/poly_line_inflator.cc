@@ -8,6 +8,7 @@
 #include "layout.h"
 #include "poly_line_cell.h"
 #include "routing_grid.h"
+#include "routing_via_info.h"
 #include "geometry/point.h"
 #include "geometry/line.h"
 #include "geometry/poly_line.h"
@@ -83,7 +84,7 @@ Layout *PolyLineInflator::Inflate(
 void PolyLineInflator::InflateVia(const RoutingViaInfo &info,
                                   const AbstractVia &via,
                                   Rectangle *rectangle) {
-  InflateVia(info.layer, info.width, info.height, via, rectangle);
+  InflateVia(info.layer(), info.width(), info.height(), via, rectangle);
 }
 
 void PolyLineInflator::InflateVia(const geometry::Layer layer,

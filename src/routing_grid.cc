@@ -28,6 +28,7 @@
 #include "routing_track.h"
 #include "routing_track_blockage.h"
 #include "routing_vertex.h"
+#include "routing_via_info.h"
 
 // TODO(aryap):
 //  1) What does RoutingGrid::available_vertices_by_layer_ actually do?
@@ -50,14 +51,20 @@ namespace bfg {
 // We have a specialisation for {Rectangle, Polygon} X {Vertex, Edge}.
 template<>
 bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
-    const RoutingVertex &vertex, int64_t padding) const {
-  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding);
+    const RoutingVertex &vertex,
+    int64_t padding,
+    std::optional<RoutingTrackDirection> access_direction) const {
+  return routing_grid_.ViaWouldIntersect(
+      vertex, shape_, padding, access_direction);
 }
 
 template<>
 bool RoutingGridBlockage<geometry::Polygon>::Blocks(
-    const RoutingVertex &vertex, int64_t padding) const {
-  return routing_grid_.ViaWouldIntersect(vertex, shape_, padding);
+    const RoutingVertex &vertex,
+    int64_t padding,
+    std::optional<RoutingTrackDirection> access_direction) const {
+  return routing_grid_.ViaWouldIntersect(
+      vertex, shape_, padding, access_direction);
 }
 
 template<>
@@ -113,25 +120,35 @@ void RoutingGrid::ApplyBlockage(
       if (!vertex->available())
         continue;
 
+      std::set<RoutingTrackDirection> access_directions = {
+          RoutingTrackDirection::kTrackHorizontal,
+          RoutingTrackDirection::kTrackVertical};
+
       const std::string &net = blockage.shape().net();
-      bool blocked_at_all = false;
-      if (blockage.BlocksWithoutPadding(*vertex)) {
-        blocked_at_all = true;
-        vertex->set_net(blockage.shape().net());
-        VLOG(16) << "Blockage: " << blockage.shape()
-                 << " blocks " << vertex->centre()
-                 << " directly (without padding)";
-      } else if (blockage.Blocks(*vertex)) {
-        blocked_at_all = true;
-        if (net != "") {
-          vertex->set_connectable_net(net);
+      bool any_access = false;
+      for (const auto &direction : access_directions) {
+        bool blocked_at_all = false;
+        if (blockage.BlocksWithoutPadding(*vertex, direction)) {
+          blocked_at_all = true;
+          vertex->set_net(blockage.shape().net());
+          VLOG(16) << "Blockage: " << blockage.shape()
+                   << " blocks " << vertex->centre()
+                   << " directly (without padding) in "
+                   << direction << " direction";
+        } else if (blockage.Blocks(*vertex, direction)) {
+          blocked_at_all = true;
+          if (net != "") {
+            vertex->set_connectable_net(net);
+          }
+          VLOG(16) << "Blockage: " << blockage.shape()
+                   << " blocks " << vertex->centre()
+                   << " with padding=" << blockage.padding() << " in "
+                   << direction << " direction";
         }
-        VLOG(16) << "Blockage: " << blockage.shape()
-                 << " blocks " << vertex->centre()
-                 << " with padding=" << blockage.padding();
+        any_access = !blocked_at_all || any_access;
       }
 
-      if (blocked_at_all) {
+      if (!any_access) {
         vertex->set_available(false);
         if (blocked_vertices) {
           blocked_vertices->insert(vertex);
@@ -169,22 +186,39 @@ void RoutingGrid::ForgetBlockage(
   polygon_blockages_.erase(it);
 }
 
-template<typename T>
-bool RoutingGrid::ValidAgainstKnownBlockages(const T &routing_object) const {
+bool RoutingGrid::ValidAgainstKnownBlockages(const RoutingEdge &edge) const {
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
-    if (blockage->Blocks(routing_object))
+    if (blockage->Blocks(edge))
       return false;
   }
   for (const auto &blockage : polygon_blockages_) {
-    if (blockage->Blocks(routing_object))
+    if (blockage->Blocks(edge))
+      return false;
+  }
+  return true;
+}
+
+bool RoutingGrid::ValidAgainstKnownBlockages(
+    const RoutingVertex &vertex,
+    std::optional<RoutingTrackDirection> access_direction) const {
+  // *snicker* Cute opportunity for std::any_of here:
+  for (const auto &blockage : rectangle_blockages_) {
+    if (blockage->Blocks(vertex, access_direction))
+      return false;
+  }
+  for (const auto &blockage : polygon_blockages_) {
+    if (blockage->Blocks(vertex, access_direction))
       return false;
   }
   return true;
 }
 
 bool RoutingGrid::ValidAgainstInstalledPaths(
-    const RoutingVertex &candidate) const {
+    const RoutingVertex &vertex,
+    std::optional<RoutingTrackDirection> access_direction) const {
+  // FIXME(aryap): Use access_direction
+  //
   // In this case we have to do labourious check for proximity to all used paths
   // and vertices.
   std::set<RoutingVertex*> used_vertices;
@@ -193,7 +227,7 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
   }
 
   for (const geometry::Layer &candidate_layer :
-       candidate.connected_layers()) {
+       vertex.connected_layers()) {
     auto routing_layer_info = GetRoutingLayerInfo(candidate_layer);
     if (!routing_layer_info) {
       // No routing layer info, probably not a routing layer.
@@ -202,14 +236,14 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
     int64_t min_separation = routing_layer_info->get().min_separation;
 
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
-        candidate, candidate_layer, 0);   // No additional padding.
+        vertex, candidate_layer, 0);   // No additional padding.
 
     if (!via_encap) {
       continue;
     }
 
     for (RoutingVertex *other : used_vertices) {
-      if (other == &candidate) {
+      if (other == &vertex) {
         continue;
       }
 
@@ -224,13 +258,13 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
         int64_t distance = static_cast<int64_t>(
             std::ceil(via_encap->ClosestDistanceTo(*other_via_encap)));
         if (distance < min_separation) {
-          VLOG(12) << "Candidate vertex " << candidate.centre()
+          VLOG(12) << "Candidate vertex " << vertex.centre()
                    << " is too close to " << other->centre() << " on layer "
                    << candidate_layer << " (distance " << distance <<
                    " < min separation " << min_separation << ")";
           return false;
         } else if (VLOG_IS_ON(16)) {
-          VLOG(12) << "Candidate vertex " << candidate.centre()
+          VLOG(12) << "Candidate vertex " << vertex.centre()
                    << " is ok with " << other->centre() << " on layer "
                    << candidate_layer << " (distance " << distance <<
                    " >= min separation " << min_separation << ")";
@@ -295,10 +329,24 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
 bool RoutingGrid::ConnectToSurroundingTracks(
     const RoutingGridGeometry &grid_geometry,
     const geometry::Layer &access_layer,
+    std::optional<
+        std::reference_wrapper<
+            const std::set<RoutingTrackDirection>>> directions,
     RoutingVertex *off_grid) {
   std::set<RoutingTrack*> nearest_tracks;
   grid_geometry.NearestTracks(
       off_grid->centre(), &nearest_tracks, &nearest_tracks);
+
+  // If access directions are specified, remove tracks in any other directions.
+  if (directions) {
+    const auto &access_directions = directions->get();
+    for (RoutingTrack *track : nearest_tracks) {
+      if (access_directions.find(track->direction()) ==
+              access_directions.end()) {
+        nearest_tracks.erase(track);
+      }
+    }
+  }
 
   bool any_success = false;
   for (RoutingTrack *track : nearest_tracks) {
@@ -336,9 +384,8 @@ bool RoutingGrid::ConnectToSurroundingTracks(
 }
 
 std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
-RoutingGrid::AddAccessVerticesForPoint(
-    const geometry::Point &point,
-    const geometry::Layer &layer) {
+RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
+                                       const geometry::Layer &layer) {
   // Add each of the possible on-grid access vertices for a given off-grid
   // point to the RoutingGrid. For example, given an arbitrary point O, we must
   // find the four nearest on-grid points A, B, C, D:
@@ -418,14 +465,23 @@ RoutingGrid::AddAccessVerticesForPoint(
 
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(point));
     off_grid->AddConnectedLayer(target_layer);
-    if (!ValidAgainstKnownBlockages(*off_grid) ||
-        !ValidAgainstInstalledPaths(*off_grid)) {
+
+    std::set<RoutingTrackDirection> access_directions = {
+        RoutingTrackDirection::kTrackHorizontal,
+        RoutingTrackDirection::kTrackVertical};
+    for (const auto &direction : access_directions) {
+      if (!ValidAgainstKnownBlockages(*off_grid, direction) ||
+          !ValidAgainstInstalledPaths(*off_grid, direction)) {
+        access_directions.erase(direction);
+      }
+    }
+    if (access_directions.empty()) {
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
       continue;
     }
 
     if (!ConnectToSurroundingTracks(
-          *grid_geometry, access_layer, off_grid.get())) {
+          *grid_geometry, access_layer, access_directions, off_grid.get())) {
       // The off-grid vertex could not be connected to any surrounding tracks.
       continue;
     }
@@ -653,17 +709,20 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
     const geometry::Point &centre,
-    const geometry::Layer &first_layer,
-    const geometry::Layer &second_layer,
+    const geometry::Layer &other_layer,
+    const geometry::Layer &footprint_layer,
     int64_t padding,
     std::optional<RoutingTrackDirection> direction) const {
+  if (footprint_layer == other_layer) {
+    return std::nullopt;
+  }
   // Get the applicable via info for via sizing and encapsulation values:
   const RoutingViaInfo &routing_via_info = GetRoutingViaInfoOrDie(
-      first_layer, second_layer);
-  int64_t via_width = routing_via_info.width +
-      2 * routing_via_info.overhang_width + 2 * padding;
-  int64_t via_length = routing_via_info.height +
-      2 * routing_via_info.overhang_length + 2 * padding;
+      footprint_layer, other_layer);
+  int64_t via_width =
+      routing_via_info.EncapWidth(footprint_layer) + 2 * padding;
+  int64_t via_length =
+      routing_via_info.EncapLength(footprint_layer) + 2 * padding;
 
   geometry::Point lower_left;
 
@@ -688,18 +747,37 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
     const RoutingVertex &vertex,
-    const geometry::Layer &layer,
+    const geometry::Layer &footprint_layer,
     int64_t padding,
     std::optional<RoutingTrackDirection> direction) const {
-  const std::vector<geometry::Layer> &layers = vertex.connected_layers();
-  if (layers.size() != 2) {
+  std::vector<geometry::Layer> vertex_layers = vertex.connected_layers();
+
+  // We expect footprint_layer to appear in the vertex's list of connected
+  // layers.
+  vertex_layers.erase(
+    std::remove(vertex_layers.begin(), vertex_layers.end(), footprint_layer),
+    vertex_layers.end());
+
+  // If there is more than 1 layer left in the connected layer list, we have a
+  // problem because we assume that the vertex connects to at most 2 layers.
+  // That shouldn't happen. There should be 0 or 1.
+  if (vertex_layers.size() != 1)
     return std::nullopt;
-  }
-  const geometry::Layer &first_layer = layers.front();
-  const geometry::Layer &second_layer = layers.back();
+
+  const geometry::Layer &other_layer = vertex_layers.front();
 
   return ViaFootprint(
-      vertex.centre(), first_layer, second_layer, padding, direction);
+      vertex.centre(), other_layer, footprint_layer, padding, direction);
+
+  //const std::vector<geometry::Layer> &layers = vertex.connected_layers();
+  //if (layers.size() != 2) {
+  //  return std::nullopt;
+  //}
+  //const geometry::Layer &first_layer = layers.front();
+  //const geometry::Layer &second_layer = layers.back();
+
+  //return ViaFootprint(
+  //    vertex.centre(), first_layer, second_layer, padding, direction);
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
@@ -739,7 +817,7 @@ std::optional<std::pair<geometry::Layer, double>> RoutingGrid::ViaLayerAndCost(
   if (!needs_via) {
     return std::nullopt;
   }
-  return std::make_pair(needs_via->get().layer, needs_via->get().cost);
+  return std::make_pair(needs_via->get().layer(), needs_via->get().cost());
 }
 
 void RoutingGrid::ConnectLayers(
@@ -770,18 +848,10 @@ void RoutingGrid::ConnectLayers(
   // space required to fit a via at the end of each used edge. The worst case is
   // given by:
   int64_t horizontal_track_min_vertex_separation =
-      horizontal_info.min_separation + std::max(
-          routing_via_info.width,
-          routing_via_info.height) + 2 * std::max(
-          routing_via_info.overhang_width,
-          routing_via_info.overhang_length);
+      horizontal_info.min_separation + routing_via_info.MaxEncapSide();
  
   int64_t vertical_track_min_vertex_separation =
-      vertical_info.min_separation + std::max(
-          routing_via_info.width,
-          routing_via_info.height) + 2 * std::max(
-          routing_via_info.overhang_width,
-          routing_via_info.overhang_length);
+      vertical_info.min_separation + routing_via_info.MaxEncapSide();
 
   // Generate tracks to hold edges and vertices in each direction.
   for (int64_t x = grid_geometry.x_start();
@@ -821,7 +891,7 @@ void RoutingGrid::ConnectLayers(
   // track.
   size_t i = 0;
   for (int64_t x = grid_geometry.x_start();
-       x < grid_geometry.x_max();
+       x <= grid_geometry.x_max();
        x += grid_geometry.x_pitch()) {
     // This (and the horizontal one) must exist by now, so we can make this
     // fatal.
@@ -830,7 +900,7 @@ void RoutingGrid::ConnectLayers(
 
     size_t j = 0;
     for (int64_t y = grid_geometry.y_start();
-         y < grid_geometry.y_max();
+         y <= grid_geometry.y_max();
          y += grid_geometry.y_pitch()) {
       RoutingTrack *horizontal_track = horizontal_tracks.find(y)->second;
       LOG_IF(FATAL, !horizontal_track) << "Horizontal routing track is nullptr";
@@ -857,7 +927,7 @@ void RoutingGrid::ConnectLayers(
       vertices[i][j] = vertex;
 
       // Assign neighbours. Since we do the reciprocal relationship too, we
-      // assigning up to all 8 neighbours per iteration.
+      // assign up to all 8 neighbours per iteration.
       if (i > 0) {
         // Left neighbour.
         RoutingVertex *neighbour = vertices[i - 1][j];
@@ -1352,13 +1422,13 @@ RoutingPath *RoutingGrid::ShortestPath(
       [&](RoutingEdge *e) {
         if (e->Available()) return true;
         if (e->blocked()) {
-          VLOG(14) << "edge " << *e << " is blocked";
+          VLOG(16) << "edge " << *e << " is blocked";
           return false;
         }
         if (e->in_use_by_net() && *e->in_use_by_net() == to_net) {
           return true;
         } else {
-          VLOG(14) << "cannot use edge " << *e << " for net " << to_net;
+          VLOG(16) << "cannot use edge " << *e << " for net " << to_net;
         }
         return false;
       },
@@ -1499,8 +1569,10 @@ RoutingPath *RoutingGrid::ShortestPath(
     }
   }
 
-  if (found_targets.empty())
+  if (found_targets.empty()) {
+    LOG(INFO) << "No usable targets found.";
     return nullptr;
+  }
 
   // Sort all of the found targets according to their final cost:
   std::vector<RoutingVertex*> sorted_targets(
@@ -1774,15 +1846,11 @@ bool RoutingGrid::PointsAreTooCloseForVias(
   const RoutingViaInfo &rhs_via = *maybe_rhs_via;
   const RoutingLayerInfo &shared_layer_info = *maybe_shared_layer_info;
   
-  int64_t lhs_max_via_half_width = std::max(
-      lhs_via.width, lhs_via.height) / 2;
-  int64_t lhs_max_via_overhang = std::max(
-      lhs_via.overhang_length, lhs_via.overhang_width);
+  int64_t lhs_max_via_half_width = lhs_via.MaxViaSide() / 2;
+  int64_t lhs_max_via_overhang = lhs_via.MaxOverhang();
 
-  int64_t rhs_max_via_half_width = std::max(
-      rhs_via.width, rhs_via.height) / 2;
-  int64_t rhs_max_via_overhang = std::max(
-      rhs_via.overhang_length, rhs_via.overhang_width);
+  int64_t rhs_max_via_half_width = rhs_via.MaxViaSide() / 2;
+  int64_t rhs_max_via_overhang = rhs_via.MaxOverhang();
 
   int64_t min_separation = shared_layer_info.min_separation;
 
@@ -1936,7 +2004,7 @@ std::vector<RoutingGrid::CostedLayer> RoutingGrid::LayersReachableByVia(
   if (it != via_infos_.end()) {
     for (const auto &inner : it->second) {
       const geometry::Layer &to = inner.first;
-      double cost = inner.second.cost;
+      double cost = inner.second.cost();
       reachable.push_back({to, cost});
     }
   }
@@ -1948,7 +2016,7 @@ std::vector<RoutingGrid::CostedLayer> RoutingGrid::LayersReachableByVia(
       continue;
     for (const auto &inner : outer.second) {
       if (inner.first == from_layer) {
-        double cost = inner.second.cost;
+        double cost = inner.second.cost();
         reachable.push_back({maybe_reachable, cost});
       }
     }
@@ -1964,7 +2032,7 @@ std::optional<double> RoutingGrid::FindViaStackCost(
   const std::vector<RoutingViaInfo> &via_stack = *maybe_stack;
   double total_cost = 0.0;
   for (const RoutingViaInfo &info : via_stack) {
-    total_cost += info.cost;
+    total_cost += info.cost();
   }
   return total_cost;
 }
