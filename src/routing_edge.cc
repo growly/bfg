@@ -65,10 +65,13 @@ void RoutingEdge::set_track(RoutingTrack *track) {
   if (track_ != nullptr) set_layer(track_->layer());
 }
 
-const geometry::Layer &RoutingEdge::ExplicitOrTrackLayer() const {
+const geometry::Layer RoutingEdge::EffectiveLayer() const {
+  if (layer_)
+    return *layer_;
   if (track_ != nullptr)
     return track_->layer();
-  return layer_;
+  LOG(FATAL) << "Edge has no explicit layer and no parent track";
+  return -1;
 }
 
 RoutingTrackDirection RoutingEdge::Direction() const {

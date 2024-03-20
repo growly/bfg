@@ -20,13 +20,16 @@
 namespace bfg {
 
 RoutingPath::RoutingPath(
+    const RoutingGrid &routing_grid,
     RoutingVertex *start,
     const std::deque<RoutingEdge*> edges)
     : edges_(edges.begin(), edges.end()),
       start_port_(nullptr),
       end_port_(nullptr),
       encap_start_port_(false), 
-      encap_end_port_(false) {
+      encap_end_port_(false),
+      legalised_(false),
+      routing_grid_(routing_grid) {
   vertices_.push_back(start);
   RoutingVertex *last = start;
   for (RoutingEdge *edge : edges) {
@@ -55,8 +58,80 @@ BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
 
 }    // namespace
 
+void RoutingPath::Flatten() {
+  // We look for and try to eliminate wires that are too short to allow another
+  // layer N wire over the top:
+  //
+  //    +-------+
+  //    |       +---
+  //    |     layer N
+  //    |       +---
+  //    +-------+
+  //      |   |     <- connecting wire on layer (N - 1) or (N + 1) is
+  //    +-------+      too short. We should just connect on layer N.
+  // ---+       |
+  //   layer N  |
+  // ---+       |
+  //    +-------+
+  skipped_vias_.clear();
+  for (size_t i = 1; i < vertices_.size(); ++i) {
+    // Edge i connects vertex i and (i + 1).
+    geometry::Layer last_layer;
+    if (i == 1) {
+      if (start_access_layers_.empty())
+        continue;
+      last_layer = PickAccessLayer(
+          edges_.at(0)->EffectiveLayer(), start_access_layers_);
+    } else {
+      last_layer = edges_.at(i - 2)->EffectiveLayer();
+    }
+
+    geometry::Layer next_layer;
+    if (i == vertices_.size() - 1) {
+      if (end_access_layers_.empty())
+        continue;
+      // Since we're deciding if we should skip the current edge, we pick an
+      // appropriate end access layer based on the previous edge layer (since
+      // that is the layer we will end up putting the current edge on if we do
+      // decide to skip).
+      next_layer = PickAccessLayer(last_layer, end_access_layers_);
+    } else {
+      next_layer = edges_.at(i)->EffectiveLayer();
+    }
+
+    RoutingVertex *last_vertex = vertices_.at(i - 1);
+    RoutingVertex *current_vertex = vertices_.at(i);
+
+    // If either of the pair of vertices under consideration already appears in
+    // the skip list, we must skip this to avoid inadvertently switching the
+    // layer of an adjacent edge. (Also, since one of the vias is skipped it's
+    // moot that they're too close together.)
+    if (skipped_vias_.find(last_vertex) != skipped_vias_.end() ||
+        skipped_vias_.find(current_vertex) != skipped_vias_.end()) {
+      continue;
+    }
+
+    // last_vertex and current_vertex span current_edge.
+    if (routing_grid_.VerticesAreTooCloseForVias(
+            *last_vertex, *current_vertex) &&
+        last_layer == next_layer) {
+      skipped_vias_.insert(last_vertex);
+      skipped_vias_.insert(current_vertex);
+      RoutingEdge *flattened_edge = edges_.at(i - 1);
+      // Downgrade the edge layer!
+      flattened_edge->set_layer(last_layer);
+    }
+  }
+}
+
+void RoutingPath::Legalise() {
+  if (legalised_)
+    return;
+  Flatten();
+  legalised_ = true;
+}
+
 void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-    const RoutingGrid &routing_grid,
     geometry::PolyLine *poly_line,
     RoutingEdge *edge,
     std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const {
@@ -93,10 +168,10 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   // be a set, but we need to keep the order of the vertices to save us some
   // computation later.
   auto vertices_too_close_for_vias =
-      [&routing_grid](const geometry::Layer &unused_layer,
-                      RoutingVertex *lhs,
-                      RoutingVertex *rhs) {
-    return routing_grid.VerticesAreTooCloseForVias(*lhs, *rhs);
+      [this](const geometry::Layer &unused_layer,
+             RoutingVertex *lhs,
+             RoutingVertex *rhs) {
+    return this->routing_grid_.VerticesAreTooCloseForVias(*lhs, *rhs);
   };
   LayeredRoutingVertexCollectors close_vertices =
       LayeredRoutingVertexCollectors(vertices_too_close_for_vias);
@@ -135,17 +210,19 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       int64_t bulge_length = 0;
       for (RoutingEdge *other_edge : edges) {
         LOG(INFO) << "Path " << path << " via " << *other_edge;
-        if (other_edge->layer() == poly_line->layer()) {
+        if (other_edge->EffectiveLayer() == poly_line->layer()) {
           continue;
         }
-        auto bulge = GetBulgeDimensions(routing_grid.GetRoutingViaInfoOrDie(
-            poly_line->layer(), other_edge->layer()));
-        max_bulge_length_by_layer[other_edge->layer()] = std::max(
-            max_bulge_length_by_layer[other_edge->layer()], bulge.length);
+        auto bulge = GetBulgeDimensions(routing_grid_.GetRoutingViaInfoOrDie(
+            poly_line->layer(), other_edge->EffectiveLayer()));
+        max_bulge_length_by_layer[other_edge->EffectiveLayer()] =
+            std::max(
+                max_bulge_length_by_layer[other_edge->EffectiveLayer()],
+                bulge.length);
         bulge_width = std::max(bulge_width, bulge.width);
         bulge_length = std::max(bulge_length, bulge.length);
 
-        close_vertices.Offer(other_edge->layer(), vertex);
+        close_vertices.Offer(other_edge->EffectiveLayer(), vertex);
       }
       max_bulge_length_by_layer[poly_line->layer()] = bulge_length;
       if (bulge_width > 0 && bulge_length > 0) {
@@ -183,14 +260,13 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
 }
 
 void RoutingPath::BuildVias(
-    const RoutingGrid &routing_grid,
     geometry::PolyLine *from_poly_line,
     const geometry::Point &at_point,
     const geometry::Layer &last_layer,
     bool encap_last_layer,
     RoutingTrackDirection encap_direction,
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
-    std::vector<std::unique_ptr<AbstractVia>> *vias) {
+    std::vector<std::unique_ptr<AbstractVia>> *vias) const {
   const geometry::Layer &from_layer = from_poly_line->layer();
   if (from_layer == last_layer) {
     // Nothing to do.
@@ -199,7 +275,7 @@ void RoutingPath::BuildVias(
   // We need to find the stack of vias necessary to get to `last_layer` from
   // `from_layer`.
   std::optional<std::vector<RoutingViaInfo>> via_layers =
-      routing_grid.FindViaStack(from_layer, last_layer);
+      routing_grid_.FindViaStack(from_layer, last_layer);
   if (!via_layers) {
     LOG(ERROR) << "No known via stack from " << from_layer << " to "
                << last_layer;
@@ -279,8 +355,32 @@ void RoutingPath::BuildVias(
   return;
 }
 
+geometry::Layer RoutingPath::PickAccessLayer(
+    const geometry::Layer &source_layer,
+    const std::set<geometry::Layer> &layers) const {
+  if (layers.empty()) {
+    return source_layer;
+  }
+  if (layers.size() == 1) {
+    return *layers.begin();
+  }
+  std::vector<std::pair<geometry::Layer, double>> costed_layers;
+  for (const geometry::Layer &layer : layers) {
+    auto cost = routing_grid_.FindViaStackCost(source_layer, layer);
+    if (!cost)
+      continue;
+    costed_layers.push_back({layer, *cost});
+  }
+  auto sort_fn = [](const std::pair<geometry::Layer, double> &lhs,
+                    const std::pair<geometry::Layer, double> &rhs) {
+    return lhs.second < rhs.second;
+  };
+  std::sort(costed_layers.begin(), costed_layers.end(), sort_fn);
+  return costed_layers.front().first;
+}
+
+
 void RoutingPath::ToPolyLinesAndVias(
-    const RoutingGrid &routing_grid,
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
     std::vector<std::unique_ptr<AbstractVia>> *vias) const {
   if (Empty())
@@ -288,54 +388,6 @@ void RoutingPath::ToPolyLinesAndVias(
 
   LOG_IF(FATAL, vertices_.size() != edges_.size() + 1)
       << "There should be one more vertex than there are edges.";
-
-  std::set<RoutingVertex*> skipped_vias;
-  // We look for and try to eliminate wires that are too short to allow another
-  // layer N wire over the top:
-  //
-  //    +-------+
-  //    |       +---
-  //    |     layer N
-  //    |       +---
-  //    +-------+
-  //      |   |     <- connecting wire on layer (N - 1) or (N + 1) is
-  //    +-------+      too short. We should just connect on layer N.
-  // ---+       |
-  //   layer N  |
-  // ---+       |
-  //    +-------+
-  for (size_t i = 1; i < vertices_.size(); ++i) {
-    // Edge i connects vertex i and (i + 1).
-    if (i == 1 && !start_access_layer_)
-      continue;
-    geometry::Layer last_layer = i == 1 ?
-        *start_access_layer_ : edges_.at(i - 2)->ExplicitOrTrackLayer();
-
-    if (i == vertices_.size() - 1 && !end_access_layer_)
-      continue;
-    geometry::Layer next_layer = i == vertices_.size() - 1 ? // c.f. edges_.size
-        *end_access_layer_ : edges_.at(i)->ExplicitOrTrackLayer();
-
-    RoutingVertex *last_vertex = vertices_.at(i - 1);
-    RoutingVertex *current_vertex = vertices_.at(i);
-
-    // If either of the pair of vertices under consideration already appears in
-    // the skip list, we must skip this to avoid inadvertently switching the
-    // layer of an adjacent edge. (Also, since one of the vias is skipped it's
-    // moot that they're too close together.)
-    if (skipped_vias.find(last_vertex) != skipped_vias.end() ||
-        skipped_vias.find(current_vertex) != skipped_vias.end()) {
-      continue;
-    }
-
-    // last_vertex and current_vertex span current_edge.
-    if (routing_grid.VerticesAreTooCloseForVias(
-            *last_vertex, *current_vertex) &&
-        last_layer == next_layer) {
-      skipped_vias.insert(last_vertex);
-      skipped_vias.insert(current_vertex);
-    }
-  }
 
   std::unique_ptr<geometry::PolyLine> last;
   bool last_poly_line_was_first = true;
@@ -348,14 +400,14 @@ void RoutingPath::ToPolyLinesAndVias(
     RoutingVertex *current = vertices_.at(i);
     last_edge = next_edge;
     next_edge = edges_.at(i);
-    const geometry::Layer &layer = next_edge->ExplicitOrTrackLayer();
+    const geometry::Layer &layer = next_edge->EffectiveLayer();
 
-    const RoutingLayerInfo &info = routing_grid.GetRoutingLayerInfoOrDie(layer);
+    const RoutingLayerInfo &info =
+        routing_grid_.GetRoutingLayerInfoOrDie(layer);
 
-    auto it = skipped_vias.find(current);
     // Insert a new PolyLine at layer crossings (or the start). Layer crossings
     // also require a via, unless the vertex via is skipped.
-    if (!last || (last->layer() != layer && it == skipped_vias.end())) {
+    if (!last || (last->layer() != layer)) {
       // TODO(aryap): Is this even an 'abstract' via still? We seem to have all
       // the concrete details in here.
       // TODO(aryap): It's more straightforward to assign all the vias and then
@@ -369,7 +421,7 @@ void RoutingPath::ToPolyLinesAndVias(
         vias->emplace_back(via);
         //last->set_end_via(via);
         auto bulge = GetBulgeDimensions(
-            routing_grid.GetRoutingViaInfoOrDie(last->layer(), layer));
+            routing_grid_.GetRoutingViaInfoOrDie(last->layer(), layer));
         bulge_width = bulge.width;
         bulge_length = bulge.length;
         last->InsertBulgeLater(current->centre(), bulge_width, bulge_length);
@@ -387,7 +439,7 @@ void RoutingPath::ToPolyLinesAndVias(
         // for that corresponding edge has been added:
         if (last_edge) {
           CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-              routing_grid, last.get(), last_edge, polylines);
+              last.get(), last_edge, polylines);
         }
     
         generated_lines.push_back(std::move(last));
@@ -406,20 +458,20 @@ void RoutingPath::ToPolyLinesAndVias(
 
     if (last_edge) {
       CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-          routing_grid, last.get(), last_edge, polylines);
+          last.get(), last_edge, polylines);
     }
   }
 
   if (generated_lines.empty() && !last)
     return;
 
-  const RoutingLayerInfo &last_info = routing_grid.GetRoutingLayerInfoOrDie(
-      next_edge->ExplicitOrTrackLayer());
+  const RoutingLayerInfo &last_info = routing_grid_.GetRoutingLayerInfoOrDie(
+      next_edge->EffectiveLayer());
   last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
   last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
 
   CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-      routing_grid, last.get(), next_edge, polylines);
+      last.get(), next_edge, polylines);
 
   generated_lines.push_back(std::move(last));
 
@@ -433,12 +485,14 @@ void RoutingPath::ToPolyLinesAndVias(
   // appropriate encapsulation.
   geometry::PolyLine *front = generated_lines.front().get();
 
-  if (start_access_layer_ &&
-      front->layer() != *start_access_layer_) {
-    BuildVias(routing_grid,
-              front,
+  // If there is more than 1 access layer, we prefer the lowest-cost.
+  if (!start_access_layers_.empty()) {
+    geometry::Layer start_access_layer = PickAccessLayer(
+        front->layer(), start_access_layers_);
+    // This is a no-op if front->layer() == start_access_layer:
+    BuildVias(front,
               vertices_.front()->centre(),
-              *start_access_layer_,
+              start_access_layer,
               encap_start_port_,
               RoutingTrackDirection::kTrackHorizontal,
               polylines,
@@ -447,12 +501,12 @@ void RoutingPath::ToPolyLinesAndVias(
   front->set_start_port(start_port_);
 
   geometry::PolyLine *back = generated_lines.back().get();
-  if (end_access_layer_ &&
-      back->layer() != *end_access_layer_) {
-    BuildVias(routing_grid,
-              back,
+  if (!end_access_layers_.empty()) {
+    geometry::Layer end_access_layer = PickAccessLayer(
+        back->layer(), end_access_layers_);
+    BuildVias(back,
               vertices_.back()->centre(),
-              *end_access_layer_,
+              end_access_layer,
               encap_end_port_,
               RoutingTrackDirection::kTrackHorizontal,
               polylines,

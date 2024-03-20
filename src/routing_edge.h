@@ -20,7 +20,7 @@ class RoutingEdge {
     : in_use_by_net_(std::nullopt),
       blocked_(false),
       track_(nullptr),
-      layer_(-1),
+      layer_(std::nullopt),
       first_(first),
       second_(second),
       cost_(0.0) {
@@ -55,10 +55,12 @@ class RoutingEdge {
     blocked_ = false;
   }
 
-  void set_layer(const geometry::Layer &layer) { layer_ = layer; }
-  const geometry::Layer &layer() const { return layer_; }
+  void set_layer(const std::optional<geometry::Layer> &layer) {
+    layer_ = layer;
+  }
+  const std::optional<geometry::Layer> &layer() const { return layer_; }
 
-  const geometry::Layer &ExplicitOrTrackLayer() const;
+  const geometry::Layer EffectiveLayer() const;
   RoutingTrackDirection Direction() const;
 
   // Off-grid edges do not have tracks.
@@ -74,7 +76,7 @@ class RoutingEdge {
   bool blocked_;
 
   RoutingTrack *track_;
-  geometry::Layer layer_;
+  std::optional<geometry::Layer> layer_;
 
   RoutingVertex *first_;
   RoutingVertex *second_;

@@ -692,7 +692,7 @@ RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
       continue;
     }
     LOG(INFO) << "Connected new vertex " << bridging_vertex->centre()
-              << " on layer " << edge->ExplicitOrTrackLayer();
+              << " on layer " << edge->EffectiveLayer();
     bridging_vertex->AddEdge(edge);
     off_grid->AddEdge(edge);
     
@@ -782,7 +782,7 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
 
 std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
     const RoutingEdge &edge, int64_t padding) const {
-  const geometry::Layer &layer = edge.layer();
+  const geometry::Layer &layer = edge.EffectiveLayer();
   const RoutingLayerInfo &layer_info = GetRoutingLayerInfoOrDie(layer);
   auto edge_as_rectangle = edge.AsRectangle(layer_info.wire_width);
   if (!edge_as_rectangle)
@@ -1067,9 +1067,11 @@ bool RoutingGrid::AddRouteBetween(
   // Ports are typically on port layers (i.e. PINs), but for convenience we also
   // record the layer we need to use to access said ports:
   shortest_path->set_start_port(&begin);
-  shortest_path->set_start_access_layer(begin_vertex_and_access_layer->second);
+  shortest_path->start_access_layers().insert(
+      begin_vertex_and_access_layer->second);
   shortest_path->set_end_port(&end);
-  shortest_path->set_end_access_layer(end_vertex_and_access_layer->second);
+  shortest_path->end_access_layers().insert(
+      end_vertex_and_access_layer->second);
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
@@ -1086,6 +1088,21 @@ bool RoutingGrid::AddRouteBetween(
 
   return true;
 }
+
+namespace {
+
+std::set<geometry::Layer> EffectiveLayersForInstalledVertex(
+    RoutingVertex *vertex) {
+  std::set<geometry::Layer> layers;
+  for (auto &entry : vertex->installed_in_paths()) {
+    for (RoutingEdge *edge : entry.second) {
+      layers.insert(edge->EffectiveLayer());
+    }
+  }
+  return layers;
+}
+
+}   // namespace
 
 bool RoutingGrid::AddRouteToNet(
     const geometry::Port &begin,
@@ -1117,13 +1134,22 @@ bool RoutingGrid::AddRouteToNet(
 
   // Remember the ports to which the path should connect.
   shortest_path->set_start_port(&begin);
-  shortest_path->set_start_access_layer(begin_vertex_and_access_layer->second);
+  shortest_path->start_access_layers().insert(
+      begin_vertex_and_access_layer->second);
 
+  // We expect that we now have a path terminating in a vertex that is attached
+  // to the given net.
+  //
+  // We can assume that the vertex attaches to the net on one of its
+  // connectable_layers_, but which one is the best to use depends on which path
+  // the vertex is installed in.
+  //
   // Because we haven't called InstallPath yet, vertices have not been assigned
-  // permanent in/out_edge() values. The final edge will become
-  // end_vertex->in_edge().
-  const geometry::Layer &end_layer = shortest_path->edges().back()->layer();
-  shortest_path->set_end_access_layer(end_layer);
+  // permanent in/out_edge() values.
+  std::set<geometry::Layer> end_layers = EffectiveLayersForInstalledVertex(
+      end_vertex);
+  shortest_path->end_access_layers().insert(
+      end_layers.begin(), end_layers.end());
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
@@ -1302,7 +1328,7 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   std::set<RoutingEdge*> vertex_edges = {vertex->in_edge(), vertex->out_edge()};
   vertex_edges.erase(nullptr);
   for (RoutingEdge *edge : vertex_edges) {
-    const geometry::Layer &layer = edge->ExplicitOrTrackLayer();
+    const geometry::Layer &layer = edge->EffectiveLayer();
     const RoutingTrackDirection direction = edge->Direction();
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
        *vertex, layer, 0, direction);
@@ -1338,6 +1364,10 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
   LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
 
   LOG(INFO) << "Installing path " << *path << " with net " << path->net();
+
+  // Legalise the path. TODO(aryap): This might modify the edges the path
+  // contains, which smells funny.
+  path->Legalise();
 
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
@@ -1619,7 +1649,7 @@ RoutingPath *RoutingGrid::ShortestPath(
     return nullptr;
   }
 
-  RoutingPath *path = new RoutingPath(begin, shortest_edges);
+  RoutingPath *path = new RoutingPath(*this, begin, shortest_edges);
   return path;
 }
 
@@ -2133,7 +2163,7 @@ std::optional<std::vector<RoutingViaInfo>> RoutingGrid::FindViaStack(
 PolyLineCell *RoutingGrid::CreatePolyLineCell() const {
   std::unique_ptr<PolyLineCell> cell(new PolyLineCell());
   for (RoutingPath *path : paths_) {
-    path->ToPolyLinesAndVias(*this, &cell->poly_lines(), &cell->vias());
+    path->ToPolyLinesAndVias(&cell->poly_lines(), &cell->vias());
   }
   return cell.release();
 }

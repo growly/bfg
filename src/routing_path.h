@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 
+#include "geometry/layer.h"
 #include "geometry/poly_line.h"
 #include "geometry/port.h"
 #include "routing_vertex.h"
@@ -20,6 +21,7 @@ class RoutingGrid;
 class RoutingPath {
  public:
   RoutingPath(
+      const RoutingGrid &routing_grid,
       RoutingVertex *start,
       const std::deque<RoutingEdge*> edges);
 
@@ -30,8 +32,9 @@ class RoutingPath {
     return Empty() ? nullptr : vertices_.back();
   }
 
+  void Legalise();
+
   void ToPolyLinesAndVias(
-      const RoutingGrid &routing_grid,
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines,
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
 
@@ -42,18 +45,17 @@ class RoutingPath {
   const geometry::Port *end_port() const { return end_port_; }
   void set_end_port(const geometry::Port *port) { end_port_ = port; }
 
-  const std::optional<geometry::Layer> &start_access_layer() const {
-    return start_access_layer_;
+  std::set<geometry::Layer> &start_access_layers() {
+    return start_access_layers_;
   }
-  void set_start_access_layer(const std::optional<geometry::Layer> &layer) {
-    start_access_layer_ = layer;
+  const std::set<geometry::Layer> &start_access_layers() const {
+    return start_access_layers_;
   }
-
-  const std::optional<geometry::Layer> &end_access_layer() const {
-    return end_access_layer_;
+  std::set<geometry::Layer> &end_access_layers() {
+    return end_access_layers_;
   }
-  void set_end_access_layer(const std::optional<geometry::Layer> &layer) {
-    end_access_layer_ = layer;
+  const std::set<geometry::Layer> &end_access_layers() const {
+    return end_access_layers_;
   }
 
   void set_encap_start_port(bool encap_start_port) {
@@ -66,6 +68,8 @@ class RoutingPath {
   }
   bool encap_end_port() const { return encap_end_port_; }
 
+  bool legalised() const { return legalised_; }
+
   void set_net(const std::string &net) { net_ = net; }
   const std::string &net() const { return net_; }
 
@@ -75,21 +79,26 @@ class RoutingPath {
   std::string Describe() const;
 
  private:
-  static void BuildVias(
-      const RoutingGrid &routing_grid,
+  void BuildVias(
       geometry::PolyLine *from_poly_line,
       const geometry::Point &at_point,
       const geometry::Layer &to_layer,
       bool encap_last_layer,
       RoutingTrackDirection encap_direction,
       std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
-      std::vector<std::unique_ptr<AbstractVia>> *vias);
+      std::vector<std::unique_ptr<AbstractVia>> *vias) const;
+
+  geometry::Layer PickAccessLayer(
+      const geometry::Layer &source_layer,
+      const std::set<geometry::Layer> &layers) const;
 
   void CheckEdgeInPolyLineForIncidenceOfOtherPaths(
-      const RoutingGrid &routing_grid,
       geometry::PolyLine *last,
       RoutingEdge *edge,
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
+
+  // Remove illegal (and inefficient) jogs between tracks.
+  void Flatten();
 
   // TODO(aryap): I don't think these port objects are needed? We get most of
   // the info from start/end layer. Possibly if these are provided are they are
@@ -101,8 +110,8 @@ class RoutingPath {
   const geometry::Port *end_port_;
   // The start and end layers inform where vias need to be created in order for
   // the start and end points to be reachable.
-  std::optional<geometry::Layer> start_access_layer_;
-  std::optional<geometry::Layer> end_access_layer_;
+  std::set<geometry::Layer> start_access_layers_;
+  std::set<geometry::Layer> end_access_layers_;
 
   std::string net_;
 
@@ -113,6 +122,8 @@ class RoutingPath {
   bool encap_start_port_;
   bool encap_end_port_;
 
+  bool legalised_;
+
   // The ordered list of vertices making up the path. The edges alone, since
   // they are undirected, do not yield this directional information.
   // These vertices are NOT OWNED by RoutingPath.
@@ -121,6 +132,12 @@ class RoutingPath {
   // The list of edges. Edge i connected vertices_[j] and vertices_[j+1].
   // These edges are NOT OWNED by RoutingPath.
   std::vector<RoutingEdge*> edges_;
+
+  // Convenient bookkeeping: the set of vertices from vertices_ that we do not
+  // expect to have a via (since they don't represent a change in layer).
+  std::set<RoutingVertex*> skipped_vias_;
+
+  const RoutingGrid &routing_grid_;
 };
 
 std::ostream &operator<<(std::ostream &os, const RoutingPath &path);
