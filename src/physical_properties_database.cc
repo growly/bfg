@@ -297,13 +297,13 @@ RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfo(
 
   const InterLayerConstraints &via_to_first_layer_rules =
       Rules(first_layer, *via_layer);
-  RoutingViaEncapInfo first_layer_encap;
+  RoutingViaEncapInfo first_layer_encap = {0};
   first_layer_encap.overhang_length = via_to_first_layer_rules.via_overhang;
   first_layer_encap.overhang_width = via_to_first_layer_rules.via_overhang_wide;
 
   const InterLayerConstraints &via_to_second_layer_rules =
       Rules(second_layer, *via_layer);
-  RoutingViaEncapInfo second_layer_encap;
+  RoutingViaEncapInfo second_layer_encap = {0};
   second_layer_encap.overhang_length = via_to_second_layer_rules.via_overhang;
   second_layer_encap.overhang_width =
       via_to_second_layer_rules.via_overhang_wide;

@@ -71,12 +71,12 @@ int64_t RoutingViaInfo::MaxEncapSide() const {
 
 int64_t RoutingViaInfo::EncapLength(const geometry::Layer &layer) const {
   const RoutingViaEncapInfo &encap_info = Layer(layer);
-  return MaxViaSide() + encap_info.overhang_length;
+  return MaxViaSide() + 2 * encap_info.overhang_length;
 }
 
 int64_t RoutingViaInfo::EncapWidth(const geometry::Layer &layer) const {
   const RoutingViaEncapInfo &encap_info = Layer(layer);
-  return MaxViaSide() + encap_info.overhang_width;
+  return MaxViaSide() + 2 * encap_info.overhang_width;
 }
   
 }   // namespace bfg
