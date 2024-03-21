@@ -233,6 +233,9 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
       // No routing layer info, probably not a routing layer.
       continue;
     }
+    // FIXME: We have fragmented sources for this information. Some places I've
+    // used the PhysicalPropertiesDatabase, others the copies of the data in
+    // the RoutingLayerInfo etc structures. Gross!
     int64_t min_separation = routing_layer_info->get().min_separation;
 
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
@@ -357,12 +360,6 @@ bool RoutingGrid::ConnectToSurroundingTracks(
     }
     AddVertex(bridging_vertex);
 
-    if (std::find(off_grid->connected_layers().begin(),
-                  off_grid->connected_layers().end(),
-                  access_layer) == off_grid->connected_layers().end()) {
-      off_grid->AddConnectedLayer(access_layer);
-    }
-
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
     edge->set_layer(access_layer);
     if (!ValidAgainstKnownBlockages(*edge)) {
@@ -465,6 +462,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
 
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(point));
     off_grid->AddConnectedLayer(target_layer);
+    off_grid->AddConnectedLayer(access_layer);
 
     std::set<RoutingTrackDirection> access_directions = {
         RoutingTrackDirection::kTrackHorizontal,
@@ -750,13 +748,11 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
     const geometry::Layer &footprint_layer,
     int64_t padding,
     std::optional<RoutingTrackDirection> direction) const {
-  std::vector<geometry::Layer> vertex_layers = vertex.connected_layers();
+  std::set<geometry::Layer> vertex_layers = vertex.connected_layers();
 
   // We expect footprint_layer to appear in the vertex's list of connected
   // layers.
-  vertex_layers.erase(
-    std::remove(vertex_layers.begin(), vertex_layers.end(), footprint_layer),
-    vertex_layers.end());
+  vertex_layers.erase(footprint_layer);
 
   // If there is more than 1 layer left in the connected layer list, we have a
   // problem because we assume that the vertex connects to at most 2 layers.
@@ -764,7 +760,7 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
   if (vertex_layers.size() != 1)
     return std::nullopt;
 
-  const geometry::Layer &other_layer = vertex_layers.front();
+  const geometry::Layer &other_layer = *vertex_layers.begin();
 
   return ViaFootprint(
       vertex.centre(), other_layer, footprint_layer, padding, direction);
@@ -1903,10 +1899,8 @@ bool RoutingGrid::PointsAreTooCloseForVias(
 
 bool RoutingGrid::VerticesAreTooCloseForVias(
     const RoutingVertex &lhs, const RoutingVertex &rhs) const {
-  std::set<geometry::Layer> lhs_layers(
-      lhs.connected_layers().begin(), lhs.connected_layers().end());
-  std::set<geometry::Layer> rhs_layers(
-      rhs.connected_layers().begin(), rhs.connected_layers().end());
+  const std::set<geometry::Layer> &lhs_layers = lhs.connected_layers();
+  const std::set<geometry::Layer> &rhs_layers = rhs.connected_layers();
   std::set<geometry::Layer> shared_layers;
   std::set_intersection(lhs_layers.begin(), lhs_layers.end(),
                         rhs_layers.begin(), rhs_layers.end(),

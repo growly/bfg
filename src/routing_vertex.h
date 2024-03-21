@@ -40,11 +40,11 @@ class RoutingVertex {
   int64_t L1DistanceTo(const geometry::Point &point);
 
   void AddConnectedLayer(const geometry::Layer &layer) {
-    connected_layers_.push_back(layer);
+    connected_layers_.insert(layer);
     LOG_IF(FATAL, connected_layers_.size() > 2)
         << "RoutingVertex can't connect more than 2 layers";
   }
-  const std::vector<geometry::Layer> &connected_layers() const {
+  const std::set<geometry::Layer> &connected_layers() const {
     return connected_layers_;
   }
 
@@ -156,7 +156,7 @@ class RoutingVertex {
 
   // NOTE: A vertex can only ever connect 2 layers. A second vertex in the same
   // position is needed to connect to another layer.
-  std::vector<geometry::Layer> connected_layers_;
+  std::set<geometry::Layer> connected_layers_;
 
   std::set<RoutingEdge*> edges_;
 };
