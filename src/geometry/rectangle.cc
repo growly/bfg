@@ -45,13 +45,13 @@ double Rectangle::ClosestDistanceBetween(
   } else if (top && left) {
     return lhs.UpperLeft().L2DistanceTo(rhs.LowerRight());
   } else if (right) {
-    return std::abs(rhs.upper_right().x() - lhs.lower_left().x());
+    return std::abs(lhs.upper_right().x() - rhs.lower_left().x());
   } else if (bottom) {
     return std::abs(lhs.lower_left().y() - rhs.upper_right().y());
   } else if (left) {
     return std::abs(lhs.lower_left().x() - rhs.upper_right().x());
   } else if (top) {
-    return std::abs(rhs.upper_right().y() - rhs.lower_left().y());
+    return std::abs(lhs.upper_right().y() - rhs.lower_left().y());
   } else {
     LOG(FATAL) << "If " << lhs << " and " << rhs << " don't overlap, "
                << "how did we get here?";
