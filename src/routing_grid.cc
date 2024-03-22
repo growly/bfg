@@ -1964,44 +1964,38 @@ void RoutingGrid::SetUpTemporaryBlockages(
     std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
         layer_access = physical_db_.FindReachableLayersByPinLayer(
             port->layer());
-    // We want the transitive closure of all layers which can access the pin
-    // layer with 1 via:
-    std::set<geometry::Layer> accessible_layers;
     for (const auto &entry : layer_access) {
-      accessible_layers.insert(entry.second.begin(), entry.second.end());
-    }
+      const geometry::Layer &access_layer = entry.first;
+      const std::set<geometry::Layer> &reachable_by_one_via =
+          entry.second;
+      for (const auto &footprint_layer : reachable_by_one_via) {
+        // Not all reachable layers are actually usable by the routing grid.
+        // Instead of making ViaFootprint handle this, we just check:
+        if (!GetRoutingViaInfo(access_layer, footprint_layer)) {
+          continue;
+        }
+        auto pin_projection = ViaFootprint(
+            port->centre(), access_layer, footprint_layer);
+        if (!pin_projection) {
+          continue;
+        }
+        int64_t min_separation =
+            physical_db_.Rules(footprint_layer).min_separation;
 
-    if (accessible_layers.empty()) {
-      LOG(WARNING)
-          << "Pin " << *port << " has no known pin accesss layers; "
-          << "avoiding just the pin layer itself: " << port->layer();
-      geometry::Rectangle pin_projection = *port;
-      pin_projection.set_layer(port->layer());
-      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
-          AddBlockage(pin_projection,
-                      100,  // FIXME: padding.
-                      true, // Temporary blockage.
-                      &blockage_info->blocked_vertices,
-                      &blockage_info->blocked_edges);
-      if (pin_blockage)
-        blockage_info->pin_blockages.push_back(pin_blockage);
-      continue;
+        pin_projection->set_layer(footprint_layer);
+        RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
+            AddBlockage(*pin_projection,
+                        min_separation,
+                        true, // Temporary blockage.
+                        &blockage_info->blocked_vertices,
+                        &blockage_info->blocked_edges);
+        if (pin_blockage)
+          blockage_info->pin_blockages.push_back(pin_blockage);
+      }
+      VLOG(13) << "avoiding "
+               << blockage_info->blocked_vertices.size() << " vertices and "
+               << blockage_info->blocked_edges.size() << " edges";
     }
-    for (const geometry::Layer &layer : accessible_layers) {
-      geometry::Rectangle pin_projection = *port;
-      pin_projection.set_layer(layer);
-      RoutingGridBlockage<geometry::Rectangle> *pin_blockage =
-          AddBlockage(pin_projection,
-                      100,  // FIXME: padding.
-                      true, // Temporary blockage.
-                      &blockage_info->blocked_vertices,
-                      &blockage_info->blocked_edges);
-      if (pin_blockage)
-        blockage_info->pin_blockages.push_back(pin_blockage);
-    }
-    VLOG(13) << "avoiding "
-             << blockage_info->blocked_vertices.size() << " vertices and "
-             << blockage_info->blocked_edges.size() << " edges";
   }
 }
 
