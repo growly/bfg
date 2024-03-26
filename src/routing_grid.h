@@ -122,6 +122,9 @@ class RoutingGrid {
 
   // TODO(aryap): Why do I always use templates instead of polymorphism? This
   // isn't what CS101 taught me. Am I sick?
+  //
+  // Edges blockages are managed by RoutingTracks. Directionality of access is
+  // therefore implemented by RoutingTracks.
   template<typename T>
   void ApplyBlockage(
       const RoutingGridBlockage<T> &blockage,

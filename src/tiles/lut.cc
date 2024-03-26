@@ -389,7 +389,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // (735 - (-190)) / 340 (the pitch) = 3.9265
   //    offset = .3.9265 * 340
   //           = 315
-  met1_layer_info.offset = 315;
+  met1_layer_info.offset = 330;
 
   bfg::RoutingLayerInfo met2_layer_info;
   db.GetRoutingLayerInfo("met2.drawing", &met2_layer_info);
@@ -439,7 +439,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
     // LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
-    routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
+    routing_grid.AddBlockages(shapes);
     //alt_routing_grid.AddBlockages(
     //    shapes, db.Rules("met1.drawing").min_separation);
   }
@@ -447,7 +447,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     geometry::ShapeCollection shapes;
     layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
     // LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
-    routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
+    routing_grid.AddBlockages(shapes);
     //alt_routing_grid.AddBlockages(
     //    shapes, db.Rules("met2.drawing").min_separation);
   }
@@ -622,14 +622,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     banks[0].memories[2][1],
     banks[0].memories[3][0],
     banks[0].memories[3][1],
-    //banks[1].memories[0][0],
-    //banks[1].memories[0][1],
-    //banks[1].memories[1][0],
-    //banks[1].memories[1][1],
-    //banks[1].memories[2][0],
-    //banks[1].memories[2][1],
-    //banks[1].memories[3][0],
-    //banks[1].memories[3][1]
+    banks[1].memories[0][0],
+    banks[1].memories[0][1],
+    banks[1].memories[1][0],
+    banks[1].memories[1][1],
+    banks[1].memories[2][0],
+    banks[1].memories[2][1],
+    banks[1].memories[3][0],
+    banks[1].memories[3][1]
   };
 
   std::set<geometry::Port*> all_mux_ports;

@@ -1,6 +1,7 @@
 #ifndef ROUTING_TRACK_H_
 #define ROUTING_TRACK_H_
 
+#include <algorithm>
 #include <set>
 #include <utility>
 #include <vector>
@@ -34,12 +35,23 @@ class RoutingTrack {
  public:
   RoutingTrack(const geometry::Layer &layer,
                const RoutingTrackDirection &direction,
+               int64_t width,
+               int64_t vertex_via_width,
+               int64_t vertex_via_length,
                int64_t min_separation,
                int64_t offset)
       : layer_(layer),
         direction_(direction),
         offset_(offset),
-        min_separation_(min_separation) {}
+        width_(width),
+        vertex_via_width_(vertex_via_width),
+        vertex_via_length_(vertex_via_length),
+        min_separation_(min_separation) {
+    min_separation_between_edges_ = vertex_via_length + min_separation;
+    min_separation_to_new_blockages_ = vertex_via_length / 2 + min_separation;
+    min_transverse_separation_ =
+        std::max(width_, vertex_via_width_) / 2 + min_separation;
+  }
 
   ~RoutingTrack();
 
@@ -99,11 +111,11 @@ class RoutingTrack {
       Layout *layout) const;
 
   bool Intersects(const geometry::Rectangle &rectangle,
-                  int64_t within_halo = 0) const;
+                  int64_t padding = 0) const;
   bool Intersects(
       const geometry::Polygon &polygon,
       std::vector<geometry::PointPair> *intersections,
-      int64_t within_halo = 0) const;
+      int64_t padding = 0) const;
 
   // Rectangle blockages create single RoutingTrackBlockages or none at all, so
   // we can return one or nullptr here:
@@ -152,7 +164,8 @@ class RoutingTrack {
   bool BlockageBlocks(
       const RoutingTrackBlockage &blockage,
       const geometry::Point &one_end,
-      const geometry::Point &other_end) const;
+      const geometry::Point &other_end,
+      int64_t margin = 0) const;
 
   bool IsBlocked(const geometry::Point &point, int64_t margin = 0) const {
     return IsBlockedBetween(point, point, margin);
@@ -201,8 +214,31 @@ class RoutingTrack {
   // The working width of this track.
   int64_t width_;
 
-  // Minimum separation of wires on this track.
+  // Width of the shape implied by a vertex used on this track. 'Width' means
+  // the size of the shape projected onto the axis _orthogonal_ to the track.
+  int64_t vertex_via_width_;
+
+  // Length (span) of the shape implied by a vertex used on this track.
+  int64_t vertex_via_length_;
+
+  // Minimum separation of shapes on this track's layer.
   int64_t min_separation_;
+
+  // The minimum separation between the ends of two edges on a track is the
+  // closest possible spacing of used vertices on the track, i.e. the amount of
+  // space required to fit a via at the end of each used edge.  The minimum
+  // spacing between two vertices on this track must therefore accommodate 2
+  // halves of 'vertex_via_length_' plus this min_separation_.
+  int64_t min_separation_between_edges_;
+
+  // New blockages (added through AddBlockage) are static shapes that we do not
+  // expect to change. The minimum separation from the end of an existing edge
+  // to those is just half 'vertex_via_length_' plus min_separation_.
+  int64_t min_separation_to_new_blockages_;
+
+  // The minimum distance to shapes measured in the axis perpendicular to the
+  // track.
+  int64_t min_transverse_separation_;
 
   // We want to keep a sorted list of blockages, but if we keep them as a
   // std::set we can't mutate the objects (since they will not automatically be

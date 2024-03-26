@@ -104,10 +104,11 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   // TODO(aryap): This could be a problem because if the current edge merges
   // with an existing blockage, we will treat that blockage as touching this
   // net!
+  //
   RoutingTrackBlockage *current_blockage = MergeNewBlockage(
       edge->first()->centre(),
       edge->second()->centre(),
-      min_separation_);
+      min_separation_between_edges_);
 
   // Since we add a new blockage of strictly edge's size without any keep-out
   // padding, we are testing for edges that touch this one. Those edges must be
@@ -117,10 +118,9 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
     if (other_edge == edge)
       continue;
     // FIXME: THIS IS NOT THE SAME AS "IS BLOCKED BY edge THAT WE JUST GOT"
-    if (BlockageBlocks(
-          *current_blockage,
-          other_edge->first()->centre(),
-          other_edge->second()->centre())) {
+    if (BlockageBlocks(*current_blockage,
+                       other_edge->first()->centre(),
+                       other_edge->second()->centre())) {
       if (other_edge->blocked())
         continue;
       // If the edge touches two different nets, it cannot be used for either
@@ -171,7 +171,8 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
   if (target) {
     if (candidate_centre == point)
       return target;
-    if (IsBlockedBetween(candidate_centre, target->centre(), min_separation_))
+    if (IsBlockedBetween(
+          candidate_centre, target->centre(), min_separation_between_edges_))
       return nullptr;
   } else if (IsBlocked(candidate_centre)) {
     return nullptr;
@@ -399,8 +400,13 @@ std::vector<RoutingVertex*> RoutingTrack::VerticesInSpan(
 bool RoutingTrack::BlockageBlocks(
     const RoutingTrackBlockage &blockage,
     const geometry::Point &one_end,
-    const geometry::Point &other_end) const {
+    const geometry::Point &other_end,
+    int64_t margin) const {
   auto low_high = ProjectOntoTrack(one_end, other_end);
+
+  low_high.first -= (margin - 1);
+  low_high.second += (margin - 1);
+
   return blockage.Blocks(low_high.first, low_high.second);
 }
 
@@ -472,7 +478,10 @@ int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
 // intersections.
 bool RoutingTrack::Intersects(
     const geometry::Rectangle &rectangle,
-    int64_t within_halo) const {
+    int64_t padding) const {
+  // FIXME(aryap): Hmmmm but sometimes the track is wider than width_, it's as
+  // wide as the encap over the vias at the ends of edges. Sometimes it isn't.
+
   // First check that the minor direction falls on this offset:
   int64_t offset_axis_low = ProjectOntoOffset(rectangle.lower_left());
   int64_t offset_axis_high = ProjectOntoOffset(rectangle.upper_right());
@@ -480,8 +489,8 @@ bool RoutingTrack::Intersects(
   if (offset_axis_low > offset_axis_high)
     std::swap(offset_axis_low, offset_axis_high);
 
-  int64_t low = offset_ - (width_ - width_ / 2) - within_halo;
-  int64_t high = offset_ + width_ / 2 + within_halo;
+  int64_t low = offset_ - (min_transverse_separation_ - 1) - padding;
+  int64_t high = offset_ + (min_transverse_separation_ - 1) + padding;
 
   // There is no intersection if both the track edges are on the low or the
   // high side of the blockage. Otherwise if one of the edges is straddled or
@@ -505,13 +514,23 @@ bool RoutingTrack::Intersects(
 // intersect. That would be more sophisticated. This is a rudimentary way to
 // tell if, for our purposes, there is an intersection issue between the too.
 // Practically that means we only check the major axis of the track for
-// intersection with the polygon, and we assume the track is never full
+// intersection with the polygon, and we assume the track is never fully
 // contained by or fully contains the polygon.
 bool RoutingTrack::Intersects(
     const geometry::Polygon &polygon,
     std::vector<geometry::PointPair> *intersections,
-    int64_t within_halo) const {
-  int64_t boundary_from_offset = width_ + within_halo;
+    int64_t padding) const {
+  // FIXME(aryap): This should be width_ / 2, or at least consider the actual
+  // maximum thickness (still divided by 2) at vertices, wherever they are.
+  //
+  // Also, we actually need to find the maximum width of the polygon within the
+  // band of the track, which these major axis lines will not give us. If the
+  // polygon expands and contracts within the lines we don't detect it:
+  //
+  // ----------|-----|-----------
+  //         |          | <- undetected
+  // ----------|-----|-----------
+  int64_t boundary_from_offset = min_transverse_separation_ + padding; 
   std::pair<geometry::Line, geometry::Line> major_axis_lines =
       MajorAxisLines(boundary_from_offset);
 
@@ -551,7 +570,7 @@ bool RoutingTrack::Intersects(
     return lhs.second < rhs.second;
   };
   auto deduped = std::set<
-    std::pair<geometry::Point, geometry::Point>, decltype(comp)>(comp);
+      std::pair<geometry::Point, geometry::Point>, decltype(comp)>(comp);
   deduped.insert(intersections_low.begin(), intersections_low.end());
   deduped.insert(intersections_high.begin(), intersections_high.end());
   intersections->insert(intersections->end(), deduped.begin(), deduped.end());
@@ -563,7 +582,9 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
     int64_t padding) {
   if (Intersects(rectangle, padding)) {
     RoutingTrackBlockage *blockage = MergeNewBlockage(
-        rectangle.lower_left(), rectangle.upper_right());
+        rectangle.lower_left(),
+        rectangle.upper_right(),
+        min_separation_between_edges_ + padding);
     if (blockage) {
       ApplyBlockage(*blockage);
       return blockage;
@@ -582,7 +603,8 @@ void RoutingTrack::AddBlockage(
   Intersects(polygon, &intersections, padding);
 
   for (const auto &pair : intersections) {
-    RoutingTrackBlockage *blockage = MergeNewBlockage(pair.first, pair.second);
+    RoutingTrackBlockage *blockage = MergeNewBlockage(
+        pair.first, pair.second, min_separation_between_edges_ + padding);
     if (blockage) {
       ApplyBlockage(*blockage);
     }
@@ -714,7 +736,12 @@ void RoutingTrack::ApplyBlockage(
   for (RoutingVertex *vertex : vertices_) {
     if (!vertex->available())
       continue;
-    if (BlockageBlocks(blockage, vertex->centre(), vertex->centre())) {
+    // We only disable vertices if they're _completely_ blocked, i.e. with
+    // margin = 0.
+    if (BlockageBlocks(blockage,
+                       vertex->centre(),
+                       vertex->centre(),
+                       0)) {
       vertex->set_available(false);
       if (blocked_vertices)
         blocked_vertices->insert(vertex);
@@ -723,8 +750,10 @@ void RoutingTrack::ApplyBlockage(
   for (RoutingEdge *edge : edges_) {
     if (edge->blocked())
       continue;
-    if (BlockageBlocks(
-          blockage, edge->first()->centre(), edge->second()->centre())) {
+    if (BlockageBlocks(blockage,
+                       edge->first()->centre(),
+                       edge->second()->centre(),
+                       min_separation_to_new_blockages_)) {
       edge->set_blocked(true);
       if (blocked_edges)
         blocked_edges->insert(edge);

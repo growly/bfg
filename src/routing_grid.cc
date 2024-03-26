@@ -839,16 +839,6 @@ void RoutingGrid::ConnectLayers(
   std::map<int64_t, RoutingTrack*> vertical_tracks;
   std::map<int64_t, RoutingTrack*> horizontal_tracks;
 
-  // The minimum separation between the ends of two edges on a track is the
-  // closest possible spacing of used vertices on the track, i.e. the amount of
-  // space required to fit a via at the end of each used edge. The worst case is
-  // given by:
-  int64_t horizontal_track_min_vertex_separation =
-      horizontal_info.min_separation + routing_via_info.MaxEncapSide();
- 
-  int64_t vertical_track_min_vertex_separation =
-      vertical_info.min_separation + routing_via_info.MaxEncapSide();
-
   // Generate tracks to hold edges and vertices in each direction.
   for (int64_t x = grid_geometry.x_start();
        x <= grid_geometry.x_max();
@@ -856,9 +846,11 @@ void RoutingGrid::ConnectLayers(
     RoutingTrack *track = new RoutingTrack(
         vertical_info.layer,
         RoutingTrackDirection::kTrackVertical,
-        vertical_track_min_vertex_separation,
+        vertical_info.wire_width,
+        routing_via_info.EncapWidth(vertical_info.layer),
+        routing_via_info.EncapLength(vertical_info.layer),
+        vertical_info.min_separation,
         x);
-    track->set_width(vertical_info.wire_width);
     vertical_tracks.insert({x, track});
     grid_geometry.vertical_tracks_by_index().push_back(track);
     AddTrackToLayer(track, vertical_info.layer);
@@ -871,9 +863,11 @@ void RoutingGrid::ConnectLayers(
     RoutingTrack *track = new RoutingTrack(
         horizontal_info.layer,
         RoutingTrackDirection::kTrackHorizontal,
-        horizontal_track_min_vertex_separation,
+        horizontal_info.wire_width,
+        routing_via_info.EncapWidth(horizontal_info.layer),
+        routing_via_info.EncapLength(horizontal_info.layer),
+        horizontal_info.min_separation,
         y);
-    track->set_width(horizontal_info.wire_width);
     horizontal_tracks.insert({y, track});
     grid_geometry.horizontal_tracks_by_index().push_back(track);
     AddTrackToLayer(track, horizontal_info.layer);
@@ -1332,13 +1326,13 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
       continue;
     //LOG(INFO) << "via encap: " << *via_encap << " about " << vertex->centre()
     //          << " layer " << layer << " for edge " << *edge;
-    int64_t min_separation = physical_db_.Rules(layer).min_separation;
     for (RoutingTrack *track : blocked_tracks) {
       if (track->layer() != layer)
         continue;
-      track->AddBlockage(*via_encap, min_separation);
+      track->AddBlockage(*via_encap);
     }
 
+    int64_t min_separation = physical_db_.Rules(layer).min_separation;
     for (RoutingVertex *enveloping_vertex : outer_vertices) {
       std::optional<geometry::Rectangle> outer_via_encap = ViaFootprint(
           *enveloping_vertex, layer, 0);
@@ -1710,8 +1704,11 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
       new RoutingGridBlockage<geometry::Polygon>(*this, polygon, padding);
   polygon_blockages_.emplace_back(blockage);
 
-  // Tracks don't suppor temporary Polygon blockages, so for now we just skip:
-  if (!is_temporary) {
+  // Tracks don't support temporary Polygon blockages, so for now we just skip:
+  if (is_temporary) {
+    LOG(WARNING) << "Temporary blockage is a Polygon which tracks don't "
+                 << "support, ignoring: " << polygon;
+  } else {
     auto it = tracks_by_layer_.find(layer);
     if (it == tracks_by_layer_.end())
       return nullptr;

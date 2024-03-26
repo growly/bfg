@@ -491,10 +491,10 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
     // lines of the Rectangle.
     Line boundary_line = Line(
         vertices_[i], vertices_[(i + 1) % vertices_.size()]);
-    for (Line &rectangle_perimeter : rectangle_perimeter) {
+    for (Line &line : rectangle_perimeter) {
       bool incident_unused;
       Point point_unused;
-      if (rectangle_perimeter.IntersectsInMutualBounds(
+      if (line.IntersectsInMutualBounds(
               boundary_line,
               &incident_unused,
               &point_unused)) {
@@ -561,6 +561,11 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
   }
 
   return false;
+}
+
+bool Polygon::ContainsVertex(const Point &point) const {
+  return std::find(
+      vertices_.begin(), vertices_.end(), point) != vertices_.end();
 }
 
 void Polygon::MirrorY() {

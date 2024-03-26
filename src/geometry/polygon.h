@@ -42,6 +42,7 @@ class Polygon : public Shape {
   }
 
   bool Overlaps(const Rectangle &rectangle) const;
+  bool ContainsVertex(const Point &point) const;
 
   void IntersectingPoints(
       const Line &line,
