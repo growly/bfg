@@ -529,9 +529,12 @@ void PolyLine::RemoveNotchesAroundCorners() {
     if (i + 1 >= segments_.size()) {
       break;
     }
-    if (segments_[i + 1].width >= first_segment.width) {
-      continue;
-    }
+    // This is half-baked idea to shortcut work when there are no intervening
+    // segments with smaller widths (as would be required for a notch in some
+    // cases).
+    // if (segments_[i + 1].width >= first_segment.width) {
+    //   continue;
+    // }
 
     uint64_t intervening_width = segments_[i + 1].width;
 
@@ -539,7 +542,7 @@ void PolyLine::RemoveNotchesAroundCorners() {
       LineSegment &last_segment = segments_[j - 1];
       LineSegment &next_segment = segments_[j];
 
-      intervening_width = next_segment.width;
+      intervening_width = last_segment.width;
 
       Line next_line = Line(segments_[j - 1].end, next_segment.end);
       Line intervening_line = Line(first_line.end(), next_line.start());
@@ -581,9 +584,16 @@ void PolyLine::RemoveNotchesAroundCorners() {
         continue;
       }
 
-      // Widen all intervening segments to the width of the first:
+      // Widen all intervening segments to the width of the max within the span:
+      std::vector<uint64_t> span_widths;
+      std::transform(segments_.begin() + i + 1,
+                     segments_.begin() + j + 1,
+                     std::back_inserter(span_widths),
+                     [](const LineSegment &segment) { return segment.width; });
+      uint64_t max_width_in_span =
+          *std::max_element(span_widths.begin(), span_widths.end());
       for (size_t k = i + 1; i <= j; ++i) {
-        segments_[k].width = std::max(segments_[k].width, first_segment.width);
+        segments_[k].width = max_width_in_span;
       }
     }
   }

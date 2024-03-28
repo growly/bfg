@@ -83,9 +83,6 @@ class PolyLine : public Shape {
   // value half way.
   void InsertBulge(
       const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
-  // FIXME(aryap): REMOVE
-  void InsertBulge2(
-      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
   // As above, but will not be applied until ApplyDeferredBulges() call.
   void InsertBulgeLater(
       const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
@@ -192,6 +189,7 @@ class PolyLine : public Shape {
   std::vector<DeferredBulge> deferred_bulges_;
 
   FRIEND_TEST(PolyLineTest, NotchAroundCorner);
+  FRIEND_TEST(PolyLineTest, NotchAroundCorner_Backwards);
 };
 
 }  // namespace geometry

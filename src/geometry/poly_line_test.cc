@@ -804,5 +804,17 @@ TEST(PolyLineTest, NotchAroundCorner) {
   line.RemoveNotchesAroundCorners();
 }
 
+TEST(PolyLineTest, NotchAroundCorner_Backwards) {
+  PolyLine line = PolyLine(
+      {15840, 899}, {
+      LineSegment {{15840, 5510}, 140},
+      LineSegment {{15500, 5510}, 140},
+      LineSegment {{15500, 5330}, 140},
+      LineSegment {{15500, 5010}, 260}
+  });
+  line.set_min_separation(140);
+  line.RemoveNotchesAroundCorners();
+}
+
 }  // namespace geometry
 }  // namespace bfg
