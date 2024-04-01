@@ -323,6 +323,16 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
       lhs_info, rhs_info);
 }
 
+std::optional<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
+    const geometry::Port &port) {
+  auto connection = AddAccessVerticesForPoint(port.centre(), port.layer());
+  if (!connection) {
+    // Fall back to slower, possibly broken method.
+    connection = ConnectToNearestAvailableVertex(port);
+  }
+  return connection;
+}
+
 // Using the given RoutingGridGeometry, find the tracks which surround
 // *off_grid and attempt to create vertices on each of those tracks for edges
 // from *off_grid to land on.
@@ -381,7 +391,7 @@ bool RoutingGrid::ConnectToSurroundingTracks(
   return any_success;
 }
 
-std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
+std::optional<RoutingGrid::VertexWithLayer>
 RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
                                        const geometry::Layer &layer) {
   // Add each of the possible on-grid access vertices for a given off-grid
@@ -493,31 +503,25 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
   return std::nullopt;
 }
 
-std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
-RoutingGrid::GenerateGridVertexForPort(
-    const geometry::Port &port) {
+std::optional<RoutingGrid::VertexWithLayer>
+RoutingGrid::ConnectToNearestAvailableVertex(const geometry::Port &port) {
   std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
       layer_access = physical_db_.FindReachableLayersByPinLayer(port.layer());
   for (const auto &entry : layer_access) {
     for (const geometry::Layer &layer : entry.second) {
       LOG(INFO) << "checking for grid vertex on layer " << layer;
-      RoutingVertex *vertex = GenerateGridVertexForPoint(port.centre(), layer);
+      RoutingVertex *vertex = ConnectToNearestAvailableVertex(
+          port.centre(), layer);
       if (vertex) {
-        // This is
-        //  std::optional<std::pair<RoutingVertex*, const geometry::Layer>>(
-        //      {vertex, layer});
-        return {{vertex, layer}};
+        return {VertexWithLayer{.vertex = vertex, .layer = layer}};
       }
     }
   }
   return std::nullopt;
 }
 
-RoutingVertex *RoutingGrid::GenerateGridVertexForPoint(
+RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
     const geometry::Point &point, const geometry::Layer &layer) {
-  // A key function of this class is to determine an appropriate starting point
-  // on the routing grid for routing to/from an arbitrary point.
-  //
   // If constrained to one or two layers on a fixed grid, we can determine the
   // nearest vertices quickly by shortlisting those vertices whose positions
   // would correspond to the given point by construction (since we also
@@ -1025,23 +1029,21 @@ bool RoutingGrid::AddRouteBetween(
     TearDownTemporaryBlockages(temporary_blockages);
   };
 
-  auto begin_vertex_and_access_layer = AddAccessVerticesForPoint(
-      begin.centre(), begin.layer());
-  if (!begin_vertex_and_access_layer) {
+  auto begin_connection = ConnectToGrid(begin);
+  if (!begin_connection) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
     return false;
   }
-  RoutingVertex *begin_vertex = begin_vertex_and_access_layer->first;
+  RoutingVertex *begin_vertex = begin_connection->vertex;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
             << begin_vertex->centre();
 
-  auto end_vertex_and_access_layer = AddAccessVerticesForPoint(
-      end.centre(), end.layer());
-  if (!end_vertex_and_access_layer) {
+  auto end_connection = ConnectToGrid(end);
+  if (!end_connection) {
     LOG(ERROR) << "Could not find available vertex for end port.";
     return false;
   }
-  RoutingVertex *end_vertex = end_vertex_and_access_layer->first;
+  RoutingVertex *end_vertex = end_connection->vertex;
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
             << end_vertex->centre();
 
@@ -1058,11 +1060,9 @@ bool RoutingGrid::AddRouteBetween(
   // Ports are typically on port layers (i.e. PINs), but for convenience we also
   // record the layer we need to use to access said ports:
   shortest_path->set_start_port(&begin);
-  shortest_path->start_access_layers().insert(
-      begin_vertex_and_access_layer->second);
+  shortest_path->start_access_layers().insert(begin_connection->layer);
   shortest_path->set_end_port(&end);
-  shortest_path->end_access_layers().insert(
-      end_vertex_and_access_layer->second);
+  shortest_path->end_access_layers().insert(end_connection->layer);
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
@@ -1102,14 +1102,13 @@ bool RoutingGrid::AddRouteToNet(
   TemporaryBlockageInfo temporary_blockages;
   SetUpTemporaryBlockages(avoid, &temporary_blockages);
 
-  auto begin_vertex_and_access_layer = AddAccessVerticesForPoint(
-      begin.centre(), begin.layer());
-  if (!begin_vertex_and_access_layer) {
+  auto begin_connection = ConnectToGrid(begin);
+  if (!begin_connection) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
     TearDownTemporaryBlockages(temporary_blockages);
     return false;
   }
-  RoutingVertex *begin_vertex = begin_vertex_and_access_layer->first;
+  RoutingVertex *begin_vertex = begin_connection->vertex;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
             << begin_vertex->centre();
 
@@ -1125,8 +1124,7 @@ bool RoutingGrid::AddRouteToNet(
 
   // Remember the ports to which the path should connect.
   shortest_path->set_start_port(&begin);
-  shortest_path->start_access_layers().insert(
-      begin_vertex_and_access_layer->second);
+  shortest_path->start_access_layers().insert(begin_connection->layer);
 
   // We expect that we now have a path terminating in a vertex that is attached
   // to the given net.

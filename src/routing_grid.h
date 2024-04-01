@@ -205,6 +205,11 @@ class RoutingGrid {
     double cost;
   };
 
+  struct VertexWithLayer {
+    RoutingVertex *vertex;
+    geometry::Layer layer;
+  };
+
   struct TemporaryBlockageInfo {
     std::vector<RoutingGridBlockage<geometry::Rectangle>*> pin_blockages;
     std::set<RoutingVertex*> blocked_vertices;
@@ -318,14 +323,15 @@ class RoutingGrid {
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
 
-  std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
-  AddAccessVerticesForPoint(const geometry::Point &point,
-                            const geometry::Layer &layer);
+  std::optional<VertexWithLayer> ConnectToGrid(const geometry::Port &port);
 
-  std::optional<std::pair<RoutingVertex*, const geometry::Layer>>
-  GenerateGridVertexForPort(const geometry::Port &port);
+  std::optional<VertexWithLayer> AddAccessVerticesForPoint(
+      const geometry::Point &point, const geometry::Layer &layer);
 
-  RoutingVertex *GenerateGridVertexForPoint(
+  std::optional<VertexWithLayer> ConnectToNearestAvailableVertex(
+      const geometry::Port &port);
+
+  RoutingVertex *ConnectToNearestAvailableVertex(
       const geometry::Point &point, const geometry::Layer &layer);
 
   void AddRoutingGridGeometry(
