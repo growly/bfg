@@ -102,14 +102,19 @@ void RoutingGridGeometry::NearestTracks(
 void RoutingGridGeometry::NearestTrackIndices(
     const geometry::Point &point,
     std::set<size_t> *horizontal,
-    std::set<size_t> *vertical) const {
+    std::set<size_t> *vertical,
+    int64_t num_concentric_layers) const {
   // This departure from the style used elsewhere in the code is a personal
   // experiment to see if I like the sauce:
   auto [column_lower, column_upper, row_lower, row_upper] = 
       MapPointToBoundingGridIndices(point);
   // (I think I like the sauce.)
 
-  BoundGridIndices(1, &column_lower, &column_upper, &row_lower, &row_upper);
+  BoundGridIndices(num_concentric_layers,
+                   &column_lower,
+                   &column_upper,
+                   &row_lower,
+                   &row_upper);
 
   // Columns (vertical tracks):
   vertical->insert(column_lower);

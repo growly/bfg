@@ -341,6 +341,7 @@ bool RoutingGrid::ConnectToSurroundingTracks(
       off_grid->centre(), &nearest_tracks, &nearest_tracks);
 
   // If access directions are specified, remove tracks in any other directions.
+  // That is, remove tracks in the directions not included in *directions.
   if (directions) {
     const auto &access_directions = directions->get();
     for (RoutingTrack *track : nearest_tracks) {

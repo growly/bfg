@@ -41,7 +41,8 @@ class RoutingGridGeometry {
   void NearestTrackIndices(
       const geometry::Point &point,
       std::set<size_t> *horizontal,
-      std::set<size_t> *vertical) const;
+      std::set<size_t> *vertical,
+      int64_t num_concentric_layers = 1) const;
 
   void EnvelopingVertexIndices(
       const geometry::Point &point,
