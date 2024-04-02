@@ -20,6 +20,9 @@ namespace geometry {
 
 class Point : public AbstractShape, public Manipulable {
  public:
+  static bool CompareX(const Point &lhs, const Point &rhs);
+  static bool CompareY(const Point &lhs, const Point &rhs);
+
   Point() = default;
   Point(const int64_t x, const int64_t y)
       : x_(x),
@@ -31,8 +34,7 @@ class Point : public AbstractShape, public Manipulable {
   void set_x(const int64_t &x) { x_ = x; }
   void set_y(const int64_t &y) { y_ = y; }
 
-  ::vlsir::raw::Point ToVLSIRPoint(
-      const PhysicalPropertiesDatabase &db) const {
+  ::vlsir::raw::Point ToVLSIRPoint(const PhysicalPropertiesDatabase &db) const {
     ::vlsir::raw::Point point_pb;
     point_pb.set_x(db.ToExternalUnits(x_));
     point_pb.set_y(db.ToExternalUnits(y_));

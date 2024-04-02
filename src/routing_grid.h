@@ -280,7 +280,7 @@ class RoutingGrid {
     // (i.e. given the wire width rules for its layer), and see if it collides
     // with the obstruction.
     std::optional<geometry::Rectangle> keep_out =
-        TrackFootprint(edge, padding > 0 ? padding - 1: padding);
+        EdgeFootprint(edge, padding > 0 ? padding - 1: padding);
     if (!keep_out) {
       return false;
     }
@@ -313,6 +313,8 @@ class RoutingGrid {
       int64_t padding = 0,
       std::optional<RoutingTrackDirection> direction = std::nullopt) const;
   std::optional<geometry::Rectangle> TrackFootprint(
+      const RoutingEdge &edge, int64_t padding = 0) const;
+  std::optional<geometry::Rectangle> EdgeFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
 
   // Returns the via layer (first entry) and cost (second entry) if a via is

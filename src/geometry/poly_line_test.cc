@@ -804,6 +804,21 @@ TEST(PolyLineTest, NotchAroundCorner) {
   line.RemoveNotchesAroundCorners();
 }
 
+TEST(PolyLineTest, NotchAroundCorner2) {
+  // This line contains a notch around a corner:
+  PolyLine line = PolyLine(
+      {31715, 10580}, {
+      LineSegment {{31715, 10870}, 230},
+      LineSegment {{31715, 10950}, 140},
+      LineSegment {{33020, 10950}, 140},
+      LineSegment {{33340, 10950}, 260},
+  });
+  line.set_min_separation(140);
+
+  // We need to make sure it's removed!
+  line.RemoveNotchesAroundCorners();
+}
+
 TEST(PolyLineTest, NotchAroundCorner_Backwards) {
   PolyLine line = PolyLine(
       {15840, 899}, {

@@ -12,6 +12,7 @@
 
 #include "line_segment.h"
 #include "point.h"
+#include "radian.h"
 #include "rectangle.h"
 
 namespace bfg {
@@ -111,7 +112,9 @@ double PolyLine::ComputeRequiredLengthForLastSegmentWidth(
   double alpha = previous_line.AngleToLineCounterClockwise(current_line);
   double sin_alpha = std::sin(alpha);
 
-  if (sin_alpha == 0) {
+  // Sometimes we get a number very close to zero, but no actually zero!
+  // Like 1.2246467991473532e-16 D-:
+  if (Radian::IsEffectivelyZero(sin_alpha)) {
     // No change.
     return required_length;
   }
@@ -586,13 +589,17 @@ void PolyLine::RemoveNotchesAroundCorners() {
 
       // Widen all intervening segments to the width of the max within the span:
       std::vector<uint64_t> span_widths;
-      std::transform(segments_.begin() + i + 1,
+      // We measure the maximum width of segments in the span [i, j], i.e.
+      // inclusive of i and j.
+      std::transform(segments_.begin() + i,
                      segments_.begin() + j + 1,
                      std::back_inserter(span_widths),
                      [](const LineSegment &segment) { return segment.width; });
       uint64_t max_width_in_span =
           *std::max_element(span_widths.begin(), span_widths.end());
-      for (size_t k = i + 1; i <= j; ++i) {
+      // But we overwrite the widths of only the segments interior to the span,
+      // excluding i and j themselves, (i, j).
+      for (size_t k = i + 1; k < j; ++k) {
         segments_[k].width = max_width_in_span;
       }
     }

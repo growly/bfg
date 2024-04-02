@@ -10,6 +10,14 @@
 namespace bfg {
 namespace geometry {
 
+bool Point::CompareX(const Point &lhs, const Point &rhs) {
+  return lhs.x() < rhs.x();
+}
+
+bool Point::CompareY(const Point &lhs, const Point &rhs) {
+  return lhs.y() < rhs.y();
+}
+
 Point &Point::operator+=(const Point &other) {
   x_ = x_ + other.x_;
   y_ = y_ + other.y_;

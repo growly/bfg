@@ -189,6 +189,7 @@ class PolyLine : public Shape {
   std::vector<DeferredBulge> deferred_bulges_;
 
   FRIEND_TEST(PolyLineTest, NotchAroundCorner);
+  FRIEND_TEST(PolyLineTest, NotchAroundCorner2);
   FRIEND_TEST(PolyLineTest, NotchAroundCorner_Backwards);
 };
 

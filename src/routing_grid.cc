@@ -193,6 +193,9 @@ bool RoutingGrid::ValidAgainstKnownBlockages(const RoutingEdge &edge) const {
       return false;
   }
   for (const auto &blockage : polygon_blockages_) {
+    if (blockage->shape().ContainsVertex({31065, 11170})) {
+      LOG(INFO) << "hit";
+    }
     if (blockage->Blocks(edge))
       return false;
   }
@@ -792,6 +795,95 @@ std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
     return edge_as_rectangle;
   geometry::Rectangle &rectangle = edge_as_rectangle.value();
   return rectangle.WithPadding(padding);
+}
+
+// TODO(aryap): It's convenient to have an edge generate the footprint it would
+// imply as a wire, complete with vias at either end for the vertices (with
+// appropriate metal encap sizes given the layers the vertices connect). That
+// would require RoutingEdge to have knowledge of physical constraints or at
+// least the RoutingGrid, since we hide behind that abstraction in Routing
+// stuff. And that would require RoutingGrid to know a lot about RoutingEdge and
+// also the opposite, which is annoying and not very clean as an abstraction.
+//
+// TODO(aryap): Memoise this: we only need to generate the footprint once for
+// many checks.
+std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
+    const RoutingEdge &edge, int64_t padding) const {
+  if (!edge.layer()) {
+    LOG(WARNING) << "Edge cannot be turned into rectangle without layer_ set";
+    return std::nullopt;
+  }
+
+  const geometry::Layer &layer = *edge.layer();
+  int64_t width = GetRoutingLayerInfoOrDie(layer).wire_width + padding;
+
+  // A rectangle of wire-width without via encaps at either end represents the
+  // middle section of the edge.
+  auto wire_only_bounds = edge.AsRectangle(width);
+  if (!wire_only_bounds) {
+    LOG(FATAL) << "Edge does not have simple rectangle form!";
+    return std::nullopt;
+  }
+  
+  // Sort [first, second] vertices into bottom-left-most to upper-right-most:
+  std::vector<RoutingVertex*> vertices = {edge.first(), edge.second()};
+  std::sort(
+      vertices.begin(),
+      vertices.end(),
+      [](RoutingVertex *lhs, RoutingVertex *rhs) {
+        const geometry::Point &left_point = lhs->centre();
+        const geometry::Point &right_point = rhs->centre();
+        if (left_point.x() == right_point.x()) {
+          return left_point.y() < right_point.y();
+        }
+        return left_point.x() < right_point.x();
+      }
+  );
+
+  const RoutingVertex *lower_left = vertices.front();
+  const RoutingVertex *upper_right = vertices.back();
+
+  auto lower_left_footprint = ViaFootprint(
+      *lower_left, layer, padding, edge.Direction());
+  auto upper_right_footprint = ViaFootprint(
+      *upper_right, layer, padding, edge.Direction());
+
+  std::vector<geometry::Point> lower_left_options = {
+    wire_only_bounds->lower_left()
+  };
+  std::vector<geometry::Point> upper_right_options = {
+    wire_only_bounds->upper_right()
+  };
+  if (lower_left_footprint) {
+    lower_left_options.push_back(lower_left_footprint->lower_left());
+    upper_right_options.push_back(lower_left_footprint->upper_right());
+  }
+  if (upper_right_footprint) {
+    lower_left_options.push_back(upper_right_footprint->lower_left());
+    upper_right_options.push_back(upper_right_footprint->upper_right());
+  }
+
+  // TODO(aryap): A good exercise! Define a function on geometry::Point that
+  // will accept either any iterator of Points or any container of Points to
+  // automatically return the (min, max) x (x, y) over a range.
+  geometry::Point lower_left_point = {
+      std::min_element(lower_left_options.begin(),
+                       lower_left_options.end(),
+                       geometry::Point::CompareX)->x(),
+      std::min_element(lower_left_options.begin(),
+                       lower_left_options.end(),
+                       geometry::Point::CompareY)->y()
+  };
+  geometry::Point upper_right_point = {
+      std::max_element(upper_right_options.begin(),
+                       upper_right_options.end(),
+                       geometry::Point::CompareX)->x(),
+      std::max_element(upper_right_options.begin(),
+                       upper_right_options.end(),
+                       geometry::Point::CompareY)->y()
+  };
+
+  return {{lower_left_point, upper_right_point}};
 }
 
 std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
@@ -1671,9 +1763,24 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
   if (it == tracks_by_layer_.end())
     return nullptr;
 
+  // FIXME: RoutingTracks are equipped with min_separation, but
+  // RoutingGridBlockages are not. padding is sometimes treated as a temporary
+  // additional value and sometimes as the min_separation value.
+  // RoutingGridBlockage has two explicit checks:
+  //    BlocksWithoutPadding, meaning that the shapes overlap, and
+  //    Blocks, meaning that the shapes come within the min_separation.
+  // In RoutingGridBlockage "padding" is min_separation. Does it need to have
+  // both?
+  //
+  // Or should RoutingGridBlockage be able to look up the min_separation on its
+  // own? RoutingGridBlockage could easily do this, but then it would need a
+  // handle to physical information:
+  int64_t min_separation = physical_db_.Rules(layer).min_separation;
+
   // Create and save the blockage:
   RoutingGridBlockage<geometry::Rectangle> *blockage =
-      new RoutingGridBlockage<geometry::Rectangle>(*this, rectangle, padding);
+      new RoutingGridBlockage<geometry::Rectangle>(
+          *this, rectangle, padding + min_separation);
   rectangle_blockages_.emplace_back(blockage);
 
   for (RoutingTrack *track : it->second) {
@@ -1698,9 +1805,12 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
     std::set<RoutingVertex*> *blocked_vertices) {
   const geometry::Layer &layer = polygon.layer();
 
+  int64_t min_separation = physical_db_.Rules(layer).min_separation;
+
   // Create and save the blockage:
   RoutingGridBlockage<geometry::Polygon> *blockage =
-      new RoutingGridBlockage<geometry::Polygon>(*this, polygon, padding);
+      new RoutingGridBlockage<geometry::Polygon>(
+          *this, polygon, padding + min_separation);
   polygon_blockages_.emplace_back(blockage);
 
   // Tracks don't support temporary Polygon blockages, so for now we just skip:
