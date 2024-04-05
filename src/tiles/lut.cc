@@ -669,23 +669,31 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       all_other_mux_ports.erase(port);
     }
 
-    LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-              << " avoiding " << DescribePorts(all_other_mux_ports);
+    while (mux_port) {
+      LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                << " avoiding " << DescribePorts(all_other_mux_ports);
 
-    auto named_output_it = memory_output_net_names.find(memory);
-    if (named_output_it == memory_output_net_names.end()) {
-      std::string net_name = absl::StrCat(memory->name(), "_Q");
-      memory_output_net_names[memory] = net_name;
-      LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-                << " to " << memory->name();
-      routing_grid.AddRouteBetween(
-          *mux_port, *memory_output, all_other_mux_ports, net_name);
-    } else {
-      const std::string &target_net = named_output_it->second;
-      LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-                << " to net " << target_net;
-      routing_grid.AddRouteToNet(
-          *mux_port, target_net, all_other_mux_ports);
+      bool path_found = false;
+      auto named_output_it = memory_output_net_names.find(memory);
+      if (named_output_it == memory_output_net_names.end()) {
+        std::string net_name = absl::StrCat(memory->name(), "_Q");
+        memory_output_net_names[memory] = net_name;
+        LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                  << " to " << memory->name();
+        path_found = routing_grid.AddRouteBetween(
+            *mux_port, *memory_output, all_other_mux_ports, net_name);
+      } else {
+        const std::string &target_net = named_output_it->second;
+        LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                  << " to net " << target_net;
+        path_found = routing_grid.AddRouteToNet(
+            *mux_port, target_net, all_other_mux_ports);
+      }
+      if (path_found) {
+        break;
+      }
+      mux_ports_on_net.erase(mux_port);
+      mux_port = mux_ports_on_net.empty() ? nullptr : *mux_ports_on_net.begin();
     }
   }
 
