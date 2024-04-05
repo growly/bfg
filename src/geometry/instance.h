@@ -74,6 +74,7 @@ class Instance : public Manipulable {
   }
 
   void GetInstancePorts(std::set<Port*> *out) {
+    if (!ports_generated_) GeneratePorts();
     for (auto &entry : instance_ports_) {
       for (auto &uniq : entry.second) {
         out->insert(uniq.get());

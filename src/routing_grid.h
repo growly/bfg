@@ -139,6 +139,8 @@ class RoutingGrid {
       std::optional<RoutingTrackDirection> access_direction = std::nullopt)
       const;
 
+  bool ValidAgainstInstalledPaths(const RoutingEdge &edge) const;
+
   bool ValidAgainstInstalledPaths(
       const RoutingVertex &vertex,
       std::optional<RoutingTrackDirection> access_direction = std::nullopt)
@@ -234,7 +236,7 @@ class RoutingGrid {
   // Maybe move them into RoutingVertex? That requires giving RoutingVertex
   // awareness of geometry, which is like a loss of innocence y'know?
   //
-  // Test if a given obstructs overlaps an appropriately-sized via at the
+  // Test if a given obstruction overlaps an appropriately-sized via at the
   // location of the given RoutingVertex.
   template<typename T>
   bool ViaWouldIntersect(

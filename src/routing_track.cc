@@ -1,5 +1,6 @@
 #include "routing_track.h"
 
+#include <algorithm>
 #include <queue>
 #include <set>
 #include <vector>
@@ -64,7 +65,9 @@ bool RoutingTrack::AddVertex(RoutingVertex *vertex) {
   // would be blocked.
   bool any_success = false;
   for (RoutingVertex *other : vertices_) {
-    // We _don't want_ short-circuiting here.
+    // We _don't want_ short-circuiting here. Using the bitwise OR is correct
+    // because bools are defined to be true or false, and it forces evaluation
+    // of both operands every time.
     any_success |= MaybeAddEdgeBetween(vertex, other);
   }
   vertices_.insert(vertex);
@@ -149,6 +152,41 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   }
 }
 
+bool RoutingTrack::IsPerpendicularTo(const RoutingTrackDirection &other) const {
+  LOG_IF(FATAL, direction_ != RoutingTrackDirection::kTrackHorizontal &&
+                direction_ != RoutingTrackDirection::kTrackVertical)
+    << "direction_ must be horizontal or vertical for the IsPerpendicularTo "
+    << "test";
+  LOG_IF(FATAL, other != RoutingTrackDirection::kTrackHorizontal &&
+                other != RoutingTrackDirection::kTrackVertical)
+    << "other direction must be horizontal or vertical for the "
+    << "IsPerpendicularTo test";
+  // If we can assume that there are only two directions, then perpendicular
+  // tracks just have different directions.
+  return direction_ != other;
+}
+
+void RoutingTrack::AssignThisTrackToVertex(RoutingVertex *vertex) {
+  switch (direction_) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      vertex->set_horizontal_track(this);
+      break;
+    case RoutingTrackDirection::kTrackVertical:
+      vertex->set_vertical_track(this);
+      break;
+    default:
+      LOG(FATAL) << "This RoutingTrack has an unrecognised "
+                 << "RoutingTrackDirection: " << direction_;
+  }
+}
+
+// Create a vertex at the point on this track nearest to 'point', with the vague
+// intention of connecting it to 'target'. Usually 'point' is the centre of
+// 'target', but this isn't strictly necessary.
+//
+// In all cases where 'point' doesn't end up being on the track already we have
+// to create a bridging vertex that is on the track and that can be used to
+// connect to 'point' with an off-grid edge (handled by the caller).
 RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
     const RoutingGrid &grid,
     const geometry::Point &point,
@@ -168,64 +206,64 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
                  << "RoutingTrackDirection: " << direction_;
   }
 
+  if (IsBlocked(candidate_centre)) {
+    return nullptr;
+  }
+  //if (IsProbablyBlockedForVia(candidate_centre)) {
+  //  return nullptr;
+  //}
+
+  RoutingVertex *bridging_vertex = nullptr;
   if (target) {
-    if (candidate_centre == point)
-      return target;
-    if (IsBlockedBetween(
-          candidate_centre, target->centre(), min_separation_between_edges_))
+    if (candidate_centre == point) {
+      // The target is on the track so we don't need to create a separate
+      // bridging vertex. Connect the target to the track.
+      bridging_vertex = target;
+    } else if (IsBlockedBetween(
+        candidate_centre, target->centre(), min_separation_between_edges_)) {
       return nullptr;
-  } else if (IsBlocked(candidate_centre)) {
+    }
+  }
+
+  LOG_IF(WARNING, !target && candidate_centre == point)
+      << "Nearest point to " << point << " on " << *this << " is "
+      << candidate_centre << " itself, but no target vertex was given";
+
+  if (!bridging_vertex) {
+    std::unique_ptr<RoutingVertex> added_vertex(
+        new RoutingVertex(candidate_centre));
+    // We need to ask if this candidate fits in with other installed vertices.
+    // This is specifically to check that vertices on adjacent tracks do not
+    // violate spacing rules. The track itself only ensures correct spacing
+    // along its dimension. Consider these horizontal tracks:
+    //
+    // -------------A----------------
+    //
+    //             +-----+
+    // ------------|--B--|-----------
+    //             +-----+
+    //
+    // The candidate x might collide with the existing B on the neighbouring
+    // track.
+    added_vertex->AddConnectedLayer(layer_);
+    if (target_layer != layer_) {
+      added_vertex->AddConnectedLayer(target_layer);
+    }
+    if (!grid.ValidAgainstInstalledPaths(*added_vertex)) {
+      LOG(WARNING) << "Bridging vertex " << added_vertex->centre()
+                   << " on " << Debug()
+                   << " is not valid against other installed paths";
+      return nullptr;
+    }
+    bridging_vertex = added_vertex.release();
+  }
+
+  if (!AddVertex(bridging_vertex)) {
     return nullptr;
   }
+  AssignThisTrackToVertex(bridging_vertex);
 
-  if (candidate_centre == point) {
-    return target;
-  }
-
-  std::unique_ptr<RoutingVertex> bridging_vertex(
-      new RoutingVertex(candidate_centre));
-
-  // We need to ask if this candidate fits in with other installed vertices.
-  // This is specifically to check that vertices on adjacent tracks to not
-  // violate spacing rules. The track itself only ensures correct spacing along
-  // its dimension. Consider these horizontal tracks:
-  // 
-  // -------------A----------------
-  //
-  //             +-----+
-  // ------------|--B--|-----------
-  //             +-----+
-  //
-  // The candidate x might collide with the existing B on the neighbouring
-  // track.
-  bridging_vertex->AddConnectedLayer(layer_);
-  if (target_layer != layer_) {
-    bridging_vertex->AddConnectedLayer(target_layer);
-  }
-  if (!grid.ValidAgainstInstalledPaths(*bridging_vertex)) {
-    LOG(WARNING) << "Bridging vertex " << bridging_vertex->centre()
-                 << " on " << Debug()
-                 << " is not valid against other installed paths";
-    return nullptr;
-  }
-
-  if (!AddVertex(bridging_vertex.get())) {
-    return nullptr;
-  }
-
-  switch (direction_) {
-    case RoutingTrackDirection::kTrackHorizontal:
-      bridging_vertex->set_horizontal_track(this);
-      break;
-    case RoutingTrackDirection::kTrackVertical:
-      bridging_vertex->set_vertical_track(this);
-      break;
-    default:
-      LOG(FATAL) << "This RoutingTrack has an unrecognised "
-                 << "RoutingTrackDirection: " << direction_;
-  }
-
-  return bridging_vertex.release();
+  return bridging_vertex;
 }
 
 void RoutingTrack::ReportAvailableEdges(
@@ -360,7 +398,8 @@ std::pair<int64_t, int64_t> RoutingTrack::ProjectOntoOffset(
 bool RoutingTrack::EdgeSpansVertex(
     const RoutingEdge &edge, const RoutingVertex &vertex) const {
   int64_t pos = ProjectOntoTrack(vertex.centre());
-  auto points = ProjectOntoTrack(edge.first()->centre(), edge.second()->centre());
+  auto points = ProjectOntoTrack(
+      edge.first()->centre(), edge.second()->centre());
   int64_t low = points.first;
   int64_t high = points.second;
 
@@ -408,6 +447,27 @@ bool RoutingTrack::BlockageBlocks(
   low_high.second += (margin - 1);
 
   return blockage.Blocks(low_high.first, low_high.second);
+}
+
+bool RoutingTrack::IsProbablyBlockedForVia(const geometry::Point &point,
+                                           int64_t margin) const {
+  int64_t point_on_track = ProjectOntoTrack(point);
+  // On the straight line of the track we can only ever fall between two
+  // vertices, or on top of one, in which case we check that one and the two
+  // neighbours. But as usual it's easier to just do an O(n) loop through the
+  // vertices_ list than to do any pre-sorting or filtering.
+  for (RoutingVertex *vertex : vertices_) {
+    int64_t track_position = ProjectOntoTrack(vertex->centre());
+    int64_t spacing = std::max(
+        std::abs(track_position - point_on_track) - margin, 0L);
+    if (!vertex->available() && spacing < pitch_) {
+      VLOG(13) << "point " << point << " not suitable on " << *this
+               << " because " << vertex->centre() << " is " << spacing
+               << " away";
+      return true;
+    }
+  }
+  return false;
 }
 
 bool RoutingTrack::IsBlockedBetween(

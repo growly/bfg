@@ -193,9 +193,6 @@ bool RoutingGrid::ValidAgainstKnownBlockages(const RoutingEdge &edge) const {
       return false;
   }
   for (const auto &blockage : polygon_blockages_) {
-    if (blockage->shape().ContainsVertex({31065, 11170})) {
-      LOG(INFO) << "hit";
-    }
     if (blockage->Blocks(edge))
       return false;
   }
@@ -213,6 +210,38 @@ bool RoutingGrid::ValidAgainstKnownBlockages(
   for (const auto &blockage : polygon_blockages_) {
     if (blockage->Blocks(vertex, access_direction))
       return false;
+  }
+  return true;
+}
+
+bool RoutingGrid::ValidAgainstInstalledPaths(const RoutingEdge &edge) const {
+  auto edge_footprint = EdgeFootprint(edge);
+  if (!edge_footprint) {
+    // No way to check.
+    return false;
+  }
+  const geometry::Layer &layer = edge.EffectiveLayer();
+  int64_t min_separation = physical_db_.Rules(layer).min_separation;
+
+  // Check proximity to all installed edges:
+  std::set<const RoutingEdge*> used_edges;
+  for (const RoutingPath *path : paths_) {
+    used_edges.insert(path->edges().begin(), path->edges().end());
+  }
+  for (const RoutingEdge *edge : off_grid_edges_) {
+    used_edges.insert(off_grid_edges_.begin(), off_grid_edges_.end());
+  }
+  for (const RoutingEdge *edge : used_edges) {
+    if (edge->EffectiveLayer() != layer)
+      continue;
+    auto existing_footprint = EdgeFootprint(*edge);
+    if (!existing_footprint)
+      continue;
+    int64_t distance = static_cast<int64_t>(
+        std::ceil(existing_footprint->ClosestDistanceTo(*edge_footprint)));
+    if (distance < min_separation) {
+      return false;
+    }
   }
   return true;
 }
@@ -368,14 +397,21 @@ bool RoutingGrid::ConnectToSurroundingTracks(
   bool any_success = false;
   for (RoutingTrack *track : nearest_tracks) {
     RoutingVertex *bridging_vertex = track->CreateNearestVertexAndConnect(
-        *this, off_grid->centre(), access_layer);
+        *this, off_grid->centre(), access_layer, off_grid);
     if (!bridging_vertex) {
       continue;
+    } else if (bridging_vertex == off_grid) {
+      any_success = true || any_success;
+      continue;
     }
+
     AddVertex(bridging_vertex);
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
     edge->set_layer(access_layer);
+    // We do not check ValidAgainstInstalledPaths because that is slow. We hope
+    // that by now the other rules have prevented such a possibility. Fingers
+    // crossed....
     if (!ValidAgainstKnownBlockages(*edge)) {
       VLOG(15) << "Invalid off grid edge between "
                << bridging_vertex->centre()
@@ -641,8 +677,7 @@ RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
     }
 
     // Try putting it on the vertical track and then horizontal track.
-    std::vector<RoutingTrack*> tracks = {
-      candidate->vertical_track(), candidate->horizontal_track()};
+    std::vector<RoutingTrack*> tracks = candidate->Tracks();
     RoutingVertex *bridging_vertex = nullptr;
     size_t track = 0;
     for (size_t i = 0; i < tracks.size(); ++i) {
@@ -688,7 +723,8 @@ RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
     edge->set_layer(vertex_layer);
-    if (!ValidAgainstKnownBlockages(*edge)) {
+    if (!ValidAgainstKnownBlockages(*edge) ||
+        !ValidAgainstInstalledPaths(*edge)) {
       VLOG(15) << "Invalid off grid edge between " << bridging_vertex->centre()
                << " and " << off_grid->centre();
       // Rollback extra hard!
@@ -943,6 +979,7 @@ void RoutingGrid::ConnectLayers(
     RoutingTrack *track = new RoutingTrack(
         vertical_info.layer,
         RoutingTrackDirection::kTrackVertical,
+        grid_geometry.x_pitch(),
         vertical_info.wire_width,
         routing_via_info.EncapWidth(vertical_info.layer),
         routing_via_info.EncapLength(vertical_info.layer),
@@ -960,6 +997,7 @@ void RoutingGrid::ConnectLayers(
     RoutingTrack *track = new RoutingTrack(
         horizontal_info.layer,
         RoutingTrackDirection::kTrackHorizontal,
+        grid_geometry.y_pitch(),
         horizontal_info.wire_width,
         routing_via_info.EncapWidth(horizontal_info.layer),
         routing_via_info.EncapLength(horizontal_info.layer),
@@ -1296,13 +1334,18 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
 void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   if (vertex->horizontal_track() && vertex->vertical_track()) {
     // If the vertex is on the grid, we only disable the recorded neighbours.
-    // We don't need to add blockages to their tracks either because these
-    // neighbours are, by virtue of being on the grid, spaced appropriately to
-    // accommodate a via and a wire track next to each other.
+    // We maybe could get await without adding blockages to their tracks as well
+    // because these neighbours are, by virtue of being on the grid, spaced
+    // appropriately to accommodate a via and a wire track next to each other -
+    // however, we rely on these blockages to determine appropriate connection
+    // points for new off-grid vertices, so we should add the blockages anyway.
     //
     // NOTE(aryap): Nearby bridging vertices will not be disabled, be will be
     // unusable anyway (they are created to access a single off-grid point)
     // so this optimisation is ok.
+    //
+    // TODO(aryap): Determine if the junction vertices should have blockages
+    // added where they are on-grid in InstallVertexInPath.
     static const std::vector<Compass> kDisabledNeighbours = {
       Compass::UPPER_LEFT,
       Compass::UPPER,
@@ -1450,6 +1493,8 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
   // contains, which smells funny.
   path->Legalise();
 
+  std::set<RoutingVertex*> junction_vertices(
+      path->vertices().begin(), path->vertices().end());
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {

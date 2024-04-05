@@ -68,8 +68,7 @@ const Rectangle Instance::GetBoundingBox() const {
 }
 
 void Instance::GeneratePorts() {
-  int32_t rotation_ccw_degrees = (
-      360 - (rotation_degrees_ccw_ % 360)) % 360;
+  int32_t rotation_ccw_degrees = (360 - (rotation_degrees_ccw_ % 360)) % 360;
   instance_ports_.clear();
   for (const auto &port : template_layout_->Ports()) {
     const std::string &net = port->net();

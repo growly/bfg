@@ -3,6 +3,7 @@
 #include "geometry/compass.h"
 #include "geometry/point.h"
 #include "routing_edge.h"
+#include "routing_track.h"
 
 namespace bfg {
 
@@ -43,6 +44,41 @@ std::set<RoutingVertex*> RoutingVertex::GetNeighbours() const {
     neighbours.insert(neighbour.vertex);
   }
   return neighbours;
+}
+
+std::vector<RoutingTrack*> RoutingVertex::Tracks() const {
+  std::vector<RoutingTrack*> tracks;
+  if (horizontal_track_) {
+    tracks.push_back(horizontal_track_);
+  }
+  if (vertical_track_) {
+    tracks.push_back(vertical_track_);
+  }
+  return tracks;
+}
+
+std::vector<RoutingTrack*> RoutingVertex::TracksOnLayer(
+    const geometry::Layer &layer) const {
+  std::vector<RoutingTrack*> tracks;
+  if (horizontal_track_ && horizontal_track_->layer() == layer) {
+    tracks.push_back(horizontal_track_);
+  }
+  if (vertical_track_ && vertical_track_->layer() == layer) {
+    tracks.push_back(vertical_track_);
+  }
+  return tracks;
+}
+
+std::vector<RoutingTrack*> RoutingVertex::TracksInDirection(
+    const RoutingTrackDirection &direction) const {
+  std::vector<RoutingTrack*> tracks;
+  if (horizontal_track_ && horizontal_track_->direction() == direction) {
+    tracks.push_back(horizontal_track_);
+  }
+  if (vertical_track_ && vertical_track_->direction() == direction) {
+    tracks.push_back(vertical_track_);
+  }
+  return tracks;
 }
 
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {

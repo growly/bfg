@@ -247,6 +247,11 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       all_instances_by_name;
   layout->GetInstancesByName(&all_instances_by_name);
 
+  std::set<geometry::Port*> all_mux_ports;
+  for (geometry::Instance *mux : mux_order) {
+    mux->GetInstancePorts(&all_mux_ports);
+  }
+
   {
     // Now that the banks prototype layouts are copied into the main layout, map
     // the memory instances by name into the actual objects.
@@ -516,7 +521,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         std::string net_name = absl::StrCat(source->name(), "_Q");
         memory_output_net_names[source] = net_name;
 
-        routing_grid.AddRouteBetween(*start, *end, {}, net_name);
+        routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
 
         LOG(INFO) << "b=" << b << ", j=" << j << ", i=" << i << " "
                   << source->name() << " -> " << sink->name()
@@ -579,7 +584,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     std::string net_name = absl::StrCat(source->name(), "_Q");
     memory_output_net_names[source] = net_name;
 
-    routing_grid.AddRouteBetween(*start, *end, {}, net_name);
+    routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
   }
 
   // Connect memory outputs to the muxes in order:
@@ -611,7 +616,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
-
   // Auto-route order:
   std::vector<geometry::Instance*> auto_route_order = {
     banks[0].memories[0][0],
@@ -631,11 +635,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     banks[1].memories[3][0],
     banks[1].memories[3][1]
   };
-
-  std::set<geometry::Port*> all_mux_ports;
-  for (geometry::Instance *mux : mux_order) {
-    mux->GetInstancePorts(&all_mux_ports);
-  }
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {
     geometry::Instance *memory = auto_route_order[i];

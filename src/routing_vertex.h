@@ -85,6 +85,11 @@ class RoutingVertex {
     return connectable_net_;
   }
 
+  std::vector<RoutingTrack*> Tracks() const;
+  std::vector<RoutingTrack*> TracksOnLayer(const geometry::Layer &layer) const;
+  std::vector<RoutingTrack*> TracksInDirection(
+      const RoutingTrackDirection &direction) const;
+
   void set_horizontal_track(RoutingTrack *track) { horizontal_track_ = track; }
   RoutingTrack *horizontal_track() const { return horizontal_track_; }
   void set_vertical_track(RoutingTrack *track) { vertical_track_ = track; }

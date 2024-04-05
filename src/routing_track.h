@@ -35,6 +35,7 @@ class RoutingTrack {
  public:
   RoutingTrack(const geometry::Layer &layer,
                const RoutingTrackDirection &direction,
+               int64_t pitch,
                int64_t width,
                int64_t vertex_via_width,
                int64_t vertex_via_length,
@@ -43,6 +44,7 @@ class RoutingTrack {
       : layer_(layer),
         direction_(direction),
         offset_(offset),
+        pitch_(pitch),
         width_(width),
         vertex_via_width_(vertex_via_width),
         vertex_via_length_(vertex_via_length),
@@ -73,6 +75,8 @@ class RoutingTrack {
   bool RemoveVertex(RoutingVertex *vertex);
 
   void MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net);
+
+  bool IsPerpendicularTo(const RoutingTrackDirection &other) const;
 
   // Makes sure the target vertex can be connected to a candidate vertex placed
   // at the nearest point on the track to the given point (O). If successful,
@@ -160,12 +164,22 @@ class RoutingTrack {
   // TODO(aryap): Maybe we sort edges and vertices by their starting/centre
   // positions?
   //static bool EdgeComp(RoutingEdge *lhs, RoutingEdge *rhs);
+
+  void AssignThisTrackToVertex(RoutingVertex *vertex);
  
   bool BlockageBlocks(
       const RoutingTrackBlockage &blockage,
       const geometry::Point &one_end,
       const geometry::Point &other_end,
       int64_t margin = 0) const;
+
+  // Instead of checking blockages on this track, check that the neighbouring
+  // vertices to the given point, if in use (i.e. not available()), could
+  // accomodate a via simultaneously with a via at the given point. This is
+  // an optimisation so that the caller can avoid checking all the edges created
+  // on other layers by putting a via on this track for collisions.
+  bool IsProbablyBlockedForVia(
+      const geometry::Point &point, int64_t margin = 0) const;
 
   bool IsBlocked(const geometry::Point &point, int64_t margin = 0) const {
     return IsBlockedBetween(point, point, margin);
@@ -210,6 +224,9 @@ class RoutingTrack {
   // The x or y coordinate for this track, when the track runs in the y or x
   // direction.
   int64_t offset_;
+
+  // How far apart vertices are on this track when on the grid.
+  int64_t pitch_;
 
   // The working width of this track.
   int64_t width_;
