@@ -43,7 +43,9 @@ bool RoutingTrack::RemoveEdge(RoutingEdge *edge, bool and_delete) {
 
 bool RoutingTrack::MaybeAddEdgeBetween(
     RoutingVertex *one, RoutingVertex *the_other) {
-  if (IsBlockedBetween(one->centre(), the_other->centre()))
+  if (IsBlockedBetween(one->centre(),
+                       the_other->centre(),
+                       min_separation_to_new_blockages_))
     return false;
   RoutingEdge *edge = new RoutingEdge(one, the_other);
   edge->set_track(this);
