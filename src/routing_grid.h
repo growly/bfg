@@ -92,6 +92,8 @@ class RoutingGrid {
 
   bool RemoveVertex(RoutingVertex *vertex, bool and_delete);
 
+  bool ContainsVertex(RoutingVertex *vertex) const;
+
   // Caller takes ownership.
   PolyLineCell *CreatePolyLineCell() const;
 

@@ -265,9 +265,9 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
       // No routing layer info, probably not a routing layer.
       continue;
     }
-    // FIXME: We have fragmented sources for this information. Some places I've
-    // used the PhysicalPropertiesDatabase, others the copies of the data in
-    // the RoutingLayerInfo etc structures. Gross!
+    // TODO(aryap): We have fragmented sources for this information. Some
+    // places I've used the PhysicalPropertiesDatabase, others the copies of
+    // the data in the RoutingLayerInfo etc structures. Gross!
     int64_t min_separation = routing_layer_info->get().min_separation;
 
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
@@ -396,16 +396,37 @@ bool RoutingGrid::ConnectToSurroundingTracks(
 
   bool any_success = false;
   for (RoutingTrack *track : nearest_tracks) {
-    RoutingVertex *bridging_vertex = track->CreateNearestVertexAndConnect(
-        *this, off_grid->centre(), access_layer, off_grid);
-    if (!bridging_vertex) {
+    RoutingVertex *bridging_vertex = nullptr;
+    bool bridging_vertex_is_new = false;
+    bool off_grid_already_exists = false;
+    bool success = track->CreateNearestVertexAndConnect(
+        *this,
+        off_grid,
+        access_layer,
+        &bridging_vertex,
+        &bridging_vertex_is_new,
+        &off_grid_already_exists);
+
+    if (!success) {
       continue;
     } else if (bridging_vertex == off_grid) {
+      LOG_IF(FATAL, bridging_vertex_is_new)
+          << "Doesn't make sense for bridging_vertex == target "
+          << "and bridging_vertex_is_new to both be true";
       any_success = true || any_success;
       continue;
     }
 
-    AddVertex(bridging_vertex);
+    LOG_IF(FATAL, off_grid_already_exists)
+        << *track << " already has a vertex at the position of off_grid "
+        << off_grid->centre();
+
+    if (bridging_vertex_is_new) {
+      AddVertex(bridging_vertex);
+    }
+
+    // At this point, the bridging vertex needs to be connected to off_grid.
+    // Any condition that precludes that should have been handled already.
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
     edge->set_layer(access_layer);
@@ -510,6 +531,8 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
               << " possible through grid geometry " << grid_geometry
               << " with via cost " << option.total_via_cost;
 
+    // FIXME: Should check if off_grid position is an existing on-grid vertex!
+
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(point));
     off_grid->AddConnectedLayer(target_layer);
     off_grid->AddConnectedLayer(access_layer);
@@ -549,8 +572,7 @@ RoutingGrid::ConnectToNearestAvailableVertex(const geometry::Port &port) {
   for (const auto &entry : layer_access) {
     for (const geometry::Layer &layer : entry.second) {
       LOG(INFO) << "checking for grid vertex on layer " << layer;
-      RoutingVertex *vertex = ConnectToNearestAvailableVertex(
-          port.centre(), layer);
+      RoutingVertex *vertex = ConnectToNearestAvailableVertex(port.centre(), layer);
       if (vertex) {
         return {VertexWithLayer{.vertex = vertex, .layer = layer}};
       }
@@ -676,37 +698,7 @@ RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
       continue;
     }
 
-    // Try putting it on the vertical track and then horizontal track.
-    std::vector<RoutingTrack*> tracks = candidate->Tracks();
-    RoutingVertex *bridging_vertex = nullptr;
-    size_t track = 0;
-    for (size_t i = 0; i < tracks.size(); ++i) {
-      bridging_vertex = tracks[i]->CreateNearestVertexAndConnect(
-          *this, target_point, vertex_layer, candidate);
-      // FIXME(aryap): This should fail if the vertex is too close to an
-      // existing edge on the track, hence avoiding blockages. However, it does
-      // not seem to take into account minimum separation rules. IT MUST!
-      // I think if I fix this I don't need IsUnobstructed etc (see header).
-      if (bridging_vertex) {
-        track = i;
-        break;
-      }
-    }
-    if (bridging_vertex == nullptr)
-      continue;
-
-    // TODO(aryap): Need a way to roll back these temporary objects in case the
-    // caller's entire process fails - i.e. a vertex can be created for the
-    // starting point but not for the ending point.
-
-    // Success, so add a new vertex at this position and the bridging one too.
-    if (bridging_vertex != candidate) {
-      // If the closest vertex was the candidate itself, no bridging vertex is
-      // necessary. Otherwise:
-      AddVertex(bridging_vertex);
-    }
-
-    RoutingVertex *off_grid = new RoutingVertex(target_point);
+    std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(target_point));
     off_grid->AddConnectedLayer(vertex_layer);
     // FIXME: This function needs to allow collisions for same-net shapes!
     // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
@@ -714,29 +706,82 @@ RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
     if (!ValidAgainstKnownBlockages(*off_grid) ||
         !ValidAgainstInstalledPaths(*off_grid)) {
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
-      // Rollback!
-      RemoveVertex(bridging_vertex, true);  // and delete!
-      delete off_grid;
       continue;
     }
-    AddVertex(off_grid);
 
-    RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
+    // Try putting it on the vertical track and then horizontal track.
+    std::vector<RoutingTrack*> tracks = candidate->Tracks();
+    RoutingVertex *bridging_vertex = nullptr;
+    bool bridging_vertex_is_new = false;
+
+    bool success = false;
+    for (size_t i = 0; i < tracks.size(); ++i) {
+      bridging_vertex = nullptr;
+      bool off_grid_already_exists = false;
+      success = tracks[i]->CreateNearestVertexAndConnect(
+          *this,
+          off_grid.get(),
+          vertex_layer,
+          &bridging_vertex,
+          &bridging_vertex_is_new,
+          &off_grid_already_exists);
+
+      if (!success) {
+        continue;
+      } else if (off_grid_already_exists) {
+        LOG_IF(FATAL, bridging_vertex_is_new)
+            << "Doesn't make sense for off_grid_already_exists and "
+            << "bridging_vertex_is_new to both be true";
+        // We're done! We can just use an existing vertex since 'off_grid'
+        // happens to already exist. 'off_grid' should NOT be added to the
+        // routing grid, it should be discarded.
+        return bridging_vertex;
+      }
+      break;
+    }
+
+    if (!success) {
+      continue;
+    }
+
+    // Add off_grid now that we have a viable bridging_vertex.
+    RoutingVertex *off_grid_copy = off_grid.get();
+    AddVertex(off_grid.release());
+
+    if (bridging_vertex == off_grid_copy) {
+      // off_grid landed on the track and was subsumed and connected, we have
+      // nothing left to do.
+      return off_grid_copy;
+    }
+
+    // TODO(aryap): Need a way to roll back these temporary objects in case the
+    // caller's entire process fails - i.e. a vertex can be created for the
+    // starting point but not for the ending point.
+
+    if (bridging_vertex_is_new) {
+      // If the bridging_vertex was an existing vertex on the track, we don't
+      // need to add it.
+      AddVertex(bridging_vertex);
+    }
+
+    RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid_copy);
     edge->set_layer(vertex_layer);
     if (!ValidAgainstKnownBlockages(*edge) ||
         !ValidAgainstInstalledPaths(*edge)) {
       VLOG(15) << "Invalid off grid edge between " << bridging_vertex->centre()
-               << " and " << off_grid->centre();
+               << " and " << off_grid_copy->centre();
       // Rollback extra hard!
-      RemoveVertex(bridging_vertex, true);  // and delete!
-      RemoveVertex(off_grid, true);  // and delete!
+      if (bridging_vertex_is_new) {
+        RemoveVertex(bridging_vertex, true);  // and delete!
+      }
+      RemoveVertex(off_grid_copy, true);  // and delete!
       delete edge;    
       continue;
     }
     LOG(INFO) << "Connected new vertex " << bridging_vertex->centre()
               << " on layer " << edge->EffectiveLayer();
     bridging_vertex->AddEdge(edge);
-    off_grid->AddEdge(edge);
+    off_grid_copy->AddEdge(edge);
     
     // TODO(aryap): It's unclear what layer this edge is on. The opposite of
     // what the bridging edge is on, I guess.
@@ -744,7 +789,7 @@ RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
     // to check with the whole grid.
 
     off_grid_edges_.insert(edge);
-    return off_grid;
+    return off_grid_copy;
   }
   return nullptr;
 }
@@ -1108,12 +1153,20 @@ void RoutingGrid::ConnectLayers(
   }
 }
 
+bool RoutingGrid::ContainsVertex(RoutingVertex *vertex) const {
+  // Did you know? std::begin(...) and std::end(...) were introduced in C++11
+  // and have more general compatibility, such as with old C-style arrays.
+  return std::find(
+      vertices_.begin(), vertices_.end(), vertex) != vertices_.end();
+}
+
 void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     std::vector<RoutingVertex*> &available = GetAvailableVertices(layer);
     available.push_back(vertex);
     // LOG(INFO) << "available (" << layer << "): " << available.size();
   }
+  DCHECK(!ContainsVertex(vertex));
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
@@ -1359,9 +1412,14 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
     for (const auto &position : kDisabledNeighbours) {
       std::set<RoutingVertex*> neighbours = vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
-        if (neighbour->available()) {
+        if (neighbour->available() ) {
           neighbour->set_available(false);
           neighbour->set_connectable_net(vertex->net());
+        } else if (neighbour->connectable_net() &&
+                   *neighbour->connectable_net() != vertex->net()) {
+          // If the neighbour is flagged as usable for a different net, disable
+          // that.
+          neighbour->set_connectable_net(std::nullopt);
         }
       }
     };
@@ -1808,7 +1866,7 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
   if (it == tracks_by_layer_.end())
     return nullptr;
 
-  // FIXME: RoutingTracks are equipped with min_separation, but
+  // TODO(aryap): RoutingTracks are equipped with min_separation, but
   // RoutingGridBlockages are not. padding is sometimes treated as a temporary
   // additional value and sometimes as the min_separation value.
   // RoutingGridBlockage has two explicit checks:
