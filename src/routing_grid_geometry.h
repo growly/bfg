@@ -71,7 +71,8 @@ class RoutingGridGeometry {
                         int64_t *row_lower,
                         int64_t *row_upper) const;
 
-  RoutingVertex* VertexAt(size_t column_index, size_t row_index) const;
+  RoutingVertex *VertexAt(const geometry::Point &point) const;
+  RoutingVertex *VertexAt(size_t column_index, size_t row_index) const;
 
   void AssignVertexAt(
       size_t column_index, size_t row_index, RoutingVertex *vertex);
