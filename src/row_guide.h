@@ -65,6 +65,10 @@ class RowGuide {
     rotate_instances_ = rotate_instances;
   }
 
+  bool rotate_instances() const {
+    return rotate_instances_;
+  }
+
  private:
   void Place(
       geometry::Instance *instance,

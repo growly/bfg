@@ -534,8 +534,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     // FIXME: Should check if off_grid position is an existing on-grid vertex!
     RoutingVertex *existing = grid_geometry->VertexAt(point);
     if (existing) {
-      LOG(FATAL)
-          << "lol";
+      return {{existing, target_layer}};
     }
 
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(point));
@@ -577,7 +576,8 @@ RoutingGrid::ConnectToNearestAvailableVertex(const geometry::Port &port) {
   for (const auto &entry : layer_access) {
     for (const geometry::Layer &layer : entry.second) {
       LOG(INFO) << "checking for grid vertex on layer " << layer;
-      RoutingVertex *vertex = ConnectToNearestAvailableVertex(port.centre(), layer);
+      RoutingVertex *vertex = ConnectToNearestAvailableVertex(
+          port.centre(), layer);
       if (vertex) {
         return {VertexWithLayer{.vertex = vertex, .layer = layer}};
       }
