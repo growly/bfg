@@ -60,24 +60,29 @@ bool RoutingTrack::AddVertex(RoutingVertex *vertex) {
   LOG_IF(FATAL, IsBlocked(vertex->centre()))
       << "RoutingTrack cannot add vertex at " << vertex->centre()
       << ", it is blocked";
-  LOG_IF(FATAL, vertices_.find(vertex) != vertices_.end())
+  LOG_IF(FATAL, ContainsVertex(vertex))
       << "Duplicate vertex added to track";
+  int64_t vertex_offset = ProjectOntoTrack(vertex->centre());
+  LOG_IF(FATAL, GetVertexAtOffset(vertex_offset) != nullptr)
+      << "There already exists a vertex at offset " << vertex_offset;
 
   // Generate an edge between the new vertex and every other vertex, unless it
   // would be blocked.
   bool any_success = false;
-  for (RoutingVertex *other : vertices_) {
+  for (const auto &entry : vertices_by_offset_) {
+    RoutingVertex *other = entry.second;
     // We _don't want_ short-circuiting here. Using the bitwise OR is correct
     // because bools are defined to be true or false, and it forces evaluation
     // of both operands every time.
     any_success |= MaybeAddEdgeBetween(vertex, other);
   }
-  vertices_.insert(vertex);
+  vertices_by_offset_.insert({vertex_offset, vertex});
   return any_success;
 }
 
 bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
-  if (vertices_.erase(vertex) == 0) {
+  int64_t vertex_offset = ProjectOntoTrack(vertex->centre());
+  if (vertices_by_offset_.erase(vertex_offset) == 0) {
     // We didn't know about this vertex.
     return false;
   }
@@ -96,6 +101,23 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
     }
   }
   return true;
+}
+
+bool RoutingTrack::ContainsVertex(RoutingVertex *vertex) const {
+  for (const auto &entry : vertices_by_offset_) {
+    if (entry.second == vertex) {
+      return true;
+    }
+  }
+  return false;
+}
+
+RoutingVertex *RoutingTrack::GetVertexAtOffset(int64_t offset) const {
+  auto it = vertices_by_offset_.find(offset);
+  if (it == vertices_by_offset_.end()) {
+    return nullptr;
+  }
+  return it->second;
 }
 
 void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
@@ -140,7 +162,8 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   }
 
   // Remove other vertices that are blocked by this.
-  for (RoutingVertex *vertex : vertices_) {
+  for (auto &entry : vertices_by_offset_) {
+    RoutingVertex *vertex = entry.second;
     // NOTE: This will set the in- and out-edge of the vertex even if the vertex
     // is the start or end vertex of the edge; something else (the caller) must
     // correct this if the edge participates in a RoutingPath or if the in- and
@@ -182,26 +205,49 @@ void RoutingTrack::AssignThisTrackToVertex(RoutingVertex *vertex) {
   }
 }
 
+// FIXME: there are two uses of this function that differ in what 'target' means.
+// FIX. 
+//  - in the earlier use case 'target' was the nearest vertex on the track to
+//  which the off-grid point was inteded to connect
+//  - in the later user case 'target' is just the vertex at 'point'
+// The function is confusing even though it seems to work because of these
+// differences. But remember we're trying to solve whether a bridging vertex,
+// which would be created and added to the track internally to this function,
+// collides with an existing vertex and so isn't necessary. But what if the
+// given 'point' collides with a given vertex and isn't necessary? I think the
+// action might dependon which version of 'target' we use.
+//
 // Create a vertex at the point on this track nearest to 'point', with the vague
-// intention of connecting it to 'target'. Usually 'point' is the centre of
-// 'target', but this isn't strictly necessary.
+// intention of connecting it to 'target'. 
 //
 // In all cases where 'point' doesn't end up being on the track already we have
 // to create a bridging vertex that is on the track and that can be used to
 // connect to 'point' with an off-grid edge (handled by the caller).
-RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
+//
+// Sometimes, 'point' lands directly on or requires a bridging_vertex at an
+// existing vertex. In those cases we do not need to add a new vertex, but we
+// need to return the existing one to the caller.
+bool RoutingTrack::CreateNearestVertexAndConnect(
     const RoutingGrid &grid,
-    const geometry::Point &point,
+    RoutingVertex *target,
     const geometry::Layer &target_layer,
-    RoutingVertex *target) {
+    RoutingVertex **connecting_vertex,
+    bool *bridging_vertex_is_new,
+    bool *target_already_exists) {
+  *connecting_vertex = nullptr;
+  *bridging_vertex_is_new = false;
+  *target_already_exists = false;
+
+  const geometry::Point &target_point = target->centre();
+
   // Candidate position:
   geometry::Point candidate_centre;
   switch (direction_) {
     case RoutingTrackDirection::kTrackHorizontal:
-      candidate_centre = geometry::Point(point.x(), offset_);
+      candidate_centre = geometry::Point(target_point.x(), offset_);
       break;
     case RoutingTrackDirection::kTrackVertical:
-      candidate_centre = geometry::Point(offset_, point.y());
+      candidate_centre = geometry::Point(offset_, target_point.y());
       break;
     default:
       LOG(FATAL) << "This RoutingTrack has an unrecognised "
@@ -209,31 +255,48 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
   }
 
   if (IsBlocked(candidate_centre)) {
-    return nullptr;
+    return false;
   }
   //if (IsProbablyBlockedForVia(candidate_centre)) {
-  //  return nullptr;
+  //  return false;
   //}
 
+  int64_t candidate_position = ProjectOntoTrack(candidate_centre);
+  RoutingVertex *existing_vertex = GetVertexAtOffset(candidate_position);
+
   RoutingVertex *bridging_vertex = nullptr;
-  if (target) {
-    if (candidate_centre == point) {
-      // The target is on the track so we don't need to create a separate
-      // bridging vertex. Connect the target to the track.
-      bridging_vertex = target;
-    } else if (IsBlockedBetween(
-        candidate_centre, target->centre(), min_separation_between_edges_)) {
-      return nullptr;
+
+  if (candidate_centre == target_point) {
+    // The target is on the track so we don't need to create a separate
+    // bridging vertex. Connect the target to the track. That is unless the
+    // target coincides with an existing vertex, in which case we flag this and
+    // use the existing vertex in its place.
+    if (existing_vertex) {
+      *connecting_vertex = existing_vertex;
+      *target_already_exists = true;
+      return true;
     }
+
+    bridging_vertex = target;
   }
 
-  LOG_IF(WARNING, !target && candidate_centre == point)
-      << "Nearest point to " << point << " on " << *this << " is "
+  LOG_IF(WARNING, !target && candidate_centre == target_point)
+      << "Nearest point to " << target_point << " on " << *this << " is "
       << candidate_centre << " itself, but no target vertex was given";
 
   if (!bridging_vertex) {
+    if (existing_vertex) {
+      // Don't need to add a new bridging vertex at the given position, and
+      // don't need to set target_already_exists true since the bridging
+      // vertex doesn't coincide with `target`. So also don't need to add any
+      // new vertices and create any new edges.
+      *connecting_vertex = existing_vertex;
+      return true;
+    }
+
     std::unique_ptr<RoutingVertex> added_vertex(
         new RoutingVertex(candidate_centre));
+    *bridging_vertex_is_new = true;
     // We need to ask if this candidate fits in with other installed vertices.
     // This is specifically to check that vertices on adjacent tracks do not
     // violate spacing rules. The track itself only ensures correct spacing
@@ -255,17 +318,18 @@ RoutingVertex *RoutingTrack::CreateNearestVertexAndConnect(
       LOG(WARNING) << "Bridging vertex " << added_vertex->centre()
                    << " on " << Debug()
                    << " is not valid against other installed paths";
-      return nullptr;
+      return false;
     }
     bridging_vertex = added_vertex.release();
   }
 
   if (!AddVertex(bridging_vertex)) {
-    return nullptr;
+    return false;
   }
   AssignThisTrackToVertex(bridging_vertex);
 
-  return bridging_vertex;
+  *connecting_vertex = bridging_vertex;
+  return true;
 }
 
 void RoutingTrack::ReportAvailableEdges(
@@ -279,11 +343,12 @@ void RoutingTrack::ReportAvailableEdges(
 
 void RoutingTrack::ReportAvailableVertices(
     std::vector<RoutingVertex*> *vertices_out) const {
-  std::copy_if(
-      vertices_.begin(),
-      vertices_.end(),
-      vertices_out->begin(),
-      [](RoutingVertex* vertex) { return vertex->available(); });
+  for (const auto &entry : vertices_by_offset_) {
+    RoutingVertex *vertex = entry.second;
+    if (vertex->available()) {
+      vertices_out->push_back(vertex);
+    }
+  }
 }
 
 void RoutingTrack::ExportEdgesAsRectangles(
@@ -318,7 +383,7 @@ std::string RoutingTrack::Debug() const {
      //<< " start=" << start_
      //<< " end=" << end_
      //<< " #edges=" << edges_.size() << " #vertices="
-     //<< vertices_.size();
+     //<< vertices_by_offset_.size();
   return ss.str();
 }
 
@@ -423,8 +488,9 @@ std::vector<RoutingVertex*> RoutingTrack::VerticesInSpan(
   std::priority_queue<RoutingVertex*,
                       std::vector<RoutingVertex*>,
                       decltype(vertex_sort_fn)> spanned(vertex_sort_fn);
-  for (RoutingVertex *vertex : vertices_) {
-    int64_t position = ProjectOntoTrack(vertex->centre());
+  for (const auto &entry : vertices_by_offset_) {
+    RoutingVertex *vertex = entry.second;
+    int64_t position = entry.first;
     if (position >= low_high.first && position <= low_high.second) {
       spanned.push(vertex);
     }
@@ -457,9 +523,10 @@ bool RoutingTrack::IsProbablyBlockedForVia(const geometry::Point &point,
   // On the straight line of the track we can only ever fall between two
   // vertices, or on top of one, in which case we check that one and the two
   // neighbours. But as usual it's easier to just do an O(n) loop through the
-  // vertices_ list than to do any pre-sorting or filtering.
-  for (RoutingVertex *vertex : vertices_) {
-    int64_t track_position = ProjectOntoTrack(vertex->centre());
+  // vertices_by_offset_ list than to do any pre-sorting or filtering.
+  for (const auto &entry : vertices_by_offset_) {
+    int64_t track_position = entry.first;
+    RoutingVertex *vertex = entry.second;
     int64_t spacing = std::max(
         std::abs(track_position - point_on_track) - margin, 0L);
     if (!vertex->available() && spacing < pitch_) {
@@ -795,7 +862,8 @@ void RoutingTrack::ApplyBlockage(
     const RoutingTrackBlockage &blockage,
     std::set<RoutingVertex*> *blocked_vertices,
     std::set<RoutingEdge*> *blocked_edges) {
-  for (RoutingVertex *vertex : vertices_) {
+  for (const auto &entry : vertices_by_offset_) {
+    RoutingVertex *vertex = entry.second;
     if (!vertex->available())
       continue;
     // We only disable vertices if they're _completely_ blocked, i.e. with

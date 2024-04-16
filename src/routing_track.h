@@ -74,32 +74,48 @@ class RoutingTrack {
   // Remove the vertex from this track, and remove any edge that uses it.
   bool RemoveVertex(RoutingVertex *vertex);
 
+  bool ContainsVertex(RoutingVertex *vertex) const;
+
+  RoutingVertex *GetVertexAtOffset(int64_t offset) const;
+
   void MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net);
 
   bool IsPerpendicularTo(const RoutingTrackDirection &other) const;
 
   // Makes sure the target vertex can be connected to a candidate vertex placed
-  // at the nearest point on the track to the given point (O). If successful,
-  // the new vertex is returned, otherwise nullptr. The return vertex is
-  // property of the caller and any generated edge is property of the track.
+  // at the nearest point on the track to the given target at (O). If
+  // successful, the new vertex is returned, otherwise nullptr. The return
+  // vertex is property of the caller and any generated edge is property of the
+  // track.
   //
-  // If target is not specified (is nullptr) the criteria for success is that
-  // any edge is succesfully added to connect the candidate vertex to another
-  // vertex on the track.
+  // There are four cases we care about:
+  //    ^
+  //    |
+  // D (+)
+  // C (O)
+  //    |
+  // A (|)---O  Target O need a bridging vertex on the track at the
+  //    |       point where the normal meets O (A); this might already be
+  //    |       a vertex (B) or O might already be on the track itself (C).
+  // B (+)---O  Additionally, O might already be on the track at an existing
+  //    |       vertex (D).
+  //    v
   //
-  //
-  //          O
-  //          |
-  //          v
-  // ---X--------X---
-  //          ^  ^ target 
-  //          |
-  //          created vertex position
-  RoutingVertex *CreateNearestVertexAndConnect(
+  // The caller must check:
+  //  - returned bool for any failures to connect;
+  //  - *connecting_vertex == target, in case the target was used as the
+  //  connecting vertex (C);
+  //  - *bridging_vertex_is_new, in case the connecting vertex was a new (A) or
+  //  existing (B) vertex;
+  //  - *target_already_exists, in case the target landed on an existing vertex
+  //  and is invalid (D).
+  bool CreateNearestVertexAndConnect(
       const RoutingGrid &grid,
-      const geometry::Point &point,
+      RoutingVertex *target,
       const geometry::Layer &target_layer,
-      RoutingVertex *target = nullptr);
+      RoutingVertex **connecting_vertex,
+      bool *bridging_vertex_is_new,
+      bool *target_already_exists);
 
   // Returned vertices will be in order of their position along the track, but
   // the direction is not guaranteed.
@@ -217,6 +233,8 @@ class RoutingTrack {
 
   // The vertices on this track. Vertices are NOT OWNED by RoutingTrack.
   std::set<RoutingVertex*> vertices_;
+
+  std::map<int64_t, RoutingVertex*> vertices_by_offset_;
 
   geometry::Layer layer_;
   RoutingTrackDirection direction_;
