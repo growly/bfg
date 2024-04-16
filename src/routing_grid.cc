@@ -532,6 +532,11 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
               << " with via cost " << option.total_via_cost;
 
     // FIXME: Should check if off_grid position is an existing on-grid vertex!
+    RoutingVertex *existing = grid_geometry->VertexAt(point);
+    if (existing) {
+      LOG(FATAL)
+          << "lol";
+    }
 
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(point));
     off_grid->AddConnectedLayer(target_layer);

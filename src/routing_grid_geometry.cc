@@ -45,8 +45,8 @@ int64_t modulo(int64_t a, int64_t b) {
 }   // namespace
 
 std::tuple<int64_t, int64_t, int64_t, int64_t>
-RoutingGridGeometry::MapPointToBoundingGridIndices(
-    const geometry::Point &point) const {
+RoutingGridGeometry::MapPointToBoundingGridIndices(const geometry::Point &point)
+    const {
   int64_t column_lower = std::floor(static_cast<double>(
       point.x() - x_start_) / static_cast<double>(x_pitch_));
   int64_t row_lower = std::floor(static_cast<double>(
@@ -315,6 +315,19 @@ void RoutingGridGeometry::AssignVertexAt(
     << "row_index (" << row_index << ") out of bounds (max: "
     << max_row_index_ << ")";
   vertices_by_grid_position_[column_index][row_index] = vertex;
+}
+
+RoutingVertex *RoutingGridGeometry::VertexAt(const geometry::Point &point)
+    const {
+  auto [column_lower, column_upper, row_lower, row_upper] = 
+      MapPointToBoundingGridIndices(point);
+  if (column_lower != column_upper) {
+    return nullptr;
+  }
+  if (row_lower != row_upper) {
+    return nullptr;
+  }
+  return VertexAt(column_lower, row_lower);
 }
 
 RoutingVertex *RoutingGridGeometry::VertexAt(

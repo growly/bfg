@@ -591,7 +591,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // Connect memory outputs to the muxes in order:
   // - Connect the closest output with
 
-
   // Connect flip-flops to mux.
 
   // TODO(aryap): The mux should tell us this!
