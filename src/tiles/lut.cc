@@ -116,11 +116,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     for (size_t j = 0; j < layout_config.bank_rows; j++) {
       size_t row_width = 0;
 
-      RowGuide row = RowGuide(
+      bank.rows.push_back(RowGuide(
           {0, y_pos},     // Row lower-left point.
           bank.layout.get(),
           nullptr,        // FIXME
-          design_db_);
+          design_db_));
+      RowGuide &row = bank.rows.back();
 
       bank.memory_names.emplace_back();
       std::vector<std::string> &bank_memories = bank.memory_names.back();
@@ -340,7 +341,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
     // buffers for a k-LUT.
     int64_t buf_width = 0;
-    geometry::Point start_position = layout->GetPoint("bank_0.row_3_lr");
+    geometry::Point start_position = banks[0].rows[3].LowerRight();
     for (size_t i = 0; i < lut_size_; ++i) {
       std::string instance_name = absl::StrFormat("buf_%d", i);
       std::string cell_name = absl::StrCat(instance_name, "_template");

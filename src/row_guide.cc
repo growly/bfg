@@ -1,6 +1,7 @@
 #include <optional>
 
 #include "geometry/instance.h"
+#include "geometry/point.h"
 #include "row_guide.h"
 #include "design_database.h"
 
@@ -110,6 +111,18 @@ uint64_t RowGuide::Height() const {
     height = std::max(instance->TilingHeight(), height);
   }
   return height;
+}
+
+geometry::Point RowGuide::UpperRight() const {
+  return lower_left_ + geometry::Point(Width(), Height());
+}
+
+geometry::Point RowGuide::LowerRight() const {
+  return lower_left_ + geometry::Point(Width(), 0);
+}
+
+geometry::Point RowGuide::UpperLeft() const {
+  return lower_left_ + geometry::Point(0, Height());
 }
 
 }   // namespace bfg

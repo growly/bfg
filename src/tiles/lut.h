@@ -6,6 +6,7 @@
 #include "tile.h"
 
 #include "../design_database.h"
+#include "../row_guide.h"
 
 namespace bfg {
 
@@ -59,6 +60,8 @@ class Lut : public Tile {
     // pointers to Instances in the main layout, not the bank-specific temporary
     // layout below.
     std::vector<std::vector<geometry::Instance*>> memories;
+
+    std::vector<RowGuide> rows;
   };
 
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);
