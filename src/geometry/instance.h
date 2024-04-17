@@ -45,10 +45,12 @@ class Instance : public Manipulable {
   void FlipVertical() override;
   void Translate(const Point &offset) override;
   void ResetOrigin() override;
+  void AlignPoints(const Point &our_point, const Point &align_to);
 
   uint64_t TilingHeight() const;
   uint64_t TilingWidth() const;
 
+  const Rectangle GetTilingBounds() const;
   const Rectangle GetBoundingBox() const;
 
   void GeneratePorts();
@@ -122,6 +124,7 @@ class Instance : public Manipulable {
   bfg::Layout *const template_layout_;
 
   Point lower_left_;
+  // This is mirroring in the X axis.
   bool reflect_vertical_;
   // FIXME(growly): Store rotation anti-clockwise.
   int32_t rotation_degrees_ccw_;

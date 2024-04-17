@@ -63,12 +63,21 @@ set(TILES_SRC
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
 )
 
-set(ATOMS_SRC
+set(SKY130_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_mux.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_hd_mux2_1.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_tap.cc
+)
+
+set(GF180_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/gf180mcu_mux.cc
+)
+
+set(ATOMS_SRC
+  ${SKY130_ATOMS_SRC}
+  ${GF180_ATOMS_SRC}
 )
 
 set(GEOMETRY_SRC 

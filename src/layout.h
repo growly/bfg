@@ -90,8 +90,25 @@ class Layout : public geometry::Manipulable {
   void MirrorX() override;
   void FlipHorizontal() override;
   void FlipVertical() override;
+
+  // Shifts the layout so that the lower-left-most point of the bounding box
+  // lies at the origin.
   void ResetOrigin() override;
+
   void Translate(const geometry::Point &offset) override;
+
+  // Shifts the layout so that the left-most point of the bounding box
+  // lies at the origin.
+  void ResetX();
+
+  // Shifts the layout so that the lowest point of the bounding box
+  // lies at the origin.
+  void ResetY();
+
+  // Shifts the layout so that the lower-left-most point of the tiling bounds
+  // lies at the origin.
+  void ResetToTilingBounds();
+
   void MoveTo(const geometry::Point &lower_left) {
     // TODO(aryap): Surely this just takes one translation after you compute a
     // vector:

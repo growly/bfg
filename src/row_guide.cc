@@ -75,7 +75,7 @@ void RowGuide::Place() {
     geometry::Instance *instance = *it;
     int64_t next_width = instance->TilingWidth();
 
-    // FIXME(aryap): Generalise this.
+    // TODO(aryap): Generalise this.
     // TODO(aryap): Is this the right model? Maybe a RowGuide is more of a
     // sub-tile? RowGenerator? Now it needs to seem more inline...
     if (tap_cell_.has_value() &&

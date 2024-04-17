@@ -7,6 +7,10 @@
 #include "atom.h"
 #include "../circuit/wire.h"
 #include "../cell.h"
+#include "../geometry/layer.h"
+#include "../geometry/point.h"
+#include "../geometry/polygon.h"
+#include "../geometry/rectangle.h"
 #include "../layout.h"
 
 namespace bfg {
@@ -42,13 +46,6 @@ bfg::Cell *Sky130Buf::Generate() {
 
 bfg::Circuit *Sky130Buf::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
-
-  //  X   ,
-  //  A   ,
-  //  VPWR,
-  //  VGND,
-  //  VPB ,
-  //  VNB
 
   circuit::Wire X = circuit->AddSignal("X");
   circuit::Wire P = circuit->AddSignal("P");
@@ -108,7 +105,8 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
 }
 
 bfg::Layout *Sky130Buf::GenerateLayout() {
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(design_db_->physical_db()));
+  std::unique_ptr<bfg::Layout> layout(
+      new bfg::Layout(design_db_->physical_db()));
 
   uint64_t width =
       design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
@@ -178,11 +176,39 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(855, 2635),
                               Point(855, 1875)}));
 
+  // mcon.drawing 67/44
+  // Metal to li1.drawing contacts (VPWR side).
+  layout->SetActiveLayerByName("mcon.drawing");
+  layout->AddRectangle(Rectangle(Point(145, 2635), Point(315, 2805)));
+  layout->AddRectangle(Rectangle(Point(605, 2635), Point(775, 2805)));
+  layout->AddRectangle(Rectangle(Point(1065, 2635), Point(1235, 2805)));
+
+  // Metal to li1.drawing contacts (VGND side).
+  layout->AddRectangle(Rectangle(Point(145, -85), Point(315, 85)));
+  layout->AddRectangle(Rectangle(Point(605, -85), Point(775, 85)));
+  layout->AddRectangle(Rectangle(Point(1065, -85), Point(1235, 85)));
+
   // licon.drawing 66/44
   // Contacts from li layer to diffusion.
   layout->SetActiveLayerByName("licon.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 1380), Point(975, 1410)));
-                 
+  // Input and output.
+  layout->AddRectangle(Rectangle(Point(185, 1075), Point(355, 1245)));
+  layout->AddRectangle(Rectangle(Point(775, 1140), Point(945, 1310)));
+
+  // TODO(aryap): These are a function of transistor width.
+  layout->AddSquare(Point(260, 2300), 170);
+  layout->AddSquare(Point(260, 1960), 170);
+
+  layout->AddSquare(Point(690, 2300), 170);
+  layout->AddSquare(Point(690, 1960), 170);
+
+  layout->AddSquare(Point(1120, 2300), 170);
+  layout->AddSquare(Point(1120, 1895), 170);
+
+  // TODO(aryap): So are these!
+  layout->AddSquare(Point(260, 445), 170);
+  layout->AddSquare(Point(690, 380), 170);
+  layout->AddSquare(Point(1120, 530), 170);
 
   // npc.drawing 95/20
   // "The SKY130 process requires an 'NPC' layer to enclose all poly contacts."

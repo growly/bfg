@@ -75,6 +75,21 @@ void Layout::Translate(const Point &offset) {
   for (auto &entry : named_points_) { entry.second.Translate(offset); }
 }
 
+void Layout::ResetX() {
+  geometry::Rectangle bounding_box = GetBoundingBox();
+  Translate({-bounding_box.lower_left().x(), 0});
+}
+
+void Layout::ResetY() {
+  geometry::Rectangle bounding_box = GetBoundingBox();
+  Translate({0, -bounding_box.lower_left().y()});
+}
+
+void Layout::ResetToTilingBounds() {
+  geometry::Rectangle tiling_bounds = GetTilingBounds();
+  Translate(-tiling_bounds.lower_left());
+}
+
 void Layout::ResetOrigin() {
   geometry::Rectangle bounding_box = GetBoundingBox();
   Translate(-bounding_box.lower_left());

@@ -279,6 +279,8 @@ def main():
                 print(f'{add_polygon_start}{point_list}}}));')
 
             if shapes.paths:
+                # These are actually just simplified geometry::PolyLines, so we
+                # could support them.
                 print(f'// WARNING: ignored {len(shapes.paths)} path(s)')
 
             print('')

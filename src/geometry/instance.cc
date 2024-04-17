@@ -41,12 +41,26 @@ void Instance::ResetOrigin() {
   lower_left_ = Point(0, 0);
 }
 
+void Instance::AlignPoints(const Point &our_point, const Point &align_to) {
+  Translate(align_to - our_point);
+}
+
 uint64_t Instance::TilingHeight() const {
   return template_layout()->GetTilingBounds().Height();
 }
 
 uint64_t Instance::TilingWidth() const {
   return template_layout()->GetTilingBounds().Width();
+}
+
+const Rectangle Instance::GetTilingBounds() const {
+  Rectangle transformed = template_layout()->GetTilingBounds();
+  if (reflect_vertical_) {
+    transformed.FlipVertical();
+  }
+  transformed.Rotate(rotation_degrees_ccw_);
+  transformed.Translate(lower_left_);
+  return transformed;
 }
 
 // We compute the bounding box assuming the instance has been rotated by

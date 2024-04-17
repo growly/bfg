@@ -69,6 +69,10 @@ class RowGuide {
     return rotate_instances_;
   }
 
+  int32_t RotationDegreesCCW() const {
+    return rotate_instances_ ? 180 : 0;
+  }
+
  private:
   void Place(
       geometry::Instance *instance,

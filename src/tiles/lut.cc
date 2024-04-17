@@ -15,6 +15,7 @@
 #include "../atoms/sky130_buf.h"
 #include "../atoms/sky130_dfxtp.h"
 #include "../atoms/sky130_mux.h"
+#include "../atoms/sky130_hd_mux2_1.h"
 #include "../atoms/sky130_tap.h"
 #include "../routing_via_info.h"
 #include "../row_guide.h"
@@ -341,8 +342,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
     // buffers for a k-LUT.
     int64_t buf_width = 0;
-    geometry::Point start_position = banks[0].rows[3].LowerRight();
-    for (size_t i = 0; i < lut_size_; ++i) {
+    RowGuide &upper_row = banks[0].rows[3];
+    geometry::Point start_position = upper_row.LowerRight();
+    for (size_t i = 0; i < lut_size_ - 1; ++i) {
       std::string instance_name = absl::StrFormat("buf_%d", i);
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130Buf::Parameters buf_params = {
@@ -355,6 +357,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      buf_cell->layout()->ResetY();
       geometry::Instance *instance = layout->AddInstance(
           geometry::Instance (
               buf_cell->layout(),
@@ -364,8 +367,26 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
               //}
           )
       );
+      instance->set_rotation_degrees_ccw(upper_row.RotationDegreesCCW());
       geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
       buf_width += bounding_box.Width();
+    }
+    for (size_t i = 0; i < 1; ++i) {
+      std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
+      std::string cell_name = absl::StrCat(instance_name, "_template");
+      atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
+      bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
+          cell_name);
+      active_mux2_cell->layout()->ResetY();
+      geometry::Instance *instance = layout->AddInstance(
+          geometry::Instance (
+              active_mux2_cell->layout(),
+              start_position + geometry::Point(buf_width, 0)
+              //geometry::Point {
+              //-200, -200
+              //}
+          )
+      );
     }
   }
 
