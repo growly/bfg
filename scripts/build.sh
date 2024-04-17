@@ -2,4 +2,4 @@
 rm -rf vlsir
 mkdir -p vlsir
 pip3 install -r requirements.txt
-protoc -I=../vlsir --python_out vlsir ../vlsir/*.proto ../vlsir/**/*.proto
+protoc -I=../vlsir/protos --python_out vlsir ../vlsir/protos/*.proto ../vlsir/protos/**/*.proto

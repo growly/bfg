@@ -54,7 +54,7 @@ def comment_from_layer_info(layer_info: tech_pb2.LayerInfo) -> str:
     if purpose.type != (
         tech_pb2.LayerPurposeType.UNKNOWN):
         comment += f' [{tech_pb2.LayerPurposeType.Name(purpose.type)}]'
-    comment += f' {layer_info.index}/{layer_info.sub_index}'
+    comment += f' {layer_info.index.major}/{layer_info.index.minor}'
     return comment
 
 
@@ -174,6 +174,9 @@ def main():
     parser = argparse.ArgumentParser(description='no description')
     parser.add_argument('--layout', '-i', default='', required=True)
     parser.add_argument('--tech', '-t', default='', required=False)
+    parser.add_argument('--list', '-l', default=False,
+                        action=argparse.BooleanOptionalAction)
+    parser.add_argument('--cell', '-c', default='', required=False)
     parser.add_argument('--offset_x', '-ox', type=int, default=0, required=False)
     parser.add_argument('--cut_left_x', type=int, default=None, required=False)
     parser.add_argument('--cut_right_x', type=int, default=None, required=False)
@@ -194,7 +197,8 @@ def main():
         with open(args.tech, 'rb') as f:
             tech.ParseFromString(f.read())
         for layer_info in tech.layers:
-            layer_infos[layer_info.index][layer_info.sub_index] = layer_info
+            index = layer_info.index
+            layer_infos[index.major][index.minor] = layer_info
 
     add_polygon_start = 'layout->AddPolygon(Polygon({'
     indents = ' ' * len(add_polygon_start)
@@ -206,8 +210,17 @@ def main():
     cut_left_x = args.cut_left_x
     cut_right_x = args.cut_right_x
 
+    if args.list:
+        cell_names = [c.name for c in library.cells]
+        for name in sorted(cell_names):
+            print(name)
+        return
+
     for cell in library.cells:
         layout = cell.layout
+
+        if args.cell and cell.name != args.cell:
+            continue;
         
         # Instances.
         if layout.instances:
@@ -266,8 +279,7 @@ def main():
                 print(f'{add_polygon_start}{point_list}}}));')
 
             if shapes.paths:
-                raise NotImplementedError(
-                    f'this layer has {len(shapes.paths)} paths!')
+                print(f'// WARNING: ignored {len(shapes.paths)} path(s)')
 
             print('')
 
