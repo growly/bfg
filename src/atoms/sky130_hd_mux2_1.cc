@@ -22,8 +22,8 @@ using ::bfg::geometry::Rectangle;
 using ::bfg::geometry::Layer;
 
 bfg::Cell *Sky130HdMux21::Generate() {
-  // A buffer is two back-to-back inverters:
-  //
+  // This is the active 2:1 mux from the sky130 high-density standard cell
+  // library:
   //                       /            /
   //      +-----------+   _|        _  _|
   //      |           +--|_  p1   --S-|_  p3
