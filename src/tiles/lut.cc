@@ -380,7 +380,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
           cell_name);
       active_mux2_cell->layout()->ResetY();
-      geometry::Rectangle bounding_box = active_mux2_cell->layout()->GetTilingBounds();
+      geometry::Rectangle bounding_box =
+          active_mux2_cell->layout()->GetTilingBounds();
       buf_width += bounding_box.Width();
       geometry::Instance *instance = layout->AddInstance(
           geometry::Instance (

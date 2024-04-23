@@ -56,12 +56,9 @@ class RowGuide {
   geometry::Point UpperRight() const;
   geometry::Point LowerRight() const;
   geometry::Point UpperLeft() const;
-  const geometry::Point &LowerLeft() const {
-    return lower_left_;
-  }
-  const geometry::Point &lower_left() const {
-    return lower_left_;
-  }
+  geometry::Point LowerLeft() const;
+
+  const geometry::Point &lower_left() const { return lower_left_; }
 
   void set_tap_cell(const bfg::Cell &tap_cell) {
     tap_cell_ = tap_cell;

@@ -114,15 +114,33 @@ uint64_t RowGuide::Height() const {
 }
 
 geometry::Point RowGuide::UpperRight() const {
-  return lower_left_ + geometry::Point(Width(), Height());
+  if (instances_.empty()) {
+    return lower_left_;
+  }
+  int64_t x = instances_.back()->lower_left().x() +
+      instances_.back()->TilingWidth();
+  int64_t y = lower_left_.y() + Height();
+  return {x, y};
 }
 
 geometry::Point RowGuide::LowerRight() const {
-  return lower_left_ + geometry::Point(Width(), 0);
+  if (instances_.empty()) {
+    return lower_left_;
+  }
+  int64_t x = instances_.back()->lower_left().x() +
+      instances_.back()->TilingWidth();
+  int64_t y = lower_left_.y();
+  return {x, y};
 }
 
 geometry::Point RowGuide::UpperLeft() const {
-  return lower_left_ + geometry::Point(0, Height());
+  int64_t x = lower_left_.x();
+  int64_t y = lower_left_.y() + Height();
+  return {x, y};
+}
+
+geometry::Point RowGuide::LowerLeft() const {
+  return lower_left_;
 }
 
 }   // namespace bfg
