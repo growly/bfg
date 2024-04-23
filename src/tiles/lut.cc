@@ -371,6 +371,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
       buf_width += bounding_box.Width();
     }
+    RowGuide &lower_row = banks[1].rows[0];
+    start_position = lower_row.lower_left();
     for (size_t i = 0; i < 1; ++i) {
       std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
       std::string cell_name = absl::StrCat(instance_name, "_template");
@@ -378,15 +380,18 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
           cell_name);
       active_mux2_cell->layout()->ResetY();
+      geometry::Rectangle bounding_box = active_mux2_cell->layout()->GetTilingBounds();
+      buf_width += bounding_box.Width();
       geometry::Instance *instance = layout->AddInstance(
           geometry::Instance (
               active_mux2_cell->layout(),
-              start_position + geometry::Point(buf_width, 0)
+              start_position - geometry::Point(buf_width, 0)
               //geometry::Point {
               //-200, -200
               //}
           )
       );
+      instance->set_rotation_degrees_ccw(lower_row.RotationDegreesCCW());
     }
   }
 
