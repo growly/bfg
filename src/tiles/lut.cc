@@ -412,7 +412,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
   met1_layer_info.area = pre_route_bounds;
   // TODO(aryap): If we want y = 735 to be on the grid, and we know the offset
-  // is relative to the pre_route_bounds LL y = -600, 
+  // is relative to the pre_route_bounds lower-left y = -600, 
   // (735 - (-190)) / 340 (the pitch) = 3.9265
   //    offset = .3.9265 * 340
   //           = 315
