@@ -47,6 +47,10 @@ class Instance : public Manipulable {
   void ResetOrigin() override;
   void AlignPoints(const Point &our_point, const Point &align_to);
 
+  // Apply rotation in a way that keeps the lower_left_ point the same as it
+  // currently is.
+  void RotatePreservingLowerLeft(int32_t rotation_degrees_ccw);
+
   uint64_t TilingHeight() const;
   uint64_t TilingWidth() const;
 

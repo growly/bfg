@@ -49,21 +49,6 @@ class Lut : public Tile {
  protected:
   size_t lut_size_;
 
-  struct Bank {
-    std::unique_ptr<bfg::Layout> layout;
- 
-    // Memory instance names by row and column. Major index is row, minor index
-    // is column.
-    std::vector<std::vector<std::string>> memory_names;
-
-    // Instances per row. Major index is row, minor index is column. These are
-    // pointers to Instances in the main layout, not the bank-specific temporary
-    // layout below.
-    std::vector<std::vector<geometry::Instance*>> memories;
-
-    std::vector<RowGuide> rows;
-  };
-
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);
 
   // TODO(aryap): Figure out how to express mux arrangement statically.

@@ -53,6 +53,12 @@ uint64_t Instance::TilingWidth() const {
   return template_layout()->GetTilingBounds().Width();
 }
 
+void Instance::RotatePreservingLowerLeft(int32_t rotation_degrees_ccw) {
+  //geometry::Rectangle bounding_box = template_layout_->GetBoundingBox();
+  //bounding_box.ResetOrigin();
+  //bounding_box.Translate(lower_left_);
+}
+
 const Rectangle Instance::GetTilingBounds() const {
   Rectangle transformed = template_layout()->GetTilingBounds();
   if (reflect_vertical_) {

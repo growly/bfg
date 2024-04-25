@@ -62,7 +62,12 @@ class Rectangle : public Shape {
   void ResetOrigin() override;
   void FlipHorizontal() override {}   // No-op for a rectangle.
   void FlipVertical() override {}   // No-op for rectangle.
-  void MoveLowerLeftTo(const Point &point) override { Translate(point); }
+  // FIXME(aryap): This function actually does a shift, not a move. It should be
+  // renamed or ResetOrigin() should be done before Translate();
+  void MoveLowerLeftTo(const Point &point) override {
+    //ResetOrigin();
+    Translate(point);
+  }
   void Rotate(int32_t degrees_ccw) override;
 
   double ClosestDistanceTo(const Rectangle &other) const {

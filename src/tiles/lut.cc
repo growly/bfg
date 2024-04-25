@@ -6,17 +6,18 @@
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_join.h>
 
+#include "../atoms/sky130_buf.h"
+#include "../atoms/sky130_dfxtp.h"
+#include "../atoms/sky130_hd_mux2_1.h"
+#include "../atoms/sky130_mux.h"
+#include "../atoms/sky130_tap.h"
+#include "../geometry/rectangle.h"
+#include "../geometry/shape_collection.h"
+#include "../layout.h"
+#include "../memory_bank.h"
 #include "../poly_line_cell.h"
 #include "../poly_line_inflator.h"
 #include "../routing_grid.h"
-#include "../layout.h"
-#include "../geometry/rectangle.h"
-#include "../geometry/shape_collection.h"
-#include "../atoms/sky130_buf.h"
-#include "../atoms/sky130_dfxtp.h"
-#include "../atoms/sky130_mux.h"
-#include "../atoms/sky130_hd_mux2_1.h"
-#include "../atoms/sky130_tap.h"
 #include "../routing_via_info.h"
 #include "../row_guide.h"
 
@@ -103,13 +104,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // for convenience. This has the *in*convenient side effect of requiring us to
   // map instances from the originating layouts into the main layout.
 
-  std::vector<Bank> banks;
+  std::vector<MemoryBank> banks;
 
   int64_t max_row_height = 0;
   for (size_t b = 0; b < layout_config.num_banks; ++b) {
-    banks.push_back(Bank());
-    Bank &bank = banks.back();
-    bank.layout.reset(new bfg::Layout(db));
+    banks.push_back(MemoryBank());
+    MemoryBank &bank = banks.back();
+    bank.layout().reset(new bfg::Layout(db));
 
     int64_t y_pos = 0;
     size_t num_memories = 0;
@@ -117,15 +118,15 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     for (size_t j = 0; j < layout_config.bank_rows; j++) {
       size_t row_width = 0;
 
-      bank.rows.push_back(RowGuide(
+      bank.rows().push_back(RowGuide(
           {0, y_pos},     // Row lower-left point.
-          bank.layout.get(),
+          bank.layout().get(),
           nullptr,        // FIXME
           design_db_));
-      RowGuide &row = bank.rows.back();
+      RowGuide &row = bank.rows().back();
 
-      bank.memory_names.emplace_back();
-      std::vector<std::string> &bank_memories = bank.memory_names.back();
+      bank.memory_names().emplace_back();
+      std::vector<std::string> &bank_memories = bank.memory_names().back();
 
       // Rotate j = 1, 3, 5, ...
       bool rotate_this_row = layout_config.rotate_first_row ?
@@ -145,7 +146,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
         geometry::Instance *installed = nullptr;
         if (rotate_this_row) {
-          installed = row.InstantiateFront(instance_name, cell->layout());
+          installed = row.InstantiateAndInsertFront(
+              instance_name, cell->layout());
           bank_memories.insert(bank_memories.begin(), instance_name);
         } else {
           installed = row.InstantiateBack(instance_name, cell->layout());
@@ -155,22 +157,22 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         ++num_memories;
       }
 
-      row.Place();
+      //row.Place();
 
       max_row_height = std::max(
           max_row_height, static_cast<int64_t>(row.Height()));
 
       y_pos += static_cast<int64_t>(row.Height());
 
-      bank.layout->SavePoint(absl::StrCat("row_", j, "_lr"),
-                             geometry::Point(row_width, y_pos));
+      bank.layout()->SavePoint(absl::StrCat("row_", j, "_lr"),
+                               geometry::Point(row_width, y_pos));
     }
   }
 
   LOG_IF(FATAL, banks.size() < 1) << "Expected at least 1 bank by this point.";
 
-  banks[0].layout->MoveTo(geometry::Point(0, 0));
-  layout->AddLayout(*banks[0].layout, "bank_0");
+  banks[0].MoveTo(geometry::Point(0, 0));
+  layout->AddLayout(*banks[0].layout(), "bank_0");
   geometry::Rectangle left_bounds = layout->GetBoundingBox();
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
@@ -239,9 +241,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     int64_t x_pos =
         layout->GetBoundingBox().Width() + layout_config.mux_area_padding;
     for (size_t i = 1; i < banks.size(); ++i) {
-      banks[i].layout->MoveTo(geometry::Point(x_pos, 0));
-      layout->AddLayout(*banks[i].layout, absl::StrCat("bank_", i));
-      x_pos += banks[i - 1].layout->GetBoundingBox().Width();
+      banks[i].MoveTo(geometry::Point(x_pos, 0));
+      layout->AddLayout(*banks[i].layout(), absl::StrCat("bank_", i));
+      x_pos += banks[i - 1].layout()->GetBoundingBox().Width();
     }
   }
 
@@ -258,10 +260,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Now that the banks prototype layouts are copied into the main layout, map
     // the memory instances by name into the actual objects.
     for (size_t b = 0; b < banks.size(); ++b) {
-      Bank &bank = banks[b];
-      for (size_t j = 0; j < bank.memory_names.size(); ++j) {
-        std::vector<std::string> &row = bank.memory_names[j];
-        bank.memories.emplace_back();
+      MemoryBank &bank = banks[b];
+      for (size_t j = 0; j < bank.memory_names().size(); ++j) {
+        std::vector<std::string> &row = bank.memory_names()[j];
+        bank.memories().emplace_back();
         for (size_t i = 0; i < row.size(); ++i) {
           const std::string &name = row[i];
           auto it = all_instances_by_name.find(name);
@@ -270,7 +272,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
           geometry::Instance *memory = it->second;
           // LOG(INFO) << "row " << j << ", col " << i << ": " << name
           //           << " -> " << memory;
-          bank.memories.back().push_back(memory);
+          bank.memories().back().push_back(memory);
         }
       }
     }
@@ -282,12 +284,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   {
     geometry::Instance *end_of_last_bank = nullptr;
     for (size_t b = 0; b < banks.size(); ++b) {
-      Bank &bank = banks[b];
+      MemoryBank &bank = banks[b];
 
-      for (size_t j = 0; j < bank.memories.size(); ++j) {
+      for (size_t j = 0; j < bank.memories().size(); ++j) {
         bool rotate_this_row = layout_config.rotate_first_row ?
             j % 2 == 0 : j % 2 != 0;
-        std::vector<geometry::Instance*> &row = bank.memories[j];
+        std::vector<geometry::Instance*> &row = bank.memories()[j];
 
         // Connect flip flops next to each other in each row:
         for (size_t i = 0; i < row.size() - 1; ++i) {
@@ -308,7 +310,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         // There are also connections between rows, which depend on which rows
         // are rotated and which bank we're in (left or right):
         //    row[rotate_this_row ? 0 : row.size() - 1];
-        std::vector<geometry::Instance*> &last_row = bank.memories[j - 1];
+        std::vector<geometry::Instance*> &last_row = bank.memories()[j - 1];
 
         geometry::Instance *start_of_this_row =
             rotate_this_row ? row.back() : row.front();
@@ -326,7 +328,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
               {end_of_this_row->name(), start_of_last_row->name()});
         }
 
-        if (j == bank.memories.size() - 1) {
+        if (j == bank.memories().size() - 1) {
           if (end_of_last_bank) {
             scan_chain_pairs.insert(
                 {end_of_last_bank->name(), start_of_this_row->name()});
@@ -341,8 +343,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
     // buffers for a k-LUT.
-    int64_t buf_width = 0;
-    RowGuide &upper_row = banks[0].rows[3];
+    int64_t row_width = 0;
+    RowGuide &upper_row = banks[0].rows()[3];
     geometry::Point start_position = upper_row.LowerRight();
     for (size_t i = 0; i < lut_size_ - 1; ++i) {
       std::string instance_name = absl::StrFormat("buf_%d", i);
@@ -361,7 +363,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       geometry::Instance *instance = layout->AddInstance(
           geometry::Instance (
               buf_cell->layout(),
-              start_position + geometry::Point(buf_width, 0)
+              start_position + geometry::Point(row_width, 0)
               //geometry::Point {
               //-200, -200
               //}
@@ -369,30 +371,33 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       );
       instance->set_rotation_degrees_ccw(upper_row.RotationDegreesCCW());
       geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
-      buf_width += bounding_box.Width();
+      row_width += bounding_box.Width();
     }
-    RowGuide &lower_row = banks[1].rows[0];
+    RowGuide &lower_row = banks[1].rows()[0];
     start_position = lower_row.lower_left();
+    row_width = 0;
     for (size_t i = 0; i < 1; ++i) {
       std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
       bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
           cell_name);
+      // from here ---
       active_mux2_cell->layout()->ResetY();
       geometry::Rectangle bounding_box =
           active_mux2_cell->layout()->GetTilingBounds();
-      buf_width += bounding_box.Width();
+      row_width += bounding_box.Width();
       geometry::Instance *instance = layout->AddInstance(
           geometry::Instance (
               active_mux2_cell->layout(),
-              start_position - geometry::Point(buf_width, 0)
+              start_position - geometry::Point(row_width, 0)
               //geometry::Point {
               //-200, -200
               //}
           )
       );
-      instance->set_rotation_degrees_ccw(lower_row.RotationDegreesCCW());
+      //instance->set_rotation_degrees_ccw(lower_row.RotationDegreesCCW());
+      // -- to here, i should not need to do in this method
     }
   }
 
@@ -521,7 +526,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   std::map<geometry::Instance*, std::string> memory_output_net_names;
   {
     for (size_t b = 0; b < layout_config.num_banks; ++b) {
-      const auto &memories = banks[b].memories;
+      const auto &memories = banks[b].memories();
       for (size_t j = layout_config.rotate_first_row ? 0 : 1;
            j < memories.size();
            j += 2) {
@@ -645,22 +650,22 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   // Auto-route order:
   std::vector<geometry::Instance*> auto_route_order = {
-    banks[0].memories[0][0],
-    banks[0].memories[0][1],
-    banks[0].memories[1][0],
-    banks[0].memories[1][1],
-    banks[0].memories[2][0],
-    banks[0].memories[2][1],
-    banks[0].memories[3][0],
-    banks[0].memories[3][1],
-    banks[1].memories[0][0],
-    banks[1].memories[0][1],
-    banks[1].memories[1][0],
-    banks[1].memories[1][1],
-    banks[1].memories[2][0],
-    banks[1].memories[2][1],
-    banks[1].memories[3][0],
-    banks[1].memories[3][1]
+    banks[0].memories()[0][0],
+    banks[0].memories()[0][1],
+    banks[0].memories()[1][0],
+    banks[0].memories()[1][1],
+    banks[0].memories()[2][0],
+    banks[0].memories()[2][1],
+    banks[0].memories()[3][0],
+    banks[0].memories()[3][1],
+    banks[1].memories()[0][0],
+    banks[1].memories()[0][1],
+    banks[1].memories()[1][0],
+    banks[1].memories()[1][1],
+    banks[1].memories()[2][0],
+    banks[1].memories()[2][1],
+    banks[1].memories()[3][0],
+    banks[1].memories()[3][1]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {

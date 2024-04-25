@@ -1,6 +1,7 @@
 #ifndef ROW_GUIDE_H_
 #define ROW_GUIDE_H_
 
+#include <limits>
 #include <ostream>
 #include <optional>
 
@@ -31,16 +32,25 @@ class RowGuide {
       : lower_left_(lower_left),
         layout_(layout),
         circuit_(circuit),
-        design_db(design_db) {}
+        design_db(design_db) {
+    max_tap_distance_ = 10000;
+    distance_to_tap_right_ = std::numeric_limits<int64_t>::max;
+    distance_to_tap_left_ = std::numeric_limits<int64_t>::max;
+  }
 
-  // Caller maintains ownership of instance. Instance's position and
-  // orientation may be changed. It is assumed that the given instance is
-  // already installed in a bfg::Layout (and its circuit representation exists
-  // in a bfg::Circuit).
-  void PushBack(geometry::Instance *instance);
-  void PushFront(geometry::Instance *instance);
-
+  // Methods to insert new instances of a given template layout, with a given
+  // name, at either:
+  //  - the back of the row, extending the row past where it currently is;
+  //  - the front of the row, shifting the position of all other instances back;
+  //    and
+  //  - in front of the front of the row, leaving existing placements
+  //  unchanged.
+  // Caller takes ownership of instance. Instance's position and orientation may
+  // be changed. It is assumed that the given instance is already installed in a
+  // bfg::Layout (and its circuit representation exists in a bfg::Circuit).
   geometry::Instance *InstantiateBack(
+      const std::string &name, Layout *template_layout);
+  geometry::Instance *InstantiateAndInsertFront(
       const std::string &name, Layout *template_layout);
   geometry::Instance *InstantiateFront(
       const std::string &name, Layout *template_layout);
@@ -58,6 +68,7 @@ class RowGuide {
   geometry::Point UpperLeft() const;
   geometry::Point LowerLeft() const;
 
+  void set_lower_left(const geometry::Point &point) { lower_left_ = point; }
   const geometry::Point &lower_left() const { return lower_left_; }
 
   void set_tap_cell(const bfg::Cell &tap_cell) {
@@ -99,8 +110,15 @@ class RowGuide {
   bfg::Circuit *circuit_;
   bfg::DesignDatabase *design_db;
 
-
+  // Stores all instances in the row in order from left to right with increasing
+  // index. If the row's cells are rotated (rotate_instances_ is true) then each
+  // instance is rotated, but the order is still left-to-right.
   std::vector<geometry::Instance*> instances_;
+
+  int64_t distance_to_tap_right_;
+  int64_t distance_to_tap_left_;
+
+  int64_t max_tap_distance_;
 };
 
 }  // namespace bfg

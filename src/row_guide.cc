@@ -7,21 +7,33 @@
 
 namespace bfg {
 
-void RowGuide::PushBack(geometry::Instance *instance) {
-  instances_.push_back(instance);
-}
-
-void RowGuide::PushFront(geometry::Instance *instance) {
-  instances_.insert(instances_.begin(), instance);
-}
-
 geometry::Instance *RowGuide::InstantiateBack(
     const std::string &name, Layout *template_layout) {
+  // Instances start out at whatever lower_left_ is, before being moved in
+  // Place().
   geometry::Instance instance = geometry::Instance(
       template_layout, lower_left_);
   instance.set_name(name);
   geometry::Instance *installed = layout_->AddInstance(instance);
+
+  int64_t width = installed->TilingWidth();
+  if (tap_cell_.has_value() &&
+      (right_most_tap_x_
+
+  geometry::Point next = instances_.empty() ? lower_left_ : instances_.back()->
+
   instances_.push_back(installed);
+  return installed;
+}
+
+geometry::Instance *RowGuide::InstantiateAndInsertFront(
+    const std::string &name, Layout *template_layout) {
+  geometry::Instance instance(template_layout, lower_left_);
+  instance.set_name(name);
+  geometry::Instance *installed = layout_->AddInstance(instance);
+
+  instances_.insert(instances_.begin(), installed);
+
   return installed;
 }
 
@@ -33,8 +45,32 @@ geometry::Instance *RowGuide::InstantiateFront(
 
   instances_.insert(instances_.begin(), installed);
 
+  lower_left_.set_x(lower_left_.x() - instance.TilingWidth());
+
   return installed;
 }
+
+// TODO(aryap): Add taps to circuit.
+void RowGuide::PlaceTap(const geometry::Point &point) {
+  if (!tap_cell_) {
+    return;
+  }
+  geometry::Instance tap_instance(tap_cell_.value().get().layout());
+  Place(&tap_instance, &x_pos, &y_pos, &distance_to_tap);
+  geometry::Instance *installed = layout_->AddInstance(tap_instance);
+
+  distance_to_tap = 0;
+}
+
+// FIXME: ok the thing to do is to figure out the role of "RowGuide". is it an
+// adapter for layout? does it own meaningful stuff? If I call
+// "InstantiateFront" am I expecting the lower_left_ to shift or for the new
+// instance to be added and the remaining instances pushed back?
+// Since it has a pointer to instances in the row and a pointer to a (shared)
+// layout, this is ok?
+// Maybe MemoryBank should similarly be an adapter, with a handle to shapes
+// added through it, so that in effect it manages a grouping of instances. Do we
+// need an InstanceGroup()?
 
 // Sets the position of the given instance according to x_pos, y_pos and
 // advances the x_pos value according to the instances' tiling bounds. If
@@ -84,7 +120,11 @@ void RowGuide::Place() {
       Place(&tap_instance, &x_pos, &y_pos, &distance_to_tap);
       // FIXME(aryap): Add taps to circuit.
       geometry::Instance *installed = layout_->AddInstance(tap_instance);
-      it = instances_.insert(it + 1, installed);
+      it = instances_.insert(it, installed);
+      // 'it' now points to the inserted tap, which was inserted just before the
+      // current instance (previous pointee of 'it'). We advance it again to
+      // have it point back at where 'instance' now is.
+      ++it;
 
       distance_to_tap = 0;
     }

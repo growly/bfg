@@ -43,6 +43,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc
   ${PROJECT_SOURCE_DIR}/src/design_database.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
+  ${PROJECT_SOURCE_DIR}/src/memory_bank.cc
   ${PROJECT_SOURCE_DIR}/src/parameter.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
