@@ -53,6 +53,10 @@ class Instance : public Manipulable {
 
   uint64_t TilingHeight() const;
   uint64_t TilingWidth() const;
+  Point TilingLowerLeft() const;
+
+  // Align the lower-left point of the tiling bounds to the given point.
+  void MoveTilingLowerLeft(const Point &lower_left);
 
   const Rectangle GetTilingBounds() const;
   const Rectangle GetBoundingBox() const;
@@ -127,6 +131,9 @@ class Instance : public Manipulable {
   // This is the template cell.
   bfg::Layout *const template_layout_;
 
+  // FIXME(aryap): This is confusing because "lower_left_" actually actually
+  // stored the origin of the cell, not the "lower left" point. This should be
+  // renamed to origin for instances.
   Point lower_left_;
   // This is mirroring in the X axis.
   bool reflect_vertical_;

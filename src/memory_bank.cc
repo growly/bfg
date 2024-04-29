@@ -6,16 +6,16 @@
 namespace bfg {
 
 void MemoryBank::MoveTo(const geometry::Point &point) {
-  // Treat the lower_left_ point of the first row as the origin of the
+  // Treat the origin point of the first row as the origin of the
   // MemoryBank itself. Moving the whole bank moves this point to the new point,
   // and so the relative position of all other rows must be preserved.
   if (rows_.empty()) {
     return;
   }
-  geometry::Point origin = rows_.front().lower_left();
+  geometry::Point first_row_origin = rows_.front().origin();
   for (auto &row : rows_) {
-    geometry::Point difference = row.lower_left() - origin;
-    row.set_lower_left(point + difference);
+    geometry::Point difference = row.origin() - first_row_origin;
+    row.set_origin(point + difference);
   }
   layout_->MoveTo(point);
 }

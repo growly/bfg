@@ -25,6 +25,10 @@ class MemoryBank {
   std::vector<RowGuide> &rows() { return rows_; }
 
  private:
+  // FIXME:
+  // We don't need our own layout. Creating a layout copy makes it a pain to add
+  // instances after this layout has been added to some larger layout, which it
+  // turns out is awfully convenient.
   std::unique_ptr<bfg::Layout> layout_;
 
   // Memory instance names by row and column. Major index is row, minor index

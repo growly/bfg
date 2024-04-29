@@ -53,19 +53,29 @@ uint64_t Instance::TilingWidth() const {
   return template_layout()->GetTilingBounds().Width();
 }
 
+Point Instance::TilingLowerLeft() const {
+  Rectangle tiling_bounds = GetTilingBounds();
+  return tiling_bounds.lower_left();
+}
+
 void Instance::RotatePreservingLowerLeft(int32_t rotation_degrees_ccw) {
   //geometry::Rectangle bounding_box = template_layout_->GetBoundingBox();
   //bounding_box.ResetOrigin();
   //bounding_box.Translate(lower_left_);
 }
 
+void Instance::MoveTilingLowerLeft(const Point &lower_left) {
+  Rectangle tiling_bounds = GetTilingBounds();
+  lower_left_ = lower_left - tiling_bounds.lower_left();
+}
+
 const Rectangle Instance::GetTilingBounds() const {
-  Rectangle transformed = template_layout()->GetTilingBounds();
+  Rectangle transformed = template_layout_->GetTilingBounds();
   if (reflect_vertical_) {
     transformed.FlipVertical();
   }
   transformed.Rotate(rotation_degrees_ccw_);
-  transformed.Translate(lower_left_);
+  transformed.MoveLowerLeftTo(lower_left_ + transformed.lower_left());
   return transformed;
 }
 

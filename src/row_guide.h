@@ -1,9 +1,7 @@
 #ifndef ROW_GUIDE_H_
 #define ROW_GUIDE_H_
 
-#include <limits>
 #include <ostream>
-#include <optional>
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -25,17 +23,18 @@ class DesignDatabase;
 class RowGuide {
  public:
   RowGuide(
-      const geometry::Point &lower_left,
+      const geometry::Point &origin,
       bfg::Layout *layout,
       bfg::Circuit *circuit,
       DesignDatabase *design_db)
-      : lower_left_(lower_left),
+      : origin_(origin),
         layout_(layout),
         circuit_(circuit),
-        design_db(design_db) {
+        design_db(design_db),
+        num_taps_(0),
+        distance_to_tap_left_(0),
+        distance_to_tap_right_(0) {
     max_tap_distance_ = 10000;
-    distance_to_tap_right_ = std::numeric_limits<int64_t>::max;
-    distance_to_tap_left_ = std::numeric_limits<int64_t>::max;
   }
 
   // Methods to insert new instances of a given template layout, with a given
@@ -55,11 +54,6 @@ class RowGuide {
   geometry::Instance *InstantiateFront(
       const std::string &name, Layout *template_layout);
 
-  // Assign positions & orientations of instances in the stack according to
-  // configuration. Tap cells, if enabled and needed, are inserted into the
-  // layout automatically.
-  void Place();
-
   uint64_t Width() const;
   uint64_t Height() const;
 
@@ -68,8 +62,8 @@ class RowGuide {
   geometry::Point UpperLeft() const;
   geometry::Point LowerLeft() const;
 
-  void set_lower_left(const geometry::Point &point) { lower_left_ = point; }
-  const geometry::Point &lower_left() const { return lower_left_; }
+  void set_origin(const geometry::Point &point) { origin_ = point; }
+  const geometry::Point &origin() const { return origin_; }
 
   void set_tap_cell(const bfg::Cell &tap_cell) {
     tap_cell_ = tap_cell;
@@ -88,11 +82,23 @@ class RowGuide {
   }
 
  private:
-  void Place(
-      geometry::Instance *instance,
-      int64_t *x_pos,
-      int64_t *y_pos,
-      int64_t *distance_to_tap) const;
+  void Place(const geometry::Point &point,
+             geometry::Instance *instance,
+             int64_t *distance_to_tap);
+  void MaybeAddTapLeftFor(const geometry::Instance &added_instance);
+  void MaybeAddTapRightFor(const geometry::Instance &added_instance);
+
+  bool NeedsTapLeft(const geometry::Instance &added_instance) const;
+  bool NeedsTapRight(const geometry::Instance &added_instance) const;
+  bool NeedsTap(const int64_t &current_distance,
+                int64_t additional_distance) const;
+
+  void ShiftAllRight(int64_t x);
+
+  geometry::Point NextPointLeft(const geometry::Instance &to_add) const;
+  geometry::Point NextPointRight(const geometry::Instance &to_add) const;
+
+  geometry::Instance *AddTap();
 
   // If set, automatically insert taps according to the rules of the physical
   // database.
@@ -101,7 +107,7 @@ class RowGuide {
   std::optional<std::reference_wrapper<const bfg::Cell>> start_cell_;
   std::optional<std::reference_wrapper<const bfg::Cell>> end_cell_;
 
-  geometry::Point lower_left_;
+  geometry::Point origin_;
 
   // If true, rotate all instances 180 degrees.
   bool rotate_instances_;
@@ -115,6 +121,7 @@ class RowGuide {
   // instance is rotated, but the order is still left-to-right.
   std::vector<geometry::Instance*> instances_;
 
+  int64_t num_taps_;
   int64_t distance_to_tap_right_;
   int64_t distance_to_tap_left_;
 

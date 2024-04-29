@@ -343,9 +343,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
     // buffers for a k-LUT.
-    int64_t row_width = 0;
     RowGuide &upper_row = banks[0].rows()[3];
-    geometry::Point start_position = upper_row.LowerRight();
     for (size_t i = 0; i < lut_size_ - 1; ++i) {
       std::string instance_name = absl::StrFormat("buf_%d", i);
       std::string cell_name = absl::StrCat(instance_name, "_template");
@@ -360,46 +358,29 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
-      geometry::Instance *instance = layout->AddInstance(
-          geometry::Instance (
-              buf_cell->layout(),
-              start_position + geometry::Point(row_width, 0)
-              //geometry::Point {
-              //-200, -200
-              //}
-          )
-      );
-      instance->set_rotation_degrees_ccw(upper_row.RotationDegreesCCW());
-      geometry::Rectangle bounding_box = buf_cell->layout()->GetTilingBounds();
-      row_width += bounding_box.Width();
+      geometry::Instance *instance = upper_row.InstantiateBack(
+          instance_name, buf_cell->layout());
     }
     RowGuide &lower_row = banks[1].rows()[0];
-    start_position = lower_row.lower_left();
-    row_width = 0;
     for (size_t i = 0; i < 1; ++i) {
       std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
       bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
           cell_name);
-      // from here ---
       active_mux2_cell->layout()->ResetY();
-      geometry::Rectangle bounding_box =
-          active_mux2_cell->layout()->GetTilingBounds();
-      row_width += bounding_box.Width();
-      geometry::Instance *instance = layout->AddInstance(
-          geometry::Instance (
-              active_mux2_cell->layout(),
-              start_position - geometry::Point(row_width, 0)
-              //geometry::Point {
-              //-200, -200
-              //}
-          )
-      );
-      //instance->set_rotation_degrees_ccw(lower_row.RotationDegreesCCW());
-      // -- to here, i should not need to do in this method
+      geometry::Instance *instance = lower_row.InstantiateFront(
+          instance_name, active_mux2_cell->layout());
     }
   }
+
+  // DEBUG
+  lut_cell->SetLayout(layout.release());
+  lut_cell->SetCircuit(circuit.release());
+  bfg::Cell *pre = lut_cell.release();
+  pre->set_name(name);
+  design_db_->ConsumeCell(pre);
+  return pre;
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
   LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;

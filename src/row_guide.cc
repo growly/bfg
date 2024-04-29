@@ -9,18 +9,14 @@ namespace bfg {
 
 geometry::Instance *RowGuide::InstantiateBack(
     const std::string &name, Layout *template_layout) {
-  // Instances start out at whatever lower_left_ is, before being moved in
-  // Place().
-  geometry::Instance instance = geometry::Instance(
-      template_layout, lower_left_);
-  instance.set_name(name);
-  geometry::Instance *installed = layout_->AddInstance(instance);
+  geometry::Instance *installed = layout_->AddInstance(
+      geometry::Instance(template_layout, {0, 0}));
+  installed->set_name(name);
 
-  int64_t width = installed->TilingWidth();
-  if (tap_cell_.has_value() &&
-      (right_most_tap_x_
+  MaybeAddTapRightFor(*installed);
 
-  geometry::Point next = instances_.empty() ? lower_left_ : instances_.back()->
+  geometry::Point point = NextPointRight(*installed);
+  Place(point, installed, &distance_to_tap_right_);
 
   instances_.push_back(installed);
   return installed;
@@ -28,43 +24,76 @@ geometry::Instance *RowGuide::InstantiateBack(
 
 geometry::Instance *RowGuide::InstantiateAndInsertFront(
     const std::string &name, Layout *template_layout) {
-  geometry::Instance instance(template_layout, lower_left_);
-  instance.set_name(name);
-  geometry::Instance *installed = layout_->AddInstance(instance);
+  geometry::Instance *installed = layout_->AddInstance(
+      geometry::Instance(template_layout, {0, 0}));
+  installed->set_name(name);
+
+  geometry::Point starting_lower_left = instances_.empty() ?
+      origin_ : instances_.front()->TilingLowerLeft();
+
+  MaybeAddTapLeftFor(*installed);
+
+  geometry::Point point = NextPointLeft(*installed);
+  Place(point, installed, &distance_to_tap_left_);
 
   instances_.insert(instances_.begin(), installed);
+
+  geometry::Point ending_lower_left = instances_.front()->TilingLowerLeft();
+
+  ShiftAllRight(starting_lower_left.x() - ending_lower_left.x());
 
   return installed;
 }
 
 geometry::Instance *RowGuide::InstantiateFront(
     const std::string &name, Layout *template_layout) {
-  geometry::Instance instance(template_layout, lower_left_);
-  instance.set_name(name);
-  geometry::Instance *installed = layout_->AddInstance(instance);
+  geometry::Instance *installed = layout_->AddInstance(
+      geometry::Instance(template_layout, origin_));
+  installed->set_name(name);
+
+  MaybeAddTapLeftFor(*installed);
+
+  geometry::Point point = NextPointLeft(*installed);
+  Place(point, installed, &distance_to_tap_left_);
 
   instances_.insert(instances_.begin(), installed);
-
-  lower_left_.set_x(lower_left_.x() - instance.TilingWidth());
 
   return installed;
 }
 
 // TODO(aryap): Add taps to circuit.
-void RowGuide::PlaceTap(const geometry::Point &point) {
-  if (!tap_cell_) {
+geometry::Instance *RowGuide::AddTap() {
+  return layout_->AddInstance(
+      geometry::Instance(tap_cell_.value().get().layout()));
+}
+
+void RowGuide::MaybeAddTapLeftFor(const geometry::Instance &added_instance) {
+  if (!NeedsTapLeft(added_instance)) {
     return;
   }
-  geometry::Instance tap_instance(tap_cell_.value().get().layout());
-  Place(&tap_instance, &x_pos, &y_pos, &distance_to_tap);
-  geometry::Instance *installed = layout_->AddInstance(tap_instance);
+  geometry::Instance *tap = AddTap();
+  geometry::Point point = NextPointLeft(*tap);
+  Place(point, tap, nullptr);
+  num_taps_++;
+  distance_to_tap_left_ = 0;
+  instances_.insert(instances_.begin(), tap);
+}
 
-  distance_to_tap = 0;
+void RowGuide::MaybeAddTapRightFor(const geometry::Instance &added_instance) {
+  if (!NeedsTapRight(added_instance)) {
+    return;
+  }
+  geometry::Instance *tap = AddTap();
+  geometry::Point point = NextPointRight(*tap);
+  Place(point, tap, nullptr);
+  num_taps_++;
+  distance_to_tap_right_ = 0;
+  instances_.push_back(tap);
 }
 
 // FIXME: ok the thing to do is to figure out the role of "RowGuide". is it an
 // adapter for layout? does it own meaningful stuff? If I call
-// "InstantiateFront" am I expecting the lower_left_ to shift or for the new
+// "InstantiateFront" am I expecting the origin_ to shift or for the new
 // instance to be added and the remaining instances pushed back?
 // Since it has a pointer to instances in the row and a pointer to a (shared)
 // layout, this is ok?
@@ -72,69 +101,96 @@ void RowGuide::PlaceTap(const geometry::Point &point) {
 // added through it, so that in effect it manages a grouping of instances. Do we
 // need an InstanceGroup()?
 
+geometry::Point RowGuide::NextPointLeft(const geometry::Instance &to_add)
+    const {
+  if (instances_.empty()) {
+    return origin_;
+  }
+  const geometry::Instance &existing = *instances_.front();
+
+  geometry::Point existing_lower_left = existing.TilingLowerLeft();
+  int64_t existing_tiling_width = existing.TilingWidth();
+  int64_t existing_tiling_height = existing.TilingHeight();
+
+  // Assuming vertically-centred alignment, compute the y-position of the new
+  // instance given the old one:
+  int64_t mid_y = existing_lower_left.y() + existing_tiling_height / 2;
+  int64_t new_y = mid_y - to_add.TilingHeight() / 2;
+
+  int64_t new_x = existing_lower_left.x() - to_add.TilingWidth();
+  return {new_x, new_y};
+}
+
+geometry::Point RowGuide::NextPointRight(const geometry::Instance &to_add)
+    const {
+  if (instances_.empty()) {
+    return origin_;
+  }
+  const geometry::Instance &existing = *instances_.back();
+
+  geometry::Point existing_lower_left = existing.TilingLowerLeft();
+  int64_t existing_tiling_width = existing.TilingWidth();
+  int64_t existing_tiling_height = existing.TilingHeight();
+
+  // Assuming vertically-centred alignment, compute the y-position of the new
+  // instance given the old one:
+  int64_t mid_y = existing_lower_left.y() + existing_tiling_height / 2;
+  int64_t new_y = mid_y - to_add.TilingHeight() / 2;
+
+  int64_t new_x = existing_lower_left.x() + existing_tiling_width;
+  return {new_x, new_y};
+}
+
+void RowGuide::ShiftAllRight(int64_t x) {
+  for (geometry::Instance *installed : instances_) {
+    installed->Translate({x, 0});
+  }
+}
+
 // Sets the position of the given instance according to x_pos, y_pos and
 // advances the x_pos value according to the instances' tiling bounds. If
 // rotation is needed, that is done too.
 void RowGuide::Place(
+    const geometry::Point &point,
     geometry::Instance *instance,
-    int64_t *x_pos,
-    int64_t *y_pos,
-    int64_t *distance_to_tap) const {
-  instance->set_lower_left({*x_pos, *y_pos});
-  geometry::Rectangle tiling_bounds =
-      instance->template_layout()->GetTilingBounds();
+    int64_t *distance_to_tap) {
+  instance->MoveTilingLowerLeft(point);
+
+  int64_t tiling_width = instance->TilingWidth();
+  int64_t tiling_height = instance->TilingHeight();
+
   if (rotate_instances_) {
     // Rotation is effective about the origin, which after 180 degrees means
     // we've set the upper right point on the instance. To make its effective
     // lower left point the one we intend _after rotation_ we have to shift
     // the whole instance up and right its own bounding box.
     instance->set_rotation_degrees_ccw(180);
-    instance->Translate({
-        static_cast<int64_t>(tiling_bounds.Width()),
-        static_cast<int64_t>(tiling_bounds.Height())
-    });
+    instance->Translate({tiling_width, tiling_height});
   }
-  (*x_pos) += tiling_bounds.Width();
-  (*distance_to_tap) += tiling_bounds.Width();
+  if (distance_to_tap) {
+    if (num_taps_ == 0) {
+      distance_to_tap_right_ += tiling_width;
+      distance_to_tap_left_ += tiling_width;
+    } else {
+      *distance_to_tap += tiling_width;
+    }
+  }
 }
 
-void RowGuide::Place() {
-  // Walk through instances, assigning positions in order. If rotation is
-  // enabled, instances must be rotated and moved too. Tap cells, once
-  // generated, are owned by the given layout.
-  int64_t x_pos = lower_left_.x();
-  int64_t y_pos = lower_left_.y();
+bool RowGuide::NeedsTapLeft(const geometry::Instance &added_instance) const {
+  return NeedsTap(distance_to_tap_left_, added_instance.TilingWidth());
+}
 
-  int64_t distance_to_tap = 0;
+bool RowGuide::NeedsTapRight(const geometry::Instance &added_instance) const {
+  return NeedsTap(distance_to_tap_right_, added_instance.TilingWidth());
+}
 
-  for (auto it = instances_.begin(); it != instances_.end(); ++it) {
-    geometry::Instance *instance = *it;
-    int64_t next_width = instance->TilingWidth();
-
-    // TODO(aryap): Generalise this.
-    // TODO(aryap): Is this the right model? Maybe a RowGuide is more of a
-    // sub-tile? RowGenerator? Now it needs to seem more inline...
-    if (tap_cell_.has_value() &&
-        (distance_to_tap + next_width) >= 10000) {
-      geometry::Instance tap_instance(tap_cell_.value().get().layout());
-      Place(&tap_instance, &x_pos, &y_pos, &distance_to_tap);
-      // FIXME(aryap): Add taps to circuit.
-      geometry::Instance *installed = layout_->AddInstance(tap_instance);
-      it = instances_.insert(it, installed);
-      // 'it' now points to the inserted tap, which was inserted just before the
-      // current instance (previous pointee of 'it'). We advance it again to
-      // have it point back at where 'instance' now is.
-      ++it;
-
-      distance_to_tap = 0;
-    }
-
-    // Effectively "MoveTo".
-    Place(instance, &x_pos, &y_pos, &distance_to_tap);
-
-    // Instance should already be placed.
-    // layout()->AddInstance(...);
+bool RowGuide::NeedsTap(const int64_t &current_distance,
+                        int64_t additional_distance) const {
+  if (!tap_cell_) {
+    return false;
   }
+  return (current_distance + additional_distance) > max_tap_distance_;
 }
 
 uint64_t RowGuide::Width() const {
@@ -155,32 +211,38 @@ uint64_t RowGuide::Height() const {
 
 geometry::Point RowGuide::UpperRight() const {
   if (instances_.empty()) {
-    return lower_left_;
+    return origin_;
   }
-  int64_t x = instances_.back()->lower_left().x() +
-      instances_.back()->TilingWidth();
-  int64_t y = lower_left_.y() + Height();
-  return {x, y};
+  geometry::Rectangle front_tiling_bounds =
+      instances_.front()->GetTilingBounds();
+  return front_tiling_bounds.upper_right();
 }
 
 geometry::Point RowGuide::LowerRight() const {
   if (instances_.empty()) {
-    return lower_left_;
+    return origin_;
   }
-  int64_t x = instances_.back()->lower_left().x() +
-      instances_.back()->TilingWidth();
-  int64_t y = lower_left_.y();
-  return {x, y};
+  geometry::Rectangle front_tiling_bounds =
+      instances_.front()->GetTilingBounds();
+  return front_tiling_bounds.LowerRight();
 }
 
 geometry::Point RowGuide::UpperLeft() const {
-  int64_t x = lower_left_.x();
-  int64_t y = lower_left_.y() + Height();
-  return {x, y};
+  if (instances_.empty()) {
+    return origin_;
+  }
+  geometry::Rectangle front_tiling_bounds =
+      instances_.front()->GetTilingBounds();
+  return front_tiling_bounds.UpperLeft();
 }
 
 geometry::Point RowGuide::LowerLeft() const {
-  return lower_left_;
+  if (instances_.empty()) {
+    return origin_;
+  }
+  geometry::Rectangle front_tiling_bounds =
+      instances_.front()->GetTilingBounds();
+  return front_tiling_bounds.lower_left();
 }
 
 }   // namespace bfg

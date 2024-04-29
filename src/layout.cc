@@ -43,6 +43,9 @@ void Layout::MirrorY() {
   }
   for (const auto &instance : instances_) { instance->MirrorY(); }
   for (auto &entry : named_points_) { entry.second.MirrorY(); }
+  if (tiling_bounds_) {
+    tiling_bounds_->MirrorY();
+  }
 }
 
 void Layout::MirrorX() {
@@ -52,6 +55,9 @@ void Layout::MirrorX() {
   }
   for (const auto &instance : instances_) { instance->MirrorX(); }
   for (auto &entry : named_points_) { entry.second.MirrorX(); }
+  if (tiling_bounds_) {
+    tiling_bounds_->MirrorX();
+  }
 }
 
 void Layout::FlipHorizontal() {
@@ -73,6 +79,9 @@ void Layout::Translate(const Point &offset) {
   }
   for (const auto &instance : instances_) { instance->Translate(offset); }
   for (auto &entry : named_points_) { entry.second.Translate(offset); }
+  if (tiling_bounds_) {
+    tiling_bounds_->Translate(offset);
+  }
 }
 
 void Layout::ResetX() {
