@@ -2,8 +2,9 @@
 #define MEMORY_BANK_H_
 
 #include <memory>
-#include <vector>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "geometry/point.h"
 #include "layout.h"
@@ -15,7 +16,6 @@ class MemoryBank {
  public:
   void MoveTo(const geometry::Point &point);
 
-  std::unique_ptr<bfg::Layout> &layout() { return layout_; }
   std::vector<std::vector<std::string>> &memory_names() {
     return memory_names_;
   }
@@ -24,12 +24,12 @@ class MemoryBank {
   }
   std::vector<RowGuide> &rows() { return rows_; }
 
+  std::optional<geometry::Rectangle> GetBoundingBox() const;
+
  private:
-  // FIXME:
-  // We don't need our own layout. Creating a layout copy makes it a pain to add
-  // instances after this layout has been added to some larger layout, which it
-  // turns out is awfully convenient.
-  std::unique_ptr<bfg::Layout> layout_;
+  // It turns out it is awfully convenient to be able to use this structure as a
+  // grouping of other objects that belong to some external layout.
+  bfg::Layout *layout_;
 
   // Memory instance names by row and column. Major index is row, minor index
   // is column.

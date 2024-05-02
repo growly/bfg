@@ -57,10 +57,16 @@ class RowGuide {
   uint64_t Width() const;
   uint64_t Height() const;
 
+  std::optional<geometry::Rectangle> GetBoundingBox() const;
+
   geometry::Point UpperRight() const;
   geometry::Point LowerRight() const;
   geometry::Point UpperLeft() const;
   geometry::Point LowerLeft() const;
+
+  // Move the origin of this RowGuide and all instances such that the relative
+  // position is conserved.
+  void MoveTo(const geometry::Point &point);
 
   void set_origin(const geometry::Point &point) { origin_ = point; }
   const geometry::Point &origin() const { return origin_; }

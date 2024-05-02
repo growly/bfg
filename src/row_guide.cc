@@ -147,6 +147,15 @@ void RowGuide::ShiftAllRight(int64_t x) {
   }
 }
 
+void RowGuide::MoveTo(const geometry::Point &new_origin) {
+  geometry::Point old_origin = origin_;
+  for (geometry::Instance *installed : instances_) {
+    geometry::Point relative_position = installed->lower_left() - old_origin;
+    installed->set_lower_left(relative_position + new_origin);
+  }
+  origin_ = new_origin;
+}
+
 // Sets the position of the given instance according to x_pos, y_pos and
 // advances the x_pos value according to the instances' tiling bounds. If
 // rotation is needed, that is done too.
@@ -154,19 +163,25 @@ void RowGuide::Place(
     const geometry::Point &point,
     geometry::Instance *instance,
     int64_t *distance_to_tap) {
+  //instance->MoveTilingLowerLeft(point);
+
+  //int64_t tiling_width = instance->TilingWidth();
+  //int64_t tiling_height = instance->TilingHeight();
+
+  //if (rotate_instances_) {
+  //  // Rotation is effective about the origin, which after 180 degrees means
+  //  // we've set the upper right point on the instance. To make its effective
+  //  // lower left point the one we intend _after rotation_ we have to shift
+  //  // the whole instance up and right its own bounding box.
+  //  instance->set_rotation_degrees_ccw(180);
+  //  instance->Translate({tiling_width, tiling_height});
+  //}
+  if (rotate_instances_) {
+    instance->set_rotation_degrees_ccw(180);
+  }
   instance->MoveTilingLowerLeft(point);
 
   int64_t tiling_width = instance->TilingWidth();
-  int64_t tiling_height = instance->TilingHeight();
-
-  if (rotate_instances_) {
-    // Rotation is effective about the origin, which after 180 degrees means
-    // we've set the upper right point on the instance. To make its effective
-    // lower left point the one we intend _after rotation_ we have to shift
-    // the whole instance up and right its own bounding box.
-    instance->set_rotation_degrees_ccw(180);
-    instance->Translate({tiling_width, tiling_height});
-  }
   if (distance_to_tap) {
     if (num_taps_ == 0) {
       distance_to_tap_right_ += tiling_width;
@@ -207,6 +222,15 @@ uint64_t RowGuide::Height() const {
     height = std::max(instance->TilingHeight(), height);
   }
   return height;
+}
+
+std::optional<geometry::Rectangle> RowGuide::GetBoundingBox() const {
+  if (instances_.empty()) {
+    return std::nullopt;
+  }
+  return {{
+      instances_.front()->GetBoundingBox().lower_left(),
+      instances_.back()->GetBoundingBox().upper_right()}};
 }
 
 geometry::Point RowGuide::UpperRight() const {

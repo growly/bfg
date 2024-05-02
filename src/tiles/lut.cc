@@ -110,7 +110,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   for (size_t b = 0; b < layout_config.num_banks; ++b) {
     banks.push_back(MemoryBank());
     MemoryBank &bank = banks.back();
-    bank.layout().reset(new bfg::Layout(db));
 
     int64_t y_pos = 0;
     size_t num_memories = 0;
@@ -120,7 +119,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
       bank.rows().push_back(RowGuide(
           {0, y_pos},     // Row lower-left point.
-          bank.layout().get(),
+          layout.get(),
           nullptr,        // FIXME
           design_db_));
       RowGuide &row = bank.rows().back();
@@ -164,15 +163,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
       y_pos += static_cast<int64_t>(row.Height());
 
-      bank.layout()->SavePoint(absl::StrCat("row_", j, "_lr"),
-                               geometry::Point(row_width, y_pos));
+      layout->SavePoint(absl::StrCat("row_", j, "_lr"),
+                        geometry::Point(row_width, y_pos));
     }
   }
 
   LOG_IF(FATAL, banks.size() < 1) << "Expected at least 1 bank by this point.";
 
   banks[0].MoveTo(geometry::Point(0, 0));
-  layout->AddLayout(*banks[0].layout(), "bank_0");
   geometry::Rectangle left_bounds = layout->GetBoundingBox();
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
@@ -242,8 +240,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         layout->GetBoundingBox().Width() + layout_config.mux_area_padding;
     for (size_t i = 1; i < banks.size(); ++i) {
       banks[i].MoveTo(geometry::Point(x_pos, 0));
-      layout->AddLayout(*banks[i].layout(), absl::StrCat("bank_", i));
-      x_pos += banks[i - 1].layout()->GetBoundingBox().Width();
+      x_pos += banks[i - 1].GetBoundingBox()->Width();
     }
   }
 

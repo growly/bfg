@@ -56,9 +56,11 @@ class Instance : public Manipulable {
   Point TilingLowerLeft() const;
 
   // Align the lower-left point of the tiling bounds to the given point.
-  void MoveTilingLowerLeft(const Point &lower_left);
+  void MoveTilingLowerLeft(const Point &new_lower_left);
 
+  // Effective tiling bounds after all transformations.
   const Rectangle GetTilingBounds() const;
+
   const Rectangle GetBoundingBox() const;
 
   void GeneratePorts();

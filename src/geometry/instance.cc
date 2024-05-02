@@ -64,9 +64,27 @@ void Instance::RotatePreservingLowerLeft(int32_t rotation_degrees_ccw) {
   //bounding_box.Translate(lower_left_);
 }
 
-void Instance::MoveTilingLowerLeft(const Point &lower_left) {
+// +-----------------------+
+// |                       |
+// |                       |
+// |      O                |
+// |     /                 |
+// |    /                  |
+// |   /                   |              O', 'lower_left_'
+// |  / B                  |             /
+// | /                     |            /
+// |L                      |           /
+// +-----------------------+          / B, 'relative_to_origin'
+// A, 'tiling_bounds.lower_left()'   /
+//                                  L
+//                                 X, 'new_lower_left'
+//
+// Find the new origin O' so that the lower left point of the tiling bounds
+// appears at X
+void Instance::MoveTilingLowerLeft(const Point &new_lower_left) {
   Rectangle tiling_bounds = GetTilingBounds();
-  lower_left_ = lower_left - tiling_bounds.lower_left();
+  Point relative_to_origin = tiling_bounds.lower_left() - lower_left_;
+  lower_left_ = new_lower_left - relative_to_origin;
 }
 
 const Rectangle Instance::GetTilingBounds() const {

@@ -26,6 +26,9 @@ class Rectangle : public Shape {
   static double ClosestDistanceBetween(
       const Rectangle &lhs, const Rectangle &rhs);
 
+  // Expand the 'bounding_box' rectangle to include the bounds of 'subsume'.
+  static void ExpandBounds(const Rectangle &subsume, Rectangle *bounding_box);
+
   Rectangle() : Shape(0, "") {}
   Rectangle(const Point &lower_left, uint64_t width, uint64_t height)
       : lower_left_(lower_left),
@@ -67,6 +70,10 @@ class Rectangle : public Shape {
     Translate(point);
   }
   void Rotate(int32_t degrees_ccw) override;
+
+  void ExpandToCover(const Rectangle &subsume) {
+    ExpandBounds(subsume, this);
+  }
 
   double ClosestDistanceTo(const Rectangle &other) const {
     return ClosestDistanceBetween(*this, other);

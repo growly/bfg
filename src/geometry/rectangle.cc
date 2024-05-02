@@ -59,6 +59,18 @@ double Rectangle::ClosestDistanceBetween(
   return 0;
 }
 
+void Rectangle::ExpandBounds(const Rectangle &subsume,
+                             Rectangle *bounding_box) {
+  bounding_box->lower_left_.set_x(std::min(
+      subsume.lower_left().x(), bounding_box->lower_left_.x()));
+  bounding_box->lower_left_.set_y(std::min(
+      subsume.lower_left().y(), bounding_box->lower_left_.y()));
+  bounding_box->upper_right_.set_x(std::max(
+      subsume.upper_right().x(), bounding_box->upper_right_.x()));
+  bounding_box->upper_right_.set_y(std::max(
+      subsume.upper_right().y(), bounding_box->upper_right_.y()));
+}
+
 bool Rectangle::Overlaps(const Rectangle &other) const {
   if (other.upper_right().x() < lower_left_.x() ||
       other.upper_right().y() < lower_left_.y() ||
