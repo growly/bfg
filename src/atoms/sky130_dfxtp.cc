@@ -689,10 +689,10 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
-  layout->AddPort(
-      {Rectangle(Point(85, 1105), Point(255, 1275)), "D"});
-  layout->AddPort(
-      {Rectangle(Point(5590, 425), Point(5760, 595)), "Q"});
+  layout->AddRectangleAsPort(
+      Rectangle(Point(85, 1105), Point(255, 1275)), "D");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(5590, 425), Point(5760, 595)), "Q");
 
   // These used to have to be on different layers!
   // layout->SetActiveLayerByName("li.pin");
@@ -708,10 +708,10 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // met1.pin [PIN] 68/16
   layout->SetActiveLayerByName("met1.pin");
 
-  layout->AddPort({
-      Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLKB"});
-  layout->AddPort({
-      Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLK"});
+  layout->AddRectangleAsPort(
+      Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLKB");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLK");
 
   layout->Translate(Point(-x_min, 0));
   return layout.release();

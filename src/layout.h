@@ -48,6 +48,9 @@ class Layout : public geometry::Manipulable {
     shape_collection->rectangles().emplace_back(copy);
     return copy;
   }
+  geometry::Rectangle *AddRectangleAsPort(const geometry::Rectangle &rectangle,
+                                          const std::string &net,
+                                          const std::string &net_prefix = "");
   geometry::Rectangle *AddSquare(
       const geometry::Point &centre, uint64_t side_width) {
     return AddRectangle(geometry::Rectangle(
@@ -69,7 +72,8 @@ class Layout : public geometry::Manipulable {
     return copy;
   }
   geometry::Polygon *AddPolyLine(const geometry::PolyLine &line);
-  void AddPort(const geometry::Port &port, const std::string &net_prefix = "");
+  void AddPort(const geometry::Port &port,
+               const std::string &net_prefix = "");
   void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out)
       const;
   void AddLayout(const Layout &other, const std::string &name_prefix = "");

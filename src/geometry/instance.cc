@@ -85,6 +85,7 @@ void Instance::MoveTilingLowerLeft(const Point &new_lower_left) {
   Rectangle tiling_bounds = GetTilingBounds();
   Point relative_to_origin = tiling_bounds.lower_left() - lower_left_;
   lower_left_ = new_lower_left - relative_to_origin;
+  ports_generated_ = false;
 }
 
 const Rectangle Instance::GetTilingBounds() const {
@@ -121,12 +122,15 @@ void Instance::GeneratePorts() {
   for (const auto &port : template_layout_->Ports()) {
     const std::string &net = port->net();
     Port *instance_port = new Port(*port);
+    // In the template layout the implicit origin is always (0, 0).
     Rectangle rotated_bounds =
         instance_port->BoundingBoxIfRotated(Point(0, 0), rotation_ccw_degrees);
     instance_port->set_lower_left(rotated_bounds.lower_left());
     instance_port->set_upper_right(rotated_bounds.upper_right());
-    // Move to where the instance is supposed to sit:
-    instance_port->MoveLowerLeftTo(lower_left_);
+    // Now move translate the instance port according to the translation of the
+    // instance, relative to the template layout origin (0, 0).
+    geometry::Point translation = lower_left_ - Point {0, 0};
+    instance_port->Translate(translation);
     instance_ports_[net].insert(std::unique_ptr<Port>(instance_port));
   }
   ports_generated_ = true;

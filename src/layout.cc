@@ -327,8 +327,17 @@ ShapeCollection *Layout::GetOrInsertLayerShapes(
   return shape_collection;
 }
 
-void Layout::AddPort(
-    const geometry::Port &port, const std::string &net_prefix) {
+geometry::Rectangle *Layout::AddRectangleAsPort(
+    const geometry::Rectangle &rectangle,
+    const std::string &net,
+    const std::string &net_prefix) {
+  geometry::Rectangle *installed = AddRectangle(rectangle);
+  AddPort({rectangle, net}, net_prefix);
+  return installed;
+}
+
+void Layout::AddPort(const geometry::Port &port,
+                     const std::string &net_prefix) {
   LOG_IF(FATAL, port.net().empty()) << "Can't add a port with net \"\".";
   std::string net_name = net_prefix.empty() ?
       port.net() : absl::StrCat(net_prefix, ".", port.net());

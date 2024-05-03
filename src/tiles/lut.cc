@@ -371,13 +371,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
-  // DEBUG
-  lut_cell->SetLayout(layout.release());
-  lut_cell->SetCircuit(circuit.release());
-  bfg::Cell *pre = lut_cell.release();
-  pre->set_name(name);
-  design_db_->ConsumeCell(pre);
-  return pre;
+  //// FIXME(aryap): remove
+  ///DEBUG
+  //lut_cell->SetLayout(layout.release());
+  //lut_cell->SetCircuit(circuit.release());
+  //bfg::Cell *pre = lut_cell.release();
+  //pre->set_name(name);
+  //design_db_->ConsumeCell(pre);
+  //return pre;
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
   LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
