@@ -341,8 +341,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
     // buffers for a k-LUT.
     RowGuide &upper_row = banks[0].rows()[3];
+    int64_t buf_count;
     for (size_t i = 0; i < lut_size_ - 1; ++i) {
-      std::string instance_name = absl::StrFormat("buf_%d", i);
+      std::string instance_name = absl::StrFormat("buf_%d", buf_count);
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130Buf::Parameters buf_params = {
         .width_nm = 1380,
@@ -357,6 +358,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       buf_cell->layout()->ResetY();
       geometry::Instance *instance = upper_row.InstantiateBack(
           instance_name, buf_cell->layout());
+      buf_count++;
     }
     RowGuide &lower_row = banks[1].rows()[0];
     for (size_t i = 0; i < 1; ++i) {
@@ -368,6 +370,25 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       active_mux2_cell->layout()->ResetY();
       geometry::Instance *instance = lower_row.InstantiateFront(
           instance_name, active_mux2_cell->layout());
+    }
+    // Add more input buffers.
+    for (size_t i = 0; i < 1; ++i) {
+      std::string instance_name = absl::StrFormat("buf_%d", buf_count);
+      std::string cell_name = absl::StrCat(instance_name, "_template");
+      atoms::Sky130Buf::Parameters buf_params = {
+        .width_nm = 1380,
+        .height_nm = 2720,
+        .nfet_0_width_nm = 520,
+        .nfet_1_width_nm = 520,
+        .pfet_0_width_nm = 790,
+        .pfet_1_width_nm = 790
+      };
+      atoms::Sky130Buf buf_generator(buf_params, design_db_);
+      bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      buf_cell->layout()->ResetY();
+      geometry::Instance *instance = lower_row.InstantiateFront(
+          instance_name, buf_cell->layout());
+      buf_count++;
     }
   }
 
