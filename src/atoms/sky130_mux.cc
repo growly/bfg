@@ -49,15 +49,26 @@ Polygon *AddElbowPath(
     const PhysicalPropertiesDatabase &db,
     const Point &start,
     const Point &end,
+    const int64_t y_offset,
     const int64_t width,
     const int64_t start_encap_width,
     const int64_t start_encap_length,
     const int64_t end_encap_width,
     const int64_t end_encap_length,
     bfg::Layout *layout) {
-  // How to avoid constantly copying this?
-  Point elbow = {start.x(), end.y()};
-  PolyLine line = PolyLine({start, elbow, end});
+  std::vector<Point> vertices;
+  if (y_offset == 0) {
+    // How to avoid constantly copying this?
+    Point elbow = {start.x(), end.y()};
+    vertices = {start, elbow, end};
+  } else {
+    int64_t crossbar_y = std::min(start.y(), end.y()) + y_offset;
+    Point p_0 = {start.x(), crossbar_y};
+    Point p_1 = {end.x(), crossbar_y};
+    vertices = {start, p_0, p_1, end};
+  }
+
+  PolyLine line = PolyLine(vertices);
   LOG(INFO) << line.Describe();
   line.SetWidth(width);
   line.InsertBulge(start, start_encap_width, start_encap_length);
@@ -72,6 +83,7 @@ Polygon *AddElbowPathBetweenLayers(
     const std::string &start_layer,
     const std::string &path_layer,
     const std::string &end_layer,
+    const int64_t y_offset,
     bfg::Layout *layout) {
   const int64_t start_encap_width = db.Rules(start_layer).via_width +
       2 * db.Rules(start_layer, path_layer).via_overhang_wide;
@@ -87,7 +99,9 @@ Polygon *AddElbowPathBetweenLayers(
   // separation distance for the layer. This is most elegantly solved as an
   // automatic feature of the PolyLine which should automatically widen widths
   // to avoid divets.
-  const int64_t width = std::max({ db.Rules(path_layer).min_width, end_encap_width});
+  const int64_t width = std::max(
+      db.Rules(path_layer).min_width, end_encap_width
+  );
   LOG(INFO) << "Adding elbow (" << start_layer << ") " << start << " -("
             << path_layer << ")-> " << end << " (" << end_layer << ") "
             << width << " "
@@ -100,6 +114,7 @@ Polygon *AddElbowPathBetweenLayers(
       db,
       start,
       end,
+      y_offset,
       width,
       start_encap_width,
       start_encap_length,
@@ -108,6 +123,24 @@ Polygon *AddElbowPathBetweenLayers(
       layout);
   layout->RestoreLastActiveLayer();
   return path;
+}
+
+Polygon *AddElbowPathBetweenLayers(
+    const PhysicalPropertiesDatabase &db,
+    const Point &start,
+    const Point &end,
+    const std::string &start_layer,
+    const std::string &path_layer,
+    const std::string &end_layer,
+    bfg::Layout *layout) {
+  return AddElbowPathBetweenLayers(db,
+                                   start,
+                                   end,
+                                   start_layer,
+                                   path_layer,
+                                   end_layer,
+                                   0,   // No offset.
+                                   layout);
 }
 
 Polygon *StraightLineBetweenLayers(
@@ -282,7 +315,7 @@ void ConnectNamedPointsToColumns(
     // NOTE(aryap): Apparently in C++17 you can do:
     // const auto [name, poly_line, rotate] = triple;
 
-    Point source = layout->GetPoint(name);
+    Point source = layout->GetPointOrDie(name);
     Point connection = {poly_line->start().x(), source.y()};
 
     if (point_up) {
@@ -315,7 +348,7 @@ void ConnectNamedPointsToColumn(
 
   bool point_up = true;
   for (const std::string &name : named_points) {
-    Point source = layout->GetPoint(name);
+    Point source = layout->GetPointOrDie(name);
     Point connection = {poly_line->start().x(), source.y()};
 
     if (point_up) {
@@ -475,11 +508,11 @@ void GenerateOutput2To1MuxLayout(
                        poly_pcon_rules.min_separation));
 
   int64_t gap_top_y = std::min(
-      main_layout->GetPoint("upper_left.column_2_centre_bottom").y(),
-      main_layout->GetPoint("upper_right.column_2_centre_bottom").y());
+      main_layout->GetPointOrDie("upper_left.column_2_centre_bottom").y(),
+      main_layout->GetPointOrDie("upper_right.column_2_centre_bottom").y());
   int64_t gap_bottom_y = std::max(
-      main_layout->GetPoint("lower_left.column_2_centre_bottom").y(),
-      main_layout->GetPoint("lower_right.column_2_centre_bottom").y());
+      main_layout->GetPointOrDie("lower_left.column_2_centre_bottom").y(),
+      main_layout->GetPointOrDie("lower_right.column_2_centre_bottom").y());
   int64_t poly_max_y = gap_top_y - poly_rules.min_separation;
   int64_t poly_min_y = gap_bottom_y + poly_rules.min_separation;
 
@@ -499,10 +532,10 @@ void GenerateOutput2To1MuxLayout(
   std::vector<Polygon*> poly_pours;
   {
     std::vector<int64_t> x_alignments = {
-      main_layout->GetPoint("upper_left.column_2_centre_bottom").x(),
-      main_layout->GetPoint("upper_left.column_3_centre_bottom").x(),
-      main_layout->GetPoint("upper_right.column_3_centre_bottom").x(),
-      main_layout->GetPoint("upper_right.column_2_centre_bottom").x(),
+      main_layout->GetPointOrDie("upper_left.column_2_centre_bottom").x(),
+      main_layout->GetPointOrDie("upper_left.column_3_centre_bottom").x(),
+      main_layout->GetPointOrDie("upper_right.column_3_centre_bottom").x(),
+      main_layout->GetPointOrDie("upper_right.column_2_centre_bottom").x(),
     };
   
     layout->SetActiveLayerByName("poly.drawing");
@@ -512,7 +545,7 @@ void GenerateOutput2To1MuxLayout(
           {x, poly_min_y},
           {x, poly_max_y}
       });
-      // TODO(aryap): This is actually output fet<i>'s length:
+      // TODO(aryap): This is actually the length of output fet<i>:
       line.SetWidth(poly_rules.min_width);
       poly_pours.push_back(
           layout->AddPolygon(InflatePolyLineOrDie(db, line)));
@@ -530,15 +563,15 @@ void GenerateOutput2To1MuxLayout(
   // that the poly encapsulation (larger than the gate length) doesn't overlap
   // the transistor diffusion.
   int64_t top_li_track_centre_y = std::min(
-          main_layout->GetPoint("upper_left.li_corner_se_centre").y(),
-          main_layout->GetPoint("upper_right.li_corner_se_centre").y()
+          main_layout->GetPointOrDie("upper_left.li_corner_se_centre").y(),
+          main_layout->GetPointOrDie("upper_right.li_corner_se_centre").y()
       ) - (
           li_rules.min_separation + li_mcon_rules.via_overhang +
           mcon_rules.via_width / 2 + li_rules.min_width / 2);
   int64_t bottom_li_track_centre_y =
       std::max(
-          main_layout->GetPoint("lower_left.li_corner_se_centre").y(),
-          main_layout->GetPoint("lower_right.li_corner_se_centre").y())
+          main_layout->GetPointOrDie("lower_left.li_corner_se_centre").y(),
+          main_layout->GetPointOrDie("lower_right.li_corner_se_centre").y())
               + li_pitch_optimistic;
   int64_t second_bottom_li_track_centre_y =
       bottom_li_track_centre_y + li_pitch_optimistic;
@@ -721,14 +754,14 @@ void GenerateOutput2To1MuxLayout(
     int64_t li_dcon_via_encap_length =
         via_side + 2 * li_dcon_rules.via_overhang;
 
-    Point p_0 =  main_layout->GetPoint(
+    Point p_0 =  main_layout->GetPointOrDie(
         absl::StrCat(structure, ".output"));
     main_layout->MakeVia("licon.drawing", p_0);
-    Point p_6 = main_layout->GetPoint(destination_name);
+    Point p_6 = main_layout->GetPointOrDie(destination_name);
 
     Point p_2 = Point(
         metal_x,
-        main_layout->GetPoint(
+        main_layout->GetPointOrDie(
             absl::StrCat(structure, ".via_3_1_ur")).y() + (
             li_rules.min_separation +
             li_mcon_rules.via_overhang_wide +
@@ -736,7 +769,7 @@ void GenerateOutput2To1MuxLayout(
         ));
     Point p_3 = Point(
         metal_x,
-        main_layout->GetPoint(
+        main_layout->GetPointOrDie(
             absl::StrCat(structure, ".li_corner_se_centre")).y() - (
             li_rules.min_separation + li_mcon_rules.via_overhang +
             mcon_rules.via_width / 2 + li_rules.min_width / 2));
@@ -823,11 +856,11 @@ void GenerateOutput2To1MuxLayout(
     int64_t li_dcon_via_encap_length =
         via_side + 2 * li_dcon_rules.via_overhang;
 
-    Point p_0 = main_layout->GetPoint(
+    Point p_0 = main_layout->GetPointOrDie(
         absl::StrCat(structure, ".output"));
     main_layout->MakeVia("licon.drawing", p_0);
 
-    Point p_6 = main_layout->GetPoint(destination_name);
+    Point p_6 = main_layout->GetPointOrDie(destination_name);
 
     // Jog up a bit and connect to the metal track.
     Point p_3 = Point(
@@ -994,10 +1027,10 @@ void GenerateOutput2To1MuxLayout(
     {Compass::LEFT,
       {left_input_li_pour->GetBoundingBox().upper_right().x() +
            li_rules.min_separation,
-       main_layout->GetPoint(
+       main_layout->GetPointOrDie(
            "output_mux.input_1_n").x() - li_centre_to_edge_x}},
     {Compass::RIGHT,
-      {main_layout->GetPoint(
+      {main_layout->GetPointOrDie(
            "output_mux.input_1_p").x() + li_centre_to_edge_x,
        right_input_li_pour->GetBoundingBox().lower_left().x() -
            li_rules.min_separation}}
@@ -1016,13 +1049,13 @@ void GenerateOutput2To1MuxLayout(
   };
   std::map<Compass, int64_t> li_direct_bound_y_low = {
     {Compass::LEFT,
-       main_layout->GetPoint(
+       main_layout->GetPointOrDie(
           // TODO(growly): This might need to be specific for  y:
            "output_mux.input_1_n").y() + (
            ncon_rules.via_width / 2 + li_ncon_rules.via_overhang +
                li_rules.min_separation)},
     {Compass::RIGHT,
-      main_layout->GetPoint(
+      main_layout->GetPointOrDie(
            "output_mux.input_1_p").y() + (
            pcon_rules.via_width / 2 + li_pcon_rules.via_overhang +
                li_rules.min_separation)},
@@ -1160,10 +1193,12 @@ void GenerateOutput2To1MuxLayout(
     main_layout->SetActiveLayerByName("met2.drawing");
 
     // Connect the P- and N-MOS pass gate outputs.
+    Point left_contact = li_pours[Compass::LEFT]->centre();
+    Point right_contact = li_pours[Compass::RIGHT]->centre();
     Polygon *met2_bar = StraightLineBetweenLayers(
         db,
-        li_pours[Compass::LEFT]->centre(),
-        li_pours[Compass::RIGHT]->centre(),
+        left_contact,
+        right_contact,
         "via1.drawing", "met2.drawing", "via1.drawing",
         main_layout);
     main_layout->SavePoint(
@@ -1175,7 +1210,42 @@ void GenerateOutput2To1MuxLayout(
         met2_bb.centre(), met2_bb.Height(), met2_bb.Height(),
         met2_bar->layer(), "Y"));
 
+    main_layout->SavePoint(
+        "output_mux_met2_bar_left_contact",
+        {(left_contact.x() + right_contact.x()) / 2,
+         left_contact.y()});
   }
+}
+
+void ConnectOppositeInputs(
+    const PhysicalPropertiesDatabase &db,
+    const std::map<size_t, int64_t> &column_x,
+    bfg::Layout *layout) {
+ 
+
+  int64_t left_x = (column_x.find(0)->second +
+                    column_x.find(1)->second) / 2;
+  Point left_input_3_line_y = layout->GetPointOrDie(
+      "upper_left.input_3_line_y");
+  Point left_contact = {left_x, left_input_3_line_y.y()};
+
+  int64_t right_x = (column_x.find(11)->second +
+                     column_x.find(12)->second) / 2;
+  Point right_input_3_line_y = layout->GetPointOrDie(
+      "upper_right.input_3_line_y");
+  Point right_contact = {right_x, right_input_3_line_y.y()};
+
+  LOG(INFO) << "left " << left_contact << " right " << right_contact;
+
+  // If this exists, there is a met2 bar at the output that we have to avoid.
+  auto output_mux_met2_bar_left_contact = layout->GetPoint(
+      "output_mux_met2_bar_left_contact");
+
+  AddElbowPathBetweenLayers(db,
+      left_contact, right_contact,
+      "via1.drawing", "met2.drawing", "via1.drawing",
+      0);
+
 }
 
 }  // namespace
@@ -1506,9 +1576,9 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   int64_t diff_padding = ndiff_nsdm_rules.min_enclosure;
   layout->SetActiveLayerByName("nsdm.drawing");
   Rectangle *nsdm = layout->AddRectangle({
-      layout->GetPoint("lower_left.diff_ul") - Point(
+      layout->GetPointOrDie("lower_left.diff_ul") - Point(
           diff_padding, diff_padding),
-      layout->GetPoint("upper_left.diff_ur") + Point(
+      layout->GetPointOrDie("upper_left.diff_ur") + Point(
           diff_padding, diff_padding)
   });
 
@@ -1540,9 +1610,9 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   diff_padding = pdiff_psdm_rules.min_enclosure;
   layout->SetActiveLayerByName("psdm.drawing");
   Rectangle *pdiff = layout->AddRectangle({
-      layout->GetPoint("lower_right.diff_ur") - Point(
+      layout->GetPointOrDie("lower_right.diff_ur") - Point(
           diff_padding, diff_padding),
-      layout->GetPoint("upper_right.diff_ul") + Point(
+      layout->GetPointOrDie("upper_right.diff_ul") + Point(
           diff_padding, diff_padding)
   });
 
@@ -1789,6 +1859,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       mux_bottom_y,
       layout.get());
 
+  ConnectOppositeInputs(db, column_x, layout.get());
+
   // Translate ports in sub-layouts into external-facing ports:
   layout->SetActiveLayerByName("li.pin");
   std::vector<std::pair<std::string, std::string>> ports = {
@@ -1812,11 +1884,11 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   for (const auto &entry : ports) {
     const std::string &layout_port = entry.first;
     const std::string &net = entry.second;
-    Point centre = layout->GetPoint(layout_port);
+    Point centre = layout->GetPointOrDie(layout_port);
     geometry::Layer layer = centre.layer();
     int64_t via_size = db.Rules(layer).via_width;
     layout->AddPort(geometry::Port(
-        layout->GetPoint(layout_port), via_size, via_size, layer, net));
+        layout->GetPointOrDie(layout_port), via_size, via_size, layer, net));
   }
 
   return layout.release();
@@ -2289,6 +2361,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
     layout->SetActiveLayerByName("li.pin");
     geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
     layout->SavePoint("input_3", via->centre());
+    layout->SavePoint("input_3_line_y", {via->centre().x(), input_3_line_y});
   }
 
   {

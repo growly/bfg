@@ -191,11 +191,11 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   // Connect the output.
   int64_t metal_width = li_rules.min_width;
   {
-    Point p_0 = layout->GetPoint("left.output");
-    Point p_3 = layout->GetPoint("right.output");
+    Point p_0 = layout->GetPointOrDie("left.output");
+    Point p_3 = layout->GetPointOrDie("right.output");
     int64_t bar_y = std::max(
-        layout->GetPoint("left.li_corner_ne_centre").y(),
-        layout->GetPoint("right.li_corner_ne_centre").y()) +
+        layout->GetPointOrDie("left.li_corner_ne_centre").y(),
+        layout->GetPointOrDie("right.li_corner_ne_centre").y()) +
         li_rules.min_separation + metal_width / 2;
     Point p_1 = Point(p_0.x(), bar_y);
     Point p_2 = Point(p_3.x(), bar_y);
@@ -234,9 +234,9 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   int64_t bar_y_low = 0;
   {
     // Left column 2 poly to right column 3 poly.
-    Point p_0 = layout->GetPoint("left.column_2_centre_bottom");
-    Point p_3 = layout->GetPoint("right.column_3_centre_bottom");
-    bar_y_high = layout->GetPoint("left.column_3_centre_top").y() +
+    Point p_0 = layout->GetPointOrDie("left.column_2_centre_bottom");
+    Point p_3 = layout->GetPointOrDie("right.column_3_centre_bottom");
+    bar_y_high = layout->GetPointOrDie("left.column_3_centre_top").y() +
         poly_width + poly_rules.min_separation;
     Point p_1 = Point(p_0.x(), bar_y_high);
     Point p_2 = Point(p_3.x(), bar_y_high);
@@ -275,12 +275,12 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
   {
     // Left column 3 to right column 2.
-    Point p_0 = layout->GetPoint("left.column_3_centre_bottom");
-    Point p_3 = layout->GetPoint("right.column_2_centre_bottom");
+    Point p_0 = layout->GetPointOrDie("left.column_3_centre_bottom");
+    Point p_3 = layout->GetPointOrDie("right.column_2_centre_bottom");
     bar_y_low = std::min({
         p_0.y(),
         p_3.y(),
-        layout->GetPoint("right.column_3_centre_bottom").y()}) -
+        layout->GetPointOrDie("right.column_3_centre_bottom").y()}) -
             poly_width / 2 - poly_rules.min_separation;
     Point p_1 = Point(p_0.x(), bar_y_low);
     Point p_2 = Point(p_3.x(), bar_y_low);
@@ -293,7 +293,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     layout->SetActiveLayerByName("poly.drawing");
     layout->AddPolyLine(line);
 
-    Point nominal_via = layout->GetPoint("right.column_2_centre_top_via");
+    Point nominal_via = layout->GetPointOrDie("right.column_2_centre_top_via");
     Point actual_via = nominal_via + Point(
         (mux2_params_p.fet_4_length - polycon_rules.via_width) / 2 -
         poly_polycon_rules.min_enclosure,
@@ -320,12 +320,12 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
   {
     // Left column 1 poly to right column 0.
-    Point p_0 = layout->GetPoint("left.column_1_centre_bottom");
-    Point p_3 = layout->GetPoint("right.column_0_centre_bottom");
+    Point p_0 = layout->GetPointOrDie("left.column_1_centre_bottom");
+    Point p_3 = layout->GetPointOrDie("right.column_0_centre_bottom");
     int64_t new_bar_y_low = std::min({
         p_0.y(),
         p_3.y(),
-        layout->GetPoint("right.column_1_centre_bottom").y()}) -
+        layout->GetPointOrDie("right.column_1_centre_bottom").y()}) -
         poly_width / 2 - poly_rules.min_separation;
     bar_y_low = std::min(
         new_bar_y_low,
@@ -362,8 +362,8 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
   {
     // Left column 0 poly to right column 1.
-    Point p_0 = layout->GetPoint("left.column_0_centre_top");
-    Point p_3 = layout->GetPoint("right.column_1_centre_top");
+    Point p_0 = layout->GetPointOrDie("left.column_0_centre_top");
+    Point p_3 = layout->GetPointOrDie("right.column_1_centre_top");
     int64_t new_bar_y_high = std::max(
         p_0.y() + poly_width / 2 + ndiff_poly_rules.min_enclosure,
         p_3.y() + poly_width / 2 + pdiff_poly_rules.min_enclosure);
@@ -401,7 +401,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
     // FIXME(aryap): This needs a port.
     // The port needs to be on li.drawing.
     // layout->MakePort("s0b",
-    //                 layout->GetPoint("left.column_3_centre_bottom_via"),
+    //                 layout->GetPointOrDie("left.column_3_centre_bottom_via"),
     //                 "polycon.drawing");
   }
   // Add diffusion qualifying layers, wells, etc.
@@ -409,13 +409,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   // Left side is N.
   layout->SetActiveLayerByName("nsdm.drawing");
   layout->AddRectangle({
-      layout->GetPoint("left.diff_ll") - Point(
+      layout->GetPointOrDie("left.diff_ll") - Point(
           nsdm_padding, nsdm_padding),
       Point(
-          layout->GetPoint("left.diff_ur").x() + nsdm_padding,
+          layout->GetPointOrDie("left.diff_ur").x() + nsdm_padding,
           std::max(
-              layout->GetPoint("left.diff_ur").y(),
-              layout->GetPoint("left.diff_ul").y()) +
+              layout->GetPointOrDie("left.diff_ur").y(),
+              layout->GetPointOrDie("left.diff_ul").y()) +
               nsdm_padding)
   });
 
@@ -423,18 +423,18 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   // so the coordinates we use are also flipped.
   layout->SetActiveLayerByName("psdm.drawing");
   Rectangle *psdm = layout->AddRectangle({
-      layout->GetPoint("right.diff_lr") - Point(
+      layout->GetPointOrDie("right.diff_lr") - Point(
           psdm_padding, psdm_padding),
-      layout->GetPoint("right.diff_ul") + Point(
+      layout->GetPointOrDie("right.diff_ul") + Point(
           psdm_padding, psdm_padding)
   });
 
   // Add N-Well.
   layout->SetActiveLayerByName("nwell.drawing");
   layout->AddRectangle({
-      layout->GetPoint("right.diff_lr") - Point(
+      layout->GetPointOrDie("right.diff_lr") - Point(
           nwell_padding, nwell_padding),
-      layout->GetPoint("right.diff_ul") + Point(
+      layout->GetPointOrDie("right.diff_ul") + Point(
           nwell_padding, nwell_padding)
   });
 

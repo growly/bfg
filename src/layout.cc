@@ -497,9 +497,17 @@ void Layout::SavePoints(std::map<const std::string, const Point> named_points) {
   }
 };
 
-geometry::Point Layout::GetPoint(const std::string &name) const {
+geometry::Point Layout::GetPointOrDie(const std::string &name) const {
+  auto point = GetPoint(name);
+  LOG_IF(FATAL, !point) << "Point " << name << " not found";
+  return *point;
+}
+
+std::optional<geometry::Point> Layout::GetPoint(const std::string &name) const {
   auto it = named_points_.find(name);
-  LOG_IF(FATAL, it == named_points_.end()) << "Point " << name << " not found";
+  if (it == named_points_.end()) {
+    return std::nullopt;
+  }
   return it->second;
 }
 

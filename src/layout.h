@@ -139,7 +139,8 @@ class Layout : public geometry::Manipulable {
   void SavePoint(const std::string &name, const geometry::Point &point);
   void SavePoints(
       std::map<const std::string, const geometry::Point> named_points);
-  geometry::Point GetPoint(const std::string &name) const;
+  geometry::Point GetPointOrDie(const std::string &name) const;
+  std::optional<geometry::Point> GetPoint(const std::string &name) const;
 
   void GetShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
