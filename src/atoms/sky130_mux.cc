@@ -58,7 +58,7 @@ Polygon *AddElbowPath(
     bfg::Layout *layout) {
   std::vector<Point> vertices;
   if (y_offset == 0) {
-    // How to avoid constantly copying this?
+    // TODO(aryap): How to avoid constantly copying this?
     Point elbow = {start.x(), end.y()};
     vertices = {start, elbow, end};
   } else {
@@ -93,15 +93,8 @@ Polygon *AddElbowPathBetweenLayers(
       2 * db.Rules(end_layer, path_layer).via_overhang_wide;
   const int64_t end_encap_length = db.Rules(end_layer).via_width +
       2 * db.Rules(end_layer, path_layer).via_overhang;
-  // TODO(aryap): This is a hack workaround for the problem that frequently
-  // occurs when an elbows start and end encapsulation pours are too close
-  // together, and a divet is created between them that violates the min.
-  // separation distance for the layer. This is most elegantly solved as an
-  // automatic feature of the PolyLine which should automatically widen widths
-  // to avoid divets.
-  const int64_t width = std::max(
-      db.Rules(path_layer).min_width, end_encap_width
-  );
+  const int64_t width = db.Rules(path_layer).min_width;
+
   LOG(INFO) << "Adding elbow (" << start_layer << ") " << start << " -("
             << path_layer << ")-> " << end << " (" << end_layer << ") "
             << width << " "
@@ -109,6 +102,7 @@ Polygon *AddElbowPathBetweenLayers(
             << start_encap_length << " "
             << end_encap_width << " "
             << end_encap_length;
+
   layout->SetActiveLayerByName(path_layer);
   Polygon *path = AddElbowPath(
       db,
@@ -139,7 +133,7 @@ Polygon *AddElbowPathBetweenLayers(
                                    start_layer,
                                    path_layer,
                                    end_layer,
-                                   0,   // No offset.
+                                   0,   // No y_offset.
                                    layout);
 }
 
@@ -1217,35 +1211,109 @@ void GenerateOutput2To1MuxLayout(
   }
 }
 
+void ConnectOppositeInputsOnMet2(
+    const PhysicalPropertiesDatabase &db,
+    const Point &left_contact,
+    const Point &right_contact,
+    int64_t y_offset,
+    bfg::Layout *layout) {
+  AddElbowPathBetweenLayers(db,
+      left_contact, right_contact,
+      "via1.drawing", "met2.drawing", "via1.drawing",
+      y_offset,
+      layout);
+
+  // TODO(aryap): It would be really nice to have access to the RoutingGrid
+  // facility which finds a via stack between any two layers, and then the
+  // RoutingPath facility which automatically turns this into the appropriate
+  // vias an metal pours. A version of these should exist in the
+  // PhysicalPropertiesDatabase.
+
+  for (const auto &contact : {left_contact, right_contact}) {
+    // Make via1.drawing, mcon.drawing vias:
+    layout->MakeVia("via1.drawing", contact);
+    layout->MakeVia("mcon.drawing", contact);
+
+    const int64_t encap_width = std::max(
+        db.Rules("via1.drawing").via_width,
+        db.Rules("mcon.drawing").via_width) + 2 * std::max(
+        db.Rules("via1.drawing", "met1.drawing").via_overhang_wide,
+        db.Rules("mcon.drawing", "met1.drawing").via_overhang_wide);
+    const int64_t encap_length = std::max(
+        db.Rules("via1.drawing").via_width,
+        db.Rules("mcon.drawing").via_width) + 2 * std::max(
+        db.Rules("via1.drawing", "met1.drawing").via_overhang,
+        db.Rules("mcon.drawing", "met1.drawing").via_overhang);
+
+    // Add the met1.drawing pour between mcon.drawing and via1.drawing. We
+    // expect this to fit into a column space so prefer a vertical encap.
+    Point metal_lower_left = contact -
+        Point{encap_width / 2, encap_length / 2};
+    layout->SetActiveLayerByName("met1.drawing");
+    layout->AddRectangle(
+        Rectangle(metal_lower_left, encap_width, encap_length));
+  }
+}
+
 void ConnectOppositeInputs(
     const PhysicalPropertiesDatabase &db,
     const std::map<size_t, int64_t> &column_x,
     bfg::Layout *layout) {
- 
-
-  int64_t left_x = (column_x.find(0)->second +
-                    column_x.find(1)->second) / 2;
-  Point left_input_3_line_y = layout->GetPointOrDie(
-      "upper_left.input_3_line_y");
-  Point left_contact = {left_x, left_input_3_line_y.y()};
-
-  int64_t right_x = (column_x.find(11)->second +
-                     column_x.find(12)->second) / 2;
-  Point right_input_3_line_y = layout->GetPointOrDie(
-      "upper_right.input_3_line_y");
-  Point right_contact = {right_x, right_input_3_line_y.y()};
-
-  LOG(INFO) << "left " << left_contact << " right " << right_contact;
+  struct ContactPairWithOffset {
+    Point left;
+    Point right;
+    int64_t y_offset = 0;
+  };
 
   // If this exists, there is a met2 bar at the output that we have to avoid.
   auto output_mux_met2_bar_left_contact = layout->GetPoint(
       "output_mux_met2_bar_left_contact");
+  int64_t y_offset = 0;
+  if (output_mux_met2_bar_left_contact) {
+    // Need to add a y_offset to avoid this!
+    LOG(FATAL) << "met2 bar in use at mux output, need to define y_offset "
+               << "to avoid this";
+    y_offset = 0;
+  }
 
-  AddElbowPathBetweenLayers(db,
-      left_contact, right_contact,
-      "via1.drawing", "met2.drawing", "via1.drawing",
-      0);
+  // The outer inputs of the top and bottom half of the mux connect between the
+  // first and second used columns, on the inside:
+  int64_t in_left_x = (column_x.find(0)->second +
+                       column_x.find(1)->second) / 2;
 
+  int64_t in_right_x = (column_x.find(11)->second +
+                        column_x.find(12)->second) / 2;
+  
+  std::vector<ContactPairWithOffset> contact_pairs = {
+    {
+      {in_left_x, layout->GetPointOrDie("upper_left.input_1_line_y").y()},
+      {in_right_x, layout->GetPointOrDie("upper_right.input_1_line_y").y()}
+    },
+    {
+      {in_left_x, layout->GetPointOrDie("upper_left.input_3_line_y").y()},
+      {in_right_x, layout->GetPointOrDie("upper_right.input_3_line_y").y()},
+      y_offset
+    },
+    {
+      {in_left_x, layout->GetPointOrDie("lower_left.input_1_line_y").y()},
+      {in_right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()}
+    },
+    {
+      {in_left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
+      {in_right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()}
+    },
+  };
+
+  for (const auto &contact_pair : contact_pairs) {
+    LOG(INFO) << "left " << contact_pair.left << " right "
+              << contact_pair.right;
+    ConnectOppositeInputsOnMet2(
+        db,
+        contact_pair.left,
+        contact_pair.right,
+        contact_pair.y_offset,
+        layout);
+  }
 }
 
 }  // namespace
@@ -2440,6 +2508,7 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
     layout->SetActiveLayerByName("li.pin");
     geometry::Rectangle *via = layout->AddSquare(p_0, via_side);
     layout->SavePoint("input_1", via->centre());
+    layout->SavePoint("input_1_line_y", {via->centre().x(), input_1_line_y});
   }
 
   Point output_via = Point(

@@ -344,6 +344,9 @@ PhysicalPropertiesDatabase::FindReachableLayersByPinLayer(
 const std::set<geometry::Layer>
 PhysicalPropertiesDatabase::FindLayersReachableThroughOneViaFrom(
     const geometry::Layer &routing_layer) const {
+  // via_layers_ is indexed by two layers. Each entry indicates that the layers
+  // in the index pair are connected by a via on the layer contained at that
+  // position.
   std::set<geometry::Layer> accessible;
   for (const auto &outer : via_layers_) {
     const geometry::Layer &outer_layer = outer.first;

@@ -153,6 +153,18 @@ class PhysicalPropertiesDatabase {
       const std::string &routing_layer,
       const std::string &other_routing_layer) const;
 
+  // TODO(aryap): Port these from RoutingGrid to here.
+  // std::optional<double> FindViaStackCost(
+  //     const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+  // std::optional<std::vector<RoutingViaInfo>> FindViaStack(
+  //     const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+  //
+  // This is the same as "FindLayersReachableThroughOneViaFrom", except that it
+  // returns a set of layers with costs.
+  //  std::vector<CostedLayer> LayersReachableByVia(
+  //      const geometry::Layer &from_layer) const;
+  // Then put "BuildViaStack" or something in Layout.
+
   // For a given pin layer, find the layers which can access it. The pin layer
   // represents access to a given layer, which is the first entry. For each of
   // those we have a set of layers which can be accessed through one more via.

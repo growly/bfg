@@ -9,6 +9,7 @@ namespace geometry {
 
 typedef int64_t Layer;
 
+// TODO(aryap): "inline" is redundant here I think?
 inline std::pair<const Layer&, const Layer&> OrderFirstAndSecondLayers(
     const Layer &lhs, const Layer &rhs) {
   const Layer &first = lhs <= rhs ? lhs : rhs;
