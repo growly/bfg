@@ -79,10 +79,23 @@ class Layout : public geometry::Manipulable {
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
 
   geometry::Rectangle *MakeVia(
-      const std::string &layer_name, const geometry::Point &centre);
+      const std::string &layer_name,
+      const geometry::Point &centre,
+      const std::optional<std::string> &net = std::nullopt);
   void MakePort(const std::string &net_name,
                 const geometry::Point &centre,
                 const std::string &layer_name = "");
+
+  // TODO(aryap): Every shape electrically (passively) connected to 'point' is
+  // given the net 'net'.
+  //
+  // This is a convenience function to save having to explicitly label all
+  // shapes known to be connected when drawing the layout. However, it requires
+  // knowledge of which layer shapes can connect electrically. For example,
+  // polysilicon does not passively label an underlying diffusion region with
+  // its net, since it is the gate to a transistor. Wire and via layers,
+  // however, do colour each other with their net when they touch.
+  void LabelNet(const geometry::Point &point, const std::string &net);
 
   std::string Describe() const;
 

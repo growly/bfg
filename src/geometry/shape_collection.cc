@@ -225,7 +225,7 @@ ShapeCollection *FindOrCreateCollection(
 }   // namespace
 
 
-void ShapeCollection::CopyPins(
+void ShapeCollection::CopyConnectables(
     const std::optional<Layer> expected_layer,
     std::unordered_map<
         std::string,
@@ -235,7 +235,7 @@ void ShapeCollection::CopyPins(
 
   // Collect shapes by layer.
   for (const auto &rect : rectangles_) {
-    if (!rect->is_pin()) {
+    if (!rect->is_connectable()) {
       continue;
     }
     LOG_IF(FATAL,
@@ -249,7 +249,7 @@ void ShapeCollection::CopyPins(
     collection->rectangles_.emplace_back(copy);
   }
   for (const auto &poly : polygons_) {
-    if (!poly->is_pin()) {
+    if (!poly->is_connectable()) {
       continue;
     }
     LOG_IF(FATAL,
@@ -263,7 +263,7 @@ void ShapeCollection::CopyPins(
     collection->polygons_.emplace_back(copy);
   }
   for (const auto &port : ports_) {
-    if (!port->is_pin()) {
+    if (!port->is_connectable()) {
       continue;
     }
     LOG_IF(FATAL,
@@ -289,16 +289,16 @@ void ShapeCollection::CopyPins(
 
   // Collect shapes by layer.
   for (const auto &rect : rectangles_) {
-    if ((rect->is_pin() && !include_pins) ||
-        (!rect->is_pin() && !include_non_pins)) {
+    if ((rect->is_connectable() && !include_pins) ||
+        (!rect->is_connectable() && !include_non_pins)) {
       continue;
     }
     count++;
     *layer_shapes_pb.add_rectangles() = rect->ToVLSIRRectangle(db);
   }
   for (const auto &poly : polygons_) {
-    if ((poly->is_pin() && !include_pins) ||
-        (!poly->is_pin() && !include_non_pins)) {
+    if ((poly->is_connectable() && !include_pins) ||
+        (!poly->is_connectable() && !include_non_pins)) {
       continue;
     }
     ::vlsir::raw::Polygon *poly_pb = layer_shapes_pb.add_polygons();

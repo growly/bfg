@@ -41,7 +41,7 @@ class ShapeCollection : public Manipulable {
 
   bool Overlaps(const Rectangle &rectangle) const;
 
-  void CopyPins(
+  void CopyConnectables(
       const std::optional<Layer> expected_layer,
       std::unordered_map<
           std::string,

@@ -637,35 +637,24 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     "input_5",
   };
 
-  // Connect the 8:1 mux inputs to each other
-  {
-    for (size_t i = 0; i < num_muxes; ++i) {
-      for (size_t j = 0; j < kMuxSize; ++j) {
-        geometry::Instance *mux = mux_order[i];
-        std::set<geometry::Port*> ports;
-        mux->GetInstancePorts(mux_input_order[j], &ports);
-      }
-    }
-  }
-
   // Auto-route order:
   std::vector<geometry::Instance*> auto_route_order = {
     banks[0].memories()[0][0],
     banks[0].memories()[0][1],
-    banks[0].memories()[1][0],
-    banks[0].memories()[1][1],
-    banks[0].memories()[2][0],
-    banks[0].memories()[2][1],
-    banks[0].memories()[3][0],
-    banks[0].memories()[3][1],
-    banks[1].memories()[0][0],
-    banks[1].memories()[0][1],
-    banks[1].memories()[1][0],
-    banks[1].memories()[1][1],
-    banks[1].memories()[2][0],
-    banks[1].memories()[2][1],
-    banks[1].memories()[3][0],
-    banks[1].memories()[3][1]
+    //banks[0].memories()[1][0],
+    //banks[0].memories()[1][1],
+    //banks[0].memories()[2][0],
+    //banks[0].memories()[2][1],
+    //banks[0].memories()[3][0],
+    //banks[0].memories()[3][1],
+    //banks[1].memories()[0][0],
+    //banks[1].memories()[0][1],
+    //banks[1].memories()[1][0],
+    //banks[1].memories()[1][1],
+    //banks[1].memories()[2][0],
+    //banks[1].memories()[2][1],
+    //banks[1].memories()[3][0],
+    //banks[1].memories()[3][1]
   };
 
   for (size_t i = 0; i < auto_route_order.size(); ++i) {

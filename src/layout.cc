@@ -217,7 +217,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     }
     ShapeCollection *shape_collection = entry.second.get();
 
-    shape_collection->CopyPins(layer, &pins_by_layer_by_net);
+    shape_collection->CopyConnectables(layer, &pins_by_layer_by_net);
 
     size_t num_obstructions = 0;
     ::vlsir::raw::LayerShapes obstructions = 
@@ -235,7 +235,7 @@ void Layout::SetActiveLayerByName(const std::string &name) {
   }
 
   // This should include all Port objects explicitly created, since they should
-  // be assigned is_pin = true and will have an associated net.
+  // be assigned is_connectable = true and will have an associated net.
   for (const auto &entry : pins_by_layer_by_net) {
     const std::string &net = entry.first;
     ::vlsir::raw::AbstractPort *port_pb = abstract_pb.add_ports();
@@ -387,10 +387,16 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
 }
 
 geometry::Rectangle *Layout::MakeVia(
-    const std::string &layer_name, const geometry::Point &centre) {
+    const std::string &layer_name,
+    const geometry::Point &centre,
+    const std::optional<std::string> &net) {
   SetActiveLayerByName(layer_name);
   int64_t via_side = physical_db_.Rules(layer_name).via_width;
   geometry::Rectangle *via = AddSquare(centre, via_side);
+  if (net) {
+    via->set_net(*net);
+  }
+
   RestoreLastActiveLayer();
   return via;
 }
@@ -405,6 +411,10 @@ void Layout::MakePort(
   geometry::Port port = geometry::Port(
       centre, via_side, via_side, layer, net_name);
   AddPort(port);
+}
+
+void Layout::LabelNet(const geometry::Point &point, const std::string &net) {
+  LOG(FATAL) << "Not implemented.";
 }
 
 void Layout::GetShapesOnLayer(const geometry::Layer &layer,

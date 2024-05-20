@@ -103,13 +103,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   };
   std::unique_ptr<bfg::Layout> mux2_layout(GenerateMux2Layout(mux2_params_n));
 
-  left_input_0->set_is_pin(true);
+  left_input_0->set_is_connectable(true);
   left_input_0->set_net("i0_l");
-  left_input_1->set_is_pin(true);
+  left_input_1->set_is_connectable(true);
   left_input_1->set_net("i1_l");
-  left_input_2->set_is_pin(true);
+  left_input_2->set_is_connectable(true);
   left_input_2->set_net("i2_l");
-  left_input_3->set_is_pin(true);
+  left_input_3->set_is_connectable(true);
   left_input_3->set_net("i3_l");
 
   Rectangle mux2_bounding_box = mux2_layout->GetBoundingBox();
@@ -155,13 +155,13 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
   };
   mux2_layout.reset(GenerateMux2Layout(mux2_params_p));
 
-  right_input_0->set_is_pin(true);
+  right_input_0->set_is_connectable(true);
   right_input_0->set_net("i0_r");
-  right_input_1->set_is_pin(true);
+  right_input_1->set_is_connectable(true);
   right_input_1->set_net("i1_r");
-  right_input_2->set_is_pin(true);
+  right_input_2->set_is_connectable(true);
   right_input_2->set_net("i2_r");
-  right_input_3->set_is_pin(true);
+  right_input_3->set_is_connectable(true);
   right_input_3->set_net("i3_r");
 
   int64_t nsdm_padding = diff_nsdm_rules.min_enclosure;
@@ -219,7 +219,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
 
     layout->SetActiveLayerByName("li.drawing");
     Polygon *polygon = layout->AddPolyLine(line);
-    polygon->set_is_pin(true);
+    polygon->set_is_connectable(true);
     polygon->set_net("z");
     layout->MakeVia("ncon.drawing", p_0);
     layout->MakeVia("pcon.drawing", p_3);
@@ -269,7 +269,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     Polygon *polygon = layout->AddPolyLine(line);
     polygon->set_net("s0b");
-    polygon->set_is_pin(true);
+    polygon->set_is_connectable(true);
     //layout->MakePort("s0b", p_1, "li.drawing");
   }
 
@@ -314,7 +314,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         p_1, li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     Polygon *polygon = layout->AddPolyLine(line);
     polygon->set_net("s0");
-    polygon->set_is_pin(true);
+    polygon->set_is_connectable(true);
     //layout->MakePort("s0", p_1, "li.drawing");
   }
 
@@ -355,7 +355,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     Rectangle *rectangle = layout->AddSquare(actual_via, pour_side);
     rectangle->set_net("s1");
-    rectangle->set_is_pin(true);
+    rectangle->set_is_connectable(true);
     // FIXME(aryap): What port is this though?
     //layout->MakePort("s1", actual_via, "li.drawing");
   }
@@ -396,7 +396,7 @@ bfg::Layout *Gf180McuMux::GenerateLayout() {
         li_polycon_via_bulge_width, li_polycon_via_bulge_length);
     Rectangle *rectangle = layout->AddSquare(actual_via, pour_side);
     rectangle->set_net("s1b");
-    rectangle->set_is_pin(true);
+    rectangle->set_is_connectable(true);
 
     // FIXME(aryap): This needs a port.
     // The port needs to be on li.drawing.

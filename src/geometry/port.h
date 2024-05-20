@@ -23,7 +23,7 @@ class Port : public Rectangle {
     upper_right_ = lower_left_ + Point(width, height);
     layer_ = layer;
     net_ = net;
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Rectangle &from_rectangle,
@@ -32,7 +32,7 @@ class Port : public Rectangle {
                 from_rectangle.upper_right(),
                 0,
                 net) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Rectangle &from_rectangle,
@@ -42,19 +42,19 @@ class Port : public Rectangle {
                 from_rectangle.upper_right(),
                 layer,
                 net) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Point &lower_left, const Point &upper_right,
        const Layer &layer, const std::string &net)
     : Rectangle(lower_left, upper_right, layer, net) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Port &other)
     : Rectangle(
         other.lower_left_, other.upper_right_, other.layer_, other.net_) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 };
 

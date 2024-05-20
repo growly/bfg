@@ -40,6 +40,15 @@
 // RoutingEdges. It also owns a separate collection of RoutingVertexs and
 // RoutingEdges that do not fall onto specific tracks.
 //
+// NOTE(aryap): An optimisation for the router that prefers single-layer
+// routing: maintaining the strict vertical/horizontal constraint on layers
+// tends to create sub-optimal routes in congested areas because changing layers
+// incurs forces other paths to go way around the long way. It might be better
+// to assume single-layer routing, and then as a post-processing step find all
+// intersections of used edges and elevate one of the conflicting edges to a
+// different layer. But even if we assume that vertices must be able to
+// accomodate a via at all times the post-processing step might backtrack us
+// into an unroutable state.
 
 using bfg::geometry::Compass;
 
@@ -1847,17 +1856,24 @@ void RoutingGrid::AddBlockages(
     int64_t padding,
     bool is_temporary,
     std::set<RoutingVertex*> *changed_out) {
+  // When adding permanent blockages (is_temporary == false) we skip pin shapes,
+  // since those might be needed for connection by the routing grid.
+  // TODO(aryap): Not sure about this interaction... maybe this is a flag?
   for (const auto &rectangle : shapes.rectangles()) {
+    if (!is_temporary && rectangle->is_connectable())
+      continue;
     AddBlockage(*rectangle, padding, is_temporary, changed_out);
   }
   for (const auto &polygon : shapes.polygons()) {
+    if (!is_temporary && polygon->is_connectable())
+      continue;
     AddBlockage(*polygon, padding, is_temporary, changed_out);
   }
-  // Do not add ports as permanent blockages. They are temporary blockages
-  // considered route-by-route, since some ports might be needed for connection.
-  //for (const auto &port : shapes.ports()) {
-  //  AddBlockage(*port, padding);
-  //}
+  for (const auto &port : shapes.ports()) {
+    if (!is_temporary && port->is_connectable())
+      continue;
+    AddBlockage(*port, padding);
+  }
 }
 
 RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(

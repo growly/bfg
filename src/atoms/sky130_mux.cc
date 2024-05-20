@@ -1211,17 +1211,22 @@ void GenerateOutput2To1MuxLayout(
   }
 }
 
-void ConnectOppositeInputsOnMet2(
+Polygon *ConnectOppositeInputsOnMet2(
     const PhysicalPropertiesDatabase &db,
     const Point &left_contact,
     const Point &right_contact,
+    const std::optional<std::string> &net,
     int64_t y_offset,
     bfg::Layout *layout) {
-  AddElbowPathBetweenLayers(db,
+  Polygon *path = AddElbowPathBetweenLayers(db,
       left_contact, right_contact,
       "via1.drawing", "met2.drawing", "via1.drawing",
       y_offset,
       layout);
+  if (net) {
+    path->set_net(*net);
+    path->set_is_connectable(true);
+  }
 
   // TODO(aryap): It would be really nice to have access to the RoutingGrid
   // facility which finds a via stack between any two layers, and then the
@@ -1231,8 +1236,8 @@ void ConnectOppositeInputsOnMet2(
 
   for (const auto &contact : {left_contact, right_contact}) {
     // Make via1.drawing, mcon.drawing vias:
-    layout->MakeVia("via1.drawing", contact);
-    layout->MakeVia("mcon.drawing", contact);
+    layout->MakeVia("via1.drawing", contact, net);
+    layout->MakeVia("mcon.drawing", contact, net);
 
     const int64_t encap_width = std::max(
         db.Rules("via1.drawing").via_width,
@@ -1250,19 +1255,30 @@ void ConnectOppositeInputsOnMet2(
     Point metal_lower_left = contact -
         Point{encap_width / 2, encap_length / 2};
     layout->SetActiveLayerByName("met1.drawing");
-    layout->AddRectangle(
+    Rectangle *metal_pour = layout->AddRectangle(
         Rectangle(metal_lower_left, encap_width, encap_length));
+    if (net) {
+      metal_pour->set_net(*net);
+      metal_pour->set_is_connectable(true);
+    }
   }
+  return path;
 }
 
 void ConnectOppositeInputs(
     const PhysicalPropertiesDatabase &db,
     const std::map<size_t, int64_t> &column_x,
     bfg::Layout *layout) {
+  // This structure helps us describe the connectivity of the inputs fingers to
+  // each other and as ports for external wires.
   struct ContactPairWithOffset {
-    Point left;
-    Point right;
+    std::string net;
+    Point left_port;
+    Point right_port;
+    Point left_bar_contact;
+    Point right_bar_contact;
     int64_t y_offset = 0;
+    Polygon *met2_pour = nullptr;
   };
 
   // If this exists, there is a met2 bar at the output that we have to avoid.
@@ -1272,47 +1288,126 @@ void ConnectOppositeInputs(
   if (output_mux_met2_bar_left_contact) {
     // Need to add a y_offset to avoid this!
     LOG(FATAL) << "met2 bar in use at mux output, need to define y_offset "
-               << "to avoid this";
+               << "to avoid this. Also have to space second set of contact "
+               << "pairs out to avoid shift";
     y_offset = 0;
   }
 
   // The outer inputs of the top and bottom half of the mux connect between the
   // first and second used columns, on the inside:
-  int64_t in_left_x = (column_x.find(0)->second +
+  int64_t left_x = (column_x.find(0)->second +
                        column_x.find(1)->second) / 2;
 
-  int64_t in_right_x = (column_x.find(11)->second +
+  int64_t right_x = (column_x.find(11)->second +
                         column_x.find(12)->second) / 2;
   
-  std::vector<ContactPairWithOffset> contact_pairs = {
+  std::vector<ContactPairWithOffset> first_contact_infos = {
     {
-      {in_left_x, layout->GetPointOrDie("upper_left.input_1_line_y").y()},
-      {in_right_x, layout->GetPointOrDie("upper_right.input_1_line_y").y()}
+      .net = "input_5",
+      .left_port = layout->GetPointOrDie("upper_left.input_1"),
+      .right_port = layout->GetPointOrDie("upper_right.input_1"),
+      .left_bar_contact = {
+          left_x, layout->GetPointOrDie("upper_left.input_1_line_y").y()},
+      .right_bar_contact = {
+          right_x, layout->GetPointOrDie("upper_right.input_1_line_y").y()}
     },
     {
-      {in_left_x, layout->GetPointOrDie("upper_left.input_3_line_y").y()},
-      {in_right_x, layout->GetPointOrDie("upper_right.input_3_line_y").y()},
+      "input_7",
+      layout->GetPointOrDie("upper_left.input_3"),
+      layout->GetPointOrDie("upper_right.input_3"),
+      {left_x, layout->GetPointOrDie("upper_left.input_3_line_y").y()},
+      {right_x, layout->GetPointOrDie("upper_right.input_3_line_y").y()},
       y_offset
     },
     {
-      {in_left_x, layout->GetPointOrDie("lower_left.input_1_line_y").y()},
-      {in_right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()}
+      "input_1",
+      layout->GetPointOrDie("lower_left.input_1"),
+      layout->GetPointOrDie("lower_right.input_1"),
+      {left_x, layout->GetPointOrDie("lower_left.input_1_line_y").y()},
+      {right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()}
     },
     {
-      {in_left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
-      {in_right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()}
+      "input_3",
+      layout->GetPointOrDie("lower_left.input_3"),
+      layout->GetPointOrDie("lower_right.input_3"),
+      {left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
+      {right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()}
     },
   };
 
-  for (const auto &contact_pair : contact_pairs) {
-    LOG(INFO) << "left " << contact_pair.left << " right "
-              << contact_pair.right;
+  for (auto &contact_info : first_contact_infos) {
+    LOG(INFO) << "left " << contact_info.left_bar_contact << " right "
+              << contact_info.right_bar_contact;
+    contact_info.met2_pour = ConnectOppositeInputsOnMet2(
+        db,
+        contact_info.left_bar_contact,
+        contact_info.right_bar_contact,
+        contact_info.net,
+        contact_info.y_offset,
+        layout);
+  }
+
+  left_x = layout->GetPointOrDie("upper_left.input_0").x();
+  right_x = layout->GetPointOrDie("upper_right.input_0").x();
+
+  std::vector<ContactPairWithOffset> second_contact_infos = {
+    {
+      "input_4",
+      layout->GetPointOrDie("upper_left.input_0"),
+      layout->GetPointOrDie("upper_right.input_0"),
+      {left_x, layout->GetPointOrDie("upper_left.input_0").y()},
+      {right_x, layout->GetPointOrDie("upper_right.input_0").y()},
+      y_offset
+    },
+    {
+      "input_6",
+      layout->GetPointOrDie("upper_left.input_2"),
+      layout->GetPointOrDie("upper_right.input_2"),
+      {left_x, layout->GetPointOrDie("upper_left.input_2").y()},
+      {right_x, layout->GetPointOrDie("upper_right.input_2").y()},
+      y_offset
+    },
+    {
+      "input_2",
+      layout->GetPointOrDie("lower_left.input_2"),
+      layout->GetPointOrDie("lower_right.input_2"),
+      {left_x, layout->GetPointOrDie("lower_left.input_2").y()},
+      {right_x, layout->GetPointOrDie("lower_right.input_2").y()},
+      -y_offset
+    },
+    {
+      "input_0",
+      layout->GetPointOrDie("lower_left.input_0"),
+      layout->GetPointOrDie("lower_right.input_0"),
+      {left_x, layout->GetPointOrDie("lower_left.input_0").y()},
+      {right_x, layout->GetPointOrDie("lower_right.input_0").y()},
+      -y_offset
+    },
+  };
+
+  for (const auto &contact_info : second_contact_infos) {
+    LOG(INFO) << "left " << contact_info.left_bar_contact << " right "
+              << contact_info.right_bar_contact;
     ConnectOppositeInputsOnMet2(
         db,
-        contact_pair.left,
-        contact_pair.right,
-        contact_pair.y_offset,
+        contact_info.left_bar_contact,
+        contact_info.right_bar_contact,
+        contact_info.net,
+        contact_info.y_offset,
         layout);
+  }
+
+  // Place ports (pins) at port positions:
+  layout->SetActiveLayerByName("li.pin");
+  for (const auto &partition : {first_contact_infos, second_contact_infos}) {
+    for (const auto &info : partition) {
+      for (const Point &centre : {info.left_port, info.right_port}) {
+        geometry::Layer layer = centre.layer();
+        int64_t via_size = db.Rules(layer).via_width;
+        layout->AddPort(
+            geometry::Port(centre, via_size, via_size, layer, info.net));
+      }
+    }
   }
 }
 
@@ -1928,36 +2023,6 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       layout.get());
 
   ConnectOppositeInputs(db, column_x, layout.get());
-
-  // Translate ports in sub-layouts into external-facing ports:
-  layout->SetActiveLayerByName("li.pin");
-  std::vector<std::pair<std::string, std::string>> ports = {
-    {"lower_left.input_0", "input_0"},
-    {"lower_left.input_1", "input_1"},
-    {"lower_left.input_2", "input_2"},
-    {"lower_left.input_3", "input_3"},
-    {"lower_right.input_0", "input_0"},
-    {"lower_right.input_1", "input_1"},
-    {"lower_right.input_2", "input_2"},
-    {"lower_right.input_3", "input_3"},
-    {"upper_left.input_0", "input_4"},
-    {"upper_left.input_1", "input_5"},
-    {"upper_left.input_2", "input_6"},
-    {"upper_left.input_3", "input_7"},
-    {"upper_right.input_0", "input_4"},
-    {"upper_right.input_1", "input_5"},
-    {"upper_right.input_2", "input_6"},
-    {"upper_right.input_3", "input_7"}
-  };
-  for (const auto &entry : ports) {
-    const std::string &layout_port = entry.first;
-    const std::string &net = entry.second;
-    Point centre = layout->GetPointOrDie(layout_port);
-    geometry::Layer layer = centre.layer();
-    int64_t via_size = db.Rules(layer).via_width;
-    layout->AddPort(geometry::Port(
-        layout->GetPointOrDie(layout_port), via_size, via_size, layer, net));
-  }
 
   return layout.release();
 }
