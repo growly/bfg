@@ -490,9 +490,9 @@ fill_block²Abª
 
 boundary²C<ª
 met1Z
-drawing²Dª
+drawing²Dª
 met1Z
-pin²Dª
+pin²DúDª
 met1Z	
 label²Dª
 met1Z

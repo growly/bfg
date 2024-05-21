@@ -2292,6 +2292,10 @@ layers {
     major: 68
     minor: 16
   }
+  pin_access_for {
+    major: 68
+    minor: 20
+  }
 }
 layers {
   name: "met1"
