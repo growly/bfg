@@ -624,43 +624,38 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // - Connect the closest output with
 
   // Connect flip-flops to mux.
-
-  // TODO(aryap): The mux should tell us this!
-  std::vector<std::string> mux_input_order = {
-    "input_1",
-    "input_0",
-    "input_2",
-    "input_3",
-    "input_7",
-    "input_6",
-    "input_4",
-    "input_5",
+  struct AutoConnection {
+    geometry::Instance *source_memory;
+    geometry::Instance *target_mux;
+    std::string mux_port_name;
   };
 
-  // Auto-route order:
-  std::vector<geometry::Instance*> auto_route_order = {
-    banks[0].memories()[0][0],
-    banks[0].memories()[0][1],
-    //banks[0].memories()[1][0],
-    //banks[0].memories()[1][1],
-    //banks[0].memories()[2][0],
-    //banks[0].memories()[2][1],
-    //banks[0].memories()[3][0],
-    //banks[0].memories()[3][1],
-    //banks[1].memories()[0][0],
-    //banks[1].memories()[0][1],
-    //banks[1].memories()[1][0],
-    //banks[1].memories()[1][1],
-    //banks[1].memories()[2][0],
-    //banks[1].memories()[2][1],
-    //banks[1].memories()[3][0],
-    //banks[1].memories()[3][1]
+  std::vector<AutoConnection> auto_connections = {
+    // Manually ordered:
+    //{banks[0].memories()[2][0], mux_order[0], "input_7"},
+    //{banks[0].memories()[2][1], mux_order[0], "input_6"},
+    //{banks[0].memories()[3][0], mux_order[0], "input_4"},
+    //{banks[0].memories()[3][1], mux_order[0], "input_5"},
+    //{banks[0].memories()[0][0], mux_order[0], "input_0"},
+    //{banks[0].memories()[0][1], mux_order[0], "input_1"},
+    //{banks[0].memories()[1][1], mux_order[0], "input_3"},
+    //{banks[0].memories()[1][0], mux_order[0], "input_2"},
+ 
+    // Not yet:
+    //{banks[1].memories()[0][0], mux_order[1], "input_1"},
+    //{banks[1].memories()[0][1], mux_order[1], "input_0"},
+    //{banks[1].memories()[1][0], mux_order[1], "input_2"},
+    //{banks[1].memories()[1][1], mux_order[1], "input_3"},
+    //{banks[1].memories()[2][0], mux_order[1], "input_7"},
+    //{banks[1].memories()[2][1], mux_order[1], "input_6"},
+    //{banks[1].memories()[3][0], mux_order[1], "input_4"},
+    //{banks[1].memories()[3][1]  mux_order[1], "input_5"}
   };
 
-  for (size_t i = 0; i < auto_route_order.size(); ++i) {
-    geometry::Instance *memory = auto_route_order[i];
-    geometry::Instance *mux = mux_order[i / kMuxSize];
-    std::string input_name = mux_input_order[i % kMuxSize];
+  for (auto &auto_connection : auto_connections) {
+    geometry::Instance *memory = auto_connection.source_memory;
+    geometry::Instance *mux = auto_connection.target_mux;
+    const std::string &input_name = auto_connection.mux_port_name;
 
     std::set<geometry::Port*> all_other_mux_ports(
         all_mux_ports.begin(), all_mux_ports.end());
@@ -685,7 +680,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         << " did not appear in list of all ports for same name";
 
     // Do not avoid any ports with the given name, since presumably they are
-    // connectible.
+    // connectable.
     for (geometry::Port *port : mux_ports_on_net) {
       all_other_mux_ports.erase(port);
     }

@@ -1223,10 +1223,6 @@ Polygon *ConnectOppositeInputsOnMet2(
       "via1.drawing", "met2.drawing", "via1.drawing",
       y_offset,
       layout);
-  if (net) {
-    path->set_net(*net);
-    path->set_is_connectable(true);
-  }
 
   // TODO(aryap): It would be really nice to have access to the RoutingGrid
   // facility which finds a via stack between any two layers, and then the
@@ -1277,6 +1273,7 @@ void ConnectOppositeInputs(
     Point right_port;
     Point left_bar_contact;
     Point right_bar_contact;
+    std::string pin_layer_name;
     int64_t y_offset = 0;
     Polygon *met2_pour = nullptr;
   };
@@ -1309,7 +1306,8 @@ void ConnectOppositeInputs(
       .left_bar_contact = {
           left_x, layout->GetPointOrDie("upper_left.input_1_line_y").y()},
       .right_bar_contact = {
-          right_x, layout->GetPointOrDie("upper_right.input_1_line_y").y()}
+          right_x, layout->GetPointOrDie("upper_right.input_1_line_y").y()},
+      .pin_layer_name = "li.pin"
     },
     {
       "input_7",
@@ -1317,6 +1315,7 @@ void ConnectOppositeInputs(
       layout->GetPointOrDie("upper_right.input_3"),
       {left_x, layout->GetPointOrDie("upper_left.input_3_line_y").y()},
       {right_x, layout->GetPointOrDie("upper_right.input_3_line_y").y()},
+      "li.pin",
       y_offset
     },
     {
@@ -1324,14 +1323,16 @@ void ConnectOppositeInputs(
       layout->GetPointOrDie("lower_left.input_1"),
       layout->GetPointOrDie("lower_right.input_1"),
       {left_x, layout->GetPointOrDie("lower_left.input_1_line_y").y()},
-      {right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()}
+      {right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()},
+      "li.pin"
     },
     {
       "input_3",
       layout->GetPointOrDie("lower_left.input_3"),
       layout->GetPointOrDie("lower_right.input_3"),
       {left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
-      {right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()}
+      {right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()},
+      "li.pin"
     },
   };
 
@@ -1357,6 +1358,7 @@ void ConnectOppositeInputs(
       layout->GetPointOrDie("upper_right.input_0"),
       {left_x, layout->GetPointOrDie("upper_left.input_0").y()},
       {right_x, layout->GetPointOrDie("upper_right.input_0").y()},
+      "met1.pin",
       y_offset
     },
     {
@@ -1365,6 +1367,7 @@ void ConnectOppositeInputs(
       layout->GetPointOrDie("upper_right.input_2"),
       {left_x, layout->GetPointOrDie("upper_left.input_2").y()},
       {right_x, layout->GetPointOrDie("upper_right.input_2").y()},
+      "met1.pin",
       y_offset
     },
     {
@@ -1373,6 +1376,7 @@ void ConnectOppositeInputs(
       layout->GetPointOrDie("lower_right.input_2"),
       {left_x, layout->GetPointOrDie("lower_left.input_2").y()},
       {right_x, layout->GetPointOrDie("lower_right.input_2").y()},
+      "met1.pin",
       -y_offset
     },
     {
@@ -1381,6 +1385,7 @@ void ConnectOppositeInputs(
       layout->GetPointOrDie("lower_right.input_0"),
       {left_x, layout->GetPointOrDie("lower_left.input_0").y()},
       {right_x, layout->GetPointOrDie("lower_right.input_0").y()},
+      "met1.pin",
       -y_offset
     },
   };
@@ -1397,15 +1402,16 @@ void ConnectOppositeInputs(
         layout);
   }
 
-  // Place ports (pins) at port positions:
-  layout->SetActiveLayerByName("li.pin");
+  // Place ports (pins) at port positions.
   for (const auto &partition : {first_contact_infos, second_contact_infos}) {
     for (const auto &info : partition) {
       for (const Point &centre : {info.left_port, info.right_port}) {
         geometry::Layer layer = centre.layer();
         int64_t via_size = db.Rules(layer).via_width;
+        layout->SetActiveLayerByName(info.pin_layer_name);
         layout->AddPort(
             geometry::Port(centre, via_size, via_size, layer, info.net));
+        layout->RestoreLastActiveLayer();
       }
     }
   }
@@ -1825,7 +1831,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
 
   // Draw a regular set of vertical metal columns such that:
-  // - there is a single vertical column in the centre, connectible to the
+  // - there is a single vertical column in the centre, connectable to the
   // output
   // - the PMOS and NMOS sides have an equal number of extending out from the
   // centre
