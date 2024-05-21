@@ -44,6 +44,9 @@ class RoutingVertex {
     LOG_IF(FATAL, connected_layers_.size() > 2)
         << "RoutingVertex can't connect more than 2 layers";
   }
+  bool ConnectsLayer(const geometry::Layer &layer) const {
+    return connected_layers_.find(layer) != connected_layers_.end();
+  }
   const std::set<geometry::Layer> &connected_layers() const {
     return connected_layers_;
   }
@@ -159,8 +162,8 @@ class RoutingVertex {
 
   geometry::Point centre_;
 
-  // NOTE: A vertex can only ever connect 2 layers. A second vertex in the same
-  // position is needed to connect to another layer.
+  // NOTE: A vertex can only ever connect at most 2 layers. A second vertex in
+  // the same position is needed to connect to another layer.
   std::set<geometry::Layer> connected_layers_;
 
   std::set<RoutingEdge*> edges_;

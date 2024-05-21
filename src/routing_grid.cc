@@ -391,17 +391,13 @@ bool RoutingGrid::ConnectToSurroundingTracks(
   grid_geometry.NearestTracks(
       off_grid->centre(), &nearest_tracks, &nearest_tracks);
 
-  // If access directions are specified, remove tracks in any other directions.
-  // That is, remove tracks in the directions not included in *directions.
-  if (directions) {
-    const auto &access_directions = directions->get();
-    for (RoutingTrack *track : nearest_tracks) {
-      if (access_directions.find(track->direction()) ==
-              access_directions.end()) {
-        nearest_tracks.erase(track);
-      }
+  auto ok_access_direction = [&](const RoutingTrackDirection &candidate) {
+    if (directions) {
+      const auto &access_directions = directions->get();
+      return access_directions.find(candidate) != access_directions.end();
     }
-  }
+    return true;
+  };
 
   bool any_success = false;
   for (RoutingTrack *track : nearest_tracks) {
@@ -422,6 +418,14 @@ bool RoutingGrid::ConnectToSurroundingTracks(
       LOG_IF(FATAL, bridging_vertex_is_new)
           << "Doesn't make sense for bridging_vertex == target "
           << "and bridging_vertex_is_new to both be true";
+
+      // Since our off_grid vertex has landed on the track, the access direction
+      // to the off_grid point is just the track direction. If this is not an
+      // allowable direction, give up now:
+      if (!ok_access_direction(track->direction())) {
+        continue;
+      }
+
       any_success = true || any_success;
       continue;
     }
@@ -439,6 +443,14 @@ bool RoutingGrid::ConnectToSurroundingTracks(
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid);
     edge->set_layer(access_layer);
+
+    // Since we're creating a jog edge to connect to the off_grid point, we have
+    // to check that its direction is permissible as an access direction.
+    if (!ok_access_direction(edge->Direction())) {
+      delete edge;
+      continue;
+    }
+
     // We do not check ValidAgainstInstalledPaths because that is slow. We hope
     // that by now the other rules have prevented such a possibility. Fingers
     // crossed....
@@ -637,6 +649,7 @@ RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
       uint64_t vertex_cost = static_cast<uint64_t>(
           vertex->L1DistanceTo(target_point));
       if (needs_via) {
+        // FIXME(aryap): Use via cost!
         vertex_cost += (10.0 * needs_via->second);
       }
       costed_vertices.emplace_back(CostedVertex {

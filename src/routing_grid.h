@@ -247,6 +247,9 @@ class RoutingGrid {
       int64_t padding = 0,
       std::optional<RoutingTrackDirection> access_direction = std::nullopt)
       const {
+    if (!vertex.ConnectsLayer(obstruction.layer())) {
+      return false;
+    }
     // Note that we subtract 1 from the padding. This is because spacing rules
     // between objects seem to implicitly be inclusive of the end points.  Given
     // two rectangles with boundaries at x = 5 and x = 10, for example:
@@ -280,6 +283,9 @@ class RoutingGrid {
   bool WireWouldIntersect(const RoutingEdge &edge,
                           const T &obstruction,
                           int64_t padding = 0) const {
+    if (edge.layer() != obstruction.layer()) {
+      return false;
+    }
     // Consider the edge as a rectangle of the appropriate width for that edge
     // (i.e. given the wire width rules for its layer), and see if it collides
     // with the obstruction.
