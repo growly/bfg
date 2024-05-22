@@ -17,10 +17,11 @@ Libraries
 
   ```
   git clone git@github.com:google/googletest
-  cd googletest
+  pushd googletest
   mkdir build && cd build
   cmake ../
   make -j $(nproc) && sudo make install
+  popd; popd
   ```
 
 <!---
@@ -34,40 +35,44 @@ Libraries
 [gperftools/gperftools](https://github.com/gperftools/gperftools)
   ```
   git clone git@github.com:gperftools/gperftools
-  cd gperftools
+  pushd gperftools
   ./autogen.sh
   ./configure
   make -j $(nproc) && sudo make install
+  popd; popd
   ```
 
 [gflags/gflags](https://github.com/gflags/gflags/blob/master/INSTALL.md)
   ```
   git clone git@github.com:gflags/gflags.git
-  cd gflags
+  pushd gflags
   mkdir build && cd build
   cmake .. -DBUILD_SHARED_LIBS=ON
   make -j $(nproc) && sudo make install
+  popd; popd
   ```
 
 [glog/glog](https://github.com/google/glog)
 
   ```
   git clone https://github.com/google/glog.git
-  cd glog
+  pushd glog
   cmake -S . -B build -G "Unix Makefiles"
   cmake --build build
   sudo cmake --build build --target install
+  popd
   ```
 
 [abseil/abseil-cpp](https://abseil.io/docs/cpp/quickstart-cmake)
 
   ```
   git clone git@github.com:abseil/abseil-cpp.git
-  cd abseil-cpp
+  pushd abseil-cpp
   mkdir build && cd build
   cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON ../
   make -j $(nproc)
   sudo make install
+  popd; popd
   ```
 
 [protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src)
@@ -75,12 +80,13 @@ Libraries
   ```
   wget https://github.com/protocolbuffers/protobuf/releases/download/v21.5/protobuf-all-21.5.tar.gz
   tar xf protobuf-all-21.5.tar.gz
-  cd protobuf-21.5
+  pushd protobuf-21.5
   ./autogen.sh
   ./configure
   make -j $(nproc)
   sudo make install
   sudo ldconfig # refresh shared library cache.
+  popd
   ```
 
 Note: when I compile and build protocol buffers from [HEAD on
