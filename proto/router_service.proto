@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package bfg.router_service;
+
+service RouterService {
+  //rpc CreateRouter (CreateRouterRequest) returns (CreateRouterReply) {}
+  //rpc AddRoute (AddRouteRequest) returns (AddRouteReply) {}
+
+  rpc SayHello (SayHelloRequest) returns (SayHelloReply) {}
+}
+
+message SayHelloRequest {
+  string name = 1;
+}
+
+message SayHelloReply {
+  string message = 1;
+}
