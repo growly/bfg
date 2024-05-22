@@ -632,24 +632,25 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   std::vector<AutoConnection> auto_connections = {
     // Manually ordered:
-    //{banks[0].memories()[2][0], mux_order[0], "input_7"},
-    //{banks[0].memories()[2][1], mux_order[0], "input_6"},
-    //{banks[0].memories()[3][0], mux_order[0], "input_4"},
-    //{banks[0].memories()[3][1], mux_order[0], "input_5"},
-    //{banks[0].memories()[0][0], mux_order[0], "input_0"},
-    //{banks[0].memories()[0][1], mux_order[0], "input_1"},
-    //{banks[0].memories()[1][1], mux_order[0], "input_3"},
-    //{banks[0].memories()[1][0], mux_order[0], "input_2"},
- 
+    {banks[0].memories()[3][0], mux_order[0], "input_4"},
+    {banks[0].memories()[2][1], mux_order[0], "input_6"},
+    {banks[0].memories()[2][0], mux_order[0], "input_7"},
+    {banks[0].memories()[3][1], mux_order[0], "input_5"},
+
+    {banks[0].memories()[1][1], mux_order[0], "input_3"},
+    {banks[0].memories()[1][0], mux_order[0], "input_2"},
+    {banks[0].memories()[0][0], mux_order[0], "input_0"},
+    {banks[0].memories()[0][1], mux_order[0], "input_1"},
+
     // Not yet:
-    //{banks[1].memories()[0][0], mux_order[1], "input_1"},
-    //{banks[1].memories()[0][1], mux_order[1], "input_0"},
-    //{banks[1].memories()[1][0], mux_order[1], "input_2"},
-    //{banks[1].memories()[1][1], mux_order[1], "input_3"},
-    //{banks[1].memories()[2][0], mux_order[1], "input_7"},
-    //{banks[1].memories()[2][1], mux_order[1], "input_6"},
-    //{banks[1].memories()[3][0], mux_order[1], "input_4"},
-    //{banks[1].memories()[3][1]  mux_order[1], "input_5"}
+    {banks[1].memories()[0][0], mux_order[1], "input_1"},
+    {banks[1].memories()[0][1], mux_order[1], "input_0"},
+    {banks[1].memories()[1][0], mux_order[1], "input_2"},
+    {banks[1].memories()[1][1], mux_order[1], "input_3"},
+    {banks[1].memories()[2][0], mux_order[1], "input_7"},
+    {banks[1].memories()[2][1], mux_order[1], "input_6"},
+    {banks[1].memories()[3][0], mux_order[1], "input_4"},
+    {banks[1].memories()[3][1], mux_order[1], "input_5"}
   };
 
   for (auto &auto_connection : auto_connections) {
