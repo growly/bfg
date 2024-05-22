@@ -88,6 +88,19 @@ GitHub](https://github.com/protocolbuffers/protobuf), I get compilation errors
 because the file `port_def.inc` doesn't get installed. Compiling and installing
 from a release tarball, it seems fine.
 
+[grpc/grpc](https://github.com/grpc/grpc)
+
+  ```
+  git clone --recurse-submodules -b v1.64.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc
+  cd grpc
+  mkdir -p cmake/build
+  pushcd cmake/build
+  cmake -DgRPC_INSTALL=ON -DgRPC_BUILD_TESTS=OFF ../..
+  make -j $(nproc)
+  sudo make install
+  popd
+  ```
+
 <!---
 [skia](https://skia.org/user/build#quick)
 

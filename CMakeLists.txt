@@ -207,6 +207,12 @@ target_include_directories(vlsir_lib PRIVATE ${VLSIR_OUT_DIR})
 #set(PROTO_GENERATED_HDRS ${GENERATED_PROTO_HDRS})
 #set(PROTO_GENERATED_SRCS ${GENERATED_PROTO_SRCS})
 
+configure_file(src/c_make_header.h.in src/c_make_header.h)
+
+find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
+message(STATUS "found ${tcmalloc_lib}")
+message(STATUS \t${Protobuf_LIBRARIES})
+
 # bfg library
 # -----------
 
@@ -217,17 +223,13 @@ set(BFG_LIB_SRC
   ${CIRCUIT_SRC}
   ${GEOMETRY_SRC}
   ${CIRCUIT_SRC}
-  ${PROTO_GENERATED_SRCS}
+  #${PROTO_GENERATED_SRCS}
 )
 
 add_library(bfg STATIC ${BFG_LIB_SRC})
 target_include_directories(bfg PUBLIC
                            "${PROJECT_BINARY_DIR}/src"
                            ${VLSIR_OUT_DIR})
-
-find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
-message(STATUS "found ${tcmalloc_lib}")
-message(STATUS \t${Protobuf_LIBRARIES})
 
 target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
                                       gflags
@@ -239,8 +241,6 @@ target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
                                       absl::statusor
                                       vlsir_lib
                                       ${Protobuf_LIBRARIES})
-
-configure_file(src/c_make_header.h.in src/c_make_header.h)
 
 # bfg executable
 # --------------
@@ -258,6 +258,47 @@ target_link_libraries(bfg_bin PUBLIC bfg
                                       glog::glog
                                       absl::strings
                                       ${Protobuf_LIBRARIES})
+
+# router_service library
+# ----------------------
+
+#message(STATUS "found " ${ROUTER_SERVICE_LIB_SRC})
+#set(ROUTER_SERVICE_LIB_SRC
+#  
+#)
+#add_library(router_service STATIC ${ROUTER_SERVICE_LIB_SRC})
+#target_include_directories(router_service PUBLIC
+#                           "${PROJECT_BINARY_DIR}/src"
+#                           ${VLSIR_OUT_DIR})
+#
+#target_link_libraries(router_service PUBLIC ${tcmalloc_lib}
+#                                      gflags
+#                                      glog::glog
+#                                      absl::base
+#                                      absl::strings
+#                                      absl::str_format
+#                                      absl::status
+#                                      absl::statusor
+#                                      vlsir_lib
+#                                      ${Protobuf_LIBRARIES})
+
+# router_service executable
+# -------------------------
+
+add_executable(router_service_bin src/router_service_main.cc)
+set_target_properties(router_service_bin PROPERTIES OUTPUT_NAME router_service)
+
+target_include_directories(router_service_bin PUBLIC
+                           "${PROJECT_BINARY_DIR}/src"
+                           ${VLSIR_OUT_DIR})
+
+target_link_libraries(router_service_bin PUBLIC
+                                      ${tcmalloc_lib}
+                                      gflags
+                                      glog::glog
+                                      absl::strings
+                                      ${Protobuf_LIBRARIES})
+
 
 # Tests
 # -----
