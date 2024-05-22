@@ -51,6 +51,8 @@ class RoutingVertex {
     return connected_layers_;
   }
 
+  RoutingEdge *GetEdgeOnLayer(const geometry::Layer &layer) const;
+
   // This is the cost of connecting through this vertex (i.e. a via).
   double cost() const { return cost_; }
   void set_cost(const double cost) { cost_ = cost; }

@@ -1534,11 +1534,22 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   blocked_tracks.erase(vertex->horizontal_track());
   blocked_tracks.erase(vertex->vertical_track());
 
-  std::set<RoutingEdge*> vertex_edges = {vertex->in_edge(), vertex->out_edge()};
-  vertex_edges.erase(nullptr);
-  for (RoutingEdge *edge : vertex_edges) {
-    const geometry::Layer &layer = edge->EffectiveLayer();
-    const RoutingTrackDirection direction = edge->Direction();
+  for (const geometry::Layer &layer : vertex->connected_layers()) {
+    // If there is an edge on this layer, we use its direction. Otherwise we use
+    // the routing grid default direction for the layer.
+    RoutingEdge *edge = vertex->GetEdgeOnLayer(layer);
+    RoutingTrackDirection direction;
+    if (edge) {
+      direction = edge->Direction();
+    } else {
+      auto routing_layer_info = GetRoutingLayerInfo(layer);
+      if (!routing_layer_info) {
+        // No routing on this layer and no known direction, ignore.
+        continue;
+      }
+      direction = routing_layer_info->get().direction;
+    }
+
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
        *vertex, layer, 0, direction);
     if (!via_encap)
@@ -1578,8 +1589,6 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
   // contains, which smells funny.
   path->Legalise();
 
-  std::set<RoutingVertex*> junction_vertices(
-      path->vertices().begin(), path->vertices().end());
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {
