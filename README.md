@@ -96,12 +96,29 @@ from a release tarball, it seems fine.
 
 [grpc/grpc](https://github.com/grpc/grpc)
 
+We have to use an old version of gRPC because we use an old version of protobuf.
+(Feel free to update all of them!) There are actually quite a few interesting
+gRPC build options which we do not explore because I need to graduate,
+*including* how modern `cmake`s handle dependencies *and* the use of a `.local`
+installation for the project instead of the entire system.
+
   ```
-  git clone --recurse-submodules -b v1.64.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc
-  cd grpc
+  #git clone --recurse-submodules -b v1.64.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc
+  wget https://github.com/grpc/grpc/archive/refs/tags/v1.48.1.tar.gz
+  tar xf grpc-1.48.1.tar.gz
+  cd grpc-1.48.1
   mkdir -p cmake/build
-  pushcd cmake/build
-  cmake -DgRPC_INSTALL=ON -DgRPC_BUILD_TESTS=OFF ../..
+  pushd cmake/build
+  cmake \
+    -DgRPC_INSTALL=ON \
+    -DgRPC_BUILD_TESTS=OFF \
+    -DgRPC_CARES_PROVIDER=package \
+    -DgRPC_ABSL_PROVIDER=package \
+    -DgRPC_PROTOBUF_PROVIDER=package \
+    -DgRPC_RE2_PROVIDER=package \
+    -DgRPC_SSL_PROVIDER=package \
+    -DgRPC_ZLIB_PROVIDER=package \
+    ../..
   make -j $(nproc)
   sudo make install
   popd

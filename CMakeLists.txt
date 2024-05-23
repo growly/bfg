@@ -16,15 +16,24 @@ find_package(Protobuf REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
+find_package(gRPC CONFIG REQUIRED)
+message(STATUS "Using gRPC ${gRPC_VERSION}")
+
+configure_file(src/c_make_header.h.in src/c_make_header.h)
+
+find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
+message(STATUS "Found tcmalloc: " ${tcmalloc_lib})
+message(STATUS "Found protobuf: " ${Protobuf_LIBRARIES})
+
 set(ABSL_PROPAGATE_CXX_STD true)
 set(ABSL_CXX_STANDARD 17)
 set(BUILD_DEPS true)
 
 include_directories(${GTEST_INCLUDE_DIR})
 
-#set(PROTO_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
+set(PROTO_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
 #set(PROTO_SRC
-#  ${PROTO_SRC_DIR}/inflator_rules.proto
+#  ${PROTO_SRC_DIR}/router_service.proto
 #)
 
 set(VLSIR_SRC_DIR ${PROJECT_SOURCE_DIR}/vlsir/protos)
@@ -198,7 +207,7 @@ target_include_directories(vlsir_lib PRIVATE ${VLSIR_OUT_DIR})
 # -------------------------
 #
 # Included directly as code in our main library.
-
+#
 #file(RELATIVE_PATH proto_src_relative ${PROJECT_SOURCE_DIR} ${PROTO_SRC_DIR})
 #set(PROTO_OUT_DIR ${PROJECT_BINARY_DIR}/${proto_src_relative})
 #set(GENERATED_PROTO_SRCS)
@@ -206,12 +215,6 @@ target_include_directories(vlsir_lib PRIVATE ${VLSIR_OUT_DIR})
 #generate_protos(${PROTO_SRC_DIR} "${PROTO_SRC}" ${PROJECT_BINARY_DIR})
 #set(PROTO_GENERATED_HDRS ${GENERATED_PROTO_HDRS})
 #set(PROTO_GENERATED_SRCS ${GENERATED_PROTO_SRCS})
-
-configure_file(src/c_make_header.h.in src/c_make_header.h)
-
-find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
-message(STATUS "found ${tcmalloc_lib}")
-message(STATUS \t${Protobuf_LIBRARIES})
 
 # bfg library
 # -----------
@@ -259,28 +262,99 @@ target_link_libraries(bfg_bin PUBLIC bfg
                                       absl::strings
                                       ${Protobuf_LIBRARIES})
 
+# gRPC service generation via protobuf
+# ------------------------------------
+
+# Not entirely sure how this works but it should be in your PATH so maybe that's
+# it:
+find_program(GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
+message(STATUS "Found gRPC C++ plugin executable: "
+  ${GRPC_CPP_PLUGIN_EXECUTABLE})
+
+set(GENERATED_GRPC_HDRS)
+set(GENERATED_GRPC_SRCS)
+function(generate_grpc proto_src_root proto_files out_dir)
+  foreach(file ${proto_files})
+    message(STATUS "Generating gRPC C++ service from: ${file} -> ${out_dir}")
+    file(RELATIVE_PATH relative_file ${proto_src_root} ${file})
+    get_filename_component(proto_dir ${relative_file} DIRECTORY)
+    get_filename_component(proto_name ${relative_file} NAME_WE)
+    set(proto_hdr ${out_dir}/${proto_dir}/${proto_name}.pb.h)
+    set(proto_src ${out_dir}/${proto_dir}/${proto_name}.pb.cc)
+    set(grpc_hdr ${out_dir}/${proto_dir}/${proto_name}.grpc.pb.h)
+    set(grpc_src ${out_dir}/${proto_dir}/${proto_name}.grpc.pb.cc)
+    message(STATUS \tfile=${file})
+    message(STATUS \trelative_file=${relative_file})
+    message(STATUS \tproto_src_root=${proto_src_root})
+    message(STATUS \tproto_dir=${proto_dir})
+    message(STATUS \tproto_hdr=${proto_hdr})
+    message(STATUS \tproto_src=${proto_src})
+    message(STATUS \tgrpc_hdr=${grpc_hdr})
+    message(STATUS \tgrpc_src=${grpc_src})
+    # VERBATIM might break stuff here. Try quoting args and removing.
+    add_custom_command(
+      OUTPUT "${proto_hdr}" "${proto_src}" "${grpc_hdr}" "${grpc_src}"
+      COMMAND protobuf::protoc
+      ARGS --grpc_out=${out_dir}
+           --cpp_out=${out_dir}
+           --proto_path=${proto_src_root}
+           --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN_EXECUTABLE}
+           "${file}"
+      DEPENDS ${file} protobuf::protoc
+      COMMENT "Generate gRPC C++ service/protocol buffers for ${file}"
+      VERBATIM)
+    list(APPEND GENERATED_GRPC_HDRS "${proto_hdr}")
+    list(APPEND GENERATED_GRPC_SRCS "${proto_src}")
+    list(APPEND GENERATED_GRPC_HDRS "${grpc_hdr}")
+    list(APPEND GENERATED_GRPC_SRCS "${grpc_src}")
+  endforeach()
+
+  set(GENERATED_GRPC_HDRS ${GENERATED_GRPC_HDRS} PARENT_SCOPE)
+  set(GENERATED_GRPC_SRCS ${GENERATED_GRPC_SRCS} PARENT_SCOPE)
+endfunction()
+
+# gRPC service(s)
+# ---------------
+
+# Could use a glob if protos were organised by name.
+set(GRPC_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
+set(GRPC_SRC
+  ${GRPC_SRC_DIR}/router_service.proto
+)
+
+set(GRPC_OUT_DIR ${PROJECT_BINARY_DIR}/services)
+file(MAKE_DIRECTORY ${GRPC_OUT_DIR})
+
+# Need quotes around "${GRPC_SRC}" to ensure it gets passed as the
+# semicolon-delimited list that it is (otherwise only the first argument gets
+# in).
+generate_grpc(${GRPC_SRC_DIR} "${GRPC_SRC}" ${GRPC_OUT_DIR})
+#set(GRPC_GENERATED_HDRS ${GENERATED_GRPC_HDRS})
+#set(GRPC_GENERATED_SRCS ${GENERATED_GRPC_SRCS})
+
 # router_service library
 # ----------------------
 
-#message(STATUS "found " ${ROUTER_SERVICE_LIB_SRC})
-#set(ROUTER_SERVICE_LIB_SRC
-#  
-#)
-#add_library(router_service STATIC ${ROUTER_SERVICE_LIB_SRC})
-#target_include_directories(router_service PUBLIC
-#                           "${PROJECT_BINARY_DIR}/src"
-#                           ${VLSIR_OUT_DIR})
-#
-#target_link_libraries(router_service PUBLIC ${tcmalloc_lib}
-#                                      gflags
-#                                      glog::glog
-#                                      absl::base
-#                                      absl::strings
-#                                      absl::str_format
-#                                      absl::status
-#                                      absl::statusor
-#                                      vlsir_lib
-#                                      ${Protobuf_LIBRARIES})
+set(ROUTER_SERVICE_LIB_SRC
+  ${GENERATED_GRPC_HDRS}
+  ${GENERATED_GRPC_SRCS}
+)
+add_library(router_service STATIC ${ROUTER_SERVICE_LIB_SRC})
+target_include_directories(router_service PUBLIC
+                           "${PROJECT_BINARY_DIR}/src"
+                           ${GRPC_OUT_DIR})
+
+target_link_libraries(router_service PUBLIC ${tcmalloc_lib}
+                                      gflags
+                                      glog::glog
+                                      absl::base
+                                      absl::strings
+                                      absl::str_format
+                                      absl::status
+                                      absl::statusor
+                                      vlsir_lib
+                                      gRPC::grpc++
+                                      ${Protobuf_LIBRARIES})
 
 # router_service executable
 # -------------------------
@@ -292,11 +366,13 @@ target_include_directories(router_service_bin PUBLIC
                            "${PROJECT_BINARY_DIR}/src"
                            ${VLSIR_OUT_DIR})
 
-target_link_libraries(router_service_bin PUBLIC
+target_link_libraries(router_service_bin PUBLIC router_service
                                       ${tcmalloc_lib}
                                       gflags
                                       glog::glog
                                       absl::strings
+                                      gRPC::grpc++
+                                      gRPC::grpc++_reflection
                                       ${Protobuf_LIBRARIES})
 
 
