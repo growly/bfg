@@ -317,7 +317,7 @@ endfunction()
 # ---------------
 
 # Could use a glob if protos were organised by name.
-set(GRPC_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
+set(GRPC_SRC_DIR ${PROJECT_SOURCE_DIR}/services)
 set(GRPC_SRC
   ${GRPC_SRC_DIR}/router_service.proto
 )
