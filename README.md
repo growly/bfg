@@ -11,6 +11,8 @@ Libraries
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip
   sudo apt install -y clang ninja-build python
+  # for gRPC
+  sudo apt install -y libre2-dev libc-ares-dev
 ```
 
 [google/googletest](https://github.com/google/googletest)
@@ -103,8 +105,7 @@ gRPC build options which we do not explore because I need to graduate,
 installation for the project instead of the entire system.
 
   ```
-  #git clone --recurse-submodules -b v1.64.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc
-  wget https://github.com/grpc/grpc/archive/refs/tags/v1.48.1.tar.gz
+  wget https://github.com/grpc/grpc/archive/refs/tags/v1.48.1.tar.gz -O grpc-1.48.1.tar.gz
   tar xf grpc-1.48.1.tar.gz
   cd grpc-1.48.1
   mkdir -p cmake/build
