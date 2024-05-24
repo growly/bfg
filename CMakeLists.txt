@@ -248,7 +248,9 @@ target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
 # bfg executable
 # --------------
 
-add_executable(bfg_bin src/main.cc)
+add_executable(bfg_bin
+  src/main.cc
+  src/dev_pdk_setup.cc)   # Temporary hack to set up PDK data.
 set_target_properties(bfg_bin PROPERTIES OUTPUT_NAME bfg)
 
 target_include_directories(bfg_bin PUBLIC
@@ -344,22 +346,26 @@ target_include_directories(router_service PUBLIC
                            "${PROJECT_BINARY_DIR}/src"
                            ${GRPC_OUT_DIR})
 
-target_link_libraries(router_service PUBLIC ${tcmalloc_lib}
+target_link_libraries(router_service PUBLIC
+                                      bfg
+                                      vlsir_lib
                                       gflags
+                                      ${tcmalloc_lib}
                                       glog::glog
                                       absl::base
                                       absl::strings
                                       absl::str_format
                                       absl::status
                                       absl::statusor
-                                      vlsir_lib
                                       gRPC::grpc++
                                       ${Protobuf_LIBRARIES})
 
 # router_service executable
 # -------------------------
 
-add_executable(router_service_bin src/router_service_main.cc)
+add_executable(router_service_bin
+  src/router_service_main.cc
+  src/dev_pdk_setup.cc)   # Temporary hack to set up PDK data.
 set_target_properties(router_service_bin PROPERTIES OUTPUT_NAME router_service)
 
 target_include_directories(router_service_bin PUBLIC

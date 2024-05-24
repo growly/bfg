@@ -1,6 +1,10 @@
+#include <fstream>
+
 #include "dev_pdk_setup.h"
 
 #include "physical_properties_database.h"
+
+#include <google/protobuf/text_format.h>
 
 namespace bfg {
 
@@ -436,3 +440,5 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("pdiff.drawing", "nwell.drawing", inter_constraints);
 }
+
+}   // namespace bfg
