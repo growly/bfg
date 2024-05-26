@@ -98,11 +98,11 @@ from a release tarball, it seems fine.
 
 [grpc/grpc](https://github.com/grpc/grpc)
 
-We have to use an old version of gRPC because we use an old version of protobuf.
-(Feel free to update all of them!) There are actually quite a few interesting
-gRPC build options which we do not explore because I need to graduate,
-*including* how modern `cmake`s handle dependencies *and* the use of a `.local`
-installation for the project instead of the entire system.
+We have to use an old version of gRPC because we use an old version of
+protobuf.  (Feel free to update both!) There are actually quite a few
+interesting gRPC build options which we do not explore because I need to
+graduate, *including* how modern `cmake`s handle dependencies *and* the use of
+a `.local` installation for the project instead of the entire system.
 
   ```
   wget https://github.com/grpc/grpc/archive/refs/tags/v1.48.1.tar.gz -O grpc-1.48.1.tar.gz
