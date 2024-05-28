@@ -175,3 +175,7 @@ go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
     localhost:8222 \
     bfg.router_service.RouterService/CreateRoutingGrid | jq
 ```
+
+A full example of this is in the
+[`router_service_poke.sh`](https://github.com/growly/bfg/blob/f52d23a74e4ed57b72fa4431ee85db1e2a1b450f/router_service_poke.sh)
+script.
