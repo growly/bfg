@@ -5,9 +5,12 @@
 #include <unordered_map>
 #include <ostream>
 #include <sstream>
+#include <fstream>
+#include <iomanip>
 #include <optional>
 #include <utility>
 #include <glog/logging.h>
+#include <string>
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_format.h>
@@ -21,6 +24,19 @@
 namespace bfg {
 
 using geometry::Layer;
+
+void PhysicalPropertiesDatabase::LoadTechnologyFromFile(
+    const std::string &path) {
+  vlsir::tech::Technology tech_pb;
+  std::fstream technology_input(path, std::ios::in | std::ios::binary);
+  LOG_IF(FATAL, !technology_input)
+      << "Could not open technology protobuf " << std::quoted(path);
+  if (!tech_pb.ParseFromIstream(&technology_input)) {
+    LOG(FATAL) << "Could not parse technology protobuf, "
+               << std::quoted(path);
+  }
+  LoadTechnology(tech_pb);
+}
 
 void PhysicalPropertiesDatabase::LoadTechnology(
     const vlsir::tech::Technology &pdk) {
@@ -267,26 +283,59 @@ PhysicalPropertiesDatabase::GetRules(
   return map_it->second;
 }
 
-void PhysicalPropertiesDatabase::GetRoutingLayerInfo(
-    const std::string &routing_layer_name,
-    RoutingLayerInfo *routing_info) const {
-  routing_info->layer = GetLayer(routing_layer_name);
-  const IntraLayerConstraints layer_rules = Rules(routing_layer_name);
-  routing_info->wire_width = layer_rules.min_width;
-  routing_info->pitch = layer_rules.min_pitch;
-  routing_info->min_separation = layer_rules.min_separation;
+std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
+    const std::string &routing_layer_name) const {
+  auto layer = FindLayer(routing_layer_name);
+  if (!layer) {
+    return std::nullopt;
+  }
+  RoutingLayerInfo routing_info;
+  routing_info.layer = *layer;
+  auto maybe_rules = GetRules(*layer);
+  if (!maybe_rules) {
+    LOG(WARNING) << "No intra-layer constraints for layer " << *layer
+                 << " (" << routing_layer_name << ")";
+    return std::nullopt;
+  }
+  const IntraLayerConstraints &layer_rules = maybe_rules->get();
+  routing_info.wire_width = layer_rules.min_width;
+  routing_info.pitch = layer_rules.min_pitch;
+  routing_info.min_separation = layer_rules.min_separation;
+  return routing_info;
 }
 
-RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfo(
+RoutingLayerInfo PhysicalPropertiesDatabase::GetRoutingLayerInfoOrDie(
+    const std::string &routing_layer_name) const {
+  auto routing_info = GetRoutingLayerInfo(routing_layer_name);
+  return *routing_info;
+}
+
+std::optional<RoutingViaInfo> PhysicalPropertiesDatabase::GetRoutingViaInfo(
+    const std::string &routing_layer,
+    const std::string &other_routing_layer) const {
+  auto first_layer = FindLayer(routing_layer);
+  auto second_layer = FindLayer(other_routing_layer);
+  if (!first_layer || !second_layer) {
+    return std::nullopt;
+  }
+  return GetRoutingViaInfoOrDie(*first_layer, *second_layer);
+}
+
+RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfoOrDie(
     const std::string &routing_layer,
     const std::string &other_routing_layer) const {
   const geometry::Layer first_layer = GetLayer(routing_layer);
   const geometry::Layer second_layer = GetLayer(other_routing_layer);
+  return GetRoutingViaInfoOrDie(first_layer, second_layer);
+}
 
-  auto via_layer = GetViaLayer(routing_layer, other_routing_layer);
+RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfoOrDie(
+    const geometry::Layer &first_layer,
+    const geometry::Layer &second_layer) const {
+  auto via_layer = GetViaLayer(first_layer, second_layer);
   LOG_IF(FATAL, !via_layer)
-      << "No via layer found connecting " << routing_layer << " and "
-      << other_routing_layer;
+      << "No via layer found connecting " << first_layer << " and "
+      << second_layer;
 
   const IntraLayerConstraints &via_rules = Rules(*via_layer);
 

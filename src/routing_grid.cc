@@ -1021,15 +1021,20 @@ std::optional<std::pair<geometry::Layer, double>> RoutingGrid::ViaLayerAndCost(
   return std::make_pair(needs_via->get().layer(), needs_via->get().cost());
 }
 
-void RoutingGrid::ConnectLayers(
+bool RoutingGrid::ConnectLayers(
     const geometry::Layer &first, const geometry::Layer &second) {
   // One layer has to be horizontal, and one has to be vertical.
   auto split_directions = PickHorizontalAndVertical(first, second);
   const RoutingLayerInfo &horizontal_info = split_directions.first;
   const RoutingLayerInfo &vertical_info = split_directions.second;
 
-  const RoutingViaInfo &routing_via_info =
-      GetRoutingViaInfoOrDie(first, second);
+  auto maybe_routing_via_info = GetRoutingViaInfo(first, second);
+  if (!maybe_routing_via_info) {
+    LOG(ERROR) << "Could not get RoutingViaInfo for " << first
+               << ", " << second;
+    return false;
+  }
+  const RoutingViaInfo &routing_via_info = maybe_routing_via_info->get();
 
   LOG(INFO) << "Drawing grid between layers " << horizontal_info.layer
             << ", " << vertical_info.layer;
@@ -1178,6 +1183,8 @@ void RoutingGrid::ConnectLayers(
       VLOG(10) << layer << " track: " << *track;
     }
   }
+
+  return true;
 }
 
 bool RoutingGrid::ContainsVertex(RoutingVertex *vertex) const {

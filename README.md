@@ -159,3 +159,19 @@ a `.local` installation for the project instead of the entire system.
 ```
 protoc --proto_path=vlsir/ --encode vlsir.tech.Technology vlsir/tech.proto < gf180mcu.technology.pb.txt > gf180mcu.technology.pb
 ```
+
+## Testing the router service
+
+Use [`grpcurl`](https://github.com/fullstorydev/grpcurl). `jq` makes the output
+pretty (and is optional):
+
+```
+go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+~/go/bin/grpcurl -plaintext localhost:8222 list
+~/go/bin/grpcurl -plaintext localhost:8222 bfg.router_service.RouterService list
+~/go/bin/grpcurl \
+    -plaintext \
+    -d '{ "predefined_technology": "TECHNOLOGY_SKY130", "grid_definition": { "layers": [{}, {}] } }' \
+    localhost:8222 \
+    bfg.router_service.RouterService/CreateRoutingGrid | jq
+```

@@ -69,7 +69,6 @@ int main(int argc, char **argv) {
   // The design database contains our design and all our dependencies.
   bfg::DesignDatabase design_db;
 
-  vlsir::tech::Technology tech_pb;
   // std::string pdk_file_name = "../sky130.technology.pb.txt";
   // std::ifstream pdk_file(pdk_file_name);
   // LOG_IF(FATAL, !pdk_file.is_open())
@@ -77,16 +76,6 @@ int main(int argc, char **argv) {
   // std::ostringstream ss;
   // ss << pdk_file.rdbuf();
   // google::protobuf::TextFormat::ParseFromString(ss.str(), &tech_pb);
-
-  std::fstream technology_input(
-      FLAGS_technology, std::ios::in | std::ios::binary);
-  LOG_IF(FATAL, !technology_input)
-      << "Could not open technology protobuf, "
-      << FLAGS_technology;
-  if (!tech_pb.ParseFromIstream(&technology_input)) {
-    LOG(FATAL) << "Could not parse technology protobuf, "
-               << FLAGS_technology;
-  }
 
   // TODO(aryap): This is a workaround for not having the package in the
   // tech_pb. Want to do something like:
@@ -105,7 +94,7 @@ int main(int argc, char **argv) {
   }
 
   bfg::PhysicalPropertiesDatabase &physical_db = design_db.physical_db();
-  physical_db.LoadTechnology(tech_pb);
+  physical_db.LoadTechnologyFromFile(FLAGS_technology);
 
   bfg::SetUpSky130(&physical_db);
 

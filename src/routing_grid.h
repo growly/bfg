@@ -75,7 +75,7 @@ class RoutingGrid {
   // can take between them; concretely, it creates a vertex every time a
   // horizontal and vertical routing line cross. (The two described layers must
   // be orthogonal in routing direction.)
-  void ConnectLayers(
+  bool ConnectLayers(
       const geometry::Layer &first, const geometry::Layer &second);
 
   bool AddRouteBetween(

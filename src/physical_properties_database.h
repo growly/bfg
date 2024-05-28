@@ -91,6 +91,8 @@ class PhysicalPropertiesDatabase {
 
   void LoadTechnology(const vlsir::tech::Technology &pdk);
 
+  void LoadTechnologyFromFile(const std::string &path);
+
   // Internally, all positions and lengths are computed in integer units,
   // meaning that truncation and rounding have to be considered when it is
   // prudent to do so.
@@ -147,11 +149,20 @@ class PhysicalPropertiesDatabase {
   const IntraLayerConstraints &Rules(const std::string &layer_name) const;
   const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
 
-  void GetRoutingLayerInfo(const std::string &routing_layer_name,
-                           RoutingLayerInfo *routing_info) const;
-  RoutingViaInfo GetRoutingViaInfo(
+  RoutingLayerInfo GetRoutingLayerInfoOrDie(
+      const std::string &routing_layer_name) const;
+  std::optional<RoutingLayerInfo> GetRoutingLayerInfo(
+      const std::string &routing_layer_name) const;
+
+  std::optional<RoutingViaInfo> GetRoutingViaInfo(
       const std::string &routing_layer,
       const std::string &other_routing_layer) const;
+  RoutingViaInfo GetRoutingViaInfoOrDie(
+      const std::string &routing_layer,
+      const std::string &other_routing_layer) const;
+  RoutingViaInfo GetRoutingViaInfoOrDie(
+      const geometry::Layer &first_layer,
+      const geometry::Layer &second_layer) const;
 
   // TODO(aryap): Port these from RoutingGrid to here.
   // std::optional<double> FindViaStackCost(

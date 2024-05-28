@@ -338,6 +338,7 @@ generate_grpc(${GRPC_SRC_DIR} "${GRPC_SRC}" ${GRPC_OUT_DIR})
 # ----------------------
 
 set(ROUTER_SERVICE_LIB_SRC
+  ${PROJECT_SOURCE_DIR}/src/router_service_impl.cc
   ${GENERATED_GRPC_HDRS}
   ${GENERATED_GRPC_SRCS}
 )
