@@ -11,7 +11,7 @@ fi
   "grid_id": ${1},
   "net_route_orders": [
     {
-      "net": "abc1",
+      "net": "A",
       "points": [
         {
           "point": { "x": 10, "y": 10 },
@@ -23,6 +23,23 @@ fi
         },
         {
           "point": { "x": 300, "y": 50 },
+          "layer_name": "li.pin"
+        },
+        {
+          "point": { "x": 900, "y": 900 },
+          "layer_name": "li.pin"
+        }
+      ]
+    },
+    {
+      "net": "B",
+      "points": [
+        {
+          "point": { "x": 500, "y": 600 },
+          "layer_name": "met1.pin"
+        },
+        {
+          "point": { "x": 800, "y": 250 },
           "layer_name": "li.pin"
         }
       ]

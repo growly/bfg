@@ -89,6 +89,7 @@ grpc::Status RouterServiceImpl::AddRoutes(
         router_service::StatusCode::OTHER_ERROR);
     return grpc::Status::OK;
   }
+  session->ExportRoutes(reply);
 
   reply->mutable_status()->set_code(router_service::StatusCode::OK);
   return grpc::Status::OK;

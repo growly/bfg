@@ -379,6 +379,16 @@ geometry::Layer RoutingPath::PickAccessLayer(
   return costed_layers.front().first;
 }
 
+void RoutingPath::ToPointsAndLayers(
+    std::vector<geometry::Point> *points,
+    std::vector<geometry::Layer> *layers) const {
+  for (RoutingVertex *const vertex : vertices_) {
+    points->push_back(vertex->centre());
+  }
+  for (RoutingEdge *const edge : edges_) {
+    layers->push_back(edge->EffectiveLayer());
+  }
+}
 
 void RoutingPath::ToPolyLinesAndVias(
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,

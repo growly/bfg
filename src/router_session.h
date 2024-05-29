@@ -25,6 +25,8 @@ class RouterSession {
 
   bool AddRoutes(const router_service::AddRoutesRequest &request);
 
+  void ExportRoutes(router_service::AddRoutesReply *reply) const;
+
   bool PerformNetRouteOrder(const router_service::NetRouteOrder &request);
 
   router_service::Status SetUpRoutingGrid(

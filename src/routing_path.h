@@ -38,6 +38,10 @@ class RoutingPath {
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines,
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
 
+  void ToPointsAndLayers(
+      std::vector<geometry::Point> *points,
+      std::vector<geometry::Layer> *layers) const;
+
   bool Empty() const { return edges_.empty(); }
 
   const geometry::Port *start_port() const { return start_port_; }

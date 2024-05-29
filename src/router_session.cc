@@ -5,9 +5,11 @@
 
 #include <absl/strings/str_format.h>
 
+#include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/port.h"
 #include "router_session.h"
+#include "routing_path.h"
 
 #include "services/router_service.grpc.pb.h"
 
@@ -39,6 +41,32 @@ bool RouterSession::AddRoutes(const router_service::AddRoutesRequest &request) {
   }
 
   return conjunction;
+}
+
+void RouterSession::ExportRoutes(router_service::AddRoutesReply *reply) const {
+  for (RoutingPath *path : routing_grid_->paths()) {
+    router_service::Route *route = reply->add_routes();
+    route->set_net(path->net());
+
+    std::vector<geometry::Point> points;
+    std::vector<geometry::Layer> layers;
+    path->ToPointsAndLayers(&points, &layers);
+
+    for (const geometry::Point &point : points) {
+      router_service::Point *point_pb = route->add_points();
+      point_pb->set_x(point.x());
+      point_pb->set_y(point.y());
+    }
+
+    for (const geometry::Layer &layer : layers) {
+      auto maybe_name = physical_db_.GetLayerName(layer);
+      if (maybe_name) {
+        route->add_layers(*maybe_name);
+      } else {
+        route->add_layers(absl::StrFormat("unknown_%d", layer));
+      }
+    }
+  }
 }
 
 bool RouterSession::PerformNetRouteOrder(

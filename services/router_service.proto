@@ -100,6 +100,12 @@ message NetRouteOrder {
   repeated PointOnLayer points = 2;
 }
 
+message Route {
+  string net = 1;
+  repeated Point points = 2;
+  repeated string layers = 3;
+}
+
 message AddRoutesRequest {
   int64 grid_id = 1;
 
@@ -108,6 +114,8 @@ message AddRoutesRequest {
 
 message AddRoutesReply {
   Status status = 1;
+
+  repeated Route routes = 2;
 }
 
 message QueryRoutingGridRequest {
