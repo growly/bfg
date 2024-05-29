@@ -1,16 +1,76 @@
-#include "services/router_service.grpc.pb.h"
+#include <iomanip>
+#include <memory>
+#include <optional>
+#include <string>
 
+#include <absl/strings/str_format.h>
+
+#include "geometry/point.h"
+#include "geometry/port.h"
 #include "router_session.h"
+
+#include "services/router_service.grpc.pb.h"
 
 namespace bfg {
 
+std::optional<geometry::Port> RouterSession::PointAndLayerToPort(
+    const std::string &net,
+    const router_service::PointOnLayer &point_on_layer) const {
+  auto layer =
+      routing_grid_->physical_db().FindLayer(point_on_layer.layer_name());
+  if (!layer) {
+    return std::nullopt;
+  }
+  geometry::Point centre = {
+      point_on_layer.point().x(), point_on_layer.point().y()};
+  return geometry::Port(centre, 100U, 100U, *layer, net);
+}
+
 bool RouterSession::AddRoutes(const router_service::AddRoutesRequest &request) {
-  // TODO(aryap):
   // We will have a list of nets to route with 2+ points:
   //  - Connect first two points with shortest path AddRouteBetween(...),
   //  give them the net label.
   //  - Connect successive points to the existing net.
   //  - Pray.
+  bool conjunction = true;
+  for (const router_service::NetRouteOrder &net_route_order :
+       request.net_route_orders()) {
+    conjunction = PerformNetRouteOrder(net_route_order) && conjunction;
+  }
+
+  return conjunction;
+}
+
+bool RouterSession::PerformNetRouteOrder(
+    const router_service::NetRouteOrder &request) {
+  LOG(INFO) << "Routing net " << std::quoted(request.net());
+
+  if (request.points_size() < 2) {
+    // Nothing to do.
+    return true;
+  }
+
+  auto start = PointAndLayerToPort(request.net(), *request.points().begin());
+
+  auto next = PointAndLayerToPort(
+      request.net(), *(request.points().begin() + 1));
+  if (!start || !next) {
+    return false;
+  }
+
+  LOG(INFO) << "Routing " << *start << " to " << *next;
+  routing_grid_->AddRouteBetween(*start, *next, {}, request.net());
+
+  for (size_t i = 2; i < request.points_size(); ++i) {
+    auto next = PointAndLayerToPort(
+        request.net(), *(request.points().begin() + i));
+    if (!next) {
+      return false;
+    }
+    LOG(INFO) << "Routing " << *next << " to net "
+              << std::quoted(request.net());
+    routing_grid_->AddRouteToNet(*next, request.net(), {});
+  }
   return true;
 }
 

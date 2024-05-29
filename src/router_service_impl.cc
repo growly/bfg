@@ -51,8 +51,7 @@ grpc::Status RouterServiceImpl::CreateRoutingGrid(
       break;
   }
 
-  RoutingGrid *grid = new RoutingGrid(physical_db);
-  RouterSession *session = new RouterSession(grid);
+  RouterSession *session = new RouterSession(physical_db);
 
   // Define grid with router and ConnectLayers().
   router_service::Status set_up =

@@ -30,6 +30,9 @@ using router_service::DeleteRoutingGridReply;
 class RouterServiceImpl final :
   public bfg::router_service::RouterService::Service {
  public:
+  RouterServiceImpl()
+      : highest_index_(0) {}
+
   // TODO(aryap): Can we find a portable UUID library?
   typedef int64_t UUID;
 
@@ -60,10 +63,6 @@ class RouterServiceImpl final :
 
  private:
   const UUID NextUUID() const;
-
-  router_service::Status SetUpRoutingGrid(
-      const router_service::RoutingGridDefinition &grid_definition,
-      RoutingGrid *grid);
 
   UUID highest_index_;
 

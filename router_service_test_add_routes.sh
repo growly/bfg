@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ "$#" -ne 1 ]; then
+    echo "Specify grid ID as first argument"
+    exit 1
+fi
+
+~/go/bin/grpcurl -plaintext -d @ \
+    localhost:8222 bfg.router_service.RouterService/AddRoutes << EOM
+{
+  "grid_id": ${1},
+  "net_route_orders": [
+    {
+      "net": "abc1",
+      "points": [
+        {
+          "point": { "x": 10, "y": 10 },
+          "layer_name": "met1.pin"
+        },
+        {
+          "point": { "x": 100, "y": 100 },
+          "layer_name": "met1.pin"
+        },
+        {
+          "point": { "x": 300, "y": 50 },
+          "layer_name": "li.pin"
+        }
+      ]
+    }
+  ]
+}
+EOM

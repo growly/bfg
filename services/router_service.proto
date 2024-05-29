@@ -103,7 +103,7 @@ message NetRouteOrder {
 message AddRoutesRequest {
   int64 grid_id = 1;
 
-  repeated NetRouteOrder net_route_order = 2;
+  repeated NetRouteOrder net_route_orders = 2;
 }
 
 message AddRoutesReply {
