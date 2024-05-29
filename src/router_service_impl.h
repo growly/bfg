@@ -1,3 +1,6 @@
+#ifndef ROUTER_SERVICE_IMPL_H_
+#define ROUTER_SERVICE_IMPL_H_
+
 #include <memory>
 
 #include <google/protobuf/text_format.h>
@@ -5,6 +8,7 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
+#include "router_session.h"
 #include "routing_grid.h"
 #include "physical_properties_database.h"
 
@@ -21,27 +25,6 @@ using router_service::QueryRoutingGridRequest;
 using router_service::QueryRoutingGridReply;
 using router_service::DeleteRoutingGridRequest;
 using router_service::DeleteRoutingGridReply;
-
-class RouterSession {
- public:
-  RouterSession(RoutingGrid *routing_grid)
-      : routing_grid_(routing_grid) {}
-
-  RoutingGrid *routing_grid() { return routing_grid_.get(); }
-
-  bool AddRoutes(const AddRoutesRequest &request) {
-    // TODO(aryap):
-    // We will have a list of nets to route with 2+ points:
-    //  - Connect first two points with shortest path AddRouteBetween(...),
-    //  give them the net label.
-    //  - Connect successive points to the existing net.
-    //  - Pray.
-    return true;
-  }
-
- private:
-  std::unique_ptr<RoutingGrid> routing_grid_;
-};
 
 // Manages RoutingGrids.
 class RouterServiceImpl final :
@@ -88,3 +71,5 @@ class RouterServiceImpl final :
 };
 
 }  // namespace bfg
+
+#endif  // ROUTER_SERVICE_IMPL_H_

@@ -97,13 +97,13 @@ message NetRouteOrder {
   // A list of points on layers. For now, the first two points are connected by
   // shortest path. Each successive point is connected to the nearest point on
   // the existing net, if it exists.
-  repeated PointOnLayer = 2;
+  repeated PointOnLayer points = 2;
 }
 
 message AddRoutesRequest {
   int64 grid_id = 1;
 
-  repeated NetRouteOrder = 2;
+  repeated NetRouteOrder net_route_order = 2;
 }
 
 message AddRoutesReply {

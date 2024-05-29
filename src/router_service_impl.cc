@@ -52,22 +52,22 @@ grpc::Status RouterServiceImpl::CreateRoutingGrid(
   }
 
   RoutingGrid *grid = new RoutingGrid(physical_db);
+  RouterSession *session = new RouterSession(grid);
 
   // Define grid with router and ConnectLayers().
   router_service::Status set_up =
-      SetUpRoutingGrid(request->grid_definition(), grid);
+      session->SetUpRoutingGrid(request->grid_definition());
 
   reply->mutable_status()->CopyFrom(set_up);
   if (set_up.code() != router_service::StatusCode::OK) {
-    delete grid;
+    delete session;
     return grpc::Status::OK;
   }
 
   RouterServiceImpl::UUID next_uuid = NextUUID();
   auto insertion_it = sessions_.insert({
       next_uuid,
-      // new RouterSession(physical_db)
-      std::make_unique<RouterSession>(grid)
+      std::move(std::unique_ptr<RouterSession>(session))
   });
   reply->set_grid_id(next_uuid);
 
@@ -152,108 +152,6 @@ const RouterServiceImpl::UUID RouterServiceImpl::NextUUID() const {
     next++;
   }
   return next;
-}
-
-router_service::Status RouterServiceImpl::SetUpRoutingGrid(
-    const router_service::RoutingGridDefinition &grid_definition,
-    RoutingGrid *grid) {
-  router_service::Status result;
-  if (grid_definition.layers_size() < 2) {
-    result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-    result.set_message("Too few grid definitions");
-    return result;
-  }
-  if (grid_definition.layers_size() > 2) {
-    result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-    result.set_message("Too many routing layer definitions");
-    return result;
-  }
-
-  const PhysicalPropertiesDatabase &db = grid->physical_db();
-
-  std::vector<RoutingLayerInfo> layer_infos;
-  for (const router_service::RoutingLayerDefinition &layer_pb :
-       grid_definition.layers()) {
-    auto maybe_layer_info = db.GetRoutingLayerInfo(layer_pb.name());
-    if (!maybe_layer_info) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(
-          absl::StrFormat("Missing info for layer: \"%s\"", layer_pb.name()));
-      return result;
-    }
-    RoutingLayerInfo layer_info = *maybe_layer_info;
-
-    switch (layer_pb.direction()) {
-      case router_service::RoutingLayerDirection::TRACK_DIRECTION_VERTICAL:
-        layer_info.direction = RoutingTrackDirection::kTrackVertical;
-        break;
-      case router_service::RoutingLayerDirection::TRACK_DIRECTION_HORIZONTAL:
-        layer_info.direction = RoutingTrackDirection::kTrackHorizontal;
-        break;
-      case router_service::RoutingLayerDirection::TRACK_DIRECTION_NONE:
-        // Fallthrough intended.
-      default:
-        break;
-    }
-
-    layer_info.area = geometry::Rectangle(
-        geometry::Point(
-            layer_pb.area().lower_left().x(),
-            layer_pb.area().lower_left().y()
-        ),
-        geometry::Point(
-            layer_pb.area().upper_right().x(),
-            layer_pb.area().upper_right().y()
-        ));
-
-    layer_info.offset = layer_pb.offset();
-    layer_infos.push_back(layer_info);
-
-    grid->AddRoutingLayerInfo(layer_info);
-  }
-
-  // AddRoutingViaInfos
-  // AddRoutingLayerInfos
-  for (const router_service::RoutingViaDefinition &via_pb :
-       grid_definition.vias()) {
-    auto first_layer = db.FindLayer(via_pb.between_layer());
-    if (!first_layer) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(absl::StrFormat("Missing info for layer: \"%s\"",
-                                         via_pb.between_layer()));
-      return result;
-    }
-    auto second_layer = db.FindLayer(via_pb.and_layer());
-    if (!second_layer) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(absl::StrFormat("Missing info for layer: \"%s\"",
-                                         via_pb.and_layer()));
-      return result;
-    }
-
-    auto maybe_routing_via_info = db.GetRoutingViaInfo(
-        via_pb.between_layer(), via_pb.and_layer());
-    if (!maybe_routing_via_info) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message("Routing via info unavailable for given layers");
-      return result;
-    }
-    RoutingViaInfo routing_via_info = *maybe_routing_via_info;
-
-    routing_via_info.set_cost(via_pb.cost());
-
-    grid->AddRoutingViaInfo(*first_layer, *second_layer, routing_via_info);
-  }
-  
-  
-  if (!grid->ConnectLayers(layer_infos[0].layer, layer_infos[1].layer)) {
-    result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-    result.set_message("Could not complete layer connection");
-    return result;
-  }
-
-  result.set_code(router_service::StatusCode::OK);
-  return result;
 }
 
 }  // namespace bfg
