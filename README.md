@@ -8,12 +8,23 @@ An Open-Source Silicon Compiler for Reduced-Complexity Reconfigurable Fabrics
 
 Libraries
 
+#### Debian
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip
   sudo apt install -y clang ninja-build python
   # for gRPC
   sudo apt install -y libre2-dev libc-ares-dev
 ```
+
+#### Red Hat
+```
+  sudo yum group install "Development Tools"
+  sudo yum install cmake autoconf automake libtool curl make g++ unzip
+  sudo yum install clang ninja-build python
+  # for gRPC
+  sudo yum install re2-devel c-ares-devel
+```
+
 
 [google/googletest](https://github.com/google/googletest)
 
