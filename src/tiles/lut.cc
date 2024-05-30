@@ -631,12 +631,22 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     std::string mux_port_name;
   };
 
+  // The mux input order is, from top to bottom:
+  // input_5  --+---------
+  // input_4  --|
+  // input_6  --|
+  // input_7  --|  8:1 mux
+  // input_3  --|
+  // input_2  --|
+  // input_0  --|
+  // input_1  --+---------
+
   std::vector<AutoConnection> auto_connections = {
     // Manually ordered:
-    {banks[0].memories()[3][0], mux_order[0], "input_4"},
     {banks[0].memories()[2][1], mux_order[0], "input_6"},
-    {banks[0].memories()[2][0], mux_order[0], "input_7"},
+    {banks[0].memories()[3][0], mux_order[0], "input_4"},
     {banks[0].memories()[3][1], mux_order[0], "input_5"},
+    {banks[0].memories()[2][0], mux_order[0], "input_7"},
 
     {banks[0].memories()[1][1], mux_order[0], "input_3"},
     {banks[0].memories()[1][0], mux_order[0], "input_2"},
