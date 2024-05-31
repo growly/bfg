@@ -16,6 +16,12 @@ Libraries
   sudo apt install -y libre2-dev libc-ares-dev
 ```
 
+#### Ubuntu
+```
+  sudo apt install -y build-essential cmake autoconf automake libtool curl \
+    make g++ unzip clang ninja-build python libre2-dev libc-ares-dev
+```
+
 #### Red Hat
 ```
   sudo yum group install "Development Tools"
@@ -34,7 +40,7 @@ Libraries
   mkdir build && cd build
   cmake ../
   make -j $(nproc) && sudo make install
-  popd; popd
+  popd
   ```
 
 <!---
@@ -52,7 +58,7 @@ Libraries
   ./autogen.sh
   ./configure
   make -j $(nproc) && sudo make install
-  popd; popd
+  popd
   ```
 
 [gflags/gflags](https://github.com/gflags/gflags/blob/master/INSTALL.md)
@@ -62,7 +68,7 @@ Libraries
   mkdir build && cd build
   cmake .. -DBUILD_SHARED_LIBS=ON
   make -j $(nproc) && sudo make install
-  popd; popd
+  popd
   ```
 
 [glog/glog](https://github.com/google/glog)
@@ -85,7 +91,7 @@ Libraries
   cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON ../
   make -j $(nproc)
   sudo make install
-  popd; popd
+  popd
   ```
 
 [protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src)
