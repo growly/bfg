@@ -13,13 +13,13 @@ Libraries
   sudo apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip
   sudo apt install -y clang ninja-build python
   # for gRPC
-  sudo apt install -y libre2-dev libc-ares-dev
+  sudo apt install -y libre2-dev libc-ares-dev libssl-dev
 ```
 
 #### Ubuntu
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl \
-    make g++ unzip clang ninja-build python libre2-dev libc-ares-dev
+    make g++ unzip clang ninja-build python libre2-dev libc-ares-dev libssl-dev
 ```
 
 #### Red Hat
