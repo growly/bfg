@@ -671,7 +671,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // areaid.standardc 81/4
   layout->SetActiveLayerByName("areaid.standardc");
-  Rectangle *tiling_bounds = layout->AddRectangle(Rectangle(Point(x_min, 0), Point(6000, 2720)));
+  Rectangle *tiling_bounds = layout->AddRectangle(
+      Rectangle(Point(x_min, 0), Point(6000, 2720)));
   layout->SetTilingBounds(*tiling_bounds);
 
   // psdm.drawing [DRAWING] 94/20
@@ -694,11 +695,6 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->AddRectangleAsPort(
       Rectangle(Point(5590, 425), Point(5760, 595)), "Q");
 
-  // These used to have to be on different layers!
-  // layout->SetActiveLayerByName("li.pin");
-  //layout->AddPort({*d_port, "D"});
-  //layout->AddPort({*q_port, "Q"});
-
   // nwell.pin [PIN] 64/16
   layout->SetActiveLayerByName("nwell.pin");
 
@@ -709,9 +705,9 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->SetActiveLayerByName("met1.pin");
 
   layout->AddRectangleAsPort(
-      Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLKB");
+      Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLK");
   layout->AddRectangleAsPort(
-      Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLK");
+      Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLKB");
 
   layout->Translate(Point(-x_min, 0));
   return layout.release();

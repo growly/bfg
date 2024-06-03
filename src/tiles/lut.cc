@@ -338,11 +338,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
+  std::vector<geometry::Instance*> buf_order;
+
   {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
     // buffers for a k-LUT.
     RowGuide &upper_row = banks[0].rows()[3];
-    int64_t buf_count;
+    int64_t buf_count = 0;
     for (size_t i = 0; i < lut_size_ - 1; ++i) {
       std::string instance_name = absl::StrFormat("buf_%d", buf_count);
       std::string cell_name = absl::StrCat(instance_name, "_template");
@@ -359,6 +361,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       buf_cell->layout()->ResetY();
       geometry::Instance *instance = upper_row.InstantiateBack(
           instance_name, buf_cell->layout());
+      buf_order.push_back(instance);
       buf_count++;
     }
     RowGuide &lower_row = banks[1].rows()[0];
@@ -389,6 +392,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       buf_cell->layout()->ResetY();
       geometry::Instance *instance = lower_row.InstantiateFront(
           instance_name, buf_cell->layout());
+      buf_order.push_back(instance);
       buf_count++;
     }
   }
@@ -621,11 +625,22 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
   }
 
+  // Connect the input buffers on the selector lines.
+  struct AutoConnection {
+    geometry::Instance *source_instance;
+    std::string source_port_name;
+    geometry::Instance *target_instance;
+    std::string target_port_name;
+  };
+  std::vector<AutoConnection> auto_connections = {
+    //{buf_order[0], "P", mux_order[0], "
+  };
+
   // Connect memory outputs to the muxes in order:
   // - Connect the closest output with
 
   // Connect flip-flops to mux.
-  struct AutoConnection {
+  struct AutoMemoryMuxConnection {
     geometry::Instance *source_memory;
     geometry::Instance *target_mux;
     std::string mux_port_name;
@@ -641,30 +656,32 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // input_0  --|
   // input_1  --+---------
 
-  std::vector<AutoConnection> auto_connections = {
-    // Manually ordered:
-    {banks[0].memories()[2][1], mux_order[0], "input_6"},
-    {banks[0].memories()[3][0], mux_order[0], "input_4"},
-    {banks[0].memories()[3][1], mux_order[0], "input_5"},
-    {banks[0].memories()[2][0], mux_order[0], "input_7"},
+  std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
+  //  // Manually ordered:
+  //  {banks[0].memories()[2][1], mux_order[0], "input_6"},
+  //  {banks[0].memories()[3][0], mux_order[0], "input_4"},
+  //  {banks[0].memories()[3][1], mux_order[0], "input_5"},
+  //  {banks[0].memories()[2][0], mux_order[0], "input_7"},
 
-    {banks[0].memories()[1][1], mux_order[0], "input_3"},
-    {banks[0].memories()[1][0], mux_order[0], "input_2"},
-    {banks[0].memories()[0][0], mux_order[0], "input_0"},
-    {banks[0].memories()[0][1], mux_order[0], "input_1"},
+  //  {banks[0].memories()[1][1], mux_order[0], "input_3"},
+  //  {banks[0].memories()[1][0], mux_order[0], "input_2"},
+  //  {banks[0].memories()[0][0], mux_order[0], "input_0"},
+  //  {banks[0].memories()[0][1], mux_order[0], "input_1"},
 
-    // Not yet:
-    {banks[1].memories()[0][0], mux_order[1], "input_1"},
-    {banks[1].memories()[0][1], mux_order[1], "input_0"},
-    {banks[1].memories()[1][0], mux_order[1], "input_2"},
-    {banks[1].memories()[1][1], mux_order[1], "input_3"},
-    {banks[1].memories()[2][0], mux_order[1], "input_7"},
-    {banks[1].memories()[2][1], mux_order[1], "input_6"},
-    {banks[1].memories()[3][0], mux_order[1], "input_4"},
-    {banks[1].memories()[3][1], mux_order[1], "input_5"}
+  //  // Not yet:
+  //  {banks[1].memories()[1][0], mux_order[1], "input_2"},
+
+  //  {banks[1].memories()[2][0], mux_order[1], "input_7"},
+  //  {banks[1].memories()[3][0], mux_order[1], "input_4"},
+  //  {banks[1].memories()[3][1], mux_order[1], "input_5"},
+  //  {banks[1].memories()[2][1], mux_order[1], "input_6"},
+
+  //  {banks[1].memories()[0][0], mux_order[1], "input_1"},
+  //  {banks[1].memories()[0][1], mux_order[1], "input_0"},
+  //  {banks[1].memories()[1][1], mux_order[1], "input_3"},
   };
 
-  for (auto &auto_connection : auto_connections) {
+  for (auto &auto_connection : auto_mem_connections) {
     geometry::Instance *memory = auto_connection.source_memory;
     geometry::Instance *mux = auto_connection.target_mux;
     const std::string &input_name = auto_connection.mux_port_name;

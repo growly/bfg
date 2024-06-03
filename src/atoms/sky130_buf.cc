@@ -34,6 +34,8 @@ bfg::Cell *Sky130Buf::Generate() {
   //      +-|_ X2   +-|_  X0
   //          |         |
   //          V         V
+  // P = ~A
+  // X = ~~A
 
   std::unique_ptr<bfg::Cell> cell(
       new bfg::Cell(name_.empty() ? "sky130_buf": name_));
@@ -298,6 +300,21 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   // pwell.pin 122/16
   layout->SetActiveLayerByName("pwell.pin");
   layout->AddRectangle({{155, -85}, {325 , 85}});
+
+  // li.pin
+  layout->SetActiveLayerByName("li.pin");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(145, 1105), Point(315, 1275)), "A");
+
+  layout->AddRectangleAsPort(
+      Rectangle(Point(735, 1140), Point(905, 1310)), "P");
+
+  layout->AddRectangleAsPort(
+      Rectangle(Point(1055, 425), Point(1225, 595)), "X");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(1055, 1785), Point(1225, 1955)), "X");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(1055, 2125), Point(1225, 2295)), "X");
 
   return layout.release();
 }

@@ -285,7 +285,8 @@ Polygon *ConnectPolyToMet1(
 }
 
 // The mapping is a triple of (named point, connecting column poly line, and
-// whether or not the jog should be rotated).
+// whether or not the jog should be rotated). A connection is made from the
+// named point to the column encoded by the given PolyLine.
 void ConnectNamedPointsToColumns(
     const PhysicalPropertiesDatabase &db,
     std::vector<
@@ -319,7 +320,7 @@ void ConnectNamedPointsToColumns(
     }
     ConnectPolyToMet1(
         db, source, connection, poly_contact, rotate, bulge_direction, layout);
-    rotate = !rotate;
+    rotate = !rotate;   // FIXME(aryap): This does nothing.
     bulge_direction = bulge_direction == BulgeDirection::LEFT ?
         BulgeDirection::RIGHT : bulge_direction == BulgeDirection::RIGHT ?
         BulgeDirection::LEFT : BulgeDirection::CENTRE;
@@ -1417,6 +1418,308 @@ void ConnectOppositeInputs(
   }
 }
 
+void DrawAndConnectMet1Columns(
+    const PhysicalPropertiesDatabase &db,
+    const std::string &poly_contact,
+    int64_t width,
+    int64_t height,
+    std::map<size_t, int64_t> *column_x,
+    bfg::Layout *layout) {
+  const auto &li_rules = db.Rules("li.drawing");
+  const auto &mcon_rules = db.Rules("mcon.drawing");
+  const auto &met1_rules = db.Rules("met1.drawing");
+  const auto &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
+  const auto &met1_mcon_rules = db.Rules("met1.drawing", "mcon.drawing");
+
+  // Generate vertical metal columns.
+  //
+  // Our mux can fit N tracks:
+  //
+  // +------------------------------------+
+  // |            ^           ^           |
+  // | < offset > | < pitch > | < pitch > |
+  // |            v           v           |
+  // +------------------------------------+
+  //
+  // The second half of the list is right-hand-side columns. They should be
+  // moved one over depending on the overall width of the mux.
+  int64_t column_pitch_max = std::max(
+      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
+          met1_rules.min_width / 2,
+          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
+      ),
+      mcon_rules.via_width + (
+          li_mcon_rules.via_overhang_wide +
+          li_mcon_rules.via_overhang +
+          li_rules.min_separation
+      )
+  );
+
+  int64_t column_pitch_min = std::min(
+      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
+          met1_rules.min_width / 2,
+          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
+      ),
+      mcon_rules.via_width + (
+          li_mcon_rules.via_overhang_wide * 2 +
+          li_rules.min_separation
+      )
+  );
+
+
+
+  // Draw a regular set of vertical metal columns such that:
+  // - there is a single vertical column in the centre, connectable to the
+  // output
+  // - the PMOS and NMOS sides have an equal number of extending out from the
+  // centre
+  // - the pitches between columns vary according to our need for their
+  // positioning
+  // - space is made for these columns but only some of them are drawn here
+
+  int64_t central_column_x = width / 2;
+  constexpr size_t kNumColumnsPerFlank = 6;
+
+  // FIXME(aryap): The way the metal columns are placed (below) is extremely
+  // brittle. They need to take into acccount the spacing of the local
+  // interconnect layer beneath them, and space needs to be made for that when
+  // placing the underlying objects.
+  //
+  // A better approach will be to explicitly calculate the x positions of each
+  // column up front, since at each decision we have to consider the underlying
+  // geometry, instead of this reliance on specifying pitches, since it obscures
+  // the actual calculation of x position.
+
+  // e.g. if 6 columns per flank, including the centre there are 13 columns, so
+  // the index is 12.
+  size_t last_column = 2 * kNumColumnsPerFlank;
+  std::set<size_t> drawn_columns = {
+      0,
+      1,
+      2,
+      5,
+      6,  // The output column.
+      last_column - 5,
+      last_column - 2,
+      last_column - 1,
+      last_column - 0
+  };
+
+  // The pitches of columns in order extending outward from the centre.
+  std::vector<int64_t> pitches = {
+      0,  // For the central output column.
+      column_pitch_min,
+      // Push the 2nd column out over the centre of the output muxes in each
+      // quadrant (TODO(aryap): This should really be computed as a function of
+      // where those points are.)
+      column_pitch_max + li_rules.min_separation + li_rules.min_separation / 2,
+      column_pitch_max + (
+          li_rules.min_separation - met1_rules.min_separation),
+      column_pitch_max,
+      column_pitch_max,
+      2 * column_pitch_max
+  };
+
+  std::map<size_t, std::unique_ptr<PolyLine>> column_lines;
+
+  struct ColumnConnection {
+    PolyLine *column_line;
+    bool rotate;
+    std::string top_source_point_name;
+    std::string bottom_source_point_name;
+
+    Point top_source_point;           // On poly.
+    Point top_destination_point;      // On column.
+    Point bottom_source_point;        // On poly.
+    Point bottom_destination_point;   // On column.
+  };
+
+  // Start with the named points on polysilicon in each sub element and compute
+  // the destination points on the columns.
+  std::vector<ColumnConnection> = column_connections {
+    {column_lines[0].get(),
+     false,
+     "upper_left.column_0_centre_top_via",
+     "lower_left.column_0_centre_top_via"},
+    {column_lines[1].get(),
+     true,
+     "upper_left.column_1_centre_top_via",
+     "lower_left.column_1_centre_top_via"},
+    {column_lines[2].get(),
+     false,
+     "upper_left.column_2_centre_top_via"
+     "lower_left.column_2_centre_top_via"},
+    {column_lines[5].get(),
+     true,
+     "upper_left.column_3_centre_top_via",
+     "lower_left.column_3_centre_top_via"},
+    {column_lines[last_column - 5].get(),
+     true,
+     "upper_right.column_3_centre_top_via",
+     "lower_right.column_3_centre_top_via"},
+    {column_lines[last_column - 2].get(),
+     false,
+     "upper_right.column_2_centre_top_via",
+     "lower_right.column_2_centre_top_via"},
+    {column_lines[last_column - 1].get(),
+     true,
+     "upper_right.column_1_centre_top_via",
+     "lower_right.column_1_centre_top_via"},
+    {column_lines[last_column - 0].get(),
+     false,
+     "upper_right.column_0_centre_top_via",
+     "lower_right.column_0_centre_top_via"}
+  };
+
+  // FIXME(aryap):
+  // THIS IS HALF BRAINED PLS FIX
+  //
+  // THE LOOP BELOW ACTUALLY COMPUTES THE x AND MAKES THE POLYLINE. NEEDS TO DO
+  // THIS TOO
+  int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
+  for (ColumnConnection &plan : column_connections) {
+    plan.top_source_point = layout->GetPointOrDie(plan.top_source_point_name);
+    plan.bottom_source_point = layout->GetPointOrDie(
+        plan.top_source_point_name);
+
+    int64_t column_x = plan.column_line->start().x();
+
+    plan.top_destination_point = {
+        column_x, plan.top_source_point.y() + mcon_via_side};
+    plan.top_destination_point = {
+        column_x, plan.top_source_point.y() - mcon_via_side};
+  }
+
+  int64_t mux_top_y = height;
+  {
+    // Add vertical selector connections.
+    int64_t extension = 0;
+    layout->SetActiveLayerByName("met1.drawing");
+
+    int64_t last_x_left = central_column_x;
+    int64_t last_x_right = central_column_x;
+
+    for (size_t i = 0; i <= kNumColumnsPerFlank; ++i) {
+      // Left and right k.
+      size_t k_values[] = {
+          kNumColumnsPerFlank - i, kNumColumnsPerFlank + i};
+      int64_t x_values[] = {
+          last_x_left - pitches[i], last_x_right + pitches[i]};
+      last_x_left = x_values[0];
+      last_x_right = x_values[1];
+      for (size_t j = 0; j < 2; ++j) {
+        // Draw the left columns for j == 0, right columns for j ==1. When i ==
+        // 0 we are handling the central column so no repetition is needed:
+        if (i == 0 && j > 1) {
+          break;
+        }
+        size_t k = k_values[j];
+        int64_t x = x_values[j];
+
+        (*column_x)[k] = x;
+        Point bottom = column_connections[k].top_destination_point;
+        Point top = column_connections[k].top_destination_point;
+        if (drawn_columns.find(k) != drawn_columns.end()) {
+          PolyLine *column_line = new PolyLine({bottom, top});
+          column_lines[k].reset(column_line);
+          column_line->SetWidth(met1_rules.min_width);
+        }
+      }
+    }
+  }
+
+  // Connect poly to metal columns.
+  // Along the top of the mux:
+  //
+  // metal line (m)
+  // |
+  // v
+  //
+  // m  p   p  m
+  // x  p   +--x
+  // |  p   |  m ... and so on.
+  // +--x   x  m
+  // m  p   p  m
+  // m  p   p  m
+  //
+  //    ^
+  //    |
+  //    poly line (p)
+  ConnectNamedPointsToColumns(
+      db,
+      {
+       {"upper_left.column_0_centre_top_via",
+         column_lines[0].get(),
+         false},
+        {"upper_left.column_1_centre_top_via",
+         column_lines[1].get(),
+         true},
+        {"upper_left.column_2_centre_top_via",
+         column_lines[2].get(),
+         false},
+        {"upper_left.column_3_centre_top_via",
+         column_lines[5].get(),
+         true},
+        {"upper_right.column_3_centre_top_via",
+         column_lines[last_column - 5].get(),
+         true},
+        {"upper_right.column_2_centre_top_via",
+         column_lines[last_column - 2].get(),
+         false},
+        {"upper_right.column_1_centre_top_via",
+         column_lines[last_column - 1].get(),
+         true},
+        {"upper_right.column_0_centre_top_via",
+         column_lines[last_column - 0].get(),
+         false}
+      },
+      poly_contact,
+      true,  // point up
+      layout);
+
+  // Along the bottom of the mux:
+  ConnectNamedPointsToColumns(
+      db,
+      {
+       {"lower_left.column_0_centre_top_via",
+         column_lines[0].get(),
+         false},
+        {"lower_left.column_1_centre_top_via",
+         column_lines[1].get(),
+         true},
+        {"lower_left.column_2_centre_top_via",
+         column_lines[2].get(),
+         false},
+        {"lower_left.column_3_centre_top_via",
+         column_lines[5].get(),
+         true},
+        {"lower_right.column_3_centre_top_via",
+         column_lines[last_column - 5].get(),
+         true},
+        {"lower_right.column_2_centre_top_via",
+         column_lines[last_column - 2].get(),
+         false},
+        {"lower_right.column_1_centre_top_via",
+         column_lines[last_column - 1].get(),
+         true},
+        {"lower_right.column_0_centre_top_via",
+         column_lines[last_column - 0].get(),
+         false}
+      },
+      poly_contact,
+      false,  // point down
+      layout);
+
+  PolyLineInflator inflator(db);
+  for (auto &entry : column_lines) {
+    PolyLine *line = entry.second.get();
+    std::optional<Polygon> polygon = inflator.InflatePolyLine(*line);
+    if (polygon) {
+      layout->AddPolygon(*polygon);
+    }
+  }
+}
+
 }  // namespace
 
 
@@ -1793,226 +2096,15 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       pdiff->upper_right() + Point(diff_padding, diff_padding)
   });
 
-  // Generate vertical metal columns.
-  //
-  // Our mux can fit N tracks:
-  //
-  // +------------------------------------+
-  // |            ^           ^           |
-  // | < offset > | < pitch > | < pitch > |
-  // |            v           v           |
-  // +------------------------------------+
-  //
-  // The second half of the list is right-hand-side columns. They should be
-  // moved one over depending on the overall width of the mux.
-  int64_t width = static_cast<int64_t>(bounding_box.Width());
-  int64_t column_pitch_max = std::max(
-      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
-          met1_rules.min_width / 2,
-          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
-      ),
-      mcon_rules.via_width + (
-          li_mcon_rules.via_overhang_wide +
-          li_mcon_rules.via_overhang +
-          li_rules.min_separation
-      )
-  );
-
-  int64_t column_pitch_min = std::min(
-      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
-          met1_rules.min_width / 2,
-          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
-      ),
-      mcon_rules.via_width + (
-          li_mcon_rules.via_overhang_wide * 2 +
-          li_rules.min_separation
-      )
-  );
-
-
-  // Draw a regular set of vertical metal columns such that:
-  // - there is a single vertical column in the centre, connectable to the
-  // output
-  // - the PMOS and NMOS sides have an equal number of extending out from the
-  // centre
-  // - the pitches between columns vary according to our need for their
-  // positioning
-  // - space is made for these columns but only some of them are drawn here
-
-  int64_t central_column_x = width / 2;
-  constexpr size_t kNumColumnsPerFlank = 6;
-
-  // FIXME(aryap): The way the metal columns are placed (below) is extremely
-  // brittle. They need to take into acccount the spacing of the local
-  // interconnect layer beneath them, and space needs to be made for that when
-  // placing the underlying objects.
-  //
-  // A better approach will be to explicitly calculate the x positions of each
-  // column up front, since at each decision we have to consider the underlying
-  // geometry, instead of this reliance on specifying pitches, since it obscures
-  // the actual calculation of x position.
-
-  // e.g. if 6 columns per flank, including the centre there are 13 columns, so
-  // the index is 12.
-  size_t last_column = 2 * kNumColumnsPerFlank;
-  std::set<size_t> drawn_columns = {
-      0,
-      1,
-      2,
-      5,
-      6,  // The output column.
-      last_column - 5,
-      last_column - 2,
-      last_column - 1,
-      last_column - 0
-  };
-  std::map<size_t, std::unique_ptr<PolyLine>> column_lines;
   std::map<size_t, int64_t> column_x;
 
-  // The pitches of columns in order extending outward from the centre.
-  std::vector<int64_t> pitches = {
-      0,  // For the cenral output column.
-      column_pitch_min,
-      // Push the 2nd column out over the centre of the output muxes in each
-      // quadrant (TODO(aryap): This should really be computed as a function of
-      // where those points are.)
-      column_pitch_max + li_rules.min_separation + li_rules.min_separation / 2,
-      column_pitch_max + (
-          li_rules.min_separation - met1_rules.min_separation),
-      column_pitch_max,
-      column_pitch_max,
-      2 * column_pitch_max
-  };
-
-  int64_t mux_top_y = static_cast<int64_t>(bounding_box.Height());
-  int64_t mux_bottom_y = 0;
-  {
-    // Add vertical selector connections.
-    int64_t extension = 0;
-    layout->SetActiveLayerByName("met1.drawing");
-
-    int64_t last_x_left = central_column_x;
-    int64_t last_x_right = central_column_x;
-
-    for (size_t i = 0; i <= kNumColumnsPerFlank; ++i) {
-      // Left and right k.
-      size_t k_values[] = {
-          kNumColumnsPerFlank - i, kNumColumnsPerFlank + i};
-      int64_t x_values[] = {
-          last_x_left - pitches[i], last_x_right + pitches[i]};
-      last_x_left = x_values[0];
-      last_x_right = x_values[1];
-      for (size_t j = 0; j < 2; ++j) {
-        // Draw the left columns for j == 0, right columns for j ==1. When i ==
-        // 0 we are handling the central column so no repetition is needed:
-        if (i == 0 && j > 1) {
-          break;
-        }
-        size_t k = k_values[j];
-        int64_t x = x_values[j];
-
-        column_x[k] = x;
-        Point bottom = {x, -extension};
-        Point top = {x, mux_top_y + extension};
-        if (drawn_columns.find(k) != drawn_columns.end()) {
-          PolyLine *column_line = new PolyLine({bottom, top});
-          column_lines[k].reset(column_line);
-          column_line->SetWidth(met1_rules.min_width);
-        }
-      }
-    }
-  }
-
-  // Connect poly to metal columns.
-  // Along the top of the mux:
-  //
-  // metal line (m)
-  // |
-  // v
-  //
-  // m  p   p  m
-  // x  p   +--x
-  // |  p   |  m ... and so on.
-  // +--x   x  m
-  // m  p   p  m
-  // m  p   p  m
-  //
-  //    ^
-  //    |
-  //    poly line (p)
-  ConnectNamedPointsToColumns(
+  DrawAndConnectMet1Columns(
       db,
-      {
-       {"upper_left.column_0_centre_top_via",
-         column_lines[0].get(),
-         false},
-        {"upper_left.column_1_centre_top_via",
-         column_lines[1].get(),
-         true},
-        {"upper_left.column_2_centre_top_via",
-         column_lines[2].get(),
-         false},
-        {"upper_left.column_3_centre_top_via",
-         column_lines[5].get(),
-         true},
-        {"upper_right.column_3_centre_top_via",
-         column_lines[last_column - 5].get(),
-         true},
-        {"upper_right.column_2_centre_top_via",
-         column_lines[last_column - 2].get(),
-         false},
-        {"upper_right.column_1_centre_top_via",
-         column_lines[last_column - 1].get(),
-         true},
-        {"upper_right.column_0_centre_top_via",
-         column_lines[last_column - 0].get(),
-         false}
-      },
       poly_contact,
-      true,  // point up
+      static_cast<int64_t>(bounding_box.Width()),
+      static_cast<int64_t>(bounding_box.Height()),
+      &column_x,
       layout.get());
-
-  // Along the bottom of the mux:
-  ConnectNamedPointsToColumns(
-      db,
-      {
-       {"lower_left.column_0_centre_top_via",
-         column_lines[0].get(),
-         false},
-        {"lower_left.column_1_centre_top_via",
-         column_lines[1].get(),
-         true},
-        {"lower_left.column_2_centre_top_via",
-         column_lines[2].get(),
-         false},
-        {"lower_left.column_3_centre_top_via",
-         column_lines[5].get(),
-         true},
-        {"lower_right.column_3_centre_top_via",
-         column_lines[last_column - 5].get(),
-         true},
-        {"lower_right.column_2_centre_top_via",
-         column_lines[last_column - 2].get(),
-         false},
-        {"lower_right.column_1_centre_top_via",
-         column_lines[last_column - 1].get(),
-         true},
-        {"lower_right.column_0_centre_top_via",
-         column_lines[last_column - 0].get(),
-         false}
-      },
-      poly_contact,
-      false,  // point up
-      layout.get());
-
-  PolyLineInflator inflator(db);
-  for (auto &entry : column_lines) {
-    PolyLine *line = entry.second.get();
-    std::optional<Polygon> polygon = inflator.InflatePolyLine(*line);
-    if (polygon) {
-      layout->AddPolygon(*polygon);
-    }
-  }
 
   //LOG(INFO) << layout->Describe();
 
@@ -2024,8 +2116,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       column_x[6],
       column_x[8],
       column_x[9],
-      mux_top_y,
-      mux_bottom_y,
+      bounding_box.Height(),   // mux_top_y
+      0,                       // mux_bottom_y
       layout.get());
 
   ConnectOppositeInputs(db, column_x, layout.get());
