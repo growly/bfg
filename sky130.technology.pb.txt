@@ -2540,6 +2540,10 @@ layers {
     major: 69
     minor: 16
   }
+  pin_access_for {
+    major: 69
+    minor: 20
+  }
 }
 layers {
   name: "met2"
@@ -2783,6 +2787,10 @@ layers {
   index {
     major: 70
     minor: 16
+  }
+  pin_access_for {
+    major: 70
+    minor: 20
   }
 }
 layers {
