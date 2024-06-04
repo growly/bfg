@@ -2,8 +2,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <sstream>
 
+#include <absl/strings/str_cat.h>
 #include <absl/strings/str_format.h>
+#include <absl/status/status.h>
 
 #include "geometry/layer.h"
 #include "geometry/point.h"
@@ -15,32 +18,51 @@
 
 namespace bfg {
 
-std::optional<geometry::Port> RouterSession::PointAndLayerToPort(
+absl::StatusOr<geometry::Port> RouterSession::PointAndLayerToPort(
     const std::string &net,
     const router_service::PointOnLayer &point_on_layer) const {
   auto layer =
       routing_grid_->physical_db().FindLayer(point_on_layer.layer_name());
   if (!layer) {
-    return std::nullopt;
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Could not convert point in requested route to port: (",
+        point_on_layer.point().x(), ", ",
+        point_on_layer.point().y(), "), layer: ",
+        point_on_layer.layer_name(), ". Does the layer exist?"));
   }
   geometry::Point centre = {
       point_on_layer.point().x(), point_on_layer.point().y()};
   return geometry::Port(centre, 100U, 100U, *layer, net);
 }
 
-bool RouterSession::AddRoutes(const router_service::AddRoutesRequest &request) {
+absl::Status RouterSession::AddRoutes(
+    const router_service::AddRoutesRequest &request) {
   // We will have a list of nets to route with 2+ points:
   //  - Connect first two points with shortest path AddRouteBetween(...),
   //  give them the net label.
   //  - Connect successive points to the existing net.
   //  - Pray.
+  std::vector<absl::Status> results;
+
   bool conjunction = true;
   for (const router_service::NetRouteOrder &net_route_order :
        request.net_route_orders()) {
-    conjunction = PerformNetRouteOrder(net_route_order) && conjunction;
+    absl::Status routed = PerformNetRouteOrder(net_route_order);
+    conjunction = routed.ok() && conjunction;
+    results.push_back(routed);
   }
 
-  return conjunction;
+  if (!conjunction) {
+    std::stringstream overall_error;
+    for (const auto &result : results) {
+      if (!result.ok()) {
+        overall_error << result.message() << "; ";
+      }
+    }
+    return absl::InternalError(overall_error.str());
+  }
+
+  return absl::OkStatus();
 }
 
 void RouterSession::ExportRoutes(router_service::AddRoutesReply *reply) const {
@@ -69,37 +91,49 @@ void RouterSession::ExportRoutes(router_service::AddRoutesReply *reply) const {
   }
 }
 
-bool RouterSession::PerformNetRouteOrder(
+absl::Status RouterSession::PerformNetRouteOrder(
     const router_service::NetRouteOrder &request) {
   LOG(INFO) << "Routing net " << std::quoted(request.net());
 
   if (request.points_size() < 2) {
     // Nothing to do.
-    return true;
+    return absl::OkStatus();
   }
 
   auto start = PointAndLayerToPort(request.net(), *request.points().begin());
+  if (!start.ok()) {
+    return start.status();
+  }
 
   auto next = PointAndLayerToPort(
       request.net(), *(request.points().begin() + 1));
-  if (!start || !next) {
-    return false;
+  if (!next.ok()) {
+    return next.status();
   }
 
   LOG(INFO) << "Routing " << *start << " to " << *next;
-  routing_grid_->AddRouteBetween(*start, *next, {}, request.net());
+  absl::Status initial = routing_grid_->AddRouteBetween(
+      *start, *next, {}, request.net());
+  if (!initial.ok()) {
+    return initial;
+  }
 
   for (size_t i = 2; i < request.points_size(); ++i) {
     auto next = PointAndLayerToPort(
         request.net(), *(request.points().begin() + i));
-    if (!next) {
-      return false;
+    if (!next.ok()) {
+      return next.status();
     }
     LOG(INFO) << "Routing " << *next << " to net "
               << std::quoted(request.net());
-    routing_grid_->AddRouteToNet(*next, request.net(), {});
+    absl::Status subsequent = routing_grid_->AddRouteToNet(
+        *next, request.net(), {});
+    if (!subsequent.ok()) {
+      // TODO(aryap): Should probably assemble these into a single status like
+      // we do above.
+    }
   }
-  return true;
+  return absl::OkStatus();
 }
 
 router_service::Status RouterSession::SetUpRoutingGrid(

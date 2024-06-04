@@ -13,6 +13,8 @@
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
+#include <absl/status/status.h>
+#include <absl/strings/str_cat.h>
 #include <absl/strings/str_join.h>
 #include <glog/logging.h>
 
@@ -1204,7 +1206,7 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
-bool RoutingGrid::AddRouteBetween(
+absl::Status RoutingGrid::AddRouteBetween(
     const geometry::Port &begin,
     const geometry::Port &end,
     const std::set<geometry::Port*> &avoid,
@@ -1249,7 +1251,8 @@ bool RoutingGrid::AddRouteBetween(
   auto begin_connection = ConnectToGrid(begin);
   if (!begin_connection) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
-    return false;
+    return absl::NotFoundError(
+        "Could not find available vertex for begin port.");
   }
   RoutingVertex *begin_vertex = begin_connection->vertex;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
@@ -1258,7 +1261,7 @@ bool RoutingGrid::AddRouteBetween(
   auto end_connection = ConnectToGrid(end);
   if (!end_connection) {
     LOG(ERROR) << "Could not find available vertex for end port.";
-    return false;
+    return absl::NotFoundError("Could not find available vertex for end port.");
   }
   RoutingVertex *end_vertex = end_connection->vertex;
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
@@ -1269,7 +1272,7 @@ bool RoutingGrid::AddRouteBetween(
 
   if (!shortest_path) {
     LOG(WARNING) << "No path found.";
-    return false;
+    return absl::NotFoundError("No path found.");
   }
 
   // Remember the ports to which the path should connect.
@@ -1294,7 +1297,7 @@ bool RoutingGrid::AddRouteBetween(
 
   InstallPath(shortest_path.release());
 
-  return true;
+  return absl::OkStatus();
 }
 
 namespace {
@@ -1312,7 +1315,7 @@ std::set<geometry::Layer> EffectiveLayersForInstalledVertex(
 
 }   // namespace
 
-bool RoutingGrid::AddRouteToNet(
+absl::Status RoutingGrid::AddRouteToNet(
     const geometry::Port &begin,
     const std::string &net,
     const std::set<geometry::Port*> &avoid) {
@@ -1323,7 +1326,8 @@ bool RoutingGrid::AddRouteToNet(
   if (!begin_connection) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
     TearDownTemporaryBlockages(temporary_blockages);
-    return false;
+    return absl::NotFoundError(
+        "Could not find available vertex for begin port.");
   }
   RoutingVertex *begin_vertex = begin_connection->vertex;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
@@ -1336,7 +1340,8 @@ bool RoutingGrid::AddRouteToNet(
   if (!shortest_path) {
     LOG(WARNING) << "No path found to net " << net << ".";
     TearDownTemporaryBlockages(temporary_blockages);
-    return false;
+    return absl::NotFoundError(
+        absl::StrCat("No path found to net ", net, "."));
   }
 
   // Remember the ports to which the path should connect.
@@ -1366,7 +1371,7 @@ bool RoutingGrid::AddRouteToNet(
 
   InstallPath(shortest_path.release());
 
-  return true;
+  return absl::OkStatus();
 }
 
 bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {

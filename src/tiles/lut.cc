@@ -555,7 +555,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         std::string net_name = absl::StrCat(source->name(), "_Q");
         memory_output_net_names[source] = net_name;
 
-        routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
+        routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name)
+                    .IgnoreError();
 
         LOG(INFO) << "b=" << b << ", j=" << j << ", i=" << i << " "
                   << source->name() << " -> " << sink->name()
@@ -618,7 +619,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     std::string net_name = absl::StrCat(source->name(), "_Q");
     memory_output_net_names[source] = net_name;
 
-    routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
+    routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name)
+                .IgnoreError();
   }
 
   // Connect memory outputs to the muxes in order:
@@ -699,13 +701,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to " << memory->name();
         path_found = routing_grid.AddRouteBetween(
-            *mux_port, *memory_output, all_other_mux_ports, net_name);
+            *mux_port, *memory_output, all_other_mux_ports, net_name).ok();
       } else {
         const std::string &target_net = named_output_it->second;
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to net " << target_net;
         path_found = routing_grid.AddRouteToNet(
-            *mux_port, target_net, all_other_mux_ports);
+            *mux_port, target_net, all_other_mux_ports).ok();
       }
       if (path_found) {
         break;

@@ -8,6 +8,8 @@
 #include <set>
 #include <vector>
 
+#include <absl/status/status.h>
+
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/poly_line.h"
@@ -78,12 +80,12 @@ class RoutingGrid {
   bool ConnectLayers(
       const geometry::Layer &first, const geometry::Layer &second);
 
-  bool AddRouteBetween(
+  absl::Status AddRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
       const std::set<geometry::Port*> &avoid,
       const std::string &net = "");
-  bool AddRouteToNet(
+  absl::Status AddRouteToNet(
       const geometry::Port &begin,
       const std::string &net,
       const std::set<geometry::Port*> &avoid);

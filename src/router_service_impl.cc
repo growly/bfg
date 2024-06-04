@@ -83,7 +83,7 @@ grpc::Status RouterServiceImpl::AddRoutes(
         router_service::StatusCode::GRID_NOT_FOUND);
     return grpc::Status::OK;
   }
-  if (!session->AddRoutes(*request)) {
+  if (!session->AddRoutes(*request).ok()) {
     // Some error.
     reply->mutable_status()->set_code(
         router_service::StatusCode::OTHER_ERROR);
