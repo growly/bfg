@@ -707,7 +707,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->AddRectangleAsPort(
       Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLK");
   layout->AddRectangleAsPort(
-      Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLKB");
+      Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLKI");
 
   layout->Translate(Point(-x_min, 0));
   return layout.release();

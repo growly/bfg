@@ -1466,8 +1466,6 @@ void DrawAndConnectMet1Columns(
       )
   );
 
-
-
   // Draw a regular set of vertical metal columns such that:
   // - there is a single vertical column in the centre, connectable to the
   // output
@@ -1476,6 +1474,8 @@ void DrawAndConnectMet1Columns(
   // - the pitches between columns vary according to our need for their
   // positioning
   // - space is made for these columns but only some of them are drawn here
+  // - columns are indexed by a number, k, throughout this function, but the
+  // space might have holes - that is, some values of k might be missing
 
   int64_t central_column_x = width / 2;
   constexpr size_t kNumColumnsPerFlank = 6;
@@ -1505,7 +1505,86 @@ void DrawAndConnectMet1Columns(
       last_column - 0
   };
 
-  // The pitches of columns in order extending outward from the centre.
+  struct ColumnPlan {
+    PolyLine *column_line;
+    bool rotate_connections;
+    int64_t x_position;
+
+    // Named points to use as sources for connections to the column at top and
+    // bottom respectively.
+    std::optional<std::string> top_source_point_name;
+    std::optional<std::string> bottom_source_point_name;
+
+    Point top_source_point;           // On poly.
+    Point top_destination_point;      // On column.
+    Point bottom_source_point;        // On poly.
+    Point bottom_destination_point;   // On column.
+
+    std::optional<std::string> saved_point_prefix;
+  };
+
+
+  // Columns are selector inputs and the final output:
+  // S0_B  S0  S1_B          S1   Z   S1_B           S1   S0_B S0
+  //  |    |    |            |    |    |             |    |    |
+  //  |    |    |            |    |    |             |    |    |
+  //  |    |    |            |    |    |             |    |    |
+  //  |    |    |            |    |    |             |    |    |
+
+  // Start with the named points on polysilicon in each sub element and compute
+  // the destination points on the columns.
+  std::map<size_t, ColumnPlan> column_plans = {
+    {0, ColumnPlan{
+        .rotate_connections = false,
+        .top_source_point_name = "upper_left.column_0_centre_top_via",
+        .bottom_source_point_name = "lower_left.column_0_centre_top_via",
+        .saved_point_prefix = "S0_B"}},
+    {1, ColumnPlan{
+        .rotate_connections = true,
+        .top_source_point_name = "upper_left.column_1_centre_top_via",
+        .bottom_source_point_name = "lower_left.column_1_centre_top_via",
+        .saved_point_prefix = "S0"}},
+    {2, ColumnPlan{
+        .rotate_connections = false,
+        .top_source_point_name = "upper_left.column_2_centre_top_via",
+        .bottom_source_point_name = "lower_left.column_2_centre_top_via",
+        .saved_point_prefix = "S1_B"}},
+    {5, ColumnPlan{
+        .rotate_connections = true,
+        .top_source_point_name = "upper_left.column_3_centre_top_via",
+        .bottom_source_point_name = "lower_left.column_3_centre_top_via",
+        .saved_point_prefix = "S1"}},
+
+    {6, ColumnPlan{.saved_point_prefix = "Z"}},
+
+    {last_column - 5, ColumnPlan{
+        .rotate_connections = true,
+        .top_source_point_name = "upper_right.column_3_centre_top_via",
+        .bottom_source_point_name = "lower_right.column_3_centre_top_via",
+        .saved_point_prefix = "S1_B"}},
+    {last_column - 2, ColumnPlan{
+        .rotate_connections = false,
+        .top_source_point_name = "upper_right.column_2_centre_top_via",
+        .bottom_source_point_name = "lower_right.column_2_centre_top_via",
+        .saved_point_prefix = "S1"}},
+    {last_column - 1, ColumnPlan{
+        .rotate_connections = true,
+        .top_source_point_name = "upper_right.column_1_centre_top_via",
+        .bottom_source_point_name = "lower_right.column_1_centre_top_via",
+        .saved_point_prefix = "S0_B"}},
+    {last_column - 0, ColumnPlan{
+        .rotate_connections = false,
+        .top_source_point_name = "upper_right.column_0_centre_top_via",
+        .bottom_source_point_name = "lower_right.column_0_centre_top_via",
+        .saved_point_prefix = "S0"}},
+  };
+
+  // (This vector contains pointers we own. We can't store them in the std::map
+  // value type.)
+  std::vector<std::unique_ptr<PolyLine>> column_lines;
+  column_lines.resize(column_plans.size());
+
+  // The pitches of columns _in order extending outward from the centre_.
   std::vector<int64_t> pitches = {
       0,  // For the central output column.
       column_pitch_min,
@@ -1520,112 +1599,77 @@ void DrawAndConnectMet1Columns(
       2 * column_pitch_max
   };
 
-  std::map<size_t, std::unique_ptr<PolyLine>> column_lines;
+  // Determine column x-positions.
+  int64_t last_x_left = central_column_x;
+  int64_t last_x_right = central_column_x;
+  for (size_t i = 0; i <= kNumColumnsPerFlank; ++i) {
+    // Left and right k.
+    size_t k_values[] = {
+        kNumColumnsPerFlank - i, kNumColumnsPerFlank + i};
+    int64_t x_values[] = {
+        last_x_left - pitches[i], last_x_right + pitches[i]};
+    last_x_left = x_values[0];
+    last_x_right = x_values[1];
+    for (size_t j = 0; j < 2; ++j) {
+      // Draw the left columns for j == 0, right columns for j ==1. When i ==
+      // 0 we are handling the central column so no repetition is needed:
+      if (i == 0 && j > 1) {
+        break;
+      }
+      size_t k = k_values[j];
+      int64_t x = x_values[j];
 
-  struct ColumnConnection {
-    PolyLine *column_line;
-    bool rotate;
-    std::string top_source_point_name;
-    std::string bottom_source_point_name;
-
-    Point top_source_point;           // On poly.
-    Point top_destination_point;      // On column.
-    Point bottom_source_point;        // On poly.
-    Point bottom_destination_point;   // On column.
-  };
-
-  // Start with the named points on polysilicon in each sub element and compute
-  // the destination points on the columns.
-  std::vector<ColumnConnection> = column_connections {
-    {column_lines[0].get(),
-     false,
-     "upper_left.column_0_centre_top_via",
-     "lower_left.column_0_centre_top_via"},
-    {column_lines[1].get(),
-     true,
-     "upper_left.column_1_centre_top_via",
-     "lower_left.column_1_centre_top_via"},
-    {column_lines[2].get(),
-     false,
-     "upper_left.column_2_centre_top_via"
-     "lower_left.column_2_centre_top_via"},
-    {column_lines[5].get(),
-     true,
-     "upper_left.column_3_centre_top_via",
-     "lower_left.column_3_centre_top_via"},
-    {column_lines[last_column - 5].get(),
-     true,
-     "upper_right.column_3_centre_top_via",
-     "lower_right.column_3_centre_top_via"},
-    {column_lines[last_column - 2].get(),
-     false,
-     "upper_right.column_2_centre_top_via",
-     "lower_right.column_2_centre_top_via"},
-    {column_lines[last_column - 1].get(),
-     true,
-     "upper_right.column_1_centre_top_via",
-     "lower_right.column_1_centre_top_via"},
-    {column_lines[last_column - 0].get(),
-     false,
-     "upper_right.column_0_centre_top_via",
-     "lower_right.column_0_centre_top_via"}
-  };
-
-  // FIXME(aryap):
-  // THIS IS HALF BRAINED PLS FIX
-  //
-  // THE LOOP BELOW ACTUALLY COMPUTES THE x AND MAKES THE POLYLINE. NEEDS TO DO
-  // THIS TOO
-  int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
-  for (ColumnConnection &plan : column_connections) {
-    plan.top_source_point = layout->GetPointOrDie(plan.top_source_point_name);
-    plan.bottom_source_point = layout->GetPointOrDie(
-        plan.top_source_point_name);
-
-    int64_t column_x = plan.column_line->start().x();
-
-    plan.top_destination_point = {
-        column_x, plan.top_source_point.y() + mcon_via_side};
-    plan.top_destination_point = {
-        column_x, plan.top_source_point.y() - mcon_via_side};
+      column_plans[k].x_position = x;
+      // We also export the x:
+      (*column_x)[k] = x;
+    }
   }
 
-  int64_t mux_top_y = height;
-  {
-    // Add vertical selector connections.
-    int64_t extension = 0;
-    layout->SetActiveLayerByName("met1.drawing");
-
-    int64_t last_x_left = central_column_x;
-    int64_t last_x_right = central_column_x;
-
-    for (size_t i = 0; i <= kNumColumnsPerFlank; ++i) {
-      // Left and right k.
-      size_t k_values[] = {
-          kNumColumnsPerFlank - i, kNumColumnsPerFlank + i};
-      int64_t x_values[] = {
-          last_x_left - pitches[i], last_x_right + pitches[i]};
-      last_x_left = x_values[0];
-      last_x_right = x_values[1];
-      for (size_t j = 0; j < 2; ++j) {
-        // Draw the left columns for j == 0, right columns for j ==1. When i ==
-        // 0 we are handling the central column so no repetition is needed:
-        if (i == 0 && j > 1) {
-          break;
-        }
-        size_t k = k_values[j];
-        int64_t x = x_values[j];
-
-        (*column_x)[k] = x;
-        Point bottom = column_connections[k].top_destination_point;
-        Point top = column_connections[k].top_destination_point;
-        if (drawn_columns.find(k) != drawn_columns.end()) {
-          PolyLine *column_line = new PolyLine({bottom, top});
-          column_lines[k].reset(column_line);
-          column_line->SetWidth(met1_rules.min_width);
-        }
-      }
+  int64_t extension = 0;
+  int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
+  for (auto &entry : column_plans) {
+    size_t k = entry.first;
+    // Check for skip:
+    if (drawn_columns.find(k) == drawn_columns.end()) {
+      continue;
     }
+
+    ColumnPlan &plan = entry.second;
+
+    int64_t x = plan.x_position;
+
+    int64_t top_y = height;
+    if (plan.top_source_point_name) {
+      plan.top_source_point = layout->GetPointOrDie(*plan.top_source_point_name);
+      top_y = plan.top_source_point.y() + mcon_via_side + extension;
+    }
+
+    int64_t bottom_y = 0;
+    if (plan.bottom_source_point_name) {
+      plan.bottom_source_point = layout->GetPointOrDie(
+          *plan.bottom_source_point_name);
+      bottom_y = plan.bottom_source_point.y() - mcon_via_side - extension;
+    }
+
+    plan.top_destination_point = {x, top_y};
+    plan.bottom_destination_point = {x, bottom_y};
+
+    if (plan.saved_point_prefix) {
+      layout->SavePoint(
+          absl::StrCat(*plan.saved_point_prefix, "_top"),
+          plan.top_destination_point);
+      layout->SavePoint(
+          absl::StrCat(*plan.saved_point_prefix, "_bottom"),
+          plan.bottom_destination_point);
+    }
+
+    // Can now create the PolyLine:
+    PolyLine *column_line = new PolyLine({
+        plan.bottom_destination_point, plan.top_destination_point});
+    column_lines.emplace_back(column_line);
+
+    column_line->SetWidth(met1_rules.min_width);
+    plan.column_line = column_line;
   }
 
   // Connect poly to metal columns.
@@ -1649,28 +1693,28 @@ void DrawAndConnectMet1Columns(
       db,
       {
        {"upper_left.column_0_centre_top_via",
-         column_lines[0].get(),
+         column_plans[0].column_line,
          false},
         {"upper_left.column_1_centre_top_via",
-         column_lines[1].get(),
+         column_plans[1].column_line,
          true},
         {"upper_left.column_2_centre_top_via",
-         column_lines[2].get(),
+         column_plans[2].column_line,
          false},
         {"upper_left.column_3_centre_top_via",
-         column_lines[5].get(),
+         column_plans[5].column_line,
          true},
         {"upper_right.column_3_centre_top_via",
-         column_lines[last_column - 5].get(),
+         column_plans[last_column - 5].column_line,
          true},
         {"upper_right.column_2_centre_top_via",
-         column_lines[last_column - 2].get(),
+         column_plans[last_column - 2].column_line,
          false},
         {"upper_right.column_1_centre_top_via",
-         column_lines[last_column - 1].get(),
+         column_plans[last_column - 1].column_line,
          true},
         {"upper_right.column_0_centre_top_via",
-         column_lines[last_column - 0].get(),
+         column_plans[last_column - 0].column_line,
          false}
       },
       poly_contact,
@@ -1682,37 +1726,43 @@ void DrawAndConnectMet1Columns(
       db,
       {
        {"lower_left.column_0_centre_top_via",
-         column_lines[0].get(),
+         column_plans[0].column_line,
          false},
         {"lower_left.column_1_centre_top_via",
-         column_lines[1].get(),
+         column_plans[1].column_line,
          true},
         {"lower_left.column_2_centre_top_via",
-         column_lines[2].get(),
+         column_plans[2].column_line,
          false},
         {"lower_left.column_3_centre_top_via",
-         column_lines[5].get(),
+         column_plans[5].column_line,
          true},
         {"lower_right.column_3_centre_top_via",
-         column_lines[last_column - 5].get(),
+         column_plans[last_column - 5].column_line,
          true},
         {"lower_right.column_2_centre_top_via",
-         column_lines[last_column - 2].get(),
+         column_plans[last_column - 2].column_line,
          false},
         {"lower_right.column_1_centre_top_via",
-         column_lines[last_column - 1].get(),
+         column_plans[last_column - 1].column_line,
          true},
         {"lower_right.column_0_centre_top_via",
-         column_lines[last_column - 0].get(),
+         column_plans[last_column - 0].column_line,
          false}
       },
       poly_contact,
       false,  // point down
       layout);
 
+  layout->SetActiveLayerByName("met1.drawing");
   PolyLineInflator inflator(db);
-  for (auto &entry : column_lines) {
-    PolyLine *line = entry.second.get();
+  for (auto &entry : column_plans) {
+    size_t k = entry.first;
+    // Check for skip:
+    if (drawn_columns.find(k) == drawn_columns.end()) {
+      continue;
+    }
+    PolyLine *line = entry.second.column_line;
     std::optional<Polygon> polygon = inflator.InflatePolyLine(*line);
     if (polygon) {
       layout->AddPolygon(*polygon);
