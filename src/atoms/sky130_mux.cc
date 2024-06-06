@@ -1411,6 +1411,33 @@ void ConnectOppositeInputs(
         layout);
   }
 
+  // FIXME(aryap): THIS SUCKS.
+  //
+  // here is better strategy.
+  //  - columns are spaced so that a large met2 via encap can be accommodated
+  //  even though neighbouring columns have li via encap pours. find lowest
+  //  point that the cross-bar can go before conflicting with input_1 (at the
+  //  top) cross-bar.
+  //  - add pours to column poly-lines directly so taht they take care of
+  //  removing notches.
+  //  - place via encap/pad for met1 connection to output line
+  //  - need met2 separation rules.
+  //
+  //
+  // (optimisations:
+  //  - there might be 1, 2, 3 or 4 spaces for a met2 horizontal bar between
+  //  the metal columns in the centre of the mux or at the top or bottom in
+  //  between the input selector cross-bars.
+
+  int64_t top_inner_selector_joiner_y =
+      std::max(
+          layout->GetPointOrDie("S1_B_top_left").y(),
+          layout->GetPointOrDie("S1_B_top_right").y()) - 100;
+  int64_t bottom_inner_selector_joiner_y =
+      std::min(
+          layout->GetPointOrDie("S1_bottom_left").y(),
+          layout->GetPointOrDie("S1_bottom_right").y()) + 100;
+
   std::vector<ContactPairWithOffset> selector_contact_infos = {
     {
       "S0_B",
@@ -1422,13 +1449,26 @@ void ConnectOppositeInputs(
       300
     },
     {
-      "S0_B",
+      "S1_B",
       std::nullopt,
       std::nullopt,
-      layout->GetPointOrDie("S1_B_top_left"),
-      layout->GetPointOrDie("S1_B_top_right"),
+      { layout->GetPointOrDie("S1_B_top_left").x(),
+        top_inner_selector_joiner_y},
+      { layout->GetPointOrDie("S1_B_top_right").x(),
+        top_inner_selector_joiner_y},
       "met1.pin",
-      -100
+      0
+    },
+    {
+      "S1",
+      std::nullopt,
+      std::nullopt,
+      { layout->GetPointOrDie("S1_bottom_left").x(),
+        bottom_inner_selector_joiner_y},
+      { layout->GetPointOrDie("S1_bottom_right").x(),
+        bottom_inner_selector_joiner_y},
+      "met1.pin",
+      0
     },
     {
       "S0",
@@ -1436,7 +1476,8 @@ void ConnectOppositeInputs(
       std::nullopt,
       layout->GetPointOrDie("S0_bottom_left"),
       layout->GetPointOrDie("S0_bottom_right"),
-      "met1.pin"
+      "met1.pin",
+      -300
     },
   };
 
