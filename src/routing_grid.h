@@ -78,7 +78,7 @@ class RoutingGrid {
   // can take between them; concretely, it creates a vertex every time a
   // horizontal and vertical routing line cross. (The two described layers must
   // be orthogonal in routing direction.)
-  bool ConnectLayers(
+  absl::Status ConnectLayers(
       const geometry::Layer &first, const geometry::Layer &second);
 
   absl::Status AddRouteBetween(
@@ -167,9 +167,9 @@ class RoutingGrid {
       bool available_only,
       Layout *layout) const;
 
-  void AddRoutingViaInfo(const geometry::Layer &lhs,
-                         const geometry::Layer &rhs,
-                         const RoutingViaInfo &info);
+  absl::Status AddRoutingViaInfo(const geometry::Layer &lhs,
+                                 const geometry::Layer &rhs,
+                                 const RoutingViaInfo &info);
 
   const RoutingViaInfo &GetRoutingViaInfoOrDie(const AbstractVia &via) const {
     return GetRoutingViaInfoOrDie(via.bottom_layer(), via.top_layer());
@@ -181,7 +181,7 @@ class RoutingGrid {
   GetRoutingViaInfo(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
-  void AddRoutingLayerInfo(const RoutingLayerInfo &info);
+  absl::Status AddRoutingLayerInfo(const RoutingLayerInfo &info);
   const RoutingLayerInfo &GetRoutingLayerInfoOrDie(
       const geometry::Layer &layer) const;
   std::optional<std::reference_wrapper<const RoutingLayerInfo>>
@@ -349,7 +349,7 @@ class RoutingGrid {
   absl::StatusOr<RoutingVertex*> ConnectToNearestAvailableVertex(
       const geometry::Point &point, const geometry::Layer &layer);
 
-  void AddRoutingGridGeometry(
+  absl::Status AddRoutingGridGeometry(
       const geometry::Layer &lhs, const geometry::Layer &rhs,
       const RoutingGridGeometry &grid_geometry);
 

@@ -1046,7 +1046,7 @@ std::optional<std::pair<geometry::Layer, double>> RoutingGrid::ViaLayerAndCost(
   return std::make_pair(needs_via->get().layer(), needs_via->get().cost());
 }
 
-bool RoutingGrid::ConnectLayers(
+absl::Status RoutingGrid::ConnectLayers(
     const geometry::Layer &first, const geometry::Layer &second) {
   // One layer has to be horizontal, and one has to be vertical.
   auto split_directions = PickHorizontalAndVertical(first, second);
@@ -1055,9 +1055,11 @@ bool RoutingGrid::ConnectLayers(
 
   auto maybe_routing_via_info = GetRoutingViaInfo(first, second);
   if (!maybe_routing_via_info) {
-    LOG(ERROR) << "Could not get RoutingViaInfo for " << first
-               << ", " << second;
-    return false;
+    std::stringstream ss;
+    ss << "Could not get RoutingViaInfo for " << first
+       << ", " << second;
+    LOG(ERROR) << ss.str();
+    return absl::NotFoundError(ss.str());
   }
   const RoutingViaInfo &routing_via_info = maybe_routing_via_info->get();
 
@@ -1189,7 +1191,10 @@ bool RoutingGrid::ConnectLayers(
   // This adds a copy of the object to our class's bookkeeping. It's kinda
   // annoying. I'd rather create it on the fly to avoid the copy.
   // TODO(aryap): Avoid this copy.
-  AddRoutingGridGeometry(first, second, grid_geometry);
+  absl::Status add_grid = AddRoutingGridGeometry(first, second, grid_geometry);
+  if (!add_grid.ok()) {
+    return add_grid;
+  }
 
   size_t num_edges = 0;
   for (auto entry : tracks_by_layer_)
@@ -1209,7 +1214,7 @@ bool RoutingGrid::ConnectLayers(
     }
   }
 
-  return true;
+  return absl::OkStatus();
 }
 
 bool RoutingGrid::ContainsVertex(RoutingVertex *vertex) const {
@@ -2067,7 +2072,7 @@ void RoutingGrid::ExportVerticesAsSquares(
   }
 }
 
-void RoutingGrid::AddRoutingViaInfo(
+absl::Status RoutingGrid::AddRoutingViaInfo(
     const Layer &lhs,
     const Layer &rhs,
     const RoutingViaInfo &info) {
@@ -2076,12 +2081,15 @@ void RoutingGrid::AddRoutingViaInfo(
   // Order first and second.
   const Layer &first = ordered_layers.first;
   const Layer &second = ordered_layers.second;
-  LOG_IF(FATAL,
-      via_infos_.find(first) != via_infos_.end() &&
-      via_infos_[first].find(second) != via_infos_[first].end())
-      << "Attempt to specify RoutingViaInfo for layers " << first << " and "
-      << second << " again.";
+  if (via_infos_.find(first) != via_infos_.end() &&
+      via_infos_[first].find(second) != via_infos_[first].end()) {
+    std::stringstream ss;
+    ss << "Attempt to specify RoutingViaInfo for layers " << first << " and "
+       << second << " again.";
+    return absl::InvalidArgumentError(ss.str());
+  }
   via_infos_[first][second] = info;
+  return absl::OkStatus();
 }
 
 const RoutingViaInfo &RoutingGrid::GetRoutingViaInfoOrDie(
@@ -2109,12 +2117,16 @@ RoutingGrid::GetRoutingViaInfo(const Layer &lhs, const Layer &rhs) const {
   return second_it->second;
 }
 
-void RoutingGrid::AddRoutingLayerInfo(const RoutingLayerInfo &info) {
+absl::Status RoutingGrid::AddRoutingLayerInfo(const RoutingLayerInfo &info) {
   const Layer &layer = info.layer;
   auto layer_info_it = routing_layer_info_.find(layer);
-  LOG_IF(FATAL, layer_info_it != routing_layer_info_.end())
-      << "Duplicate routing layer info: " << layer;
+  if (layer_info_it != routing_layer_info_.end()) {
+    std::stringstream ss;
+    ss << "Duplicate routing layer info: " << layer;
+    return absl::InvalidArgumentError(ss.str());
+  }
   routing_layer_info_.insert({layer, info});
+  return absl::OkStatus();
 }
 
 std::optional<std::reference_wrapper<const RoutingLayerInfo>>
@@ -2460,21 +2472,24 @@ Layout *RoutingGrid::GenerateLayout() const {
   return grid_layout.release();
 }
 
-void RoutingGrid::AddRoutingGridGeometry(
+absl::Status RoutingGrid::AddRoutingGridGeometry(
     const geometry::Layer &lhs, const geometry::Layer &rhs,
     const RoutingGridGeometry &grid_geometry) {
   std::pair<const Layer&, const Layer&> ordered_layers =
       geometry::OrderFirstAndSecondLayers(lhs, rhs);
   const Layer &first = ordered_layers.first;
   const Layer &second = ordered_layers.second;
-  LOG_IF(FATAL,
-      grid_geometry_by_layers_.find(first) !=
+  if (grid_geometry_by_layers_.find(first) !=
           grid_geometry_by_layers_.end() &&
       grid_geometry_by_layers_[first].find(second) !=
-          grid_geometry_by_layers_[first].end())
-      << "Attempt to add RoutingGridGeometry for layers " << first << " and "
-      << second << " again.";
+          grid_geometry_by_layers_[first].end()) {
+    std::stringstream ss;
+    ss << "Attempt to add RoutingGridGeometry for layers " << first << " and "
+       << second << " again.";
+    return absl::InvalidArgumentError(ss.str());
+  }
   grid_geometry_by_layers_[first][second] = grid_geometry;
+  return absl::OkStatus();
 }
 
 std::optional<std::reference_wrapper<RoutingGridGeometry>>

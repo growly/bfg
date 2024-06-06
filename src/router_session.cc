@@ -190,7 +190,12 @@ router_service::Status RouterSession::SetUpRoutingGrid(
     layer_info.offset = layer_pb.offset();
     layer_infos.push_back(layer_info);
 
-    routing_grid_->AddRoutingLayerInfo(layer_info);
+    absl::Status maybe_add = routing_grid_->AddRoutingLayerInfo(layer_info);
+    if (!maybe_add.ok()) {
+      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
+      result.set_message(std::string(maybe_add.message()));
+      return result;
+    }
   }
 
   // AddRoutingViaInfos
@@ -223,15 +228,20 @@ router_service::Status RouterSession::SetUpRoutingGrid(
 
     routing_via_info.set_cost(via_pb.cost());
 
-    routing_grid_->AddRoutingViaInfo(
+    absl::Status maybe_add = routing_grid_->AddRoutingViaInfo(
         *first_layer, *second_layer, routing_via_info);
+    if (maybe_add.ok()) {
+      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
+      result.set_message(std::string(maybe_add.message()));
+      return result;
+    }
   }
   
-  
-  if (!routing_grid_->ConnectLayers(
-          layer_infos[0].layer, layer_infos[1].layer)) {
+  absl::Status try_connect = routing_grid_->ConnectLayers(
+          layer_infos[0].layer, layer_infos[1].layer);
+  if (!try_connect.ok()) {
     result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-    result.set_message("Could not complete layer connection");
+    result.set_message(std::string(try_connect.message()));
     return result;
   }
 
