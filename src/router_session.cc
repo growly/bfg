@@ -54,9 +54,11 @@ absl::Status RouterSession::AddRoutes(
 
   if (!conjunction) {
     std::stringstream overall_error;
-    for (const auto &result : results) {
+    for (size_t i = 0; i < results.size(); ++i) {
+      const auto &result = results.at(i);
       if (!result.ok()) {
-        overall_error << result.message() << "; ";
+        overall_error << "For net \"" << request.net_route_orders(i).net()
+                      << "\": " << result.message() << "; ";
       }
     }
     return absl::InternalError(overall_error.str());
@@ -217,7 +219,7 @@ absl::Status RouterSession::SetUpRoutingGrid(
 
     absl::Status maybe_add = routing_grid_->AddRoutingViaInfo(
         *first_layer, *second_layer, routing_via_info);
-    if (maybe_add.ok()) {
+    if (!maybe_add.ok()) {
       return maybe_add;
     }
   }
