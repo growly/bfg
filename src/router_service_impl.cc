@@ -87,13 +87,13 @@ grpc::Status RouterServiceImpl::AddRoutes(
     return grpc::Status::OK;
   }
   absl::Status add = session->AddRoutes(*request);
-  if (!add.ok()) {
-    // Some error.
-    reply->mutable_status()->set_code(
-        router_service::StatusCode::OTHER_ERROR);
-    reply->mutable_status()->set_message(std::string(add.message()));
-    return grpc::Status::OK;
-  }
+  //if (!add.ok()) {
+  //  // Some error.
+  //  reply->mutable_status()->set_code(
+  //      router_service::StatusCode::OTHER_ERROR);
+  //  reply->mutable_status()->set_message(std::string(add.message()));
+  //  return grpc::Status::OK;
+  //}
   session->ExportRoutes(reply);
 
   reply->mutable_status()->set_code(router_service::StatusCode::OK);
