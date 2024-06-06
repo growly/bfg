@@ -79,6 +79,8 @@ class Rectangle : public Shape {
     return ClosestDistanceBetween(*this, other);
   }
 
+  std::string Describe() const;
+
   Point PointOnLineOutside(const Line &line) const;
   Rectangle BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) const;
 

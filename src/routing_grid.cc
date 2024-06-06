@@ -9,6 +9,7 @@
 #include <optional>
 #include <ostream>
 #include <queue>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -366,14 +367,20 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
       lhs_info, rhs_info);
 }
 
-std::optional<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
+absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
     const geometry::Port &port) {
-  auto connection = AddAccessVerticesForPoint(port.centre(), port.layer());
-  if (!connection) {
-    // Fall back to slower, possibly broken method.
-    connection = ConnectToNearestAvailableVertex(port);
+  auto try_add_access_vertices = AddAccessVerticesForPoint(
+      port.centre(), port.layer());
+  if (try_add_access_vertices.ok()) {
+    return *try_add_access_vertices;
   }
-  return connection;
+  // Fall back to slower, possibly broken method.
+  auto try_nearest_available = ConnectToNearestAvailableVertex(port);
+  if (try_nearest_available.ok()) {
+    return *try_nearest_available;
+  }
+
+  return absl::NotFoundError("Could not connect to grid");
 }
 
 // Using the given RoutingGridGeometry, find the tracks which surround
@@ -382,7 +389,7 @@ std::optional<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
 //
 // NOTE(aryap): Does not rollback changes to *off_grid on error, so assume the
 // caller will just give up on the object and delete it from the grid.
-bool RoutingGrid::ConnectToSurroundingTracks(
+absl::Status RoutingGrid::ConnectToSurroundingTracks(
     const RoutingGridGeometry &grid_geometry,
     const geometry::Layer &access_layer,
     std::optional<
@@ -417,9 +424,12 @@ bool RoutingGrid::ConnectToSurroundingTracks(
     if (!success) {
       continue;
     } else if (bridging_vertex == off_grid) {
-      LOG_IF(FATAL, bridging_vertex_is_new)
-          << "Doesn't make sense for bridging_vertex == target "
-          << "and bridging_vertex_is_new to both be true";
+
+      if (bridging_vertex_is_new) {
+        return absl::InternalError(
+          "Doesn't make sense for bridging_vertex == target "
+          "and bridging_vertex_is_new to both be true");
+      }
 
       // Since our off_grid vertex has landed on the track, the access direction
       // to the off_grid point is just the track direction. If this is not an
@@ -432,9 +442,12 @@ bool RoutingGrid::ConnectToSurroundingTracks(
       continue;
     }
 
-    LOG_IF(FATAL, off_grid_already_exists)
-        << *track << " already has a vertex at the position of off_grid "
-        << off_grid->centre();
+    if (off_grid_already_exists) {
+      std::stringstream ss;
+      ss << *track << " already has a vertex at the position of off_grid "
+         << off_grid->centre();
+      return absl::InternalError(ss.str());
+    }
 
     if (bridging_vertex_is_new) {
       AddVertex(bridging_vertex);
@@ -471,10 +484,10 @@ bool RoutingGrid::ConnectToSurroundingTracks(
     off_grid_edges_.insert(edge);
     any_success = true || any_success;
   }
-  return any_success;
+  return any_success ? absl::OkStatus() : absl::NotFoundError("");
 }
 
-std::optional<RoutingGrid::VertexWithLayer>
+absl::StatusOr<RoutingGrid::VertexWithLayer>
 RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
                                        const geometry::Layer &layer) {
   // Add each of the possible on-grid access vertices for a given off-grid
@@ -499,11 +512,15 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
   std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
       layer_access = physical_db_.FindReachableLayersByPinLayer(layer);
 
-  LOG_IF(FATAL, layer_access.empty())
-      << "pin layer access was empty; is this a pin layer? " << layer;
-  // if (layer_access.empty()) {
-  //   layer_access = physical_db_.FindLayersReachableThroughOneViaFrom(layer);
-  // }
+  LOG_IF(WARNING, layer_access.empty())
+      << "Pin layer access was empty; is this a pin layer? " << layer;
+  if (layer_access.empty()) {
+    // If the given layer does not provide access to other layers, use the layer itself.
+    layer_access.push_back({layer, {layer}});
+
+    // TODO(aryap): More generally use any layer that we can reach with a via?
+    //layer_access = physical_db_.FindLayersReachableThroughOneViaFrom(layer);
+  }
 
   struct AccessOption {
     RoutingGridGeometry *grid_geometry;
@@ -579,7 +596,8 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     }
 
     if (!ConnectToSurroundingTracks(
-          *grid_geometry, access_layer, access_directions, off_grid.get())) {
+          *grid_geometry, access_layer, access_directions, off_grid.get()).ok()) {
+      // TODO(aryap): Accumulate errors?
       // The off-grid vertex could not be connected to any surrounding tracks.
       continue;
     }
@@ -589,27 +607,29 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     return {{vertex, target_layer}};
   }
 
-  return std::nullopt;
+  return absl::NotFoundError("");
 }
 
-std::optional<RoutingGrid::VertexWithLayer>
+absl::StatusOr<RoutingGrid::VertexWithLayer>
 RoutingGrid::ConnectToNearestAvailableVertex(const geometry::Port &port) {
   std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
       layer_access = physical_db_.FindReachableLayersByPinLayer(port.layer());
   for (const auto &entry : layer_access) {
     for (const geometry::Layer &layer : entry.second) {
       LOG(INFO) << "checking for grid vertex on layer " << layer;
-      RoutingVertex *vertex = ConnectToNearestAvailableVertex(
-          port.centre(), layer);
-      if (vertex) {
-        return {VertexWithLayer{.vertex = vertex, .layer = layer}};
+      auto vertex = ConnectToNearestAvailableVertex(port.centre(), layer);
+      if (vertex.ok()) {
+        return {VertexWithLayer{.vertex = *vertex, .layer = layer}};
       }
+      return vertex.status();
     }
   }
-  return std::nullopt;
+  return absl::NotFoundError(
+      absl::StrCat("Couldn't find nearest available vertex for port ",
+                   port.Describe()));
 }
 
-RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
+absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     const geometry::Point &point, const geometry::Layer &layer) {
   // If constrained to one or two layers on a fixed grid, we can determine the
   // nearest vertices quickly by shortlisting those vertices whose positions
@@ -758,9 +778,12 @@ RoutingVertex *RoutingGrid::ConnectToNearestAvailableVertex(
       if (!success) {
         continue;
       } else if (off_grid_already_exists) {
-        LOG_IF(FATAL, bridging_vertex_is_new)
-            << "Doesn't make sense for off_grid_already_exists and "
-            << "bridging_vertex_is_new to both be true";
+        if (bridging_vertex_is_new) {
+          std::stringstream ss;
+          ss << "Doesn't make sense for off_grid_already_exists and "
+             << "bridging_vertex_is_new to both be true";
+          return absl::InternalError(ss.str());
+        }
         // We're done! We can just use an existing vertex since 'off_grid'
         // happens to already exist. 'off_grid' should NOT be added to the
         // routing grid, it should be discarded.
@@ -1249,7 +1272,7 @@ absl::Status RoutingGrid::AddRouteBetween(
   };
 
   auto begin_connection = ConnectToGrid(begin);
-  if (!begin_connection) {
+  if (!begin_connection.ok()) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
     return absl::NotFoundError(
         "Could not find available vertex for begin port.");
@@ -1259,7 +1282,7 @@ absl::Status RoutingGrid::AddRouteBetween(
             << begin_vertex->centre();
 
   auto end_connection = ConnectToGrid(end);
-  if (!end_connection) {
+  if (!end_connection.ok()) {
     LOG(ERROR) << "Could not find available vertex for end port.";
     return absl::NotFoundError("Could not find available vertex for end port.");
   }
@@ -1267,13 +1290,14 @@ absl::Status RoutingGrid::AddRouteBetween(
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
             << end_vertex->centre();
 
-  std::unique_ptr<RoutingPath> shortest_path(
-      ShortestPath(begin_vertex, end_vertex));
-
-  if (!shortest_path) {
-    LOG(WARNING) << "No path found.";
-    return absl::NotFoundError("No path found.");
+  auto shortest_path_result = ShortestPath(begin_vertex, end_vertex);
+  if (!shortest_path_result.ok()) {
+    std::string message = absl::StrCat(
+        "No path found: ", shortest_path_result.status().message());
+    LOG(WARNING) << message;
+    return absl::NotFoundError(message);
   }
+  std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
 
   // Remember the ports to which the path should connect.
   //
@@ -1295,9 +1319,8 @@ absl::Status RoutingGrid::AddRouteBetween(
   if (!net.empty())
     shortest_path->set_net(net);
 
-  InstallPath(shortest_path.release());
-
-  return absl::OkStatus();
+  absl::Status install = InstallPath(shortest_path.release());
+  return install;
 }
 
 namespace {
@@ -1323,7 +1346,7 @@ absl::Status RoutingGrid::AddRouteToNet(
   SetUpTemporaryBlockages(avoid, &temporary_blockages);
 
   auto begin_connection = ConnectToGrid(begin);
-  if (!begin_connection) {
+  if (!begin_connection.ok()) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
     TearDownTemporaryBlockages(temporary_blockages);
     return absl::NotFoundError(
@@ -1334,15 +1357,17 @@ absl::Status RoutingGrid::AddRouteToNet(
             << begin_vertex->centre();
 
   RoutingVertex *end_vertex;
-  std::unique_ptr<RoutingPath> shortest_path(
-      ShortestPath(begin_vertex, net, &end_vertex));
 
-  if (!shortest_path) {
-    LOG(WARNING) << "No path found to net " << net << ".";
+  auto shortest_path_result = ShortestPath(begin_vertex, net, &end_vertex);
+  if (!shortest_path_result.ok()) {
+    std::string message = absl::StrCat("No path found to net ", net, ".");
+    LOG(WARNING) << message;
     TearDownTemporaryBlockages(temporary_blockages);
-    return absl::NotFoundError(
-        absl::StrCat("No path found to net ", net, "."));
+    return absl::NotFoundError(message);
   }
+
+  // Claim the pointer.
+  std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
 
   // Remember the ports to which the path should connect.
   shortest_path->set_start_port(&begin);
@@ -1369,9 +1394,8 @@ absl::Status RoutingGrid::AddRouteToNet(
 
   TearDownTemporaryBlockages(temporary_blockages);
 
-  InstallPath(shortest_path.release());
-
-  return absl::OkStatus();
+  absl::Status install = InstallPath(shortest_path.release());
+  return install;
 }
 
 bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
@@ -1409,7 +1433,7 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
   }
 
   auto pos = std::find(vertices_.begin(), vertices_.end(), vertex);
-  LOG_IF(FATAL, pos == vertices_.end())
+  LOG_IF(WARNING, pos == vertices_.end())
       << "Did not find vertex we're removing in RoutingGrid list of "
       << "vertices: " << vertex;
   vertices_.erase(pos);
@@ -1592,8 +1616,10 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
   }
 }
 
-void RoutingGrid::InstallPath(RoutingPath *path) {
-  LOG_IF(FATAL, path->Empty()) << "Cannot install an empty path.";
+absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
+  if (path->Empty()) {
+    return absl::InvalidArgumentError("Cannot install an empty path.");
+  }
 
   LOG(INFO) << "Installing path " << *path << " with net " << path->net();
 
@@ -1615,10 +1641,13 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
     }
   }
 
-  LOG_IF(FATAL, path->vertices().size() != path->edges().size() + 1)
-      << "Path vertices and edges mismatched. There are "
-      << path->edges().size() << " edges and "
-      << path->vertices().size() << " vertices";
+  if (path->vertices().size() != path->edges().size() + 1) {
+    std::stringstream ss;
+    ss << "Path vertices and edges mismatched. There are "
+       << path->edges().size() << " edges and "
+       << path->vertices().size() << " vertices";
+    return absl::InvalidArgumentError(ss.str());
+  }
 
   size_t i = 0;
   RoutingEdge *edge = nullptr;
@@ -1639,9 +1668,10 @@ void RoutingGrid::InstallPath(RoutingPath *path) {
   }
   
   paths_.push_back(path);
+  return absl::OkStatus();
 }
 
-RoutingPath *RoutingGrid::ShortestPath(
+absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     RoutingVertex *begin, RoutingVertex *end) {
   return ShortestPath(
       begin,
@@ -1652,11 +1682,11 @@ RoutingPath *RoutingGrid::ShortestPath(
       true);
 }
 
-RoutingPath *RoutingGrid::ShortestPath(
+absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     RoutingVertex *begin,
     const std::string &to_net,
     RoutingVertex **discovered_target) {
-  RoutingPath *path = ShortestPath(
+  auto path = ShortestPath(
       begin,
       [&](RoutingVertex *v) {
         // Check that putting a via at this position doesn't conflict with vias
@@ -1697,13 +1727,13 @@ RoutingPath *RoutingGrid::ShortestPath(
       false);   // Targets don't have to be 'usable', since we expect them to
                 // already be used by the target net.
   // TODO(aryap): InstallPath obviates this.
-  //if (path) {
-  //  path->set_encap_end_port(true);
+  //if (path.ok()) {
+  //  (*path)->set_encap_end_port(true);
   //}
   return path;
 }
 
-RoutingPath *RoutingGrid::ShortestPath(
+absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     RoutingVertex *begin, 
     std::function<bool(RoutingVertex*)> is_target,
     RoutingVertex **discovered_target,
@@ -1712,8 +1742,7 @@ RoutingPath *RoutingGrid::ShortestPath(
     bool target_must_be_usable) {
   // FIXME(aryap): This is very bad.
   if (!usable_vertex(begin)) {
-    LOG(WARNING) << "Start vertex for path is not available";
-    return nullptr;
+    return absl::NotFoundError("Start vertex for path is not available");
   }
 
   // Give everything its index for the duration of this algorithm.
@@ -1752,9 +1781,12 @@ RoutingPath *RoutingGrid::ShortestPath(
 
   for (size_t i = 0; i < vertices_.size(); ++i) {
     RoutingVertex *vertex = vertices_[i];
-    LOG_IF(FATAL, i != vertex->contextual_index())
-      << "Vertex " << i << " no longer matches its index "
-      << vertex->contextual_index();
+    if (i != vertex->contextual_index()) {
+      std::stringstream ss;
+      ss << "Vertex " << i << " no longer matches its index "
+         << vertex->contextual_index();
+      return absl::InternalError(ss.str());
+    }
     prev[i].second = nullptr;
     if (i == begin_index)
       continue;
