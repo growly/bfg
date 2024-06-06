@@ -33,7 +33,7 @@ class RouterSession {
   absl::Status PerformNetRouteOrder(
       const router_service::NetRouteOrder &request);
 
-  router_service::Status SetUpRoutingGrid(
+  absl::Status SetUpRoutingGrid(
       const router_service::RoutingGridDefinition &grid_definition);
 
  private:

@@ -136,18 +136,14 @@ absl::Status RouterSession::PerformNetRouteOrder(
   return absl::OkStatus();
 }
 
-router_service::Status RouterSession::SetUpRoutingGrid(
+absl::Status RouterSession::SetUpRoutingGrid(
     const router_service::RoutingGridDefinition &grid_definition) {
   router_service::Status result;
   if (grid_definition.layers_size() < 2) {
-    result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-    result.set_message("Too few grid definitions");
-    return result;
+    return absl::InvalidArgumentError("Too few grid definitions");
   }
   if (grid_definition.layers_size() > 2) {
-    result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-    result.set_message("Too many routing layer definitions");
-    return result;
+    return absl::InvalidArgumentError("Too many routing layer definitions");
   }
 
   const PhysicalPropertiesDatabase &db = routing_grid_->physical_db();
@@ -157,10 +153,8 @@ router_service::Status RouterSession::SetUpRoutingGrid(
        grid_definition.layers()) {
     auto maybe_layer_info = db.GetRoutingLayerInfo(layer_pb.name());
     if (!maybe_layer_info) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(
+      return absl::InvalidArgumentError(
           absl::StrFormat("Missing info for layer: \"%s\"", layer_pb.name()));
-      return result;
     }
     RoutingLayerInfo layer_info = *maybe_layer_info;
 
@@ -192,9 +186,7 @@ router_service::Status RouterSession::SetUpRoutingGrid(
 
     absl::Status maybe_add = routing_grid_->AddRoutingLayerInfo(layer_info);
     if (!maybe_add.ok()) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(std::string(maybe_add.message()));
-      return result;
+      return maybe_add;
     }
   }
 
@@ -204,25 +196,20 @@ router_service::Status RouterSession::SetUpRoutingGrid(
        grid_definition.vias()) {
     auto first_layer = db.FindLayer(via_pb.between_layer());
     if (!first_layer) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(absl::StrFormat("Missing info for layer: \"%s\"",
-                                         via_pb.between_layer()));
-      return result;
+      return absl::InvalidArgumentError(absl::StrFormat(
+          "Missing info for layer: \"%s\"", via_pb.between_layer()));
     }
     auto second_layer = db.FindLayer(via_pb.and_layer());
     if (!second_layer) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(absl::StrFormat("Missing info for layer: \"%s\"",
-                                         via_pb.and_layer()));
-      return result;
+      return absl::InvalidArgumentError(absl::StrFormat(
+            "Missing info for layer: \"%s\"", via_pb.and_layer()));
     }
 
     auto maybe_routing_via_info = db.GetRoutingViaInfo(
         via_pb.between_layer(), via_pb.and_layer());
     if (!maybe_routing_via_info) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message("Routing via info unavailable for given layers");
-      return result;
+      return absl::InvalidArgumentError(
+          "Routing via info unavailable for given layers");
     }
     RoutingViaInfo routing_via_info = *maybe_routing_via_info;
 
@@ -231,22 +218,17 @@ router_service::Status RouterSession::SetUpRoutingGrid(
     absl::Status maybe_add = routing_grid_->AddRoutingViaInfo(
         *first_layer, *second_layer, routing_via_info);
     if (maybe_add.ok()) {
-      result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-      result.set_message(std::string(maybe_add.message()));
-      return result;
+      return maybe_add;
     }
   }
   
   absl::Status try_connect = routing_grid_->ConnectLayers(
           layer_infos[0].layer, layer_infos[1].layer);
   if (!try_connect.ok()) {
-    result.set_code(router_service::StatusCode::INVALID_ARGUMENT);
-    result.set_message(std::string(try_connect.message()));
-    return result;
+    return try_connect;
   }
 
-  result.set_code(router_service::StatusCode::OK);
-  return result;
+  return absl::OkStatus();
 }
 
 

@@ -843,7 +843,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     off_grid_edges_.insert(edge);
     return off_grid_copy;
   }
-  return nullptr;
+  return absl::NotFoundError("");
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
