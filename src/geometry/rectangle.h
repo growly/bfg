@@ -29,6 +29,9 @@ class Rectangle : public Shape {
   // Expand the 'bounding_box' rectangle to include the bounds of 'subsume'.
   static void ExpandBounds(const Rectangle &subsume, Rectangle *bounding_box);
 
+  static Rectangle CentredAt(
+      const Point &centre, uint64_t width, uint64_t height);
+
   Rectangle() : Shape(0, "") {}
   Rectangle(const Point &lower_left, uint64_t width, uint64_t height)
       : lower_left_(lower_left),

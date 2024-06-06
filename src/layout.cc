@@ -336,6 +336,16 @@ geometry::Rectangle *Layout::AddRectangleAsPort(
   return installed;
 }
 
+geometry::Rectangle *Layout::AddSquareAsPort(
+    const geometry::Point &point,
+    uint64_t side_width,
+    const std::string &net,
+    const std::string &net_prefix) {
+  geometry::Rectangle *installed = AddSquare(point, side_width);
+  AddPort({*installed, net}, net_prefix);
+  return installed;
+}
+
 void Layout::AddPort(const geometry::Port &port,
                      const std::string &net_prefix) {
   LOG_IF(FATAL, port.net().empty()) << "Can't add a port with net \"\".";

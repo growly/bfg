@@ -53,12 +53,15 @@ class Layout : public geometry::Manipulable {
                                           const std::string &net_prefix = "");
   geometry::Rectangle *AddSquare(
       const geometry::Point &centre, uint64_t side_width) {
-    return AddRectangle(geometry::Rectangle(
-        geometry::Point(centre.x() - side_width / 2,
-                        centre.y() - side_width / 2),
-        side_width,
-        side_width));
+    return AddRectangle(
+        geometry::Rectangle::CentredAt(centre, side_width, side_width));
   }
+  geometry::Rectangle *AddSquareAsPort(
+      const geometry::Point &centre,
+      uint64_t side_width,
+      const std::string &net,
+      const std::string &net_prefix = "");
+
   geometry::Polygon *AddPolygon(const geometry::Polygon &polygon) {
     geometry::Polygon *copy = new geometry::Polygon(polygon);
     copy->set_layer(active_layer_);

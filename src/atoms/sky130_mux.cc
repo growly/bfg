@@ -1270,8 +1270,8 @@ void ConnectOppositeInputs(
   // each other and as ports for external wires.
   struct ContactPairWithOffset {
     std::string net;
-    Point left_port;
-    Point right_port;
+    std::optional<Point> left_port;
+    std::optional<Point >right_port;
     Point left_bar_contact;
     Point right_bar_contact;
     std::string pin_layer_name;
@@ -1325,6 +1325,14 @@ void ConnectOppositeInputs(
       layout->GetPointOrDie("lower_right.input_1"),
       {left_x, layout->GetPointOrDie("lower_left.input_1_line_y").y()},
       {right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()},
+      "li.pin"
+    },
+    {
+      "input_3",
+      layout->GetPointOrDie("lower_left.input_3"),
+      layout->GetPointOrDie("lower_right.input_3"),
+      {left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
+      {right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()},
       "li.pin"
     },
     {
@@ -1403,10 +1411,51 @@ void ConnectOppositeInputs(
         layout);
   }
 
+  std::vector<ContactPairWithOffset> selector_contact_infos = {
+    {
+      "S0_B",
+      std::nullopt,
+      std::nullopt,
+      layout->GetPointOrDie("S0_B_top_left"),
+      layout->GetPointOrDie("S0_B_top_right"),
+      "met1.pin",
+      300
+    },
+    {
+      "S0_B",
+      std::nullopt,
+      std::nullopt,
+      layout->GetPointOrDie("S1_B_top_left"),
+      layout->GetPointOrDie("S1_B_top_right"),
+      "met1.pin",
+      -100
+    },
+    {
+      "S0",
+      std::nullopt,
+      std::nullopt,
+      layout->GetPointOrDie("S0_bottom_left"),
+      layout->GetPointOrDie("S0_bottom_right"),
+      "met1.pin"
+    },
+  };
+
+  for (const auto &contact_info : selector_contact_infos) {
+    LOG(INFO) << "left " << contact_info.left_bar_contact << " right "
+              << contact_info.right_bar_contact;
+    ConnectOppositeInputsOnMet2(
+        db,
+        contact_info.left_bar_contact,
+        contact_info.right_bar_contact,
+        contact_info.net,
+        contact_info.y_offset,
+        layout);
+  }
+
   // Place ports (pins) at port positions.
   for (const auto &partition : {first_contact_infos, second_contact_infos}) {
     for (const auto &info : partition) {
-      for (const Point &centre : {info.left_port, info.right_port}) {
+      for (const Point &centre : {*info.left_port, *info.right_port}) {
         geometry::Layer layer = centre.layer();
         int64_t via_size = db.Rules(layer).via_width;
         layout->SetActiveLayerByName(info.pin_layer_name);
@@ -1520,7 +1569,7 @@ void DrawAndConnectMet1Columns(
     Point bottom_source_point;        // On poly.
     Point bottom_destination_point;   // On column.
 
-    std::optional<std::string> saved_point_prefix;
+    std::optional<std::string> net;
   };
 
 
@@ -1538,45 +1587,45 @@ void DrawAndConnectMet1Columns(
         .rotate_connections = false,
         .top_source_point_name = "upper_left.column_0_centre_top_via",
         .bottom_source_point_name = "lower_left.column_0_centre_top_via",
-        .saved_point_prefix = "S0_B"}},
+        .net = "S0_B"}},
     {1, ColumnPlan{
         .rotate_connections = true,
         .top_source_point_name = "upper_left.column_1_centre_top_via",
         .bottom_source_point_name = "lower_left.column_1_centre_top_via",
-        .saved_point_prefix = "S0"}},
+        .net = "S0"}},
     {2, ColumnPlan{
         .rotate_connections = false,
         .top_source_point_name = "upper_left.column_2_centre_top_via",
         .bottom_source_point_name = "lower_left.column_2_centre_top_via",
-        .saved_point_prefix = "S1_B"}},
+        .net = "S1_B"}},
     {5, ColumnPlan{
         .rotate_connections = true,
         .top_source_point_name = "upper_left.column_3_centre_top_via",
         .bottom_source_point_name = "lower_left.column_3_centre_top_via",
-        .saved_point_prefix = "S1"}},
+        .net = "S1"}},
 
-    {6, ColumnPlan{.saved_point_prefix = "Z"}},
+    {6, ColumnPlan{.net = "Z"}},
 
     {last_column - 5, ColumnPlan{
         .rotate_connections = true,
         .top_source_point_name = "upper_right.column_3_centre_top_via",
         .bottom_source_point_name = "lower_right.column_3_centre_top_via",
-        .saved_point_prefix = "S1_B"}},
+        .net = "S1_B"}},
     {last_column - 2, ColumnPlan{
         .rotate_connections = false,
         .top_source_point_name = "upper_right.column_2_centre_top_via",
         .bottom_source_point_name = "lower_right.column_2_centre_top_via",
-        .saved_point_prefix = "S1"}},
+        .net = "S1"}},
     {last_column - 1, ColumnPlan{
         .rotate_connections = true,
         .top_source_point_name = "upper_right.column_1_centre_top_via",
         .bottom_source_point_name = "lower_right.column_1_centre_top_via",
-        .saved_point_prefix = "S0_B"}},
+        .net = "S0_B"}},
     {last_column - 0, ColumnPlan{
         .rotate_connections = false,
         .top_source_point_name = "upper_right.column_0_centre_top_via",
         .bottom_source_point_name = "lower_right.column_0_centre_top_via",
-        .saved_point_prefix = "S0"}},
+        .net = "S0"}},
   };
 
   // (This vector contains pointers we own. We can't store them in the std::map
@@ -1654,13 +1703,28 @@ void DrawAndConnectMet1Columns(
     plan.top_destination_point = {x, top_y};
     plan.bottom_destination_point = {x, bottom_y};
 
-    if (plan.saved_point_prefix) {
+    // Need to differentiate the e.g. S0 column on the left from the one on the
+    // right:
+    std::string net_suffix = k < kNumColumnsPerFlank ? "left" : "right";
+
+    if (plan.net) {
+      layout->SetActiveLayerByName("met1.pin");
+      layout->AddSquareAsPort(
+          plan.top_destination_point,
+          met1_rules.min_width,
+          *plan.net);
       layout->SavePoint(
-          absl::StrCat(*plan.saved_point_prefix, "_top"),
+          absl::StrCat(*plan.net, "_top_", net_suffix),
           plan.top_destination_point);
+
+      layout->AddSquareAsPort(
+          plan.bottom_destination_point,
+          met1_rules.min_width,
+          *plan.net);
       layout->SavePoint(
-          absl::StrCat(*plan.saved_point_prefix, "_bottom"),
+          absl::StrCat(*plan.net, "_bottom_", net_suffix),
           plan.bottom_destination_point);
+      layout->RestoreLastActiveLayer();
     }
 
     // Can now create the PolyLine:
@@ -1672,7 +1736,11 @@ void DrawAndConnectMet1Columns(
     plan.column_line = column_line;
   }
 
-  // Connect poly to metal columns.
+  // TODO(aryap): We could re-use "ColumnPlan" as the input type to
+  // ConnectNamedPointsToColumns. It would be far less general as a result, but
+  // is it needed to be general? It's only used here for now.  Connect poly to
+  // metal columns.
+
   // Along the top of the mux:
   //
   // metal line (m)
@@ -1692,28 +1760,28 @@ void DrawAndConnectMet1Columns(
   ConnectNamedPointsToColumns(
       db,
       {
-       {"upper_left.column_0_centre_top_via",
+        {*column_plans[0].top_source_point_name,
          column_plans[0].column_line,
          false},
-        {"upper_left.column_1_centre_top_via",
+        {*column_plans[1].top_source_point_name,
          column_plans[1].column_line,
          true},
-        {"upper_left.column_2_centre_top_via",
+        {*column_plans[2].top_source_point_name,
          column_plans[2].column_line,
          false},
-        {"upper_left.column_3_centre_top_via",
+        {*column_plans[5].top_source_point_name,
          column_plans[5].column_line,
          true},
-        {"upper_right.column_3_centre_top_via",
+        {*column_plans[last_column - 5].top_source_point_name,
          column_plans[last_column - 5].column_line,
          true},
-        {"upper_right.column_2_centre_top_via",
+        {*column_plans[last_column - 2].top_source_point_name,
          column_plans[last_column - 2].column_line,
          false},
-        {"upper_right.column_1_centre_top_via",
+        {*column_plans[last_column - 1].top_source_point_name,
          column_plans[last_column - 1].column_line,
          true},
-        {"upper_right.column_0_centre_top_via",
+        {*column_plans[last_column - 0].top_source_point_name,
          column_plans[last_column - 0].column_line,
          false}
       },
@@ -1725,28 +1793,28 @@ void DrawAndConnectMet1Columns(
   ConnectNamedPointsToColumns(
       db,
       {
-       {"lower_left.column_0_centre_top_via",
+        {*column_plans[0].bottom_source_point_name,
          column_plans[0].column_line,
          false},
-        {"lower_left.column_1_centre_top_via",
+        {*column_plans[1].bottom_source_point_name,
          column_plans[1].column_line,
          true},
-        {"lower_left.column_2_centre_top_via",
+        {*column_plans[2].bottom_source_point_name,
          column_plans[2].column_line,
          false},
-        {"lower_left.column_3_centre_top_via",
+        {*column_plans[5].bottom_source_point_name,
          column_plans[5].column_line,
          true},
-        {"lower_right.column_3_centre_top_via",
+        {*column_plans[last_column - 5].bottom_source_point_name,
          column_plans[last_column - 5].column_line,
          true},
-        {"lower_right.column_2_centre_top_via",
+        {*column_plans[last_column - 2].bottom_source_point_name,
          column_plans[last_column - 2].column_line,
          false},
-        {"lower_right.column_1_centre_top_via",
+        {*column_plans[last_column - 1].bottom_source_point_name,
          column_plans[last_column - 1].column_line,
          true},
-        {"lower_right.column_0_centre_top_via",
+        {*column_plans[last_column - 0].bottom_source_point_name,
          column_plans[last_column - 0].column_line,
          false}
       },
@@ -1754,7 +1822,6 @@ void DrawAndConnectMet1Columns(
       false,  // point down
       layout);
 
-  layout->SetActiveLayerByName("met1.drawing");
   PolyLineInflator inflator(db);
   for (auto &entry : column_plans) {
     size_t k = entry.first;
@@ -1762,11 +1829,13 @@ void DrawAndConnectMet1Columns(
     if (drawn_columns.find(k) == drawn_columns.end()) {
       continue;
     }
+    layout->SetActiveLayerByName("met1.drawing");
     PolyLine *line = entry.second.column_line;
     std::optional<Polygon> polygon = inflator.InflatePolyLine(*line);
     if (polygon) {
       layout->AddPolygon(*polygon);
     }
+    layout->RestoreLastActiveLayer();
   }
 }
 

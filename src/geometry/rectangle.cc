@@ -71,6 +71,14 @@ void Rectangle::ExpandBounds(const Rectangle &subsume,
       subsume.upper_right().y(), bounding_box->upper_right_.y()));
 }
 
+Rectangle Rectangle::CentredAt(
+    const Point &centre, uint64_t width, uint64_t height) {
+  Point lower_left = centre - Point{
+      static_cast<int64_t>(width) / 2,
+      static_cast<int64_t>(height) / 2};
+  return Rectangle(lower_left, width, height);
+}
+
 bool Rectangle::Overlaps(const Rectangle &other) const {
   if (other.upper_right().x() < lower_left_.x() ||
       other.upper_right().y() < lower_left_.y() ||
