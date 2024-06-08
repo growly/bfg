@@ -1212,17 +1212,39 @@ void GenerateOutput2To1MuxLayout(
   }
 }
 
+struct CrossbarConnectionPointInfo {
+  Point contact;
+
+  // If given, a Port is inserted at this point.
+  std::optional<Point> port;
+
+  // If given, a bulge is inserted there at contact point.
+  geometry::PolyLine *column;
+};
+
+struct ConnectionBetweenOppositePorts {
+  std::string net;
+
+  CrossbarConnectionPointInfo left;
+  CrossbarConnectionPointInfo right;
+
+  std::string pin_layer_name;
+
+  int64_t y_offset = 0;
+  Polygon *met2_pour = nullptr;
+};
+
 Polygon *ConnectOppositeInputsOnMet2(
     const PhysicalPropertiesDatabase &db,
-    const Point &left_contact,
-    const Point &right_contact,
-    const std::optional<std::string> &net,
-    int64_t y_offset,
+    const ConnectionBetweenOppositePorts &plan,
     bfg::Layout *layout) {
+  const Point &left_contact = plan.left.contact;
+  const Point &right_contact = plan.right.contact;
+
   Polygon *path = AddElbowPathBetweenLayers(db,
       left_contact, right_contact,
       "via1.drawing", "met2.drawing", "via1.drawing",
-      y_offset,
+      plan.y_offset,
       layout);
 
   // TODO(aryap): It would be really nice to have access to the RoutingGrid
@@ -1231,10 +1253,11 @@ Polygon *ConnectOppositeInputsOnMet2(
   // vias an metal pours. A version of these should exist in the
   // PhysicalPropertiesDatabase.
 
-  for (const auto &contact : {left_contact, right_contact}) {
+  for (const auto &info : {plan.left, plan.right}) {
+    const Point &contact = info.contact;
     // Make via1.drawing, mcon.drawing vias:
-    layout->MakeVia("via1.drawing", contact, net);
-    layout->MakeVia("mcon.drawing", contact, net);
+    layout->MakeVia("via1.drawing", contact, plan.net);
+    layout->MakeVia("mcon.drawing", contact, plan.net);
 
     const int64_t encap_width = std::max(
         db.Rules("via1.drawing").via_width,
@@ -1249,13 +1272,17 @@ Polygon *ConnectOppositeInputsOnMet2(
 
     // Add the met1.drawing pour between mcon.drawing and via1.drawing. We
     // expect this to fit into a column space so prefer a vertical encap.
+    if (info.column) {
+      info.column->InsertBulge(contact, encap_width, encap_length);
+      continue;
+    }
     Point metal_lower_left = contact -
         Point{encap_width / 2, encap_length / 2};
     layout->SetActiveLayerByName("met1.drawing");
     Rectangle *metal_pour = layout->AddRectangle(
         Rectangle(metal_lower_left, encap_width, encap_length));
-    if (net) {
-      metal_pour->set_net(*net);
+    if (plan.net != "") {
+      metal_pour->set_net(plan.net);
       metal_pour->set_is_connectable(true);
     }
   }
@@ -1264,20 +1291,14 @@ Polygon *ConnectOppositeInputsOnMet2(
 
 void ConnectOppositeInputs(
     const PhysicalPropertiesDatabase &db,
+    const std::vector<std::unique_ptr<PolyLine>> &column_lines,
     const std::map<size_t, int64_t> &column_x,
     bfg::Layout *layout) {
   // This structure helps us describe the connectivity of the inputs fingers to
   // each other and as ports for external wires.
-  struct ContactPairWithOffset {
-    std::string net;
-    std::optional<Point> left_port;
-    std::optional<Point >right_port;
-    Point left_bar_contact;
-    Point right_bar_contact;
-    std::string pin_layer_name;
-    int64_t y_offset = 0;
-    Polygon *met2_pour = nullptr;
-  };
+  const auto &met2_rules = db.Rules("met2.drawing");
+  const auto &via1_rules = db.Rules("via1.drawing");
+  const auto &met2_via1_rules = db.Rules("met2.drawing", "via1.drawing");
 
   // If this exists, there is a met2 bar at the output that we have to avoid.
   auto output_mux_met2_bar_left_contact = layout->GetPoint(
@@ -1299,115 +1320,158 @@ void ConnectOppositeInputs(
   int64_t right_x = (column_x.find(11)->second +
                         column_x.find(12)->second) / 2;
   
-  std::vector<ContactPairWithOffset> first_contact_infos = {
+  // Whether we take the min or max here depends on whether the elbow-shaped
+  // (L-shaped) path drawn between the two contacts below takes the form
+  //
+  //                        +
+  //    +-------+     or    |
+  //            |           +-------+
+  //            +
+  //
+  // If that changes, so should this.
+  //
+  // TODO(aryap): At this point we once again find it useful to have a function
+  // that enables something like "place this within this x-range as close as
+  // possible to other shapes on this layer in the y dimension".
+  int64_t top_bar_centre_y = std::min(
+      layout->GetPointOrDie("upper_left.input_1_line_y").y(),
+      layout->GetPointOrDie("upper_right.input_1_line_y").y());
+  int64_t bottom_bar_centre_y = std::max(
+      layout->GetPointOrDie("lower_left.input_1_line_y").y(),
+      layout->GetPointOrDie("lower_right.input_1_line_y").y());
+
+  std::vector<ConnectionBetweenOppositePorts> first_contact_infos = {
     {
       .net = "input_5",
-      .left_port = layout->GetPointOrDie("upper_left.input_1"),
-      .right_port = layout->GetPointOrDie("upper_right.input_1"),
-      .left_bar_contact = {
+      .left = {
+        .contact = {
           left_x, layout->GetPointOrDie("upper_left.input_1_line_y").y()},
-      .right_bar_contact = {
+        .port = layout->GetPointOrDie("upper_left.input_1"),
+        .column = nullptr
+      },
+      .right = {
+        .contact = {
           right_x, layout->GetPointOrDie("upper_right.input_1_line_y").y()},
-      .pin_layer_name = "li.pin"
+        .port = layout->GetPointOrDie("upper_right.input_1"),
+        .column = nullptr
+      },
+      .pin_layer_name = "li.pin",
+      .y_offset = 0
     },
     {
       "input_7",
-      layout->GetPointOrDie("upper_left.input_3"),
-      layout->GetPointOrDie("upper_right.input_3"),
-      {left_x, layout->GetPointOrDie("upper_left.input_3_line_y").y()},
-      {right_x, layout->GetPointOrDie("upper_right.input_3_line_y").y()},
+      {
+        {left_x, layout->GetPointOrDie("upper_left.input_3_line_y").y()},
+        layout->GetPointOrDie("upper_left.input_3")
+      },
+      {
+        {right_x, layout->GetPointOrDie("upper_right.input_3_line_y").y()},
+        layout->GetPointOrDie("upper_right.input_3")
+      },
       "li.pin",
       y_offset
     },
     {
+      "input_3",
+      {
+        {left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
+        layout->GetPointOrDie("lower_left.input_3"),
+      },
+      {
+        {right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()},
+        layout->GetPointOrDie("lower_right.input_3"),
+      },
+      "li.pin",
+      0
+    },
+    {
       "input_1",
-      layout->GetPointOrDie("lower_left.input_1"),
-      layout->GetPointOrDie("lower_right.input_1"),
-      {left_x, layout->GetPointOrDie("lower_left.input_1_line_y").y()},
-      {right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()},
-      "li.pin"
-    },
-    {
-      "input_3",
-      layout->GetPointOrDie("lower_left.input_3"),
-      layout->GetPointOrDie("lower_right.input_3"),
-      {left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
-      {right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()},
-      "li.pin"
-    },
-    {
-      "input_3",
-      layout->GetPointOrDie("lower_left.input_3"),
-      layout->GetPointOrDie("lower_right.input_3"),
-      {left_x, layout->GetPointOrDie("lower_left.input_3_line_y").y()},
-      {right_x, layout->GetPointOrDie("lower_right.input_3_line_y").y()},
-      "li.pin"
+      {
+        {left_x, layout->GetPointOrDie("lower_left.input_1_line_y").y()},
+        layout->GetPointOrDie("lower_left.input_1"),
+      },
+      {
+        {right_x, layout->GetPointOrDie("lower_right.input_1_line_y").y()},
+        layout->GetPointOrDie("lower_right.input_1"),
+      },
+      "li.pin",
+      0
     },
   };
 
   for (auto &contact_info : first_contact_infos) {
-    LOG(INFO) << "left " << contact_info.left_bar_contact << " right "
-              << contact_info.right_bar_contact;
+    LOG(INFO) << "left " << contact_info.left.contact << " right "
+              << contact_info.right.contact;
     contact_info.met2_pour = ConnectOppositeInputsOnMet2(
         db,
-        contact_info.left_bar_contact,
-        contact_info.right_bar_contact,
-        contact_info.net,
-        contact_info.y_offset,
+        contact_info,
         layout);
   }
 
   left_x = layout->GetPointOrDie("upper_left.input_0").x();
   right_x = layout->GetPointOrDie("upper_right.input_0").x();
 
-  std::vector<ContactPairWithOffset> second_contact_infos = {
+  std::vector<ConnectionBetweenOppositePorts> second_contact_infos = {
     {
       "input_4",
-      layout->GetPointOrDie("upper_left.input_0"),
-      layout->GetPointOrDie("upper_right.input_0"),
-      {left_x, layout->GetPointOrDie("upper_left.input_0").y()},
-      {right_x, layout->GetPointOrDie("upper_right.input_0").y()},
+      {
+        {left_x, layout->GetPointOrDie("upper_left.input_0").y()},
+        layout->GetPointOrDie("upper_left.input_0"),
+      },
+      {
+        {right_x, layout->GetPointOrDie("upper_right.input_0").y()},
+        layout->GetPointOrDie("upper_right.input_0"),
+      },
       "met1.pin",
       y_offset
     },
     {
       "input_6",
-      layout->GetPointOrDie("upper_left.input_2"),
-      layout->GetPointOrDie("upper_right.input_2"),
-      {left_x, layout->GetPointOrDie("upper_left.input_2").y()},
-      {right_x, layout->GetPointOrDie("upper_right.input_2").y()},
+      {
+        {left_x, layout->GetPointOrDie("upper_left.input_2").y()},
+        layout->GetPointOrDie("upper_left.input_2"),
+      },
+      {
+        {right_x, layout->GetPointOrDie("upper_right.input_2").y()},
+        layout->GetPointOrDie("upper_right.input_2"),
+      },
       "met1.pin",
       y_offset
     },
     {
       "input_2",
-      layout->GetPointOrDie("lower_left.input_2"),
-      layout->GetPointOrDie("lower_right.input_2"),
-      {left_x, layout->GetPointOrDie("lower_left.input_2").y()},
-      {right_x, layout->GetPointOrDie("lower_right.input_2").y()},
+      {
+        {left_x, layout->GetPointOrDie("lower_left.input_2").y()},
+        layout->GetPointOrDie("lower_left.input_2"),
+      },
+      {
+        {right_x, layout->GetPointOrDie("lower_right.input_2").y()},
+        layout->GetPointOrDie("lower_right.input_2"),
+      },
       "met1.pin",
       -y_offset
     },
     {
       "input_0",
-      layout->GetPointOrDie("lower_left.input_0"),
-      layout->GetPointOrDie("lower_right.input_0"),
-      {left_x, layout->GetPointOrDie("lower_left.input_0").y()},
-      {right_x, layout->GetPointOrDie("lower_right.input_0").y()},
+      {
+        {left_x, layout->GetPointOrDie("lower_left.input_0").y()},
+        layout->GetPointOrDie("lower_left.input_0"),
+      },
+      {
+        {right_x, layout->GetPointOrDie("lower_right.input_0").y()},
+        layout->GetPointOrDie("lower_right.input_0"),
+      },
       "met1.pin",
       -y_offset
     },
   };
 
   for (const auto &contact_info : second_contact_infos) {
-    LOG(INFO) << "left " << contact_info.left_bar_contact << " right "
-              << contact_info.right_bar_contact;
+    LOG(INFO) << "left " << contact_info.left.contact << " right "
+              << contact_info.right.contact;
     ConnectOppositeInputsOnMet2(
         db,
-        contact_info.left_bar_contact,
-        contact_info.right_bar_contact,
-        contact_info.net,
-        contact_info.y_offset,
+        contact_info,
         layout);
   }
 
@@ -1429,74 +1493,135 @@ void ConnectOppositeInputs(
   //  the metal columns in the centre of the mux or at the top or bottom in
   //  between the input selector cross-bars.
 
-  int64_t top_inner_selector_joiner_y =
-      std::max(
-          layout->GetPointOrDie("S1_B_top_left").y(),
-          layout->GetPointOrDie("S1_B_top_right").y()) - 100;
-  int64_t bottom_inner_selector_joiner_y =
-      std::min(
-          layout->GetPointOrDie("S1_bottom_left").y(),
-          layout->GetPointOrDie("S1_bottom_right").y()) + 100;
+  int64_t separation_mid_met2_wire_to_mid_via_contact =
+      met2_rules.min_separation +
+      met2_rules.min_width / 2 +
+      // Because metals are horizontal and we're finding spacing vertically:
+      met2_via1_rules.via_overhang_wide +
+      via1_rules.via_width / 2;
 
-  std::vector<ContactPairWithOffset> selector_contact_infos = {
+  int64_t top_inner_selector_joiner_y = top_bar_centre_y +
+      separation_mid_met2_wire_to_mid_via_contact;
+
+  int64_t top_outer_selector_joiner_y = top_inner_selector_joiner_y +
+      separation_mid_met2_wire_to_mid_via_contact;
+
+  int64_t bottom_inner_selector_joiner_y = bottom_bar_centre_y -
+      separation_mid_met2_wire_to_mid_via_contact;
+
+  int64_t bottom_outer_selector_joiner_y = bottom_inner_selector_joiner_y -
+      separation_mid_met2_wire_to_mid_via_contact;
+
+  // TODO(aryap): There has to be a nicer way to do this. We know the x values
+  // up-front when we generate the columns so why don't we just pass around the
+  // ColumnPlan struct or something?
+  auto column_line_by_x = [&](int64_t x) -> PolyLine* {
+    for (const auto &uniq : column_lines) {
+      if (uniq->GetBoundingBox().centre().x() == x) {
+        return uniq.get();
+      }
+    }
+    return nullptr;
+  };
+
+  std::vector<ConnectionBetweenOppositePorts> selector_contact_infos = {
     {
       "S0_B",
-      std::nullopt,
-      std::nullopt,
-      layout->GetPointOrDie("S0_B_top_left"),
-      layout->GetPointOrDie("S0_B_top_right"),
+      {
+        {
+          layout->GetPointOrDie("S0_B_top_left").x(),
+          top_outer_selector_joiner_y
+        },
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S0_B_top_left").x())
+      },
+      {
+        {
+          layout->GetPointOrDie("S0_B_top_right").x(),
+          top_outer_selector_joiner_y
+        },
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S0_B_top_right").x())
+      },
       "met1.pin",
-      300
+      0
     },
     {
       "S1_B",
-      std::nullopt,
-      std::nullopt,
-      { layout->GetPointOrDie("S1_B_top_left").x(),
-        top_inner_selector_joiner_y},
-      { layout->GetPointOrDie("S1_B_top_right").x(),
-        top_inner_selector_joiner_y},
+      {
+        {
+          layout->GetPointOrDie("S1_B_top_left").x(),
+           top_inner_selector_joiner_y
+        },
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S1_B_top_left").x())
+      },
+      {
+        {
+          layout->GetPointOrDie("S1_B_top_right").x(),
+          top_inner_selector_joiner_y
+        },
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S1_B_top_right").x())
+      },
       "met1.pin",
       0
     },
     {
       "S1",
-      std::nullopt,
-      std::nullopt,
-      { layout->GetPointOrDie("S1_bottom_left").x(),
-        bottom_inner_selector_joiner_y},
-      { layout->GetPointOrDie("S1_bottom_right").x(),
-        bottom_inner_selector_joiner_y},
+      {
+        {
+          layout->GetPointOrDie("S1_bottom_left").x(),
+          bottom_inner_selector_joiner_y
+        },
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S1_bottom_left").x())
+      },
+      {
+        {layout->GetPointOrDie("S1_bottom_right").x(),
+         bottom_inner_selector_joiner_y},
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S1_bottom_right").x())
+      },
       "met1.pin",
       0
     },
     {
       "S0",
-      std::nullopt,
-      std::nullopt,
-      layout->GetPointOrDie("S0_bottom_left"),
-      layout->GetPointOrDie("S0_bottom_right"),
+      {
+        {
+          layout->GetPointOrDie("S0_bottom_left").x(),
+          bottom_outer_selector_joiner_y
+        },
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S0_bottom_left").x())
+      },
+      {
+        {
+          layout->GetPointOrDie("S0_bottom_right").x(),
+          bottom_outer_selector_joiner_y
+        },
+        std::nullopt,
+        column_line_by_x(layout->GetPointOrDie("S0_bottom_right").x())
+      },
       "met1.pin",
-      -300
+      0
     },
   };
 
   for (const auto &contact_info : selector_contact_infos) {
-    LOG(INFO) << "left " << contact_info.left_bar_contact << " right "
-              << contact_info.right_bar_contact;
+    LOG(INFO) << "left " << contact_info.left.contact << " right "
+              << contact_info.right.contact;
     ConnectOppositeInputsOnMet2(
         db,
-        contact_info.left_bar_contact,
-        contact_info.right_bar_contact,
-        contact_info.net,
-        contact_info.y_offset,
+        contact_info,
         layout);
   }
 
   // Place ports (pins) at port positions.
   for (const auto &partition : {first_contact_infos, second_contact_infos}) {
     for (const auto &info : partition) {
-      for (const Point &centre : {*info.left_port, *info.right_port}) {
+      for (const Point &centre : {*info.left.port, *info.right.port}) {
         geometry::Layer layer = centre.layer();
         int64_t via_size = db.Rules(layer).via_width;
         layout->SetActiveLayerByName(info.pin_layer_name);
@@ -1508,11 +1633,12 @@ void ConnectOppositeInputs(
   }
 }
 
-void DrawAndConnectMet1Columns(
+void BuildMet1Columns(
     const PhysicalPropertiesDatabase &db,
     const std::string &poly_contact,
     int64_t width,
     int64_t height,
+    std::vector<std::unique_ptr<PolyLine>> *column_lines,
     std::map<size_t, int64_t> *column_x,
     bfg::Layout *layout) {
   const auto &li_rules = db.Rules("li.drawing");
@@ -1669,11 +1795,6 @@ void DrawAndConnectMet1Columns(
         .net = "S0"}},
   };
 
-  // (This vector contains pointers we own. We can't store them in the std::map
-  // value type.)
-  std::vector<std::unique_ptr<PolyLine>> column_lines;
-  column_lines.resize(column_plans.size());
-
   // The pitches of columns _in order extending outward from the centre_.
   std::vector<int64_t> pitches = {
       0,  // For the central output column.
@@ -1771,9 +1892,10 @@ void DrawAndConnectMet1Columns(
     // Can now create the PolyLine:
     PolyLine *column_line = new PolyLine({
         plan.bottom_destination_point, plan.top_destination_point});
-    column_lines.emplace_back(column_line);
+    column_lines->emplace_back(column_line);
 
     column_line->SetWidth(met1_rules.min_width);
+    column_line->set_min_separation(met1_rules.min_separation);
     plan.column_line = column_line;
   }
 
@@ -1862,22 +1984,6 @@ void DrawAndConnectMet1Columns(
       poly_contact,
       false,  // point down
       layout);
-
-  PolyLineInflator inflator(db);
-  for (auto &entry : column_plans) {
-    size_t k = entry.first;
-    // Check for skip:
-    if (drawn_columns.find(k) == drawn_columns.end()) {
-      continue;
-    }
-    layout->SetActiveLayerByName("met1.drawing");
-    PolyLine *line = entry.second.column_line;
-    std::optional<Polygon> polygon = inflator.InflatePolyLine(*line);
-    if (polygon) {
-      layout->AddPolygon(*polygon);
-    }
-    layout->RestoreLastActiveLayer();
-  }
 }
 
 }  // namespace
@@ -2256,13 +2362,17 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       pdiff->upper_right() + Point(diff_padding, diff_padding)
   });
 
+  // (This vector contains pointers we own. We can't store them in the std::map
+  // value type.)
+  std::vector<std::unique_ptr<PolyLine>> column_lines;
   std::map<size_t, int64_t> column_x;
 
-  DrawAndConnectMet1Columns(
+  BuildMet1Columns(
       db,
       poly_contact,
       static_cast<int64_t>(bounding_box.Width()),
       static_cast<int64_t>(bounding_box.Height()),
+      &column_lines,
       &column_x,
       layout.get());
 
@@ -2280,7 +2390,19 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       0,                       // mux_bottom_y
       layout.get());
 
-  ConnectOppositeInputs(db, column_x, layout.get());
+  ConnectOppositeInputs(db, column_lines, column_x, layout.get());
+
+  // Draw Met1 columns.
+  PolyLineInflator inflator(db);
+  for (auto &uniq : column_lines) {
+    layout->SetActiveLayerByName("met1.drawing");
+    PolyLine *line = uniq.get();
+    std::optional<Polygon> polygon = inflator.InflatePolyLine(*line);
+    if (polygon) {
+      layout->AddPolygon(*polygon);
+    }
+    layout->RestoreLastActiveLayer();
+  }
 
   return layout.release();
 }

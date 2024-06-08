@@ -164,6 +164,8 @@ class Sky130Mux: public Atom {
   Parameters parameters_;
 
   double internal_units_per_nm_;
+
+ private:
 };
 
 }  // namespace atoms
