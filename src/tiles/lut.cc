@@ -625,6 +625,23 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
   }
 
+  // FIXME(aryap): I want to solve the general problem of connecting to a port
+  // on an instance which is comprised of many, possibly connected, shapes on
+  // many, possibly connected, layers. The tricky thing is that connecting on
+  // one layer might create DRC violations on an adjacent layer (e.g. if you
+  // connect on met2 but jump up from met1 just before, and there's a met1
+  // shape near, you get a problem).
+  //
+  // A related and important consideration is that all shapes with the same
+  // port name label should be considered connected, even if they are not port
+  // objects. Or should they be port objects?
+  //
+  // Is it desirable in general to treat any shape given a net name as
+  // belonging to, and connectable by, that net?
+  //
+  // And what namespaces do these net names occupy? Their parent instance?
+  // Unless exported by being labelled a port with the same name?
+
   // Connect the input buffers on the selector lines.
   struct AutoConnection {
     geometry::Instance *source_instance;
@@ -633,8 +650,69 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     std::string target_port_name;
   };
   std::vector<AutoConnection> auto_connections = {
-    //{buf_order[0], "P", mux_order[0], "
+    {buf_order[0], "P", mux_order[0], "S0_B"},
+    {buf_order[0], "X", mux_order[0], "S0"},
+    {buf_order[1], "P", mux_order[0], "S1_B"},
+    {buf_order[1], "X", mux_order[0], "S1"},
   };
+
+  for (auto &auto_connection : auto_connections) {
+    geometry::Instance *source = auto_connection.source_instance;
+    geometry::Instance *target = auto_connection.target_instance;
+    const std::string &source_port_name = auto_connection.source_port_name;
+    const std::string &target_port_name = auto_connection.target_port_name;
+    LOG(INFO) << "Connecting " << source->name() << "/"
+              << source_port_name << " to " << target->name()
+              << "/" << target_port_name;
+
+    std::set<geometry::Port*> all_target_ports;
+    target->GetInstancePorts(&all_target_ports);
+    std::set<geometry::Port*> all_other_target_ports(
+        all_target_ports.begin(), all_target_ports.end());
+
+    std::set<geometry::Port*> matching_source_ports;
+    source->GetInstancePorts(source_port_name, &matching_source_ports);
+    geometry::Port *source_port = *matching_source_ports.begin();
+
+    std::set<geometry::Port*> matching_target_ports;
+    target->GetInstancePorts(target_port_name, &matching_target_ports);
+    geometry::Port *target_port =
+        target->GetNearestPortNamed(*source_port, target_port_name);
+    matching_target_ports.erase(target_port);
+
+    if (!target_port) {
+      LOG(WARNING) << "No target port found named \"" << target_port_name
+                   << "\" on instance \"" << target->name();
+      continue;
+    }
+
+    // Do not avoid any ports with the given name, since presumably they are
+    // connectable.
+    for (geometry::Port *port : matching_target_ports) {
+      all_other_target_ports.erase(port);
+    }
+
+    while (target_port) {
+      //std::string net_name =
+      //    absl::StrCat(source->name(), "_", source_port_name);
+      const std::string &net_name = target_port_name;
+      LOG(INFO) << "Connecting " << *source << " port "
+                << *source_port << " to " << *target
+                << " port " << *target_port;
+      bool path_found = routing_grid.AddRouteBetween(
+          *source_port, *target_port, all_other_target_ports, net_name);
+      //LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+      //          << " to net " << target_net;
+      //path_found = routing_grid.AddRouteToNet(
+      //    *mux_port, target_net, all_other_mux_ports);
+      if (path_found) {
+        break;
+      }
+      matching_target_ports.erase(target_port);
+      target_port = matching_target_ports.empty() ?
+          nullptr : *matching_target_ports.begin();
+    }
+  }
 
   // Connect memory outputs to the muxes in order:
   // - Connect the closest output with

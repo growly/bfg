@@ -4,6 +4,7 @@
 #include <cmath>
 #include <glog/logging.h>
 
+#include "../cell.h"
 #include "../layout.h"
 #include "point.h"
 #include "rectangle.h"
@@ -167,4 +168,11 @@ Port *Instance::GetNearestPortNamed(
 }
 
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Instance &instance) {
+  os << "[Instance " << instance.name() << " of "
+     << instance.template_layout()->parent_cell()->name() << "]";
+  return os;
+}
+
 }  // namespace bfg

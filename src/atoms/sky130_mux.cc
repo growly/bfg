@@ -1251,6 +1251,7 @@ Polygon *ConnectOppositeInputsOnMet2(
       "via1.drawing", "met2.drawing", "via1.drawing",
       plan.y_offset,
       layout);
+  path->set_net(plan.net);
 
   // TODO(aryap): It would be really nice to have access to the RoutingGrid
   // facility which finds a via stack between any two layers, and then the
@@ -1712,13 +1713,19 @@ void BuildMet1Columns(
     std::optional<std::string> net;
   };
 
-
   // Columns are selector inputs and the final output:
   // S0_B  S0  S1_B          S1   Z   S1_B           S1   S0_B S0
   //  |    |    |            |    |    |             |    |    |
   //  |    |    |            |    |    |             |    |    |
   //  |    |    |            |    |    |             |    |    |
   //  |    |    |            |    |    |             |    |    |
+
+  // The final 2:1 mux add these:
+  //               S2  S2_B                S2  S2_B
+  //               |    |                  |    |
+  //               |    |                  |    |
+  //               |    |                  |    |
+  //               |    |                  |    |
 
   // Start with the named points on polysilicon in each sub element and compute
   // the destination points on the columns.

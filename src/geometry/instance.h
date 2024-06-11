@@ -147,6 +147,10 @@ class Instance : public Manipulable {
 };
 
 }  // namespace geometry
+
+std::ostream &operator<<(
+    std::ostream &os,
+    const geometry::Instance &instance);
 }  // namespace bfg
 
 #endif  // GEOMETRY_INSTANCE_H_
