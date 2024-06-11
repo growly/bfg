@@ -1798,6 +1798,8 @@ void BuildMet1Columns(
   // The pitches of columns _in order extending outward from the centre_.
   std::vector<int64_t> pitches = {
       0,  // For the central output column.
+      // FIXME: changing this requires us to change the intra-spacing between
+      // the left and right halves; how to constrain this programmatically?
       column_pitch_min,
       // Push the 2nd column out over the centre of the output muxes in each
       // quadrant (TODO(aryap): This should really be computed as a function of
