@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <utility>
 
@@ -51,6 +52,7 @@ Polygon *AddElbowPath(
     const Point &end,
     const int64_t y_offset,
     const int64_t width,
+    const int64_t min_separation,
     const int64_t start_encap_width,
     const int64_t start_encap_length,
     const int64_t end_encap_width,
@@ -71,6 +73,7 @@ Polygon *AddElbowPath(
   PolyLine line = PolyLine(vertices);
   LOG(INFO) << line.Describe();
   line.SetWidth(width);
+  line.set_min_separation(min_separation);
   line.InsertBulge(start, start_encap_width, start_encap_length);
   line.InsertBulge(end, end_encap_width, end_encap_length);
   return layout->AddPolygon(InflatePolyLineOrDie(db, line));
@@ -94,6 +97,7 @@ Polygon *AddElbowPathBetweenLayers(
   const int64_t end_encap_length = db.Rules(end_layer).via_width +
       2 * db.Rules(end_layer, path_layer).via_overhang;
   const int64_t width = db.Rules(path_layer).min_width;
+  const int64_t min_separation = db.Rules(path_layer).min_separation;
 
   LOG(INFO) << "Adding elbow (" << start_layer << ") " << start << " -("
             << path_layer << ")-> " << end << " (" << end_layer << ") "
@@ -110,6 +114,7 @@ Polygon *AddElbowPathBetweenLayers(
       end,
       y_offset,
       width,
+      min_separation,
       start_encap_width,
       start_encap_length,
       end_encap_width,
@@ -1636,6 +1641,7 @@ void ConnectOppositeInputs(
 void BuildMet1Columns(
     const PhysicalPropertiesDatabase &db,
     const std::string &poly_contact,
+    const std::vector<int64_t> pitches,
     int64_t width,
     int64_t height,
     std::vector<std::unique_ptr<PolyLine>> *column_lines,
@@ -1648,39 +1654,6 @@ void BuildMet1Columns(
   const auto &met1_mcon_rules = db.Rules("met1.drawing", "mcon.drawing");
 
   // Generate vertical metal columns.
-  //
-  // Our mux can fit N tracks:
-  //
-  // +------------------------------------+
-  // |            ^           ^           |
-  // | < offset > | < pitch > | < pitch > |
-  // |            v           v           |
-  // +------------------------------------+
-  //
-  // The second half of the list is right-hand-side columns. They should be
-  // moved one over depending on the overall width of the mux.
-  int64_t column_pitch_max = std::max(
-      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
-          met1_rules.min_width / 2,
-          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
-      ),
-      mcon_rules.via_width + (
-          li_mcon_rules.via_overhang_wide +
-          li_mcon_rules.via_overhang +
-          li_rules.min_separation
-      )
-  );
-
-  int64_t column_pitch_min = std::min(
-      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
-          met1_rules.min_width / 2,
-          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
-      ),
-      mcon_rules.via_width + (
-          li_mcon_rules.via_overhang_wide * 2 +
-          li_rules.min_separation
-      )
-  );
 
   // Draw a regular set of vertical metal columns such that:
   // - there is a single vertical column in the centre, connectable to the
@@ -1793,23 +1766,6 @@ void BuildMet1Columns(
         .top_source_point_name = "upper_right.column_0_centre_top_via",
         .bottom_source_point_name = "lower_right.column_0_centre_top_via",
         .net = "S0"}},
-  };
-
-  // The pitches of columns _in order extending outward from the centre_.
-  std::vector<int64_t> pitches = {
-      0,  // For the central output column.
-      // FIXME: changing this requires us to change the intra-spacing between
-      // the left and right halves; how to constrain this programmatically?
-      column_pitch_min,
-      // Push the 2nd column out over the centre of the output muxes in each
-      // quadrant (TODO(aryap): This should really be computed as a function of
-      // where those points are.)
-      column_pitch_max + li_rules.min_separation + li_rules.min_separation / 2,
-      column_pitch_max + (
-          li_rules.min_separation - met1_rules.min_separation),
-      column_pitch_max,
-      column_pitch_max,
-      2 * column_pitch_max
   };
 
   // Determine column x-positions.
@@ -2283,6 +2239,55 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   Rectangle mux2_n_bounding_box = mux2_layout_n->GetBoundingBox();
 
+  // Our mux can fit N tracks:
+  //
+  // +------------------------------------+
+  // |            ^           ^           |
+  // | < offset > | < pitch > | < pitch > |
+  // |            v           v           |
+  // +------------------------------------+
+  //
+  // The second half of the list is right-hand-side columns. They should be
+  // moved one over depending on the overall width of the mux.
+  int64_t column_pitch_max = std::max(
+      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
+          met1_rules.min_width / 2,
+          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
+      ),
+      mcon_rules.via_width + (
+          li_mcon_rules.via_overhang_wide +
+          li_mcon_rules.via_overhang +
+          li_rules.min_separation
+      )
+  );
+
+  // TODO(aryap): Remove.
+  int64_t column_pitch_min = std::min(
+      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
+          met1_rules.min_width / 2,
+          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
+      ),
+      mcon_rules.via_width + (
+          li_mcon_rules.via_overhang_wide * 2 +
+          li_rules.min_separation
+      )
+  );
+
+  // The pitches of columns _in order extending outward from the centre_.
+  std::vector<int64_t> column_pitches = {
+      0,  // For the central output column.
+      column_pitch_max,
+      // Push the 2nd column out over the centre of the output muxes in each
+      // quadrant (TODO(aryap): This should really be computed as a function of
+      // where those points are.)
+      column_pitch_max + li_rules.min_separation + li_rules.min_separation / 2,
+      column_pitch_max + (
+          li_rules.min_separation - met1_rules.min_separation),
+      column_pitch_max,
+      column_pitch_max,
+      2 * column_pitch_max
+  };
+
   // TODO(aryap): We choose the min value here so that the polys from the upper
   // and lower instances definitely touch or overlap. This is broken. We need to
   // pick the max, and then connect the two poly pours on the side where a gap
@@ -2322,14 +2327,43 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
           diff_padding, diff_padding)
   });
 
+  // When placing the left (NMOS) and right (PMOS) mux halves next to each
+  // other, we have to make sure that
+  // 1) the wells are far enough apart; and
+  // 2) the halves are spaced such that the metal columns we will put down
+  //    later don't cause conflicts in connecting li.drawing wires.
+  // The easiest way to achieve (2) is to align the same column on each side
+  // with the same point in each design (column_1_centre_top_via).
+  //
   // Leave space for the N-well-to-N-diff-marker separation as well as the
   // N-well and P-diff markers:
-  int64_t intra_spacing = nsdm_nwell_rules.min_separation +
+  static const size_t kMetalColumnConnectingToPolyColumn1 = 5;
+  int64_t min_well_spacing = nsdm_nwell_rules.min_separation +
       pdiff_psdm_rules.min_enclosure +
       pdiff_nwell_rules.min_enclosure;
+
+  // The distance from the inside edge to column 1 shall be expected to
+  // accommodate 
+  int64_t inner_edge_to_column1_p = 
+      mux2_layout_p->GetBoundingBox().upper_right().x() -
+      mux2_layout_p->GetPointOrDie("column_1_centre_top_via").x();
+  int64_t inner_edge_to_column1_n = 
+      mux2_layout_n->GetBoundingBox().upper_right().x() -
+      mux2_layout_n->GetPointOrDie("column_1_centre_top_via").x();
+  // Sum up the distance to the column which aligns with poly column 1 in the
+  // child mux layouts on each side:
+  int64_t column_width_total = std::accumulate(
+      column_pitches.begin(),
+      column_pitches.begin() + kMetalColumnConnectingToPolyColumn1 + 1,
+      0);
+  LOG(INFO) << "column-width_total=" << column_width_total;
+  int64_t min_spacing_to_allow_columns =
+      2 * column_width_total -
+      (inner_edge_to_column1_p + inner_edge_to_column1_n);
+
+  int64_t intra_spacing = std::max(min_well_spacing, min_spacing_to_allow_columns);
   int64_t mux2_p_lower_left_x = layout->GetBoundingBox().upper_right().x() + 
       intra_spacing;
-
   mux2_layout_p->ResetOrigin();
   mux2_layout_p->FlipHorizontal();
   mux2_layout_p->MoveLowerLeftTo(Point(mux2_p_lower_left_x, 0));
@@ -2372,6 +2406,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   BuildMet1Columns(
       db,
       poly_contact,
+      column_pitches,
       static_cast<int64_t>(bounding_box.Width()),
       static_cast<int64_t>(bounding_box.Height()),
       &column_lines,
