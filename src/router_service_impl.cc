@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <memory>
 
+#include <absl/status/status.h>
 #include <google/protobuf/text_format.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
@@ -54,12 +55,14 @@ grpc::Status RouterServiceImpl::CreateRoutingGrid(
   RouterSession *session = new RouterSession(physical_db);
 
   // Define grid with router and ConnectLayers().
-  router_service::Status set_up =
+  absl::Status set_up =
       session->SetUpRoutingGrid(request->grid_definition());
 
-  reply->mutable_status()->CopyFrom(set_up);
-  if (set_up.code() != router_service::StatusCode::OK) {
+  if (!set_up.ok()) {
     delete session;
+    reply->mutable_status()->set_code(
+        router_service::StatusCode::OTHER_ERROR);
+    reply->mutable_status()->set_message(std::string(set_up.message()));
     return grpc::Status::OK;
   }
 
@@ -83,12 +86,14 @@ grpc::Status RouterServiceImpl::AddRoutes(
         router_service::StatusCode::GRID_NOT_FOUND);
     return grpc::Status::OK;
   }
-  if (!session->AddRoutes(*request)) {
-    // Some error.
-    reply->mutable_status()->set_code(
-        router_service::StatusCode::OTHER_ERROR);
-    return grpc::Status::OK;
-  }
+  absl::Status add = session->AddRoutes(*request);
+  //if (!add.ok()) {
+  //  // Some error.
+  //  reply->mutable_status()->set_code(
+  //      router_service::StatusCode::OTHER_ERROR);
+  //  reply->mutable_status()->set_message(std::string(add.message()));
+  //  return grpc::Status::OK;
+  //}
   session->ExportRoutes(reply);
 
   reply->mutable_status()->set_code(router_service::StatusCode::OK);

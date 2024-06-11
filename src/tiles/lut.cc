@@ -446,29 +446,33 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid.AddRoutingViaInfo(
-      met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
+      met1_layer_info.layer, met2_layer_info.layer, routing_via_info)
+      .IgnoreError();
   //alt_routing_grid.AddRoutingViaInfo(
   //    met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
 
   routing_via_info = db.GetRoutingViaInfoOrDie("li.drawing", "met1.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid.AddRoutingViaInfo(
-      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
+      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info)
+      .IgnoreError();
   //alt_routing_grid.AddRoutingViaInfo(
   //    met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
 
   routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid.AddRoutingViaInfo(
-      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
+      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info)
+      .IgnoreError();
   //alt_routing_grid.AddRoutingViaInfo(
   //    db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
 
   //routing_grid.AddRoutingLayerInfo(li_layer_info);
-  routing_grid.AddRoutingLayerInfo(met1_layer_info);
-  routing_grid.AddRoutingLayerInfo(met2_layer_info);
+  routing_grid.AddRoutingLayerInfo(met1_layer_info).IgnoreError();
+  routing_grid.AddRoutingLayerInfo(met2_layer_info).IgnoreError();
 
-  routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer);
+  routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer)
+      .IgnoreError();
 
   // Swap direction for the alt routing grid:
   ////std::swap(met1_layer_info.direction, met2_layer_info.direction);
@@ -559,7 +563,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         std::string net_name = absl::StrCat(source->name(), "_Q");
         memory_output_net_names[source] = net_name;
 
-        routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
+        routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name)
+                    .IgnoreError();
 
         LOG(INFO) << "b=" << b << ", j=" << j << ", i=" << i << " "
                   << source->name() << " -> " << sink->name()
@@ -622,7 +627,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     std::string net_name = absl::StrCat(source->name(), "_Q");
     memory_output_net_names[source] = net_name;
 
-    routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name);
+    routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name)
+                .IgnoreError();
   }
 
   // FIXME(aryap): I want to solve the general problem of connecting to a port
@@ -804,13 +810,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to " << memory->name();
         path_found = routing_grid.AddRouteBetween(
-            *mux_port, *memory_output, all_other_mux_ports, net_name);
+            *mux_port, *memory_output, all_other_mux_ports, net_name).ok();
       } else {
         const std::string &target_net = named_output_it->second;
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to net " << target_net;
         path_found = routing_grid.AddRouteToNet(
-            *mux_port, target_net, all_other_mux_ports);
+            *mux_port, target_net, all_other_mux_ports).ok();
       }
       if (path_found) {
         break;

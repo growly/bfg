@@ -4,6 +4,9 @@
 #include <memory>
 #include <optional>
 
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+
 #include "geometry/port.h"
 
 #include "routing_grid.h"
@@ -23,17 +26,18 @@ class RouterSession {
 
   RoutingGrid *routing_grid() { return routing_grid_.get(); }
 
-  bool AddRoutes(const router_service::AddRoutesRequest &request);
+  absl::Status AddRoutes(const router_service::AddRoutesRequest &request);
 
   void ExportRoutes(router_service::AddRoutesReply *reply) const;
 
-  bool PerformNetRouteOrder(const router_service::NetRouteOrder &request);
+  absl::Status PerformNetRouteOrder(
+      const router_service::NetRouteOrder &request);
 
-  router_service::Status SetUpRoutingGrid(
+  absl::Status SetUpRoutingGrid(
       const router_service::RoutingGridDefinition &grid_definition);
 
  private:
-  std::optional<geometry::Port> PointAndLayerToPort(
+  absl::StatusOr<geometry::Port> PointAndLayerToPort(
       const std::string &net,
       const router_service::PointOnLayer &point_on_layer) const;
 

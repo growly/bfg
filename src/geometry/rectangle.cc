@@ -1,6 +1,7 @@
 #include "rectangle.h"
 #include <algorithm>
 #include <glog/logging.h>
+#include <sstream>
 
 #include "point.h"
 #include "../physical_properties_database.h"
@@ -210,6 +211,12 @@ Rectangle Rectangle::WithPadding(int64_t padding) const {
   return polygon_pb;
 }
 
+std::string Rectangle::Describe() const {
+  std::stringstream ss;
+  ss << "[Rectangle " << lower_left_ << " " << upper_right_ << "]";
+  return ss.str();
+}
+
 bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
   return lhs.lower_left() == rhs.lower_left()
       && lhs.upper_right() == rhs.upper_right();
@@ -218,8 +225,7 @@ bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
 }  // namespace geometry
 
 std::ostream &operator<<(std::ostream &os, const geometry::Rectangle &rectangle) {
-  os << "[Rectangle " << rectangle.lower_left()
-     << " " << rectangle.upper_right() << "]";
+  os << rectangle.Describe();
   return os;
 }
 

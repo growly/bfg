@@ -8,6 +8,9 @@
 #include <set>
 #include <vector>
 
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/poly_line.h"
@@ -75,15 +78,15 @@ class RoutingGrid {
   // can take between them; concretely, it creates a vertex every time a
   // horizontal and vertical routing line cross. (The two described layers must
   // be orthogonal in routing direction.)
-  bool ConnectLayers(
+  absl::Status ConnectLayers(
       const geometry::Layer &first, const geometry::Layer &second);
 
-  bool AddRouteBetween(
+  absl::Status AddRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
       const std::set<geometry::Port*> &avoid,
       const std::string &net = "");
-  bool AddRouteToNet(
+  absl::Status AddRouteToNet(
       const geometry::Port &begin,
       const std::string &net,
       const std::set<geometry::Port*> &avoid);
@@ -164,9 +167,9 @@ class RoutingGrid {
       bool available_only,
       Layout *layout) const;
 
-  void AddRoutingViaInfo(const geometry::Layer &lhs,
-                         const geometry::Layer &rhs,
-                         const RoutingViaInfo &info);
+  absl::Status AddRoutingViaInfo(const geometry::Layer &lhs,
+                                 const geometry::Layer &rhs,
+                                 const RoutingViaInfo &info);
 
   const RoutingViaInfo &GetRoutingViaInfoOrDie(const AbstractVia &via) const {
     return GetRoutingViaInfoOrDie(via.bottom_layer(), via.top_layer());
@@ -178,7 +181,7 @@ class RoutingGrid {
   GetRoutingViaInfo(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
-  void AddRoutingLayerInfo(const RoutingLayerInfo &info);
+  absl::Status AddRoutingLayerInfo(const RoutingLayerInfo &info);
   const RoutingLayerInfo &GetRoutingLayerInfoOrDie(
       const geometry::Layer &layer) const;
   std::optional<std::reference_wrapper<const RoutingLayerInfo>>
@@ -300,7 +303,7 @@ class RoutingGrid {
   template<typename T>
   void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
 
-  bool ConnectToSurroundingTracks(
+  absl::Status ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,
       const geometry::Layer &access_layer,
       std::optional<
@@ -335,18 +338,18 @@ class RoutingGrid {
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
 
-  std::optional<VertexWithLayer> ConnectToGrid(const geometry::Port &port);
+  absl::StatusOr<VertexWithLayer> ConnectToGrid(const geometry::Port &port);
 
-  std::optional<VertexWithLayer> AddAccessVerticesForPoint(
+  absl::StatusOr<VertexWithLayer> AddAccessVerticesForPoint(
       const geometry::Point &point, const geometry::Layer &layer);
 
-  std::optional<VertexWithLayer> ConnectToNearestAvailableVertex(
+  absl::StatusOr<VertexWithLayer> ConnectToNearestAvailableVertex(
       const geometry::Port &port);
 
-  RoutingVertex *ConnectToNearestAvailableVertex(
+  absl::StatusOr<RoutingVertex*> ConnectToNearestAvailableVertex(
       const geometry::Point &point, const geometry::Layer &layer);
 
-  void AddRoutingGridGeometry(
+  absl::Status AddRoutingGridGeometry(
       const geometry::Layer &lhs, const geometry::Layer &rhs,
       const RoutingGridGeometry &grid_geometry);
 
@@ -361,12 +364,13 @@ class RoutingGrid {
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
-  RoutingPath *ShortestPath(RoutingVertex *begin, RoutingVertex *end);
+  absl::StatusOr<RoutingPath*> ShortestPath(
+      RoutingVertex *begin, RoutingVertex *end);
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object. Places the actual target eventually decided on into
   // *discovered_target.
-  RoutingPath *ShortestPath(
+  absl::StatusOr<RoutingPath*> ShortestPath(
       RoutingVertex *from,
       const std::string &to_net,
       RoutingVertex **discovered_target);
@@ -375,7 +379,7 @@ class RoutingGrid {
   // now owns the object. Places the actual target eventually decided on into
   // *discovered_target. The various lambdas control what counts as a target and
   // which vertices and edges are valid for traversal.
-  RoutingPath *ShortestPath(
+  absl::StatusOr<RoutingPath*> ShortestPath(
       RoutingVertex *start,
       std::function<bool(RoutingVertex*)> is_target,
       RoutingVertex **discovered_target,
@@ -383,7 +387,7 @@ class RoutingGrid {
       std::function<bool(RoutingEdge*)> usable_edge,
       bool target_must_be_usable);
 
-  void InstallPath(RoutingPath *path);
+  absl::Status InstallPath(RoutingPath *path);
 
   void InstallVertexInPath(RoutingVertex *vertex);
 

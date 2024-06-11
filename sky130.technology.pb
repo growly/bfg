@@ -541,9 +541,9 @@ fill_block²Dbª
 met1Z
 psa6²D]ª
 met2Z
-drawing²Eª
+drawing²Eª
 met2Z
-pin²Eª
+pin²EúEª
 met2Z	
 label²Eª
 met2Z
@@ -592,9 +592,9 @@ fill_block²Ebª
 met2Z
 psa6²E]ª
 met3Z
-drawing²Fª
+drawing²Fª
 met3Z
-pin²Fª
+pin²FúFª
 met3Z	
 label²Fª
 met3Z
