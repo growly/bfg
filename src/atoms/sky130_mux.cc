@@ -1801,7 +1801,8 @@ void BuildMet1Columns(
     }
   }
 
-  int64_t extension = 0;
+  int64_t extension_top = 550;
+  int64_t extension_bottom = 0;
   int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
   for (auto &entry : column_plans) {
     size_t k = entry.first;
@@ -1816,16 +1817,19 @@ void BuildMet1Columns(
 
     int64_t top_y = height;
     if (plan.top_source_point_name) {
-      plan.top_source_point = layout->GetPointOrDie(*plan.top_source_point_name);
-      top_y = plan.top_source_point.y() + mcon_via_side + extension;
+      plan.top_source_point =
+          layout->GetPointOrDie(*plan.top_source_point_name);
+      top_y = plan.top_source_point.y() + mcon_via_side;
     }
+    top_y += extension_top;
 
     int64_t bottom_y = 0;
     if (plan.bottom_source_point_name) {
       plan.bottom_source_point = layout->GetPointOrDie(
           *plan.bottom_source_point_name);
-      bottom_y = plan.bottom_source_point.y() - mcon_via_side - extension;
+      bottom_y = plan.bottom_source_point.y() - mcon_via_side;
     }
+    bottom_y -= extension_bottom;
 
     plan.top_destination_point = {x, top_y};
     plan.bottom_destination_point = {x, bottom_y};

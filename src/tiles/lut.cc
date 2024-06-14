@@ -706,7 +706,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
                 << *source_port << " to " << *target
                 << " port " << *target_port;
       bool path_found = routing_grid.AddRouteBetween(
-          *source_port, *target_port, all_other_target_ports, net_name);
+          *source_port, *target_port, all_other_target_ports, net_name).ok();
       //LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
       //          << " to net " << target_net;
       //path_found = routing_grid.AddRouteToNet(
