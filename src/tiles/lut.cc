@@ -25,7 +25,6 @@
 namespace bfg {
 namespace tiles {
 
-
 namespace {
 
 std::string DescribePorts(const std::set<geometry::Port*> &ports) {

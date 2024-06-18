@@ -31,6 +31,16 @@ using ::bfg::geometry::Rectangle;
 using ::bfg::geometry::Layer;
 using ::bfg::circuit::Wire;
 
+// The mux input order is, from top to bottom:
+// input_5  --+---------
+// input_4  --|
+// input_6  --|
+// input_7  --|  8:1 mux
+// input_3  --|
+// input_2  --|
+// input_0  --|
+// input_1  --+---------
+
 namespace {
 
 std::optional<Polygon> InflatePolyLine(const PhysicalPropertiesDatabase &db,
@@ -686,10 +696,6 @@ void GenerateOutput2To1MuxLayout(
   // sized independently of the N-fets.
   main_layout->AddLayout(*layout, "output_mux");
 
-  Point output_mux_ul_elbow_connect =
-      Point(left_left_metal_column_x, input_0_n.y());
-  Point output_mux_ur_elbow_connect =
-      Point(right_right_metal_column_x, input_0_p.y());
   // Connect the outputs of the outer muxes to the final stage mux.
   // Upper left:
   //    p_2       (from upper left mux output)
@@ -799,6 +805,9 @@ void GenerateOutput2To1MuxLayout(
         main_layout);
     main_layout->MakeVia("mcon.drawing", p_2);
     main_layout->MakeVia("mcon.drawing", p_3);
+    main_layout->SavePoint(
+        absl::StrCat(structure, "_output_column_bottom"),
+        p_2);
 
     main_layout->SetActiveLayerByName("li.drawing");
     AddElbowPathBetweenLayers(
@@ -976,6 +985,7 @@ void GenerateOutput2To1MuxLayout(
   Polygon *bottom_poly_connector;
   for (const auto &entry : metal_column_x_values) {
     const Compass &target = entry.first;
+    const std::string &structure = source_structures[target];
     int64_t metal_x = metal_column_x_values[target];
     int64_t poly_x = poly_column_x_values[target];
     int64_t poly_min_y = poly_column_min_y_values[target];
@@ -998,6 +1008,9 @@ void GenerateOutput2To1MuxLayout(
         met1_p1, met1_p0,
         "mcon.drawing", "met1.drawing", "mcon.drawing",
         main_layout);
+    main_layout->SavePoint(
+        absl::StrCat(structure, "_output_column_top"),
+        met1_p1);
 
     main_layout->SetActiveLayerByName("li.drawing");
     ConnectPolyToMet1(
@@ -1217,7 +1230,7 @@ void GenerateOutput2To1MuxLayout(
   }
 }
 
-struct CrossbarConnectionPointInfo {
+struct CrossbarConnectionPoint {
   Point contact;
 
   // If given, a Port is inserted at this point.
@@ -1230,8 +1243,8 @@ struct CrossbarConnectionPointInfo {
 struct ConnectionBetweenOppositePorts {
   std::string net;
 
-  CrossbarConnectionPointInfo left;
-  CrossbarConnectionPointInfo right;
+  CrossbarConnectionPoint left;
+  CrossbarConnectionPoint right;
 
   std::string pin_layer_name;
 
@@ -1320,11 +1333,11 @@ void ConnectOppositeInputs(
 
   // The outer inputs of the top and bottom half of the mux connect between the
   // first and second used columns, on the inside:
-  int64_t left_x = (column_x.find(0)->second +
-                       column_x.find(1)->second) / 2;
+  int64_t left_x = (
+      column_x.find(0)->second + column_x.find(1)->second) / 2;
 
-  int64_t right_x = (column_x.find(11)->second +
-                        column_x.find(12)->second) / 2;
+  int64_t right_x = (
+      column_x.find(11)->second + column_x.find(12)->second) / 2;
   
   // Whether we take the min or max here depends on whether the elbow-shaped
   // (L-shaped) path drawn between the two contacts below takes the form
@@ -1345,6 +1358,13 @@ void ConnectOppositeInputs(
   int64_t bottom_bar_centre_y = std::max(
       layout->GetPointOrDie("lower_left.input_1_line_y").y(),
       layout->GetPointOrDie("lower_right.input_1_line_y").y());
+  int64_t inner_top_bar_centre_y = std::min(
+      layout->GetPointOrDie("upper_left.input_3_line_y").y(),
+      layout->GetPointOrDie("upper_right.input_3_line_y").y());
+  int64_t inner_bottom_bar_centre_y = std::max(
+      layout->GetPointOrDie("lower_left.input_3_line_y").y(),
+      layout->GetPointOrDie("lower_right.input_3_line_y").y());
+
 
   std::vector<ConnectionBetweenOppositePorts> first_contact_infos = {
     {
@@ -1624,6 +1644,83 @@ void ConnectOppositeInputs(
         layout);
   }
 
+  // The last two connections to make are between S2 and S2_B. We have to
+  // determine where there is enough room to put them. We put as many as we can
+  // in the centre or bottom, then top, until we fit.
+
+  int64_t vertical_space_in_centre =
+      inner_top_bar_centre_y - inner_bottom_bar_centre_y - met2_rules.min_width;
+  int64_t vertical_space_for_one =
+      met2_rules.min_width + 2 * met2_rules.min_separation;
+  int64_t vertical_space_for_both =
+      2 * met2_rules.min_width  + 3 * met2_rules.min_separation;
+
+  std::vector<ConnectionBetweenOppositePorts> final_selector_contact_infos;
+  if (vertical_space_in_centre >= vertical_space_for_both) {
+
+    // !!!!
+    // FIXME(aryap): I'm using the wrong columns, d'oh! And the spacing doesn't
+    // take into account via encapsulation widths!
+    // !!!!
+    int64_t first_y = inner_bottom_bar_centre_y +
+        met2_rules.min_separation + met2_rules.min_width;
+    int64_t second_y = first_y +
+        met2_rules.min_separation + met2_rules.min_width;
+    int64_t left_x =
+        layout->GetPointOrDie("upper_left_output_column_bottom").x();
+    int64_t right_x =
+        layout->GetPointOrDie("upper_right_output_column_bottom").x();
+    // Can fit both.
+    final_selector_contact_infos.push_back({
+      "S2",
+      {
+        {left_x, first_y},
+        std::nullopt,
+        column_line_by_x(left_x)
+      },
+      {
+        {right_x, first_y},
+        std::nullopt,
+        column_line_by_x(right_x)
+      },
+      "met1.pin",
+      0
+    });
+    //final_selector_contact_infos.push_back({
+    //  "S2_B",
+    //  {
+    //    {
+    //      layout->GetPointOrDie("S0_B_top_left").x(),
+    //      top_outer_selector_joiner_y
+    //    },
+    //    std::nullopt,
+    //    column_line_by_x(layout->GetPointOrDie("S0_B_top_left").x())
+    //  },
+    //  {
+    //    {
+    //      layout->GetPointOrDie("S0_B_top_right").x(),
+    //      top_outer_selector_joiner_y
+    //    },
+    //    std::nullopt,
+    //    column_line_by_x(layout->GetPointOrDie("S0_B_top_right").x())
+    //  },
+    //  "met1.pin",
+    //  0
+    //});
+  } else if (vertical_space_in_centre >= vertical_space_for_one) {
+    LOG(FATAL) << "can fit one, not implemented!";
+  } else {
+    LOG(INFO) << "can fit neither, not implemented!";
+  }
+  for (const auto &contact_info : final_selector_contact_infos) {
+    LOG(INFO) << "left " << contact_info.left.contact << " right "
+              << contact_info.right.contact;
+    ConnectOppositeInputsOnMet2(
+        db,
+        contact_info,
+        layout);
+  }
+
   // Place ports (pins) at port positions.
   for (const auto &partition : {first_contact_infos, second_contact_infos}) {
     for (const auto &info : partition) {
@@ -1713,14 +1810,16 @@ void BuildMet1Columns(
     std::optional<std::string> net;
   };
 
-  // Columns are selector inputs and the final output:
+  // Columns are selector inputs (Sx), their complements (Sx_B) and the final
+  // output (Z):
+  //
   // S0_B  S0  S1_B          S1   Z   S1_B           S1   S0_B S0
   //  |    |    |            |    |    |             |    |    |
   //  |    |    |            |    |    |             |    |    |
   //  |    |    |            |    |    |             |    |    |
   //  |    |    |            |    |    |             |    |    |
-
-  // The final 2:1 mux add these:
+  //
+  // The final 2:1 mux adds these:
   //               S2  S2_B                S2  S2_B
   //               |    |                  |    |
   //               |    |                  |    |
@@ -2260,7 +2359,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   //
   // The second half of the list is right-hand-side columns. They should be
   // moved one over depending on the overall width of the mux.
-  int64_t column_pitch_max = std::max(
+  int64_t column_pitch_std = std::max(
       met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
           met1_rules.min_width / 2,
           mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
@@ -2272,31 +2371,19 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       )
   );
 
-  // TODO(aryap): Remove.
-  int64_t column_pitch_min = std::min(
-      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
-          met1_rules.min_width / 2,
-          mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
-      ),
-      mcon_rules.via_width + (
-          li_mcon_rules.via_overhang_wide * 2 +
-          li_rules.min_separation
-      )
-  );
-
   // The pitches of columns _in order extending outward from the centre_.
   std::vector<int64_t> column_pitches = {
       0,  // For the central output column.
-      column_pitch_max,
+      column_pitch_std,
       // Push the 2nd column out over the centre of the output muxes in each
       // quadrant (TODO(aryap): This should really be computed as a function of
       // where those points are.)
-      column_pitch_max + li_rules.min_separation + li_rules.min_separation / 2,
-      column_pitch_max + (
+      column_pitch_std + li_rules.min_separation + li_rules.min_separation / 2,
+      column_pitch_std + (
           li_rules.min_separation - met1_rules.min_separation),
-      column_pitch_max,
-      column_pitch_max,
-      2 * column_pitch_max
+      column_pitch_std,
+      column_pitch_std,
+      2 * column_pitch_std
   };
 
   // TODO(aryap): We choose the min value here so that the polys from the upper
