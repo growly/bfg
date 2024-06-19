@@ -23,12 +23,14 @@ Libraries
 ```
 
 #### Red Hat
+Red Hat 7 doesn't have a new enough `cmake`. Red Hat 9 doesn't have `ninja` in its `yum` repositories. Nor does it have re2
 ```
   sudo yum group install "Development Tools"
   sudo yum install cmake autoconf automake libtool curl make g++ unzip
-  sudo yum install clang ninja-build python
+  # there is no ninja package for yum :(
+  sudo yum install clang python
   # for gRPC
-  sudo yum install re2-devel c-ares-devel
+  sudo yum install c-ares-devel
 ```
 
 
