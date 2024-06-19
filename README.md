@@ -34,7 +34,7 @@ Red Hat 7 doesn't have a new enough `cmake`. Red Hat 9 doesn't have `ninja` in i
   sudo yum install c-ares-devel
 ```
 
-Also, *very importantly*, RHEL9 doesn't seem to include `/usr/local/lib` as a default linker path, so you have to add it (or set `LD_LIBRARY_PATH`. This breaks proto creation in particular.
+Also, *very importantly*, RHEL9 doesn't seem to include `/usr/local/lib` as a default linker path, so you have to add it (or set `LD_LIBRARY_PATH`). This breaks proto creation in particular.
 ```
 cat <<EOF > /tmp/libc.conf
 /usr/local/lib
