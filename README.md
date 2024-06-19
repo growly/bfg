@@ -11,7 +11,7 @@ Libraries
 #### Debian
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip
-  sudo apt install -y clang ninja-build python3
+  sudo apt install -y clang ninja-build python3 pkg-config zlib1g-dev
   # for gRPC
   sudo apt install -y libre2-dev libc-ares-dev libssl-dev
 ```
