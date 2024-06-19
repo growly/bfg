@@ -805,9 +805,6 @@ void GenerateOutput2To1MuxLayout(
         main_layout);
     main_layout->MakeVia("mcon.drawing", p_2);
     main_layout->MakeVia("mcon.drawing", p_3);
-    main_layout->SavePoint(
-        absl::StrCat(structure, "_output_column_bottom"),
-        p_2);
 
     main_layout->SetActiveLayerByName("li.drawing");
     AddElbowPathBetweenLayers(
@@ -928,8 +925,13 @@ void GenerateOutput2To1MuxLayout(
     {Compass::LEFT, left_right_poly.centre().x()},
     {Compass::RIGHT, right_left_poly.centre().x()}
   };
+  std::map<Compass, std::string> poly_names = {
+    {Compass::LEFT, "left_right"},
+    {Compass::RIGHT, "right_left"}
+  };
   for (const auto &entry : metal_column_x_values) {
     const Compass &target = entry.first;
+    const std::string &name = poly_names[target];
     int64_t metal_x = metal_column_x_values[target];
     int64_t poly_x = poly_column_x_values[target];
     // Lower-left selector
@@ -964,6 +966,9 @@ void GenerateOutput2To1MuxLayout(
         p_1,
         "polycon.drawing",
         main_layout);
+    main_layout->SavePoint(
+        absl::StrCat(name, "_selector_column_bottom"),
+        p_1);
   }
 
   // Connect the signal that selects the output of the upper-left mux
@@ -982,10 +987,13 @@ void GenerateOutput2To1MuxLayout(
     {Compass::LEFT, left_left_poly.centre().x()},
     {Compass::RIGHT, right_right_poly.centre().x()}
   };
+  poly_names = {
+    {Compass::LEFT, "left_left"},
+    {Compass::RIGHT, "right_right"}
+  };
   Polygon *bottom_poly_connector;
   for (const auto &entry : metal_column_x_values) {
     const Compass &target = entry.first;
-    const std::string &structure = source_structures[target];
     int64_t metal_x = metal_column_x_values[target];
     int64_t poly_x = poly_column_x_values[target];
     int64_t poly_min_y = poly_column_min_y_values[target];
@@ -1008,9 +1016,6 @@ void GenerateOutput2To1MuxLayout(
         met1_p1, met1_p0,
         "mcon.drawing", "met1.drawing", "mcon.drawing",
         main_layout);
-    main_layout->SavePoint(
-        absl::StrCat(structure, "_output_column_top"),
-        met1_p1);
 
     main_layout->SetActiveLayerByName("li.drawing");
     ConnectPolyToMet1(
@@ -1019,6 +1024,11 @@ void GenerateOutput2To1MuxLayout(
         met1_p0,
         "polycon.drawing",
         main_layout);
+
+    const std::string &name = poly_names[target];
+    main_layout->SavePoint(
+        absl::StrCat(name, "_selector_column_top"),
+        met1_p1);
   }
 
   // Add the first side of the mux back to the main layout.
@@ -1659,20 +1669,42 @@ void ConnectOppositeInputs(
   if (vertical_space_in_centre >= vertical_space_for_both) {
 
     // !!!!
-    // FIXME(aryap): I'm using the wrong columns, d'oh! And the spacing doesn't
-    // take into account via encapsulation widths!
+    // FIXME(aryap): I'm using the wrong columns, d'oh!
     // !!!!
+    // +----+                                         +----+
+    // |    +-----------------------------------------+    |
+    // |             D                                     |  second_y
+    // |    +-----------------------------------------+    |
+    // +----+        C                                +----+
+    //             +----+                                         +----+
+    //             | B  +-----------------------------------------+    |
+    //  first_y    | A                                                 |
+    //             |    +-----------------------------------------+    |
+    //             +----+                                         +----+
+    //
+    // We compute the distance between the two wires as the sum A + B + C + D
+    // where:
+    //  A = half the height of a via from met2 to met1 (so on via1)
+    //  B = the width of a met2 encapsulation of via1
+    //  C = the minimum spacing between met2 pours
+    //  D = half the minimum width of a met2 wire
     int64_t first_y = inner_bottom_bar_centre_y +
-        met2_rules.min_separation + met2_rules.min_width;
+        met2_rules.min_width / 2 +
+        met2_rules.min_separation +
+        via1_rules.via_height / 2 +
+        met2_via1_rules.via_overhang_wide;
     int64_t second_y = first_y +
-        met2_rules.min_separation + met2_rules.min_width;
+        met2_rules.min_width / 2 +
+        met2_rules.min_separation +
+        via1_rules.via_height / 2 +
+        met2_via1_rules.via_overhang_wide;
     int64_t left_x =
-        layout->GetPointOrDie("upper_left_output_column_bottom").x();
+        layout->GetPointOrDie("left_right_selector_column_bottom").x();
     int64_t right_x =
-        layout->GetPointOrDie("upper_right_output_column_bottom").x();
+        layout->GetPointOrDie("right_right_selector_column_top").x();
     // Can fit both.
     final_selector_contact_infos.push_back({
-      "S2",
+      "S2_B",
       {
         {left_x, first_y},
         std::nullopt,
@@ -1686,27 +1718,23 @@ void ConnectOppositeInputs(
       "met1.pin",
       0
     });
-    //final_selector_contact_infos.push_back({
-    //  "S2_B",
-    //  {
-    //    {
-    //      layout->GetPointOrDie("S0_B_top_left").x(),
-    //      top_outer_selector_joiner_y
-    //    },
-    //    std::nullopt,
-    //    column_line_by_x(layout->GetPointOrDie("S0_B_top_left").x())
-    //  },
-    //  {
-    //    {
-    //      layout->GetPointOrDie("S0_B_top_right").x(),
-    //      top_outer_selector_joiner_y
-    //    },
-    //    std::nullopt,
-    //    column_line_by_x(layout->GetPointOrDie("S0_B_top_right").x())
-    //  },
-    //  "met1.pin",
-    //  0
-    //});
+    left_x = layout->GetPointOrDie("left_left_selector_column_top").x();
+    right_x = layout->GetPointOrDie("right_left_selector_column_bottom").x();
+    final_selector_contact_infos.push_back({
+      "S2",
+      {
+        {left_x, second_y},
+        std::nullopt,
+        column_line_by_x(left_x)
+      },
+      {
+        {right_x, second_y},
+        std::nullopt,
+        column_line_by_x(right_x)
+      },
+      "met1.pin",
+      0
+    });
   } else if (vertical_space_in_centre >= vertical_space_for_one) {
     LOG(FATAL) << "can fit one, not implemented!";
   } else {
