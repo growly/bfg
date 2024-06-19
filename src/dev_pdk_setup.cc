@@ -56,7 +56,8 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   intra_constraints = {
     .min_separation = db->ToInternalUnits(170),
     .min_width = db->ToInternalUnits(170),
-    .via_width = db->ToInternalUnits(170)
+    .via_width = db->ToInternalUnits(170),
+    .via_height = db->ToInternalUnits(170)
   };
   db->AddRules("ncon.drawing", intra_constraints);
   db->AddRules("pcon.drawing", intra_constraints);
@@ -67,13 +68,15 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   intra_constraints = {
     .min_separation = db->ToInternalUnits(190),
     .min_width = db->ToInternalUnits(170),
-    .via_width = db->ToInternalUnits(170)
+    .via_width = db->ToInternalUnits(170),
+    .via_height = db->ToInternalUnits(170)
   };
   db->AddRules("mcon.drawing", intra_constraints);
 
   intra_constraints = {
     .min_width = db->ToInternalUnits(170),
     .via_width = db->ToInternalUnits(150),
+    .via_height = db->ToInternalUnits(150)
   };
   db->AddRules("via1.drawing", intra_constraints);
   db->AddRules("via2.drawing", intra_constraints);
