@@ -531,6 +531,11 @@ void GenerateOutput2To1MuxLayout(
       std::max(li_rules.min_width / 2, mcon_rules.via_width / 2) +
       li_rules.min_separation +
       li_mcon_rules.via_overhang_wide;
+  int64_t li_pitch_pessimistic =
+      std::max(li_rules.min_width, mcon_rules.via_width) +
+      li_rules.min_separation +
+      2 * std::max(
+          li_mcon_rules.via_overhang_wide, met1_mcon_rules.via_overhang_wide);
   int64_t pcon_via_encap_side = li_pcon_rules.via_overhang_wide;
 
   //// 2 * poly_overhang + stage_2_mux_nfet_0_width;
@@ -584,7 +589,7 @@ void GenerateOutput2To1MuxLayout(
           main_layout->GetPointOrDie("lower_right.li_corner_se_centre").y())
               + li_pitch_optimistic;
   int64_t second_bottom_li_track_centre_y =
-      bottom_li_track_centre_y + li_pitch_optimistic;
+      bottom_li_track_centre_y + li_pitch_pessimistic;
 
   // Draw poly and diffusion (i.e. the transistors) for four transistors.
   //
@@ -1743,10 +1748,10 @@ void ConnectOppositeInputs(
   for (const auto &contact_info : final_selector_contact_infos) {
     LOG(INFO) << "left " << contact_info.left.contact << " right "
               << contact_info.right.contact;
-    ConnectOppositeInputsOnMet2(
-        db,
-        contact_info,
-        layout);
+    //ConnectOppositeInputsOnMet2(
+    //    db,
+    //    contact_info,
+    //    layout);
   }
 
   // Place ports (pins) at port positions.
@@ -2824,8 +2829,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
   Point via_3_1_bottom_option = Point(
       via_column_3_x,
       pfet_4_diff->lower_left().y() + via_centre_to_diff_edge);
-  Point via_3_1_middle_option = Point(
-      via_column_3_x, pfet_4_diff->centre().y());
+  // TODO(aryap): Is this ever actually useful?
+  //Point via_3_1_middle_option = Point(
+  //    via_column_3_x, pfet_4_diff->centre().y());
 
   int64_t via_column_4_x =
       pfet_5_diff->upper_right().x() - via_centre_to_diff_edge;
@@ -2836,7 +2842,65 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
 
   // Wires connecting output of first stage muxes to inputs of second stage mux.
 
-  int64_t inner_bottom_wire_line_y = 0;
+  // Top wire:
+  //   p_0  p_1
+  //    +---+            p_5
+  //        |        +---+
+  //        |        |
+  //        +--------+ p_3
+  Point selected_via_3_1_centre;
+  int64_t inner_top_wire_line_y = 0;
+  {
+    //int64_t via_3_1_to_bottom_wire_separation = 
+    //    (via_3_1_bottom_option.y() -
+    //        (dcon_rules.via_width / 2 +
+    //         li_dcon_rules.via_overhang_wide)) -
+    //    (inner_bottom_wire_line_y + li_rules.min_width);
+    //if (via_3_1_to_bottom_wire_separation < li_rules.min_separation) {
+    //  // TODO(aryap): No facility to delete shapes?
+    //  selected_via_3_1_centre = via_3_1_middle_option;
+    //} else {
+      selected_via_3_1_centre = via_3_1_bottom_option;;
+    //}
+
+    int64_t via_padding_x = li_rules.min_separation +
+        li_rules.min_width / 2 +
+        li_dcon_rules.via_overhang_wide;
+    int64_t via_padding_y = li_rules.min_separation +
+        li_rules.min_width / 2 +
+        li_dcon_rules.via_overhang;
+
+    inner_top_wire_line_y = std::min(
+        via_2_1->lower_left().y() - via_padding_y,
+        via_1_1->centre().y());
+
+    layout->SetActiveLayerByName("li.drawing");
+
+    Point p_0 = via_1_1->centre();
+    Point p_1 = Point(via_2_1->lower_left().x() - via_padding_x, p_0.y());
+    Point p_2 = Point(p_1.x(), inner_top_wire_line_y);
+    Point p_3 = Point(via_2_1->LowerRight().x() + via_padding_x, p_2.y());
+    Point p_4 = Point(p_3.x(), selected_via_3_1_centre.y());
+    Point p_5 = selected_via_3_1_centre;
+
+    PolyLine input_0_1_line = PolyLine(p_0, {
+        LineSegment {p_1, static_cast<uint64_t>(via_encap_width)},
+        LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_3, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_4, static_cast<uint64_t>(li_rules.min_width)},
+        LineSegment {p_5, static_cast<uint64_t>(via_encap_width)}
+    });
+
+    input_0_1_line.InsertBulge(p_0, via_encap_width, via_encap_length);
+    input_0_1_line.InsertBulge(p_5, via_encap_width, via_encap_length);
+
+    layout->AddPolyLine(input_0_1_line);
+
+    layout->SavePoint("li_corner_ne_centre", p_5 + Point(0, via_encap_length));
+  }
+
+  int64_t inner_bottom_wire_line_y =
+      inner_top_wire_line_y - li_rules.min_separation - li_rules.min_width;
   // Bottom wire:
   //                                 + p_4
   //       p_2                       |
@@ -2850,15 +2914,6 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
         li_dcon_rules.via_overhang_wide + li_rules.min_separation +
             li_rules.min_width / 2),
         p_0.y());
-    inner_bottom_wire_line_y = std::max({
-        via_2_0->upper_right().y() + li_dcon_rules.via_overhang +
-            li_rules.min_separation + li_rules.min_width / 2,
-        
-        p_0.y()  // This one is kinda dumb. Forces a straight line out.
-    });
-    //  std::max(
-    //    pfet_0_diff->upper_right().y(), pfet_2_diff->upper_right().y()) +
-    //    li_rules.min_width / 2;
     Point p_2 = Point(p_1.x(), inner_bottom_wire_line_y);
     Point p_3 = Point(via_4_1->centre().x(), p_2.y());
     Point p_4 = via_4_1->centre();
@@ -2878,58 +2933,6 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
 
     layout->AddPolyLine(input_2_3_line);
     layout->SavePoint("li_corner_se_centre", p_2);
-  }
-
-  // Top wire:
-  //   p_0  p_1
-  //    +---+            p_5
-  //        |        +---+
-  //        |        |
-  //        +--------+ p_3
-  Point selected_via_3_1_centre;
-  {
-    int64_t via_3_1_to_bottom_wire_separation = 
-        (via_3_1_bottom_option.y() -
-            (dcon_rules.via_width / 2 +
-             li_dcon_rules.via_overhang_wide)) -
-        (inner_bottom_wire_line_y + li_rules.min_width);
-    if (via_3_1_to_bottom_wire_separation < li_rules.min_separation) {
-      // TODO(aryap): No facility to delete shapes?
-      selected_via_3_1_centre = via_3_1_middle_option;
-    } else {
-      selected_via_3_1_centre = via_3_1_bottom_option;
-    }
-
-    int64_t via_padding_x = li_rules.min_separation +
-        li_rules.min_width / 2 +
-        li_dcon_rules.via_overhang_wide;
-    int64_t via_padding_y = li_rules.min_separation +
-        li_rules.min_width / 2 +
-        li_dcon_rules.via_overhang;
-
-    layout->SetActiveLayerByName("li.drawing");
-
-    Point p_0 = via_1_1->centre();
-    Point p_1 = Point(via_2_1->lower_left().x() - via_padding_x, p_0.y());
-    Point p_2 = Point(p_1.x(),
-        std::min(via_2_1->lower_left().y() - via_padding_y, p_1.y()));
-    Point p_3 = Point(via_2_1->LowerRight().x() + via_padding_x, p_2.y());
-    Point p_4 = Point(p_3.x(), selected_via_3_1_centre.y());
-    Point p_5 = selected_via_3_1_centre;
-    PolyLine input_0_1_line = PolyLine(p_0, {
-        LineSegment {p_1, static_cast<uint64_t>(via_encap_width)},
-        LineSegment {p_2, static_cast<uint64_t>(li_rules.min_width)},
-        LineSegment {p_3, static_cast<uint64_t>(li_rules.min_width)},
-        LineSegment {p_4, static_cast<uint64_t>(li_rules.min_width)},
-        LineSegment {p_5, static_cast<uint64_t>(via_encap_width)}
-    });
-
-    input_0_1_line.InsertBulge(p_0, via_encap_width, via_encap_length);
-    input_0_1_line.InsertBulge(p_5, via_encap_width, via_encap_length);
-
-    layout->AddPolyLine(input_0_1_line);
-
-    layout->SavePoint("li_corner_ne_centre", p_5 + Point(0, via_encap_length));
   }
 
   layout->SetActiveLayerByName(params.diff_contact_layer_name);
