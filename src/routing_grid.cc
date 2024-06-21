@@ -1870,7 +1870,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
 
   if (found_targets.empty()) {
     LOG(INFO) << "No usable targets found.";
-    return nullptr;
+    return absl::NotFoundError("No usable targets found.");
   }
 
   // Sort all of the found targets according to their final cost:
@@ -1911,11 +1911,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
   }
 
   if (shortest_edges.empty()) {
-    return nullptr;
+    return absl::InternalError("shortest_edges was empty?");
   } else if (shortest_edges.front()->first() != begin &&
              shortest_edges.front()->second() != begin) {
-    LOG(FATAL) << "Did not find beginning vertex.";
-    return nullptr;
+    LOG(ERROR) << "Did not find beginning vertex.";
+    return absl::InternalError("Could not back-track to beginning vertex.");
   }
 
   RoutingPath *path = new RoutingPath(*this, begin, shortest_edges);
