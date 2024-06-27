@@ -23,6 +23,11 @@ namespace geometry {
 
 class ShapeCollection : public Manipulable {
  public:
+  ShapeCollection() = default;
+  ShapeCollection(const ShapeCollection &other) {
+    Add(other);
+  }
+
   std::string Describe() const;
 
   bool Empty() const;
@@ -54,6 +59,10 @@ class ShapeCollection : public Manipulable {
       bool include_non_pins = true,
       bool include_pins = true,
       size_t *count_out = nullptr) const;
+
+  void PrefixNetNames(
+      const std::string &prefix,
+      const std::string &separator = ".");
 
   std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() {
     return rectangles_;

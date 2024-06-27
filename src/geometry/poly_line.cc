@@ -104,6 +104,52 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
   segments_.push_back(LineSegment{to, width});
 }
 
+void PolyLine::ExtendToInclude(const Point &point) {
+  if (PointLandsWithinAnySegment(point)) {
+    return;
+  }
+  Line begin_line = Line(start_, segments_.front().end);
+  Line end_line = Line(
+      segments_.size() > 1 ? (segments_.end() - 1)->end : start_,
+      segments_.back().end);
+  std::vector<Line> lines = {begin_line, end_line};
+  Point nearest_begin = begin_line.PointOnLineClosestTo(point);
+  Point nearest_end = end_line.PointOnLineClosestTo(point);
+  bool intersects_begin = begin_line.Intersects(point);
+  bool intersects_end = end_line.Intersects(point);
+  if (!intersects_begin && !intersects_end) {
+    // Do nothing.
+    return;
+  }
+  if (intersects_begin && !intersects_end) {
+    start_ = point;
+    return;
+  }
+  if (!intersects_begin && intersects_end) {
+    segments_.back().end = point;
+    return;
+  }
+  // Intersects both.
+  if (nearest_begin.L2DistanceTo(point) < nearest_end.L2DistanceTo(point)) {
+    start_ = point;
+  } else {
+    segments_.back().end = point;
+  }
+}
+
+bool PolyLine::PointLandsWithinAnySegment(const Point &point) const {
+  for (size_t i = 0; i < segments_.size(); ++i) {
+    const LineSegment &segment = segments_.at(i);
+    Line line = Line(
+        i == 0 ? start_ : segments_.at(i - 1).end,
+        segments_.at(i).end);
+    if (line.IntersectsInBounds(point)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 double PolyLine::ComputeRequiredLengthForLastSegmentWidth(
     uint64_t previous_segment_original_width,
     const Line &current_line,

@@ -28,6 +28,7 @@ using ::bfg::geometry::PolyLine;
 using ::bfg::geometry::LineSegment;
 using ::bfg::geometry::Polygon;
 using ::bfg::geometry::Rectangle;
+using ::bfg::geometry::Shape;
 using ::bfg::geometry::Layer;
 using ::bfg::circuit::Wire;
 
@@ -152,23 +153,23 @@ Polygon *AddElbowPathBetweenLayers(
                                    layout);
 }
 
-Polygon *StraightLineBetweenLayers(
+// Caller takes ownership.
+PolyLine *StraightPolyLineBetweenLayers(
     const PhysicalPropertiesDatabase &db,
     const Point &start,
     const Point &end,
     const std::string &start_layer,
     const std::string &path_layer,
-    const std::string &end_layer,
-    bfg::Layout *layout) {
+    const std::string &end_layer) {
   int64_t width = db.Rules(path_layer).min_width;
   int64_t start_overhang = db.Rules(start_layer).via_width / 2
         + db.Rules(start_layer, path_layer).via_overhang;
   int64_t end_overhang = db.Rules(end_layer).via_width / 2
         + db.Rules(end_layer, path_layer).via_overhang;
-  PolyLine line = PolyLine({start, end});
-  line.set_layer(db.GetLayer(path_layer));
-  line.set_min_separation(db.Rules(path_layer).min_separation); 
-  line.SetWidth(width);
+  PolyLine *line = new PolyLine({start, end});
+  line->set_layer(db.GetLayer(path_layer));
+  line->set_min_separation(db.Rules(path_layer).min_separation); 
+  line->SetWidth(width);
 
   int64_t start_via_side = db.Rules(start_layer).via_width;
   int64_t start_via_encap_width =
@@ -192,13 +193,27 @@ Polygon *StraightLineBetweenLayers(
         start_via_encap_length,
         end_via_encap_length
     });
-    line.InsertBulge(start, bulge_side, bulge_side);
+    line->InsertBulge(start, bulge_side, bulge_side);
   } else {
-    line.InsertBulge(start, start_via_encap_width, start_via_encap_length);
-    line.InsertBulge(end, end_via_encap_width, end_via_encap_length);
+    line->InsertBulge(start, start_via_encap_width, start_via_encap_length);
+    line->InsertBulge(end, end_via_encap_width, end_via_encap_length);
   }
+  return line;
+}
 
-  Polygon polygon = InflatePolyLineOrDie(db, line);
+Polygon *StraightLineBetweenLayers(
+    const PhysicalPropertiesDatabase &db,
+    const Point &start,
+    const Point &end,
+    const std::string &start_layer,
+    const std::string &path_layer,
+    const std::string &end_layer,
+    bfg::Layout *layout) {
+
+  PolyLine *line = StraightPolyLineBetweenLayers(
+      db, start, end, start_layer, path_layer, end_layer);
+
+  Polygon polygon = InflatePolyLineOrDie(db, *line);
   layout->SetActiveLayerByName(path_layer);
   Polygon *added = layout->AddPolygon(polygon);
   layout->RestoreLastActiveLayer();
@@ -602,7 +617,7 @@ void GenerateOutput2To1MuxLayout(
   //
   // The area is actually bounded by the poly contacts, which wil be at:
   int64_t diff_bound_top_y = top_li_track_centre_y;
-  int64_t diff_bound_bottom_y = bottom_li_track_centre_y;
+  int64_t diff_bound_bottom_y = second_bottom_li_track_centre_y;
 
   int64_t ndiff_wing = ncon_rules.via_width +
       db.Rules("poly.drawing", "ncon.drawing").min_separation +
@@ -802,7 +817,6 @@ void GenerateOutput2To1MuxLayout(
     outer_li_pours[target] = main_layout->AddPolygon(
         InflatePolyLineOrDie(db, left_input_jog));
 
-    main_layout->SetActiveLayerByName("met1.drawing");
     StraightLineBetweenLayers(
         db,
         p_2, p_3,
@@ -881,7 +895,7 @@ void GenerateOutput2To1MuxLayout(
         // This could also be something like
         //  main_layout->GetPort("output").centre();
         // if it had been added as a port.
-        second_bottom_li_track_centre_y);
+        bottom_li_track_centre_y);
 
     Point p_1 = Point(p_0.x(), (p_3.y() + p_0.y()) / 2);
     Point p_2 = Point(p_3.x(), p_1.y());
@@ -894,7 +908,6 @@ void GenerateOutput2To1MuxLayout(
         main_layout);
 
     main_layout->MakeVia("mcon.drawing", p_4);
-    main_layout->SetActiveLayerByName("met1.drawing");
     StraightLineBetweenLayers(
         db,
         p_4, p_3,
@@ -972,6 +985,9 @@ void GenerateOutput2To1MuxLayout(
         "polycon.drawing",
         main_layout);
     main_layout->SavePoint(
+        absl::StrCat(name, "_selector_column_top"),
+        p_0);
+    main_layout->SavePoint(
         absl::StrCat(name, "_selector_column_bottom"),
         p_1);
   }
@@ -1012,7 +1028,7 @@ void GenerateOutput2To1MuxLayout(
             via_side / 2
             + poly_polycon_rules.min_separation
             + li_rules.min_width / 2),
-        bottom_li_track_centre_y
+        second_bottom_li_track_centre_y
     });
     Point met1_p0 = Point(met1_p1.x(), poly_connect_y);
     main_layout->SetActiveLayerByName("met1.drawing");
@@ -1033,6 +1049,9 @@ void GenerateOutput2To1MuxLayout(
     const std::string &name = poly_names[target];
     main_layout->SavePoint(
         absl::StrCat(name, "_selector_column_top"),
+        met1_p0);
+    main_layout->SavePoint(
+        absl::StrCat(name, "_selector_column_bottom"),
         met1_p1);
   }
 
@@ -1253,6 +1272,12 @@ struct CrossbarConnectionPoint {
 
   // If given, a bulge is inserted there at contact point.
   geometry::PolyLine *column;
+
+  // Draw mcon via to connect met1 to li at the contact point.
+  bool connect_to_li = true;
+
+  // If given, create vertical met1 line to this point:
+  std::optional<geometry::Point> vertical_met1_target;
 };
 
 struct ConnectionBetweenOppositePorts {
@@ -1291,7 +1316,9 @@ Polygon *ConnectOppositeInputsOnMet2(
     const Point &contact = info.contact;
     // Make via1.drawing, mcon.drawing vias:
     layout->MakeVia("via1.drawing", contact, plan.net);
-    layout->MakeVia("mcon.drawing", contact, plan.net);
+    if (info.connect_to_li) {
+      layout->MakeVia("mcon.drawing", contact, plan.net);
+    }
 
     const int64_t encap_width = std::max(
         db.Rules("via1.drawing").via_width,
@@ -1310,11 +1337,19 @@ Polygon *ConnectOppositeInputsOnMet2(
       info.column->InsertBulge(contact, encap_width, encap_length);
       continue;
     }
-    Point metal_lower_left = contact -
-        Point{encap_width / 2, encap_length / 2};
-    layout->SetActiveLayerByName("met1.drawing");
-    Rectangle *metal_pour = layout->AddRectangle(
-        Rectangle(metal_lower_left, encap_width, encap_length));
+    Shape *metal_pour = nullptr;
+    if (info.vertical_met1_target) {
+      PolyLine jog = PolyLine({contact, *info.vertical_met1_target});
+      jog.SetWidth(db.Rules("met1.drawing").min_width);
+      jog.InsertBulge(contact, encap_width, encap_length);
+      metal_pour = layout->AddPolygon(InflatePolyLineOrDie(db, jog));
+    } else {
+      Point metal_lower_left = contact -
+          Point{encap_width / 2, encap_length / 2};
+      layout->SetActiveLayerByName("met1.drawing");
+      metal_pour = layout->AddRectangle(
+          Rectangle(metal_lower_left, encap_width, encap_length));
+    }
     if (plan.net != "") {
       metal_pour->set_net(plan.net);
       metal_pour->set_is_connectable(true);
@@ -1340,9 +1375,10 @@ void ConnectOppositeInputs(
   int64_t y_offset = 0;
   if (output_mux_met2_bar_left_contact) {
     // Need to add a y_offset to avoid this!
-    LOG(FATAL) << "met2 bar in use at mux output, need to define y_offset "
-               << "to avoid this. Also have to space second set of contact "
-               << "pairs out to avoid shift";
+    return;
+    //LOG(FATAL) << "met2 bar in use at mux output, need to define y_offset "
+    //           << "to avoid this. Also have to space second set of contact "
+    //           << "pairs out to avoid shift";
     y_offset = 0;
   }
 
@@ -1574,7 +1610,8 @@ void ConnectOppositeInputs(
           top_outer_selector_joiner_y
         },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S0_B_top_left").x())
+        column_line_by_x(layout->GetPointOrDie("S0_B_top_left").x()),
+        false,
       },
       {
         {
@@ -1582,7 +1619,8 @@ void ConnectOppositeInputs(
           top_outer_selector_joiner_y
         },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S0_B_top_right").x())
+        column_line_by_x(layout->GetPointOrDie("S0_B_top_right").x()),
+        false
       },
       "met1.pin",
       0
@@ -1595,7 +1633,8 @@ void ConnectOppositeInputs(
            top_inner_selector_joiner_y
         },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S1_B_top_left").x())
+        column_line_by_x(layout->GetPointOrDie("S1_B_top_left").x()),
+        false
       },
       {
         {
@@ -1603,7 +1642,8 @@ void ConnectOppositeInputs(
           top_inner_selector_joiner_y
         },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S1_B_top_right").x())
+        column_line_by_x(layout->GetPointOrDie("S1_B_top_right").x()),
+        false
       },
       "met1.pin",
       0
@@ -1616,13 +1656,17 @@ void ConnectOppositeInputs(
           bottom_inner_selector_joiner_y
         },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S1_bottom_left").x())
+        column_line_by_x(layout->GetPointOrDie("S1_bottom_left").x()),
+        false
       },
       {
-        {layout->GetPointOrDie("S1_bottom_right").x(),
-         bottom_inner_selector_joiner_y},
+        {
+          layout->GetPointOrDie("S1_bottom_right").x(),
+          bottom_inner_selector_joiner_y
+        },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S1_bottom_right").x())
+        column_line_by_x(layout->GetPointOrDie("S1_bottom_right").x()),
+        false
       },
       "met1.pin",
       0
@@ -1635,7 +1679,8 @@ void ConnectOppositeInputs(
           bottom_outer_selector_joiner_y
         },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S0_bottom_left").x())
+        column_line_by_x(layout->GetPointOrDie("S0_bottom_left").x()),
+        false
       },
       {
         {
@@ -1643,7 +1688,8 @@ void ConnectOppositeInputs(
           bottom_outer_selector_joiner_y
         },
         std::nullopt,
-        column_line_by_x(layout->GetPointOrDie("S0_bottom_right").x())
+        column_line_by_x(layout->GetPointOrDie("S0_bottom_right").x()),
+        false
       },
       "met1.pin",
       0
@@ -1711,14 +1757,19 @@ void ConnectOppositeInputs(
     final_selector_contact_infos.push_back({
       "S2_B",
       {
-        {left_x, first_y},
-        std::nullopt,
-        column_line_by_x(left_x)
+        .contact = {left_x, first_y},
+        .port = std::nullopt,
+        .column = nullptr,
+        .connect_to_li = false,
+        .vertical_met1_target = layout->GetPointOrDie(
+            "left_right_selector_column_bottom")
       },
       {
         {right_x, first_y},
         std::nullopt,
-        column_line_by_x(right_x)
+        nullptr,
+        false,
+        layout->GetPointOrDie("right_right_selector_column_top")
       },
       "met1.pin",
       0
@@ -1730,12 +1781,16 @@ void ConnectOppositeInputs(
       {
         {left_x, second_y},
         std::nullopt,
-        column_line_by_x(left_x)
+        nullptr,
+        false,
+        layout->GetPointOrDie("left_left_selector_column_top")
       },
       {
         {right_x, second_y},
         std::nullopt,
-        column_line_by_x(right_x)
+        nullptr,
+        false,
+        layout->GetPointOrDie("right_left_selector_column_bottom")
       },
       "met1.pin",
       0
@@ -1748,10 +1803,10 @@ void ConnectOppositeInputs(
   for (const auto &contact_info : final_selector_contact_infos) {
     LOG(INFO) << "left " << contact_info.left.contact << " right "
               << contact_info.right.contact;
-    //ConnectOppositeInputsOnMet2(
-    //    db,
-    //    contact_info,
-    //    layout);
+    ConnectOppositeInputsOnMet2(
+        db,
+        contact_info,
+        layout);
   }
 
   // Place ports (pins) at port positions.
@@ -2293,6 +2348,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   const auto &mcon_rules = db.Rules("mcon.drawing");
   const auto &met1_rules = db.Rules("met1.drawing");
   const auto &li_licon_rules = db.Rules("li.drawing", "licon.drawing");
+  const auto &li_polycon_rules = db.Rules("li.drawing", "polycon.drawing");
   const auto &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
   const auto &poly_ncon_rules = db.Rules("poly.drawing", "ncon.drawing");
   const auto &met1_mcon_rules = db.Rules("met1.drawing", "mcon.drawing");
@@ -2307,12 +2363,30 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   std::unique_ptr<bfg::Layout> mux4_layout(
       new bfg::Layout(design_db_->physical_db()));
 
-  const std::string poly_contact = "polycon.drawing";
+  int64_t poly_contact_to_li = li_polycon_rules.via_overhang +
+      li_rules.min_separation + licon_rules.via_width / 2;
+  int64_t output_mux_fet_max_height = std::max({
+    db.ToInternalUnits(parameters_.nfet_6_width_nm),
+    db.ToInternalUnits(parameters_.nfet_7_width_nm),
+    db.ToInternalUnits(parameters_.pfet_6_width_nm),
+    db.ToInternalUnits(parameters_.pfet_7_width_nm)
+  });
+  int64_t vert_spacing = li_rules.min_width / 2 +
+    li_rules.min_separation +
+    li_rules.min_width +
+    li_rules.min_separation +
+    poly_contact_to_li +
+    output_mux_fet_max_height +
+    poly_contact_to_li +
+    li_rules.min_width +
+    li_rules.min_separation +
+    li_rules.min_width +
+    li_rules.min_separation +
+    li_rules.min_width / 2;
 
   Mux2LayoutParameters mux2_params_n = {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
-    // TODO(aryap): These come from the parameters_ struct!
     .fet_0_width = db.ToInternalUnits(parameters_.nfet_0_width_nm),
     .fet_1_width = db.ToInternalUnits(parameters_.nfet_1_width_nm),
     .fet_2_width = db.ToInternalUnits(parameters_.nfet_2_width_nm),
@@ -2346,7 +2420,6 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   Mux2LayoutParameters mux2_params_p = {
     .diff_layer_name = "pdiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
-    // TODO(aryap): These come from the parameters_ struct!
     .fet_0_width = db.ToInternalUnits(parameters_.pfet_0_width_nm),
     .fet_1_width = db.ToInternalUnits(parameters_.pfet_1_width_nm),
     .fet_2_width = db.ToInternalUnits(parameters_.pfet_2_width_nm),
@@ -2373,6 +2446,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_1 = std::nullopt,
     .input_2 = std::nullopt,
     .input_3 = std::nullopt,
+    // TODO(aryap): Make this some PDK-dependent value, i.e. a multiple of
+    // pitch.
     .input_x_padding = db.ToInternalUnits(-600),
     .input_y_padding = db.ToInternalUnits(-200)
   };
@@ -2403,6 +2478,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
           li_rules.min_separation
       )
   );
+  
+  // FIXME: COLUMNS
 
   // The pitches of columns _in order extending outward from the centre_.
   std::vector<int64_t> column_pitches = {
@@ -2434,16 +2511,25 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   // track them through generations, transformations and copies, and then
   // directly modify them. This is a general facility that isn't mutually
   // exclusive with (1) and which requires less work.
+
+  // We want to place the n and p mux4s such that the distance between allows
+  // for the final output mux and the necessary met2 and met1 routing.
   int64_t mux2_height = std::min(
       mux2_layout_n->GetBoundingBox().Height(),
       mux2_layout_p->GetBoundingBox().Height());
-  int64_t vert_spacing = 0;
 
   mux2_layout_n->ResetOrigin();
   layout->AddLayout(*mux2_layout_n, "upper_left");
+  Point target = 
+      mux2_layout_n->GetPointOrDie("li_corner_se_centre");
+  target.set_y(target.y() - vert_spacing);
 
   mux2_layout_n->FlipVertical();
-  mux2_layout_n->MoveLowerLeftTo(Point(0, -(mux2_height + vert_spacing)));
+
+  //mux2_layout_n->MoveLowerLeftTo(Point(0, -(mux2_height + vert_spacing)));
+  mux2_layout_n->AlignPointTo(
+      mux2_layout_n->GetPointOrDie("li_corner_se_centre"), target);
+
   layout->AddLayout(*mux2_layout_n, "lower_left");
 
   // Add diffusion qualifying layers, wells, etc, as we go.
@@ -2499,10 +2585,15 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   mux2_layout_p->FlipHorizontal();
   mux2_layout_p->MoveLowerLeftTo(Point(mux2_p_lower_left_x, 0));
   layout->AddLayout(*mux2_layout_p, "upper_right");
+  target = mux2_layout_p->GetPointOrDie("li_corner_se_centre");
+  target.set_y(target.y() - vert_spacing);
 
   mux2_layout_p->FlipVertical();
-  mux2_layout_p->MoveLowerLeftTo(
-      Point(mux2_p_lower_left_x, -(mux2_height + vert_spacing)));
+  //mux2_layout_p->MoveLowerLeftTo(
+  //    Point(mux2_p_lower_left_x, -(mux2_height + vert_spacing)));
+  mux2_layout_p->AlignPointTo(
+      mux2_layout_p->GetPointOrDie("li_corner_se_centre"), target);
+
   layout->AddLayout(*mux2_layout_p, "lower_right");
 
   mux2_layout_n->FlipHorizontal();
@@ -2529,11 +2620,42 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       pdiff->upper_right() + Point(diff_padding, diff_padding)
   });
 
+  // Connect polys in top and bottom halves if there's a gap:
+  std::vector<std::tuple<Point, Point, int64_t>> poly_connections = {
+    {
+      layout->GetPointOrDie("upper_left.column_0_centre_bottom"),
+      layout->GetPointOrDie("lower_left.column_0_centre_bottom"),
+      mux2_params_n.fet_0_length
+    },
+    {
+      layout->GetPointOrDie("upper_left.column_1_centre_bottom"),
+      layout->GetPointOrDie("lower_left.column_1_centre_bottom"),
+      mux2_params_n.fet_1_length
+    },
+    {
+      layout->GetPointOrDie("upper_right.column_1_centre_bottom"),
+      layout->GetPointOrDie("lower_right.column_1_centre_bottom"),
+      mux2_params_p.fet_1_length
+    },
+    {
+      layout->GetPointOrDie("upper_right.column_0_centre_bottom"),
+      layout->GetPointOrDie("lower_right.column_0_centre_bottom"),
+      mux2_params_p.fet_0_length
+    }
+  };
+  layout->SetActiveLayerByName("poly.drawing");
+  for (const auto &entry : poly_connections) {
+    const auto [first, second, length] = entry;
+    layout->AddRectangle({first - Point(length / 2, 0),
+                          second + Point(length / 2, 0)});
+  }
+
   // (This vector contains pointers we own. We can't store them in the std::map
   // value type.)
   std::vector<std::unique_ptr<PolyLine>> column_lines;
   std::map<size_t, int64_t> column_x;
 
+  const std::string poly_contact = "polycon.drawing";
   BuildMet1Columns(
       db,
       poly_contact,

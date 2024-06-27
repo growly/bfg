@@ -371,9 +371,15 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   // To be able to support this we'd need to make a temporary copy of all the
   // containers:
   LOG_IF(FATAL, this == &other) << "Can't add layout to itself.";
+  std::unique_ptr<ShapeCollection> owner_of_copy;
   for (const auto &entry : other.shapes_) {
     active_layer_ = entry.first;
     ShapeCollection *other_collection = entry.second.get();
+    if (name_prefix != "") {
+      owner_of_copy.reset(new ShapeCollection(*other_collection));
+      other_collection = owner_of_copy.get();
+      other_collection->PrefixNetNames(name_prefix, ".");
+    }
     for (const auto &rectangle : other_collection->rectangles()) {
       AddRectangle(*rectangle);
     }
@@ -394,6 +400,12 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
     }
     SavePoint(name, entry.second);
   }
+}
+
+void Layout::AlignPointTo(const geometry::Point &reference,
+                          const geometry::Point &target) {
+  Point diff = target - reference;
+  Translate(diff);
 }
 
 geometry::Rectangle *Layout::MakeVia(

@@ -79,7 +79,16 @@ class Layout : public geometry::Manipulable {
                const std::string &net_prefix = "");
   void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out)
       const;
+
+  // Copies the objects in other layout into this one. If a name prefix is
+  // given, it is apply to named points and net names copied from the other
+  // Layout.
   void AddLayout(const Layout &other, const std::string &name_prefix = "");
+
+  // Translate the Layout such that the given reference point, assumed to be in
+  // the coordinate space of this Layout, ends up at the target point.
+  void AlignPointTo(
+      const geometry::Point &reference, const geometry::Point &target);
 
   geometry::Rectangle *MakeVia(
       const std::string &layer_name,

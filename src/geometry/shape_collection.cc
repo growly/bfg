@@ -7,6 +7,8 @@
 #include <sstream>
 #include <optional>
 
+#include <absl/strings/str_cat.h>
+
 #include "layer.h"
 #include "polygon.h"
 #include "port.h"
@@ -21,7 +23,6 @@ namespace geometry {
 
 std::string ShapeCollection::Describe() const {
   std::stringstream ss;
-
   for (const auto &rectangle : rectangles_) {
     ss << "    rect " << rectangle->lower_left().x() << " "
        << rectangle->lower_left().y() << " "
@@ -221,9 +222,32 @@ ShapeCollection *FindOrCreateCollection(
   return inner_it->second.get();
 }
 
-
 }   // namespace
 
+void ShapeCollection::PrefixNetNames(
+    const std::string &prefix,
+    const std::string &separator) {
+  for (const auto &rectangle : rectangles_) {
+    if (rectangle->net() != "") {
+      rectangle->set_net(absl::StrCat(prefix, separator, rectangle->net()));
+    }
+  }
+  for (const auto &polygon : polygons_) {
+    if (polygon->net() != "") {
+      polygon->set_net(absl::StrCat(prefix, separator, polygon->net()));
+    }
+  }
+  for (const auto &port : ports_) {
+    if (port->net() != "") {
+      port->set_net(absl::StrCat(prefix, separator, port->net()));
+    }
+  }
+  for (const auto &poly_line : poly_lines_) {
+    if (poly_line->net() != "") {
+      poly_line->set_net(absl::StrCat(prefix, separator, poly_line->net()));
+    }
+  }
+}
 
 void ShapeCollection::CopyConnectables(
     const std::optional<Layer> expected_layer,

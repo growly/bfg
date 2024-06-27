@@ -704,9 +704,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       LOG(INFO) << "Connecting " << *source << " port "
                 << *source_port << " to " << *target
                 << " port " << *target_port;
-      // FIXME(aryap): DISABLED FOR SPEED!
-      bool path_found = true; //routing_grid.AddRouteBetween(
-      //     *source_port, *target_port, all_other_target_ports, net_name).ok();
+      bool path_found = routing_grid.AddRouteBetween(
+           *source_port, *target_port, all_other_target_ports, net_name).ok();
       //LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
       //          << " to net " << target_net;
       //path_found = routing_grid.AddRouteToNet(
@@ -741,28 +740,28 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // input_1  --+---------
 
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-  //  // Manually ordered:
-  //  {banks[0].memories()[2][1], mux_order[0], "input_6"},
-  //  {banks[0].memories()[3][0], mux_order[0], "input_4"},
-  //  {banks[0].memories()[3][1], mux_order[0], "input_5"},
-  //  {banks[0].memories()[2][0], mux_order[0], "input_7"},
+    // Manually ordered:
+    {banks[0].memories()[2][1], mux_order[0], "input_6"},
+    {banks[0].memories()[3][0], mux_order[0], "input_4"},
+    {banks[0].memories()[3][1], mux_order[0], "input_5"},
+    {banks[0].memories()[2][0], mux_order[0], "input_7"},
 
-  //  {banks[0].memories()[1][1], mux_order[0], "input_3"},
-  //  {banks[0].memories()[1][0], mux_order[0], "input_2"},
-  //  {banks[0].memories()[0][0], mux_order[0], "input_0"},
-  //  {banks[0].memories()[0][1], mux_order[0], "input_1"},
+    {banks[0].memories()[1][1], mux_order[0], "input_3"},
+    {banks[0].memories()[1][0], mux_order[0], "input_2"},
+    {banks[0].memories()[0][0], mux_order[0], "input_0"},
+    {banks[0].memories()[0][1], mux_order[0], "input_1"},
 
-  //  // Not yet:
-  //  {banks[1].memories()[1][0], mux_order[1], "input_2"},
+    // Not yet:
+    {banks[1].memories()[1][0], mux_order[1], "input_2"},
 
-  //  {banks[1].memories()[2][0], mux_order[1], "input_7"},
-  //  {banks[1].memories()[3][0], mux_order[1], "input_4"},
-  //  {banks[1].memories()[3][1], mux_order[1], "input_5"},
-  //  {banks[1].memories()[2][1], mux_order[1], "input_6"},
+    {banks[1].memories()[2][0], mux_order[1], "input_7"},
+    {banks[1].memories()[3][0], mux_order[1], "input_4"},
+    {banks[1].memories()[3][1], mux_order[1], "input_5"},
+    {banks[1].memories()[2][1], mux_order[1], "input_6"},
 
-  //  {banks[1].memories()[0][0], mux_order[1], "input_1"},
-  //  {banks[1].memories()[0][1], mux_order[1], "input_0"},
-  //  {banks[1].memories()[1][1], mux_order[1], "input_3"},
+    {banks[1].memories()[0][0], mux_order[1], "input_1"},
+    {banks[1].memories()[0][1], mux_order[1], "input_0"},
+    {banks[1].memories()[1][1], mux_order[1], "input_3"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {

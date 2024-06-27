@@ -72,6 +72,13 @@ class PolyLine : public Shape {
 
   void AddSegment(const Point &to, const uint64_t width);
 
+  bool PointLandsWithinAnySegment(const Point &point) const;
+
+  // If the given point lands on an existing line in the PolyLine, do nothing.
+  // Otherwise, extend the start or end point (whichever is closest) to include
+  // the point, as long as it lands on the existing segment line.
+  void ExtendToInclude(const Point &point);
+
   // Inserts what will become a rectangular bulge into the PolyLine by creating
   // the appropriate segments. The width and length are coaxial: width is
   // distance orthogonal to the direction of the line and length is parallel.

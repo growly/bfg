@@ -147,6 +147,8 @@ void Instance::GetShapesOnLayer(const geometry::Layer &layer,
   instance_shapes.Add(*master_shapes);
   instance_shapes.Rotate(rotation_degrees_ccw_);
   instance_shapes.Translate(lower_left_);
+  instance_shapes.PrefixNetNames(name_, ".");
+
   shapes->Add(instance_shapes);
 }
 
