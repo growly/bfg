@@ -11,7 +11,7 @@ Libraries
 #### Debian
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip
-  sudo apt install -y clang ninja-build python3
+  sudo apt install -y clang ninja-build python3 pkg-config zlib1g-dev
   # for gRPC
   sudo apt install -y libre2-dev libc-ares-dev libssl-dev
 ```
@@ -23,7 +23,8 @@ Libraries
 ```
 
 #### Red Hat
-Red Hat 7 doesn't have a new enough `cmake`. Red Hat 9 doesn't have `ninja` in its `yum` repositories. Nor does it have re2
+Red Hat 7 doesn't have a new enough `cmake`. Red Hat 9 doesn't have `ninja` in its `yum` repositories. Nor does it have re2, so you have to build it from source (below).
+
 ```
   sudo yum group install "Development Tools"
   sudo yum install cmake autoconf automake libtool curl make g++ unzip
@@ -33,6 +34,14 @@ Red Hat 7 doesn't have a new enough `cmake`. Red Hat 9 doesn't have `ninja` in i
   sudo yum install c-ares-devel
 ```
 
+Also, *very importantly*, RHEL9 doesn't seem to include `/usr/local/lib` as a default linker path, so you have to add it (or set `LD_LIBRARY_PATH`). This breaks proto creation in particular.
+```
+cat <<EOF > /tmp/libc.conf
+/usr/local/lib
+EOF
+sudo mv /tmp/libc.conf /etc/ld.so.conf.d/
+sudo ldconfig
+```
 
 [google/googletest](https://github.com/google/googletest)
 
@@ -114,6 +123,18 @@ Note: when I compile and build protocol buffers from [HEAD on
 GitHub](https://github.com/protocolbuffers/protobuf), I get compilation errors
 because the file `port_def.inc` doesn't get installed. Compiling and installing
 from a release tarball, it seems fine.
+
+[google/re2](https://github.com/google/re2) (for RHEL9)
+
+```
+git clone https://github.com/google/re2.git
+pushd re2
+mkdir build && cd build
+cmake ../
+make -j $(nproc)
+sudo make install
+popd
+```
 
 [grpc/grpc](https://github.com/grpc/grpc)
 
