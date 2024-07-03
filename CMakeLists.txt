@@ -51,6 +51,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
   ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc
   ${PROJECT_SOURCE_DIR}/src/design_database.cc
+  ${PROJECT_SOURCE_DIR}/src/equivalent_nets.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
   ${PROJECT_SOURCE_DIR}/src/memory_bank.cc
   ${PROJECT_SOURCE_DIR}/src/parameter.cc
@@ -399,6 +400,7 @@ set(GEOMETRY_TEST_SRC
 
 set(TEST_SRC
   ${GEOMETRY_TEST_SRC}
+  ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector_test.cc
