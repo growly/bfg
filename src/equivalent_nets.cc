@@ -10,6 +10,9 @@ bool EquivalentNets::Contains(const std::string &name) {
 }
 
 bool EquivalentNets::Add(const std::string &name) {
+  if (name == "") {
+    return false;
+  }
   return nets_.insert(name).second;
 }
 

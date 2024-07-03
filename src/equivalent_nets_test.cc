@@ -9,7 +9,7 @@ namespace bfg {
 namespace {
 
 TEST(EquivalentNets, Empty) {
-  EquivalentNets nets = EquivalentNets({});
+  EquivalentNets nets = EquivalentNets(std::set<std::string>());
   EXPECT_FALSE(nets.Contains("a"));
   EXPECT_FALSE(nets.Contains("b"));
   EXPECT_FALSE(nets.Contains("c"));
@@ -33,6 +33,12 @@ TEST(EquivalentNets, General) {
   nets.set_primary("e");
   EXPECT_TRUE(nets.Contains("e"));
   EXPECT_EQ("e", nets.primary());
+}
+
+TEST(EquivalentNets, Sole) {
+  EquivalentNets nets = EquivalentNets("q");
+  EXPECT_TRUE(nets.Contains("q"));
+  EXPECT_EQ("q", nets.primary());
 }
 
 
