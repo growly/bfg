@@ -11,6 +11,7 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 
+#include "equivalent_nets.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/poly_line.h"
@@ -85,10 +86,10 @@ class RoutingGrid {
       const geometry::Port &begin,
       const geometry::Port &end,
       const std::set<geometry::Port*> &avoid,
-      const std::string &net = "");
+      const EquivalentNets &nets);
   absl::Status AddRouteToNet(
       const geometry::Port &begin,
-      const std::string &net,
+      const EquivalentNets &nets,
       const std::set<geometry::Port*> &avoid);
 
   void AddVertex(RoutingVertex *vertex);
@@ -141,6 +142,7 @@ class RoutingGrid {
 
   bool ValidAgainstKnownBlockages(
       const RoutingVertex &vertex,
+      std::optional<EquivalentNets> for_nets = std::nullopt,
       std::optional<RoutingTrackDirection> access_direction = std::nullopt)
       const;
 
@@ -338,16 +340,21 @@ class RoutingGrid {
   std::vector<RoutingVertex*> &GetAvailableVertices(
       const geometry::Layer &layer);
 
-  absl::StatusOr<VertexWithLayer> ConnectToGrid(const geometry::Port &port);
+  absl::StatusOr<VertexWithLayer> ConnectToGrid(
+      const geometry::Port &port,
+      const EquivalentNets &connectable_nets = EquivalentNets());
 
   absl::StatusOr<VertexWithLayer> AddAccessVerticesForPoint(
       const geometry::Point &point, const geometry::Layer &layer);
 
   absl::StatusOr<VertexWithLayer> ConnectToNearestAvailableVertex(
-      const geometry::Port &port);
+      const geometry::Port &port,
+      const EquivalentNets &connectable_nets);
 
   absl::StatusOr<RoutingVertex*> ConnectToNearestAvailableVertex(
-      const geometry::Point &point, const geometry::Layer &layer);
+      const geometry::Point &point,
+      const geometry::Layer &layer,
+      const EquivalentNets &connectable_nets);
 
   absl::Status AddRoutingGridGeometry(
       const geometry::Layer &lhs, const geometry::Layer &rhs,
@@ -372,7 +379,7 @@ class RoutingGrid {
   // *discovered_target.
   absl::StatusOr<RoutingPath*> ShortestPath(
       RoutingVertex *from,
-      const std::string &to_net,
+      const EquivalentNets &to_nets,
       RoutingVertex **discovered_target);
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
@@ -472,9 +479,10 @@ class RoutingGridBlockage {
 
   bool BlocksWithoutPadding(
       const RoutingVertex &vertex,
+      std::optional<EquivalentNets> exceptional_nets = std::nullopt,
       std::optional<RoutingTrackDirection> access_direction = std::nullopt)
       const {
-    return Blocks(vertex, 0, access_direction);
+    return Blocks(vertex, 0, exceptional_nets, access_direction);
   }
   bool BlocksWithoutPadding(const RoutingEdge &edge) const {
     return Blocks(edge, 0);
@@ -482,9 +490,10 @@ class RoutingGridBlockage {
 
   bool Blocks(
       const RoutingVertex &vertex,
+      std::optional<EquivalentNets> exceptional_nets = std::nullopt,
       std::optional<RoutingTrackDirection> access_direction = std::nullopt)
       const {
-    return Blocks(vertex, padding_, access_direction);
+    return Blocks(vertex, padding_, exceptional_nets, access_direction);
   }
   bool Blocks(const RoutingEdge &edge) const {
     return Blocks(edge, padding_);
@@ -504,6 +513,7 @@ class RoutingGridBlockage {
   bool Blocks(
       const RoutingVertex &vertex,
       int64_t padding,
+      std::optional<EquivalentNets> exceptional_nets,
       std::optional<RoutingTrackDirection> access_direction) const;
   bool Blocks(const RoutingEdge &edge, int64_t padding) const;
 

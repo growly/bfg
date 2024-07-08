@@ -11,6 +11,7 @@
 #include "../atoms/sky130_hd_mux2_1.h"
 #include "../atoms/sky130_mux.h"
 #include "../atoms/sky130_tap.h"
+#include "../equivalent_nets.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/shape_collection.h"
 #include "../layout.h"
@@ -698,14 +699,17 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
 
     while (target_port) {
-      //std::string net_name =
-      //    absl::StrCat(source->name(), "_", source_port_name);
-      const std::string &net_name = target_port_name;
-      LOG(INFO) << "Connecting " << *source << " port "
-                << *source_port << " to " << *target
-                << " port " << *target_port;
+      EquivalentNets net_aliases = EquivalentNets({
+          target_port->net(), source_port->net()});
+      //const std::string &net_name = target_port_name;
+      LOG(INFO) << "Connecting port " << *source_port << " to port "
+                << *target_port << " on net " << net_aliases.primary();
+
       bool path_found = routing_grid.AddRouteBetween(
-           *source_port, *target_port, all_other_target_ports, net_name).ok();
+           *source_port,
+           *target_port,
+           all_other_target_ports,
+           net_aliases).ok();
       //LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
       //          << " to net " << target_net;
       //path_found = routing_grid.AddRouteToNet(

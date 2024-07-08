@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <string>
 
+#include <absl/strings/str_cat.h>
+
 #include <glog/logging.h>
 
 #include "point.h"
@@ -65,12 +67,19 @@ class Instance : public Manipulable {
 
   void GeneratePorts();
 
+  std::string InstancePortName(const std::string &master_port_name) const {
+    return absl::StrCat(name_, ".", master_port_name);
+  }
+
   // FIXME(aryap): The pointers to ports handed out here will be invalidated
   // the next time ports are regenerated or whenever the Instance object is
   // deleted; we should pass out copies of the Port or shared_ptrs.
+  //
+  // Find the port named 'name', without the instance name prefix.
   void GetInstancePorts(const std::string &name, std::set<Port*> *out) {
     if (!ports_generated_) GeneratePorts();
-    auto it = instance_ports_.find(name);
+    const std::string actual_name = InstancePortName(name);
+    auto it = instance_ports_.find(actual_name);
     LOG_IF(FATAL, it == instance_ports_.end())
         << "No such instance port: " << name << " on instance "
         << name_;

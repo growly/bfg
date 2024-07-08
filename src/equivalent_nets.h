@@ -18,12 +18,14 @@ namespace bfg {
 // aliases.
 class EquivalentNets {
  public:
+  EquivalentNets() {}
   EquivalentNets(const std::string &sole) {
     set_primary(sole);
   }
-  EquivalentNets(const std::set<std::string> &names)
-      : nets_(names.begin(), names.end()) {
-    primary_ = !names.empty() ? *names.begin() : "";
+  EquivalentNets(const std::set<std::string> &names) {
+    for (const std::string &name : names) {
+      Add(name);
+    }
   }
   EquivalentNets(const std::string &primary,
                  const std::set<std::string> &names)
@@ -33,9 +35,12 @@ class EquivalentNets {
     Add(primary);
   }
 
-  bool Contains(const std::string &name);
+  bool Contains(const std::string &name) const;
   bool Add(const std::string &name);
   bool Delete(const std::string &name);
+  bool Empty() const {
+    return nets_.empty();
+  }
 
   const std::string &primary() const { return primary_; }
   void set_primary(const std::string &primary) {

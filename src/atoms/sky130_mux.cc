@@ -2023,7 +2023,12 @@ void BuildMet1Columns(
 
     // Need to differentiate the e.g. S0 column on the left from the one on the
     // right:
-    std::string net_suffix = k < kNumColumnsPerFlank ? "left" : "right";
+    std::string label_suffix = k < kNumColumnsPerFlank ? "left" : "right";
+
+    // Can now create the PolyLine:
+    PolyLine *column_line = new PolyLine({
+        plan.bottom_destination_point, plan.top_destination_point});
+    column_lines->emplace_back(column_line);
 
     if (plan.net) {
       layout->SetActiveLayerByName("met1.pin");
@@ -2032,7 +2037,7 @@ void BuildMet1Columns(
           met1_rules.min_width,
           *plan.net);
       layout->SavePoint(
-          absl::StrCat(*plan.net, "_top_", net_suffix),
+          absl::StrCat(*plan.net, "_top_", label_suffix),
           plan.top_destination_point);
 
       layout->AddSquareAsPort(
@@ -2040,15 +2045,12 @@ void BuildMet1Columns(
           met1_rules.min_width,
           *plan.net);
       layout->SavePoint(
-          absl::StrCat(*plan.net, "_bottom_", net_suffix),
+          absl::StrCat(*plan.net, "_bottom_", label_suffix),
           plan.bottom_destination_point);
       layout->RestoreLastActiveLayer();
-    }
 
-    // Can now create the PolyLine:
-    PolyLine *column_line = new PolyLine({
-        plan.bottom_destination_point, plan.top_destination_point});
-    column_lines->emplace_back(column_line);
+      column_line->set_net(*plan.net);
+    }
 
     column_line->SetWidth(met1_rules.min_width);
     column_line->set_min_separation(met1_rules.min_separation);

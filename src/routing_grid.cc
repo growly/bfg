@@ -19,6 +19,7 @@
 #include <absl/strings/str_join.h>
 #include <glog/logging.h>
 
+#include "equivalent_nets.h"
 #include "geometry/compass.h"
 #include "geometry/poly_line.h"
 #include "geometry/rectangle.h"
@@ -65,7 +66,12 @@ template<>
 bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
     const RoutingVertex &vertex,
     int64_t padding,
+    std::optional<EquivalentNets> exceptional_nets,
     std::optional<RoutingTrackDirection> access_direction) const {
+  if (shape_.net() != "" && exceptional_nets &&
+      exceptional_nets->Contains(shape_.net())) {
+    return false;
+  }
   return routing_grid_.ViaWouldIntersect(
       vertex, shape_, padding, access_direction);
 }
@@ -74,7 +80,15 @@ template<>
 bool RoutingGridBlockage<geometry::Polygon>::Blocks(
     const RoutingVertex &vertex,
     int64_t padding,
+    std::optional<EquivalentNets> exceptional_nets,
     std::optional<RoutingTrackDirection> access_direction) const {
+  if (shape_.ContainsVertex({16580, 5078})) {
+      LOG(INFO) << "ok";
+  }
+  if (shape_.net() != "" && exceptional_nets &&
+      exceptional_nets->Contains(shape_.net())) {
+    return false;
+  }
   return routing_grid_.ViaWouldIntersect(
       vertex, shape_, padding, access_direction);
 }
@@ -140,14 +154,16 @@ void RoutingGrid::ApplyBlockage(
       bool any_access = false;
       for (const auto &direction : access_directions) {
         bool blocked_at_all = false;
-        if (blockage.BlocksWithoutPadding(*vertex, direction)) {
+        // We use the RoutingGridBlockage to do a hit test; set
+        // exceptional_nets = nullopt so that no exception is made.
+        if (blockage.BlocksWithoutPadding(*vertex, std::nullopt, direction)) {
           blocked_at_all = true;
           vertex->set_net(blockage.shape().net());
           VLOG(16) << "Blockage: " << blockage.shape()
                    << " blocks " << vertex->centre()
                    << " directly (without padding) in "
                    << direction << " direction";
-        } else if (blockage.Blocks(*vertex, direction)) {
+        } else if (blockage.Blocks(*vertex, std::nullopt, direction)) {
           blocked_at_all = true;
           if (net != "") {
             vertex->set_connectable_net(net);
@@ -213,14 +229,15 @@ bool RoutingGrid::ValidAgainstKnownBlockages(const RoutingEdge &edge) const {
 
 bool RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingVertex &vertex,
+    std::optional<EquivalentNets> exceptional_nets,
     std::optional<RoutingTrackDirection> access_direction) const {
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
-    if (blockage->Blocks(vertex, access_direction))
+    if (blockage->Blocks(vertex, exceptional_nets, access_direction))
       return false;
   }
   for (const auto &blockage : polygon_blockages_) {
-    if (blockage->Blocks(vertex, access_direction))
+    if (blockage->Blocks(vertex, exceptional_nets, access_direction))
       return false;
   }
   return true;
@@ -368,14 +385,19 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
 }
 
 absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
-    const geometry::Port &port) {
+    const geometry::Port &port,
+    const EquivalentNets &connectable_nets) {
   auto try_add_access_vertices = AddAccessVerticesForPoint(
       port.centre(), port.layer());
+  // FIXME(aryap): RoutingTrack doesn't handle blockages caused by nets which
+  // might be connectable by some nets (it has a merged anonymous view of
+  // blockages). So this also doesn't handle connectivity by specific nets.
   if (try_add_access_vertices.ok()) {
     return *try_add_access_vertices;
   }
   // Fall back to slower, possibly broken method.
-  auto try_nearest_available = ConnectToNearestAvailableVertex(port);
+  auto try_nearest_available =
+      ConnectToNearestAvailableVertex(port, connectable_nets);
   if (try_nearest_available.ok()) {
     return *try_nearest_available;
   }
@@ -584,8 +606,9 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     std::set<RoutingTrackDirection> access_directions = {
         RoutingTrackDirection::kTrackHorizontal,
         RoutingTrackDirection::kTrackVertical};
+    // TODO(aryap): This doesn't account for equivalent nets, it should.
     for (const auto &direction : access_directions) {
-      if (!ValidAgainstKnownBlockages(*off_grid, direction) ||
+      if (!ValidAgainstKnownBlockages(*off_grid, std::nullopt, direction) ||
           !ValidAgainstInstalledPaths(*off_grid, direction)) {
         access_directions.erase(direction);
       }
@@ -611,13 +634,15 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
 }
 
 absl::StatusOr<RoutingGrid::VertexWithLayer>
-RoutingGrid::ConnectToNearestAvailableVertex(const geometry::Port &port) {
+RoutingGrid::ConnectToNearestAvailableVertex(
+    const geometry::Port &port, const EquivalentNets &connectable_nets) {
   std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
       layer_access = physical_db_.FindReachableLayersByPinLayer(port.layer());
   for (const auto &entry : layer_access) {
     for (const geometry::Layer &layer : entry.second) {
       LOG(INFO) << "checking for grid vertex on layer " << layer;
-      auto vertex = ConnectToNearestAvailableVertex(port.centre(), layer);
+      auto vertex = ConnectToNearestAvailableVertex(
+          port.centre(), layer, connectable_nets);
       if (vertex.ok()) {
         return {VertexWithLayer{.vertex = *vertex, .layer = layer}};
       }
@@ -630,7 +655,9 @@ RoutingGrid::ConnectToNearestAvailableVertex(const geometry::Port &port) {
 }
 
 absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
-    const geometry::Point &point, const geometry::Layer &layer) {
+    const geometry::Point &point,
+    const geometry::Layer &layer,
+    const EquivalentNets &connectable_nets) {
   // If constrained to one or two layers on a fixed grid, we can determine the
   // nearest vertices quickly by shortlisting those vertices whose positions
   // would correspond to the given point by construction (since we also
@@ -665,8 +692,11 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     }
 
     for (RoutingVertex *vertex : entry.second) {
-      // Do not consider unavailable vertices!
-      if (!vertex->available())
+      // Do not consider unavailable vertices! Unless they have connectable
+      // nets!
+      if (!vertex->available() && !(
+            vertex->connectable_net() &&
+            connectable_nets.Contains(*vertex->connectable_net())))
         continue;
       uint64_t vertex_cost = static_cast<uint64_t>(
           vertex->L1DistanceTo(target_point));
@@ -752,7 +782,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     // FIXME: This function needs to allow collisions for same-net shapes!
     // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
     // go too close to in-use edges and vertices!
-    if (!ValidAgainstKnownBlockages(*off_grid) ||
+    if (!ValidAgainstKnownBlockages(*off_grid, connectable_nets) ||
         !ValidAgainstInstalledPaths(*off_grid)) {
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
       continue;
@@ -1238,7 +1268,7 @@ absl::Status RoutingGrid::AddRouteBetween(
     const geometry::Port &begin,
     const geometry::Port &end,
     const std::set<geometry::Port*> &avoid,
-    const std::string &net) {
+    const EquivalentNets &nets) {
   // Override the vertex availability check for this search to avoid
   // obstructions in the given avoid set. Useful since it doesn't mutate the
   // global starting state for the purpose of the search, but we have to
@@ -1276,7 +1306,7 @@ absl::Status RoutingGrid::AddRouteBetween(
     TearDownTemporaryBlockages(temporary_blockages);
   };
 
-  auto begin_connection = ConnectToGrid(begin);
+  auto begin_connection = ConnectToGrid(begin, nets);
   if (!begin_connection.ok()) {
     LOG(ERROR) << "Could not find available vertex for begin port.";
     return absl::NotFoundError(
@@ -1286,7 +1316,7 @@ absl::Status RoutingGrid::AddRouteBetween(
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
             << begin_vertex->centre();
 
-  auto end_connection = ConnectToGrid(end);
+  auto end_connection = ConnectToGrid(end, nets);
   if (!end_connection.ok()) {
     LOG(ERROR) << "Could not find available vertex for end port.";
     return absl::NotFoundError("Could not find available vertex for end port.");
@@ -1321,8 +1351,8 @@ absl::Status RoutingGrid::AddRouteBetween(
   std::move(tear_down_temporary_blockages).Invoke();
 
   // Assign net and install:
-  if (!net.empty())
-    shortest_path->set_net(net);
+  if (!nets.Empty())
+    shortest_path->set_net(nets.primary());
 
   absl::Status install = InstallPath(shortest_path.release());
   return install;
@@ -1345,7 +1375,7 @@ std::set<geometry::Layer> EffectiveLayersForInstalledVertex(
 
 absl::Status RoutingGrid::AddRouteToNet(
     const geometry::Port &begin,
-    const std::string &net,
+    const EquivalentNets &nets,
     const std::set<geometry::Port*> &avoid) {
   TemporaryBlockageInfo temporary_blockages;
   SetUpTemporaryBlockages(avoid, &temporary_blockages);
@@ -1363,9 +1393,11 @@ absl::Status RoutingGrid::AddRouteToNet(
 
   RoutingVertex *end_vertex;
 
-  auto shortest_path_result = ShortestPath(begin_vertex, net, &end_vertex);
+  // FIXME(aryap): ShortestPath should take EquivalentNets!
+  auto shortest_path_result = ShortestPath(begin_vertex, nets, &end_vertex);
   if (!shortest_path_result.ok()) {
-    std::string message = absl::StrCat("No path found to net ", net, ".");
+    std::string message = absl::StrCat(
+        "No path found to net ", nets.primary(), ".");
     LOG(WARNING) << message;
     TearDownTemporaryBlockages(temporary_blockages);
     return absl::NotFoundError(message);
@@ -1395,7 +1427,7 @@ absl::Status RoutingGrid::AddRouteToNet(
   LOG(INFO) << "Found path: " << *shortest_path;
 
   // Assign net and install:
-  shortest_path->set_net(net);
+  shortest_path->set_net(nets.primary());
 
   TearDownTemporaryBlockages(temporary_blockages);
 
@@ -1689,7 +1721,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
 
 absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     RoutingVertex *begin,
-    const std::string &to_net,
+    const EquivalentNets &to_nets,
     RoutingVertex **discovered_target) {
   auto path = ShortestPath(
       begin,
@@ -1704,16 +1736,16 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
         for (RoutingVertex *neighbour : neighbours) {
           if (!neighbour->available() &&
               neighbour->ChangesEdge() &&
-              neighbour->net() != to_net)
+              !to_nets.Contains(neighbour->net()))
             return false;
         }
-        return v->net() == to_net;
+        return to_nets.Contains(v->net());
       },
       discovered_target,
       // Usable vertices are:
       [&](RoutingVertex *v) {
         return v->available() || (
-            v->connectable_net() && *v->connectable_net() == to_net);
+            v->connectable_net() && to_nets.Contains(*v->connectable_net()));
       },
       // Usable edges are:
       [&](RoutingEdge *e) {
@@ -1722,10 +1754,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
           VLOG(16) << "edge " << *e << " is blocked";
           return false;
         }
-        if (e->in_use_by_net() && *e->in_use_by_net() == to_net) {
+        if (e->in_use_by_net() && to_nets.Contains(*e->in_use_by_net())) {
           return true;
         } else {
-          VLOG(16) << "cannot use edge " << *e << " for net " << to_net;
+          VLOG(16) << "cannot use edge " << *e << " for net "
+                   << to_nets.primary();
         }
         return false;
       },

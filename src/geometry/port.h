@@ -1,6 +1,8 @@
 #ifndef GEOMETRY_PORT_H_
 #define GEOMETRY_PORT_H_
 
+#include <string>
+
 #include "layer.h"
 #include "point.h"
 #include "rectangle.h"
@@ -13,6 +15,8 @@ namespace geometry {
 class Port : public Rectangle {
  public:
   Port() {}
+
+  std::string Describe() const;
 
   // TODO(aryap): Wait, is a port just a rect with some other stuff? So this is
   // a rect:
@@ -59,6 +63,9 @@ class Port : public Rectangle {
 };
 
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Port &port);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_PORT_H_

@@ -222,6 +222,7 @@ class RoutingTrack {
       const geometry::Point &other_end,
       int64_t margin = 0);
   void ApplyBlockage(const RoutingTrackBlockage &blockage,
+                     const std::string &net = "",
                      std::set<RoutingVertex*> *blocked_vertices = nullptr,
                      std::set<RoutingEdge*> *blocked_edges = nullptr);
 

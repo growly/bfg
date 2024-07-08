@@ -18,7 +18,8 @@ namespace bfg {
 
 void RoutingEdge::set_in_use_by_net(
     const std::optional<std::string> &in_use_by_net) {
-  VLOG_IF(13, in_use_by_net_) << *this << " now used by " << *in_use_by_net;
+  VLOG_IF(13, in_use_by_net_) << *this << " now used by " <<
+      (in_use_by_net ? *in_use_by_net : "nothing");
   in_use_by_net_ = in_use_by_net;
 }
 

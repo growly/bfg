@@ -715,7 +715,7 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
         rectangle.upper_right(),
         min_separation_between_edges_ + padding);
     if (blockage) {
-      ApplyBlockage(*blockage);
+      ApplyBlockage(*blockage, rectangle.net());
       return blockage;
     }
   }
@@ -735,7 +735,7 @@ void RoutingTrack::AddBlockage(
     RoutingTrackBlockage *blockage = MergeNewBlockage(
         pair.first, pair.second, min_separation_between_edges_ + padding);
     if (blockage) {
-      ApplyBlockage(*blockage);
+      ApplyBlockage(*blockage, polygon.net());
     }
   }
 }
@@ -752,7 +752,10 @@ RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
     RoutingTrackBlockage *temporary_blockage = new RoutingTrackBlockage(
         low_high.first, low_high.second);
     temporary_blockages_.push_back(temporary_blockage);
-    ApplyBlockage(*temporary_blockage, blocked_vertices, blocked_edges);
+    ApplyBlockage(*temporary_blockage,
+                  rectangle.net(),
+                  blocked_vertices,
+                  blocked_edges);
     return temporary_blockage;
   }
   return nullptr;
@@ -860,6 +863,7 @@ void RoutingTrack::ClearTemporaryBlockages() {
 
 void RoutingTrack::ApplyBlockage(
     const RoutingTrackBlockage &blockage,
+    const std::string &net,
     std::set<RoutingVertex*> *blocked_vertices,
     std::set<RoutingEdge*> *blocked_edges) {
   for (const auto &entry : vertices_by_offset_) {
@@ -873,6 +877,9 @@ void RoutingTrack::ApplyBlockage(
                        vertex->centre(),
                        0)) {
       vertex->set_available(false);
+      if (net != "") {
+        vertex->set_connectable_net(net);
+      }
       if (blocked_vertices)
         blocked_vertices->insert(vertex);
     }

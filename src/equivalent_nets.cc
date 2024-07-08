@@ -5,7 +5,7 @@
 
 namespace bfg {
 
-bool EquivalentNets::Contains(const std::string &name) {
+bool EquivalentNets::Contains(const std::string &name) const {
   return nets_.find(name) != nets_.end();
 }
 
@@ -13,7 +13,11 @@ bool EquivalentNets::Add(const std::string &name) {
   if (name == "") {
     return false;
   }
-  return nets_.insert(name).second;
+  bool added = nets_.insert(name).second;
+  if (added && nets_.size() == 1) {
+    primary_ = name;
+  }
+  return added;
 }
 
 bool EquivalentNets::Delete(const std::string &name) {

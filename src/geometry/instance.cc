@@ -121,8 +121,9 @@ void Instance::GeneratePorts() {
   int32_t rotation_ccw_degrees = (360 - (rotation_degrees_ccw_ % 360)) % 360;
   instance_ports_.clear();
   for (const auto &port : template_layout_->Ports()) {
-    const std::string &net = port->net();
+    const std::string &name = InstancePortName(port->net());
     Port *instance_port = new Port(*port);
+    instance_port->set_net(name);
     // In the template layout the implicit origin is always (0, 0).
     Rectangle rotated_bounds =
         instance_port->BoundingBoxIfRotated(Point(0, 0), rotation_ccw_degrees);
@@ -132,7 +133,7 @@ void Instance::GeneratePorts() {
     // instance, relative to the template layout origin (0, 0).
     geometry::Point translation = lower_left_ - Point {0, 0};
     instance_port->Translate(translation);
-    instance_ports_[net].insert(std::unique_ptr<Port>(instance_port));
+    instance_ports_[name].insert(std::unique_ptr<Port>(instance_port));
   }
   ports_generated_ = true;
 }

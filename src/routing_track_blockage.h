@@ -9,7 +9,12 @@ namespace bfg {
 class RoutingTrackBlockage {
  public:
   RoutingTrackBlockage(int64_t start, int64_t end)
-      : start_(start), end_(end) {
+      : start_(start), end_(end), net_("") {
+    LOG_IF(FATAL, end_ < start_)
+        << "RoutingTrackBlockage start must be before end.";
+  }
+  RoutingTrackBlockage(int64_t start, int64_t end, const std::string &net)
+      : start_(start), end_(end), net_(net) {
     LOG_IF(FATAL, end_ < start_)
         << "RoutingTrackBlockage start must be before end.";
   }
@@ -34,6 +39,7 @@ class RoutingTrackBlockage {
  private:
   int64_t start_;
   int64_t end_;
+  std::string net_;
 };
 
 }  // namespace bfg
