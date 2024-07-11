@@ -135,7 +135,8 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   RoutingTrackBlockage *current_blockage = MergeNewBlockage(
       edge->first()->centre(),
       edge->second()->centre(),
-      min_separation_between_edges_);
+      min_separation_between_edges_,
+      net);
 
   // Since we add a new blockage of strictly edge's size without any keep-out
   // padding, we are testing for edges that touch this one. Those edges must be
@@ -542,7 +543,8 @@ bool RoutingTrack::IsProbablyBlockedForVia(const geometry::Point &point,
 bool RoutingTrack::IsBlockedBetween(
     const geometry::Point &one_end,
     const geometry::Point &other_end,
-    int64_t margin) const {
+    int64_t margin,
+    const std::optional<std::string> &net) const {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
 
@@ -553,11 +555,17 @@ bool RoutingTrack::IsBlockedBetween(
   high += (margin - 1);
 
   for (RoutingTrackBlockage *blockage : blockages_) {
-    if (blockage->Blocks(low, high)) return true;
+    if (blockage->Blocks(low, high) && (
+          !net || *net != blockage->net())) {
+      return true;
+    }
   }
 
   for (RoutingTrackBlockage *blockage : temporary_blockages_) {
-    if (blockage->Blocks(low, high)) return true;
+    if (blockage->Blocks(low, high) && (
+          !net || *net != blockage->net())) {
+      return true;
+    }
   }
   // Does not overlap, start or stop in any blockages.
   return false;
@@ -708,12 +716,14 @@ bool RoutingTrack::Intersects(
 
 RoutingTrackBlockage *RoutingTrack::AddBlockage(
     const geometry::Rectangle &rectangle,
-    int64_t padding) {
+    int64_t padding,
+    const std::string &net) {
   if (Intersects(rectangle, padding)) {
     RoutingTrackBlockage *blockage = MergeNewBlockage(
         rectangle.lower_left(),
         rectangle.upper_right(),
-        min_separation_between_edges_ + padding);
+        min_separation_between_edges_ + padding,
+        net);
     if (blockage) {
       ApplyBlockage(*blockage, rectangle.net());
       return blockage;
@@ -724,7 +734,8 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
 
 void RoutingTrack::AddBlockage(
     const geometry::Polygon &polygon,
-    int64_t padding) {
+    int64_t padding,
+    const std::string &net) {
   //LOG(INFO) << "Adding polygon blockage to routing track " << offset_ << " padding="
   //          << padding << ": " << polygon.Describe();
   geometry::Line track = AsLine();
@@ -733,7 +744,10 @@ void RoutingTrack::AddBlockage(
 
   for (const auto &pair : intersections) {
     RoutingTrackBlockage *blockage = MergeNewBlockage(
-        pair.first, pair.second, min_separation_between_edges_ + padding);
+        pair.first,
+        pair.second,
+        min_separation_between_edges_ + padding,
+        net);
     if (blockage) {
       ApplyBlockage(*blockage, polygon.net());
     }
@@ -743,6 +757,7 @@ void RoutingTrack::AddBlockage(
 RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,
+    const std::string &net,
     std::set<RoutingVertex*> *blocked_vertices,
     std::set<RoutingEdge*> *blocked_edges) {
   if (Intersects(rectangle, padding)) {
@@ -750,7 +765,7 @@ RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
         rectangle.lower_left(), rectangle.upper_right());
 
     RoutingTrackBlockage *temporary_blockage = new RoutingTrackBlockage(
-        low_high.first, low_high.second);
+        low_high.first, low_high.second, net);
     temporary_blockages_.push_back(temporary_blockage);
     ApplyBlockage(*temporary_blockage,
                   rectangle.net(),
@@ -764,17 +779,26 @@ RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
 RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
     const geometry::Point &one_end,
     const geometry::Point &other_end,
-    int64_t margin) {
+    int64_t margin,
+    const std::string &net) {
   std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(one_end, other_end);
   int64_t low = low_high.first;
   int64_t high = low_high.second;
 
   if (blockages_.empty()) {
-    RoutingTrackBlockage *blockage = new RoutingTrackBlockage(low, high);
+    RoutingTrackBlockage *blockage = new RoutingTrackBlockage(low, high, net);
     blockages_.push_back(blockage);
     // Already sorted!
     return blockage;
   }
+
+  // FIXME(aryap): Generalising this to also account for net names effectively
+  // means that blockages can exist on top of each other. So, for a given net,
+  // we maintain the idea that overlapping blockages are merged, but we do not
+  // merge blockages on dissimilar nets. So the list of blockages is no longer a
+  // sorted list of disjoint blockages, but a sorted list of
+  // possibly-overlapping blockages. What does this mean...?
+
   // RoutingTrackBlockages should already be sorted in ascending order of
   // position.
   //
@@ -786,44 +810,65 @@ RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
   // implementation that isn't just storing a bunch of iterators returned by
   // subsequent calls to std::find_if. But since we need an iterator to remove
   // elements from a vector, we have to store an iterator anyway.
-  auto first = blockages_.end();
-  auto last = blockages_.end();
-  for (auto it = blockages_.begin(); it != blockages_.end(); ++it) {
+
+  // The goal here is to merge as many blockages as possible. Blockages can be
+  // merged if:
+  //  - they overlap within margin (exclusive); and
+  //  - they have the same net label.
+  //
+  // As a reminder, we treat margin as the minimum separation that is allowed
+  // between objects, and since they appear on a discrte unit grid, we subtract
+  // 1 to exclude the end of the span in the collision check:
+  //
+  //     object end
+  //     |
+  //     | minimum sep. = 5
+  //     V ----------------->|
+  // .   .   .   .   .   .   .   .
+  // ____.   .   .   .   .   .____
+  // .   |   .   .   .   .   |   . 
+  // .   |   .   .   .   .   |   .
+  //     ^                   ^
+  //     | ------------->|   `low` value of next blockage
+  //     | span to check for collisions = minimum separation - 1.
+  //     |
+  //     `high` value of left blockage
+  std::optional<std::pair<int64_t, int64_t>> span = std::nullopt;
+  for (auto it = blockages_.begin(); it != blockages_.end();) {
     RoutingTrackBlockage *blockage = *it;
-    if (blockage->Blocks(low - (margin - 1), high + (margin - 1))) {
-      if (first == blockages_.end())
-        first = it;
-      else if (it == std::next(last)) {
-        // Extend the last iterator only if it is consecutive.
-        last = it;
+    if (blockage->net() == net &&
+        blockage->Blocks(low - (margin - 1), high + (margin - 1))) {
+      // Since blockages are contiguous and arranged in increasing order (by
+      // start then end position), every blockage we collide with is the
+      // right-most blockage we have to include in the merge. We also guarantee
+      // that blockages of the same net do not overlap.
+      if (!span) {
+        span = std::pair<int64_t, int64_t>(
+            std::min(blockage->start(), low), std::max(blockage->end(), high));
+      } else {
+        span->second = std::max(blockage->end(), high);
       }
+      // Whatever existing blockages we collide with will be replaced, so remove
+      // them now.
+      it = blockages_.erase(it);
+      continue;
     }
+    ++it;
   }
 
-  if (first == blockages_.end()) {
+  if (!span) {
     // If no blockages were spanned the new blockage stands alone.
-    RoutingTrackBlockage *blockage = new RoutingTrackBlockage(low, high);
+    RoutingTrackBlockage *blockage = new RoutingTrackBlockage(low, high, net);
     blockages_.push_back(blockage);
     SortBlockages();
     return blockage;
   }
 
-  if (last == blockages_.end()) {
-    last = first;
-  }
-
-  // Remove elements [first, last] from blockages after combining them into one
-  // blockage spanned by the new one. We rely on the sorted order of the
-  // blockages.
+  // Remove elements [first, last] that match the new net from blockages after
+  // combining them into one blockage spanned by the new one. We rely on the
+  // sorted order of the blockages.
   RoutingTrackBlockage *blockage = new RoutingTrackBlockage(
-      std::min(low, (*first)->start()),
-      std::max(high, (*last)->end()));
-
-  // Delete the old elements.
-  ++last;
-  for (auto it = first; it != last; ++it)
-    delete *it;
-  blockages_.erase(first, last);
+      span->first, span->second, net);
 
   blockages_.push_back(blockage);
   SortBlockages();

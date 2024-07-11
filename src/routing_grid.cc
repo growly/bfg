@@ -83,7 +83,7 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
     std::optional<EquivalentNets> exceptional_nets,
     std::optional<RoutingTrackDirection> access_direction) const {
   if (shape_.ContainsVertex({16580, 5078})) {
-      LOG(INFO) << "ok";
+      VLOG(20) << "ok";
   }
   if (shape_.net() != "" && exceptional_nets &&
       exceptional_nets->Contains(shape_.net())) {
@@ -1484,7 +1484,8 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
 // that none of the surrounding vertices can be used for vias.
 //
 // We do this even though the vias might get "optimised out".
-void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
+void RoutingGrid::InstallVertexInPath(
+    RoutingVertex *vertex, const std::string &net) {
   if (vertex->horizontal_track() && vertex->vertical_track()) {
     // If the vertex is on the grid, we only disable the recorded neighbours.
     // We maybe could get await without adding blockages to their tracks as well
@@ -1632,7 +1633,7 @@ void RoutingGrid::InstallVertexInPath(RoutingVertex *vertex) {
     for (RoutingTrack *track : blocked_tracks) {
       if (track->layer() != layer)
         continue;
-      track->AddBlockage(*via_encap);
+      track->AddBlockage(*via_encap, 0, net);
     }
 
     int64_t min_separation = physical_db_.Rules(layer).min_separation;
@@ -1701,7 +1702,7 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
   }
 
   for (RoutingVertex *vertex : path->vertices()) {
-    InstallVertexInPath(vertex);
+    InstallVertexInPath(vertex, path->net());
   }
   
   paths_.push_back(path);
@@ -2014,11 +2015,11 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
   for (RoutingTrack *track : it->second) {
     if (is_temporary) {
       RoutingTrackBlockage* track_blockage = track->AddTemporaryBlockage(
-          rectangle, padding, blocked_vertices, blocked_edges);
+          rectangle, padding, rectangle.net(), blocked_vertices, blocked_edges);
       blockage->AddChildTrackBlockage(track, track_blockage);
     } else {
       // Add permanent blockage.
-      track->AddBlockage(rectangle, padding);
+      track->AddBlockage(rectangle, padding, rectangle.net());
     }
   }
 
@@ -2050,7 +2051,7 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
     if (it == tracks_by_layer_.end())
       return nullptr;
     for (RoutingTrack *track : it->second) {
-      track->AddBlockage(polygon, padding);
+      track->AddBlockage(polygon, padding, polygon.net());
     }
   }
 

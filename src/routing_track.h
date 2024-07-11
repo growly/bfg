@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include "layout.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
@@ -140,20 +142,23 @@ class RoutingTrack {
   // Rectangle blockages create single RoutingTrackBlockages or none at all, so
   // we can return one or nullptr here:
   RoutingTrackBlockage *AddBlockage(const geometry::Rectangle &rectangle,
-                                    int64_t padding = 0);
+                                    int64_t padding,
+                                    const std::string &net);
   // By contrast, polygons can create multiple blockages on a single track, and
   // need to return more creatively, if desired.
   void AddBlockage(const geometry::Polygon &polygon,
-                   int64_t padding = 0);
+                   int64_t padding,
+                   const std::string &net);
 
   // Returns the edges, vertices blocked by the given shape, with optional
   // padding, but does not create a permanent Blockage in the list of
   // blockages_.
   RoutingTrackBlockage *AddTemporaryBlockage(
       const geometry::Rectangle &rectangle,
-      int64_t padding = 0,
-      std::set<RoutingVertex*> *blocked_vertices = nullptr,
-      std::set<RoutingEdge*> *blocked_edges = nullptr);
+      int64_t padding,
+      const std::string &net,
+      std::set<RoutingVertex*> *blocked_vertices,
+      std::set<RoutingEdge*> *blocked_edges);
 
   bool RemoveTemporaryBlockage(RoutingTrackBlockage *blockage);
 
@@ -197,13 +202,29 @@ class RoutingTrack {
   bool IsProbablyBlockedForVia(
       const geometry::Point &point, int64_t margin = 0) const;
 
-  bool IsBlocked(const geometry::Point &point, int64_t margin = 0) const {
-    return IsBlockedBetween(point, point, margin);
+  bool IsBlocked(const geometry::Point &point,
+                 int64_t margin = 0) const {
+    return IsBlockedBetween(point, point, margin, std::nullopt);
   }
-  bool IsBlockedBetween(
-      const geometry::Point &one_end,
-      const geometry::Point &other_end,
-      int64_t margin = 0) const;
+  bool IsBlocked(const geometry::Point &point,
+                 int64_t margin,
+                 const std::optional<std::string> &net) const {
+    return IsBlockedBetween(point, point, margin, net);
+  }
+
+  bool IsBlockedBetween(const geometry::Point &one_end,
+                        const geometry::Point &other_end) const {
+    return IsBlockedBetween(one_end, other_end, 0, std::nullopt);
+  }
+  bool IsBlockedBetween(const geometry::Point &one_end,
+                        const geometry::Point &other_end,
+                        int64_t margin) const {
+    return IsBlockedBetween(one_end, other_end, margin, std::nullopt);
+  }
+  bool IsBlockedBetween(const geometry::Point &one_end,
+                        const geometry::Point &other_end,
+                        int64_t margin,
+                        const std::optional<std::string> &net) const;
 
   bool EdgeSpansVertex(
       const RoutingEdge &edge, const RoutingVertex &vertex) const;
@@ -220,7 +241,8 @@ class RoutingTrack {
   RoutingTrackBlockage *MergeNewBlockage(
       const geometry::Point &one_end,
       const geometry::Point &other_end,
-      int64_t margin = 0);
+      int64_t margin = 0,
+      const std::string &net = "");
   void ApplyBlockage(const RoutingTrackBlockage &blockage,
                      const std::string &net = "",
                      std::set<RoutingVertex*> *blocked_vertices = nullptr,
@@ -290,6 +312,9 @@ class RoutingTrack {
   // These can be cleared by pointer or all at once. The caller takes ownership
   // of the object.
   std::vector<RoutingTrackBlockage*> temporary_blockages_;
+
+  FRIEND_TEST(RoutingTrackTest, MergesBlockages);
+  FRIEND_TEST(RoutingTrackTest, DoesNotMergeDifferingNets);
 };
 
 std::ostream &operator<<(std::ostream &os, const RoutingTrack &track);

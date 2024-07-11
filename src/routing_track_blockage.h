@@ -31,10 +31,13 @@ class RoutingTrackBlockage {
   bool Blocks(int64_t low, int64_t high) const;
 
   void set_start(int64_t start) { start_ = start; }
-  void set_end(int64_t end) { end_ = end; }
-
   int64_t start() const { return start_; }
+
+  void set_end(int64_t end) { end_ = end; }
   int64_t end() const { return end_; }
+
+  void set_net(const std::string &net) { net_ = net; }
+  const std::string &net() const { return net_; }
 
  private:
   int64_t start_;

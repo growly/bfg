@@ -396,7 +396,7 @@ class RoutingGrid {
 
   absl::Status InstallPath(RoutingPath *path);
 
-  void InstallVertexInPath(RoutingVertex *vertex);
+  void InstallVertexInPath(RoutingVertex *vertex, const std::string &net);
 
   void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
 
