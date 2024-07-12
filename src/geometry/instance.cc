@@ -6,6 +6,7 @@
 
 #include "../cell.h"
 #include "../layout.h"
+#include "../equivalent_nets.h"
 #include "point.h"
 #include "rectangle.h"
 
@@ -138,8 +139,8 @@ void Instance::GeneratePorts() {
   ports_generated_ = true;
 }
 
-void Instance::GetShapesOnLayer(const geometry::Layer &layer,
-                                ShapeCollection *shapes) const {
+void Instance::CopyShapesOnLayer(const geometry::Layer &layer,
+                                 ShapeCollection *shapes) const {
   ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
   if (!master_shapes)
     return;
@@ -150,6 +151,20 @@ void Instance::GetShapesOnLayer(const geometry::Layer &layer,
   instance_shapes.Translate(lower_left_);
   instance_shapes.PrefixNetNames(name_, ".");
 
+  shapes->Add(instance_shapes);
+}
+
+void Instance::CopyShapesNotOnNets(const EquivalentNets &nets,
+                                   ShapeCollection *shapes) const {
+  ShapeCollection instance_shapes;
+  template_layout_->CopyShapesNotOnNets(nets, &instance_shapes);
+  if (instance_shapes.Empty()) {
+    return;
+  }
+
+  instance_shapes.Rotate(rotation_degrees_ccw_);
+  instance_shapes.Translate(lower_left_);
+  instance_shapes.PrefixNetNames(name_, ".");
   shapes->Add(instance_shapes);
 }
 

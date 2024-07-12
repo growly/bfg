@@ -8,6 +8,7 @@
 
 #include <glog/logging.h>
 
+#include "../equivalent_nets.h"
 #include "point.h"
 #include "port.h"
 #include "rectangle.h"
@@ -105,8 +106,11 @@ class Instance : public Manipulable {
 
   Port *GetNearestPortNamed(const Port &to_port, const std::string &name);
 
-  void GetShapesOnLayer(
+  void CopyShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
+
+  void CopyShapesNotOnNets(
+      const EquivalentNets &nets, ShapeCollection *shapes) const;
 
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }

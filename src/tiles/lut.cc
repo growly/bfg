@@ -484,7 +484,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
-    layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+    layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
     // LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes);
     //alt_routing_grid.AddBlockages(
@@ -492,7 +492,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   }
   {
     geometry::ShapeCollection shapes;
-    layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+    layout->CopyShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
     // LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
     routing_grid.AddBlockages(shapes);
     //alt_routing_grid.AddBlockages(
@@ -583,14 +583,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   //layout->AddLayout(*grid_layout, "routing_alt");
 
   // TODO(aryap): This seems to be a common enough op to factor out. Would be 1
-  // step nicer with GetShapesOnLayer returning the ShapeCollection directly,
+  // step nicer with CopyShapesOnLayer returning the ShapeCollection directly,
   // and would be 2 steps nicer with RoutingGrid having the facility to
   // automatically add blockages from a Layout (for all the layers it itself
   // uses for routing).
   //{
   //  // Add blockages from all existing shapes.
   //  geometry::ShapeCollection shapes;
-  //  grid_layout->GetShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+  //  grid_layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
   //  LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
   //  routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
   //}

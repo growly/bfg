@@ -12,6 +12,7 @@
 #include "port.h"
 #include "rectangle.h"
 #include "poly_line.h"
+#include "../equivalent_nets.h"
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -21,6 +22,9 @@ class PhysicalPropertiesDatabase;
 
 namespace geometry {
 
+// A ShapeCollection contains a copy of some shapes, arranged according to
+// their types. The ShapeCollection *owns* these shapes, which is why they are
+// usually copies of something somewhere else.
 class ShapeCollection : public Manipulable {
  public:
   ShapeCollection() = default;
@@ -41,6 +45,8 @@ class ShapeCollection : public Manipulable {
   void Rotate(int32_t degrees_ccw) override;
 
   void Add(const ShapeCollection &other);
+  void AddShapesNotOnNets(
+      const ShapeCollection &other, const EquivalentNets &nets);
 
   const Rectangle GetBoundingBox() const;
 
@@ -53,6 +59,9 @@ class ShapeCollection : public Manipulable {
           std::map<geometry::Layer,
                    std::unique_ptr<ShapeCollection>>> *shapes_by_layer_by_net)
       const;
+
+  void RemoveNets(const EquivalentNets &nets);
+  void KeepOnlyLayers(const std::set<geometry::Layer> &layers);
 
   ::vlsir::raw::LayerShapes ToVLSIRLayerShapes(
       const PhysicalPropertiesDatabase &db,
@@ -91,6 +100,12 @@ class ShapeCollection : public Manipulable {
   }
 
  private:
+  void Add(const ShapeCollection &other,
+           std::function<bool(const Rectangle&)> rectangle_filter,
+           std::function<bool(const Polygon&)> polygon_filter,
+           std::function<bool(const Port&)> port_filter,
+           std::function<bool(const PolyLine&)> poly_line_filter);
+
   std::vector<std::unique_ptr<geometry::Rectangle>> rectangles_;
   std::vector<std::unique_ptr<geometry::Polygon>> polygons_;
   std::vector<std::unique_ptr<geometry::Port>> ports_;

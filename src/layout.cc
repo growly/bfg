@@ -439,24 +439,14 @@ void Layout::LabelNet(const geometry::Point &point, const std::string &net) {
   LOG(FATAL) << "Not implemented.";
 }
 
-void Layout::GetShapesOnLayer(const geometry::Layer &layer,
+void Layout::CopyShapesOnLayer(const geometry::Layer &layer,
                               ShapeCollection *shapes) const {
-  ShapeCollection *direct = GetShapeCollection(layer);
-  // TODO(aryap): This is just
-  // shapes->Add(direct);
-  if (direct) {
-    for (const auto &rectangle : direct->rectangles()) {
-      shapes->rectangles().emplace_back(new geometry::Rectangle(*rectangle));
-    }
-    for (const auto &polygon : direct->polygons()) {
-      shapes->polygons().emplace_back(new geometry::Polygon(*polygon));
-    }
-    for (const auto &port : direct->ports()) {
-      shapes->ports().emplace_back(new geometry::Port(*port));
-    }
+  ShapeCollection *layer_shapes = GetShapeCollection(layer);
+  if (layer_shapes) {
+    shapes->Add(*layer_shapes);
   }
   for (const auto &instance : instances_) {
-    instance->GetShapesOnLayer(layer, shapes);
+    instance->CopyShapesOnLayer(layer, shapes);
   }
 }
 
@@ -466,6 +456,13 @@ ShapeCollection *Layout::GetShapeCollection(const geometry::Layer &layer) const 
     return shapes_it->second.get();
   }
   return nullptr;
+}
+
+void Layout::CopyShapesNotOnNets(
+    const EquivalentNets &nets, ShapeCollection *shapes) const {
+  for (const auto &entry : shapes_) {
+    shapes->AddShapesNotOnNets(*entry.second, nets);
+  }
 }
 
 void Layout::GetInstancesByName(

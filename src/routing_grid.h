@@ -413,6 +413,10 @@ class RoutingGrid {
       const std::set<geometry::Port*> &avoid,
       TemporaryBlockageInfo *blockage_info);
 
+  void SetUpTemporaryBlockages(
+      const geometry::ShapeCollection &avoid,
+      TemporaryBlockageInfo *blockage_info);
+
   void TearDownTemporaryBlockages(const TemporaryBlockageInfo &blockage_info);
 
   std::vector<CostedLayer> LayersReachableByVia(

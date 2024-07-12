@@ -167,9 +167,15 @@ class Layout : public geometry::Manipulable {
   geometry::Point GetPointOrDie(const std::string &name) const;
   std::optional<geometry::Point> GetPoint(const std::string &name) const;
 
-  void GetShapesOnLayer(
+  // NOTE(aryap): It might be justified to create a "ShadowShapeCollection" or
+  // something that merely collects pointers to shapes guaranteed to outlive
+  // the ShadowShapeCollection.
+  void CopyShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
   ShapeCollection *GetShapeCollection(const geometry::Layer &layer) const;
+
+  void CopyShapesNotOnNets(
+      const EquivalentNets &nets, ShapeCollection *shapes) const;
 
   void GetInstancesByName(
       std::unordered_map<std::string, geometry::Instance *const> *mapping)

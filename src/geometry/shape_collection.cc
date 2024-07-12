@@ -14,6 +14,7 @@
 #include "port.h"
 #include "rectangle.h"
 #include "poly_line.h"
+#include "../equivalent_nets.h"
 #include "../physical_properties_database.h"
 
 #include "vlsir/layout/raw.pb.h"
@@ -60,23 +61,62 @@ std::string ShapeCollection::Describe() const {
 }
 
 bool ShapeCollection::Empty() const {
-  return rectangles_.empty() && polygons_.empty() && ports_.empty();
+  return rectangles_.empty() && polygons_.empty() && ports_.empty() &&
+      poly_lines_.empty();
+}
+
+void ShapeCollection::AddShapesNotOnNets(
+    const ShapeCollection &other, const EquivalentNets &nets) {
+  Add(other,
+      [&](const Rectangle &shape) {
+        return !nets.Contains(shape.net());
+      },
+      [&](const Polygon &shape) {
+        return !nets.Contains(shape.net());
+      },
+      [&](const Port &shape) {
+        return !nets.Contains(shape.net());
+      },
+      [&](const PolyLine &shape) {
+        return !nets.Contains(shape.net());
+      });
 }
 
 void ShapeCollection::Add(const ShapeCollection &other) {
+  Add(other,
+      [](const Rectangle&) { return true; },
+      [](const Polygon&) { return true; },
+      [](const Port&) { return true; },
+      [](const PolyLine&) { return true; });
+}
+
+void ShapeCollection::Add(
+    const ShapeCollection &other,
+    std::function<bool(const Rectangle&)> rectangle_filter,
+    std::function<bool(const Polygon&)> polygon_filter,
+    std::function<bool(const Port&)> port_filter,
+    std::function<bool(const PolyLine&)> poly_line_filter) {
   for (const auto &rectangle : other.rectangles_) {
+    if (!rectangle_filter(*rectangle))
+      continue;
     Rectangle *copy = new Rectangle(*rectangle);
     rectangles_.emplace_back(copy);
   }
   for (const auto &polygon : other.polygons_) {
+    if (!polygon_filter(*polygon))
+      continue;
     Polygon *copy = new Polygon(*polygon);
     polygons_.emplace_back(copy);
   }
   for (const auto &port : other.ports_) {
+    if (!port_filter(*port))
+      continue;
     Port *copy = new Port(*port);
     ports_.emplace_back(copy);
   }
   for (const auto &poly_line : other.poly_lines_) {
+    if (!poly_line_filter(*poly_line))
+      continue;
     PolyLine *copy = new PolyLine(*poly_line);
     poly_lines_.emplace_back(copy);
   }
@@ -300,6 +340,44 @@ void ShapeCollection::CopyConnectables(
     *copy = *port;
     collection->ports_.emplace_back(copy);
   }
+}
+
+void ShapeCollection::RemoveNets(const EquivalentNets &nets) {
+  std::remove_if(rectangles_.begin(), rectangles_.end(),
+                 [&](const std::unique_ptr<Rectangle> &shape) {
+                   return nets.Contains(shape->net());
+                 });
+  std::remove_if(polygons_.begin(), polygons_.end(),
+                 [&](const std::unique_ptr<Polygon> &shape) {
+                   return nets.Contains(shape->net());
+                 });
+  std::remove_if(ports_.begin(), ports_.end(),
+                 [&](const std::unique_ptr<Port> &shape) {
+                   return nets.Contains(shape->net());
+                 });
+  std::remove_if(poly_lines_.begin(), poly_lines_.end(),
+                 [&](const std::unique_ptr<PolyLine> &shape) {
+                   return nets.Contains(shape->net());
+                 });
+}
+
+void ShapeCollection::KeepOnlyLayers(const std::set<geometry::Layer> &layers) {
+  std::remove_if(rectangles_.begin(), rectangles_.end(),
+                 [&](const std::unique_ptr<Rectangle> &shape) {
+                   return layers.find(shape->layer()) == layers.end();
+                 });
+  std::remove_if(polygons_.begin(), polygons_.end(),
+                 [&](const std::unique_ptr<Polygon> &shape) {
+                   return layers.find(shape->layer()) == layers.end();
+                 });
+  std::remove_if(ports_.begin(), ports_.end(),
+                 [&](const std::unique_ptr<Port> &shape) {
+                   return layers.find(shape->layer()) == layers.end();
+                 });
+  std::remove_if(poly_lines_.begin(), poly_lines_.end(),
+                 [&](const std::unique_ptr<PolyLine> &shape) {
+                   return layers.find(shape->layer()) == layers.end();
+                 });
 }
 
 ::vlsir::raw::LayerShapes ShapeCollection::ToVLSIRLayerShapes(
