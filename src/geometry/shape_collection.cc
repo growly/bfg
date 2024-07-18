@@ -67,30 +67,23 @@ bool ShapeCollection::Empty() const {
 
 void ShapeCollection::AddConnectableShapesNotOnNets(
     const ShapeCollection &other, const EquivalentNets &nets) {
-  //auto is_connectable_and_not_on_net = [&](const Shape &shape) {
-  //  return shape.is_connectable() && !nets.Contains(shape.net());
-  //};
+  auto is_connectable_and_not_on_net = [&](const Shape &shape) {
+    return shape.is_connectable() && !nets.Contains(shape.net());
+  };
   Add(other,
-      [&](const Rectangle &shape) {
-        return shape.is_connectable() && !nets.Contains(shape.net());
-      },
-      [&](const Polygon &shape) {
-        return shape.is_connectable() && !nets.Contains(shape.net());
-      },
-      [&](const Port &shape) {
-        return shape.is_connectable() && !nets.Contains(shape.net());
-      },
-      [&](const PolyLine &shape) {
-        return shape.is_connectable() && !nets.Contains(shape.net());
-      });
+      is_connectable_and_not_on_net,
+      is_connectable_and_not_on_net,
+      is_connectable_and_not_on_net,
+      is_connectable_and_not_on_net);
 }
 
 void ShapeCollection::Add(const ShapeCollection &other) {
+  auto always_true = [](const Shape &shape) { return true; }
   Add(other,
-      [](const Rectangle&) { return true; },
-      [](const Polygon&) { return true; },
-      [](const Port&) { return true; },
-      [](const PolyLine&) { return true; });
+      always_true,
+      always_true,
+      always_true,
+      always_true);
 }
 
 void ShapeCollection::Add(
