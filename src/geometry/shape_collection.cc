@@ -78,7 +78,7 @@ void ShapeCollection::AddConnectableShapesNotOnNets(
 }
 
 void ShapeCollection::Add(const ShapeCollection &other) {
-  auto always_true = [](const Shape &shape) { return true; }
+  auto always_true = [](const Shape &shape) { return true; };
   Add(other,
       always_true,
       always_true,
