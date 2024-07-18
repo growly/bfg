@@ -32,7 +32,9 @@ DEFINE_string(external_circuits, "", "Path to binary circuits proto");
 DEFINE_string(output_library, "library.pb", "Output Vlsir Library path");
 DEFINE_string(output_package, "package.pb", "Output Vlsir Package path");
 //DEFINE_bool(read_text_format, true, "Expect input protobufs in text format");
-DEFINE_bool(write_text_format, true, "Also write text format protobufs");
+// FIXME(aryap): Writing text format seems to cause a segfault with libprotoc
+// 3.21.5.
+DEFINE_bool(write_text_format, false, "Also write text format protobufs");
 
 DEFINE_string(primitives, "primitives.pb", "Path to binary circuits proto");
 

@@ -8,6 +8,7 @@
 #include <absl/strings/str_format.h>
 #include <absl/status/status.h>
 
+#include "equivalent_nets.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/port.h"
@@ -128,8 +129,9 @@ absl::Status RouterSession::PerformNetRouteOrder(
     }
     LOG(INFO) << "Routing " << *next << " to net "
               << std::quoted(request.net());
+    EquivalentNets nets = EquivalentNets({request.net()});
     absl::Status subsequent = routing_grid_->AddRouteToNet(
-        *next, request.net(), {});
+        *next, request.net(), nets, {});
     if (!subsequent.ok()) {
       // TODO(aryap): Should probably assemble these into a single status like
       // we do above.

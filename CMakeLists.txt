@@ -404,6 +404,7 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_track_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector_test.cc
 )
 

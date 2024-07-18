@@ -249,11 +249,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       all_instances_by_name;
   layout->GetInstancesByName(&all_instances_by_name);
 
-  std::set<geometry::Port*> all_mux_ports;
-  for (geometry::Instance *mux : mux_order) {
-    mux->GetInstancePorts(&all_mux_ports);
-  }
-
   {
     // Now that the banks prototype layouts are copied into the main layout, map
     // the memory instances by name into the actual objects.
@@ -560,11 +555,17 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         sink->GetInstancePorts("D", &ports);
         geometry::Port *end = *ports.begin();
 
-        std::string net_name = absl::StrCat(source->name(), "_Q");
-        memory_output_net_names[source] = net_name;
+        EquivalentNets net_names = 
+            EquivalentNets({end->net(), start->net()});
+        memory_output_net_names[source] = net_names.primary();
 
-        routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name)
-                    .IgnoreError();
+        geometry::ShapeCollection non_net_connectables;
+        layout->CopyConnectableShapesNotOnNets(
+            net_names,
+            &non_net_connectables);
+
+        routing_grid.AddRouteBetween(
+            *start, *end, non_net_connectables, net_names).IgnoreError();
 
         LOG(INFO) << "b=" << b << ", j=" << j << ", i=" << i << " "
                   << source->name() << " -> " << sink->name()
@@ -624,10 +625,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     sink->GetInstancePorts("D", &ports);
     geometry::Port *end = *ports.begin();
 
-    std::string net_name = absl::StrCat(source->name(), "_Q");
-    memory_output_net_names[source] = net_name;
+    EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
+    memory_output_net_names[source] = net_names.primary();
 
-    routing_grid.AddRouteBetween(*start, *end, all_mux_ports, net_name)
+    geometry::ShapeCollection non_net_connectables;
+    layout->CopyConnectableShapesNotOnNets(
+        net_names,
+        &non_net_connectables);
+    routing_grid.AddRouteBetween(*start, *end, non_net_connectables, net_names)
                 .IgnoreError();
   }
 
@@ -660,6 +665,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     {buf_order[0], "X", mux_order[0], "S0"},
     {buf_order[1], "P", mux_order[0], "S1_B"},
     {buf_order[1], "X", mux_order[0], "S1"},
+    //{buf_order[2], "P", mux_order[0], "S2_B"},
+    //{buf_order[2], "X", mux_order[0], "S2"},
   };
 
   for (auto &auto_connection : auto_connections) {
@@ -670,11 +677,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     LOG(INFO) << "Connecting " << source->name() << "/"
               << source_port_name << " to " << target->name()
               << "/" << target_port_name;
-
-    std::set<geometry::Port*> all_target_ports;
-    target->GetInstancePorts(&all_target_ports);
-    std::set<geometry::Port*> all_other_target_ports(
-        all_target_ports.begin(), all_target_ports.end());
 
     std::set<geometry::Port*> matching_source_ports;
     source->GetInstancePorts(source_port_name, &matching_source_ports);
@@ -692,15 +694,13 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       continue;
     }
 
-    // Do not avoid any ports with the given name, since presumably they are
-    // connectable.
-    for (geometry::Port *port : matching_target_ports) {
-      all_other_target_ports.erase(port);
-    }
+    EquivalentNets net_aliases = EquivalentNets({
+        target_port->net(), source_port->net()});
+
+    geometry::ShapeCollection non_net_connectables;
+    layout->CopyConnectableShapesNotOnNets(net_aliases, &non_net_connectables);
 
     while (target_port) {
-      EquivalentNets net_aliases = EquivalentNets({
-          target_port->net(), source_port->net()});
       //const std::string &net_name = target_port_name;
       LOG(INFO) << "Connecting port " << *source_port << " to port "
                 << *target_port << " on net " << net_aliases.primary();
@@ -708,7 +708,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       bool path_found = routing_grid.AddRouteBetween(
            *source_port,
            *target_port,
-           all_other_target_ports,
+           non_net_connectables,
            net_aliases).ok();
       //LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
       //          << " to net " << target_net;
@@ -773,9 +773,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     geometry::Instance *mux = auto_connection.target_mux;
     const std::string &input_name = auto_connection.mux_port_name;
 
-    std::set<geometry::Port*> all_other_mux_ports(
-        all_mux_ports.begin(), all_mux_ports.end());
-
     // Heuristically determine which mux port to use based on which which is
     // closest to the memory output, even if we're routing to the memory output
     // net instead of the port specifically.
@@ -795,31 +792,34 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         << "Nearest port named " << input_name
         << " did not appear in list of all ports for same name";
 
-    // Do not avoid any ports with the given name, since presumably they are
-    // connectable.
-    for (geometry::Port *port : mux_ports_on_net) {
-      all_other_mux_ports.erase(port);
-    }
-
     while (mux_port) {
+      EquivalentNets net_names = EquivalentNets(
+          {memory_output->net(), mux_port->net()});
+      geometry::ShapeCollection non_net_connectables;
+      layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
       LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-                << " avoiding " << DescribePorts(all_other_mux_ports);
+                << " avoiding " << non_net_connectables.Describe();
 
       bool path_found = false;
       auto named_output_it = memory_output_net_names.find(memory);
       if (named_output_it == memory_output_net_names.end()) {
-        std::string net_name = absl::StrCat(memory->name(), "_Q");
-        memory_output_net_names[memory] = net_name;
+        memory_output_net_names[memory] = net_names.primary();
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to " << memory->name();
         path_found = routing_grid.AddRouteBetween(
-            *mux_port, *memory_output, all_other_mux_ports, net_name).ok();
+            *mux_port, *memory_output, non_net_connectables, net_names).ok();
       } else {
+        // FIXME(aryap): I am stupid. The set of names given to the router to
+        // determine which shapes are connectable is different to the target
+        // set; in fact we must make sure that the net has a distinct name from
+        // either start/end port so that routed wires can be differentiated from
+        // start/end obstacles and ports!
         const std::string &target_net = named_output_it->second;
+        net_names.set_primary(target_net);
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to net " << target_net;
         path_found = routing_grid.AddRouteToNet(
-            *mux_port, target_net, all_other_mux_ports).ok();
+            *mux_port, target_net, net_names, non_net_connectables).ok();
       }
       if (path_found) {
         break;

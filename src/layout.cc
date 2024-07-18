@@ -450,7 +450,8 @@ void Layout::CopyShapesOnLayer(const geometry::Layer &layer,
   }
 }
 
-ShapeCollection *Layout::GetShapeCollection(const geometry::Layer &layer) const {
+ShapeCollection *Layout::GetShapeCollection(
+    const geometry::Layer &layer) const {
   auto shapes_it = shapes_.find(layer);
   if (shapes_it != shapes_.end()) {
     return shapes_it->second.get();
@@ -458,10 +459,13 @@ ShapeCollection *Layout::GetShapeCollection(const geometry::Layer &layer) const 
   return nullptr;
 }
 
-void Layout::CopyShapesNotOnNets(
+void Layout::CopyConnectableShapesNotOnNets(
     const EquivalentNets &nets, ShapeCollection *shapes) const {
   for (const auto &entry : shapes_) {
-    shapes->AddShapesNotOnNets(*entry.second, nets);
+    shapes->AddConnectableShapesNotOnNets(*entry.second, nets);
+  }
+  for (const auto &instance : instances_) {
+    instance->CopyConnectableShapesNotOnNets(nets, shapes);
   }
 }
 

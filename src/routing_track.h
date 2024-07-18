@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include "equivalent_nets.h"
 #include "layout.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
@@ -61,7 +62,10 @@ class RoutingTrack {
 
   // Tries to add an edge between the two vertices, returning true if
   // successful and false if no edge could be added (it was blocked).
-  bool MaybeAddEdgeBetween(RoutingVertex *one, RoutingVertex *the_other);
+  bool MaybeAddEdgeBetween(
+      RoutingVertex *one,
+      RoutingVertex *the_other,
+      const std::optional<EquivalentNets> &for_nets = std::nullopt);
 
   std::set<RoutingEdge*>::iterator RemoveEdge(
       const std::set<RoutingEdge*>::iterator &pos);
@@ -71,7 +75,9 @@ class RoutingTrack {
   // Adds the given vertex to this track, but does not take ownership of it.
   // Generates an edge from the given vertex to every other vertex in the
   // track, as long as that edge would not be blocked already.
-  bool AddVertex(RoutingVertex *vertex);
+  bool AddVertex(
+      RoutingVertex *vertex,
+      const std::optional<EquivalentNets> &for_nets = std::nullopt);
 
   // Remove the vertex from this track, and remove any edge that uses it.
   bool RemoveVertex(RoutingVertex *vertex);
@@ -115,6 +121,7 @@ class RoutingTrack {
       const RoutingGrid &grid,
       RoutingVertex *target,
       const geometry::Layer &target_layer,
+      const EquivalentNets &for_nets,
       RoutingVertex **connecting_vertex,
       bool *bridging_vertex_is_new,
       bool *target_already_exists);
@@ -203,28 +210,15 @@ class RoutingTrack {
       const geometry::Point &point, int64_t margin = 0) const;
 
   bool IsBlocked(const geometry::Point &point,
-                 int64_t margin = 0) const {
-    return IsBlockedBetween(point, point, margin, std::nullopt);
-  }
-  bool IsBlocked(const geometry::Point &point,
                  int64_t margin,
-                 const std::optional<std::string> &net) const {
+                 const std::optional<EquivalentNets> &net) const {
     return IsBlockedBetween(point, point, margin, net);
   }
 
   bool IsBlockedBetween(const geometry::Point &one_end,
-                        const geometry::Point &other_end) const {
-    return IsBlockedBetween(one_end, other_end, 0, std::nullopt);
-  }
-  bool IsBlockedBetween(const geometry::Point &one_end,
-                        const geometry::Point &other_end,
-                        int64_t margin) const {
-    return IsBlockedBetween(one_end, other_end, margin, std::nullopt);
-  }
-  bool IsBlockedBetween(const geometry::Point &one_end,
                         const geometry::Point &other_end,
                         int64_t margin,
-                        const std::optional<std::string> &net) const;
+                        const std::optional<EquivalentNets> &for_nets) const;
 
   bool EdgeSpansVertex(
       const RoutingEdge &edge, const RoutingVertex &vertex) const;

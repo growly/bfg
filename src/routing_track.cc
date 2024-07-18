@@ -7,6 +7,7 @@
 
 #include <absl/cleanup/cleanup.h>
 
+#include "equivalent_nets.h"
 #include "layout.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
@@ -42,10 +43,13 @@ bool RoutingTrack::RemoveEdge(RoutingEdge *edge, bool and_delete) {
 }
 
 bool RoutingTrack::MaybeAddEdgeBetween(
-    RoutingVertex *one, RoutingVertex *the_other) {
+    RoutingVertex *one,
+    RoutingVertex *the_other,
+    const std::optional<EquivalentNets> &for_nets) {
   if (IsBlockedBetween(one->centre(),
                        the_other->centre(),
-                       min_separation_to_new_blockages_))
+                       min_separation_to_new_blockages_,
+                       for_nets))
     return false;
   RoutingEdge *edge = new RoutingEdge(one, the_other);
   edge->set_track(this);
@@ -56,8 +60,10 @@ bool RoutingTrack::MaybeAddEdgeBetween(
   return true;
 }
 
-bool RoutingTrack::AddVertex(RoutingVertex *vertex) {
-  LOG_IF(FATAL, IsBlocked(vertex->centre()))
+bool RoutingTrack::AddVertex(
+    RoutingVertex *vertex,
+    const std::optional<EquivalentNets> &for_nets) {
+  LOG_IF(FATAL, IsBlocked(vertex->centre(), 0, for_nets))
       << "RoutingTrack cannot add vertex at " << vertex->centre()
       << ", it is blocked";
   LOG_IF(FATAL, ContainsVertex(vertex))
@@ -74,7 +80,7 @@ bool RoutingTrack::AddVertex(RoutingVertex *vertex) {
     // We _don't want_ short-circuiting here. Using the bitwise OR is correct
     // because bools are defined to be true or false, and it forces evaluation
     // of both operands every time.
-    any_success |= MaybeAddEdgeBetween(vertex, other);
+    any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
   }
   vertices_by_offset_.insert({vertex_offset, vertex});
   return any_success;
@@ -232,6 +238,7 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
     const RoutingGrid &grid,
     RoutingVertex *target,
     const geometry::Layer &target_layer,
+    const EquivalentNets &for_nets,
     RoutingVertex **connecting_vertex,
     bool *bridging_vertex_is_new,
     bool *target_already_exists) {
@@ -255,9 +262,10 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
                  << "RoutingTrackDirection: " << direction_;
   }
 
-  if (IsBlocked(candidate_centre)) {
+  if (IsBlocked(candidate_centre, 0, for_nets)) {
     return false;
   }
+  // TODO(aryap): This need a net check if it's reinstated:
   //if (IsProbablyBlockedForVia(candidate_centre)) {
   //  return false;
   //}
@@ -315,7 +323,7 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
     if (target_layer != layer_) {
       added_vertex->AddConnectedLayer(target_layer);
     }
-    if (!grid.ValidAgainstInstalledPaths(*added_vertex)) {
+    if (!grid.ValidAgainstInstalledPaths(*added_vertex, for_nets)) {
       LOG(WARNING) << "Bridging vertex " << added_vertex->centre()
                    << " on " << Debug()
                    << " is not valid against other installed paths";
@@ -324,7 +332,7 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
     bridging_vertex = added_vertex.release();
   }
 
-  if (!AddVertex(bridging_vertex)) {
+  if (!AddVertex(bridging_vertex, for_nets)) {
     return false;
   }
   AssignThisTrackToVertex(bridging_vertex);
@@ -544,7 +552,7 @@ bool RoutingTrack::IsBlockedBetween(
     const geometry::Point &one_end,
     const geometry::Point &other_end,
     int64_t margin,
-    const std::optional<std::string> &net) const {
+    const std::optional<EquivalentNets> &for_nets) const {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
 
@@ -556,14 +564,14 @@ bool RoutingTrack::IsBlockedBetween(
 
   for (RoutingTrackBlockage *blockage : blockages_) {
     if (blockage->Blocks(low, high) && (
-          !net || *net != blockage->net())) {
+          !for_nets || !for_nets->Contains(blockage->net()))) {
       return true;
     }
   }
 
   for (RoutingTrackBlockage *blockage : temporary_blockages_) {
     if (blockage->Blocks(low, high) && (
-          !net || *net != blockage->net())) {
+          !for_nets || !for_nets->Contains(blockage->net()))) {
       return true;
     }
   }

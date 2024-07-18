@@ -109,7 +109,7 @@ class Instance : public Manipulable {
   void CopyShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
 
-  void CopyShapesNotOnNets(
+  void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets, ShapeCollection *shapes) const;
 
   void set_name(const std::string &name) { name_ = name; }

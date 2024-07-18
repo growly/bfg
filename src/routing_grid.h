@@ -85,12 +85,17 @@ class RoutingGrid {
   absl::Status AddRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
-      const std::set<geometry::Port*> &avoid,
+      const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
+
+  // target_nets: the nets we're trying to reach with the path.
+  // usable_nets: the nets whose objects we can use to form the path. This
+  // should be a superset of target_nets.
   absl::Status AddRouteToNet(
       const geometry::Port &begin,
-      const EquivalentNets &nets,
-      const std::set<geometry::Port*> &avoid);
+      const EquivalentNets &target_nets,
+      const EquivalentNets &usable_nets,
+      const geometry::ShapeCollection &avoid);
 
   void AddVertex(RoutingVertex *vertex);
 
@@ -119,7 +124,13 @@ class RoutingGrid {
       const geometry::Polygon &polygon,
       int64_t padding = 0,
       bool is_temporary = false,
-       std::set<RoutingVertex*> *blocked_vertices = nullptr);
+      std::set<RoutingVertex*> *blocked_vertices = nullptr);
+  std::vector<RoutingGridBlockage<geometry::Rectangle>*> AddBlockage(
+      const geometry::Port &port,
+      int64_t padding = 0,
+      bool is_temporary = false,
+      std::set<RoutingVertex*> *blocked_vertices = nullptr,
+      std::set<RoutingEdge*> *blocked_edges = nullptr);
 
   // Removes the blockage from the list of known blockages, but does not undo
   // any effects of the blockage if they've already been applied.
@@ -138,20 +149,26 @@ class RoutingGrid {
 
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
-  bool ValidAgainstKnownBlockages(const RoutingEdge &edge) const;
+  bool ValidAgainstKnownBlockages(
+      const RoutingEdge &edge,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
+      const;
 
   bool ValidAgainstKnownBlockages(
       const RoutingVertex &vertex,
-      std::optional<EquivalentNets> for_nets = std::nullopt,
-      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
-      const;
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt) const;
 
-  bool ValidAgainstInstalledPaths(const RoutingEdge &edge) const;
+  bool ValidAgainstInstalledPaths(
+      const RoutingEdge &edge,
+      const std::optional<EquivalentNets> &for_nets = std::nullopt) const;
 
   bool ValidAgainstInstalledPaths(
       const RoutingVertex &vertex,
-      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
-      const;
+      const std::optional<EquivalentNets> &for_nets = std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt) const;
 
   std::optional<double> FindViaStackCost(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
@@ -250,7 +267,8 @@ class RoutingGrid {
       const RoutingVertex &vertex,
       const T &obstruction,
       int64_t padding = 0,
-      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt)
       const {
     if (!vertex.ConnectsLayer(obstruction.layer())) {
       return false;
@@ -308,9 +326,10 @@ class RoutingGrid {
   absl::Status ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,
       const geometry::Layer &access_layer,
-      std::optional<
+      const EquivalentNets &connectable_nets,
+      const std::optional<
           std::reference_wrapper<
-              const std::set<RoutingTrackDirection>>> directions,
+              const std::set<RoutingTrackDirection>>> &directions,
       RoutingVertex *off_grid);
 
   std::optional<geometry::Rectangle> ViaFootprint(
@@ -318,7 +337,8 @@ class RoutingGrid {
       const geometry::Layer &first_layer,
       const geometry::Layer &second_layer,
       int64_t padding = 0,
-      std::optional<RoutingTrackDirection> direction = std::nullopt) const;
+      const std::optional<RoutingTrackDirection> &direction =
+          std::nullopt) const;
   // FIXME(aryap): The RoutingVertex should contain enough information to figure
   // this out. It should at *least* always have its bottom and top layers
   // (ordered). the "connected_layers_" field is hard to use.
@@ -326,7 +346,8 @@ class RoutingGrid {
       const RoutingVertex &vertex,
       const geometry::Layer &layer,
       int64_t padding = 0,
-      std::optional<RoutingTrackDirection> direction = std::nullopt) const;
+      const std::optional<RoutingTrackDirection> &direction =
+          std::nullopt) const;
   std::optional<geometry::Rectangle> TrackFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
   std::optional<geometry::Rectangle> EdgeFootprint(
@@ -345,7 +366,9 @@ class RoutingGrid {
       const EquivalentNets &connectable_nets = EquivalentNets());
 
   absl::StatusOr<VertexWithLayer> AddAccessVerticesForPoint(
-      const geometry::Point &point, const geometry::Layer &layer);
+      const geometry::Point &point,
+      const geometry::Layer &layer,
+      const EquivalentNets &connectable_nets);
 
   absl::StatusOr<VertexWithLayer> ConnectToNearestAvailableVertex(
       const geometry::Port &port,
@@ -408,10 +431,6 @@ class RoutingGrid {
       const geometry::Layer &rhs_connectee) const;
   bool VerticesAreTooCloseForVias(
       const RoutingVertex &lhs, const RoutingVertex &rhs) const;
-
-  void SetUpTemporaryBlockages(
-      const std::set<geometry::Port*> &avoid,
-      TemporaryBlockageInfo *blockage_info);
 
   void SetUpTemporaryBlockages(
       const geometry::ShapeCollection &avoid,
@@ -483,24 +502,33 @@ class RoutingGridBlockage {
 
   bool BlocksWithoutPadding(
       const RoutingVertex &vertex,
-      std::optional<EquivalentNets> exceptional_nets = std::nullopt,
-      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const std::optional<EquivalentNets> &exceptional_nets =
+          std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt)
       const {
     return Blocks(vertex, 0, exceptional_nets, access_direction);
   }
-  bool BlocksWithoutPadding(const RoutingEdge &edge) const {
-    return Blocks(edge, 0);
+  bool BlocksWithoutPadding(
+      const RoutingEdge &edge,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
+      const {
+    return Blocks(edge, 0, exceptional_nets);
   }
 
   bool Blocks(
       const RoutingVertex &vertex,
-      std::optional<EquivalentNets> exceptional_nets = std::nullopt,
-      std::optional<RoutingTrackDirection> access_direction = std::nullopt)
+      const std::optional<EquivalentNets> &exceptional_nets =
+          std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt)
       const {
     return Blocks(vertex, padding_, exceptional_nets, access_direction);
   }
-  bool Blocks(const RoutingEdge &edge) const {
-    return Blocks(edge, padding_);
+  bool Blocks(
+      const RoutingEdge &edge,
+      const std::optional<EquivalentNets> &exceptional_nets) const {
+    return Blocks(edge, padding_, exceptional_nets);
   }
 
   // Takes ownership of the given RoutingTrackBlockage. Store the RoutingTrack
@@ -517,9 +545,12 @@ class RoutingGridBlockage {
   bool Blocks(
       const RoutingVertex &vertex,
       int64_t padding,
-      std::optional<EquivalentNets> exceptional_nets,
-      std::optional<RoutingTrackDirection> access_direction) const;
-  bool Blocks(const RoutingEdge &edge, int64_t padding) const;
+      const std::optional<EquivalentNets> &exceptional_nets,
+      const std::optional<RoutingTrackDirection> &access_direction) const;
+  bool Blocks(
+      const RoutingEdge &edge,
+      int64_t padding,
+      const std::optional<EquivalentNets> &exceptional_nets) const;
 
   const RoutingGrid &routing_grid_;
   // We store a copy of the shape. We can't store a reference because callers

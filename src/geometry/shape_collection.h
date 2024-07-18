@@ -45,7 +45,7 @@ class ShapeCollection : public Manipulable {
   void Rotate(int32_t degrees_ccw) override;
 
   void Add(const ShapeCollection &other);
-  void AddShapesNotOnNets(
+  void AddConnectableShapesNotOnNets(
       const ShapeCollection &other, const EquivalentNets &nets);
 
   const Rectangle GetBoundingBox() const;

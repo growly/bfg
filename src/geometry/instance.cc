@@ -154,10 +154,10 @@ void Instance::CopyShapesOnLayer(const geometry::Layer &layer,
   shapes->Add(instance_shapes);
 }
 
-void Instance::CopyShapesNotOnNets(const EquivalentNets &nets,
-                                   ShapeCollection *shapes) const {
+void Instance::CopyConnectableShapesNotOnNets(const EquivalentNets &nets,
+                                              ShapeCollection *shapes) const {
   ShapeCollection instance_shapes;
-  template_layout_->CopyShapesNotOnNets(nets, &instance_shapes);
+  template_layout_->CopyConnectableShapesNotOnNets(nets, &instance_shapes);
   if (instance_shapes.Empty()) {
     return;
   }

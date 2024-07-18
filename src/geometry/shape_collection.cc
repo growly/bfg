@@ -65,20 +65,23 @@ bool ShapeCollection::Empty() const {
       poly_lines_.empty();
 }
 
-void ShapeCollection::AddShapesNotOnNets(
+void ShapeCollection::AddConnectableShapesNotOnNets(
     const ShapeCollection &other, const EquivalentNets &nets) {
+  //auto is_connectable_and_not_on_net = [&](const Shape &shape) {
+  //  return shape.is_connectable() && !nets.Contains(shape.net());
+  //};
   Add(other,
       [&](const Rectangle &shape) {
-        return !nets.Contains(shape.net());
+        return shape.is_connectable() && !nets.Contains(shape.net());
       },
       [&](const Polygon &shape) {
-        return !nets.Contains(shape.net());
+        return shape.is_connectable() && !nets.Contains(shape.net());
       },
       [&](const Port &shape) {
-        return !nets.Contains(shape.net());
+        return shape.is_connectable() && !nets.Contains(shape.net());
       },
       [&](const PolyLine &shape) {
-        return !nets.Contains(shape.net());
+        return shape.is_connectable() && !nets.Contains(shape.net());
       });
 }
 
@@ -92,30 +95,30 @@ void ShapeCollection::Add(const ShapeCollection &other) {
 
 void ShapeCollection::Add(
     const ShapeCollection &other,
-    std::function<bool(const Rectangle&)> rectangle_filter,
-    std::function<bool(const Polygon&)> polygon_filter,
-    std::function<bool(const Port&)> port_filter,
-    std::function<bool(const PolyLine&)> poly_line_filter) {
+    std::function<bool(const Rectangle&)> include_rectangle,
+    std::function<bool(const Polygon&)> include_polygon,
+    std::function<bool(const Port&)> include_port,
+    std::function<bool(const PolyLine&)> include_poly_line) {
   for (const auto &rectangle : other.rectangles_) {
-    if (!rectangle_filter(*rectangle))
+    if (!include_rectangle(*rectangle))
       continue;
     Rectangle *copy = new Rectangle(*rectangle);
     rectangles_.emplace_back(copy);
   }
   for (const auto &polygon : other.polygons_) {
-    if (!polygon_filter(*polygon))
+    if (!include_polygon(*polygon))
       continue;
     Polygon *copy = new Polygon(*polygon);
     polygons_.emplace_back(copy);
   }
   for (const auto &port : other.ports_) {
-    if (!port_filter(*port))
+    if (!include_port(*port))
       continue;
     Port *copy = new Port(*port);
     ports_.emplace_back(copy);
   }
   for (const auto &poly_line : other.poly_lines_) {
-    if (!poly_line_filter(*poly_line))
+    if (!include_poly_line(*poly_line))
       continue;
     PolyLine *copy = new PolyLine(*poly_line);
     poly_lines_.emplace_back(copy);
@@ -296,7 +299,6 @@ void ShapeCollection::CopyConnectables(
         std::map<geometry::Layer,
                  std::unique_ptr<ShapeCollection>>> *shapes_by_layer_by_net)
     const {
-
   // Collect shapes by layer.
   for (const auto &rect : rectangles_) {
     if (!rect->is_connectable()) {
