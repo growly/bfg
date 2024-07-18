@@ -947,6 +947,10 @@ void GenerateOutput2To1MuxLayout(
     {Compass::LEFT, "left_right"},
     {Compass::RIGHT, "right_left"}
   };
+  std::map<Compass, std::string> net_names = {
+    {Compass::LEFT, "S2_B"},
+    {Compass::RIGHT, "S2"}
+  };
   for (const auto &entry : metal_column_x_values) {
     const Compass &target = entry.first;
     const std::string &name = poly_names[target];
@@ -990,6 +994,12 @@ void GenerateOutput2To1MuxLayout(
     main_layout->SavePoint(
         absl::StrCat(name, "_selector_column_bottom"),
         p_1);
+
+
+    // FIXME(aryap): Do these shapes ^^^ have the right net names?
+
+    main_layout->SetActiveLayerByName("met1.pin");
+    main_layout->AddSquareAsPort(p_0, met1_rules.min_width, net_names[target]);
   }
 
   // Connect the signal that selects the output of the upper-left mux
@@ -1011,6 +1021,10 @@ void GenerateOutput2To1MuxLayout(
   poly_names = {
     {Compass::LEFT, "left_left"},
     {Compass::RIGHT, "right_right"}
+  };
+  net_names = {
+    {Compass::LEFT, "S2"},
+    {Compass::RIGHT, "S2_B"}
   };
   Polygon *bottom_poly_connector;
   for (const auto &entry : metal_column_x_values) {
@@ -1053,6 +1067,10 @@ void GenerateOutput2To1MuxLayout(
     main_layout->SavePoint(
         absl::StrCat(name, "_selector_column_bottom"),
         met1_p1);
+
+    main_layout->SetActiveLayerByName("met1.pin");
+    main_layout->AddSquareAsPort(
+        met1_p1, met1_rules.min_width, net_names[target]);
   }
 
   // Add the first side of the mux back to the main layout.
@@ -1719,9 +1737,6 @@ void ConnectOppositeInputs(
   std::vector<ConnectionBetweenOppositePorts> final_selector_contact_infos;
   if (vertical_space_in_centre >= vertical_space_for_both) {
 
-    // !!!!
-    // FIXME(aryap): I'm using the wrong columns, d'oh!
-    // !!!!
     // +----+                                         +----+
     // |    +-----------------------------------------+    |
     // |             D                                     |  second_y
@@ -1855,7 +1870,7 @@ void BuildMet1Columns(
   int64_t central_column_x = width / 2;
   constexpr size_t kNumColumnsPerFlank = 6;
 
-  // FIXME(aryap): The way the metal columns are placed (below) is extremely
+  // TODO(aryap): The way the metal columns are placed (below) is extremely
   // brittle. They need to take into acccount the spacing of the local
   // interconnect layer beneath them, and space needs to be made for that when
   // placing the underlying objects.
@@ -2032,17 +2047,18 @@ void BuildMet1Columns(
 
     if (plan.net) {
       layout->SetActiveLayerByName("met1.pin");
+      const int64_t &pin_width = met1_rules.min_width;
       layout->AddSquareAsPort(
-          plan.top_destination_point,
-          met1_rules.min_width,
+          plan.top_destination_point - Point(0, pin_width / 2),
+          pin_width,
           *plan.net);
       layout->SavePoint(
           absl::StrCat(*plan.net, "_top_", label_suffix),
           plan.top_destination_point);
 
       layout->AddSquareAsPort(
-          plan.bottom_destination_point,
-          met1_rules.min_width,
+          plan.bottom_destination_point + Point(0, pin_width / 2),
+          pin_width,
           *plan.net);
       layout->SavePoint(
           absl::StrCat(*plan.net, "_bottom_", label_suffix),

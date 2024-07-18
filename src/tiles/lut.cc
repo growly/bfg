@@ -665,8 +665,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     {buf_order[0], "X", mux_order[0], "S0"},
     {buf_order[1], "P", mux_order[0], "S1_B"},
     {buf_order[1], "X", mux_order[0], "S1"},
-    //{buf_order[2], "P", mux_order[0], "S2_B"},
-    //{buf_order[2], "X", mux_order[0], "S2"},
+    {buf_order[2], "P", mux_order[0], "S2_B"},
+    {buf_order[2], "X", mux_order[0], "S2"},
   };
 
   for (auto &auto_connection : auto_connections) {
