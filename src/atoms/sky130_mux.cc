@@ -980,6 +980,7 @@ void GenerateOutput2To1MuxLayout(
         p_0, p_1,
         "mcon.drawing", "met1.drawing", "mcon.drawing",
         main_layout);
+    top_poly_connector->set_net(net_names[target]);
 
     main_layout->SetActiveLayerByName("li.drawing");
     left_right_poly_li_pour = ConnectPolyToMet1(
@@ -994,9 +995,6 @@ void GenerateOutput2To1MuxLayout(
     main_layout->SavePoint(
         absl::StrCat(name, "_selector_column_bottom"),
         p_1);
-
-
-    // FIXME(aryap): Do these shapes ^^^ have the right net names?
 
     main_layout->SetActiveLayerByName("met1.pin");
     main_layout->AddSquareAsPort(p_0, met1_rules.min_width, net_names[target]);
@@ -1051,6 +1049,7 @@ void GenerateOutput2To1MuxLayout(
         met1_p1, met1_p0,
         "mcon.drawing", "met1.drawing", "mcon.drawing",
         main_layout);
+    bottom_poly_connector->set_net(net_names[target]);
 
     main_layout->SetActiveLayerByName("li.drawing");
     ConnectPolyToMet1(
