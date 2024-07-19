@@ -638,7 +638,6 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     std::set<RoutingTrackDirection> access_directions = {
         RoutingTrackDirection::kTrackHorizontal,
         RoutingTrackDirection::kTrackVertical};
-    // TODO(aryap): This doesn't account for equivalent nets, it should.
     for (const auto &direction : access_directions) {
       if (!ValidAgainstKnownBlockages(*off_grid, for_nets, direction) ||
           !ValidAgainstInstalledPaths(*off_grid, for_nets, direction)) {
