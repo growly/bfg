@@ -63,6 +63,9 @@ bool RoutingTrack::MaybeAddEdgeBetween(
 bool RoutingTrack::AddVertex(
     RoutingVertex *vertex,
     const std::optional<EquivalentNets> &for_nets) {
+  LOG_IF(FATAL, !Intersects(vertex))
+      << "RoutingTrack " << Describe() << " cannot accommodate new vertex "
+      << vertex->centre();
   LOG_IF(FATAL, IsBlocked(vertex->centre(), 0, for_nets))
       << "RoutingTrack cannot add vertex at " << vertex->centre()
       << ", it is blocked";
@@ -116,6 +119,18 @@ bool RoutingTrack::ContainsVertex(RoutingVertex *vertex) const {
     }
   }
   return false;
+}
+
+bool RoutingTrack::Intersects(RoutingVertex *vertex) const {
+  switch (direction_) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      return vertex->centre().y() == offset_;
+    case RoutingTrackDirection::kTrackVertical:
+      return vertex->centre().x() == offset_;
+    default:
+      break;
+  }
+  LOG(FATAL) << "This track has an invalid direction: " << direction_;
 }
 
 RoutingVertex *RoutingTrack::GetVertexAtOffset(int64_t offset) const {
@@ -325,7 +340,7 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
     }
     if (!grid.ValidAgainstInstalledPaths(*added_vertex, for_nets)) {
       LOG(WARNING) << "Bridging vertex " << added_vertex->centre()
-                   << " on " << Debug()
+                   << " on " << Describe()
                    << " is not valid against other installed paths";
       return false;
     }
@@ -375,7 +390,7 @@ void RoutingTrack::ExportEdgesAsRectangles(
   }
 }
 
-std::string RoutingTrack::Debug() const {
+std::string RoutingTrack::Describe() const {
   std::stringstream ss;
   switch (direction_) {
     case RoutingTrackDirection::kTrackHorizontal:
@@ -944,6 +959,9 @@ void RoutingTrack::ApplyBlockage(
                        edge->first()->centre(),
                        edge->second()->centre(),
                        min_separation_to_new_blockages_)) {
+      if (net != "") {
+        edge->set_in_use_by_net(net);
+      }
       edge->set_blocked(true);
       if (blocked_edges)
         blocked_edges->insert(edge);
@@ -952,7 +970,7 @@ void RoutingTrack::ApplyBlockage(
 }
 
 std::ostream &operator<<(std::ostream &os, const RoutingTrack &track) {
-  os << track.Debug();
+  os << track.Describe();
   return os;
 }
 

@@ -156,8 +156,15 @@ void Instance::CopyShapesOnLayer(const geometry::Layer &layer,
 
 void Instance::CopyConnectableShapesNotOnNets(const EquivalentNets &nets,
                                               ShapeCollection *shapes) const {
+  std::unique_ptr<ShapeCollection> instance_shapes =
+      std::unique_ptr<ShapeCollection>(new ShapeCollection());
+  CopyAllShapes(instance_shapes.get());
+  shapes->AddConnectableShapesNotOnNets(*instance_shapes, nets);
+}
+
+void Instance::CopyAllShapes(ShapeCollection *shapes) const {
   ShapeCollection instance_shapes;
-  template_layout_->CopyConnectableShapesNotOnNets(nets, &instance_shapes);
+  template_layout_->CopyAllShapes(&instance_shapes);
   if (instance_shapes.Empty()) {
     return;
   }

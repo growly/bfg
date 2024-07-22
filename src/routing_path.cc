@@ -58,6 +58,18 @@ BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
 
 }    // namespace
 
+double RoutingPath::Cost() const {
+  // TODO(aryap): Should there be costs for start/end vias in here?
+  double cost = 0.0;
+  for (RoutingVertex *vertex : vertices_) {
+    cost += vertex->cost();
+  }
+  for (RoutingEdge *edge : edges_) {
+    cost += edge->cost();
+  }
+  return cost;
+}
+
 void RoutingPath::Flatten() {
   // We look for and try to eliminate wires that are too short to allow another
   // layer N wire over the top:

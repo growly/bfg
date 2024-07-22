@@ -1299,7 +1299,58 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
+absl::Status RoutingGrid::AddBestRouteBetween(
+    const std::set<geometry::Port*> begin_ports,
+    const std::set<geometry::Port*> end_ports,
+    const geometry::ShapeCollection &avoid,
+    const EquivalentNets &nets) {
+  std::vector<RoutingPath*> options;
+  for (const geometry::Port *begin : begin_ports) {
+    for (const geometry::Port *end : end_ports) {
+      auto maybe_path = FindRouteBetween(*begin, *end, avoid, nets);
+      if (!maybe_path.ok()) {
+        continue;
+      }
+      options.push_back(*maybe_path);
+    }
+  }
+  if (options.empty()) {
+    LOG(ERROR) << "None of the begin/end combinations yielded a workable path.";
+    return absl::NotFoundError(
+        "None of the begin/end combinations yielded a workable path.");
+  }
+  auto sort_fn = [&](RoutingPath *a, RoutingPath *b) {
+    return a->Cost() < b->Cost();
+  };
+  std::sort(options.begin(), options.end(), sort_fn);
+  // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
+  // rest must be deleted.
+  absl::Status install_status = InstallPath(options.front());
+
+  for (auto it = options.begin() + 1; it != options.end(); ++it) {
+    delete *it;
+  }
+  return install_status;
+}
+
 absl::Status RoutingGrid::AddRouteBetween(
+    const geometry::Port &begin,
+    const geometry::Port &end,
+    const geometry::ShapeCollection &avoid,
+    const EquivalentNets &nets) {
+  absl::StatusOr<RoutingPath*> find_path =
+      FindRouteBetween(begin, end, avoid, nets);
+
+  if (!find_path.ok()) {
+    return find_path.status();
+  }
+  std::unique_ptr<RoutingPath> shortest_path =
+      std::unique_ptr<RoutingPath>(*find_path);
+  absl::Status install = InstallPath(shortest_path.release());
+  return install;
+}
+
+absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
     const geometry::Port &begin,
     const geometry::Port &end,
     const geometry::ShapeCollection &avoid,
@@ -1380,17 +1431,17 @@ absl::Status RoutingGrid::AddRouteBetween(
 
   LOG(INFO) << "Found path: " << *shortest_path;
 
-  // Once the path is found, but _before_ it is installed, the temporarily
-  // blocked nodes should be re-enabled. This might be permanently blocked by
-  // installing the path finally!
-  std::move(tear_down_temporary_blockages).Invoke();
-
-  // Assign net and install:
+  // Assign net:
   if (!nets.Empty())
     shortest_path->set_net(nets.primary());
 
-  absl::Status install = InstallPath(shortest_path.release());
-  return install;
+  // It is important that temporary blockages be torn down before the path is
+  // installed, but since that is managed by the caller and since teardown will
+  // happen when the absl::Cleanup goes out of scope, we no longer have to do
+  // it manually.
+  // std::move(tear_down_temporary_blockages).Invoke();
+ 
+  return shortest_path.release();
 }
 
 namespace {
@@ -1882,6 +1933,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     // std::sort(queue.begin(), queue.end(), vertex_sort_fn);
 
     RoutingVertex *current = queue.top();
+    //LOG(INFO) << "current: " << current->centre();
     queue.pop();
 
     if (target_must_be_usable) {
@@ -1908,6 +1960,12 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     size_t current_index = current->contextual_index();
 
     for (RoutingEdge *edge : current->edges()) {
+      if (edge->TerminatesAt({21130, 8868}) && edge->TerminatesAt({17730, 8868})) {
+        LOG(INFO) << "here";
+      }
+      if (edge->TerminatesAt({21130, 8868}) && edge->TerminatesAt({21130, 5808})) {
+        LOG(INFO) << "also here";
+      }
       if (!usable_edge(edge)) {
         continue;
       }
@@ -2436,7 +2494,8 @@ void RoutingGrid::TearDownTemporaryBlockages(
     vertex->set_available(true);
   }
   for (RoutingEdge *const edge : blockage_info.blocked_edges) {
-    edge->set_blocked(false);
+    // This should clear any used nets and unblock the edge.
+    edge->ResetStatus();
   }
   for (RoutingGridBlockage<geometry::Rectangle> *const blockage :
           blockage_info.pin_blockages) {

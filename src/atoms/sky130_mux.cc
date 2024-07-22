@@ -971,7 +971,8 @@ void GenerateOutput2To1MuxLayout(
     //
     // Lower-right selector:
     //    Mirror the above structure.
-    Point p_0 = Point(metal_x, met1_top_y);
+    //
+    Point p_0 = Point(metal_x, met1_top_y + 550);
     Point p_1 = Point(
         p_0.x(), top_li_track_centre_y);
     main_layout->SetActiveLayerByName("met1.drawing");

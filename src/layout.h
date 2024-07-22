@@ -177,6 +177,8 @@ class Layout : public geometry::Manipulable {
   void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets, ShapeCollection *shapes) const;
 
+  void CopyAllShapes(ShapeCollection *shapes) const;
+
   void GetInstancesByName(
       std::unordered_map<std::string, geometry::Instance *const> *mapping)
       const;

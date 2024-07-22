@@ -469,6 +469,15 @@ void Layout::CopyConnectableShapesNotOnNets(
   }
 }
 
+void Layout::CopyAllShapes(ShapeCollection *shapes) const {
+  for (const auto &entry : shapes_) {
+    shapes->Add(*entry.second);
+  }
+  for (const auto &instance : instances_) {
+    instance->CopyAllShapes(shapes);
+  }
+}
+
 void Layout::GetInstancesByName(
     std::unordered_map<std::string, geometry::Instance *const> *mapping)
     const {

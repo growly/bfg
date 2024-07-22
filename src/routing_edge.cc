@@ -1,5 +1,6 @@
 #include "routing_edge.h"
 
+#include <sstream>
 #include <cmath>
 #include <optional>
 #include <set>
@@ -88,6 +89,11 @@ RoutingTrackDirection RoutingEdge::Direction() const {
   return RoutingTrackDirection::kTrackHorizontal;
 }
 
+bool RoutingEdge::TerminatesAt(const geometry::Point &point) const {
+  return (first_ && first_->centre() == point) ||
+      (second_ && second_->centre() == point);
+}
+
 void RoutingEdge::PrepareForRemoval() {
   if (first_)
     first_->RemoveEdge(this);
@@ -115,24 +121,30 @@ bool RoutingEdge::IsRectilinear() const {
       first_->centre().y() == second_->centre().y());
 }
 
+std::string RoutingEdge::Describe() const {
+  std::stringstream ss;
+  if (first_) {
+    ss << first_->centre();
+  } else {
+    ss << "nullptr";
+  }
+  ss << " to ";
+  if (second_) {
+    ss << second_->centre();
+  } else {
+    ss << "nullptr";
+  }
+  if (in_use_by_net_) {
+    ss << " used by net: " << *in_use_by_net_;
+  }
+  if (blocked_) {
+    ss << " blocked";
+  }
+  return ss.str();
+}
+
 std::ostream &operator<<(std::ostream &os, const RoutingEdge &edge) {
-  if (edge.first()) {
-    os << edge.first()->centre();
-  } else {
-    os << "nullptr";
-  }
-  os << " to ";
-  if (edge.second()) {
-    os << edge.second()->centre();
-  } else {
-    os << "nullptr";
-  }
-  if (edge.in_use_by_net()) {
-    os << " used by net: " << *edge.in_use_by_net();
-  }
-  if (edge.blocked()) {
-    os << " blocked";
-  }
+  os << edge.Describe();
   return os;
 }
 

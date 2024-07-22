@@ -112,6 +112,8 @@ class Instance : public Manipulable {
   void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets, ShapeCollection *shapes) const;
 
+  void CopyAllShapes(ShapeCollection *shapes) const;
+
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 

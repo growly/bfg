@@ -32,6 +32,8 @@ class RoutingPath {
     return Empty() ? nullptr : vertices_.back();
   }
 
+  double Cost() const;
+
   void Legalise();
 
   void ToPolyLinesAndVias(

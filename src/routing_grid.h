@@ -82,6 +82,12 @@ class RoutingGrid {
   absl::Status ConnectLayers(
       const geometry::Layer &first, const geometry::Layer &second);
 
+  absl::Status AddBestRouteBetween(
+      const std::set<geometry::Port*> begin_ports,
+      const std::set<geometry::Port*> end_ports,
+      const geometry::ShapeCollection &avoid,
+      const EquivalentNets &nets);
+
   absl::Status AddRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
@@ -322,6 +328,12 @@ class RoutingGrid {
 
   template<typename T>
   void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
+
+  absl::StatusOr<RoutingPath*> FindRouteBetween(
+      const geometry::Port &begin,
+      const geometry::Port &end,
+      const geometry::ShapeCollection &avoid,
+      const EquivalentNets &nets);
 
   absl::Status ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,

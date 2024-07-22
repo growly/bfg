@@ -86,6 +86,8 @@ class RoutingTrack {
 
   RoutingVertex *GetVertexAtOffset(int64_t offset) const;
 
+  bool Intersects(RoutingVertex *vertex) const;
+
   void MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net);
 
   bool IsPerpendicularTo(const RoutingTrackDirection &other) const;
@@ -175,7 +177,7 @@ class RoutingTrack {
   std::pair<geometry::Line, geometry::Line> MajorAxisLines(
       int64_t padding) const;
 
-  std::string Debug() const;
+  std::string Describe() const;
 
   const std::set<RoutingEdge*> &edges() const { return edges_; }
 

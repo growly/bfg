@@ -24,9 +24,13 @@ class RoutingEdge {
       first_(first),
       second_(second),
       cost_(0.0) {
+    Direction();    // DEBUG
     ApproximateCost();
   }
   ~RoutingEdge() {}
+
+  std::string Describe() const;
+  bool TerminatesAt(const geometry::Point &point) const;
 
   void PrepareForRemoval();
 
