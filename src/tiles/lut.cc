@@ -700,33 +700,33 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     geometry::ShapeCollection non_net_connectables;
     layout->CopyConnectableShapesNotOnNets(net_aliases, &non_net_connectables);
 
-    bool path_found = routing_grid.AddBestRouteBetween(
-        matching_source_ports,
-        matching_target_ports,
-        non_net_connectables,
-        net_aliases).ok();
+    //bool path_found = routing_grid.AddBestRouteBetween(
+    //    matching_source_ports,
+    //    matching_target_ports,
+    //    non_net_connectables,
+    //    net_aliases).ok();
 
-    //while (target_port) {
-    //  //const std::string &net_name = target_port_name;
-    //  LOG(INFO) << "Connecting port " << *source_port << " to port "
-    //            << *target_port << " on net " << net_aliases.primary();
+    while (target_port) {
+      //const std::string &net_name = target_port_name;
+      LOG(INFO) << "Connecting port " << *source_port << " to port "
+                << *target_port << " on net " << net_aliases.primary();
 
-    //  bool path_found = routing_grid.AddRouteBetween(
-    //       *source_port,
-    //       *target_port,
-    //       non_net_connectables,
-    //       net_aliases).ok();
-    //  //LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-    //  //          << " to net " << target_net;
-    //  //path_found = routing_grid.AddRouteToNet(
-    //  //    *mux_port, target_net, all_other_mux_ports);
-    //  if (path_found) {
-    //    break;
-    //  }
-    //  matching_target_ports.erase(target_port);
-    //  target_port = matching_target_ports.empty() ?
-    //      nullptr : *matching_target_ports.begin();
-    //}
+      bool path_found = routing_grid.AddRouteBetween(
+           *source_port,
+           *target_port,
+           non_net_connectables,
+           net_aliases).ok();
+      //LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+      //          << " to net " << target_net;
+      //path_found = routing_grid.AddRouteToNet(
+      //    *mux_port, target_net, all_other_mux_ports);
+      if (path_found) {
+        break;
+      }
+      matching_target_ports.erase(target_port);
+      target_port = matching_target_ports.empty() ?
+          nullptr : *matching_target_ports.begin();
+    }
   }
 
   // Connect memory outputs to the muxes in order:

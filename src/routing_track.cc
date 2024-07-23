@@ -85,6 +85,9 @@ bool RoutingTrack::AddVertex(
     // of both operands every time.
     any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
   }
+  // The vertex is not owned by this track but, in order to clean up correcly
+  // if it is deleted, we add references back here.
+  AssignThisTrackToVertex(vertex);
   vertices_by_offset_.insert({vertex_offset, vertex});
   return any_success;
 }
@@ -350,7 +353,6 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
   if (!AddVertex(bridging_vertex, for_nets)) {
     return false;
   }
-  AssignThisTrackToVertex(bridging_vertex);
 
   *connecting_vertex = bridging_vertex;
   return true;
@@ -922,11 +924,6 @@ bool RoutingTrack::RemoveTemporaryBlockage(RoutingTrackBlockage *blockage) {
   }
   temporary_blockages_.erase(it);
   return true;
-}
-
-void RoutingTrack::ClearTemporaryBlockages() {
-  // We don't own these, so we just clear them.
-  temporary_blockages_.clear();
 }
 
 void RoutingTrack::ApplyBlockage(

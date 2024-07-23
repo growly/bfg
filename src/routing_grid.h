@@ -138,6 +138,8 @@ class RoutingGrid {
       std::set<RoutingVertex*> *blocked_vertices = nullptr,
       std::set<RoutingEdge*> *blocked_edges = nullptr);
 
+  void ClearAllBlockages();
+
   // Removes the blockage from the list of known blockages, but does not undo
   // any effects of the blockage if they've already been applied.
   template <typename T>

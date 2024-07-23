@@ -372,6 +372,16 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
 }
 
 RoutingGrid::~RoutingGrid()  {
+  // NOTE(aryap): The problem with doing this in ~RoutingGrid() explicitly is
+  // that we can no longer rely on the ordered unwind of RoutingGrid's fields
+  // to delete objects which depend on these ones first. In particular,
+  // RoutingGridBlockages can depend on RoutingTracks, so we have to make sure
+  // we delete the RoutingGridBlockages first.
+  //
+  // The reason we have to do it explicitly is because we're using raw
+  // pointers, that we own. Oof.
+  ClearAllBlockages();
+
   for (auto entry : tracks_by_layer_) {
     for (RoutingTrack *track : entry.second) {
       delete track;
@@ -638,10 +648,13 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     std::set<RoutingTrackDirection> access_directions = {
         RoutingTrackDirection::kTrackHorizontal,
         RoutingTrackDirection::kTrackVertical};
-    for (const auto &direction : access_directions) {
+    for (auto it = access_directions.begin(); it != access_directions.end();) {
+      const RoutingTrackDirection &direction = *it;
       if (!ValidAgainstKnownBlockages(*off_grid, for_nets, direction) ||
           !ValidAgainstInstalledPaths(*off_grid, for_nets, direction)) {
-        access_directions.erase(direction);
+        it = access_directions.erase(it);
+      } else {
+        ++it;
       }
     }
     if (access_directions.empty()) {
@@ -1200,9 +1213,8 @@ absl::Status RoutingGrid::ConnectLayers(
       LOG_IF(FATAL, !horizontal_track) << "Horizontal routing track is nullptr";
 
       RoutingVertex *vertex = new RoutingVertex(geometry::Point(x, y));
-      vertex->set_horizontal_track(horizontal_track);
-      vertex->set_vertical_track(vertical_track);
-
+      // These methods will assign the respective horizontal_track and
+      // vertical_tracks of the vertex to the tracks themselves.
       horizontal_track->AddVertex(vertex);
       vertical_track->AddVertex(vertex);
 
@@ -2075,6 +2087,13 @@ void RoutingGrid::AddBlockages(
   }
 }
 
+void RoutingGrid::ClearAllBlockages() {
+  // Since these are vectors of unique_ptr, we just have to clear them to
+  // invoke their destructors.
+  rectangle_blockages_.clear();
+  polygon_blockages_.clear();
+}
+
 RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,
@@ -2108,9 +2127,15 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
 
   for (RoutingTrack *track : it->second) {
     if (is_temporary) {
+      // TODO(aryap): Move the addition of the track temporary blockage into
+      // the blockage 'AddChildTrackBlockage' function. That way managing
+      // temporary track blockages as a result of RoutingGridBlockages is kept
+      // together in one place.
       RoutingTrackBlockage* track_blockage = track->AddTemporaryBlockage(
           rectangle, padding, rectangle.net(), blocked_vertices, blocked_edges);
-      blockage->AddChildTrackBlockage(track, track_blockage);
+      if (track_blockage) {
+        blockage->AddChildTrackBlockage(track, track_blockage);
+      }
     } else {
       // Add permanent blockage.
       track->AddBlockage(rectangle, padding, rectangle.net());

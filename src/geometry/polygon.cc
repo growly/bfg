@@ -177,8 +177,7 @@ void Polygon::ResolveIntersectingPointsFrom(
 }
 
 void Polygon::IntersectingPoints(
-    const Line &line,
-    std::vector<PointPair> *points) const {
+    const Line &line, std::vector<PointPair> *points) const {
   points->clear();
   if (vertices_.empty()) {
     LOG(WARNING) << "Polygon with no vertices!";

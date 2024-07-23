@@ -171,8 +171,6 @@ class RoutingTrack {
 
   bool RemoveTemporaryBlockage(RoutingTrackBlockage *blockage);
 
-  void ClearTemporaryBlockages();
-
   geometry::Line AsLine() const;
   std::pair<geometry::Line, geometry::Line> MajorAxisLines(
       int64_t padding) const;
@@ -297,6 +295,7 @@ class RoutingTrack {
   // We want to keep a sorted list of blockages, but if we keep them as a
   // std::set we can't mutate the objects (since they will not automatically be
   // re-sorted). Instead we keep a vector and make sure to sort it ourselves.
+  // We OWN these objects.
   std::vector<RoutingTrackBlockage*> blockages_;
 
   // We need a separate plane of blockages for temporary obstructions, perhaps
@@ -306,7 +305,7 @@ class RoutingTrack {
   // so much.
   //
   // These can be cleared by pointer or all at once. The caller takes ownership
-  // of the object.
+  // of the object, we DO NOT OWN temporary blockages.
   std::vector<RoutingTrackBlockage*> temporary_blockages_;
 
   FRIEND_TEST(RoutingTrackTest, MergesBlockages);
