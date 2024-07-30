@@ -1331,10 +1331,15 @@ absl::Status RoutingGrid::AddBestRouteBetween(
     return absl::NotFoundError(
         "None of the begin/end combinations yielded a workable path.");
   }
-  auto sort_fn = [&](RoutingPath *a, RoutingPath *b) {
-    return a->Cost() < b->Cost();
+  auto sort_fn = [&](RoutingPath *lhs, RoutingPath *rhs) {
+    return lhs->Cost() < rhs->Cost();
   };
   std::sort(options.begin(), options.end(), sort_fn);
+
+  for (RoutingPath *path : options) {
+    LOG(INFO) << "cost: " << path->Cost() << " option: " << path->Describe();
+  }
+
   // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
   // rest must be deleted.
   absl::Status install_status = InstallPath(options.front());

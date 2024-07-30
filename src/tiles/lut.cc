@@ -660,51 +660,91 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     geometry::Instance *target_instance;
     std::string target_port_name;
   };
-  std::vector<AutoConnection> auto_connections = {
-    {buf_order[0], "P", mux_order[0], "S0_B"},
-    {buf_order[0], "X", mux_order[0], "S0"},
-    {buf_order[1], "P", mux_order[0], "S1_B"},
-    {buf_order[1], "X", mux_order[0], "S1"},
-    {buf_order[2], "P", mux_order[0], "S2_B"},
-    {buf_order[2], "X", mux_order[0], "S2"},
+  struct PortKey {
+    geometry::Instance *instance;
+    std::string port_name;
+  };
+  struct AutoConnections {
+    std::vector<PortKey> port_keys;
+  };
+  std::vector<AutoConnections> auto_connections = {
+    {{buf_order[0], "P"}, {mux_order[0], "S0_B"}, {mux_order[1], "S0_B"}},
+    {{buf_order[0], "X"}, {mux_order[0], "S0"}, {mux_order[1], "S0"}},
+    {{buf_order[1], "P"}, {mux_order[0], "S1_B"}},
+    {{buf_order[1], "X"}, {mux_order[0], "S1"}},
+    {{buf_order[2], "P"}, {mux_order[0], "S2_B"}},
+    {{buf_order[2], "X"}, {mux_order[0], "S2"}},
   };
 
-  for (auto &auto_connection : auto_connections) {
-    geometry::Instance *source = auto_connection.source_instance;
-    geometry::Instance *target = auto_connection.target_instance;
-    const std::string &source_port_name = auto_connection.source_port_name;
-    const std::string &target_port_name = auto_connection.target_port_name;
-    LOG(INFO) << "Connecting " << source->name() << "/"
-              << source_port_name << " to " << target->name()
-              << "/" << target_port_name;
+  for (auto &connections : auto_connections) {
+    geometry::Port *source = nullptr;
+    std::vector<geometry::Port*> targets;
+    EquivalentNets net_aliases;
 
-    std::set<geometry::Port*> matching_source_ports;
-    source->GetInstancePorts(source_port_name, &matching_source_ports);
-    geometry::Port *source_port = *matching_source_ports.begin();
+    // For the first port, pick the first matching name. For subsequent ports
+    // pick the closest one to the source.
+    for (const auto &port_key : connections) {
+      geometry::Instance *instance = port_key.instance;
 
-    std::set<geometry::Port*> matching_target_ports;
-    target->GetInstancePorts(target_port_name, &matching_target_ports);
-    geometry::Port *target_port =
-        target->GetNearestPortNamed(*source_port, target_port_name);
-    matching_target_ports.erase(target_port);
-
-    if (!target_port) {
-      LOG(WARNING) << "No target port found named \"" << target_port_name
-                   << "\" on instance \"" << target->name();
-      continue;
+      // Pick the first:
+      std::set<geometry::Port*> matching_ports;
+      instance->GetInstancePorts(port_key.port_name, &matching_ports);
+      if (matching_ports.empty()) {
+        LOG(WARNING) << "No port found named \"" << port_key.port_name
+                     << "\" on instance \"" << instance->name();
+        continue;
+      }
+      if (!source) {
+        // TODO(aryap): This should just return the set directly.
+        source = *matching_ports.begin();
+        // The port name should include any prefixes not attached to the
+        // searched port name.
+        net_aliases.Add(source->name());
+      } else {
+        geometry::Port *target_port =
+            instance->GetNearestPortNamed(*source_port, target_port_name);
+        matching_ports.erase(target_port);
+        connecting_ports.push_back(target_port);
+        net_aliases.Add(target_port->name());
+      }
     }
-
-    EquivalentNets net_aliases = EquivalentNets({
-        target_port->net(), source_port->net()});
 
     geometry::ShapeCollection non_net_connectables;
     layout->CopyConnectableShapesNotOnNets(net_aliases, &non_net_connectables);
 
-    bool path_found = routing_grid.AddBestRouteBetween(
-        matching_source_ports,
-        matching_target_ports,
-        non_net_connectables,
-        net_aliases).ok();
+    std::optional<std::string> net_name = std::nullopt;
+    for (geometry::Port *port : targets) {
+      if (!net_name) {
+        bool path_found = routing_grid.AddBestRouteBetween(
+            matching_source_ports,
+            matching_target_ports,
+            non_net_connectables,
+            net_aliases).ok();
+        if (path_found) {
+          net_name = net_aliases.primary();
+        }
+      } else {
+        bool path_found = routing_grid.AddRouteToNet(
+            port, *net_name, net_aliases, non_net_connectables);
+      }
+      const auto &port_key = *it;
+      geometry::Instance *target = port_key.instance;
+      const std::string &target_port_name = port_key.port_name;
+      LOG(INFO) << "Connecting " << source->name() << "/"
+                << source_port_name << " to " << target->name()
+                << "/" << target_port_name;
+
+      std::set<geometry::Port*> matching_source_ports;
+      source->GetInstancePorts(source_port_name, &matching_source_ports);
+      geometry::Port *source_port = *matching_source_ports.begin();
+
+      std::set<geometry::Port*> matching_target_ports;
+      target->GetInstancePorts(target_port_name, &matching_target_ports);
+      geometry::Port *target_port =
+          target->GetNearestPortNamed(*source_port, target_port_name);
+      matching_target_ports.erase(target_port);
+
+    }
 
     //while (target_port) {
     //  //const std::string &net_name = target_port_name;
