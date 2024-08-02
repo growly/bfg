@@ -82,6 +82,20 @@ class RoutingGrid {
   absl::Status ConnectLayers(
       const geometry::Layer &first, const geometry::Layer &second);
 
+  absl::Status AddMultiPointRoute(
+      const Layout &layout,
+      const std::vector<std::vector<geometry::Port*>> ports);
+
+  // Connect multiple ports on the same net. One port from each successive set
+  // of ports is connected.
+  // 
+  // Routing is successful if a route is found that connects at least one port
+  // from each set.
+  absl::Status AddMultiPointRoute(
+      const std::vector<std::vector<geometry::Port*>> ports,
+      const geometry::ShapeCollection &avoid,
+      const EquivalentNets &nets);
+
   absl::Status AddBestRouteBetween(
       const std::set<geometry::Port*> begin_ports,
       const std::set<geometry::Port*> end_ports,
@@ -336,6 +350,12 @@ class RoutingGrid {
       const geometry::Port &end,
       const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
+
+  absl::StatusOr<RoutingPath*> FindRouteToNet(
+      const geometry::Port &begin,
+      const EquivalentNets &target_nets,
+      const EquivalentNets &usable_nets,
+      const geometry::ShapeCollection &avoid);
 
   absl::Status ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,

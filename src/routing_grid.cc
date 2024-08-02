@@ -1311,6 +1311,73 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
+absl::Status RoutingGrid::AddMultiPointRoute(
+    const Layout &layout,
+    const std::vector<std::vector<geometry::Port*>> ports) {
+  EquivalentNets net_aliases;
+  for (const auto &port_set : ports) {
+    for (const geometry::Port *port : port_set) {
+      net_aliases.Add(port->net());
+    }
+  }
+
+  geometry::ShapeCollection non_net_connectables;
+  layout.CopyConnectableShapesNotOnNets(net_aliases, &non_net_connectables);
+
+  return AddMultiPointRoute(
+      ports,
+      non_net_connectables,
+      net_aliases);
+}
+
+absl::Status RoutingGrid::AddMultiPointRoute(
+    const std::vector<std::vector<geometry::Port*>> ports,
+    const geometry::ShapeCollection &avoid,
+    const EquivalentNets &nets) {
+  bool all_ok = true;
+  // The net_name is set once the first route is laid between some pair of
+  // ports. Subsequent routes are to the net, not any particular point.
+  std::optional<std::string> net_name = std::nullopt;
+  for (auto it = ports.begin(); it != ports.end(); ++it) {
+    const std::vector<geometry::Port*> &port_group = *it;
+    if (!net_name) {
+      if ((it + 1) == ports.end()) {
+        break;
+      }
+      const std::vector<geometry::Port*> &next_port_group = *(it + 1);
+      std::set<geometry::Port*> begin_ports(
+          port_group.begin(), port_group.end());
+      std::set<geometry::Port*> end_ports(
+          next_port_group.begin(), next_port_group.end());
+      bool path_found = AddBestRouteBetween(
+          begin_ports,
+          end_ports,
+          avoid,
+          nets).ok();
+      if (path_found) {
+        net_name = nets.primary();
+        ++it;
+      } else {
+        all_ok = false;
+      }
+      continue;
+    }
+
+    bool path_found = false;
+    for (geometry::Port *port : port_group) {
+      auto route_status = AddRouteToNet(
+          *port, *net_name, nets, avoid);
+      if (route_status.ok()) {
+        path_found = true;
+        break;
+      }
+    }
+    all_ok = path_found && all_ok;
+  }
+  return all_ok ?
+      absl::OkStatus() : absl::NotFoundError("Not all ports could be routed");
+}
+
 absl::Status RoutingGrid::AddBestRouteBetween(
     const std::set<geometry::Port*> begin_ports,
     const std::set<geometry::Port*> end_ports,
@@ -1481,6 +1548,22 @@ absl::Status RoutingGrid::AddRouteToNet(
     const EquivalentNets &target_nets,
     const EquivalentNets &usable_nets,
     const geometry::ShapeCollection &avoid) {
+  absl::StatusOr<RoutingPath*> find_path =
+      FindRouteToNet(begin, target_nets, usable_nets, avoid);
+  if (!find_path.ok()) {
+    return find_path.status();
+  }
+  std::unique_ptr<RoutingPath> shortest_path =
+      std::unique_ptr<RoutingPath>(*find_path);
+  absl::Status install = InstallPath(shortest_path.release());
+  return install;
+}
+
+absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
+    const geometry::Port &begin,
+    const EquivalentNets &target_nets,
+    const EquivalentNets &usable_nets,
+    const geometry::ShapeCollection &avoid) {
   TemporaryBlockageInfo temporary_blockages;
   SetUpTemporaryBlockages(avoid, &temporary_blockages);
 
@@ -1535,8 +1618,7 @@ absl::Status RoutingGrid::AddRouteToNet(
 
   TearDownTemporaryBlockages(temporary_blockages);
 
-  absl::Status install = InstallPath(shortest_path.release());
-  return install;
+  return shortest_path.release();
 }
 
 bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
