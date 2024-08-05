@@ -1,0 +1,157 @@
+(gdb) print *port
+$7 = {<bfg::geometry::Rectangle> = {<bfg::geometry::Shape> = {<bfg::geometry::AbstractShape> = {
+        _vptr.AbstractShape = 0xaaaaaadcf4d8 <vtable for bfg::geometry::Port+16>, layer_ = 206, net_ = "buf_2.X", 
+        is_connectable_ = true}, <bfg::geometry::Manipulable> = {
+        _vptr.Manipulable = 0xaaaaaadcf540 <vtable for bfg::geometry::Port+120>}, <No data fields>}, 
+    lower_left_ = {<bfg::geometry::AbstractShape> = {
+        _vptr.AbstractShape = 0xaaaaaadce348 <vtable for bfg::geometry::Point+16>, layer_ = 0, net_ = "", 
+        is_connectable_ = false}, <bfg::geometry::Manipulable> = {
+        _vptr.Manipulable = 0xaaaaaadce3a0 <vtable for bfg::geometry::Point+104>}, x_ = 17615, y_ = 8585}, 
+    upper_right_ = {<bfg::geometry::AbstractShape> = {
+        _vptr.AbstractShape = 0xaaaaaadce348 <vtable for bfg::geometry::Point+16>, layer_ = 0, net_ = "", 
+        is_connectable_ = false}, <bfg::geometry::Manipulable> = {
+        _vptr.Manipulable = 0xaaaaaadce3a0 <vtable for bfg::geometry::Point+104>}, x_ = 17785, 
+      y_ = 8755}}, <No data fields>}
+
+
+(gdb) info break
+Num     Type           Disp Enb Address            What
+6       breakpoint     keep n   0x0000aaaaaab0dc78 in bfg::RoutingGrid::FindRouteBetween(bfg::geometry::Port const&, bfg::geometry::Port const&, bfg::geometry::ShapeCollection const&, bfg::EquivalentNets const&) at /home/arya/src/bfg/src/routing_grid.cc:1405
+	stop only if ((bfg::geometry::Point)end.centre()).x_ == 21950 && ((bfg::geometry::Point)end.centre()).y_ == -370 && ((bfg::geometry::Point)begin.centre()).x_ == 15860 && ((bfg::geometry::Point)begin.centre()).y_ == 10030
+7       breakpoint     keep n   0x0000aaaaaab08f14 in bfg::RoutingGrid::ConnectToSurroundingTracks(bfg::RoutingGridGeometry const&, long const&, bfg::EquivalentNets const&, std::optional<std::reference_wrapper<std::set<bfg::RoutingTrackDirection, std::less<bfg::RoutingTrackDirection>, std::allocator<bfg::RoutingTrackDirection> > const> > const&, bfg::RoutingVertex*) at /home/arya/src/bfg/src/routing_grid.cc:467
+8       breakpoint     keep n   0x0000aaaaaab61844 in bfg::RoutingTrack::CreateNearestVertexAndConnect(bfg::RoutingGrid const&, bfg::RoutingVertex*, long const&, bfg::EquivalentNets const&, bfg::RoutingVertex**, bool*, bool*) at /home/arya/src/bfg/src/routing_track.cc:252
+9       breakpoint     keep n   0x0000aaaaaab60eb0 in bfg::RoutingTrack::AddVertex(bfg::RoutingVertex*, std::optional<bfg::EquivalentNets> const&) at /home/arya/src/bfg/src/routing_track.cc:85
+	stop only if offset_ == 21810 && vertex->centre_.x_ == 15860 && vertex->centre_.y_ == 8670
+11      breakpoint     keep y   0x0000aaaaaab61998 in bfg::RoutingTrack::CreateNearestVertexAndConnect(bfg::RoutingGrid const&, bfg::RoutingVertex*, long const&, bfg::EquivalentNets const&, bfg::RoutingVertex**, bool*, bool*) at /home/arya/src/bfg/src/routing_track.cc:274
+	stop only if offset_ == 21810 && candidate_position == -370
+	breakpoint already hit 1 time
+
+
+track->offset_ == 21810
+
+bridging_vertex == 0xaaaab3f729c0
+first returned by track 0xaaaaab883200
+also later returned by that track
+
+centre_ addr is 0xaaaab3f72aa8
+centre_.x_ is 0xaaaab3f72ae8
+
+found culprit by setting hardware watchpoint:
+watch *(int64_t*)0xaaaab3f72ae8
+
+ info break
+Num     Type           Disp Enb Address            What
+4       breakpoint     keep n   0x0000aaaaaab0dc78 in bfg::RoutingGrid::FindRouteBetween(bfg::geometry::Port const&, bfg::geometry::Port const&, bfg::geometry::ShapeCollection const&, bfg::EquivalentNets const&) at /home/arya/src/bfg/src/routing_grid.cc:1405
+	stop only if ((bfg::geometry::Point)end.centre()).x_ == 21950 && ((bfg::geometry::Point)end.centre()).y_ == -370
+5       breakpoint     keep n   0x0000aaaaaab0dc78 in bfg::RoutingGrid::FindRouteBetween(bfg::geometry::Port const&, bfg::geometry::Port const&, bfg::geometry::ShapeCollection const&, bfg::EquivalentNets const&) at /home/arya/src/bfg/src/routing_grid.cc:1405
+	stop only if ((bfg::geometry::Point)end.centre()).x_ == 21950 && ((bfg::geometry::Point)end.centre()).y_ == -370 && ((bfg::geometry::Point)begin.centre()).x_ == 15860 && ((bfg::geometry::Point)begin.centre()).y_ == 10030
+6       breakpoint     keep n   0x0000aaaaaab08f14 in bfg::RoutingGrid::ConnectToSurroundingTracks(bfg::RoutingGridGeometry const&, long const&, bfg::EquivalentNets const&, std::optional<std::reference_wrapper<std::set<bfg::RoutingTrackDirection, std::less<bfg::RoutingTrackDirection>, std::allocator<bfg::RoutingTrackDirection> > const> > const&, bfg::RoutingVertex*) at /home/arya/src/bfg/src/routing_grid.cc:467
+8       breakpoint     keep n   0x0000aaaaaab08f4c in bfg::RoutingGrid::ConnectToSurroundingTracks(bfg::RoutingGridGeometry const&, long const&, bfg::EquivalentNets const&, std::optional<std::reference_wrapper<std::set<bfg::RoutingTrackDirection, std::less<bfg::RoutingTrackDirection>, std::allocator<bfg::RoutingTrackDirection> > const> > const&, bfg::RoutingVertex*) at /home/arya/src/bfg/src/routing_grid.cc:476
+	stop only if bridging_vertex == 0xaaaab3f729c0
+9       hw watchpoint  keep n                      *(int64_t*)0xaaaab3f72ae8
+10      breakpoint     keep n   0x0000aaaaaab6106c in bfg::RoutingTrack::RemoveVertex(bfg::RoutingVertex*) at /home/arya/src/bfg/src/routing_track.cc:94
+11      breakpoint     keep y   0x0000aaaaaab08f14 in bfg::RoutingGrid::ConnectToSurroundingTracks(bfg::RoutingGridGeometry const&, long const&, bfg::EquivalentNets const&, std::optional<std::reference_wrapper<std::set<bfg::RoutingTrackDirection, std::less<bfg::RoutingTrackDirection>, std::allocator<bfg::RoutingTrackDirection> > const> > const&, bfg::RoutingVertex*) at /home/arya/src/bfg/src/routing_grid.cc:467
+	stop only if track->offset_ == 21810 && off_grid == 0xaaaab3fa8680
+	breakpoint already hit 1 time
+12      breakpoint     keep y   0x0000aaaaaab61a34 in bfg::RoutingTrack::CreateNearestVertexAndConnect(bfg::RoutingGrid const&, bfg::RoutingVertex*, long const&, bfg::EquivalentNets const&, bfg::RoutingVertex**, bool*, bool*) at /home/arya/src/bfg/src/routing_track.cc:264
+	breakpoint already hit 1 time
+
+$4 = std::vector of length 152, capacity 256 = {0xaaaab3c26800, 0xaaaab3a851a0, 0xaaaab3a966c0, 0xaaaab3aaf440, 0xaaaab3c03ef0, 0xaaaab3ad2ab0, 0xaaaab3c3a510, 0xaaaab3c84d20, 0xaaaab3d08240, 0xaaaab3d08030, 0xaaaab3ba6840, 0xaaaab3cab050, 0xaaaaabea1590, 0xaaaab3c111d0, 0xaaaab3b94ab0, 0xaaaab3c605d0, 0xaaaab3bce1e0, 0xaaaab3bce510, 0xaaaab3d2f680, 0xaaaab3b10990, 0xaaaab3ba9080, 0xaaaab3ba89f0, 0xaaaaab8ac570, 
+  0xaaaab3ce6990, 0xaaaab3c58930, 0xaaaab3c58ae0, 0xaaaab3b62fc0, 0xaaaab3d19170, 0xaaaaab614f00, 0xaaaaab615500, 0xaaaab3b16a50, 0xaaaab3cab4d0, 0xaaaaab739290, 0xaaaaab739020, 0xaaaab3be1890, 0xaaaab3ba0b70, 0xaaaab3cbf2c0, 0xaaaab3c5a450, 0xaaaab3d23d10, 0xaaaab3dcbe00, 0xaaaab3c922a0, 0xaaaab3cca210, 0xaaaab3bca510, 0xaaaab3c990e0, 0xaaaab3cf0f60, 0xaaaab3cf0e70, 0xaaaab3c4e5a0, 0xaaaab3d04030, 0xaaaab3b1a390, 
+  0xaaaab3dcc300, 0xaaaab3bbc360, 0xaaaab3b1b4a0, 0xaaaab3bc0120, 0xaaaab3b79d70, 0xaaaab3d283c0, 0xaaaab3c80840, 0xaaaab3d45530, 0xaaaab3d11b90, 0xaaaab3c74300, 0xaaaaab6144e0, 0xaaaaabe9d500, 0xaaaaabe9cb10, 0xaaaab3dc8090, 0xaaaab3bc2600, 0xaaaaabe9cbd0, 0xaaaab3dd04b0, 0xaaaab3d28330, 0xaaaab3d29c50, 0xaaaaabe9d3e0, 0xaaaab3d832f0, 0xaaaab3d83950, 0xaaaab3bbce10, 0xaaaab3cdda70, 0xaaaab3cdc030, 0xaaaab3cddf80, 
+  0xaaaab3d0b8f0, 0xaaaaabe9ced0, 0xaaaab3c9a960, 0xaaaab3c9a090, 0xaaaab3d04990, 0xaaaab3ab5590, 0xaaaab3d0bb60, 0xaaaab3a6b380, 0xaaaab3a6ae70, 0xaaaab3ab4c30, 0xaaaab3be6d80, 0xaaaab3dcde60, 0xaaaab3b1c930, 0xaaaab3c97ec0, 0xaaaab3c67950, 0xaaaab3dc9710, 0xaaaab3c41650, 0xaaaab3b8b080, 0xaaaab3c751d0, 0xaaaaabea0cf0, 0xaaaab3caac60, 0xaaaaab8ab500, 0xaaaab3cf47e0, 0xaaaab3d071d0, 0xaaaab3be08a0, 0xaaaab3c025d0, 
+  0xaaaab3b4fa10, 0xaaaab3d02b10, 0xaaaab3dcacc0, 0xaaaab3beb920, 0xaaaab3b68300, 0xaaaaab738780, 0xaaaab3c5a2a0, 0xaaaab3d2c9c0, 0xaaaab3c667e0, 0xaaaab3ce5830, 0xaaaab3c9e9f0, 0xaaaab3dd0360, 0xaaaab3beb8c0, 0xaaaab3beaff0, 0xaaaab3ac59e0, 0xaaaab3cb8360, 0xaaaab3ab19b0, 0xaaaab3cdc510, 0xaaaab3dd1d70, 0xaaaab3bef0b0, 0xaaaab3d0b980, 0xaaaab3cbd1a0, 0xaaaab3d1f7d0, 0xaaaab3adec30, 0xaaaaab6129f0, 0xaaaab3d1c780, 
+  0xaaaab3b165d0, 0xaaaab3b79650, 0xaaaab3c8f4d0, 0xaaaab3c8e510, 0xaaaab3c95770, 0xaaaab3ceb350, 0xaaaab3a89b00, 0xaaaab3bc5d70, 0xaaaaaba04420, 0xaaaab3bcc900, 0xaaaab3d182a0, 0xaaaab3cb5b00, 0xaaaab3b4f830, 0xaaaab3d8c210, 0xaaaab3aaf6e0, 0xaaaab3aaeed0, 0xaaaab3e3eff0, 0xaaaab3a899e0, 0xaaaab3a89830, 0xaaaab3ad7e90, 0xaaaab3c6a240, 0xaaaaad18c1e0, 0xaaaab3d06cf0, 0xaaaab3b5f710, 0xaaaab3b5e690}
+
+
+this
+$6 = (bfg::RoutingTrack * const) 0xaaaaab889d40
+
+
+thii
+$7 = (bfg::RoutingTrack * const) 0xaaaaab889d40
+
+
+0xaaaab3a84f60
+
+------------------------------------------
+
+set $i=0
+while($i < 17)
+print *blockages_[$i]
+set $i=$i+1
+end
+
+
+
+path to mux_1.input_7 covers (33030, 8795), (35070, 8795)
+which is 0xaaaab0411800
+and assigns it net lut_dfxtp_1_2.D
+0xaaaab0b5fd40
+
+then iterates over other edges and hits 0xaaaab0b5fd40
+
+then path to mux_1.input_3 comes last but uses edge that hasn't been marked as in use yet
+which is 0xaaaab0b5fd40
+
+ApplyBlockage overwrites the "in_use_by_net" field; but it sets "blocked" true which seems to be ignored?
+
+no. something still resets in_use_by_net_ to empty and blocked_ to false.
+
+
+- are there duplicate edges?
+
+(gdb) info break
+Num     Type           Disp Enb Address            What
+3       breakpoint     keep n   0x0000aaaaaab0fe0c in bfg::RoutingGrid::InstallPath(bfg::RoutingPath*) 
+                                                   at /home/arya/src/bfg/src/routing_grid.cc:1857
+	stop only if edge->track_->offset_ == 8795
+4       breakpoint     keep n   0x0000aaaaaab634e4 in bfg::RoutingTrack::MarkEdgeAsUsed(bfg::RoutingEdge*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) at /home/arya/src/bfg/src/routing_track.cc:173
+5       breakpoint     keep n   0x0000aaaaaab634e4 in bfg::RoutingTrack::MarkEdgeAsUsed(bfg::RoutingEdge*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) at /home/arya/src/bfg/src/routing_track.cc:173
+	stop only if (other_edge->first_->centre_.x_ == 32350 && other_edge->second_->centre_.x_ == 37110) || (other_edge->second_->centre_.x_ == 32350 && other_edge->first_->centre_.x_ == 37110)
+7       breakpoint     keep n   0x0000aaaaaabbba3c in bfg::tiles::Lut::GenerateIntoDatabase(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) at /home/arya/src/bfg/src/tiles/lut.cc:801
+	stop only if $_streq(input_name.c_str(), "input_3") == true
+8       breakpoint     keep n   0x0000aaaaaab10520 in operator()(bfg::RoutingEdge*) const 
+                                                   at /home/arya/src/bfg/src/routing_grid.cc:1939
+	stop only if e == 0xaaaab0b5fd40
+9       breakpoint     keep n   0x0000aaaaaab634e4 in bfg::RoutingTrack::MarkEdgeAsUsed(bfg::RoutingEdge*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) at /home/arya/src/bfg/src/routing_track.cc:173
+	stop only if other_edge == 0xaaaab0b5fd40
+	breakpoint already hit 1 time
+10      breakpoint     keep n   0x0000aaaaaac05530 in bfg::RoutingEdge::set_in_use_by_net(std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) at /home/arya/src/bfg/src/routing_edge.cc:24
+	stop only if this == 0xaaaab0b5fd40
+11      breakpoint     keep n   0x0000aaaaaab0fdf0 in bfg::RoutingGrid::InstallPath(bfg::RoutingPath*) 
+                                                   at /home/arya/src/bfg/src/routing_grid.cc:1856
+	stop only if (edge->first_->centre_.x_ == 33030 && edge->second_->centre_.x_ == 35070) || (edge->second_->centre_.x_ == 35070 && edge->first_->centre_.x_ == 33030)
+12      breakpoint     keep n   0x0000aaaaaabbba3c in bfg::tiles::Lut::GenerateIntoDatabase(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) at /home/arya/src/bfg/src/tiles/lut.cc:801
+	stop only if $_streq(input_name.c_str(), "input_7") == true
+13      breakpoint     keep n   0x0000aaaaaab0fdf0 in bfg::RoutingGrid::InstallPath(bfg::RoutingPath*) 
+                                                   at /home/arya/src/bfg/src/routing_grid.cc:1856
+14      watchpoint     keep n                      ((::bfg::RoutingEdge*)0xaaaab0411800)->in_use_by_net_._M_payload._M_payload._M_value
+15      breakpoint     keep y   0x0000aaaaaac05530 in bfg::RoutingEdge::set_in_use_by_net(std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) at /home/arya/src/bfg/src/routing_edge.cc:24
+	stop only if this == 0xaaaab0411800
+	breakpoint already hit 1 time
+16      breakpoint     keep y   0x0000aaaaaab634e4 in bfg::RoutingTrack::MarkEdgeAsUsed(bfg::RoutingEdge*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) at /home/arya/src/bfg/src/routing_track.cc:173
+	stop only if other_edge == 0xaaaab0b5fd40
+	breakpoint already hit 1 time
+17      breakpoint     keep y   0x0000aaaaaac05530 in bfg::RoutingEdge::set_in_use_by_net(std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) at /home/arya/src/bfg/src/routing_edge.cc:24
+	stop only if this == 0xaaaab0b5fd40
+	breakpoint already hit 1 time
+18      breakpoint     keep y   0x0000aaaaaab10520 in operator()(bfg::RoutingEdge*) const 
+                                                   at /home/arya/src/bfg/src/routing_grid.cc:1939
+	stop only if e == 0xaaaab0b5fd40
+	breakpoint already hit 1 time
+
+
+
+if (other_edge->first_->centre_.x_ == 32350 && other_edge->first_->centre_.y_ == 8795 && other_edge->second_->centre_.x_ == 37110) || (other_edge->second_->centre_.x_ == 32350 && other_edge->second_->centre_.y_ == 8795 && other_edge->first_->centre_.x_ == 37110)
+
+
+set $long_edge = 0xaaaab1b00750
+watch ((::bfg::RoutingEdge*)$long_edge)->blocked_
+watch ((::bfg::RoutingEdge*)$long_edge)->temporarily_blocked_
+
+if (this->first_->centre_.x_ == 32350 && this->first_->centre_.y_ == 8795 && this->second_->centre_.x_ == 37110) || (this->second_->centre_.x_ == 32350 && this->second_->centre_.y_ == 8795 && this->first_->centre_.x_ == 37110)
+
+break routing_edge.h:29 if (first->centre_.x_ == 32350 && first->centre_.y_ == 8795 && second->centre_.x_ == 37110) || (second->centre_.x_ == 32350 && second->centre_.y_ == 8795 && first->centre_.x_ == 37110)
+
+set $long_edge = 0xaaaab1bb6cf0
