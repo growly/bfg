@@ -285,8 +285,8 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
     int64_t distance = static_cast<int64_t>(
         std::ceil(existing_footprint->ClosestDistanceTo(*edge_footprint)));
     if (distance == 0 && for_nets &&
-        used->in_use_by_net() &&
-        for_nets->Contains(*used->in_use_by_net())) {
+        used->EffectiveNet() &&
+        for_nets->Contains(*used->EffectiveNet())) {
       // Touching footprints are ok if they share the same net. Footprints which
       // share the same net but which do not touch, and instead violate
       // min_separation, are not ok.
@@ -1937,11 +1937,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       // Usable edges are:
       [&](RoutingEdge *e) {
         if (e->Available()) return true;
-        if (e->blocked()) {
+        if (e->Blocked()) {
           VLOG(16) << "edge " << *e << " is blocked";
           return false;
         }
-        if (e->in_use_by_net() && to_nets.Contains(*e->in_use_by_net())) {
+        if (e->EffectiveNet() && to_nets.Contains(*e->EffectiveNet())) {
           return true;
         } else {
           VLOG(16) << "cannot use edge " << *e << " for net "
@@ -2059,12 +2059,6 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     size_t current_index = current->contextual_index();
 
     for (RoutingEdge *edge : current->edges()) {
-      if (edge->TerminatesAt({21130, 8868}) && edge->TerminatesAt({17730, 8868})) {
-        LOG(INFO) << "here";
-      }
-      if (edge->TerminatesAt({21130, 8868}) && edge->TerminatesAt({21130, 5808})) {
-        LOG(INFO) << "also here";
-      }
       if (!usable_edge(edge)) {
         continue;
       }
@@ -2302,7 +2296,7 @@ void RoutingGrid::ExportEdgesAsRectangles(
   }
 
   for (RoutingEdge *edge : off_grid_edges_) {
-    if (available_only && edge->blocked())
+    if (available_only && edge->Blocked())
       continue;
     auto rectangle = edge->AsRectangle(kPadding);
     if (!rectangle)
@@ -2607,7 +2601,7 @@ void RoutingGrid::TearDownTemporaryBlockages(
   }
   for (RoutingEdge *const edge : blockage_info.blocked_edges) {
     // This should clear any used nets and unblock the edge.
-    edge->ResetStatus();
+    edge->ResetTemporaryStatus();
   }
   for (RoutingGridBlockage<geometry::Rectangle> *const blockage :
           blockage_info.pin_blockages) {

@@ -17,11 +17,39 @@
 
 namespace bfg {
 
-void RoutingEdge::set_in_use_by_net(
-    const std::optional<std::string> &in_use_by_net) {
-  VLOG_IF(13, in_use_by_net_) << *this << " now used by " <<
-      (in_use_by_net ? *in_use_by_net : "nothing");
-  in_use_by_net_ = in_use_by_net;
+bool RoutingEdge::Blocked() const {
+  return blocked_ || temporarily_blocked_;
+}
+
+const std::optional<std::string> &RoutingEdge::EffectiveNet() const {
+  LOG_IF(FATAL, temporarily_in_use_by_net_ && in_use_by_net_)
+      << "RoutingEdge should not be assigned both in_use_by_net_ and "
+      << "temporarily_in_use_by_net_ simultaneously";
+  if (temporarily_in_use_by_net_) {
+    return temporarily_in_use_by_net_;
+  }
+  return PermanentNet();
+}
+
+const std::optional<std::string> &RoutingEdge::PermanentNet() const {
+  return in_use_by_net_;
+}
+
+void RoutingEdge::SetNet(
+    const std::optional<std::string> &in_use_by_net, bool temporary) {
+  if (temporary) {
+    temporarily_in_use_by_net_ = in_use_by_net;
+  } else {
+    in_use_by_net_ = in_use_by_net_;
+  }
+}
+
+void RoutingEdge::SetBlocked(bool blocked, bool temporary) {
+  if (temporary) {
+    temporarily_blocked_ = blocked;
+  } else {
+    blocked_ = blocked;
+  }
 }
 
 std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(

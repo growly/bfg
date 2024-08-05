@@ -18,7 +18,9 @@ class RoutingEdge {
  public:
   RoutingEdge(RoutingVertex *first, RoutingVertex *second)
     : in_use_by_net_(std::nullopt),
+      temporarily_in_use_by_net_(std::nullopt),
       blocked_(false),
+      temporarily_blocked_(false),
       track_(nullptr),
       layer_(std::nullopt),
       first_(first),
@@ -34,6 +36,11 @@ class RoutingEdge {
 
   void PrepareForRemoval();
 
+  // Whether the edge is blocked, considering both permanent and temporary blockages.
+  bool Blocked() const;
+  const std::optional<std::string> &EffectiveNet() const;
+  const std::optional<std::string> &PermanentNet() const;
+
   std::vector<RoutingVertex*> SpannedVertices() const;
 
   void set_cost(double cost) { cost_ = cost; }
@@ -46,17 +53,23 @@ class RoutingEdge {
   // of the given width.
   std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
 
-  void set_in_use_by_net(const std::optional<std::string> &in_use_by_net);
-  const std::optional<std::string> &in_use_by_net() const {
-    return in_use_by_net_;
-  }
-  void set_blocked(bool blocked) { blocked_ = blocked; }
-  bool blocked() const { return blocked_; }
+  void SetBlocked(bool blocked, bool temporary = false);
+  void SetNet(
+      const std::optional<std::string> &in_use_by_net, bool temporary = false);
 
-  bool Available() const { return !blocked_ && !in_use_by_net_; }
-  void ResetStatus() {
-    in_use_by_net_ = std::nullopt;
-    blocked_ = false;
+  void SetPermanentlyBlocked(bool blocked) {
+    SetBlocked(blocked, false);
+  }
+  void SetPermanentNet(
+      const std::optional<std::string> &in_use_by_net) {
+    SetNet(in_use_by_net, false);
+  }
+
+  bool Available() const { return !Blocked() && !EffectiveNet(); }
+
+  void ResetTemporaryStatus() {
+    temporarily_in_use_by_net_ = std::nullopt;
+    temporarily_blocked_ = false;
   }
 
   void set_layer(const std::optional<geometry::Layer> &layer) {
@@ -76,8 +89,17 @@ class RoutingEdge {
 
   bool IsRectilinear() const;
 
+  void ResetStatus() {
+    in_use_by_net_ = std::nullopt;
+    temporarily_in_use_by_net_ = std::nullopt;
+    blocked_ = false;
+    temporarily_blocked_ = false;
+  }
+
   std::optional<std::string> in_use_by_net_;
+  std::optional<std::string> temporarily_in_use_by_net_;
   bool blocked_;
+  bool temporarily_blocked_;
 
   RoutingTrack *track_;
   std::optional<geometry::Layer> layer_;

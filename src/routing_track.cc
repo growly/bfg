@@ -137,6 +137,7 @@ bool RoutingTrack::Intersects(RoutingVertex *vertex) const {
       break;
   }
   LOG(FATAL) << "This track has an invalid direction: " << direction_;
+  return false;
 }
 
 RoutingVertex *RoutingTrack::GetVertexAtOffset(int64_t offset) const {
@@ -148,7 +149,7 @@ RoutingVertex *RoutingTrack::GetVertexAtOffset(int64_t offset) const {
 }
 
 void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
-  edge->set_in_use_by_net(net);
+  edge->SetPermanentNet(net);
   //LOG(INFO) << "assigning edge " << *edge;
 
   if (edges_.find(edge) == edges_.end())
@@ -176,15 +177,16 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
     if (BlockageBlocks(*current_blockage,
                        other_edge->first()->centre(),
                        other_edge->second()->centre())) {
-      if (other_edge->blocked())
+      if (other_edge->Blocked())
         continue;
       // If the edge touches two different nets, it cannot be used for either
       // and must be blocked.
-      if (other_edge->in_use_by_net() && *other_edge->in_use_by_net() != net) {
-        other_edge->set_blocked(true);
-        other_edge->set_in_use_by_net(std::nullopt);
+      if (other_edge->PermanentNet() && *other_edge->PermanentNet() != net) {
+        // Set permanent blockage on edge.
+        other_edge->SetPermanentlyBlocked(true);
+        other_edge->SetPermanentNet(std::nullopt);
       } else {
-        other_edge->set_in_use_by_net(net);
+        other_edge->SetPermanentNet(net);
       }
     }
   }
@@ -387,7 +389,7 @@ void RoutingTrack::ExportEdgesAsRectangles(
     Layout *layout) const {
   const int64_t kPadding = 2;
   for (RoutingEdge *edge : edges_) {
-    if (available_only && edge->blocked())
+    if (available_only && edge->Blocked())
       continue;
     auto rectangle = edge->AsRectangle(kPadding);
     if (!rectangle)
@@ -798,6 +800,7 @@ RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
     temporary_blockages_.push_back(temporary_blockage);
     ApplyBlockage(*temporary_blockage,
                   rectangle.net(),
+                  true,   // Temporary.
                   blocked_vertices,
                   blocked_edges);
     return temporary_blockage;
@@ -933,6 +936,7 @@ bool RoutingTrack::RemoveTemporaryBlockage(RoutingTrackBlockage *blockage) {
 void RoutingTrack::ApplyBlockage(
     const RoutingTrackBlockage &blockage,
     const std::string &net,
+    bool is_temporary,
     std::set<RoutingVertex*> *blocked_vertices,
     std::set<RoutingEdge*> *blocked_edges) {
   for (const auto &entry : vertices_by_offset_) {
@@ -947,6 +951,8 @@ void RoutingTrack::ApplyBlockage(
                        0)) {
       vertex->set_available(false);
       if (net != "") {
+        // TODO(aryap): Put these on temporary mutation plane so that they can
+        // be undone.
         vertex->set_connectable_net(net);
       }
       if (blocked_vertices)
@@ -954,16 +960,17 @@ void RoutingTrack::ApplyBlockage(
     }
   }
   for (RoutingEdge *edge : edges_) {
-    if (edge->blocked())
+    if (edge->Blocked())
       continue;
     if (BlockageBlocks(blockage,
                        edge->first()->centre(),
                        edge->second()->centre(),
                        min_separation_to_new_blockages_)) {
-      if (net != "") {
-        edge->set_in_use_by_net(net);
+      edge->SetBlocked(true, is_temporary);
+      if (net != "" && !(
+            edge->EffectiveNet() && edge->EffectiveNet() == "")) {
+        edge->SetNet(net, is_temporary);
       }
-      edge->set_blocked(true);
       if (blocked_edges)
         blocked_edges->insert(edge);
     }
