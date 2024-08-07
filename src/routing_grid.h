@@ -82,6 +82,9 @@ class RoutingGrid {
   absl::Status ConnectLayers(
       const geometry::Layer &first, const geometry::Layer &second);
 
+  // Convenient form AddMultiPointRoute which determines all net aliases for
+  // the given ports and uses the given Layout to find all off-net ports to
+  // use as temporary obstacles.
   absl::Status AddMultiPointRoute(
       const Layout &layout,
       const std::vector<std::vector<geometry::Port*>> ports);

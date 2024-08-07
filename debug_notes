@@ -146,7 +146,8 @@ Num     Type           Disp Enb Address            What
 if (other_edge->first_->centre_.x_ == 32350 && other_edge->first_->centre_.y_ == 8795 && other_edge->second_->centre_.x_ == 37110) || (other_edge->second_->centre_.x_ == 32350 && other_edge->second_->centre_.y_ == 8795 && other_edge->first_->centre_.x_ == 37110)
 
 
-set $long_edge = 0xaaaab1b00750
+//set $long_edge = 0xaaaab1b00750
+set $long_edge = 0x55555c68ecf0
 watch ((::bfg::RoutingEdge*)$long_edge)->blocked_
 watch ((::bfg::RoutingEdge*)$long_edge)->temporarily_blocked_
 
@@ -154,4 +155,3 @@ if (this->first_->centre_.x_ == 32350 && this->first_->centre_.y_ == 8795 && thi
 
 break routing_edge.h:29 if (first->centre_.x_ == 32350 && first->centre_.y_ == 8795 && second->centre_.x_ == 37110) || (second->centre_.x_ == 32350 && second->centre_.y_ == 8795 && first->centre_.x_ == 37110)
 
-set $long_edge = 0xaaaab1bb6cf0

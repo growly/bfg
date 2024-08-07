@@ -1305,7 +1305,6 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     std::vector<RoutingVertex*> &available = GetAvailableVertices(layer);
     available.push_back(vertex);
-    // LOG(INFO) << "available (" << layer << "): " << available.size();
   }
   DCHECK(!ContainsVertex(vertex));
   vertices_.push_back(vertex);  // The class owns all of these.
@@ -1856,7 +1855,7 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
     if (edge->track() != nullptr) {
       edge->track()->MarkEdgeAsUsed(edge, path->net());
     } else {
-      edge->set_in_use_by_net(path->net());
+      edge->SetPermanentNet(path->net());
     }
 
     std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();

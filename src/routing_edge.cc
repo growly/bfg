@@ -40,7 +40,7 @@ void RoutingEdge::SetNet(
   if (temporary) {
     temporarily_in_use_by_net_ = in_use_by_net;
   } else {
-    in_use_by_net_ = in_use_by_net_;
+    in_use_by_net_ = in_use_by_net;
   }
 }
 
