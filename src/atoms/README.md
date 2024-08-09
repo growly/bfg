@@ -17,5 +17,3 @@ optionality in a `Tile` thus depends on the architecture and the process, but it
 is not concerned with the details of a particular component. `Tile`s do need to
 worry about how to piece and route other components together, but not much more
 than that.
-
-Where is my Remarkable? I should be writing this down.

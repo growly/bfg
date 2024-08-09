@@ -933,6 +933,8 @@ void GenerateOutput2To1MuxLayout(
     main_layout->AddPolyLine(lower_output_jog);
   }
 
+  int64_t extension_top = parameters.extend_inputs_top ? 550 : 0;
+
   Polygon *left_right_poly_li_pour = nullptr;
   Polygon *top_poly_connector = nullptr;
   metal_column_x_values = {
@@ -972,7 +974,7 @@ void GenerateOutput2To1MuxLayout(
     // Lower-right selector:
     //    Mirror the above structure.
     //
-    Point p_0 = Point(metal_x, met1_top_y + 550);
+    Point p_0 = Point(metal_x, met1_top_y + extension_top);
     Point p_1 = Point(
         p_0.x(), top_li_track_centre_y);
     main_layout->SetActiveLayerByName("met1.drawing");
@@ -1000,6 +1002,8 @@ void GenerateOutput2To1MuxLayout(
     main_layout->SetActiveLayerByName("met1.pin");
     main_layout->AddSquareAsPort(p_0, met1_rules.min_width, net_names[target]);
   }
+
+  int64_t extension_bottom = parameters.extend_inputs_bottom ? 550 : 0;
 
   // Connect the signal that selects the output of the upper-left mux
   // structure to the appropriate gate (poly).
@@ -1032,7 +1036,7 @@ void GenerateOutput2To1MuxLayout(
     int64_t poly_x = poly_column_x_values[target];
     int64_t poly_min_y = poly_column_min_y_values[target];
 
-    Point met1_p1 = Point(metal_x, met1_bottom_y);
+    Point met1_p1 = Point(metal_x, met1_bottom_y - extension_bottom);
     int64_t poly_connect_y = std::max({
         // Can't be further than poly_contact_to_ndiff from diffusion.
         //nfet_0_diff->lower_left().y() - poly_contact_to_ndiff,
@@ -1841,6 +1845,7 @@ void ConnectOppositeInputs(
 
 void BuildMet1Columns(
     const PhysicalPropertiesDatabase &db,
+    const Sky130Mux::Parameters &parameters,
     const std::string &poly_contact,
     const std::vector<int64_t> pitches,
     int64_t width,
@@ -2003,8 +2008,8 @@ void BuildMet1Columns(
     }
   }
 
-  int64_t extension_top = 550;
-  int64_t extension_bottom = 0;
+  int64_t extension_top = parameters.extend_inputs_top ? 550 : 0;
+  int64_t extension_bottom = parameters.extend_inputs_bottom ? 550 : 0;
   int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
   for (auto &entry : column_plans) {
     size_t k = entry.first;
@@ -2596,7 +2601,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       2 * column_width_total -
       (inner_edge_to_column1_p + inner_edge_to_column1_n);
 
-  int64_t intra_spacing = std::max(min_well_spacing, min_spacing_to_allow_columns);
+  int64_t intra_spacing = std::max(
+      min_well_spacing, min_spacing_to_allow_columns);
   int64_t mux2_p_lower_left_x = layout->GetBoundingBox().upper_right().x() + 
       intra_spacing;
   mux2_layout_p->ResetOrigin();
@@ -2676,6 +2682,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   const std::string poly_contact = "polycon.drawing";
   BuildMet1Columns(
       db,
+      parameters_,
       poly_contact,
       column_pitches,
       static_cast<int64_t>(bounding_box.Width()),
@@ -2694,8 +2701,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       column_x[6],
       column_x[8],
       column_x[9],
-      bounding_box.Height(),   // mux_top_y
-      0,                       // mux_bottom_y
+      bounding_box.Height(),   // met1_top_y
+      0,                       // met1_bottom_y
       layout.get());
 
   ConnectOppositeInputs(db, column_lines, column_x, layout.get());

@@ -179,10 +179,28 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   geometry::Rectangle left_bounds = layout->GetBoundingBox();
 
   bfg::atoms::Sky130Mux::Parameters mux_params;
+  mux_params.extend_inputs_top = true;
+  mux_params.extend_inputs_bottom = false;
+
   bfg::atoms::Sky130Mux mux(mux_params, design_db_);
-  bfg::Cell *mux_cell = mux.GenerateIntoDatabase("sky130_mux");
+  bfg::Cell *base_mux_cell = mux.GenerateIntoDatabase("sky130_mux");
+
+  // A second version of the mux has its inputs on the bottom instead of the
+  // top:
+  bfg::atoms::Sky130Mux::Parameters alt_mux_params;
+  alt_mux_params.extend_inputs_top = false;
+  alt_mux_params.extend_inputs_bottom = true;
+
+  bfg::Cell *alt_mux_cell = bfg::atoms::Sky130Mux(
+      alt_mux_params, design_db_).GenerateIntoDatabase("alt_sky130_mux");
 
   std::vector<geometry::Instance*> mux_order;
+
+  // TODO(aryap): A nice abstraction might be to create a thing that does this
+  // staggered layout. Something like an "CheckerboardGuide"? A nice
+  // abstraction for the source of the elements to be inserted might be an array
+  // that is just iterated over to get the successive element. Or alternatively
+  // a functor? This would nicely compliment the RowGuide abstraction?
 
   size_t num_muxes = (1 << lut_size_) / kMuxSize;
   {
@@ -190,21 +208,20 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     //
     // | 4-LUT | 5-LUT | 6-LUT
     //                 
-    // |   x   |   x   |   x x
-    // | x     | x     | x     x
     // |       |   x   |   x x
     // |       | x     | x     x
+    // |   x   |   x   |   x x
+    // | x     | x     | x     x
     //
     // The number of columns is defined in the LayoutConfig struct in
     // kLayoutConfigurations. Here we must compute the position based on where
     // they are in this chain.
     size_t column_select = 0;
     int64_t column_spacing = 300;
-    int64_t row_spacing = -500;
-    int64_t mux_height = mux_cell->layout()->GetBoundingBox().Height();
-    int64_t mux_width = mux_cell->layout()->GetBoundingBox().Width();
-    int64_t effective_mux_height = mux_height + row_spacing;
-    int64_t effective_mux_width = mux_width + column_spacing;
+    int64_t row_spacing = 750;
+
+    // Height of the first mux we put down:
+    int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
 
     int64_t x_pos = static_cast<int64_t>(
         left_bounds.Width()) + layout_config.mux_area_padding;
@@ -213,6 +230,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
     size_t p = 0;
     for (size_t i = 0; i < num_muxes; ++i) {
+      bfg::Cell *mux_cell = p % 2 == 0 ? base_mux_cell : alt_mux_cell;
+      mux_height = mux_cell->layout()->GetBoundingBox().Height();
+      int64_t mux_width = mux_cell->layout()->GetBoundingBox().Width();
+      int64_t effective_mux_height = mux_height + row_spacing;
+      int64_t effective_mux_width = mux_width + column_spacing;
+
       std::string mux_name = absl::StrCat("mux_", i);
       circuit->AddInstance(mux_name, mux_cell->circuit());
       int64_t x_shift = column_select * effective_mux_width;
@@ -739,9 +762,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     {banks[1].memories()[1][0], mux_order[1], "input_2"},
 
     {banks[1].memories()[2][0], mux_order[1], "input_7"},
+    {banks[1].memories()[2][1], mux_order[1], "input_6"},
     {banks[1].memories()[3][0], mux_order[1], "input_4"},
     {banks[1].memories()[3][1], mux_order[1], "input_5"},
-    {banks[1].memories()[2][1], mux_order[1], "input_6"},
 
     {banks[1].memories()[0][0], mux_order[1], "input_1"},
     {banks[1].memories()[0][1], mux_order[1], "input_0"},
