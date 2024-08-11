@@ -11,21 +11,28 @@
 namespace bfg {
 
 // This guide automates placement of instances of cells as follows:
-//                                    ->  horizontal overlap
-//                      +------------+--+----------+
-//                      |            |  |          |
-//                      |  BLANK     |  | INST 1   |
-//                      |   (0, 1)   |  |  (1, 1)  |
-//                      +------------+--+----------+
-//   vertical overlap v +------------+--+----------+
-//                      |            |  |          |
-//                      |  INST 0    |  | BLANK    |
-//                      |   (0, 0)   |  |  (1, 0)  |
-//            origin, O +------------+--+----------+
+//                      <-------------- num_columns_ ------------>
 //
-// NOTE(aryap): The algorithm originally used to do this allowed the grid to
-// grow in one dimension, namely in the number of rows, by fixing the number of
-// instances to be made and the number of colums. This could be the basis of a
+//                                    ->  horizontal overlap
+//                      +------------+--+----------+--+----------+  ^
+//                      |            |  |          |  |          |  |
+//                      |  INST 3    |  | BLANK    |  | INST 4   |  |
+//                      |   (0, 2)   |  |  (1, 2)  |  |  (2, 2)  |  |
+//                      +------------+--+----------+--+----------+  |
+//                      +------------+--+----------+--+----------+  |
+//                      |            |  |          |  |          |  |
+//                      |  BLANK     |  | INST 2   |  | BLANK    |  | num_rows_
+//                      |   (0, 1)   |  |  (1, 1)  |  |  (2, 1)  |  |
+//                    | +------------+--+----------+--+----------+  |
+//   vertical overlap v +------------+--+----------+--+----------+  |
+//                      |            |  |          |  |          |  |
+//                      |  INST 0    |  | BLANK    |  | INST 1   |  |
+//                      |   (0, 0)   |  |  (1, 0)  |  |  (2, 0)  |  |
+//            origin, O +------------+--+----------+--+----------+  v
+//
+// NOTE(aryap): The algorithm originally used for this allowed the grid to grow
+// in one dimension, namely in the number of rows, by fixing the number of
+// instances to be made and the number of columns. This could be the basis of a
 // non-fixed CheckerboardGrid:
 //  {
 //    size_t column_select = 0;
@@ -73,7 +80,7 @@ namespace bfg {
 //      column_select = (column_select + 1) % 2;
 //    }
 //  }
-// TODO(aryap): Delete this ^.
+// TODO(aryap): Don't leave whole code chunks in comments ^.
 
 class CheckerboardGuide {
  public:
