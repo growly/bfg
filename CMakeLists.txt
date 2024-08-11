@@ -47,6 +47,7 @@ file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
 
 set(SRC
   ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
+  ${PROJECT_SOURCE_DIR}/src/checkerboard_guide.cc
   ${PROJECT_SOURCE_DIR}/src/cell.cc
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
   ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc

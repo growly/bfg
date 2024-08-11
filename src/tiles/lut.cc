@@ -11,6 +11,7 @@
 #include "../atoms/sky130_hd_mux2_1.h"
 #include "../atoms/sky130_mux.h"
 #include "../atoms/sky130_tap.h"
+#include "../checkerboard_guide.h"
 #include "../equivalent_nets.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/shape_collection.h"
@@ -196,71 +197,38 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   std::vector<geometry::Instance*> mux_order;
 
-  // TODO(aryap): A nice abstraction might be to create a thing that does this
-  // staggered layout. Something like an "CheckerboardGuide"? A nice
-  // abstraction for the source of the elements to be inserted might be an array
-  // that is just iterated over to get the successive element. Or alternatively
-  // a functor? This would nicely compliment the RowGuide abstraction?
+  // Muxes are positioned like so:
+  //
+  // | 4-LUT | 5-LUT | 6-LUT
+  //                 
+  // |       |   x   |   x x
+  // |       | x     | x     x
+  // |   x   |   x   |   x x
+  // | x     | x     | x     x
+  //
+  // The number of columns is defined in the LayoutConfig struct in
+  // kLayoutConfigurations. Here we must compute the position based on where
+  // they are in this chain.
+  int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
+  int64_t x_pos = static_cast<int64_t>(
+      left_bounds.Width()) + layout_config.mux_area_padding;
+  int64_t y_offset = -(mux_height - 2 * max_row_height) / 2;
+  int64_t y_pos = y_offset;
 
-  size_t num_muxes = (1 << lut_size_) / kMuxSize;
-  {
-    // Muxes are positioned like so:
-    //
-    // | 4-LUT | 5-LUT | 6-LUT
-    //                 
-    // |       |   x   |   x x
-    // |       | x     | x     x
-    // |   x   |   x   |   x x
-    // | x     | x     | x     x
-    //
-    // The number of columns is defined in the LayoutConfig struct in
-    // kLayoutConfigurations. Here we must compute the position based on where
-    // they are in this chain.
-    size_t column_select = 0;
-    int64_t column_spacing = 300;
-    int64_t row_spacing = 750;
+  std::vector<bfg::Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
 
-    // Height of the first mux we put down:
-    int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
-
-    int64_t x_pos = static_cast<int64_t>(
-        left_bounds.Width()) + layout_config.mux_area_padding;
-    int64_t y_offset = -(mux_height - 2 * max_row_height) / 2;
-    int64_t y_pos = y_offset;
-
-    size_t p = 0;
-    for (size_t i = 0; i < num_muxes; ++i) {
-      bfg::Cell *mux_cell = p % 2 == 0 ? base_mux_cell : alt_mux_cell;
-      mux_height = mux_cell->layout()->GetBoundingBox().Height();
-      int64_t mux_width = mux_cell->layout()->GetBoundingBox().Width();
-      int64_t effective_mux_height = mux_height + row_spacing;
-      int64_t effective_mux_width = mux_width + column_spacing;
-
-      std::string mux_name = absl::StrCat("mux_", i);
-      circuit->AddInstance(mux_name, mux_cell->circuit());
-      int64_t x_shift = column_select * effective_mux_width;
-      geometry::Instance geo_instance(
-          mux_cell->layout(), geometry::Point {
-              x_pos + static_cast<int64_t>(column_select * effective_mux_width),
-              y_pos
-          });
-      geo_instance.set_name(mux_name);
-      geometry::Instance *instance = layout->AddInstance(geo_instance);
-      mux_order.push_back(instance);
-      if (p < layout_config.mux_area_rows - 1) {
-        y_pos += effective_mux_height;
-        ++p;
-      } else {
-        column_select += 1;   // Alternate the alternation.
-        x_pos += 2 * (effective_mux_width);
-        y_pos = y_offset;
-        p = 0;
-      }
-
-      // Alternates between 0 and 1.
-      column_select = (column_select + 1) % 2;
-    }
-  }
+  CheckerboardGuide mux_grid(geometry::Point(x_pos, y_pos),
+                             "mux",
+                             layout_config.mux_area_rows,
+                             layout_config.mux_area_columns,
+                             layout.get(),
+                             nullptr,
+                             design_db_);
+  mux_grid.set_template_cells(&mux_templates);
+  // TODO(aryap): This is a function of track pitch, really.
+  mux_grid.set_horizontal_overlap(-300);
+  mux_grid.set_vertical_overlap(-1500);
+  mux_grid.InstantiateAll(&mux_order);
 
   {
     // NOTE(aryap): Can only gracefully deal with two banks.
