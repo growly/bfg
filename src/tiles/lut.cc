@@ -329,6 +329,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   }
 
   std::vector<geometry::Instance*> buf_order;
+  std::vector<geometry::Instance*> active_mux2s; 
 
   {
     // Add input buffers. We need one buffer per LUT selector input, i.e. k
@@ -364,6 +365,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       active_mux2_cell->layout()->ResetY();
       geometry::Instance *instance = lower_row.InstantiateFront(
           instance_name, active_mux2_cell->layout());
+      active_mux2s.push_back(instance);
     }
     // Add more input buffers.
     for (size_t i = 0; i < 1; ++i) {
@@ -649,12 +651,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // Unless exported by being labelled a port with the same name?
 
   // Connect the input buffers on the selector lines.
-  struct AutoConnection {
-    geometry::Instance *source_instance;
-    std::string source_port_name;
-    geometry::Instance *target_instance;
-    std::string target_port_name;
-  };
   struct PortKey {
     geometry::Instance *instance;
     std::string port_name;
@@ -662,11 +658,34 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   std::vector<std::vector<PortKey>> auto_connections = {
     {{buf_order[0], "P"}, {mux_order[0], "S0_B"}, {mux_order[1], "S0_B"}},
     {{buf_order[0], "X"}, {mux_order[0], "S0"}, {mux_order[1], "S0"}},
-    {{buf_order[1], "P"}, {mux_order[0], "S1_B"}},
-    {{buf_order[1], "X"}, {mux_order[0], "S1"}},
-    {{buf_order[2], "P"}, {mux_order[0], "S2_B"}},
-    {{buf_order[2], "X"}, {mux_order[0], "S2"}}
+    {{buf_order[1], "P"}, {mux_order[0], "S1_B"}, {mux_order[1], "S1_B"}},
+    {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
+    {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
+    {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
+    {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
+    {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
+    {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
   };
+
+  // Add automatic connections for memory clock and inverted clock inputs.
+  for (size_t bank = 0; bank < banks.size(); ++bank) {
+    for (size_t column = 0; column < layout_config.bank_columns; ++column) {
+      std::vector<PortKey> &clk_connections = auto_connections.emplace_back();
+      for (size_t row = 0; row < layout_config.bank_rows; ++row) {
+        clk_connections.push_back({
+            .instance = banks[bank].memories()[row][column],
+            .port_name = "CLK"
+        });
+      }
+      std::vector<PortKey> &clk_i_connections = auto_connections.emplace_back();
+      for (size_t row = 0; row < layout_config.bank_rows; ++row) {
+        clk_connections.push_back({
+            .instance = banks[bank].memories()[row][column],
+            .port_name = "CLKI"
+        });
+      }
+    }
+  }
 
   for (auto &connections : auto_connections) {
     std::vector<std::vector<geometry::Port*>> route_targets;
@@ -693,6 +712,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     bool paths_found =
         routing_grid.AddMultiPointRoute(*layout, route_targets).ok();
   }
+
 
   // Connect memory outputs to the muxes in order:
   // - Connect the closest output with

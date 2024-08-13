@@ -1187,8 +1187,8 @@ void GenerateOutput2To1MuxLayout(
     LOG(INFO) << "Drawing direct li1 connection between both sides.";
 
     // +---+     p_1  mcon_via_point
-    // |p_0+------+  /
-    // |   |      +<-   p_3
+    // |p_0+------+   /
+    // |   |      +<-+  p_3
     // |   |      +------+---+
     // +---+     p_2     |   |
     //                   |   |
@@ -1223,6 +1223,11 @@ void GenerateOutput2To1MuxLayout(
 
     // Connect met1 and li:
     main_layout->MakeVia("mcon.drawing", mcon_via_point);
+
+    // Mark possible external connection point:
+    main_layout->SetActiveLayerByName("met1.pin");
+    main_layout->AddSquareAsPort(
+        mcon_via_point, met1_rules.min_width, "Z");
 
     // Ensure sufficient encapsulation on li1 and met1 layers:
     int64_t met1_mcon_via_encap_width =

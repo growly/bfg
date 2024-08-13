@@ -39,6 +39,31 @@ bfg::Cell *Sky130HdMux21::Generate() {
   //               +---S-|_  n1   --S-|_  n3
   //                       |            |
   //                       V            V
+  //
+  // Per the sky130 PDK verilog description, the behaviour is:
+  //
+  // primitive sky130_fd_sc_hd__udp_mux_2to1 (
+  //     X ,
+  //     A0,
+  //     A1,
+  //     S
+  // );
+  //
+  //     output X ;
+  //     input  A0;
+  //     input  A1;
+  //     input  S ;
+  //
+  //     table
+  //      //  A0  A1  S  :  X
+  //          0   0   ?  :  0   ;
+  //          1   1   ?  :  1   ;
+  //          0   ?   0  :  0   ;
+  //          1   ?   0  :  1   ;
+  //          ?   0   1  :  0   ;
+  //          ?   1   1  :  1   ;
+  //     endtable
+  // endprimitive
 
   std::unique_ptr<bfg::Cell> cell(
       new bfg::Cell(name_.empty() ? "sky130_hd_mux2_1": name_));
@@ -82,14 +107,22 @@ bfg::Layout *Sky130HdMux21::GenerateLayout() {
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
-  layout->AddRectangle(Rectangle(Point(150, 2125), Point(320, 2295)));
-  layout->AddRectangle(Rectangle(Point(150, 1785), Point(320, 1955)));
-  layout->AddRectangle(Rectangle(Point(150, 425), Point(320, 595)));
-  layout->AddRectangle(Rectangle(Point(2450, 1105), Point(2620, 1275)));
-  layout->AddRectangle(Rectangle(Point(2450, 765), Point(2620, 935)));
-  layout->AddRectangle(Rectangle(Point(2910, 1445), Point(3080, 1615)));
-  layout->AddRectangle(Rectangle(Point(1990, 1105), Point(2160, 1275)));
-  layout->AddRectangle(Rectangle(Point(3370, 1445), Point(3540, 1615)));
+  layout->AddRectangleAsPort(
+      Rectangle(Point(150, 2125), Point(320, 2295)), "X");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(150, 1785), Point(320, 1955)), "X");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(150, 425), Point(320, 595)), "X");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(2450, 1105), Point(2620, 1275)), "A1");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(2450, 765), Point(2620, 935)), "A1");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(2910, 1445), Point(3080, 1615)), "S");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(1990, 1105), Point(2160, 1275)), "A0");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(3370, 1445), Point(3540, 1615)), "S");
 
   // licon.drawing [DRAWING] 66/44
   layout->SetActiveLayerByName("licon.drawing");
