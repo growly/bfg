@@ -679,7 +679,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       }
       std::vector<PortKey> &clk_i_connections = auto_connections.emplace_back();
       for (size_t row = 0; row < layout_config.bank_rows; ++row) {
-        clk_connections.push_back({
+        clk_i_connections.push_back({
             .instance = banks[bank].memories()[row][column],
             .port_name = "CLKI"
         });
@@ -746,7 +746,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     {banks[0].memories()[0][0], mux_order[0], "input_0"},
     {banks[0].memories()[0][1], mux_order[0], "input_1"},
 
-    // Not yet:
+    // Sort of:
     {banks[1].memories()[1][0], mux_order[1], "input_2"},
 
     {banks[1].memories()[2][0], mux_order[1], "input_7"},
