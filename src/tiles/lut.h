@@ -24,12 +24,6 @@ namespace tiles {
 
 class Lut : public Tile {
  public:
-  struct MuxArrangement {
-    size_t num_columns;
-    size_t num_rows;
-    std::vector<size_t> elements;
-  };
-
   struct LayoutConfig {
     size_t num_banks;
     size_t bank_rows;

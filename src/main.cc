@@ -19,6 +19,7 @@
 #include "atoms/sky130_mux.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
+#include "tiles/lut_b.h"
 
 #include "vlsir/tech.pb.h"
 #include "vlsir/layout/raw.pb.h"
@@ -117,7 +118,7 @@ int main(int argc, char **argv) {
   }
 
   std::string top_name = "lut";
-  bfg::tiles::Lut generator(&design_db, FLAGS_k_lut);
+  bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
   // TODO(aryap): This is temporary, to make sense of one possible netlist.

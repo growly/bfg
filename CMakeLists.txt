@@ -73,6 +73,7 @@ set(SRC
 
 set(TILES_SRC
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
+  ${PROJECT_SOURCE_DIR}/src/tiles/lut_b.cc
 )
 
 set(SKY130_ATOMS_SRC

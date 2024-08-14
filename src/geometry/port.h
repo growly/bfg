@@ -17,6 +17,8 @@ class Port : public Rectangle {
   Port() {}
 
   std::string Describe() const;
+  static std::string DescribePorts(const std::vector<geometry::Port*> &ports);
+  static std::string DescribePorts(const std::set<geometry::Port*> &ports);
 
   // TODO(aryap): Wait, is a port just a rect with some other stuff? So this is
   // a rect:
