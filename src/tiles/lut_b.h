@@ -51,6 +51,8 @@ class LutB : public Tile {
     BankArrangement left;
     BankArrangement right;
     int64_t mux_area_padding;
+    size_t mux_area_rows;
+    size_t mux_area_columns;
   };
 
   LutB(DesignDatabase *design_db, size_t lut_size = 4)

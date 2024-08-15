@@ -113,6 +113,7 @@ geometry::Instance *MemoryBank::InstantiateRight(size_t row_index,
   } else {
     installed = row.InstantiateBack(name, template_layout);
   }
+  // FIXME: Put installed in memories_.
   FixAlignments();
   return installed;
 }

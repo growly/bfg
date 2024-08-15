@@ -42,6 +42,8 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
       .horizontal_alignment = geometry::Compass::RIGHT
     },
     .mux_area_padding = 2500,
+    .mux_area_rows = 2,
+    .mux_area_columns = 2,
   }},
   //{5, LayoutConfig {
   //    .num_banks = 2,
@@ -132,33 +134,12 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       ++num_memories;
     }
 
-    //int64_t y_pos = 0;
-
-    //for (size_t j = 0; j < layout_config.bank_rows; j++) {
-    //  size_t row_width = 0;
-
     //  bank.rows().push_back();
-    //  RowGuide &row = bank.rows().back();
 
     //  bank.memory_names().emplace_back();
     //  std::vector<std::string> &bank_memories = bank.memory_names().back();
 
-    //  // Rotate j = 1, 3, 5, ...
-    //  bool rotate_this_row = layout_config.rotate_first_row ?
-    //      j % 2 == 0 : j % 2 != 0;
-    //  row.set_rotate_instances(rotate_this_row);
 
-    //  row.set_tap_cell(*tap_cell);
-    //  
-    //  for (size_t i = 0; i < layout_config.bank_columns; i++) {
-    //  }
-
-    //  //row.Place();
-
-    //  max_row_height = std::max(
-    //      max_row_height, static_cast<int64_t>(row.Height()));
-
-    //  y_pos += static_cast<int64_t>(row.Height());
 
     //  layout->SavePoint(absl::StrCat("row_", j, "_lr"),
     //                    geometry::Point(row_width, y_pos));
