@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_COMPASS_H_
 #define GEOMETRY_COMPASS_H_
 
+#include <cstdint>
 #include <ostream>
 
 namespace bfg {

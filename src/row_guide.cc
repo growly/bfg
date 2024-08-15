@@ -259,7 +259,7 @@ geometry::Point RowGuide::LowerRight() const {
     return origin_;
   }
   geometry::Rectangle front_tiling_bounds =
-      instances_.front()->GetTilingBounds();
+      instances_.back()->GetTilingBounds();
   return front_tiling_bounds.LowerRight();
 }
 
@@ -268,7 +268,7 @@ geometry::Point RowGuide::UpperLeft() const {
     return origin_;
   }
   geometry::Rectangle front_tiling_bounds =
-      instances_.back()->GetTilingBounds();
+      instances_.front()->GetTilingBounds();
   return front_tiling_bounds.UpperLeft();
 }
 
