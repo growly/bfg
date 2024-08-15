@@ -1,7 +1,7 @@
 #ifndef GEOMETRY_COMPASS_H_
 #define GEOMETRY_COMPASS_H_
 
-#include <cstdint>
+#include <ostream>
 
 namespace bfg {
 namespace geometry {
@@ -27,6 +27,11 @@ enum class Compass : uint8_t {
 };
 
 }  // namespace geometry
+
+std::ostream &operator<<(
+    std::ostream &os,
+    const geometry::Compass &compass);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_COMPASS_H_

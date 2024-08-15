@@ -156,6 +156,18 @@ void RowGuide::MoveTo(const geometry::Point &new_origin) {
   origin_ = new_origin;
 }
 
+void RowGuide::MoveLowerLeft(const geometry::Point &new_lower_left) {
+  geometry::Point diff = origin_ - LowerLeft();
+  geometry::Point new_origin = new_lower_left + diff;
+  MoveTo(new_origin);
+}
+
+void RowGuide::MoveLowerRight(const geometry::Point &new_lower_right) {
+  geometry::Point diff = origin_ - LowerRight();
+  geometry::Point new_origin = new_lower_right + diff;
+  MoveTo(new_origin);
+}
+
 // Sets the position of the given instance according to x_pos, y_pos and
 // advances the x_pos value according to the instances' tiling bounds. If
 // rotation is needed, that is done too.
@@ -238,7 +250,7 @@ geometry::Point RowGuide::UpperRight() const {
     return origin_;
   }
   geometry::Rectangle front_tiling_bounds =
-      instances_.front()->GetTilingBounds();
+      instances_.back()->GetTilingBounds();
   return front_tiling_bounds.upper_right();
 }
 
@@ -256,7 +268,7 @@ geometry::Point RowGuide::UpperLeft() const {
     return origin_;
   }
   geometry::Rectangle front_tiling_bounds =
-      instances_.front()->GetTilingBounds();
+      instances_.back()->GetTilingBounds();
   return front_tiling_bounds.UpperLeft();
 }
 

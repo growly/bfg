@@ -82,7 +82,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   };
   bfg::atoms::Sky130Tap tap_generator(tap_params, design_db_);
   bfg::Cell *tap_cell = tap_generator.GenerateIntoDatabase(
-      "lut_dfxtp_tap_template");
+      "lut_tap_template");
 
   // We arrange the flip-flops in banks to flank the central mux arrangements,
   // and in such as way as to minimise the longest distance between the output

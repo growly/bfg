@@ -13,6 +13,7 @@
 #include "../atoms/sky130_tap.h"
 #include "../checkerboard_guide.h"
 #include "../equivalent_nets.h"
+#include "../geometry/compass.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/shape_collection.h"
 #include "../layout.h"
@@ -31,12 +32,14 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
   {4, LutB::LayoutConfig {
     .left = LutB::BankArrangement {
       .memory_rows = {0, 1, 2, 3, 4, 5, 5, 5},
-      .buffer_rows = {5, 5, 5}
+      .buffer_rows = {5, 5, 5},
+      .horizontal_alignment = geometry::Compass::LEFT
     },
     .right = LutB::BankArrangement {
       .memory_rows = {5, 4, 3, 2, 1, 0, 0, 0},
       .buffer_rows = {0, 0},
-      .active_mux2_rows = {0}
+      .active_mux2_rows = {0},
+      .horizontal_alignment = geometry::Compass::RIGHT
     },
     .mux_area_padding = 2500,
   }},
@@ -84,6 +87,14 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   int64_t buf_y_pos = 0;
 
+  bfg::atoms::Sky130Tap::Parameters tap_params = {
+    .height_nm = 2720,
+    .width_nm = 460
+  };
+  bfg::atoms::Sky130Tap tap_generator(tap_params, design_db_);
+  bfg::Cell *tap_cell = tap_generator.GenerateIntoDatabase(
+      "lut_tap_template");
+
   std::vector<MemoryBank> banks;
 
   std::vector<std::reference_wrapper<const BankArrangement>> arrangements = {
@@ -91,15 +102,37 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   int64_t max_row_height = 0;
   for (size_t p = 0; p < arrangements.size(); ++p) {
-    const BankArrangement &bank_arrangement = bank_arrangements[p].get();
-    banks.push_back(MemoryBank());
+    const BankArrangement &bank_arrangement = arrangements[p].get();
+    banks.push_back(MemoryBank(layout.get(),
+                               design_db_,
+                               tap_cell,
+                               true,      // Rotate alternate rows.
+                               true,      // Rotate the first row.
+                               bank_arrangement.horizontal_alignment));
     MemoryBank &bank = banks.back();
 
     // We now want to assign things to rows and have the memory bank create the
     // row if they don't exist.
 
+    size_t num_memories = 0;
+    for (size_t i = 0; i < bank_arrangement.memory_rows.size(); ++i) {
+
+      size_t assigned_row = bank_arrangement.memory_rows[i];
+
+      std::string instance_name = absl::StrFormat(
+          "lut_dfxtp_%d_%d", p, num_memories);
+      std::string cell_name = absl::StrCat(instance_name, "_template");
+      bfg::atoms::Sky130Dfxtp::Parameters params;
+      bfg::atoms::Sky130Dfxtp generator(params, design_db_);
+      bfg::Cell *cell = generator.GenerateIntoDatabase(cell_name);
+
+      geometry::Instance *installed =
+          bank.InstantiateRight(assigned_row, instance_name, cell->layout());
+
+      ++num_memories;
+    }
+
     //int64_t y_pos = 0;
-    //size_t num_memories = 0;
 
     //for (size_t j = 0; j < layout_config.bank_rows; j++) {
     //  size_t row_width = 0;
@@ -118,25 +151,6 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     //  row.set_tap_cell(*tap_cell);
     //  
     //  for (size_t i = 0; i < layout_config.bank_columns; i++) {
-    //    std::string instance_name = absl::StrFormat(
-    //        "lut_dfxtp_%d_%d", b, num_memories);
-    //    std::string cell_name = absl::StrCat(instance_name, "_template");
-    //    bfg::atoms::Sky130Dfxtp::Parameters params;
-    //    bfg::atoms::Sky130Dfxtp generator(params, design_db_);
-    //    bfg::Cell *cell = generator.GenerateIntoDatabase(cell_name);
-    //    //cell->layout()->ResetOrigin();
-
-    //    geometry::Instance *installed = nullptr;
-    //    if (rotate_this_row) {
-    //      installed = row.InstantiateAndInsertFront(
-    //          instance_name, cell->layout());
-    //      bank_memories.insert(bank_memories.begin(), instance_name);
-    //    } else {
-    //      installed = row.InstantiateBack(instance_name, cell->layout());
-    //      bank_memories.push_back(instance_name);
-    //    }
-
-    //    ++num_memories;
     //  }
 
     //  //row.Place();

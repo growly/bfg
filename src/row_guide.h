@@ -67,6 +67,8 @@ class RowGuide {
   // Move the origin of this RowGuide and all instances such that the relative
   // position is conserved.
   void MoveTo(const geometry::Point &point);
+  void MoveLowerLeft(const geometry::Point &point);
+  void MoveLowerRight(const geometry::Point &point);
 
   void set_origin(const geometry::Point &point) { origin_ = point; }
   const geometry::Point &origin() const { return origin_; }

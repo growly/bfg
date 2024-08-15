@@ -5,6 +5,7 @@
 
 #include "tile.h"
 
+#include "../geometry/compass.h"
 #include "../design_database.h"
 #include "../row_guide.h"
 
@@ -43,6 +44,7 @@ class LutB : public Tile {
     std::vector<size_t> memory_rows;
     std::vector<size_t> buffer_rows;
     std::vector<size_t> active_mux2_rows;
+    geometry::Compass horizontal_alignment;
   };
 
   struct LayoutConfig {
