@@ -32,13 +32,13 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
   {4, LutB::LayoutConfig {
     .left = LutB::BankArrangement {
       .memory_rows = {0, 1, 2, 3, 4, 5, 5, 5},
-      .buffer_rows = {5, 5, 5},
+      .buffer_rows = {4, 4, 4},
       .horizontal_alignment = geometry::Compass::LEFT
     },
     .right = LutB::BankArrangement {
       .memory_rows = {5, 4, 3, 2, 1, 0, 0, 0},
-      .buffer_rows = {0, 0},
-      .active_mux2_rows = {0},
+      .buffer_rows = {1, 1},
+      .active_mux2_rows = {1},
       .horizontal_alignment = geometry::Compass::RIGHT
     },
     .mux_area_padding = 2500,
@@ -300,44 +300,43 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       buf_order.push_back(installed);
       buf_count++;
     }
+
+    for (size_t i = 0; i < bank_arrangement.buffer_rows.size(); ++i) {
+      size_t assigned_row = bank_arrangement.buffer_rows[i];
+
+      std::string instance_name = absl::StrFormat("buf_%d", buf_count);
+      std::string cell_name = absl::StrCat(instance_name, "_template");
+      atoms::Sky130Buf::Parameters buf_params = {
+        .width_nm = 1380,
+        .height_nm = 2720,
+        .nfet_0_width_nm = 520,
+        .nfet_1_width_nm = 520,
+        .pfet_0_width_nm = 790,
+        .pfet_1_width_nm = 790
+      };
+      atoms::Sky130Buf buf_generator(buf_params, design_db_);
+      bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      buf_cell->layout()->ResetY();
+      geometry::Instance *installed = bank.InstantiateRight(
+          assigned_row, instance_name, buf_cell->layout());
+      buf_order.push_back(installed);
+      buf_count++;
+    }
+
+    for (size_t i = 0; i < bank_arrangement.active_mux2_rows.size(); ++i) {
+      size_t assigned_row = bank_arrangement.active_mux2_rows[i];
+
+      std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
+      std::string cell_name = absl::StrCat(instance_name, "_template");
+      atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
+      bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
+          cell_name);
+      active_mux2_cell->layout()->ResetY();
+      geometry::Instance *instance = bank.InstantiateRight(
+          assigned_row, instance_name, active_mux2_cell->layout());
+      active_mux2s.push_back(instance);
+    }
   }
-
-  //   for (size_t i = 0; i < bank_arrangement.buffer_rows.size(); ++i) {
-  //     size_t assigned_row = bank_arrangement.buffer_rows[i];
-
-  //     std::string instance_name = absl::StrFormat("buf_%d", buf_count);
-  //     std::string cell_name = absl::StrCat(instance_name, "_template");
-  //     atoms::Sky130Buf::Parameters buf_params = {
-  //       .width_nm = 1380,
-  //       .height_nm = 2720,
-  //       .nfet_0_width_nm = 520,
-  //       .nfet_1_width_nm = 520,
-  //       .pfet_0_width_nm = 790,
-  //       .pfet_1_width_nm = 790
-  //     };
-  //     atoms::Sky130Buf buf_generator(buf_params, design_db_);
-  //     bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
-  //     buf_cell->layout()->ResetY();
-  //     geometry::Instance *installed = bank.InstantiateRight(
-  //         assigned_row, instance_name, buf_cell->layout());
-  //     buf_order.push_back(installed);
-  //     buf_count++;
-  //   }
-
-  //   for (size_t i = 0; i < bank_arrangement.active_mux2_rows.size(); ++i) {
-  //     size_t assigned_row = bank_arrangement.active_mux2_rows[i];
-
-  //     std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
-  //     std::string cell_name = absl::StrCat(instance_name, "_template");
-  //     atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
-  //     bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
-  //         cell_name);
-  //     active_mux2_cell->layout()->ResetY();
-  //     geometry::Instance *instance = bank.InstantiateRight(
-  //         assigned_row, instance_name, active_mux2_cell->layout());
-  //     active_mux2s.push_back(instance);
-  //   }
-  // }
 
   // {
   //   // Add input buffers. We need one buffer per LUT selector input, i.e. k

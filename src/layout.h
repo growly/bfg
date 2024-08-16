@@ -111,6 +111,10 @@ class Layout : public geometry::Manipulable {
 
   std::string Describe() const;
 
+  // Report the rectangular area covered by this Layout. (This is the area of
+  // the bounding box.)
+  // std::string Area() const;
+
   ::vlsir::raw::Abstract ToVLSIRAbstract(
       std::optional<geometry::Layer> top_layer = std::nullopt) const;
   ::vlsir::raw::Layout ToVLSIRLayout() const;
