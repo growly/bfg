@@ -16,11 +16,29 @@ void MemoryBank::MoveTo(const geometry::Point &point) {
   if (rows_.empty()) {
     return;
   }
-  geometry::Point first_row_origin = rows_.front().origin();
+  geometry::Point first_row_origin = Origin();
   for (auto &row : rows_) {
     geometry::Point difference = row.origin() - first_row_origin;
     row.MoveTo(point + difference);
   }
+}
+
+geometry::Point MemoryBank::Origin() const {
+  if (rows_.empty()) {
+    return {0, 0};
+  }
+  return rows_.front().origin();
+}
+
+void MemoryBank::AlignPointTo(
+    const geometry::Point &reference, const geometry::Point &target) {
+  geometry::Point diff = target - reference;
+  geometry::Point first_row_origin = Origin();
+  MoveTo(first_row_origin + diff);
+}
+
+bool MemoryBank::RowIsRotated(size_t index) {
+  return rotate_first_row_ ? index % 2 == 0 : index % 2 != 0;
 }
 
 RowGuide &MemoryBank::Row(size_t index) {
@@ -41,9 +59,13 @@ RowGuide &MemoryBank::Row(size_t index) {
         layout_,
         nullptr,                      // FIXME
         design_db_);
+
+    // There is also a corresponding vector of memories for each row.
+    memories_.emplace_back();
+    memory_names_.emplace_back();
+
     if (rotate_alternate_rows_) {
-      bool rotate_this_row = rotate_first_row_ ?  i % 2 == 0 : i % 2 != 0;
-      row.set_rotate_instances(rotate_this_row);
+      row.set_rotate_instances(RowIsRotated(i));
     }
     if (tap_cell_) {
       row.set_tap_cell(*tap_cell_);
@@ -107,13 +129,19 @@ geometry::Instance *MemoryBank::InstantiateRight(size_t row_index,
                                                  const std::string &name,
                                                  Layout *template_layout) {
   RowGuide &row = Row(row_index);
+  std::vector<geometry::Instance*> &memories = memories_[row_index];
+  std::vector<std::string> &memory_names = memory_names_[row_index];
+
   geometry::Instance *installed = nullptr;
   if (row.rotate_instances()) {
     installed = row.InstantiateAndInsertFront(name, template_layout);
+    memories.insert(memories.begin(), installed);
+    memory_names.insert(memory_names.begin(), name);
   } else {
     installed = row.InstantiateBack(name, template_layout);
+    memories.push_back(installed);
+    memory_names.push_back(name);
   }
-  // FIXME: Put installed in memories_.
   FixAlignments();
   return installed;
 }

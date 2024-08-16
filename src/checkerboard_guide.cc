@@ -1,5 +1,6 @@
 #include "checkerboard_guide.h"
 
+#include <optional>
 #include <algorithm>
 #include <absl/cleanup/cleanup.h>
 
@@ -31,8 +32,7 @@ CheckerboardGuide::CheckerboardGuide(
         template_cells_(nullptr),
         instance_count_(0) {}
 
-void CheckerboardGuide::InstantiateAll(
-    std::vector<geometry::Instance*> *layout_instances) {
+const std::vector<geometry::Instance*> &CheckerboardGuide::InstantiateAll() {
   LOG_IF(FATAL, !template_cells_) << "You must set_template_cells() first!";
   size_t column = 0;
 
@@ -49,6 +49,7 @@ void CheckerboardGuide::InstantiateAll(
     }
   }
 
+  layout_instances_.clear();
   int64_t y_pos = origin_.y();
   bool flip = flip_horizontal_;
   k = 0;
@@ -85,9 +86,7 @@ void CheckerboardGuide::InstantiateAll(
       layout_instance_template.set_name(name);
       geometry::Instance *layout_instance =
           layout_->AddInstance(layout_instance_template);
-      if (layout_instances) {
-        layout_instances->push_back(layout_instance);
-      }
+      layout_instances_.push_back(layout_instance);
       LOG(INFO) << "Put " << *layout_instance << " at " << position;
 
       max_row_height = std::max(max_row_height, cell_bb.Height());
@@ -98,6 +97,24 @@ void CheckerboardGuide::InstantiateAll(
     flip = !flip;
   }
   instance_count_ = k;
+  return layout_instances_;
+}
+
+std::optional<geometry::Rectangle> CheckerboardGuide::GetBoundingBox() const {
+  // TODO(aryap): This code is duplicated enough that it could be simplified and
+  // consolidated. The basic task is, given a vector of things that can have
+  // GetBoundingBox() called on them, to create the rectangle that covers them
+  // all.
+  std::optional<geometry::Rectangle> bounding_box;
+  for (geometry::Instance *instance : layout_instances_) {
+    auto instance_box = instance->GetBoundingBox();
+    if (!bounding_box) {
+      bounding_box = instance_box;
+      continue;
+    }
+    bounding_box->ExpandToCover(instance_box);
+  }
+  return bounding_box;
 }
 
 }   // namespace bfg

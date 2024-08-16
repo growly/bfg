@@ -39,6 +39,13 @@ class LutB : public Tile {
   // rows by index, where rows are indexed from 0 (bottom). We do this once for
   // the bank of rows on the left side and once for the bank of rows on the
   // right.
+  //
+  // TODO(aryap): Imagine a shorthand that was like this:
+  //  bank:
+  //    row: memory2, memory3, buf1, buf2
+  //    row: memory1, buf0
+  //    row: memory0
+  // Would that be good?
   struct BankArrangement {
     // constexpr comes to std::vector in C++20 but we don't have it yet.
     std::vector<size_t> memory_rows;

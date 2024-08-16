@@ -37,7 +37,16 @@ class MemoryBank {
 
   void MoveTo(const geometry::Point &point);
 
+  // Translate the Layout such that the given reference point, assumed to be in
+  // the coordinate space of this Layout, ends up at the target point.
+  void AlignPointTo(
+      const geometry::Point &reference, const geometry::Point &target);
+
+  geometry::Point Origin() const;
+
   RowGuide &Row(size_t index);
+
+  bool RowIsRotated(size_t index);
 
   geometry::Instance *InstantiateRight(size_t row_index,
                                        const std::string &name,

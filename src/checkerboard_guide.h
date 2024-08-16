@@ -106,7 +106,8 @@ class CheckerboardGuide {
     template_cells_ = template_cells;
   }
 
-  void InstantiateAll(std::vector<geometry::Instance*> *layout_instances);
+  const std::vector<geometry::Instance*> &InstantiateAll();
+  std::optional<geometry::Rectangle> GetBoundingBox() const;
 
  private:
   bfg::Layout *layout_;
@@ -121,6 +122,7 @@ class CheckerboardGuide {
   std::string name_prefix_;
 
   std::vector<bfg::Cell*> *template_cells_;
+  std::vector<geometry::Instance*> layout_instances_;
 
   size_t instance_count_;
 };

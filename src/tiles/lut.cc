@@ -195,8 +195,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   bfg::Cell *alt_mux_cell = bfg::atoms::Sky130Mux(
       alt_mux_params, design_db_).GenerateIntoDatabase("alt_sky130_mux");
 
-  std::vector<geometry::Instance*> mux_order;
-
   // Muxes are positioned like so:
   //
   // | 4-LUT | 5-LUT | 6-LUT
@@ -228,7 +226,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   // TODO(aryap): This is a function of track pitch, really.
   mux_grid.set_horizontal_overlap(-300);
   mux_grid.set_vertical_overlap(-1500);
-  mux_grid.InstantiateAll(&mux_order);
+  const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
 
   {
     // NOTE(aryap): Can only gracefully deal with two banks.
@@ -245,8 +243,6 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   layout->GetInstancesByName(&all_instances_by_name);
 
   {
-    // Now that the banks prototype layouts are copied into the main layout, map
-    // the memory instances by name into the actual objects.
     for (size_t b = 0; b < banks.size(); ++b) {
       MemoryBank &bank = banks[b];
       for (size_t j = 0; j < bank.memory_names().size(); ++j) {

@@ -118,7 +118,6 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
     size_t num_memories = 0;
     for (size_t i = 0; i < bank_arrangement.memory_rows.size(); ++i) {
-
       size_t assigned_row = bank_arrangement.memory_rows[i];
 
       std::string instance_name = absl::StrFormat(
@@ -134,174 +133,211 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       ++num_memories;
     }
 
-    //  bank.rows().push_back();
-
-    //  bank.memory_names().emplace_back();
-    //  std::vector<std::string> &bank_memories = bank.memory_names().back();
-
-
-
     //  layout->SavePoint(absl::StrCat("row_", j, "_lr"),
     //                    geometry::Point(row_width, y_pos));
     //}
   }
 
-  // LOG_IF(FATAL, banks.size() < 1) << "Expected at least 1 bank by this point.";
+  LOG_IF(FATAL, banks.size() < 1) << "Expected at least 1 bank by this point.";
 
-  // banks[0].MoveTo(geometry::Point(0, 0));
-  // geometry::Rectangle left_bounds = layout->GetBoundingBox();
+  banks[0].MoveTo(geometry::Point(0, 0));
 
-  // bfg::atoms::Sky130Mux::Parameters mux_params;
-  // mux_params.extend_inputs_top = true;
-  // mux_params.extend_inputs_bottom = false;
+  bfg::atoms::Sky130Mux::Parameters mux_params;
+  mux_params.extend_inputs_top = true;
+  mux_params.extend_inputs_bottom = false;
 
-  // bfg::atoms::Sky130Mux mux(mux_params, design_db_);
-  // bfg::Cell *base_mux_cell = mux.GenerateIntoDatabase("sky130_mux");
+  bfg::atoms::Sky130Mux mux(mux_params, design_db_);
+  bfg::Cell *base_mux_cell = mux.GenerateIntoDatabase("sky130_mux");
 
-  // // A second version of the mux has its inputs on the bottom instead of the
-  // // top:
-  // bfg::atoms::Sky130Mux::Parameters alt_mux_params;
-  // alt_mux_params.extend_inputs_top = false;
-  // alt_mux_params.extend_inputs_bottom = true;
+  // A second version of the mux has its inputs on the bottom instead of the
+  // top:
+  bfg::atoms::Sky130Mux::Parameters alt_mux_params;
+  alt_mux_params.extend_inputs_top = false;
+  alt_mux_params.extend_inputs_bottom = true;
 
-  // bfg::Cell *alt_mux_cell = bfg::atoms::Sky130Mux(
-  //     alt_mux_params, design_db_).GenerateIntoDatabase("alt_sky130_mux");
+  bfg::Cell *alt_mux_cell = bfg::atoms::Sky130Mux(
+      alt_mux_params, design_db_).GenerateIntoDatabase("alt_sky130_mux");
 
-  // std::vector<geometry::Instance*> mux_order;
+  // Muxes are positioned like so:
+  //
+  // | 4-LUT | 5-LUT | 6-LUT
+  //                 
+  // |       |   x   |   x x
+  // |       | x     | x     x
+  // |   x   |   x   |   x x
+  // | x     | x     | x     x
+  //
+  // The number of columns is defined in the LayoutConfig struct in
+  // kLayoutConfigurations. Here we must compute the position based on where
+  // they are in this chain.
+  int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
+  int64_t mux_width = base_mux_cell->layout()->GetBoundingBox().Width();
+  int64_t left_bank_bottom_row_right_x = banks[0].Row(0).Width();
+  int64_t x_pos = left_bank_bottom_row_right_x + layout_config.mux_area_padding;
+  int64_t y_offset = -(mux_height - 2 * max_row_height) / 2;
+  int64_t y_pos = y_offset;
 
-  // // Muxes are positioned like so:
-  // //
-  // // | 4-LUT | 5-LUT | 6-LUT
-  // //                 
-  // // |       |   x   |   x x
-  // // |       | x     | x     x
-  // // |   x   |   x   |   x x
-  // // | x     | x     | x     x
-  // //
-  // // The number of columns is defined in the LayoutConfig struct in
-  // // kLayoutConfigurations. Here we must compute the position based on where
-  // // they are in this chain.
-  // int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
-  // int64_t x_pos = static_cast<int64_t>(
-  //     left_bounds.Width()) + layout_config.mux_area_padding;
-  // int64_t y_offset = -(mux_height - 2 * max_row_height) / 2;
-  // int64_t y_pos = y_offset;
+  std::vector<bfg::Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
 
-  // std::vector<bfg::Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
+  CheckerboardGuide mux_grid(geometry::Point(x_pos, y_pos),
+                             "mux",
+                             layout_config.mux_area_rows,
+                             layout_config.mux_area_columns,
+                             layout.get(),
+                             nullptr,
+                             design_db_);
+  mux_grid.set_template_cells(&mux_templates);
+  // FIXME(aryap): This is a function of track pitch, really, not some number I
+  // eyeballed.
+  mux_grid.set_horizontal_overlap(-300);
+  mux_grid.set_vertical_overlap(-1500);
+  const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
 
-  // CheckerboardGuide mux_grid(geometry::Point(x_pos, y_pos),
-  //                            "mux",
-  //                            layout_config.mux_area_rows,
-  //                            layout_config.mux_area_columns,
-  //                            layout.get(),
-  //                            nullptr,
-  //                            design_db_);
-  // mux_grid.set_template_cells(&mux_templates);
-  // // TODO(aryap): This is a function of track pitch, really.
-  // mux_grid.set_horizontal_overlap(-300);
-  // mux_grid.set_vertical_overlap(-1500);
-  // mux_grid.InstantiateAll(&mux_order);
+  int64_t right_bank_top_row_left_x = banks[1].rows().back().LowerLeft().x();
+  int64_t right_bank_bottom_row_top_y = banks[1].rows().front().UpperLeft().y();
 
-  // {
-  //   // NOTE(aryap): Can only gracefully deal with two banks.
-  //   int64_t x_pos =
-  //       layout->GetBoundingBox().Width() + layout_config.mux_area_padding;
-  //   for (size_t i = 1; i < banks.size(); ++i) {
-  //     banks[i].MoveTo(geometry::Point(x_pos, 0));
-  //     x_pos += banks[i - 1].GetBoundingBox()->Width();
+  x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
+      layout_config.mux_area_padding;
+  y_pos = mux_grid.GetBoundingBox()->lower_left().y() -
+      layout_config.mux_area_padding;
+
+  banks[1].AlignPointTo(
+      {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
+      {x_pos, y_pos});
+
+  std::unordered_map<std::string, geometry::Instance *const>
+      all_instances_by_name;
+  layout->GetInstancesByName(&all_instances_by_name);
+
+  // The required scan chain connections are enumerated in (source, sink) pairs
+  // given by the names of the instances to be connected.
+  std::set<std::pair<std::string, std::string>> scan_chain_pairs;
+  {
+    geometry::Instance *end_of_last_bank = nullptr;
+    for (size_t b = 0; b < banks.size(); ++b) {
+      MemoryBank &bank = banks[b];
+
+      for (size_t j = 0; j < bank.memories().size(); ++j) {
+        bool rotate_this_row = bank.RowIsRotated(j);
+        std::vector<geometry::Instance*> &row = bank.memories()[j];
+
+        // Connect flip flops next to each other in each row:
+        for (size_t i = 0; i < row.size() - 1; ++i) {
+          geometry::Instance *memory = row[i];
+          geometry::Instance *next_memory = row[i + 1];
+
+          // If the row is rotated, the direction of connection is reversed:
+          if (rotate_this_row) {
+            std::swap(memory, next_memory);
+          }
+
+          scan_chain_pairs.insert({memory->name(), next_memory->name()});
+        }
+
+        if (j == 0)
+          continue;
+
+        // There are also connections between rows, which depend on which rows
+        // are rotated and which bank we're in (left or right):
+        //    row[rotate_this_row ? 0 : row.size() - 1];
+        std::vector<geometry::Instance*> &last_row = bank.memories()[j - 1];
+
+        geometry::Instance *start_of_this_row =
+            rotate_this_row ? row.back() : row.front();
+        geometry::Instance *end_of_this_row =
+            rotate_this_row ? row.front() : row.back();
+        geometry::Instance *start_of_last_row =
+            rotate_this_row ? last_row.front() : last_row.back();
+        geometry::Instance *end_of_last_row =
+            rotate_this_row ? last_row.back() : last_row.front();
+        if (b == 0) {
+          scan_chain_pairs.insert(
+              {end_of_last_row->name(), start_of_this_row->name()});
+        } else {
+          scan_chain_pairs.insert(
+              {end_of_this_row->name(), start_of_last_row->name()});
+        }
+
+        if (j == bank.memories().size() - 1) {
+          if (end_of_last_bank) {
+            scan_chain_pairs.insert(
+                {end_of_last_bank->name(), start_of_this_row->name()});
+          }
+
+          end_of_last_bank = end_of_this_row;
+        }
+      }
+    }
+  }
+
+  std::vector<geometry::Instance*> buf_order;
+  std::vector<geometry::Instance*> active_mux2s; 
+
+  size_t buf_count;
+
+  for (size_t p = 1; p < 2 /*arrangements.size()*/; ++p) {
+    const BankArrangement &bank_arrangement = arrangements[p].get();
+    MemoryBank &bank = banks[p];
+
+    for (size_t i = 0; i < bank_arrangement.buffer_rows.size(); ++i) {
+      size_t assigned_row = bank_arrangement.buffer_rows[i];
+
+      std::string instance_name = absl::StrFormat("buf_%d", buf_count);
+      std::string cell_name = absl::StrCat(instance_name, "_template");
+      atoms::Sky130Buf::Parameters buf_params = {
+        .width_nm = 1380,
+        .height_nm = 2720,
+        .nfet_0_width_nm = 520,
+        .nfet_1_width_nm = 520,
+        .pfet_0_width_nm = 790,
+        .pfet_1_width_nm = 790
+      };
+      atoms::Sky130Buf buf_generator(buf_params, design_db_);
+      bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      buf_cell->layout()->ResetY();
+      geometry::Instance *installed = bank.InstantiateRight(
+          assigned_row, instance_name, buf_cell->layout());
+      buf_order.push_back(installed);
+      buf_count++;
+    }
+  }
+
+  //   for (size_t i = 0; i < bank_arrangement.buffer_rows.size(); ++i) {
+  //     size_t assigned_row = bank_arrangement.buffer_rows[i];
+
+  //     std::string instance_name = absl::StrFormat("buf_%d", buf_count);
+  //     std::string cell_name = absl::StrCat(instance_name, "_template");
+  //     atoms::Sky130Buf::Parameters buf_params = {
+  //       .width_nm = 1380,
+  //       .height_nm = 2720,
+  //       .nfet_0_width_nm = 520,
+  //       .nfet_1_width_nm = 520,
+  //       .pfet_0_width_nm = 790,
+  //       .pfet_1_width_nm = 790
+  //     };
+  //     atoms::Sky130Buf buf_generator(buf_params, design_db_);
+  //     bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+  //     buf_cell->layout()->ResetY();
+  //     geometry::Instance *installed = bank.InstantiateRight(
+  //         assigned_row, instance_name, buf_cell->layout());
+  //     buf_order.push_back(installed);
+  //     buf_count++;
+  //   }
+
+  //   for (size_t i = 0; i < bank_arrangement.active_mux2_rows.size(); ++i) {
+  //     size_t assigned_row = bank_arrangement.active_mux2_rows[i];
+
+  //     std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
+  //     std::string cell_name = absl::StrCat(instance_name, "_template");
+  //     atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
+  //     bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
+  //         cell_name);
+  //     active_mux2_cell->layout()->ResetY();
+  //     geometry::Instance *instance = bank.InstantiateRight(
+  //         assigned_row, instance_name, active_mux2_cell->layout());
+  //     active_mux2s.push_back(instance);
   //   }
   // }
-
-  // std::unordered_map<std::string, geometry::Instance *const>
-  //     all_instances_by_name;
-  // layout->GetInstancesByName(&all_instances_by_name);
-
-  // {
-  //   // Now that the banks prototype layouts are copied into the main layout, map
-  //   // the memory instances by name into the actual objects.
-  //   for (size_t b = 0; b < banks.size(); ++b) {
-  //     MemoryBank &bank = banks[b];
-  //     for (size_t j = 0; j < bank.memory_names().size(); ++j) {
-  //       std::vector<std::string> &row = bank.memory_names()[j];
-  //       bank.memories().emplace_back();
-  //       for (size_t i = 0; i < row.size(); ++i) {
-  //         const std::string &name = row[i];
-  //         auto it = all_instances_by_name.find(name);
-  //         LOG_IF(FATAL, it == all_instances_by_name.end())
-  //             << "Could not find memory \"" << name << "\" in main layout";
-  //         geometry::Instance *memory = it->second;
-  //         // LOG(INFO) << "row " << j << ", col " << i << ": " << name
-  //         //           << " -> " << memory;
-  //         bank.memories().back().push_back(memory);
-  //       }
-  //     }
-  //   }
-  // }
-
-  // // The required scan chain connections are enumerated in (source, sink) pairs
-  // // given by the names of the instances to be connected.
-  // std::set<std::pair<std::string, std::string>> scan_chain_pairs;
-  // {
-  //   geometry::Instance *end_of_last_bank = nullptr;
-  //   for (size_t b = 0; b < banks.size(); ++b) {
-  //     MemoryBank &bank = banks[b];
-
-  //     for (size_t j = 0; j < bank.memories().size(); ++j) {
-  //       bool rotate_this_row = layout_config.rotate_first_row ?
-  //           j % 2 == 0 : j % 2 != 0;
-  //       std::vector<geometry::Instance*> &row = bank.memories()[j];
-
-  //       // Connect flip flops next to each other in each row:
-  //       for (size_t i = 0; i < row.size() - 1; ++i) {
-  //         geometry::Instance *memory = row[i];
-  //         geometry::Instance *next_memory = row[i + 1];
-
-  //         // If the row is rotated, the direction of connection is reversed:
-  //         if (rotate_this_row) {
-  //           std::swap(memory, next_memory);
-  //         }
-
-  //         scan_chain_pairs.insert({memory->name(), next_memory->name()});
-  //       }
-
-  //       if (j == 0)
-  //         continue;
-
-  //       // There are also connections between rows, which depend on which rows
-  //       // are rotated and which bank we're in (left or right):
-  //       //    row[rotate_this_row ? 0 : row.size() - 1];
-  //       std::vector<geometry::Instance*> &last_row = bank.memories()[j - 1];
-
-  //       geometry::Instance *start_of_this_row =
-  //           rotate_this_row ? row.back() : row.front();
-  //       geometry::Instance *end_of_this_row =
-  //           rotate_this_row ? row.front() : row.back();
-  //       geometry::Instance *start_of_last_row =
-  //           rotate_this_row ? last_row.front() : last_row.back();
-  //       geometry::Instance *end_of_last_row =
-  //           rotate_this_row ? last_row.back() : last_row.front();
-  //       if (b == 0) {
-  //         scan_chain_pairs.insert(
-  //             {end_of_last_row->name(), start_of_this_row->name()});
-  //       } else {
-  //         scan_chain_pairs.insert(
-  //             {end_of_this_row->name(), start_of_last_row->name()});
-  //       }
-
-  //       if (j == bank.memories().size() - 1) {
-  //         if (end_of_last_bank) {
-  //           scan_chain_pairs.insert(
-  //               {end_of_last_bank->name(), start_of_this_row->name()});
-  //         }
-
-  //         end_of_last_bank = end_of_this_row;
-  //       }
-  //     }
-  //   }
-  // }
-
-  // std::vector<geometry::Instance*> buf_order;
-  // std::vector<geometry::Instance*> active_mux2s; 
 
   // {
   //   // Add input buffers. We need one buffer per LUT selector input, i.e. k

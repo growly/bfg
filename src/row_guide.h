@@ -40,10 +40,35 @@ class RowGuide {
   // Methods to insert new instances of a given template layout, with a given
   // name, at either:
   //  - the back of the row, extending the row past where it currently is;
+  //
+  //          +------+------+ - - -+
+  //          |  A   |  B   | new  |
+  //          +------+------+ - - -+
+  //                        ^
+  //                        appended
+  //
   //  - the front of the row, shifting the position of all other instances back;
   //    and
+  //
+  //                                 existing instances
+  //                   ---->| ---->| moved right
+  //          + - - -+------+------+
+  //          | new  |  A   |  B   |
+  //          + - - -+------+------+
+  //          ^
+  //          inserted
+  //
   //  - in front of the front of the row, leaving existing placements
-  //  unchanged.
+  //    unchanged.
+  //
+  //          existing instances do not move
+  //          v
+  //   + - - -+------+------+
+  //   | new  |  A   |  B   |
+  //   + - - -+------+------+
+  //   ^
+  //   prefixed
+  //
   // Caller takes ownership of instance. Instance's position and orientation may
   // be changed. It is assumed that the given instance is already installed in a
   // bfg::Layout (and its circuit representation exists in a bfg::Circuit).
