@@ -74,15 +74,13 @@ RowGuide &MemoryBank::Row(size_t index) {
   return rows_[index];
 }
 
-// Aligns the origins of all rows such that:
-// - The y position of each row's origin sits on top (or below, if grow_down_
-// is true) the row below (or above).
-// - The x position of each row's origin aligns with the previous row's left or
-// right-most x position, based on horizontal_alignment_.
-void MemoryBank::FixAlignments() {
-  // Make sure rows abut each other vertically at the tiling boundary:
-  int64_t last_y = 0;
-  int64_t last_x = 0;
+// Makes sure the y position of each row's origin sits on top (or below, if
+// grow_down_ is true) the row below (or above). This is necessary because when
+// empty rows are created they have unknown height, but as soon as an instance
+// is assigned to those rows they gain a height and rows above them need to be
+// shifted up.
+void MemoryBank::EnsureVerticalAbutment() {
+  int64_t last_y = Origin().y();
   int64_t last_row_height = 0;
   for (size_t i = 0; i < rows_.size(); ++i) {
     RowGuide &row = Row(i);
@@ -90,37 +88,56 @@ void MemoryBank::FixAlignments() {
     int64_t expected_y = grow_down_ ?
         last_y - row.Height() : last_y + last_row_height;
 
-    if (!horizontal_alignment_) {
-      row.MoveTo({row.origin().x(), expected_y});
-    } else {
-      switch (*horizontal_alignment_) {
-        case geometry::Compass::LEFT:
-          row.MoveLowerLeft({last_x, expected_y});
-          break;
-        case geometry::Compass::RIGHT:
-          row.MoveLowerRight({last_x, expected_y});
-          break;
-        default:
-          LOG(FATAL) << "Unsupported horizontal_alignment in MemoryBank: "
-                     << *horizontal_alignment_;
-      }
-    }
+    row.MoveTo({row.origin().x(), expected_y});
 
     last_y = row.LowerLeft().y();
     last_row_height = row.Height();
+  }
+}
 
-    if (horizontal_alignment_) {
-      switch (*horizontal_alignment_) {
-        case geometry::Compass::LEFT:
-          last_x = row.LowerLeft().x();
-          break;
-        case geometry::Compass::RIGHT:
-          last_x = row.UpperRight().x();
-          break;
-        default:
-          LOG(FATAL) << "Unsupported horizontal_alignment in MemoryBank: "
-                     << *horizontal_alignment_;
-      }
+// Aligns the origins of all rows such that the x position of each row's origin
+// aligns with the previous row's left or right-most x position, based on
+// horizontal_alignment_.
+void MemoryBank::AlignRight() {
+  int64_t right_x = 0;
+  for (size_t i = 0; i < rows_.size(); ++i) {
+    right_x = std::max(right_x, rows_[i].LowerRight().x());
+  }
+  for (size_t i = 0; i < rows_.size(); ++i) {
+    RowGuide &row = rows_[i];
+    int64_t current_y = row.LowerRight().y();
+    row.MoveLowerRight({right_x, current_y});
+  }
+}
+void MemoryBank::AlignLeft() {
+  int64_t left_x = 0;
+  for (size_t i = 0; i < rows_.size(); ++i) {
+    left_x = std::min(left_x, rows_[i].LowerLeft().x());
+  }
+  for (size_t i = 0; i < rows_.size(); ++i) {
+    RowGuide &row = rows_[i];
+    int64_t current_y = row.LowerLeft().y();
+    row.MoveLowerLeft({left_x, current_y});
+  }
+}
+
+void MemoryBank::FixAlignments() {
+  if (rows_.empty()) {
+    return;
+  }
+  EnsureVerticalAbutment();
+
+  if (horizontal_alignment_) {
+    switch (*horizontal_alignment_) {
+      case geometry::Compass::LEFT:
+        AlignLeft();
+        break;
+      case geometry::Compass::RIGHT:
+        AlignRight();
+        break;
+      default:
+        LOG(FATAL) << "Unsupported horizontal_alignment in MemoryBank: "
+                   << *horizontal_alignment_;
     }
   }
 }

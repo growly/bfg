@@ -64,6 +64,9 @@ class MemoryBank {
 
  private:
   void FixAlignments();
+  void EnsureVerticalAbutment();
+  void AlignRight();
+  void AlignLeft();
 
   void set_grow_down(bool grow_down) { grow_down_ = grow_down; }
   void set_rotate_alternate_rows(bool rotate_alternate_rows) {
