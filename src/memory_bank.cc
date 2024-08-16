@@ -142,6 +142,47 @@ void MemoryBank::FixAlignments() {
   }
 }
 
+geometry::Instance *MemoryBank::InstantiateInside(size_t row_index,
+                                                  const std::string &name,
+                                                  Layout *template_layout) {
+  if (!horizontal_alignment_) {
+    return InstantiateRight(row_index, name, template_layout);
+  }
+  switch (*horizontal_alignment_) {
+    case geometry::Compass::LEFT:
+      return InstantiateRight(row_index, name, template_layout);
+      break;
+    case geometry::Compass::RIGHT:
+      return InstantiateLeft(row_index, name, template_layout);
+      break;
+    default:
+      LOG(FATAL) << "Unsupported horizontal_alignment in MemoryBank: "
+                 << *horizontal_alignment_;
+  }
+  return nullptr;
+}
+
+geometry::Instance *MemoryBank::InstantiateLeft(size_t row_index,
+                                                const std::string &name,
+                                                Layout *template_layout) {
+  RowGuide &row = Row(row_index);
+  std::vector<geometry::Instance*> &memories = memories_[row_index];
+  std::vector<std::string> &memory_names = memory_names_[row_index];
+
+  geometry::Instance *installed = nullptr;
+  if (row.rotate_instances()) {
+    installed = row.InstantiateBack(name, template_layout);
+    memories.insert(memories.begin(), installed);
+    memory_names.insert(memory_names.begin(), name);
+  } else {
+    installed = row.InstantiateAndInsertFront(name, template_layout);
+    memories.push_back(installed);
+    memory_names.push_back(name);
+  }
+  FixAlignments();
+  return installed;
+}
+
 geometry::Instance *MemoryBank::InstantiateRight(size_t row_index,
                                                  const std::string &name,
                                                  Layout *template_layout) {

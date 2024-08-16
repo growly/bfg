@@ -193,18 +193,6 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_grid.set_vertical_overlap(-1500);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
 
-  int64_t right_bank_top_row_left_x = banks[1].rows().back().LowerLeft().x();
-  int64_t right_bank_bottom_row_top_y = banks[1].rows().front().UpperLeft().y();
-
-  x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
-      layout_config.mux_area_padding;
-  y_pos = mux_grid.GetBoundingBox()->lower_left().y() -
-      layout_config.mux_area_padding;
-
-  banks[1].AlignPointTo(
-      {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
-      {x_pos, y_pos});
-
   std::unordered_map<std::string, geometry::Instance *const>
       all_instances_by_name;
   layout->GetInstancesByName(&all_instances_by_name);
@@ -295,7 +283,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
-      geometry::Instance *installed = bank.InstantiateRight(
+      geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell->layout());
       buf_order.push_back(installed);
       buf_count++;
@@ -317,7 +305,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
-      geometry::Instance *installed = bank.InstantiateRight(
+      geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell->layout());
       buf_order.push_back(installed);
       buf_count++;
@@ -332,11 +320,23 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
           cell_name);
       active_mux2_cell->layout()->ResetY();
-      geometry::Instance *instance = bank.InstantiateRight(
+      geometry::Instance *instance = bank.InstantiateInside(
           assigned_row, instance_name, active_mux2_cell->layout());
       active_mux2s.push_back(instance);
     }
   }
+
+  int64_t right_bank_top_row_left_x = banks[1].rows().back().LowerLeft().x();
+  int64_t right_bank_bottom_row_top_y = banks[1].rows().front().UpperLeft().y();
+
+  x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
+      layout_config.mux_area_padding;
+  y_pos = mux_grid.GetBoundingBox()->lower_left().y() -
+      layout_config.mux_area_padding;
+
+  banks[1].AlignPointTo(
+      {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
+      {x_pos, y_pos});
 
   // {
   //   // Add input buffers. We need one buffer per LUT selector input, i.e. k

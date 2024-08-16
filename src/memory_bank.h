@@ -48,9 +48,16 @@ class MemoryBank {
 
   bool RowIsRotated(size_t index);
 
+  // Instantiates on the opposite side to which the bank is aligned:
+  geometry::Instance *InstantiateInside(size_t row_index,
+                                        const std::string &name,
+                                        Layout *template_layout);
   geometry::Instance *InstantiateRight(size_t row_index,
                                        const std::string &name,
                                        Layout *template_layout);
+  geometry::Instance *InstantiateLeft(size_t row_index,
+                                      const std::string &name,
+                                      Layout *template_layout);
 
   std::optional<geometry::Rectangle> GetBoundingBox() const;
 
