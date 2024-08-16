@@ -8,6 +8,8 @@
 #include "../geometry/compass.h"
 #include "../design_database.h"
 #include "../row_guide.h"
+#include "../memory_bank.h"
+#include "../layout.h"
 
 namespace bfg {
 
@@ -69,6 +71,14 @@ class LutB : public Tile {
   bfg::Cell *GenerateIntoDatabase(const std::string &name) override;
 
  protected:
+  // FIXME(aryap): Fix this mess of a signature:
+  void Routing(
+      const std::vector<geometry::Instance*> &buf_order,
+      const std::vector<geometry::Instance*> &mux_order,
+      const std::vector<geometry::Instance*> &active_mux2s,
+      std::vector<MemoryBank> *memory_banks,
+      Layout *layout) const;
+
   size_t lut_size_;
 
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);

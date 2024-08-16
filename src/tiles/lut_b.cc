@@ -16,6 +16,7 @@
 #include "../geometry/compass.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/shape_collection.h"
+#include "../geometry/port.h"
 #include "../layout.h"
 #include "../memory_bank.h"
 #include "../poly_line_cell.h"
@@ -197,67 +198,6 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       all_instances_by_name;
   layout->GetInstancesByName(&all_instances_by_name);
 
-  // The required scan chain connections are enumerated in (source, sink) pairs
-  // given by the names of the instances to be connected.
-  std::set<std::pair<std::string, std::string>> scan_chain_pairs;
-  {
-    geometry::Instance *end_of_last_bank = nullptr;
-    for (size_t b = 0; b < banks.size(); ++b) {
-      MemoryBank &bank = banks[b];
-
-      for (size_t j = 0; j < bank.memories().size(); ++j) {
-        bool rotate_this_row = bank.RowIsRotated(j);
-        std::vector<geometry::Instance*> &row = bank.memories()[j];
-
-        // Connect flip flops next to each other in each row:
-        for (size_t i = 0; i < row.size() - 1; ++i) {
-          geometry::Instance *memory = row[i];
-          geometry::Instance *next_memory = row[i + 1];
-
-          // If the row is rotated, the direction of connection is reversed:
-          if (rotate_this_row) {
-            std::swap(memory, next_memory);
-          }
-
-          scan_chain_pairs.insert({memory->name(), next_memory->name()});
-        }
-
-        if (j == 0)
-          continue;
-
-        // There are also connections between rows, which depend on which rows
-        // are rotated and which bank we're in (left or right):
-        //    row[rotate_this_row ? 0 : row.size() - 1];
-        std::vector<geometry::Instance*> &last_row = bank.memories()[j - 1];
-
-        geometry::Instance *start_of_this_row =
-            rotate_this_row ? row.back() : row.front();
-        geometry::Instance *end_of_this_row =
-            rotate_this_row ? row.front() : row.back();
-        geometry::Instance *start_of_last_row =
-            rotate_this_row ? last_row.front() : last_row.back();
-        geometry::Instance *end_of_last_row =
-            rotate_this_row ? last_row.back() : last_row.front();
-        if (b == 0) {
-          scan_chain_pairs.insert(
-              {end_of_last_row->name(), start_of_this_row->name()});
-        } else {
-          scan_chain_pairs.insert(
-              {end_of_this_row->name(), start_of_last_row->name()});
-        }
-
-        if (j == bank.memories().size() - 1) {
-          if (end_of_last_bank) {
-            scan_chain_pairs.insert(
-                {end_of_last_bank->name(), start_of_this_row->name()});
-          }
-
-          end_of_last_bank = end_of_this_row;
-        }
-      }
-    }
-  }
-
   std::vector<geometry::Instance*> buf_order;
   std::vector<geometry::Instance*> active_mux2s; 
 
@@ -326,6 +266,9 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
+  // Now that all instances have been assigned to the banks and their
+  // dimensions are known, move them into place around the muxes. Well, move
+  // the right bank because the first bank is fixed.
   int64_t right_bank_top_row_left_x = banks[1].rows().back().LowerLeft().x();
   int64_t right_bank_bottom_row_top_y = banks[1].rows().front().UpperLeft().y();
 
@@ -338,63 +281,68 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
-  // {
-  //   // Add input buffers. We need one buffer per LUT selector input, i.e. k
-  //   // buffers for a k-LUT.
-  //   RowGuide &upper_row = banks[0].rows()[3];
-  //   int64_t buf_count = 0;
-  //   for (size_t i = 0; i < lut_size_ - 1; ++i) {
-  //     std::string instance_name = absl::StrFormat("buf_%d", buf_count);
-  //     std::string cell_name = absl::StrCat(instance_name, "_template");
-  //     atoms::Sky130Buf::Parameters buf_params = {
-  //       .width_nm = 1380,
-  //       .height_nm = 2720,
-  //       .nfet_0_width_nm = 520,
-  //       .nfet_1_width_nm = 520,
-  //       .pfet_0_width_nm = 790,
-  //       .pfet_1_width_nm = 790
-  //     };
-  //     atoms::Sky130Buf buf_generator(buf_params, design_db_);
-  //     bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
-  //     buf_cell->layout()->ResetY();
-  //     geometry::Instance *instance = upper_row.InstantiateBack(
-  //         instance_name, buf_cell->layout());
-  //     buf_order.push_back(instance);
-  //     buf_count++;
-  //   }
-  //   RowGuide &lower_row = banks[1].rows()[0];
-  //   for (size_t i = 0; i < 1; ++i) {
-  //     std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
-  //     std::string cell_name = absl::StrCat(instance_name, "_template");
-  //     atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
-  //     bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
-  //         cell_name);
-  //     active_mux2_cell->layout()->ResetY();
-  //     geometry::Instance *instance = lower_row.InstantiateFront(
-  //         instance_name, active_mux2_cell->layout());
-  //     active_mux2s.push_back(instance);
-  //   }
-  //   // Add more input buffers.
-  //   for (size_t i = 0; i < 1; ++i) {
-  //     std::string instance_name = absl::StrFormat("buf_%d", buf_count);
-  //     std::string cell_name = absl::StrCat(instance_name, "_template");
-  //     atoms::Sky130Buf::Parameters buf_params = {
-  //       .width_nm = 1380,
-  //       .height_nm = 2720,
-  //       .nfet_0_width_nm = 520,
-  //       .nfet_1_width_nm = 520,
-  //       .pfet_0_width_nm = 790,
-  //       .pfet_1_width_nm = 790
-  //     };
-  //     atoms::Sky130Buf buf_generator(buf_params, design_db_);
-  //     bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
-  //     buf_cell->layout()->ResetY();
-  //     geometry::Instance *instance = lower_row.InstantiateFront(
-  //         instance_name, buf_cell->layout());
-  //     buf_order.push_back(instance);
-  //     buf_count++;
-  //   }
-  // }
+  // The required scan chain connections are enumerated in (source, sink) pairs
+  // given by the names of the instances to be connected.
+  std::set<std::pair<std::string, std::string>> scan_chain_pairs;
+  {
+    geometry::Instance *end_of_last_bank = nullptr;
+    for (size_t b = 0; b < banks.size(); ++b) {
+      MemoryBank &bank = banks[b];
+
+      for (size_t j = 0; j < bank.memories().size(); ++j) {
+        bool rotate_this_row = bank.RowIsRotated(j);
+        std::vector<geometry::Instance*> &row = bank.memories()[j];
+
+        // Connect flip flops next to each other in each row:
+        for (size_t i = 0; i < row.size() - 1; ++i) {
+          geometry::Instance *memory = row[i];
+          geometry::Instance *next_memory = row[i + 1];
+
+          // If the row is rotated, the direction of connection is reversed:
+          if (rotate_this_row) {
+            std::swap(memory, next_memory);
+          }
+
+          scan_chain_pairs.insert({memory->name(), next_memory->name()});
+        }
+
+        if (j == 0)
+          continue;
+
+        // There are also connections between rows, which depend on which rows
+        // are rotated and which bank we're in (left or right):
+        //    row[rotate_this_row ? 0 : row.size() - 1];
+        std::vector<geometry::Instance*> &last_row = bank.memories()[j - 1];
+
+        geometry::Instance *start_of_this_row =
+            rotate_this_row ? row.back() : row.front();
+        geometry::Instance *end_of_this_row =
+            rotate_this_row ? row.front() : row.back();
+        geometry::Instance *start_of_last_row =
+            rotate_this_row ? last_row.front() : last_row.back();
+        geometry::Instance *end_of_last_row =
+            rotate_this_row ? last_row.back() : last_row.front();
+        if (b == 0) {
+          scan_chain_pairs.insert(
+              {end_of_last_row->name(), start_of_this_row->name()});
+        } else {
+          scan_chain_pairs.insert(
+              {end_of_this_row->name(), start_of_last_row->name()});
+        }
+
+        if (j == bank.memories().size() - 1) {
+          if (end_of_last_bank) {
+            scan_chain_pairs.insert(
+                {end_of_last_bank->name(), start_of_this_row->name()});
+          }
+
+          end_of_last_bank = end_of_this_row;
+        }
+      }
+    }
+  }
+
+  Routing(buf_order, mux_order, active_mux2s, &banks, layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -404,133 +352,127 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // //pre->set_name(name);
   // //design_db_->ConsumeCell(pre);
   // //return pre;
+  lut_cell->SetLayout(layout.release());
+  lut_cell->SetCircuit(circuit.release());
+  bfg::Cell *cell = lut_cell.release();
+  cell->set_name(name);
+  design_db_->ConsumeCell(cell);
+  return cell;
+}
 
-  // geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
-  // LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
+void LutB::Routing(
+    const std::vector<geometry::Instance*> &buf_order,
+    const std::vector<geometry::Instance*> &mux_order,
+    const std::vector<geometry::Instance*> &active_mux2s,
+    std::vector<MemoryBank> *memory_banks,
+    Layout *layout) const {
+  // TODO(aryap): Don't tase me bro
+  std::vector<MemoryBank> &banks = *memory_banks;
 
-  // RoutingGrid routing_grid(db);
-  // 
-  // // The alt routing grid is used for cases where we want to switch routing
-  // // direction. Since the grids don't share state, they must be used
-  // // independently with care that their routes do not produce conflicts.
-  // RoutingGrid alt_routing_grid(db);
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
-  // // Set every property the RoutingGrid needs.
-  // //bfg::RoutingLayerInfo li_layer_info;
-  // //db.GetRoutingLayerInfo("li.drawing", &li_layer_info);
-  // //li_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-  // //li_layer_info.area = pre_route_bounds;
-  // //li_layer_info.offset = 50;
+  const LutB::LayoutConfig layout_config =
+      *LutB::GetLayoutConfiguration(lut_size_); 
 
-  // bfg::RoutingLayerInfo met1_layer_info =
-  //     db.GetRoutingLayerInfoOrDie("met1.drawing");
-  // met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-  // met1_layer_info.area = pre_route_bounds;
-  // // TODO(aryap): If we want y = 735 to be on the grid, and we know the offset
-  // // is relative to the pre_route_bounds lower-left y = -600, 
-  // // (735 - (-190)) / 340 (the pitch) = 3.9265
-  // //    offset = .3.9265 * 340
-  // //           = 315
-  // met1_layer_info.offset = 330;
+  geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
+  LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
 
-  // bfg::RoutingLayerInfo met2_layer_info =
-  //     db.GetRoutingLayerInfoOrDie("met2.drawing");
-  // met2_layer_info.direction = bfg::RoutingTrackDirection::kTrackVertical;
-  // met2_layer_info.area = pre_route_bounds;
-  // met2_layer_info.offset = 50;
+  RoutingGrid routing_grid(db);
+  
+  // The alt routing grid is used for cases where we want to switch routing
+  // direction. Since the grids don't share state, they must be used
+  // independently with care that their routes do not produce conflicts.
+  RoutingGrid alt_routing_grid(db);
 
-  // // TODO(aryap): Store connectivity information (which layers connect through
-  // // which vias) in the PhysicalPropertiesDatabase's via_layers_.
-  // bfg::RoutingViaInfo routing_via_info =
-  //     db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
-  // routing_via_info.set_cost(0.5);
-  // routing_grid.AddRoutingViaInfo(
-  //     met1_layer_info.layer, met2_layer_info.layer, routing_via_info)
-  //     .IgnoreError();
-  // //alt_routing_grid.AddRoutingViaInfo(
-  // //    met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
+  // Set every property the RoutingGrid needs.
+  //bfg::RoutingLayerInfo li_layer_info;
+  //db.GetRoutingLayerInfo("li.drawing", &li_layer_info);
+  //li_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+  //li_layer_info.area = pre_route_bounds;
+  //li_layer_info.offset = 50;
 
-  // routing_via_info = db.GetRoutingViaInfoOrDie("li.drawing", "met1.drawing");
-  // routing_via_info.set_cost(0.5);
-  // routing_grid.AddRoutingViaInfo(
-  //     met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info)
-  //     .IgnoreError();
-  // //alt_routing_grid.AddRoutingViaInfo(
-  // //    met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
+  bfg::RoutingLayerInfo met1_layer_info =
+      db.GetRoutingLayerInfoOrDie("met1.drawing");
+  met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+  met1_layer_info.area = pre_route_bounds;
+  // TODO(aryap): If we want y = 735 to be on the grid, and we know the offset
+  // is relative to the pre_route_bounds lower-left y = -600, 
+  // (735 - (-190)) / 340 (the pitch) = 3.9265
+  //    offset = .3.9265 * 340
+  //           = 315
+  met1_layer_info.offset = 330;
 
-  // routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
-  // routing_via_info.set_cost(0.5);
-  // routing_grid.AddRoutingViaInfo(
-  //     db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info)
-  //     .IgnoreError();
-  // //alt_routing_grid.AddRoutingViaInfo(
-  // //    db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
+  bfg::RoutingLayerInfo met2_layer_info =
+      db.GetRoutingLayerInfoOrDie("met2.drawing");
+  met2_layer_info.direction = bfg::RoutingTrackDirection::kTrackVertical;
+  met2_layer_info.area = pre_route_bounds;
+  met2_layer_info.offset = 50;
 
-  // //routing_grid.AddRoutingLayerInfo(li_layer_info);
-  // routing_grid.AddRoutingLayerInfo(met1_layer_info).IgnoreError();
-  // routing_grid.AddRoutingLayerInfo(met2_layer_info).IgnoreError();
+  // TODO(aryap): Store connectivity information (which layers connect through
+  // which vias) in the PhysicalPropertiesDatabase's via_layers_.
+  bfg::RoutingViaInfo routing_via_info =
+      db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid.AddRoutingViaInfo(
+      met1_layer_info.layer, met2_layer_info.layer, routing_via_info)
+      .IgnoreError();
+  //alt_routing_grid.AddRoutingViaInfo(
+  //    met1_layer_info.layer, met2_layer_info.layer, routing_via_info);
 
-  // routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer)
-  //     .IgnoreError();
+  routing_via_info = db.GetRoutingViaInfoOrDie("li.drawing", "met1.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid.AddRoutingViaInfo(
+      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info)
+      .IgnoreError();
+  //alt_routing_grid.AddRoutingViaInfo(
+  //    met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info);
 
-  // // Swap direction for the alt routing grid:
-  // ////std::swap(met1_layer_info.direction, met2_layer_info.direction);
-  // //alt_routing_grid.AddRoutingLayerInfo(met1_layer_info);
-  // //alt_routing_grid.AddRoutingLayerInfo(met2_layer_info);
-  // //alt_routing_grid.ConnectLayers(
-  // //    met1_layer_info.layer, met2_layer_info.layer);
+  routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid.AddRoutingViaInfo(
+      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info)
+      .IgnoreError();
+  //alt_routing_grid.AddRoutingViaInfo(
+  //    db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info);
 
-  // {
-  //   // Add blockages from all existing shapes.
-  //   geometry::ShapeCollection shapes;
-  //   layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
-  //   // LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
-  //   routing_grid.AddBlockages(shapes);
-  //   //alt_routing_grid.AddBlockages(
-  //   //    shapes, db.Rules("met1.drawing").min_separation);
-  // }
-  // {
-  //   geometry::ShapeCollection shapes;
-  //   layout->CopyShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
-  //   // LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
-  //   routing_grid.AddBlockages(shapes);
-  //   //alt_routing_grid.AddBlockages(
-  //   //    shapes, db.Rules("met2.drawing").min_separation);
-  // }
+  //routing_grid.AddRoutingLayerInfo(li_layer_info);
+  routing_grid.AddRoutingLayerInfo(met1_layer_info).IgnoreError();
+  routing_grid.AddRoutingLayerInfo(met2_layer_info).IgnoreError();
 
-  // // Debug only.
-  // //routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
+  routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer)
+      .IgnoreError();
 
-  // // Connect the weird scan chain jumps across VDD/VSS met1 rails. Use layout
-  // // config to deduce where this ought to occur (instead of looking at it).
-  // //
-  // // Here I assume that the cells have a left-side input and a right-side output
-  // // when oriented normally (no rotation). This will change for different memory
-  // // types.
-  // //
-  // // On a bank that looks like this, we want to add jogs over the horizontal
-  // // rails:
-  // //            bank 0                    bank 1
-  // //         +-----+-----+             +-----+-----+
-  // //  3      |+ -> | --> | ----------> | --> | -> +|
-  // //         +|----+-----+             +-----+----| <--- jog
-  // //  2      |+ -- | <-- |             | <-- | <- +|
-  // //         +-----+-----+             +-----+-----+
-  // //  1      |+ -> | --> |             | --> | -> +|
-  // //         +|----+-----+             +-----+----| <--- jog
-  // //  0   /-> + -- | <-- |             | <-- | <- +|
-  // //      |  +-----+-----+             +-----+-----+
-  // //      jog   0     1                   0     1
-  // //
-  // //  For bank 0 we are tying together memories (row, col):
-  // //    (0, 0) and (1, 0), (2, 0) and (3, 0), ...
-  // //
-  // //  For bank 1 we are tying together memories (row, col):
-  // //    (0, 1) and (1, 1), (2, 1) and (3, 1), ...
-  // //
-  // // TODO(aryap): Why not just determine that these particular scan connections
-  // // require the alternate routing mode at the time of determining the scan
-  // // connections above? Seems like repeated logic :/
+  // Swap direction for the alt routing grid:
+  ////std::swap(met1_layer_info.direction, met2_layer_info.direction);
+  //alt_routing_grid.AddRoutingLayerInfo(met1_layer_info);
+  //alt_routing_grid.AddRoutingLayerInfo(met2_layer_info);
+  //alt_routing_grid.ConnectLayers(
+  //    met1_layer_info.layer, met2_layer_info.layer);
+
+  {
+    // Add blockages from all existing shapes.
+    geometry::ShapeCollection shapes;
+    layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+    // LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
+    routing_grid.AddBlockages(shapes);
+    //alt_routing_grid.AddBlockages(
+    //    shapes, db.Rules("met1.drawing").min_separation);
+  }
+  {
+    geometry::ShapeCollection shapes;
+    layout->CopyShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+    // LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
+    routing_grid.AddBlockages(shapes);
+    //alt_routing_grid.AddBlockages(
+    //    shapes, db.Rules("met2.drawing").min_separation);
+  }
+
+  // Debug only.
+  //routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
+
+  // TODO(aryap): Why not just determine that these particular scan connections
+  // require the alternate routing mode at the time of determining the scan
+  // connections above? Seems like repeated logic :/
   // std::map<geometry::Instance*, std::string> memory_output_net_names;
   // {
   //   for (size_t b = 0; b < layout_config.num_banks; ++b) {
@@ -580,31 +522,31 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   //   }
   // }
 
-  // std::unique_ptr<bfg::Layout> grid_layout;
-  // // Now that we're done with the alt routing grid, add its shapes to the main
-  // // layout and update the regular routing grid with the alternate one's shapes
-  // // as blockages.
-  // //std::unique_ptr<bfg::Layout> grid_layout(alt_routing_grid.GenerateLayout());
-  // //layout->AddLayout(*grid_layout, "routing_alt");
+  std::unique_ptr<bfg::Layout> grid_layout;
+  // Now that we're done with the alt routing grid, add its shapes to the main
+  // layout and update the regular routing grid with the alternate one's shapes
+  // as blockages.
+  //std::unique_ptr<bfg::Layout> grid_layout(alt_routing_grid.GenerateLayout());
+  //layout->AddLayout(*grid_layout, "routing_alt");
 
-  // // TODO(aryap): This seems to be a common enough op to factor out. Would be 1
-  // // step nicer with CopyShapesOnLayer returning the ShapeCollection directly,
-  // // and would be 2 steps nicer with RoutingGrid having the facility to
-  // // automatically add blockages from a Layout (for all the layers it itself
-  // // uses for routing).
-  // //{
-  // //  // Add blockages from all existing shapes.
-  // //  geometry::ShapeCollection shapes;
-  // //  grid_layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
-  // //  LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
-  // //  routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
-  // //}
-  // //{
-  // //  geometry::ShapeCollection shapes;
-  // //  grid_layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
-  // //  LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
-  // //  routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
-  // //}
+  // TODO(aryap): This seems to be a common enough op to factor out. Would be 1
+  // step nicer with CopyShapesOnLayer returning the ShapeCollection directly,
+  // and would be 2 steps nicer with RoutingGrid having the facility to
+  // automatically add blockages from a Layout (for all the layers it itself
+  // uses for routing).
+  //{
+  //  // Add blockages from all existing shapes.
+  //  geometry::ShapeCollection shapes;
+  //  grid_layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+  //  LOG(INFO) << "met1 shapes: \n" << shapes.Describe();
+  //  routing_grid.AddBlockages(shapes, db.Rules("met1.drawing").min_separation);
+  //}
+  //{
+  //  geometry::ShapeCollection shapes;
+  //  grid_layout->GetShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+  //  LOG(INFO) << "met2 shapes: \n" << shapes.Describe();
+  //  routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
+  //}
 
   // // Connect the scan chain.
   // for (const auto &pair : scan_chain_pairs) {
@@ -640,85 +582,85 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   //               .IgnoreError();
   // }
 
-  // // FIXME(aryap): I want to solve the general problem of connecting to a port
-  // // on an instance which is comprised of many, possibly connected, shapes on
-  // // many, possibly connected, layers. The tricky thing is that connecting on
-  // // one layer might create DRC violations on an adjacent layer (e.g. if you
-  // // connect on met2 but jump up from met1 just before, and there's a met1
-  // // shape near, you get a problem).
-  // //
-  // // A related and important consideration is that all shapes with the same
-  // // port name label should be considered connected, even if they are not port
-  // // objects. Or should they be port objects?
-  // //
-  // // Is it desirable in general to treat any shape given a net name as
-  // // belonging to, and connectable by, that net?
-  // //
-  // // And what namespaces do these net names occupy? Their parent instance?
-  // // Unless exported by being labelled a port with the same name?
+  // FIXME(aryap): I want to solve the general problem of connecting to a port
+  // on an instance which is comprised of many, possibly connected, shapes on
+  // many, possibly connected, layers. The tricky thing is that connecting on
+  // one layer might create DRC violations on an adjacent layer (e.g. if you
+  // connect on met2 but jump up from met1 just before, and there's a met1
+  // shape near, you get a problem).
+  //
+  // A related and important consideration is that all shapes with the same
+  // port name label should be considered connected, even if they are not port
+  // objects. Or should they be port objects?
+  //
+  // Is it desirable in general to treat any shape given a net name as
+  // belonging to, and connectable by, that net?
+  //
+  // And what namespaces do these net names occupy? Their parent instance?
+  // Unless exported by being labelled a port with the same name?
 
-  // // Connect the input buffers on the selector lines.
-  // struct PortKey {
-  //   geometry::Instance *instance;
-  //   std::string port_name;
-  // };
-  // std::vector<std::vector<PortKey>> auto_connections = {
-  //   {{buf_order[0], "P"}, {mux_order[0], "S0_B"}, {mux_order[1], "S0_B"}},
-  //   {{buf_order[0], "X"}, {mux_order[0], "S0"}, {mux_order[1], "S0"}},
-  //   {{buf_order[1], "P"}, {mux_order[0], "S1_B"}, {mux_order[1], "S1_B"}},
-  //   {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
-  //   {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
-  //   {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
-  //   {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
-  //   {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
-  //   {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
-  // };
+  // Connect the input buffers on the selector lines.
+  struct PortKey {
+    geometry::Instance *instance;
+    std::string port_name;
+  };
+  std::vector<std::vector<PortKey>> auto_connections = {
+    {{buf_order[0], "P"}, {mux_order[0], "S0_B"}, {mux_order[1], "S0_B"}},
+    {{buf_order[0], "X"}, {mux_order[0], "S0"}, {mux_order[1], "S0"}},
+    {{buf_order[1], "P"}, {mux_order[0], "S1_B"}, {mux_order[1], "S1_B"}},
+    {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
+    {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
+    {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
+    {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
+    {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
+    {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
+  };
 
-  // // Add automatic connections for memory clock and inverted clock inputs.
-  // for (size_t bank = 0; bank < banks.size(); ++bank) {
-  //   for (size_t column = 0; column < layout_config.bank_columns; ++column) {
-  //     std::vector<PortKey> &clk_connections = auto_connections.emplace_back();
-  //     for (size_t row = 0; row < layout_config.bank_rows; ++row) {
-  //       clk_connections.push_back({
-  //           .instance = banks[bank].memories()[row][column],
-  //           .port_name = "CLK"
-  //       });
-  //     }
-  //     std::vector<PortKey> &clk_i_connections = auto_connections.emplace_back();
-  //     for (size_t row = 0; row < layout_config.bank_rows; ++row) {
-  //       clk_i_connections.push_back({
-  //           .instance = banks[bank].memories()[row][column],
-  //           .port_name = "CLKI"
-  //       });
-  //     }
-  //   }
-  // }
+  // Add automatic connections for memory clock and inverted clock inputs.
+  for (size_t bank = 0; bank < banks.size(); ++bank) {
+    for (size_t column = 0; column < layout_config.bank_columns; ++column) {
+      std::vector<PortKey> &clk_connections = auto_connections.emplace_back();
+      for (size_t row = 0; row < layout_config.bank_rows; ++row) {
+        clk_connections.push_back({
+            .instance = banks[bank].memories()[row][column],
+            .port_name = "CLK"
+        });
+      }
+      std::vector<PortKey> &clk_i_connections = auto_connections.emplace_back();
+      for (size_t row = 0; row < layout_config.bank_rows; ++row) {
+        clk_i_connections.push_back({
+            .instance = banks[bank].memories()[row][column],
+            .port_name = "CLKI"
+        });
+      }
+    }
+  }
 
-  // for (auto &connections : auto_connections) {
-  //   std::vector<std::vector<geometry::Port*>> route_targets;
-  //   for (auto &port_key : connections) {
-  //     std::vector<geometry::Port*> &port_list =
-  //         route_targets.emplace_back();
-  //     geometry::Instance *instance = port_key.instance;
+  for (auto &connections : auto_connections) {
+    std::vector<std::vector<geometry::Port*>> route_targets;
+    for (auto &port_key : connections) {
+      std::vector<geometry::Port*> &port_list =
+          route_targets.emplace_back();
+      geometry::Instance *instance = port_key.instance;
 
-  //     std::set<geometry::Port*> matching_ports;
-  //     instance->GetInstancePorts(port_key.port_name, &matching_ports);
-  //     if (matching_ports.empty()) {
-  //       LOG(WARNING) << "No port found named \"" << port_key.port_name
-  //                    << "\" on instance \"" << instance->name();
-  //       continue;
-  //     }
-  //     port_list.insert(
-  //         port_list.end(), matching_ports.begin(), matching_ports.end());
-  //   }
+      std::set<geometry::Port*> matching_ports;
+      instance->GetInstancePorts(port_key.port_name, &matching_ports);
+      if (matching_ports.empty()) {
+        LOG(WARNING) << "No port found named \"" << port_key.port_name
+                     << "\" on instance \"" << instance->name();
+        continue;
+      }
+      port_list.insert(
+          port_list.end(), matching_ports.begin(), matching_ports.end());
+    }
 
-  //   for (const auto &port_list : route_targets) {
-  //     LOG(INFO) << DescribePorts(port_list);
-  //   }
+    for (const auto &port_list : route_targets) {
+      LOG(INFO) << geometry::Port::DescribePorts(port_list);
+    }
 
-  //   bool paths_found =
-  //       routing_grid.AddMultiPointRoute(*layout, route_targets).ok();
-  // }
+    bool paths_found =
+        routing_grid.AddMultiPointRoute(*layout, route_targets).ok();
+  }
 
 
   // // Connect memory outputs to the muxes in order:
@@ -865,20 +807,13 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // //  }
   // //}
 
-  // // Debug only.
-  // routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
-  // routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout.get());
-  // //routing_grid.ExportEdgesAsRectangles("areaid.frameRect", true, layout.get());
+  // Debug only.
+  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
+  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout.get());
+  //routing_grid.ExportEdgesAsRectangles("areaid.frameRect", true, layout.get());
 
-  // grid_layout.reset(routing_grid.GenerateLayout());
-  // layout->AddLayout(*grid_layout, "routing");
-
-  lut_cell->SetLayout(layout.release());
-  lut_cell->SetCircuit(circuit.release());
-  bfg::Cell *cell = lut_cell.release();
-  cell->set_name(name);
-  design_db_->ConsumeCell(cell);
-  return cell;
+  grid_layout.reset(routing_grid.GenerateLayout());
+  layout->AddLayout(*grid_layout, "routing");
 }
 
 }  // namespace atoms
