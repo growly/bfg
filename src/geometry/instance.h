@@ -66,6 +66,8 @@ class Instance : public Manipulable {
 
   const Rectangle GetBoundingBox() const;
 
+  bool HasPort(const std::string &name) const;
+
   void GeneratePorts();
 
   std::string InstancePortName(const std::string &master_port_name) const {

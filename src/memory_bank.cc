@@ -60,9 +60,9 @@ RowGuide &MemoryBank::Row(size_t index) {
         nullptr,                      // FIXME
         design_db_);
 
-    // There is also a corresponding vector of memories for each row.
-    memories_.emplace_back();
-    memory_names_.emplace_back();
+    // There is also a corresponding vector of instances for each row.
+    instances_.emplace_back();
+    instance_names_.emplace_back();
 
     if (rotate_alternate_rows_) {
       row.set_rotate_instances(RowIsRotated(i));
@@ -166,18 +166,18 @@ geometry::Instance *MemoryBank::InstantiateLeft(size_t row_index,
                                                 const std::string &name,
                                                 Layout *template_layout) {
   RowGuide &row = Row(row_index);
-  std::vector<geometry::Instance*> &memories = memories_[row_index];
-  std::vector<std::string> &memory_names = memory_names_[row_index];
+  std::vector<geometry::Instance*> &instances = instances_[row_index];
+  std::vector<std::string> &instance_names = instance_names_[row_index];
 
   geometry::Instance *installed = nullptr;
   if (row.rotate_instances()) {
     installed = row.InstantiateBack(name, template_layout);
-    memories.insert(memories.begin(), installed);
-    memory_names.insert(memory_names.begin(), name);
+    instances.insert(instances.begin(), installed);
+    instance_names.insert(instance_names.begin(), name);
   } else {
     installed = row.InstantiateAndInsertFront(name, template_layout);
-    memories.push_back(installed);
-    memory_names.push_back(name);
+    instances.push_back(installed);
+    instance_names.push_back(name);
   }
   FixAlignments();
   return installed;
@@ -187,18 +187,18 @@ geometry::Instance *MemoryBank::InstantiateRight(size_t row_index,
                                                  const std::string &name,
                                                  Layout *template_layout) {
   RowGuide &row = Row(row_index);
-  std::vector<geometry::Instance*> &memories = memories_[row_index];
-  std::vector<std::string> &memory_names = memory_names_[row_index];
+  std::vector<geometry::Instance*> &instances = instances_[row_index];
+  std::vector<std::string> &instance_names = instance_names_[row_index];
 
   geometry::Instance *installed = nullptr;
   if (row.rotate_instances()) {
     installed = row.InstantiateAndInsertFront(name, template_layout);
-    memories.insert(memories.begin(), installed);
-    memory_names.insert(memory_names.begin(), name);
+    instances.insert(instances.begin(), installed);
+    instance_names.insert(instance_names.begin(), name);
   } else {
     installed = row.InstantiateBack(name, template_layout);
-    memories.push_back(installed);
-    memory_names.push_back(name);
+    instances.push_back(installed);
+    instance_names.push_back(name);
   }
   FixAlignments();
   return installed;

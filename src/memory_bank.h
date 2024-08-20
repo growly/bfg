@@ -61,11 +61,11 @@ class MemoryBank {
 
   std::optional<geometry::Rectangle> GetBoundingBox() const;
 
-  std::vector<std::vector<std::string>> &memory_names() {
-    return memory_names_;
+  std::vector<std::vector<std::string>> &instance_names() {
+    return instance_names_;
   }
-  std::vector<std::vector<geometry::Instance*>> &memories() {
-    return memories_;
+  std::vector<std::vector<geometry::Instance*>> &instances() {
+    return instances_;
   }
   std::vector<RowGuide> &rows() { return rows_; }
 
@@ -89,12 +89,12 @@ class MemoryBank {
 
   // Memory instance names by row and column. Major index is row, minor index
   // is column.
-  std::vector<std::vector<std::string>> memory_names_;
+  std::vector<std::vector<std::string>> instance_names_;
 
   // Instances per row. Major index is row, minor index is column. These are
   // pointers to Instances in the main layout, not the bank-specific temporary
   // layout below.
-  std::vector<std::vector<geometry::Instance*>> memories_;
+  std::vector<std::vector<geometry::Instance*>> instances_;
 
   std::vector<RowGuide> rows_;
 

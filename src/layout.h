@@ -194,6 +194,8 @@ class Layout : public geometry::Manipulable {
       std::set<geometry::Port*> *ports,
       const std::string &named) const;
 
+  bool HasPort(const std::string &name) const;
+
   const std::string &NameOrParentName() const;
 
   const std::string &name() const { return name_; }

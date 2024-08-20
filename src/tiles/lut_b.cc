@@ -289,9 +289,9 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     for (size_t b = 0; b < banks.size(); ++b) {
       MemoryBank &bank = banks[b];
 
-      for (size_t j = 0; j < bank.memories().size(); ++j) {
+      for (size_t j = 0; j < bank.instances().size(); ++j) {
         bool rotate_this_row = bank.RowIsRotated(j);
-        std::vector<geometry::Instance*> &row = bank.memories()[j];
+        std::vector<geometry::Instance*> &row = bank.instances()[j];
 
         // Connect flip flops next to each other in each row:
         for (size_t i = 0; i < row.size() - 1; ++i) {
@@ -312,7 +312,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
         // There are also connections between rows, which depend on which rows
         // are rotated and which bank we're in (left or right):
         //    row[rotate_this_row ? 0 : row.size() - 1];
-        std::vector<geometry::Instance*> &last_row = bank.memories()[j - 1];
+        std::vector<geometry::Instance*> &last_row = bank.instances()[j - 1];
 
         geometry::Instance *start_of_this_row =
             rotate_this_row ? row.back() : row.front();
@@ -330,7 +330,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
               {end_of_this_row->name(), start_of_last_row->name()});
         }
 
-        if (j == bank.memories().size() - 1) {
+        if (j == bank.instances().size() - 1) {
           if (end_of_last_bank) {
             scan_chain_pairs.insert(
                 {end_of_last_bank->name(), start_of_this_row->name()});
@@ -618,20 +618,22 @@ void LutB::Routing(
 
   // Add automatic connections for memory clock and inverted clock inputs.
   for (size_t bank = 0; bank < banks.size(); ++bank) {
-    for (size_t column = 0; column < layout_config.bank_columns; ++column) {
-      std::vector<PortKey> &clk_connections = auto_connections.emplace_back();
-      for (size_t row = 0; row < layout_config.bank_rows; ++row) {
-        clk_connections.push_back({
-            .instance = banks[bank].memories()[row][column],
-            .port_name = "CLK"
-        });
-      }
-      std::vector<PortKey> &clk_i_connections = auto_connections.emplace_back();
-      for (size_t row = 0; row < layout_config.bank_rows; ++row) {
-        clk_i_connections.push_back({
-            .instance = banks[bank].memories()[row][column],
-            .port_name = "CLKI"
-        });
+    std::vector<PortKey> &clk_connections = auto_connections.emplace_back();
+    std::vector<PortKey> &clk_i_connections = auto_connections.emplace_back();
+    for (auto &row : banks[bank].instances()) {
+      for (geometry::Instance *instance : row) {
+        if (instance->HasPort("CLK")) {
+          clk_connections.push_back({
+              .instance = instance,
+              .port_name = "CLK"
+          });
+        }
+        if (instance->HasPort("CLKI")) {
+          clk_i_connections.push_back({
+              .instance = instance,
+              .port_name = "CLKI"
+          });
+        }
       }
     }
   }
@@ -654,6 +656,7 @@ void LutB::Routing(
           port_list.end(), matching_ports.begin(), matching_ports.end());
     }
 
+    LOG(INFO) << "Connecting all of: ";
     for (const auto &port_list : route_targets) {
       LOG(INFO) << geometry::Port::DescribePorts(port_list);
     }
@@ -808,8 +811,8 @@ void LutB::Routing(
   // //}
 
   // Debug only.
-  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
-  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout.get());
+  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
+  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
   //routing_grid.ExportEdgesAsRectangles("areaid.frameRect", true, layout.get());
 
   grid_layout.reset(routing_grid.GenerateLayout());

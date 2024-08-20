@@ -130,8 +130,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
           design_db_));
       RowGuide &row = bank.rows().back();
 
-      bank.memory_names().emplace_back();
-      std::vector<std::string> &bank_memories = bank.memory_names().back();
+      bank.instance_names().emplace_back();
+      std::vector<std::string> &bank_memories = bank.instance_names().back();
 
       // Rotate j = 1, 3, 5, ...
       bool rotate_this_row = layout_config.rotate_first_row ?
@@ -245,9 +245,9 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   {
     for (size_t b = 0; b < banks.size(); ++b) {
       MemoryBank &bank = banks[b];
-      for (size_t j = 0; j < bank.memory_names().size(); ++j) {
-        std::vector<std::string> &row = bank.memory_names()[j];
-        bank.memories().emplace_back();
+      for (size_t j = 0; j < bank.instance_names().size(); ++j) {
+        std::vector<std::string> &row = bank.instance_names()[j];
+        bank.instances().emplace_back();
         for (size_t i = 0; i < row.size(); ++i) {
           const std::string &name = row[i];
           auto it = all_instances_by_name.find(name);
@@ -256,7 +256,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
           geometry::Instance *memory = it->second;
           // LOG(INFO) << "row " << j << ", col " << i << ": " << name
           //           << " -> " << memory;
-          bank.memories().back().push_back(memory);
+          bank.instances().back().push_back(memory);
         }
       }
     }
@@ -270,10 +270,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     for (size_t b = 0; b < banks.size(); ++b) {
       MemoryBank &bank = banks[b];
 
-      for (size_t j = 0; j < bank.memories().size(); ++j) {
+      for (size_t j = 0; j < bank.instances().size(); ++j) {
         bool rotate_this_row = layout_config.rotate_first_row ?
             j % 2 == 0 : j % 2 != 0;
-        std::vector<geometry::Instance*> &row = bank.memories()[j];
+        std::vector<geometry::Instance*> &row = bank.instances()[j];
 
         // Connect flip flops next to each other in each row:
         for (size_t i = 0; i < row.size() - 1; ++i) {
@@ -294,7 +294,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         // There are also connections between rows, which depend on which rows
         // are rotated and which bank we're in (left or right):
         //    row[rotate_this_row ? 0 : row.size() - 1];
-        std::vector<geometry::Instance*> &last_row = bank.memories()[j - 1];
+        std::vector<geometry::Instance*> &last_row = bank.instances()[j - 1];
 
         geometry::Instance *start_of_this_row =
             rotate_this_row ? row.back() : row.front();
@@ -312,7 +312,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
               {end_of_this_row->name(), start_of_last_row->name()});
         }
 
-        if (j == bank.memories().size() - 1) {
+        if (j == bank.instances().size() - 1) {
           if (end_of_last_bank) {
             scan_chain_pairs.insert(
                 {end_of_last_bank->name(), start_of_this_row->name()});
@@ -523,7 +523,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   std::map<geometry::Instance*, std::string> memory_output_net_names;
   {
     for (size_t b = 0; b < layout_config.num_banks; ++b) {
-      const auto &memories = banks[b].memories();
+      const auto &memories = banks[b].instances();
       for (size_t j = layout_config.rotate_first_row ? 0 : 1;
            j < memories.size();
            j += 2) {
@@ -669,14 +669,14 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       std::vector<PortKey> &clk_connections = auto_connections.emplace_back();
       for (size_t row = 0; row < layout_config.bank_rows; ++row) {
         clk_connections.push_back({
-            .instance = banks[bank].memories()[row][column],
+            .instance = banks[bank].instances()[row][column],
             .port_name = "CLK"
         });
       }
       std::vector<PortKey> &clk_i_connections = auto_connections.emplace_back();
       for (size_t row = 0; row < layout_config.bank_rows; ++row) {
         clk_i_connections.push_back({
-            .instance = banks[bank].memories()[row][column],
+            .instance = banks[bank].instances()[row][column],
             .port_name = "CLKI"
         });
       }
@@ -732,27 +732,27 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
     // Manually ordered:
-    {banks[0].memories()[2][1], mux_order[0], "input_6"},
-    {banks[0].memories()[3][0], mux_order[0], "input_4"},
-    {banks[0].memories()[3][1], mux_order[0], "input_5"},
-    {banks[0].memories()[2][0], mux_order[0], "input_7"},
+    {banks[0].instances()[2][1], mux_order[0], "input_6"},
+    {banks[0].instances()[3][0], mux_order[0], "input_4"},
+    {banks[0].instances()[3][1], mux_order[0], "input_5"},
+    {banks[0].instances()[2][0], mux_order[0], "input_7"},
 
-    {banks[0].memories()[1][1], mux_order[0], "input_3"},
-    {banks[0].memories()[1][0], mux_order[0], "input_2"},
-    {banks[0].memories()[0][0], mux_order[0], "input_0"},
-    {banks[0].memories()[0][1], mux_order[0], "input_1"},
+    {banks[0].instances()[1][1], mux_order[0], "input_3"},
+    {banks[0].instances()[1][0], mux_order[0], "input_2"},
+    {banks[0].instances()[0][0], mux_order[0], "input_0"},
+    {banks[0].instances()[0][1], mux_order[0], "input_1"},
 
     // Sort of:
-    {banks[1].memories()[1][0], mux_order[1], "input_2"},
+    {banks[1].instances()[1][0], mux_order[1], "input_2"},
 
-    {banks[1].memories()[2][0], mux_order[1], "input_7"},
-    {banks[1].memories()[2][1], mux_order[1], "input_6"},
-    {banks[1].memories()[3][0], mux_order[1], "input_4"},
-    {banks[1].memories()[3][1], mux_order[1], "input_5"},
+    {banks[1].instances()[2][0], mux_order[1], "input_7"},
+    {banks[1].instances()[2][1], mux_order[1], "input_6"},
+    {banks[1].instances()[3][0], mux_order[1], "input_4"},
+    {banks[1].instances()[3][1], mux_order[1], "input_5"},
 
-    {banks[1].memories()[0][0], mux_order[1], "input_1"},
-    {banks[1].memories()[0][1], mux_order[1], "input_0"},
-    {banks[1].memories()[1][1], mux_order[1], "input_3"},
+    {banks[1].instances()[0][0], mux_order[1], "input_1"},
+    {banks[1].instances()[0][1], mux_order[1], "input_0"},
+    {banks[1].instances()[1][1], mux_order[1], "input_3"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {

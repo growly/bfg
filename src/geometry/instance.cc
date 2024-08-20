@@ -118,6 +118,10 @@ const Rectangle Instance::GetBoundingBox() const {
   return rotated;
 }
 
+bool Instance::HasPort(const std::string &name) const {
+  return template_layout_->HasPort(name);
+}
+
 void Instance::GeneratePorts() {
   int32_t rotation_ccw_degrees = (360 - (rotation_degrees_ccw_ % 360)) % 360;
   instance_ports_.clear();

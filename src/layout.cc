@@ -510,6 +510,10 @@ void Layout::GetAllPortsExceptNamed(
   }
 }
 
+bool Layout::HasPort(const std::string &name) const {
+  return ports_by_net_.find(name) != ports_by_net_.end();
+}
+
 const std::set<geometry::Port*> Layout::Ports() const {
   std::set<geometry::Port*> all_ports;
   for (const auto &entry : shapes_) {
