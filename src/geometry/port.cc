@@ -19,13 +19,7 @@ std::string Port::Describe() const {
   return ss.str();
 }
 
-}  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Port &port) {
-  return os << port.Describe();
-}
-
-std::string DescribePorts(const std::vector<geometry::Port*> &ports) {
+std::string Port::DescribePorts(const std::vector<geometry::Port*> &ports) {
   std::vector<std::string> port_descriptions;
   for (geometry::Port *port : ports) {
     port_descriptions.push_back(
@@ -34,7 +28,7 @@ std::string DescribePorts(const std::vector<geometry::Port*> &ports) {
   return absl::StrJoin(port_descriptions, ", ");
 }
 
-std::string DescribePorts(const std::set<geometry::Port*> &ports) {
+std::string Port::DescribePorts(const std::set<geometry::Port*> &ports) {
   std::vector<geometry::Port*> sorted_ports(ports.begin(), ports.end());
   std::sort(sorted_ports.begin(), sorted_ports.end(),
             [](geometry::Port *lhs, geometry::Port *rhs) {
@@ -44,6 +38,12 @@ std::string DescribePorts(const std::set<geometry::Port*> &ports) {
               return lhs->centre().x() < rhs->centre().x();
             });
   return DescribePorts(sorted_ports);
+}
+
+}  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Port &port) {
+  return os << port.Describe();
 }
 
 }  // namespace bfg
