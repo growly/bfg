@@ -170,15 +170,9 @@ geometry::Instance *MemoryBank::InstantiateLeft(size_t row_index,
   std::vector<std::string> &instance_names = instance_names_[row_index];
 
   geometry::Instance *installed = nullptr;
-  if (row.rotate_instances()) {
-    installed = row.InstantiateBack(name, template_layout);
-    instances.insert(instances.begin(), installed);
-    instance_names.insert(instance_names.begin(), name);
-  } else {
-    installed = row.InstantiateAndInsertFront(name, template_layout);
-    instances.push_back(installed);
-    instance_names.push_back(name);
-  }
+  installed = row.InstantiateAndInsertFront(name, template_layout);
+  instances.push_back(installed);
+  instance_names.push_back(name);
   FixAlignments();
   return installed;
 }
@@ -191,15 +185,9 @@ geometry::Instance *MemoryBank::InstantiateRight(size_t row_index,
   std::vector<std::string> &instance_names = instance_names_[row_index];
 
   geometry::Instance *installed = nullptr;
-  if (row.rotate_instances()) {
-    installed = row.InstantiateAndInsertFront(name, template_layout);
-    instances.insert(instances.begin(), installed);
-    instance_names.insert(instance_names.begin(), name);
-  } else {
-    installed = row.InstantiateBack(name, template_layout);
-    instances.push_back(installed);
-    instance_names.push_back(name);
-  }
+  installed = row.InstantiateBack(name, template_layout);
+  instances.push_back(installed);
+  instance_names.push_back(name);
   FixAlignments();
   return installed;
 }

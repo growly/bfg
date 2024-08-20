@@ -54,6 +54,9 @@ class Instance : public Manipulable {
   // currently is.
   void RotatePreservingLowerLeft(int32_t rotation_degrees_ccw);
 
+  uint64_t Height() const;
+  uint64_t Width() const;
+
   uint64_t TilingHeight() const;
   uint64_t TilingWidth() const;
   Point TilingLowerLeft() const;

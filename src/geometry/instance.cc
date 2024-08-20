@@ -47,12 +47,19 @@ void Instance::AlignPoints(const Point &our_point, const Point &align_to) {
   Translate(align_to - our_point);
 }
 
+uint64_t Instance::Height() const {
+  return template_layout_->Height();
+}
+uint64_t Instance::Width() const {
+  return template_layout_->Width();
+}
+
 uint64_t Instance::TilingHeight() const {
-  return template_layout()->GetTilingBounds().Height();
+  return template_layout_->GetTilingBounds().Height();
 }
 
 uint64_t Instance::TilingWidth() const {
-  return template_layout()->GetTilingBounds().Width();
+  return template_layout_->GetTilingBounds().Width();
 }
 
 Point Instance::TilingLowerLeft() const {

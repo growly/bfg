@@ -32,14 +32,14 @@ namespace tiles {
 const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
   {4, LutB::LayoutConfig {
     .left = LutB::BankArrangement {
-      .memory_rows = {0, 1, 2, 3, 4, 5, 5, 5},
-      .buffer_rows = {4, 4, 4},
+      .memory_rows = {0, 1, 2, 3, 4, 5, 6, 7},
+      .buffer_rows = {7, 7, 7},
       .horizontal_alignment = geometry::Compass::LEFT
     },
     .right = LutB::BankArrangement {
-      .memory_rows = {5, 4, 3, 2, 1, 0, 0, 0},
-      .buffer_rows = {1, 1},
-      .active_mux2_rows = {1},
+      .memory_rows = {7, 6, 5, 4, 3, 2, 1, 0},
+      .buffer_rows = {0, 0},
+      .active_mux2_rows = {0},
       .horizontal_alignment = geometry::Compass::RIGHT
     },
     .mux_area_padding = 2500,
@@ -100,10 +100,11 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   std::vector<MemoryBank> banks;
 
+  std::vector<geometry::Instance*> memories;
+
   std::vector<std::reference_wrapper<const BankArrangement>> arrangements = {
     layout_config.left, layout_config.right};
 
-  int64_t max_row_height = 0;
   for (size_t p = 0; p < arrangements.size(); ++p) {
     const BankArrangement &bank_arrangement = arrangements[p].get();
     banks.push_back(MemoryBank(layout.get(),
@@ -131,6 +132,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       geometry::Instance *installed =
           bank.InstantiateRight(assigned_row, instance_name, cell->layout());
 
+      memories.push_back(installed);
       ++num_memories;
     }
 
@@ -175,8 +177,9 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   int64_t mux_width = base_mux_cell->layout()->GetBoundingBox().Width();
   int64_t left_bank_bottom_row_right_x = banks[0].Row(0).Width();
   int64_t x_pos = left_bank_bottom_row_right_x + layout_config.mux_area_padding;
-  int64_t y_offset = -(mux_height - 2 * max_row_height) / 2;
-  int64_t y_pos = y_offset;
+  // This staggers the mux area below the memories on the left:
+  //int64_t y_pos = -mux_height / 2;
+  int64_t y_pos = memories.front()->Height() / 2;
 
   std::vector<bfg::Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
 
@@ -203,31 +206,9 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   size_t buf_count;
 
-  for (size_t p = 1; p < 2 /*arrangements.size()*/; ++p) {
+  for (size_t p = 0; p < arrangements.size(); ++p) {
     const BankArrangement &bank_arrangement = arrangements[p].get();
     MemoryBank &bank = banks[p];
-
-    for (size_t i = 0; i < bank_arrangement.buffer_rows.size(); ++i) {
-      size_t assigned_row = bank_arrangement.buffer_rows[i];
-
-      std::string instance_name = absl::StrFormat("buf_%d", buf_count);
-      std::string cell_name = absl::StrCat(instance_name, "_template");
-      atoms::Sky130Buf::Parameters buf_params = {
-        .width_nm = 1380,
-        .height_nm = 2720,
-        .nfet_0_width_nm = 520,
-        .nfet_1_width_nm = 520,
-        .pfet_0_width_nm = 790,
-        .pfet_1_width_nm = 790
-      };
-      atoms::Sky130Buf buf_generator(buf_params, design_db_);
-      bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
-      buf_cell->layout()->ResetY();
-      geometry::Instance *installed = bank.InstantiateInside(
-          assigned_row, instance_name, buf_cell->layout());
-      buf_order.push_back(installed);
-      buf_count++;
-    }
 
     for (size_t i = 0; i < bank_arrangement.buffer_rows.size(); ++i) {
       size_t assigned_row = bank_arrangement.buffer_rows[i];
@@ -281,68 +262,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
-  // The required scan chain connections are enumerated in (source, sink) pairs
-  // given by the names of the instances to be connected.
-  std::set<std::pair<std::string, std::string>> scan_chain_pairs;
-  {
-    geometry::Instance *end_of_last_bank = nullptr;
-    for (size_t b = 0; b < banks.size(); ++b) {
-      MemoryBank &bank = banks[b];
-
-      for (size_t j = 0; j < bank.instances().size(); ++j) {
-        bool rotate_this_row = bank.RowIsRotated(j);
-        std::vector<geometry::Instance*> &row = bank.instances()[j];
-
-        // Connect flip flops next to each other in each row:
-        for (size_t i = 0; i < row.size() - 1; ++i) {
-          geometry::Instance *memory = row[i];
-          geometry::Instance *next_memory = row[i + 1];
-
-          // If the row is rotated, the direction of connection is reversed:
-          if (rotate_this_row) {
-            std::swap(memory, next_memory);
-          }
-
-          scan_chain_pairs.insert({memory->name(), next_memory->name()});
-        }
-
-        if (j == 0)
-          continue;
-
-        // There are also connections between rows, which depend on which rows
-        // are rotated and which bank we're in (left or right):
-        //    row[rotate_this_row ? 0 : row.size() - 1];
-        std::vector<geometry::Instance*> &last_row = bank.instances()[j - 1];
-
-        geometry::Instance *start_of_this_row =
-            rotate_this_row ? row.back() : row.front();
-        geometry::Instance *end_of_this_row =
-            rotate_this_row ? row.front() : row.back();
-        geometry::Instance *start_of_last_row =
-            rotate_this_row ? last_row.front() : last_row.back();
-        geometry::Instance *end_of_last_row =
-            rotate_this_row ? last_row.back() : last_row.front();
-        if (b == 0) {
-          scan_chain_pairs.insert(
-              {end_of_last_row->name(), start_of_this_row->name()});
-        } else {
-          scan_chain_pairs.insert(
-              {end_of_this_row->name(), start_of_last_row->name()});
-        }
-
-        if (j == bank.instances().size() - 1) {
-          if (end_of_last_bank) {
-            scan_chain_pairs.insert(
-                {end_of_last_bank->name(), start_of_this_row->name()});
-          }
-
-          end_of_last_bank = end_of_this_row;
-        }
-      }
-    }
-  }
-
-  Routing(buf_order, mux_order, active_mux2s, &banks, layout.get());
+  Route(buf_order, mux_order, active_mux2s, memories, &banks, layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -360,10 +280,11 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   return cell;
 }
 
-void LutB::Routing(
+void LutB::Route(
     const std::vector<geometry::Instance*> &buf_order,
     const std::vector<geometry::Instance*> &mux_order,
     const std::vector<geometry::Instance*> &active_mux2s,
+    const std::vector<geometry::Instance*> &memories,
     std::vector<MemoryBank> *memory_banks,
     Layout *layout) const {
   // TODO(aryap): Don't tase me bro
@@ -548,39 +469,34 @@ void LutB::Routing(
   //  routing_grid.AddBlockages(shapes, db.Rules("met2.drawing").min_separation);
   //}
 
-  // // Connect the scan chain.
-  // for (const auto &pair : scan_chain_pairs) {
-  //   LOG(INFO) << "Adding scan routes for pair "
-  //             << pair.first << ", " << pair.second;
+  // The scan chain is connected in the order memories are assigned by the
+  // BankArrangement.
+  std::map<geometry::Instance*, std::string> memory_output_net_names;
+  for (size_t i = 0; i < memories.size() - 1; ++i) {
+    geometry::Instance *source = memories[i];
+    geometry::Instance *sink = memories[i + 1];
 
-  //   auto it = all_instances_by_name.find(pair.first);
-  //   LOG_IF(FATAL, it == all_instances_by_name.end())
-  //       << "Could not source memory \"" << name << "\" in main layout";
-  //   geometry::Instance *source = it->second;
+    LOG(INFO) << "Adding scan routes for pair "
+              << source->name() << ", " << sink->name();
 
-  //   it = all_instances_by_name.find(pair.second);
-  //   LOG_IF(FATAL, it == all_instances_by_name.end())
-  //       << "Could not sink memory \"" << name << "\" in main layout";
-  //   geometry::Instance *sink = it->second;
+    std::set<geometry::Port*> ports;
+    source->GetInstancePorts("Q", &ports);
+    geometry::Port *start = *ports.begin();
+    ports.clear();
 
-  //   std::set<geometry::Port*> ports;
-  //   source->GetInstancePorts("Q", &ports);
-  //   geometry::Port *start = *ports.begin();
-  //   ports.clear();
+    sink->GetInstancePorts("D", &ports);
+    geometry::Port *end = *ports.begin();
 
-  //   sink->GetInstancePorts("D", &ports);
-  //   geometry::Port *end = *ports.begin();
+    EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
+    memory_output_net_names[source] = net_names.primary();
 
-  //   EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
-  //   memory_output_net_names[source] = net_names.primary();
-
-  //   geometry::ShapeCollection non_net_connectables;
-  //   layout->CopyConnectableShapesNotOnNets(
-  //       net_names,
-  //       &non_net_connectables);
-  //   routing_grid.AddRouteBetween(*start, *end, non_net_connectables, net_names)
-  //               .IgnoreError();
-  // }
+    geometry::ShapeCollection non_net_connectables;
+    layout->CopyConnectableShapesNotOnNets(
+        net_names,
+        &non_net_connectables);
+    routing_grid.AddRouteBetween(*start, *end, non_net_connectables, net_names)
+                .IgnoreError();
+  }
 
   // FIXME(aryap): I want to solve the general problem of connecting to a port
   // on an instance which is comprised of many, possibly connected, shapes on
@@ -666,50 +582,51 @@ void LutB::Routing(
   }
 
 
-  // // Connect memory outputs to the muxes in order:
-  // // - Connect the closest output with
+  // Connect memory outputs to the muxes in order:
+  // - Connect the closest output with
 
-  // // Connect flip-flops to mux.
-  // struct AutoMemoryMuxConnection {
-  //   geometry::Instance *source_memory;
-  //   geometry::Instance *target_mux;
-  //   std::string mux_port_name;
-  // };
+  // Connect flip-flops to mux.
+  struct AutoMemoryMuxConnection {
+    geometry::Instance *source_memory;
+    geometry::Instance *target_mux;
+    std::string mux_port_name;
+  };
 
-  // // The mux input order is, from top to bottom:
-  // // input_5  --+---------
-  // // input_4  --|
-  // // input_6  --|
-  // // input_7  --|  8:1 mux
-  // // input_3  --|
-  // // input_2  --|
-  // // input_0  --|
-  // // input_1  --+---------
 
-  // std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-  //   // Manually ordered:
-  //   {banks[0].memories()[2][1], mux_order[0], "input_6"},
-  //   {banks[0].memories()[3][0], mux_order[0], "input_4"},
-  //   {banks[0].memories()[3][1], mux_order[0], "input_5"},
-  //   {banks[0].memories()[2][0], mux_order[0], "input_7"},
 
-  //   {banks[0].memories()[1][1], mux_order[0], "input_3"},
-  //   {banks[0].memories()[1][0], mux_order[0], "input_2"},
-  //   {banks[0].memories()[0][0], mux_order[0], "input_0"},
-  //   {banks[0].memories()[0][1], mux_order[0], "input_1"},
+  // The mux input order is, from top to bottom:
+  // input_5  --+---------
+  // input_4  --|
+  // input_6  --|
+  // input_7  --|  8:1 mux
+  // input_3  --|
+  // input_2  --|
+  // input_0  --|
+  // input_1  --+---------
+  std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
+    // manually ordered:
+    {banks[0].instances()[0][0], mux_order[0], "input_6"},
+    {banks[0].instances()[1][0], mux_order[0], "input_4"},
+    {banks[0].instances()[2][0], mux_order[0], "input_5"},
+    {banks[0].instances()[3][0], mux_order[0], "input_7"},
 
-  //   // Sort of:
-  //   {banks[1].memories()[1][0], mux_order[1], "input_2"},
+    {banks[0].instances()[4][0], mux_order[0], "input_3"},
+    {banks[0].instances()[5][0], mux_order[0], "input_2"},
+    {banks[0].instances()[6][0], mux_order[0], "input_0"},
+    {banks[0].instances()[7][0], mux_order[0], "input_1"},
 
-  //   {banks[1].memories()[2][0], mux_order[1], "input_7"},
-  //   {banks[1].memories()[2][1], mux_order[1], "input_6"},
-  //   {banks[1].memories()[3][0], mux_order[1], "input_4"},
-  //   {banks[1].memories()[3][1], mux_order[1], "input_5"},
+    // sort of:
+    {banks[1].instances()[1][0], mux_order[1], "input_2"},
 
-  //   {banks[1].memories()[0][0], mux_order[1], "input_1"},
-  //   {banks[1].memories()[0][1], mux_order[1], "input_0"},
-  //   {banks[1].memories()[1][1], mux_order[1], "input_3"},
-  // };
+    {banks[1].instances()[2][0], mux_order[1], "input_7"},
+    {banks[1].instances()[2][1], mux_order[1], "input_6"},
+    {banks[1].instances()[3][0], mux_order[1], "input_4"},
+    {banks[1].instances()[3][1], mux_order[1], "input_5"},
+
+    {banks[1].instances()[0][0], mux_order[1], "input_1"},
+    {banks[1].instances()[0][1], mux_order[1], "input_0"},
+    {banks[1].instances()[1][1], mux_order[1], "input_3"},
+  };
 
   // for (auto &auto_connection : auto_mem_connections) {
   //   geometry::Instance *memory = auto_connection.source_memory;

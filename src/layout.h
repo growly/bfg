@@ -149,6 +149,13 @@ class Layout : public geometry::Manipulable {
     Translate(lower_left);
   }
 
+  uint64_t Height() const {
+    return GetBoundingBox().Height();
+  }
+  uint64_t Width() const {
+    return GetBoundingBox().Width();
+  }
+
   const geometry::Rectangle GetBoundingBox() const;
   const geometry::Rectangle GetTilingBounds() const {
     if (tiling_bounds_) {

@@ -72,10 +72,11 @@ class LutB : public Tile {
 
  protected:
   // FIXME(aryap): Fix this mess of a signature:
-  void Routing(
+  void Route(
       const std::vector<geometry::Instance*> &buf_order,
       const std::vector<geometry::Instance*> &mux_order,
       const std::vector<geometry::Instance*> &active_mux2s,
+      const std::vector<geometry::Instance*> &memories,
       std::vector<MemoryBank> *memory_banks,
       Layout *layout) const;
 
