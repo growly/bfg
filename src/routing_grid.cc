@@ -10,6 +10,7 @@
 #include <ostream>
 #include <queue>
 #include <sstream>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -1382,16 +1383,27 @@ absl::Status RoutingGrid::AddBestRouteBetween(
     const std::set<geometry::Port*> end_ports,
     const geometry::ShapeCollection &avoid,
     const EquivalentNets &nets) {
-  std::vector<RoutingPath*> options;
+  size_t num_trials = begin_ports.size() * end_ports.size();
+  std::vector<RoutingPath*> options(num_trials, nullptr);
+  std::vector<std::unique_ptr<std::thread>> threads;
+  size_t i = 0;
   for (const geometry::Port *begin : begin_ports) {
     for (const geometry::Port *end : end_ports) {
-      auto maybe_path = FindRouteBetween(*begin, *end, avoid, nets);
-      if (!maybe_path.ok()) {
-        continue;
-      }
-      options.push_back(*maybe_path);
+      std::thread *t = new std::thread([&]() {
+        auto maybe_path = FindRouteBetween(*begin, *end, avoid, nets);
+        if (!maybe_path.ok()) {
+          return;
+        }
+        options[i] = *maybe_path;
+      });
+      threads.emplace_back(t);
     }
   }
+  // Wait for all threads:
+  for (auto &thread : threads) {
+    thread->join();
+  }
+  std::remove(options.begin(), options.end(), nullptr);
   if (options.empty()) {
     LOG(ERROR) << "None of the begin/end combinations yielded a workable path.";
     return absl::NotFoundError(
