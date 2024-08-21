@@ -620,15 +620,15 @@ void LutB::Route(
 
     // sort of:
 
-    {banks[1].instances()[1][7], mux_order[1], "input_5"},
-    {banks[1].instances()[1][6], mux_order[1], "input_4"},
-    {banks[1].instances()[1][5], mux_order[1], "input_6"},
-    {banks[1].instances()[1][4], mux_order[1], "input_7"},
+    {banks[1].instances()[7][0], mux_order[1], "input_5"},
+    {banks[1].instances()[6][0], mux_order[1], "input_4"},
+    {banks[1].instances()[5][0], mux_order[1], "input_6"},
+    {banks[1].instances()[4][0], mux_order[1], "input_7"},
 
-    {banks[1].instances()[1][3], mux_order[1], "input_3"},
-    {banks[1].instances()[1][2], mux_order[1], "input_2"},
-    {banks[1].instances()[1][1], mux_order[1], "input_0"},
-    {banks[1].instances()[1][0], mux_order[1], "input_1"},
+    {banks[1].instances()[3][0], mux_order[1], "input_3"},
+    {banks[1].instances()[2][0], mux_order[1], "input_2"},
+    {banks[1].instances()[1][0], mux_order[1], "input_0"},
+    {banks[1].instances()[0][0], mux_order[1], "input_1"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {
