@@ -204,7 +204,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   std::vector<geometry::Instance*> buf_order;
   std::vector<geometry::Instance*> active_mux2s; 
 
-  size_t buf_count;
+  size_t buf_count = 0;
 
   for (size_t p = 0; p < arrangements.size(); ++p) {
     const BankArrangement &bank_arrangement = arrangements[p].get();
@@ -527,6 +527,7 @@ void LutB::Route(
     {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
     {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
     {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
+    {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
     {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
     {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
     {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
@@ -572,10 +573,12 @@ void LutB::Route(
           port_list.end(), matching_ports.begin(), matching_ports.end());
     }
 
-    LOG(INFO) << "Connecting all of: ";
-    for (const auto &port_list : route_targets) {
-      LOG(INFO) << geometry::Port::DescribePorts(port_list);
-    }
+    LOG(INFO) << "Connecting all of: " << absl::StrJoin(
+        connections, ", ",
+        [](std::string *out, const PortKey &port_key) {
+          absl::StrAppend(
+              out, port_key.instance->name(), "/", port_key.port_name);
+        });
 
     bool paths_found =
         routing_grid.AddMultiPointRoute(*layout, route_targets).ok();
@@ -607,28 +610,25 @@ void LutB::Route(
   // input_0  --|
   // input_1  --+---------
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-    // manually ordered:
-    {banks[0].instances()[6][0], mux_order[0], "input_6"},
-    {banks[0].instances()[6][0], mux_order[0], "input_4"},
-    {banks[0].instances()[5][0], mux_order[0], "input_5"},
-    {banks[0].instances()[4][0], mux_order[0], "input_7"},
+    {banks[0].instances()[7][0], mux_order[1], "input_5"},
+    {banks[0].instances()[6][0], mux_order[1], "input_4"},
+    {banks[0].instances()[5][0], mux_order[1], "input_6"},
+    {banks[0].instances()[4][0], mux_order[1], "input_7"},
 
     {banks[0].instances()[3][0], mux_order[0], "input_3"},
     {banks[0].instances()[2][0], mux_order[0], "input_2"},
     {banks[0].instances()[1][0], mux_order[0], "input_0"},
     {banks[0].instances()[0][0], mux_order[0], "input_1"},
 
-    // sort of:
+    {banks[1].instances()[7][0], mux_order[1], "input_3"},
+    {banks[1].instances()[6][0], mux_order[1], "input_2"},
+    {banks[1].instances()[5][0], mux_order[1], "input_0"},
+    {banks[1].instances()[4][0], mux_order[1], "input_1"},
 
-    {banks[1].instances()[7][0], mux_order[1], "input_5"},
-    {banks[1].instances()[6][0], mux_order[1], "input_4"},
-    {banks[1].instances()[5][0], mux_order[1], "input_6"},
-    {banks[1].instances()[4][0], mux_order[1], "input_7"},
-
-    {banks[1].instances()[3][0], mux_order[1], "input_3"},
-    {banks[1].instances()[2][0], mux_order[1], "input_2"},
-    {banks[1].instances()[1][0], mux_order[1], "input_0"},
-    {banks[1].instances()[0][0], mux_order[1], "input_1"},
+    {banks[1].instances()[3][0], mux_order[0], "input_5"},
+    {banks[1].instances()[2][0], mux_order[0], "input_4"},
+    {banks[1].instances()[1][0], mux_order[0], "input_6"},
+    {banks[1].instances()[0][0], mux_order[0], "input_7"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {

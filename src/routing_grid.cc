@@ -2558,21 +2558,21 @@ void RoutingGrid::SetUpTemporaryBlockages(
         &blockage_info->blocked_edges);
   }
   for (const auto &polygon : avoid.polygons()) {
-    RoutingGridBlockage<geometry::Polygon> *blockage = AddBlockage(
-        *polygon,
-        0,      // No extra padding on shapes.
-        true,   // Temporary.
-        &blockage_info->blocked_vertices);
+    //RoutingGridBlockage<geometry::Polygon> *blockage = AddBlockage(
+    //    *polygon,
+    //    0,      // No extra padding on shapes.
+    //    true,   // Temporary.
+    //    &blockage_info->blocked_vertices);
     geometry::Rectangle bounding_box = polygon->GetBoundingBox();
     LOG(WARNING) << "Temporary blockage is a Polygon which tracks don't "
                  << "support, using the bounding box: " << bounding_box
                  << " (for: " << *polygon << ")";
-    //RoutingGridBlockage<geometry::Rectangle> *blockage = AddBlockage(
-    //    bounding_box,
-    //    0,      // No extra padding on shapes.
-    //    true,   // Temporary.
-    //    &blockage_info->blocked_vertices,
-    //    &blockage_info->blocked_edges);
+    RoutingGridBlockage<geometry::Rectangle> *blockage = AddBlockage(
+        bounding_box,
+        0,      // No extra padding on shapes.
+        true,   // Temporary.
+        &blockage_info->blocked_vertices,
+        &blockage_info->blocked_edges);
   }
   for (const auto &poly_line : avoid.poly_lines()) {
     LOG(ERROR) << "Unimplemented: not sure how to add PolyLines as blockages "

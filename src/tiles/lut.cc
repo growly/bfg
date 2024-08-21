@@ -658,6 +658,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
     {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
     {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
+    {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
     {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
     {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
     {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
