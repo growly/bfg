@@ -38,7 +38,7 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
     },
     .right = LutB::BankArrangement {
       .memory_rows = {7, 6, 5, 4, 3, 2, 1, 0},
-      .buffer_rows = {0, 0},
+      .buffer_rows = {0},
       .active_mux2_rows = {0},
       .horizontal_alignment = geometry::Compass::RIGHT
     },
