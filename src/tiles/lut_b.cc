@@ -426,7 +426,7 @@ void LutB::Route(
                 .IgnoreError();
   }
 
-  // FIXME(aryap): I want to solve the general problem of connecting to a port
+  // TODO(aryap): I want to solve the general problem of connecting to a port
   // on an instance which is comprised of many, possibly connected, shapes on
   // many, possibly connected, layers. The tricky thing is that connecting on
   // one layer might create DRC violations on an adjacent layer (e.g. if you
@@ -442,24 +442,30 @@ void LutB::Route(
   //
   // And what namespaces do these net names occupy? Their parent instance?
   // Unless exported by being labelled a port with the same name?
+  //
+  // FIXME(aryap): Immediately:
+  //  - fix clk/clki accessibility with temp blockages that are polygons (maybe
+  //  just fix that whole thing)
+  //  - add power straps
+  //  - complete routing ffs
 
   // Connect the input buffers on the selector lines.
   struct PortKey {
     geometry::Instance *instance;
     std::string port_name;
   };
-  std::vector<std::vector<PortKey>> auto_connections = {
-    {{buf_order[0], "P"}, {mux_order[0], "S0_B"}, {mux_order[1], "S0_B"}},
-    {{buf_order[0], "X"}, {mux_order[0], "S0"}, {mux_order[1], "S0"}},
-    {{buf_order[1], "P"}, {mux_order[0], "S1_B"}, {mux_order[1], "S1_B"}},
-    {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
-    {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
-    {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
-    {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
-    {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
-    {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
-    {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
-  };
+  std::vector<std::vector<PortKey>> auto_connections; // = {
+  //  {{buf_order[0], "P"}, {mux_order[0], "S0_B"}, {mux_order[1], "S0_B"}},
+  //  {{buf_order[0], "X"}, {mux_order[0], "S0"}, {mux_order[1], "S0"}},
+  //  {{buf_order[1], "P"}, {mux_order[0], "S1_B"}, {mux_order[1], "S1_B"}},
+  //  {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
+  //  {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
+  //  {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
+  //  {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
+  //  {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
+  //  {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
+  //  {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
+  //};
 
   // Add automatic connections for memory clock and inverted clock inputs.
   for (size_t bank = 0; bank < banks.size(); ++bank) {
