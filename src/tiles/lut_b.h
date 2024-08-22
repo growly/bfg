@@ -53,6 +53,7 @@ class LutB : public Tile {
     std::vector<size_t> memory_rows;
     std::vector<size_t> buffer_rows;
     std::vector<size_t> active_mux2_rows;
+    std::vector<size_t> clk_buf_rows;
     geometry::Compass horizontal_alignment;
   };
 
@@ -76,6 +77,7 @@ class LutB : public Tile {
       const std::vector<geometry::Instance*> &buf_order,
       const std::vector<geometry::Instance*> &mux_order,
       const std::vector<geometry::Instance*> &active_mux2s,
+      const std::vector<geometry::Instance*> &clk_buf_rows,
       const std::vector<geometry::Instance*> &memories,
       std::vector<MemoryBank> *memory_banks,
       Layout *layout) const;
