@@ -77,7 +77,7 @@ class LutB : public Tile {
       const std::vector<geometry::Instance*> &buf_order,
       const std::vector<geometry::Instance*> &mux_order,
       const std::vector<geometry::Instance*> &active_mux2s,
-      const std::vector<geometry::Instance*> &clk_buf_rows,
+      const std::vector<geometry::Instance*> &clk_buf_order,
       const std::vector<geometry::Instance*> &memories,
       std::vector<MemoryBank> *memory_banks,
       Layout *layout) const;

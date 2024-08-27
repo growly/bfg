@@ -706,8 +706,8 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       LOG(INFO) << DescribePorts(port_list);
     }
 
-    bool paths_found =
-        routing_grid.AddMultiPointRoute(*layout, route_targets).ok();
+    bool paths_found = routing_grid.AddMultiPointRoute(
+        *layout, route_targets, std::nullopt).ok();
   }
 
 

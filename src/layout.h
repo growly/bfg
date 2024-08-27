@@ -188,6 +188,8 @@ class Layout : public geometry::Manipulable {
   void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets, ShapeCollection *shapes) const;
 
+  void CopyConnectableShapes(ShapeCollection *shapes) const;
+
   void CopyAllShapes(ShapeCollection *shapes) const;
 
   void GetInstancesByName(

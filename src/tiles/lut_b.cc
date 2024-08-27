@@ -313,7 +313,7 @@ void LutB::Route(
     const std::vector<geometry::Instance*> &buf_order,
     const std::vector<geometry::Instance*> &mux_order,
     const std::vector<geometry::Instance*> &active_mux2s,
-    const std::vector<geometry::Instance*> &clk_buf_rows,
+    const std::vector<geometry::Instance*> &clk_buf_order,
     const std::vector<geometry::Instance*> &memories,
     std::vector<MemoryBank> *memory_banks,
     Layout *layout) const {
@@ -329,22 +329,13 @@ void LutB::Route(
   LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
 
   RoutingGrid routing_grid(db);
-  
-  // The alt routing grid is used for cases where we want to switch routing
-  // direction. Since the grids don't share state, they must be used
-  // independently with care that their routes do not produce conflicts.
-  RoutingGrid alt_routing_grid(db);
 
   bfg::RoutingLayerInfo met1_layer_info =
       db.GetRoutingLayerInfoOrDie("met1.drawing");
   met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
   met1_layer_info.area = pre_route_bounds;
-  // TODO(aryap): If we want y = 735 to be on the grid, and we know the offset
-  // is relative to the pre_route_bounds lower-left y = -600, 
-  // (735 - (-190)) / 340 (the pitch) = 3.9265
-  //    offset = .3.9265 * 340
-  //           = 315
-  met1_layer_info.offset = 330;
+  // TODO(aryap): Need an easier way of lining this up!
+  //met1_layer_info.offset = 95;
 
   bfg::RoutingLayerInfo met2_layer_info =
       db.GetRoutingLayerInfoOrDie("met2.drawing");
@@ -397,34 +388,34 @@ void LutB::Route(
 
   std::unique_ptr<bfg::Layout> grid_layout;
 
-  // The scan chain is connected in the order memories are assigned by the
-  // BankArrangement.
-  std::map<geometry::Instance*, std::string> memory_output_net_names;
-  for (size_t i = 0; i < memories.size() - 1; ++i) {
-    geometry::Instance *source = memories[i];
-    geometry::Instance *sink = memories[i + 1];
+  // // The scan chain is connected in the order memories are assigned by the
+  // // BankArrangement.
+  // std::map<geometry::Instance*, std::string> memory_output_net_names;
+  // for (size_t i = 0; i < memories.size() - 1; ++i) {
+  //   geometry::Instance *source = memories[i];
+  //   geometry::Instance *sink = memories[i + 1];
 
-    LOG(INFO) << "Adding scan routes for pair "
-              << source->name() << ", " << sink->name();
+  //   LOG(INFO) << "Adding scan routes for pair "
+  //             << source->name() << ", " << sink->name();
 
-    std::set<geometry::Port*> ports;
-    source->GetInstancePorts("Q", &ports);
-    geometry::Port *start = *ports.begin();
-    ports.clear();
+  //   std::set<geometry::Port*> ports;
+  //   source->GetInstancePorts("Q", &ports);
+  //   geometry::Port *start = *ports.begin();
+  //   ports.clear();
 
-    sink->GetInstancePorts("D", &ports);
-    geometry::Port *end = *ports.begin();
+  //   sink->GetInstancePorts("D", &ports);
+  //   geometry::Port *end = *ports.begin();
 
-    EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
-    memory_output_net_names[source] = net_names.primary();
+  //   EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
+  //   memory_output_net_names[source] = net_names.primary();
 
-    geometry::ShapeCollection non_net_connectables;
-    layout->CopyConnectableShapesNotOnNets(
-        net_names,
-        &non_net_connectables);
-    routing_grid.AddRouteBetween(*start, *end, non_net_connectables, net_names)
-                .IgnoreError();
-  }
+  //   geometry::ShapeCollection non_net_connectables;
+  //   layout->CopyConnectableShapesNotOnNets(
+  //       net_names,
+  //       &non_net_connectables);
+  //   routing_grid.AddRouteBetween(*start, *end, non_net_connectables, net_names)
+  //               .IgnoreError();
+  // }
 
   // TODO(aryap): I want to solve the general problem of connecting to a port
   // on an instance which is comprised of many, possibly connected, shapes on
@@ -450,50 +441,88 @@ void LutB::Route(
   //  - complete routing ffs
 
   // Connect the input buffers on the selector lines.
+  // TODO(aryap): These feel like first-class members of the RoutingGrid API
+  // soon. "RouteGroup"?
   struct PortKey {
     geometry::Instance *instance;
     std::string port_name;
   };
-  std::vector<std::vector<PortKey>> auto_connections; // = {
-  //  {{buf_order[0], "P"}, {mux_order[0], "S0_B"}, {mux_order[1], "S0_B"}},
-  //  {{buf_order[0], "X"}, {mux_order[0], "S0"}, {mux_order[1], "S0"}},
-  //  {{buf_order[1], "P"}, {mux_order[0], "S1_B"}, {mux_order[1], "S1_B"}},
-  //  {{buf_order[1], "X"}, {mux_order[0], "S1"}, {mux_order[1], "S1"}},
-  //  {{buf_order[2], "P"}, {mux_order[0], "S2_B"}, {mux_order[1], "S2_B"}},
-  //  {{buf_order[2], "X"}, {mux_order[0], "S2"}, {mux_order[1], "S2"}},
-  //  {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
-  //  {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
-  //  {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
-  //  {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
-  //};
+  struct PortKeyCollection {
+    std::vector<PortKey> port_keys;
+    std::optional<std::string> net_name;
+  };
+  std::vector<PortKeyCollection> auto_connections; // = {{
+  //     .port_keys = {{buf_order[0], "P"}, {mux_order[0], "S0_B"},
+  //                   {mux_order[1], "S0_B"}},
+  //   }, {
+  //     .port_keys = {{buf_order[0], "X"}, {mux_order[0], "S0"},
+  //                   {mux_order[1], "S0"}},
+  //   }, {
+  //     .port_keys = {{buf_order[1], "P"}, {mux_order[0], "S1_B"},
+  //                   {mux_order[1], "S1_B"}},
+  //   }, {
+  //     .port_keys = {{buf_order[1], "X"}, {mux_order[0], "S1"},
+  //                   {mux_order[1], "S1"}},
+  //   }, {
+  //     .port_keys = {{buf_order[2], "P"}, {mux_order[0], "S2_B"},
+  //                   {mux_order[1], "S2_B"}},
+  //   }, {
+  //     .port_keys = {{buf_order[2], "X"}, {mux_order[0], "S2"},
+  //                   {mux_order[1], "S2"}},
+  //   }, {
+  //     .port_keys = {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
+  //   }, {
+  //     .port_keys = {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
+  //   }, {
+  //     .port_keys = {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
+  //   }, {
+  //     .port_keys = {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
+  //   }
+  // };
 
   // Add automatic connections for memory clock and inverted clock inputs.
   for (size_t bank = 0; bank < banks.size(); ++bank) {
-    std::vector<PortKey> clk_connections;
-    std::vector<PortKey> clk_i_connections;
+    PortKeyCollection clks;
+    clks.net_name = absl::StrCat("clk_", bank);
+    std::vector<PortKey> &clk_connections = clks.port_keys;
+
+    PortKeyCollection inverted_clks;
+    inverted_clks.net_name = absl::StrCat("clk_i_", bank);
+    std::vector<PortKey> &clk_i_connections = inverted_clks.port_keys;
+
     for (auto &row : banks[bank].instances()) {
       for (geometry::Instance *instance : row) {
         if (instance->HasPort("CLK")) {
           clk_connections.push_back({
               .instance = instance,
-              .port_name = "CLK"
+              .port_name = "CLK",
           });
         }
         if (instance->HasPort("CLKI")) {
           clk_i_connections.push_back({
               .instance = instance,
-              .port_name = "CLKI"
+              .port_name = "CLKI",
           });
         }
       }
     }
-    auto_connections.push_back(clk_connections);
-    auto_connections.push_back(clk_i_connections);
+    clk_connections.push_back({
+        .instance = clk_buf_order[bank],
+        .port_name = "X",
+    });
+
+    clk_i_connections.push_back({
+        .instance = clk_buf_order[bank],
+        .port_name = "P",
+    });
+
+    auto_connections.push_back(clks);
+    auto_connections.push_back(inverted_clks);
   }
 
-  for (auto &connections : auto_connections) {
+  for (const PortKeyCollection &collection : auto_connections) {
     std::vector<std::vector<geometry::Port*>> route_targets;
-    for (auto &port_key : connections) {
+    for (auto &port_key : collection.port_keys) {
       std::vector<geometry::Port*> &port_list =
           route_targets.emplace_back();
       geometry::Instance *instance = port_key.instance;
@@ -509,15 +538,18 @@ void LutB::Route(
           port_list.end(), matching_ports.begin(), matching_ports.end());
     }
 
-    LOG(INFO) << "Connecting all of: " << absl::StrJoin(
-        connections, ", ",
+    std::string net = collection.net_name ? *collection.net_name : "default";
+
+    LOG(INFO) << "Connecting (net: " << net << ") all of: " << absl::StrJoin(
+        collection.port_keys, ", ",
         [](std::string *out, const PortKey &port_key) {
           absl::StrAppend(
               out, port_key.instance->name(), "/", port_key.port_name);
         });
 
-    bool paths_found =
-        routing_grid.AddMultiPointRoute(*layout, route_targets).ok();
+    auto result = routing_grid.AddMultiPointRoute(*layout,
+                                                  route_targets,
+                                                  collection.net_name);
   }
 
 

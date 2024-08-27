@@ -289,7 +289,7 @@ std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
   if (!layer) {
     return std::nullopt;
   }
-  RoutingLayerInfo routing_info;
+  RoutingLayerInfo routing_info = {0};
   routing_info.layer = *layer;
   auto maybe_rules = GetRules(*layer);
   if (!maybe_rules) {

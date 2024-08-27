@@ -87,7 +87,8 @@ class RoutingGrid {
   // use as temporary obstacles.
   absl::Status AddMultiPointRoute(
       const Layout &layout,
-      const std::vector<std::vector<geometry::Port*>> ports);
+      const std::vector<std::vector<geometry::Port*>> ports,
+      const std::optional<std::string> &primary_net_Name);
 
   // Connect multiple ports on the same net. One port from each successive set
   // of ports is connected.

@@ -66,17 +66,33 @@ namespace bfg {
 // Since these methods test for intersection, or that the two geometric objects
 // overlap, we do not need to consider the case where same-net shapes are too
 // close for min_separation rules (which wouldn't apply if they touched).
+//
+// Blockages come with a padding that we consider to be a necessary minimum
+// spacing between two shapes. If the intersection occurs for padding == 0,
+// i.e. the shapes touch, and we have defined exceptional nets that match for
+// both shapes, then there is no blockage.
 template<>
 bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
     const RoutingVertex &vertex,
     int64_t padding,
     const std::optional<EquivalentNets> &exceptional_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const {
-  if (exceptional_nets && exceptional_nets->Contains(shape_.net())) {
-    return false;
-  }
-  return routing_grid_.ViaWouldIntersect(
+  // Check if there's an intersection within the default padding region:
+  bool intersects = routing_grid_.ViaWouldIntersect(
       vertex, shape_, padding, access_direction);
+  // If so, and if exceptional nets are defined and match, then the
+  // intersection is permissible if the shapes are touching (i.e. intersection
+  // with padding = 0). If we just checked that because padding == 0 already,
+  // shortcut the response.
+  if (intersects &&
+      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+    if (padding == 0) {
+      return false;
+    }
+    return !routing_grid_.ViaWouldIntersect(
+        vertex, shape_, 0, access_direction);
+  }
+  return intersects;
 }
 
 template<>
@@ -85,14 +101,17 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
     int64_t padding,
     const std::optional<EquivalentNets> &exceptional_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const {
-  if (shape_.ContainsVertex({16580, 5078})) {
-      VLOG(20) << "ok";
-  }
-  if (exceptional_nets && exceptional_nets->Contains(shape_.net())) {
-    return false;
-  }
-  return routing_grid_.ViaWouldIntersect(
+  bool intersects = routing_grid_.ViaWouldIntersect(
       vertex, shape_, padding, access_direction);
+  if (intersects &&
+      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+    if (padding == 0) {
+      return false;
+    }
+    return !routing_grid_.ViaWouldIntersect(
+      vertex, shape_, 0, access_direction);
+  }
+  return intersects;
 }
 
 template<>
@@ -100,10 +119,15 @@ bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
     const RoutingEdge &edge,
     int64_t padding,
     const std::optional<EquivalentNets> &exceptional_nets) const {
-  if (exceptional_nets && exceptional_nets->Contains(shape_.net())) {
-    return false;
+  bool intersects = routing_grid_.WireWouldIntersect(edge, shape_, padding); 
+  if (intersects &&
+      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+    if (padding == 0) {
+      return false;
+    }
+    return !routing_grid_.WireWouldIntersect(edge, shape_, 0);
   }
-  return routing_grid_.WireWouldIntersect(edge, shape_, padding);
+  return intersects;
 }
 
 template<>
@@ -111,10 +135,15 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
     const RoutingEdge &edge,
     int64_t padding,
     const std::optional<EquivalentNets> &exceptional_nets) const {
-  if (exceptional_nets && exceptional_nets->Contains(shape_.net())) {
-    return false;
+  bool intersects = routing_grid_.WireWouldIntersect(edge, shape_, padding); 
+  if (intersects &&
+      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+    if (padding == 0) {
+      return false;
+    }
+    return !routing_grid_.WireWouldIntersect(edge, shape_, 0);
   }
-  return routing_grid_.WireWouldIntersect(edge, shape_, padding);
+  return intersects;
 }
 
 template<typename T>
@@ -1312,21 +1341,24 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
 
 absl::Status RoutingGrid::AddMultiPointRoute(
     const Layout &layout,
-    const std::vector<std::vector<geometry::Port*>> ports) {
+    const std::vector<std::vector<geometry::Port*>> ports,
+    const std::optional<std::string> &primary_net_name) {
   EquivalentNets net_aliases;
   for (const auto &port_set : ports) {
     for (const geometry::Port *port : port_set) {
       net_aliases.Add(port->net());
     }
   }
+  if (primary_net_name) {
+    net_aliases.set_primary(*primary_net_name);
+  }
 
-  geometry::ShapeCollection non_net_connectables;
-  layout.CopyConnectableShapesNotOnNets(net_aliases, &non_net_connectables);
+  geometry::ShapeCollection connectables;
+  layout.CopyConnectableShapes(&connectables);
 
-  return AddMultiPointRoute(
-      ports,
-      non_net_connectables,
-      net_aliases);
+  return AddMultiPointRoute(ports,
+                            connectables,
+                            net_aliases);
 }
 
 absl::Status RoutingGrid::AddMultiPointRoute(
@@ -2247,8 +2279,8 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
     if (is_temporary) {
       // TODO(aryap): Support polygons on tracks because otherwise this is gonna
       // get painful:
-      LOG(WARNING) << "Temporary blockage is a Polygon which tracks don't "
-                   << "support: " << polygon << ")";
+      VLOG(12) << "Temporary blockage is a Polygon which tracks don't "
+               << "support: " << polygon << ")";
     } else {
       for (RoutingTrack *track : it->second) {
         track->AddBlockage(polygon, padding, polygon.net());
@@ -2564,9 +2596,10 @@ void RoutingGrid::SetUpTemporaryBlockages(
     //    true,   // Temporary.
     //    &blockage_info->blocked_vertices);
     geometry::Rectangle bounding_box = polygon->GetBoundingBox();
-    LOG(WARNING) << "Temporary blockage is a Polygon which tracks don't "
-                 << "support, using the bounding box: " << bounding_box
-                 << " (for: " << *polygon << ")";
+    VLOG(12) << "Temporary blockage is a Polygon which tracks don't "
+             << "support, using the bounding box: " << bounding_box
+             << " (for: " << *polygon << ")";
+    bounding_box.set_net(polygon->net());
     RoutingGridBlockage<geometry::Rectangle> *blockage = AddBlockage(
         bounding_box,
         0,      // No extra padding on shapes.

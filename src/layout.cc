@@ -469,6 +469,15 @@ void Layout::CopyConnectableShapesNotOnNets(
   }
 }
 
+void Layout::CopyConnectableShapes(ShapeCollection *shapes) const {
+  for (const auto &entry : shapes_) {
+    shapes->AddConnectableShapes(*entry.second);
+  }
+  for (const auto &instance : instances_) {
+    instance->CopyConnectableShapes(shapes);
+  }
+}
+
 void Layout::CopyAllShapes(ShapeCollection *shapes) const {
   for (const auto &entry : shapes_) {
     shapes->Add(*entry.second);
