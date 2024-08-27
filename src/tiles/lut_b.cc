@@ -451,34 +451,34 @@ void LutB::Route(
     std::vector<PortKey> port_keys;
     std::optional<std::string> net_name;
   };
-  std::vector<PortKeyCollection> auto_connections; // = {{
-  //     .port_keys = {{buf_order[0], "P"}, {mux_order[0], "S0_B"},
-  //                   {mux_order[1], "S0_B"}},
-  //   }, {
-  //     .port_keys = {{buf_order[0], "X"}, {mux_order[0], "S0"},
-  //                   {mux_order[1], "S0"}},
-  //   }, {
-  //     .port_keys = {{buf_order[1], "P"}, {mux_order[0], "S1_B"},
-  //                   {mux_order[1], "S1_B"}},
-  //   }, {
-  //     .port_keys = {{buf_order[1], "X"}, {mux_order[0], "S1"},
-  //                   {mux_order[1], "S1"}},
-  //   }, {
-  //     .port_keys = {{buf_order[2], "P"}, {mux_order[0], "S2_B"},
-  //                   {mux_order[1], "S2_B"}},
-  //   }, {
-  //     .port_keys = {{buf_order[2], "X"}, {mux_order[0], "S2"},
-  //                   {mux_order[1], "S2"}},
-  //   }, {
-  //     .port_keys = {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
-  //   }, {
-  //     .port_keys = {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
-  //   }, {
-  //     .port_keys = {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
-  //   }, {
-  //     .port_keys = {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
-  //   }
-  // };
+  std::vector<PortKeyCollection> auto_connections = {{
+      .port_keys = {{buf_order[0], "P"}, {mux_order[0], "S0_B"},
+                    {mux_order[1], "S0_B"}},
+    }, {
+      .port_keys = {{buf_order[0], "X"}, {mux_order[0], "S0"},
+                    {mux_order[1], "S0"}},
+    }, {
+      .port_keys = {{buf_order[1], "P"}, {mux_order[0], "S1_B"},
+                    {mux_order[1], "S1_B"}},
+    }, {
+      .port_keys = {{buf_order[1], "X"}, {mux_order[0], "S1"},
+                    {mux_order[1], "S1"}},
+    }, {
+      .port_keys = {{buf_order[2], "P"}, {mux_order[0], "S2_B"},
+                    {mux_order[1], "S2_B"}},
+    }, {
+      .port_keys = {{buf_order[2], "X"}, {mux_order[0], "S2"},
+                    {mux_order[1], "S2"}},
+    }, {
+      .port_keys = {{buf_order[3], "X"}, {active_mux2s[0], "S"}},
+    }, {
+      .port_keys = {{mux_order[0], "Z"}, {active_mux2s[0], "A0"}},
+    }, {
+      .port_keys = {{mux_order[1], "Z"}, {active_mux2s[0], "A1"}},
+    }, {
+      .port_keys = {{active_mux2s[0], "X"}, {buf_order[3], "A"}},
+    }
+  };
 
   // Add automatic connections for memory clock and inverted clock inputs.
   for (size_t bank = 0; bank < banks.size(); ++bank) {
