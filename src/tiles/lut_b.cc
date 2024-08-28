@@ -290,7 +290,9 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
-  Route(layout.get());
+  AddClockAndPowerStraps(layout.get());
+
+  //Route(layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -422,8 +424,6 @@ void LutB::Route(Layout *layout) const {
   //
   // And what namespaces do these net names occupy? Their parent instance?
   // Unless exported by being labelled a port with the same name?
-
-  AddClockAndPowerStraps(layout);
 
   // Connect the input buffers on the selector lines.
   // TODO(aryap): These feel like first-class members of the RoutingGrid API
@@ -654,63 +654,113 @@ void LutB::Route(Layout *layout) const {
   layout->AddLayout(*grid_layout, "routing");
 }
 
+void LutB::AddVerticalSpineWithFingers(
+    const std::string &spine_layer_name,
+    const std::string &via_layer_name,
+    const std::string &finger_layer_name,
+    const std::string &net,
+    const std::vector<geometry::Point> &connections,
+    int64_t spine_x,
+    Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &spine_rules = db.Rules(spine_layer_name);
+  const auto &finger_rules = db.Rules(finger_layer_name);
+  const auto &via_rules = db.Rules(via_layer_name);
+  const auto &spine_via_rules = db.Rules(spine_layer_name, via_layer_name);
+  const auto &finger_via_rules = db.Rules(finger_layer_name, via_layer_name);
+
+  std::vector<geometry::Point> points(connections.begin(), connections.end());
+  if (points.size() < 2) {
+    return;
+  }
+  // Points should be sorted in y.
+  std::sort(points.begin(), points.end(),
+            [](const geometry::Point &lhs, const geometry::Point &rhs) {
+              if (lhs.y() != rhs.y()) {
+                return lhs.y() < rhs.y();
+              }
+              return lhs.x() < rhs.x();
+            });
+
+  // Draw spine.
+  int64_t y_min = points.front().y();
+  int64_t y_max = points.back().y();
+
+  geometry::PolyLine spine_line({{spine_x, y_min}, {spine_x, y_max}});
+  spine_line.SetWidth(spine_rules.min_width);
+  spine_line.set_min_separation(spine_rules.min_separation);
+  spine_line.set_net(net);
+
+  uint64_t via_side = std::max(via_rules.via_width, via_rules.via_height);
+  uint64_t spine_bulge_width = 2 * spine_via_rules.via_overhang_wide + via_side;
+  uint64_t spine_bulge_length = 2 * spine_via_rules.via_overhang + via_side;
+  uint64_t finger_bulge_width =
+      2 * finger_via_rules.via_overhang_wide + via_side;
+  uint64_t finger_bulge_length = 2 * finger_via_rules.via_overhang + via_side;
+
+  for (const geometry::Point &point : points) {
+    if (point.x() == spine_x) {
+      spine_line.InsertBulge(point, spine_bulge_width, spine_bulge_length);
+      layout->MakeVia(via_layer_name, point, net);
+      continue;
+    }
+    geometry::Point spine_via = {spine_x, point.y()};
+    // Have to draw a finger!
+    geometry::PolyLine finger({point, spine_via});
+
+    finger.SetWidth(finger_rules.min_width);
+    finger.set_min_separation(finger_rules.min_separation);
+    finger.InsertBulge(spine_via, finger_bulge_width, finger_bulge_length);
+    finger.set_net(net);
+    layout->SetActiveLayerByName(finger_layer_name);
+    layout->AddPolyLine(finger);
+    layout->RestoreLastActiveLayer();
+
+    layout->MakeVia(via_layer_name, spine_via, net);
+    spine_line.InsertBulge(spine_via, spine_bulge_width, spine_bulge_length);
+
+    // TODO: do we worry about the via from the finger to the connection pin
+    // here?
+    // finger.InsertBulge(point, finger_bulge_width, finger_bulge_length);
+  }
+
+  layout->SetActiveLayerByName(spine_layer_name);
+  geometry::Polygon *spine_metal_pour = layout->AddPolyLine(spine_line);
+  layout->RestoreLastActiveLayer();
+}
+
 // Align ports by x position and connect them.
 void LutB::AddClockAndPowerStraps(Layout *layout) const {
-  // Bucket ports according to
-  //  - net
-  //    - x position
-  //      - set of y positions for ports at x on net
-  std::unordered_map<std::string, std::map<int64_t, std::set<int64_t>>> buckets;
-
-  std::array<std::string, 2> nets = {"CLK", "CLKI"};
-
-  for (size_t bank = 0; bank < banks_.size(); ++bank) {
-    for (const auto &row : banks_.at(bank).instances()) {
-      for (geometry::Instance *instance : row) {
-        for (const std::string &net : nets) {
-          std::set<geometry::Port*> ports;
-          instance->GetInstancePorts(net, &ports);
-          for (geometry::Port *port : ports) {
-            const geometry::Point centre = port->centre();
-            buckets[net][centre.x()].insert(centre.y());
-          }
-        }
-      }
-    }
-  }
+  static const std::array<std::string, 2> kNets = {"CLK", "CLKI"};
 
   // FIXME(aryap): We are leaking technology-specific concerns into what was
   // previously somewhat agnostic; but was it ever really agnostic? There could
   // just be a strap configuration sction in the parameters:
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  const auto &met2_rules = db.Rules("met2.drawing");
-  const auto &via1_rules = db.Rules("via1.drawing");
-  const auto &met2_via1_rules = db.Rules("met2.drawing", "via1.drawing");
 
-  layout->SetActiveLayerByName("met2.drawing");
-  for (const auto &entry : buckets) {
-    const std::string &net = entry.first;
-
-    for (const auto &inner : entry.second) {
-      int64_t x = inner.first;
-
-      std::set<int64_t> y_positions(inner.second.begin(), inner.second.end());
-      if (y_positions.size() < 2) {
-        continue;
+  for (size_t bank = 0; bank < banks_.size(); ++bank) {
+    for (const std::string &net : kNets) {
+      std::vector<geometry::Point> connections;
+      for (const auto &row : banks_.at(bank).instances()) {
+        for (geometry::Instance *instance : row) {
+          std::set<geometry::Port*> ports;
+          instance->GetInstancePorts(net, &ports);
+          for (geometry::Port *port : ports) {
+            connections.push_back(port->centre());
+          }
+        }
       }
 
-      int64_t y_min = *y_positions.begin();
-      int64_t y_max = *y_positions.rbegin();
-      y_positions.erase(y_min);
-      y_positions.erase(y_max);
+      int64_t spine_x = connections.front().x();
 
-      geometry::PolyLine line({{x, y_min}, {x, y_max}});
-      line.SetWidth(met2_rules.min_width);
-      line.set_min_separation(met2_rules.min_separation);
-      geometry::Polygon *metal_pour = layout->AddPolyLine(line);
+      AddVerticalSpineWithFingers("met2.drawing",
+                                  "via1.drawing",
+                                  "met1.drawing",
+                                  net,
+                                  connections,
+                                  spine_x,
+                                  layout);
     }
   }
-  layout->RestoreLastActiveLayer();
 }
 
 }  // namespace atoms

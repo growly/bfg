@@ -75,6 +75,16 @@ class LutB : public Tile {
   void Route(Layout *layout) const;
   void AddClockAndPowerStraps(Layout *layout) const;
 
+  // TODO(aryap): This feels like a nice general feature of the Layout class.
+  void AddVerticalSpineWithFingers(
+      const std::string &spine_layer_name,
+      const std::string &via_layer_name,
+      const std::string &finger_layer_name,
+      const std::string &net,
+      const std::vector<geometry::Point> &connections,
+      int64_t spine_x,
+      Layout *layout) const;
+
   size_t lut_size_;
 
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);
