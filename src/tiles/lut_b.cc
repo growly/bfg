@@ -111,8 +111,6 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   bfg::Cell *tap_cell = tap_generator.GenerateIntoDatabase(
       "lut_tap_template");
 
-  std::vector<geometry::Instance*> memories;
-
   std::vector<std::reference_wrapper<const BankArrangement>> arrangements = {
     layout_config.left, layout_config.right};
 
@@ -143,7 +141,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       geometry::Instance *installed =
           bank.InstantiateRight(assigned_row, instance_name, cell->layout());
 
-      memories.push_back(installed);
+      memories_.push_back(installed);
       ++num_memories;
     }
 
@@ -190,7 +188,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   int64_t x_pos = left_bank_bottom_row_right_x + layout_config.mux_area_padding;
   // This staggers the mux area below the memories on the left:
   //int64_t y_pos = -mux_height / 2;
-  int64_t y_pos = memories.front()->Height() / 2;
+  int64_t y_pos = memories_.front()->Height() / 2;
 
   std::vector<bfg::Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
 
@@ -207,6 +205,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_grid.set_horizontal_overlap(-300);
   mux_grid.set_vertical_overlap(-1500);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
+  mux_order_.insert(mux_order_.begin(), mux_order.begin(), mux_order.end());
 
   std::unordered_map<std::string, geometry::Instance *const>
       all_instances_by_name;
@@ -378,34 +377,34 @@ void LutB::Route(Layout *layout) const {
 
   std::unique_ptr<bfg::Layout> grid_layout;
 
-  // // The scan chain is connected in the order memories are assigned by the
-  // // BankArrangement.
-  // std::map<geometry::Instance*, std::string> memory_output_net_names;
-  // for (size_t i = 0; i < memories.size() - 1; ++i) {
-  //   geometry::Instance *source = memories[i];
-  //   geometry::Instance *sink = memories[i + 1];
+  // The scan chain is connected in the order memories are assigned by the
+  // BankArrangement.
+  std::map<geometry::Instance*, std::string> memory_output_net_names;
+  for (size_t i = 0; i < memories_.size() - 1; ++i) {
+    geometry::Instance *source = memories_[i];
+    geometry::Instance *sink = memories_[i + 1];
 
-  //   LOG(INFO) << "Adding scan routes for pair "
-  //             << source->name() << ", " << sink->name();
+    LOG(INFO) << "Adding scan routes for pair "
+              << source->name() << ", " << sink->name();
 
-  //   std::set<geometry::Port*> ports;
-  //   source->GetInstancePorts("Q", &ports);
-  //   geometry::Port *start = *ports.begin();
-  //   ports.clear();
+    std::set<geometry::Port*> ports;
+    source->GetInstancePorts("Q", &ports);
+    geometry::Port *start = *ports.begin();
+    ports.clear();
 
-  //   sink->GetInstancePorts("D", &ports);
-  //   geometry::Port *end = *ports.begin();
+    sink->GetInstancePorts("D", &ports);
+    geometry::Port *end = *ports.begin();
 
-  //   EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
-  //   memory_output_net_names[source] = net_names.primary();
+    EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
+    memory_output_net_names[source] = net_names.primary();
 
-  //   geometry::ShapeCollection non_net_connectables;
-  //   layout->CopyConnectableShapesNotOnNets(
-  //       net_names,
-  //       &non_net_connectables);
-  //   routing_grid.AddRouteBetween(*start, *end, non_net_connectables, net_names)
-  //               .IgnoreError();
-  // }
+    geometry::ShapeCollection non_net_connectables;
+    layout->CopyConnectableShapesNotOnNets(
+        net_names,
+        &non_net_connectables);
+    routing_grid.AddRouteBetween(*start, *end, non_net_connectables, net_names)
+                .IgnoreError();
+  }
 
   // TODO(aryap): I want to solve the general problem of connecting to a port
   // on an instance which is comprised of many, possibly connected, shapes on
@@ -423,10 +422,6 @@ void LutB::Route(Layout *layout) const {
   //
   // And what namespaces do these net names occupy? Their parent instance?
   // Unless exported by being labelled a port with the same name?
-  //
-  // FIXME(aryap): Immediately:
-  //  - add power straps
-  //  - complete routing ffs
 
   AddClockAndPowerStraps(layout);
 
@@ -441,34 +436,34 @@ void LutB::Route(Layout *layout) const {
     std::vector<PortKey> port_keys;
     std::optional<std::string> net_name;
   };
-  std::vector<PortKeyCollection> auto_connections; // = {{
-  //    .port_keys = {{buf_order_[0], "P"}, {mux_order_[0], "S0_B"},
-  //                  {mux_order_[1], "S0_B"}},
-  //  }, {
-  //    .port_keys = {{buf_order_[0], "X"}, {mux_order_[0], "S0"},
-  //                  {mux_order_[1], "S0"}},
-  //  }, {
-  //    .port_keys = {{buf_order_[1], "P"}, {mux_order_[0], "S1_B"},
-  //                  {mux_order_[1], "S1_B"}},
-  //  }, {
-  //    .port_keys = {{buf_order_[1], "X"}, {mux_order_[0], "S1"},
-  //                  {mux_order_[1], "S1"}},
-  //  }, {
-  //    .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S2_B"},
-  //                  {mux_order_[1], "S2_B"}},
-  //  }, {
-  //    .port_keys = {{buf_order_[2], "X"}, {mux_order_[0], "S2"},
-  //                  {mux_order_[1], "S2"}},
-  //  }, {
-  //    .port_keys = {{buf_order_[3], "X"}, {active_mux2s_[0], "S"}},
-  //  }, {
-  //    .port_keys = {{mux_order_[0], "Z"}, {active_mux2s_[0], "A0"}},
-  //  }, {
-  //    .port_keys = {{mux_order_[1], "Z"}, {active_mux2s_[0], "A1"}},
-  //  }, {
-  //    .port_keys = {{active_mux2s_[0], "X"}, {buf_order_[3], "A"}},
-  //  }
-  //};
+  std::vector<PortKeyCollection> auto_connections = {{
+      .port_keys = {{buf_order_[0], "P"}, {mux_order_[0], "S0_B"},
+                    {mux_order_[1], "S0_B"}},
+    }, {
+      .port_keys = {{buf_order_[0], "X"}, {mux_order_[0], "S0"},
+                    {mux_order_[1], "S0"}},
+    }, {
+      .port_keys = {{buf_order_[1], "P"}, {mux_order_[0], "S1_B"},
+                    {mux_order_[1], "S1_B"}},
+    }, {
+      .port_keys = {{buf_order_[1], "X"}, {mux_order_[0], "S1"},
+                    {mux_order_[1], "S1"}},
+    }, {
+      .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S2_B"},
+                    {mux_order_[1], "S2_B"}},
+    }, {
+      .port_keys = {{buf_order_[2], "X"}, {mux_order_[0], "S2"},
+                    {mux_order_[1], "S2"}},
+    }, {
+      .port_keys = {{buf_order_[3], "X"}, {active_mux2s_[0], "S"}},
+    }, {
+      .port_keys = {{mux_order_[0], "Z"}, {active_mux2s_[0], "A0"}},
+    }, {
+      .port_keys = {{mux_order_[1], "Z"}, {active_mux2s_[0], "A1"}},
+    }, {
+      .port_keys = {{active_mux2s_[0], "X"}, {buf_order_[3], "A"}},
+    }
+  };
 
   // // Add automatic connections for memory clock and inverted clock inputs.
   // for (size_t bank = 0; bank < banks_.size(); ++bank) {
@@ -554,101 +549,101 @@ void LutB::Route(Layout *layout) const {
   };
 
 
-  // // TODO(aryap): We know that the mux connections roughly map to the nearest
-  // // flip flops in groups of 4; we should automate finding the order within
-  // // those groups that yield best routes.
+  // TODO(aryap): We know that the mux connections roughly map to the nearest
+  // flip flops in groups of 4; we should automate finding the order within
+  // those groups that yield best routes.
 
-  // // The mux input order is, from top to bottom:
-  // // input_5  --+---------
-  // // input_4  --|
-  // // input_6  --|
-  // // input_7  --|  8:1 mux
-  // // input_3  --|
-  // // input_2  --|
-  // // input_0  --|
-  // // input_1  --+---------
-  // std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-  //   {banks_[0].instances()[7][0], mux_order_[1], "input_5"},
-  //   {banks_[0].instances()[6][0], mux_order_[1], "input_4"},
-  //   {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
-  //   {banks_[0].instances()[4][0], mux_order_[1], "input_7"},
+  // The mux input order is, from top to bottom:
+  // input_5  --+---------
+  // input_4  --|
+  // input_6  --|
+  // input_7  --|  8:1 mux
+  // input_3  --|
+  // input_2  --|
+  // input_0  --|
+  // input_1  --+---------
+  std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
+    {banks_[0].instances()[7][0], mux_order_[1], "input_5"},
+    {banks_[0].instances()[6][0], mux_order_[1], "input_4"},
+    {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
+    {banks_[0].instances()[4][0], mux_order_[1], "input_7"},
 
-  //   {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
-  //   {banks_[0].instances()[2][0], mux_order_[0], "input_2"},
-  //   {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
-  //   {banks_[0].instances()[0][0], mux_order_[0], "input_1"},
+    {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
+    {banks_[0].instances()[2][0], mux_order_[0], "input_2"},
+    {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
+    {banks_[0].instances()[0][0], mux_order_[0], "input_1"},
 
-  //   {banks_[1].instances()[7][0], mux_order_[1], "input_3"},
-  //   {banks_[1].instances()[6][0], mux_order_[1], "input_2"},
-  //   {banks_[1].instances()[5][0], mux_order_[1], "input_0"},
-  //   {banks_[1].instances()[4][0], mux_order_[1], "input_1"},
+    {banks_[1].instances()[7][0], mux_order_[1], "input_3"},
+    {banks_[1].instances()[6][0], mux_order_[1], "input_2"},
+    {banks_[1].instances()[5][0], mux_order_[1], "input_0"},
+    {banks_[1].instances()[4][0], mux_order_[1], "input_1"},
 
-  //   {banks_[1].instances()[3][0], mux_order_[0], "input_5"},
-  //   {banks_[1].instances()[2][0], mux_order_[0], "input_4"},
-  //   {banks_[1].instances()[1][0], mux_order_[0], "input_6"},
-  //   {banks_[1].instances()[0][0], mux_order_[0], "input_7"},
-  // };
+    {banks_[1].instances()[3][0], mux_order_[0], "input_5"},
+    {banks_[1].instances()[2][0], mux_order_[0], "input_4"},
+    {banks_[1].instances()[1][0], mux_order_[0], "input_6"},
+    {banks_[1].instances()[0][0], mux_order_[0], "input_7"},
+  };
 
-  // for (auto &auto_connection : auto_mem_connections) {
-  //   geometry::Instance *memory = auto_connection.source_memory;
-  //   geometry::Instance *mux = auto_connection.target_mux;
-  //   const std::string &input_name = auto_connection.mux_port_name;
+  for (auto &auto_connection : auto_mem_connections) {
+    geometry::Instance *memory = auto_connection.source_memory;
+    geometry::Instance *mux = auto_connection.target_mux;
+    const std::string &input_name = auto_connection.mux_port_name;
 
-  //   // Heuristically determine which mux port to use based on which which is
-  //   // closest to the memory output, even if we're routing to the memory output
-  //   // net instead of the port specifically.
-  //   std::set<geometry::Port*> memory_ports;
-  //   memory->GetInstancePorts("Q", &memory_ports);
-  //   geometry::Port *memory_output = *memory_ports.begin();
+    // Heuristically determine which mux port to use based on which which is
+    // closest to the memory output, even if we're routing to the memory output
+    // net instead of the port specifically.
+    std::set<geometry::Port*> memory_ports;
+    memory->GetInstancePorts("Q", &memory_ports);
+    geometry::Port *memory_output = *memory_ports.begin();
 
-  //   std::set<geometry::Port*> mux_ports_on_net;
-  //   mux->GetInstancePorts(input_name, &mux_ports_on_net);
+    std::set<geometry::Port*> mux_ports_on_net;
+    mux->GetInstancePorts(input_name, &mux_ports_on_net);
 
-  //   geometry::Port *mux_port = mux->GetNearestPortNamed(*memory_output,
-  //                                                       input_name);
-  //   if (!mux_port) {
-  //     continue;
-  //   }
-  //   LOG_IF(FATAL, mux_ports_on_net.find(mux_port) == mux_ports_on_net.end())
-  //       << "Nearest port named " << input_name
-  //       << " did not appear in list of all ports for same name";
+    geometry::Port *mux_port = mux->GetNearestPortNamed(*memory_output,
+                                                        input_name);
+    if (!mux_port) {
+      continue;
+    }
+    LOG_IF(FATAL, mux_ports_on_net.find(mux_port) == mux_ports_on_net.end())
+        << "Nearest port named " << input_name
+        << " did not appear in list of all ports for same name";
 
-  //   while (mux_port) {
-  //     EquivalentNets net_names = EquivalentNets(
-  //         {memory_output->net(), mux_port->net()});
-  //     geometry::ShapeCollection non_net_connectables;
-  //     layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
-  //     LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-  //               << " avoiding " << non_net_connectables.Describe();
+    while (mux_port) {
+      EquivalentNets net_names = EquivalentNets(
+          {memory_output->net(), mux_port->net()});
+      geometry::ShapeCollection non_net_connectables;
+      layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+      LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                << " avoiding " << non_net_connectables.Describe();
 
-  //     bool path_found = false;
-  //     auto named_output_it = memory_output_net_names.find(memory);
-  //     if (named_output_it == memory_output_net_names.end()) {
-  //       memory_output_net_names[memory] = net_names.primary();
-  //       LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-  //                 << " to " << memory->name();
-  //       path_found = routing_grid.AddRouteBetween(
-  //           *mux_port, *memory_output, non_net_connectables, net_names).ok();
-  //     } else {
-  //       // FIXME(aryap): I am stupid. The set of names given to the router to
-  //       // determine which shapes are connectable is different to the target
-  //       // set; in fact we must make sure that the net has a distinct name from
-  //       // either start/end port so that routed wires can be differentiated from
-  //       // start/end obstacles and ports!
-  //       const std::string &target_net = named_output_it->second;
-  //       net_names.set_primary(target_net);
-  //       LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-  //                 << " to net " << target_net;
-  //       path_found = routing_grid.AddRouteToNet(
-  //           *mux_port, target_net, net_names, non_net_connectables).ok();
-  //     }
-  //     if (path_found) {
-  //       break;
-  //     }
-  //     mux_ports_on_net.erase(mux_port);
-  //     mux_port = mux_ports_on_net.empty() ? nullptr : *mux_ports_on_net.begin();
-  //   }
-  // }
+      bool path_found = false;
+      auto named_output_it = memory_output_net_names.find(memory);
+      if (named_output_it == memory_output_net_names.end()) {
+        memory_output_net_names[memory] = net_names.primary();
+        LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                  << " to " << memory->name();
+        path_found = routing_grid.AddRouteBetween(
+            *mux_port, *memory_output, non_net_connectables, net_names).ok();
+      } else {
+        // FIXME(aryap): I am stupid. The set of names given to the router to
+        // determine which shapes are connectable is different to the target
+        // set; in fact we must make sure that the net has a distinct name from
+        // either start/end port so that routed wires can be differentiated from
+        // start/end obstacles and ports!
+        const std::string &target_net = named_output_it->second;
+        net_names.set_primary(target_net);
+        LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
+                  << " to net " << target_net;
+        path_found = routing_grid.AddRouteToNet(
+            *mux_port, target_net, net_names, non_net_connectables).ok();
+      }
+      if (path_found) {
+        break;
+      }
+      mux_ports_on_net.erase(mux_port);
+      mux_port = mux_ports_on_net.empty() ? nullptr : *mux_ports_on_net.begin();
+    }
+  }
 
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
