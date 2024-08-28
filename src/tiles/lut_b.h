@@ -72,21 +72,21 @@ class LutB : public Tile {
   bfg::Cell *GenerateIntoDatabase(const std::string &name) override;
 
  protected:
-  // FIXME(aryap): Fix this mess of a signature:
-  void Route(
-      const std::vector<geometry::Instance*> &buf_order,
-      const std::vector<geometry::Instance*> &mux_order,
-      const std::vector<geometry::Instance*> &active_mux2s,
-      const std::vector<geometry::Instance*> &clk_buf_order,
-      const std::vector<geometry::Instance*> &memories,
-      std::vector<MemoryBank> *memory_banks,
-      Layout *layout) const;
+  void Route(Layout *layout) const;
+  void AddClockAndPowerStraps(Layout *layout) const;
 
   size_t lut_size_;
 
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);
 
   static const std::pair<size_t, LayoutConfig> kLayoutConfigurations[];
+
+  std::vector<MemoryBank> banks_;
+  std::vector<geometry::Instance*> buf_order_;
+  std::vector<geometry::Instance*> mux_order_;
+  std::vector<geometry::Instance*> active_mux2s_;
+  std::vector<geometry::Instance*> clk_buf_order_;
+  std::vector<geometry::Instance*> memories_;
 };
 
 }  // namespace atoms

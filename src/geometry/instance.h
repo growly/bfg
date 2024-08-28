@@ -86,9 +86,9 @@ class Instance : public Manipulable {
     if (!ports_generated_) GeneratePorts();
     const std::string actual_name = InstancePortName(name);
     auto it = instance_ports_.find(actual_name);
-    LOG_IF(FATAL, it == instance_ports_.end())
-        << "No such instance port: " << name << " on instance "
-        << name_;
+    if (it == instance_ports_.end()) {
+      return;
+    }
     for (const auto &uniq : it->second) {
       out->insert(uniq.get());
     }

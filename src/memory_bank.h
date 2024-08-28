@@ -69,6 +69,14 @@ class MemoryBank {
   }
   std::vector<RowGuide> &rows() { return rows_; }
 
+  const std::vector<std::vector<std::string>> &instance_names() const {
+    return instance_names_;
+  }
+  const std::vector<std::vector<geometry::Instance*>> &instances() const {
+    return instances_;
+  }
+  const std::vector<RowGuide> &rows() const { return rows_; }
+
  private:
   void FixAlignments();
   void EnsureVerticalAbutment();
