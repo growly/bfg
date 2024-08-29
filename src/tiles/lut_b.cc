@@ -39,14 +39,16 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
       .memory_rows = {0, 1, 2, 3, 4, 5, 6, 7},
       .buffer_rows = {7, 7, 7},
       .clk_buf_rows = {4},
-      .horizontal_alignment = geometry::Compass::LEFT
+      .horizontal_alignment = geometry::Compass::LEFT,
+      .strap_alignment = geometry::Compass::RIGHT
     },
     .right = LutB::BankArrangement {
       .memory_rows = {7, 6, 5, 4, 3, 2, 1, 0},
       .buffer_rows = {0},
       .active_mux2_rows = {0},
       .clk_buf_rows = {3},
-      .horizontal_alignment = geometry::Compass::RIGHT
+      .horizontal_alignment = geometry::Compass::RIGHT,
+      .strap_alignment = geometry::Compass::LEFT
     },
     .mux_area_padding = 2500,
     .mux_area_rows = 2,
@@ -674,13 +676,7 @@ void LutB::AddVerticalSpineWithFingers(
     return;
   }
   // Points should be sorted in y.
-  std::sort(points.begin(), points.end(),
-            [](const geometry::Point &lhs, const geometry::Point &rhs) {
-              if (lhs.y() != rhs.y()) {
-                return lhs.y() < rhs.y();
-              }
-              return lhs.x() < rhs.x();
-            });
+  std::sort(points.begin(), points.end(), geometry::Point::CompareYThenX);
 
   // Draw spine.
   int64_t y_min = points.front().y();
@@ -737,6 +733,12 @@ void LutB::AddClockAndPowerStraps(Layout *layout) const {
   // previously somewhat agnostic; but was it ever really agnostic? There could
   // just be a strap configuration sction in the parameters:
 
+  const LutB::LayoutConfig layout_config =
+      *LutB::GetLayoutConfiguration(lut_size_);
+  std::vector<geometry::Compass> strap_alignment_per_bank = {
+      layout_config.left.strap_alignment,
+      layout_config.right.strap_alignment};
+
   for (size_t bank = 0; bank < banks_.size(); ++bank) {
     for (const std::string &net : kNets) {
       std::vector<geometry::Point> connections;
@@ -750,7 +752,18 @@ void LutB::AddClockAndPowerStraps(Layout *layout) const {
         }
       }
 
-      int64_t spine_x = connections.front().x();
+      // Sort connections so that the left-most (lowest-x) is at the front.
+      // Thus pick the left-most port.
+      std::sort(
+          connections.begin(), connections.end(),
+          geometry::Point::CompareX);
+
+      int64_t spine_x = 0;
+      if (strap_alignment_per_bank[bank] == geometry::Compass::LEFT) {
+        spine_x = connections.front().x();
+      } else if (strap_alignment_per_bank[bank] == geometry::Compass::RIGHT) {
+        spine_x = connections.back().x();
+      }
 
       AddVerticalSpineWithFingers("met2.drawing",
                                   "via1.drawing",

@@ -18,6 +18,20 @@ bool Point::CompareY(const Point &lhs, const Point &rhs) {
   return lhs.y() < rhs.y();
 }
 
+bool Point::CompareXThenY(const Point &lhs, const Point &rhs) {
+  if (lhs.x() == rhs.x()) {
+    return lhs.y() < rhs.y();
+  }
+  return lhs.x() < rhs.x();
+}
+
+bool Point::CompareYThenX(const Point &lhs, const Point &rhs) {
+  if (lhs.y() == rhs.y()) {
+    return lhs.x() < rhs.x();
+  }
+  return lhs.y() < rhs.y();
+}
+
 Point &Point::operator+=(const Point &other) {
   x_ = x_ + other.x_;
   y_ = y_ + other.y_;

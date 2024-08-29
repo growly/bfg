@@ -55,6 +55,7 @@ class LutB : public Tile {
     std::vector<size_t> active_mux2_rows;
     std::vector<size_t> clk_buf_rows;
     geometry::Compass horizontal_alignment;
+    geometry::Compass strap_alignment;
   };
 
   struct LayoutConfig {

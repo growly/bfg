@@ -22,6 +22,8 @@ class Point : public AbstractShape, public Manipulable {
  public:
   static bool CompareX(const Point &lhs, const Point &rhs);
   static bool CompareY(const Point &lhs, const Point &rhs);
+  static bool CompareXThenY(const Point &lhs, const Point &rhs);
+  static bool CompareYThenX(const Point &lhs, const Point &rhs);
 
   Point() = default;
   Point(const int64_t x, const int64_t y)
