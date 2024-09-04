@@ -448,7 +448,7 @@ void LutB::Route(Layout *layout) const {
   //      *clk_port, clk_net, clk_net, non_net_connectables);
   //}
 
-  RouteMuxInputs(memory_output_net_names, &routing_grid, layout);
+  RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
 
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
@@ -492,9 +492,10 @@ void LutB::RouteScanChain(
 }
 
 void LutB::RouteMuxInputs(
-    const std::map<geometry::Instance*, std::string> &memory_output_net_names,
     RoutingGrid *routing_grid,
-    Layout *layout) const {
+    Layout *layout,
+    std::map<geometry::Instance*, std::string> *memory_output_net_names)
+    const {
   // Connect flip-flops to mux.
 
   // TODO(aryap): We know that the mux connections roughly map to the nearest
@@ -565,12 +566,12 @@ void LutB::RouteMuxInputs(
                 << " avoiding " << non_net_connectables.Describe();
 
       bool path_found = false;
-      auto named_output_it = memory_output_net_names.find(memory);
-      if (named_output_it == memory_output_net_names.end()) {
-        memory_output_net_names[memory] = net_names.primary();
+      auto named_output_it = memory_output_net_names->find(memory);
+      if (named_output_it == memory_output_net_names->end()) {
+        (*memory_output_net_names)[memory] = net_names.primary();
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to " << memory->name();
-        path_found = routing_grid.AddRouteBetween(
+        path_found = routing_grid->AddRouteBetween(
             *mux_port, *memory_output, non_net_connectables, net_names).ok();
       } else {
         // FIXME(aryap): I am stupid. The set of names given to the router to
@@ -582,7 +583,7 @@ void LutB::RouteMuxInputs(
         net_names.set_primary(target_net);
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to net " << target_net;
-        path_found = routing_grid.AddRouteToNet(
+        path_found = routing_grid->AddRouteToNet(
             *mux_port, target_net, net_names, non_net_connectables).ok();
       }
       if (path_found) {
