@@ -1,7 +1,9 @@
 #ifndef TILES_LUT_B_H_
 #define TILES_LUT_B_H_
 
+#include <map>
 #include <utility>
+#include <string>
 
 #include "tile.h"
 
@@ -16,6 +18,7 @@ namespace bfg {
 class Cell;
 class Layout;
 class Circuit;
+class RoutingGrid;
 
 namespace geometry {
 
@@ -61,7 +64,8 @@ class LutB : public Tile {
   struct LayoutConfig {
     BankArrangement left;
     BankArrangement right;
-    int64_t mux_area_padding;
+    int64_t mux_area_horizontal_padding;
+    int64_t mux_area_vertical_padding;
     size_t mux_area_rows;
     size_t mux_area_columns;
   };
@@ -73,8 +77,37 @@ class LutB : public Tile {
   bfg::Cell *GenerateIntoDatabase(const std::string &name) override;
 
  protected:
-  void Route(Layout *layout) const;
+  struct PortKey {
+    geometry::Instance *instance;
+    std::string port_name;
+  };
+  struct PortKeyCollection {
+    std::vector<PortKey> port_keys;
+    std::optional<std::string> net_name;
+  };
+  // TODO(aryap): This can be replaced with the more generic "PortKey" structs
+  // above.
+  struct AutoMemoryMuxConnection {
+    geometry::Instance *source_memory;
+    geometry::Instance *target_mux;
+    std::string mux_port_name;
+  };
+
   void AddClockAndPowerStraps(Layout *layout) const;
+
+  void Route(Layout *layout) const;
+  void RouteClockBuffers(Layout *layout) const;
+  void RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const;
+  void RouteMuxInputs(
+      RoutingGrid *routing_grid,
+      Layout *layout,
+      std::map<geometry::Instance*, std::string> *memory_output_net_names)
+      const;
+  void RouteScanChain(
+      RoutingGrid *routing_grid,
+      Layout *layout,
+      std::map<geometry::Instance*, std::string> *memory_output_net_names)
+      const;
 
   // TODO(aryap): This feels like a nice general feature of the Layout class.
   void AddVerticalSpineWithFingers(

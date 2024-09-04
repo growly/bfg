@@ -110,6 +110,7 @@ class Instance : public Manipulable {
   }
 
   Port *GetNearestPortNamed(const Port &to_port, const std::string &name);
+  Port *GetFirstPortNamed(const std::string &name);
 
   void CopyShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;

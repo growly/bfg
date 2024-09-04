@@ -209,6 +209,15 @@ Port *Instance::GetNearestPortNamed(
   return *matching_ports.begin();
 }
 
+Port *Instance::GetFirstPortNamed(const std::string &name) {
+  std::vector<Port*> matching_ports;
+  GetInstancePorts(name, &matching_ports);
+  if (matching_ports.empty()) {
+    return nullptr;
+  }
+  return *matching_ports.begin();
+}
+
 }  // namespace geometry
 
 std::ostream &operator<<(std::ostream &os, const geometry::Instance &instance) {

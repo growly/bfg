@@ -257,8 +257,10 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // met1.drawing [DRAWING] 68/20
   layout->SetActiveLayerByName("met1.drawing");
-  layout->AddRectangle(Rectangle(Point(x_min, 2480), Point(6000, 2960)));
-  layout->AddRectangle(Rectangle(Point(x_min, -240), Point(6000, 240)));
+  Rectangle *vpwr_bar = layout->AddRectangle(
+      Rectangle(Point(x_min, 2480), Point(6000, 2960)));
+  Rectangle *vgnd_bar = layout->AddRectangle(
+      Rectangle(Point(x_min, -240), Point(6000, 240)));
   Polygon *clk_i_bar = layout->AddPolygon(
       Polygon({//Point(0, 1800),
                //Point(1310, 1800),
@@ -718,6 +720,27 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
       Rectangle(Point(2940, 1785), Point(3110, 1955)), "CLKI");
   layout->AddRectangleAsPort(
       Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLKI");
+
+  // VDD/VSS
+  int64_t via_width = 170;
+  int64_t vpwr_bar_mid_y = vpwr_bar->centre().y();
+  int64_t vpwr_port_lower_left_x = 1370 + 345;
+  layout->AddRectangleAsPort(
+      Rectangle(
+          Point(vpwr_port_lower_left_x,
+                vpwr_bar_mid_y - via_width / 2),
+          Point(vpwr_port_lower_left_x + via_width,
+                vpwr_bar_mid_y + via_width / 2)),
+      "VPWR");
+  int64_t vgnd_bar_mid_y = vgnd_bar->centre().y();
+  int64_t vgnd_port_lower_left_x = vpwr_port_lower_left_x + 345;
+  layout->AddRectangleAsPort(
+      Rectangle(
+          Point(vgnd_port_lower_left_x,
+                vgnd_bar_mid_y - via_width / 2),
+          Point(vgnd_port_lower_left_x + via_width,
+                vgnd_bar_mid_y + via_width / 2)),
+      "VGND");
 
   layout->Translate(Point(-x_min, 0));
   return layout.release();
