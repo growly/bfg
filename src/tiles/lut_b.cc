@@ -380,14 +380,6 @@ void LutB::Route(Layout *layout) const {
   // Debug only.
   //routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
 
-  std::unique_ptr<bfg::Layout> grid_layout;
-
-  // The scan chain is connected in the order memories are assigned by the
-  // BankArrangement.
-  std::map<geometry::Instance*, std::string> memory_output_net_names;
-
-  RouteScanChain(&routing_grid, layout, &memory_output_net_names);
-
   // TODO(aryap): I want to solve the general problem of connecting to a port
   // on an instance which is comprised of many, possibly connected, shapes on
   // many, possibly connected, layers. The tricky thing is that connecting on
@@ -405,19 +397,45 @@ void LutB::Route(Layout *layout) const {
   // And what namespaces do these net names occupy? Their parent instance?
   // Unless exported by being labelled a port with the same name?
 
-  RouteRemainder(&routing_grid, layout);
+  // The scan chain is connected in the order memories are assigned by the
+  // BankArrangement.
+  std::map<geometry::Instance*, std::string> memory_output_net_names;
 
+  //RouteScanChain(&routing_grid, layout, &memory_output_net_names);
+  //RouteRemainder(&routing_grid, layout);
+  RouteClockBuffers(&routing_grid, layout);
+  //RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
+
+  // Debug only.
+  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
+  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
+  //routing_grid.ExportEdgesAsRectangles("areaid.frameRect", true, layout.get());
+
+  std::unique_ptr<bfg::Layout> grid_layout;
+  grid_layout.reset(routing_grid.GenerateLayout());
+  layout->AddLayout(*grid_layout, "routing");
+}
+
+void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
+                             Layout *layout) const {
   // Connect clock buffers to straps.
   // Connect "X" from clock buf to CLK;
   // connect "P" from clock buf to CLKI.
   std::vector<PortKeyCollection> clk_connections;
   for (size_t bank = 0; bank < banks_.size(); ++bank) {
-    PortKeyCollection &collection = clk_connections.emplace_back();
-    collection.port_keys.push_back({
+    PortKeyCollection &clk_collection = clk_connections.emplace_back();
+    clk_collection.port_keys.push_back({
         .instance = clk_buf_order_[bank],
         .port_name = "X"
     });
-    collection.net_name = absl::StrCat("clk_", bank);
+    clk_collection.net_name = absl::StrCat("clk_", bank);
+
+    PortKeyCollection &clk_i_collection = clk_connections.emplace_back();
+    clk_i_collection.port_keys.push_back({
+        .instance = clk_buf_order_[bank],
+        .port_name = "P"
+    });
+    clk_i_collection.net_name = absl::StrCat("clk_i_", bank);
   }
 
   for (auto &clk_connection : clk_connections) {
@@ -429,34 +447,11 @@ void LutB::Route(Layout *layout) const {
     geometry::ShapeCollection non_net_connectables;
     layout->CopyConnectableShapesNotOnNets(target_net, &non_net_connectables);
 
-    auto result = routing_grid.AddRouteToNet(
-        *source_port, target_net, target_net, non_net_connectables);
+    EquivalentNets net_aliases({target_net, source_spec.port_name});
+
+    auto result = routing_grid->AddRouteToNet(
+        *source_port, target_net, net_aliases, non_net_connectables);
   }
-
-  //for (size_t bank = 0; bank < banks_.size(); ++bank) {
-  //  geometry::Instance *clk_buf_source = clk_buf_order[bank];
-  //  geometry::Port *clk_port = clk_buf_source->GetFirstPortNamed("X");
-  //  geometry::Port *clk_i_port = clk_buf_source->GetFirstPortNamed("P");
-
-  //  const std::string clk_net = absl::StrCat("clk_", bank);
-  //  const std::string clk_i_net = absl::StrCat("clk_i_", bank);
-
-  //  geometry::ShapeCollection non_net_connectables;
-  //  layout->CopyConnectableShapesNotOnNets(clk_net, &non_net_connectables);
-
-  //  auto result = routing_grid.AddRouteToNet(
-  //      *clk_port, clk_net, clk_net, non_net_connectables);
-  //}
-
-  RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
-
-  // Debug only.
-  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
-  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
-  //routing_grid.ExportEdgesAsRectangles("areaid.frameRect", true, layout.get());
-
-  grid_layout.reset(routing_grid.GenerateLayout());
-  layout->AddLayout(*grid_layout, "routing");
 }
 
 void LutB::RouteScanChain(

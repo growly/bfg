@@ -96,7 +96,7 @@ class LutB : public Tile {
   void AddClockAndPowerStraps(Layout *layout) const;
 
   void Route(Layout *layout) const;
-  void RouteClockBuffers(Layout *layout) const;
+  void RouteClockBuffers(RoutingGrid *routing_grid, Layout *layout) const;
   void RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const;
   void RouteMuxInputs(
       RoutingGrid *routing_grid,
