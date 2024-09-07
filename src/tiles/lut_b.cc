@@ -409,13 +409,13 @@ void LutB::ConfigureRoutingGrid(
   {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
-    layout->CopyNonConnectableShapesOnLayer(
+    layout->CopyShapesOnLayer(
         db.GetLayer("met1.drawing"), &shapes);
     routing_grid->AddBlockages(shapes);
   }
   {
     geometry::ShapeCollection shapes;
-    layout->CopyNonConnectableShapesOnLayer(
+    layout->CopyShapesOnLayer(
         db.GetLayer("met2.drawing"), &shapes);
     routing_grid->AddBlockages(shapes);
   }
