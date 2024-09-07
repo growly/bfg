@@ -65,6 +65,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/routing_path.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track_blockage.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_track_direction.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector.cc
   ${PROJECT_SOURCE_DIR}/src/routing_via_info.cc
@@ -95,6 +96,7 @@ set(ATOMS_SRC
 
 set(GEOMETRY_SRC 
   ${PROJECT_SOURCE_DIR}/src/geometry/compass.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/group.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/label.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line.cc

@@ -17,6 +17,7 @@
 #include "geometry/poly_line.h"
 #include "geometry/port.h"
 #include "geometry/rectangle.h"
+#include "geometry/group.h"
 #include "layout.h"
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
@@ -133,11 +134,39 @@ class RoutingGrid {
   Layout *GenerateLayout() const;
 
   // Add permanent blockages. Ports need special consideration and are not
-  // added from the ShapeCollection by default.
-  void AddBlockages(const geometry::ShapeCollection &shapes,
-                    int64_t padding = 0,
-                    bool is_temporary = false,
-                    std::set<RoutingVertex*> *changed_out = nullptr);
+  // added by default.
+  //
+  // This also works for T = geometry::Group, since the code needed to use the
+  // interface looks the same. The interface is not type-compatible because
+  // ShapeCollection contains std::unique_ptr and Group contains straight
+  // pointers. It would be nicer to simply provide converting accessors and use
+  // a standard interface. As is this is kind of gross, sorry.
+  template<typename T>
+  void AddBlockages(
+      const T &shapes,
+      int64_t padding = 0,
+      bool is_temporary = false,
+      std::set<RoutingVertex*> *changed_out = nullptr) {
+    // When adding permanent blockages (is_temporary == false) we skip pin shapes,
+    // since those might be needed for connection by the routing grid.
+    // TODO(aryap): Not sure about this interaction... maybe this is a flag?
+    for (const auto &rectangle : shapes.rectangles()) {
+      if (!is_temporary && rectangle->is_connectable())
+        continue;
+      AddBlockage(*rectangle, padding, is_temporary, changed_out);
+    }
+    for (const auto &polygon : shapes.polygons()) {
+      if (!is_temporary && polygon->is_connectable())
+        continue;
+      AddBlockage(*polygon, padding, is_temporary, changed_out);
+    }
+    for (const auto &port : shapes.ports()) {
+      if (!is_temporary && port->is_connectable())
+        continue;
+      AddBlockage(*port, padding);
+    }
+  }
+
   RoutingGridBlockage<geometry::Rectangle> *AddBlockage(
       const geometry::Rectangle &rectangle,
       int64_t padding = 0,
@@ -175,22 +204,22 @@ class RoutingGrid {
 
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
-  bool ValidAgainstKnownBlockages(
+  absl::Status ValidAgainstKnownBlockages(
       const RoutingEdge &edge,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
       const;
 
-  bool ValidAgainstKnownBlockages(
+  absl::Status ValidAgainstKnownBlockages(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt) const;
 
-  bool ValidAgainstInstalledPaths(
+  absl::Status ValidAgainstInstalledPaths(
       const RoutingEdge &edge,
       const std::optional<EquivalentNets> &for_nets = std::nullopt) const;
 
-  bool ValidAgainstInstalledPaths(
+  absl::Status ValidAgainstInstalledPaths(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &for_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =

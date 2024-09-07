@@ -8,6 +8,7 @@
 #include "tile.h"
 
 #include "../geometry/compass.h"
+#include "../geometry/group.h"
 #include "../design_database.h"
 #include "../row_guide.h"
 #include "../memory_bank.h"
@@ -93,9 +94,11 @@ class LutB : public Tile {
     std::string mux_port_name;
   };
 
-  void AddClockAndPowerStraps(Layout *layout) const;
-
   void Route(Layout *layout) const;
+
+  void AddClockAndPowerStraps(RoutingGrid *routing_grid, Layout *layout) const;
+
+  void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
   void RouteClockBuffers(RoutingGrid *routing_grid, Layout *layout) const;
   void RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const;
   void RouteMuxInputs(
@@ -110,7 +113,7 @@ class LutB : public Tile {
       const;
 
   // TODO(aryap): This feels like a nice general feature of the Layout class.
-  void AddVerticalSpineWithFingers(
+  geometry::Group AddVerticalSpineWithFingers(
       const std::string &spine_layer_name,
       const std::string &via_layer_name,
       const std::string &finger_layer_name,

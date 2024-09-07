@@ -346,10 +346,13 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
     if (target_layer != layer_) {
       added_vertex->AddConnectedLayer(target_layer);
     }
-    if (!grid.ValidAgainstInstalledPaths(*added_vertex, for_nets)) {
+    absl::Status valid_against_installed_paths =
+        grid.ValidAgainstInstalledPaths(*added_vertex, for_nets);
+    if (!valid_against_installed_paths.ok()) {
       LOG(WARNING) << "Bridging vertex " << added_vertex->centre()
                    << " on " << Describe()
-                   << " is not valid against other installed paths";
+                   << " is not valid against other installed paths: "
+                   << valid_against_installed_paths.message();
       return false;
     }
     bridging_vertex = added_vertex.release();

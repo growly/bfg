@@ -7,6 +7,7 @@
 #include <functional>
 #include <optional>
 
+#include "routing_track_direction.h"
 #include "geometry/layer.h"
 #include "routing_via_info.h"
 #include "vlsir/tech.pb.h"
@@ -14,11 +15,6 @@
 namespace bfg {
 
 class RoutingLayerInfo;
-
-enum RoutingTrackDirection {
-  kTrackHorizontal,
-  kTrackVertical
-};
 
 struct LayerInfo {
   geometry::Layer internal_layer;

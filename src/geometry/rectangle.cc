@@ -211,7 +211,7 @@ Rectangle Rectangle::WithPadding(int64_t padding) const {
   return polygon_pb;
 }
 
-std::string Rectangle::Describe() const {
+const std::string Rectangle::Describe() const {
   std::stringstream ss;
   ss << "[Rectangle " << lower_left_ << " " << upper_right_ << "]";
   return ss.str();
@@ -224,7 +224,8 @@ bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
 
 }  // namespace geometry
 
-std::ostream &operator<<(std::ostream &os, const geometry::Rectangle &rectangle) {
+std::ostream &operator<<(
+    std::ostream &os, const geometry::Rectangle &rectangle) {
   os << rectangle.Describe();
   return os;
 }

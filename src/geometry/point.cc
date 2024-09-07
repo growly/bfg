@@ -10,6 +10,9 @@
 namespace bfg {
 namespace geometry {
 
+// TODO(aryap): Not sure why we'd every want to compare _only_ x or _only_ y,
+// since that wouldn't guarantee consistent ordering between points with
+// differing y or x values (respectively).
 bool Point::CompareX(const Point &lhs, const Point &rhs) {
   return lhs.x() < rhs.x();
 }

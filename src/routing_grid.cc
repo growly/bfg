@@ -255,44 +255,53 @@ void RoutingGrid::ForgetBlockage(
   polygon_blockages_.erase(it);
 }
 
-bool RoutingGrid::ValidAgainstKnownBlockages(
+absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingEdge &edge,
     const std::optional<EquivalentNets> &exceptional_nets) const {
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
-    if (blockage->Blocks(edge, exceptional_nets))
-      return false;
+    if (blockage->Blocks(edge, exceptional_nets)) {
+      return absl::UnavailableError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
   }
   for (const auto &blockage : polygon_blockages_) {
-    if (blockage->Blocks(edge, exceptional_nets))
-      return false;
+    if (blockage->Blocks(edge, exceptional_nets)) {
+      return absl::UnavailableError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
   }
-  return true;
+  return absl::OkStatus();
 }
 
-bool RoutingGrid::ValidAgainstKnownBlockages(
+absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingVertex &vertex,
     const std::optional<EquivalentNets> &exceptional_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const {
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
-    if (blockage->Blocks(vertex, exceptional_nets, access_direction))
-      return false;
+    if (blockage->Blocks(vertex, exceptional_nets, access_direction)) {
+      return absl::UnavailableError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
   }
   for (const auto &blockage : polygon_blockages_) {
-    if (blockage->Blocks(vertex, exceptional_nets, access_direction))
-      return false;
+    if (blockage->Blocks(vertex, exceptional_nets, access_direction)) {
+      return absl::UnavailableError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
   }
-  return true;
+  return absl::OkStatus();
 }
 
-bool RoutingGrid::ValidAgainstInstalledPaths(
+absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const RoutingEdge &edge,
     const std::optional<EquivalentNets> &for_nets) const {
   auto edge_footprint = EdgeFootprint(edge);
   if (!edge_footprint) {
     // No way to check.
-    return false;
+    return absl::UnavailableError(
+        "Could not get footprint of edge to check its validity");
   }
   const geometry::Layer &layer = edge.EffectiveLayer();
   int64_t min_separation = physical_db_.Rules(layer).min_separation;
@@ -321,13 +330,14 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
       // min_separation, are not ok.
       continue;
     } else if (distance < min_separation) {
-      return false;
+      return absl::UnavailableError(
+          "Edge is too close to existing edge " + edge_footprint->Describe());
     }
   }
-  return true;
+  return absl::OkStatus();
 }
 
-bool RoutingGrid::ValidAgainstInstalledPaths(
+absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const RoutingVertex &vertex,
     const std::optional<EquivalentNets> &for_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const {
@@ -382,11 +392,13 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
           // via_encap->Overlaps(*other_via_encap).
           continue;
         } else if (distance < min_separation) {
-          VLOG(12) << "Candidate vertex " << vertex.centre()
-                   << " is too close to " << other->centre() << " on layer "
-                   << candidate_layer << " (distance " << distance <<
-                   " < min separation " << min_separation << ")";
-          return false;
+          std::stringstream ss;
+          ss << "Candidate vertex " << vertex.centre()
+             << " is too close to " << other->centre() << " on layer "
+             << candidate_layer << " (distance " << distance <<
+             " < min separation " << min_separation << ")";
+          VLOG(12) << ss.str();
+          return absl::UnavailableError(ss.str());
         } else if (VLOG_IS_ON(16)) {
           VLOG(12) << "Candidate vertex " << vertex.centre()
                    << " is ok with " << other->centre() << " on layer "
@@ -397,7 +409,7 @@ bool RoutingGrid::ValidAgainstInstalledPaths(
     }
   }
 
-  return true;
+  return absl::OkStatus();
 }
 
 RoutingGrid::~RoutingGrid()  {
@@ -560,10 +572,10 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     // We do not check ValidAgainstInstalledPaths because that is slow. We hope
     // that by now the other rules have prevented such a possibility. Fingers
     // crossed....
-    if (!ValidAgainstKnownBlockages(*edge, connectable_nets)) {
-      VLOG(15) << "Invalid off grid edge between "
-               << bridging_vertex->centre()
-               << " and " << off_grid->centre();
+    if (!ValidAgainstKnownBlockages(*edge, connectable_nets).ok()) {
+      VLOG(100) << "Invalid off grid edge between "
+                << bridging_vertex->centre()
+                << " and " << off_grid->centre();
       // Rollback extra hard!
       RemoveVertex(bridging_vertex, true);  // and delete!
       delete edge;
@@ -632,9 +644,12 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
           FindRoutingGridGeometriesUsingLayer(access_layer);
 
       auto cost = FindViaStackCost(target_layer, access_layer);
-      if (!cost)
+      if (!cost) {
         // No via stack.
+        VLOG(15) << "Cannot connect layers (" << target_layer
+                 << ", " << access_layer << ")";
         continue;
+      }
 
       for (RoutingGridGeometry *grid_geometry : layer_grid_geometries) {
         access_options.push_back(AccessOption {
@@ -679,8 +694,13 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
         RoutingTrackDirection::kTrackVertical};
     for (auto it = access_directions.begin(); it != access_directions.end();) {
       const RoutingTrackDirection &direction = *it;
-      if (!ValidAgainstKnownBlockages(*off_grid, for_nets, direction) ||
-          !ValidAgainstInstalledPaths(*off_grid, for_nets, direction)) {
+      absl::Status blocked = 
+          ValidAgainstKnownBlockages(*off_grid, for_nets, direction);
+      blocked.Update(
+          ValidAgainstInstalledPaths(*off_grid, for_nets, direction));
+      if (!blocked.ok()) {
+        VLOG(15) << "Cannot connect to " << *off_grid << " in direction "
+                 << direction << ": " << blocked.message();
         it = access_directions.erase(it);
       } else {
         ++it;
@@ -837,18 +857,18 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     const geometry::Layer vertex_layer = costed_vertices.back().layer;
     costed_vertices.pop_back();
 
-    VLOG(10) << "Searching "  << costed_vertices.size() << " vertex "
+    VLOG(90) << "Searching "  << costed_vertices.size() << " vertex "
              << candidate << " centre " << candidate->centre()
              << " layer " << vertex_layer
              << " cost " << costed_vertices.back().cost;
 
     if (candidate->vertical_track() == nullptr) {
       // FIXME(aryap): Is this a problem?
-      VLOG(10) << "Cannot use vertex " << candidate
+      VLOG(90) << "Cannot use vertex " << candidate
                << " as candidate because vertical track is nullptr";
       continue;
     } else if (candidate->horizontal_track() == nullptr) {
-      VLOG(10) << "Cannot use vertex " << candidate
+      VLOG(90) << "Cannot use vertex " << candidate
                << " as candidate because horizontal track is nullptr";
       continue;
     }
@@ -858,8 +878,8 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     // FIXME: This function needs to allow collisions for same-net shapes!
     // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
     // go too close to in-use edges and vertices!
-    if (!ValidAgainstKnownBlockages(*off_grid, for_nets) ||
-        !ValidAgainstInstalledPaths(*off_grid, for_nets)) {
+    if (!ValidAgainstKnownBlockages(*off_grid, for_nets).ok() ||
+        !ValidAgainstInstalledPaths(*off_grid, for_nets).ok()) {
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
       continue;
     }
@@ -925,8 +945,8 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid_copy);
     edge->set_layer(vertex_layer);
-    if (!ValidAgainstKnownBlockages(*edge, for_nets) ||
-        !ValidAgainstInstalledPaths(*edge, for_nets)) {
+    if (!ValidAgainstKnownBlockages(*edge, for_nets).ok() ||
+        !ValidAgainstInstalledPaths(*edge, for_nets).ok()) {
       VLOG(15) << "Invalid off grid edge between " << bridging_vertex->centre()
                << " and " << off_grid_copy->centre();
       // Rollback extra hard!
@@ -1313,10 +1333,12 @@ absl::Status RoutingGrid::ConnectLayers(
             << num_vertices << " vertices and "
             << num_edges << " edges.";
 
-  for (auto entry : tracks_by_layer_) {
-    const geometry::Layer &layer = entry.first;
-    for (RoutingTrack *track : entry.second) {
-      VLOG(10) << layer << " track: " << *track;
+  if (VLOG_IS_ON(80)) {
+    for (auto entry : tracks_by_layer_) {
+      const geometry::Layer &layer = entry.first;
+      for (RoutingTrack *track : entry.second) {
+        LOG(INFO) << layer << " track: " << *track;
+      }
     }
   }
 
@@ -1396,8 +1418,7 @@ absl::Status RoutingGrid::AddMultiPointRoute(
 
     bool path_found = false;
     for (geometry::Port *port : port_group) {
-      auto route_status = AddRouteToNet(
-          *port, *net_name, nets, avoid);
+      auto route_status = AddRouteToNet(*port, *net_name, nets, avoid);
       if (route_status.ok()) {
         path_found = true;
         break;
@@ -2172,31 +2193,6 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
 
   RoutingPath *path = new RoutingPath(*this, begin, shortest_edges);
   return path;
-}
-
-void RoutingGrid::AddBlockages(
-    const geometry::ShapeCollection &shapes,
-    int64_t padding,
-    bool is_temporary,
-    std::set<RoutingVertex*> *changed_out) {
-  // When adding permanent blockages (is_temporary == false) we skip pin shapes,
-  // since those might be needed for connection by the routing grid.
-  // TODO(aryap): Not sure about this interaction... maybe this is a flag?
-  for (const auto &rectangle : shapes.rectangles()) {
-    if (!is_temporary && rectangle->is_connectable())
-      continue;
-    AddBlockage(*rectangle, padding, is_temporary, changed_out);
-  }
-  for (const auto &polygon : shapes.polygons()) {
-    if (!is_temporary && polygon->is_connectable())
-      continue;
-    AddBlockage(*polygon, padding, is_temporary, changed_out);
-  }
-  for (const auto &port : shapes.ports()) {
-    if (!is_temporary && port->is_connectable())
-      continue;
-    AddBlockage(*port, padding);
-  }
 }
 
 void RoutingGrid::ClearAllBlockages() {

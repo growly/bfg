@@ -16,6 +16,7 @@
 #include "../checkerboard_guide.h"
 #include "../equivalent_nets.h"
 #include "../geometry/compass.h"
+#include "../geometry/group.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/shape_collection.h"
 #include "../geometry/port.h"
@@ -188,7 +189,8 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
   int64_t mux_width = base_mux_cell->layout()->GetBoundingBox().Width();
   int64_t left_bank_bottom_row_right_x = banks_[0].Row(0).Width();
-  int64_t x_pos = left_bank_bottom_row_right_x + layout_config.mux_area_horizontal_padding;
+  int64_t x_pos =
+      left_bank_bottom_row_right_x + layout_config.mux_area_horizontal_padding;
   // This staggers the mux area below the memories on the left:
   //int64_t y_pos = -mux_height / 2;
   int64_t y_pos = memories_.front()->Height() / 2;
@@ -293,8 +295,6 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
-  AddClockAndPowerStraps(layout.get());
-
   Route(layout.get());
 
   // //// FIXME(aryap): remove
@@ -314,68 +314,9 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 }
 
 void LutB::Route(Layout *layout) const {
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  RoutingGrid routing_grid(design_db_->physical_db());
 
-  const LutB::LayoutConfig layout_config =
-      *LutB::GetLayoutConfiguration(lut_size_); 
-
-  geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
-  LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
-
-  RoutingGrid routing_grid(db);
-
-  bfg::RoutingLayerInfo met1_layer_info =
-      db.GetRoutingLayerInfoOrDie("met1.drawing");
-  met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-  met1_layer_info.area = pre_route_bounds;
-  // TODO(aryap): Need an easier way of lining this up!
-  //met1_layer_info.offset = 95;
-
-  bfg::RoutingLayerInfo met2_layer_info =
-      db.GetRoutingLayerInfoOrDie("met2.drawing");
-  met2_layer_info.direction = bfg::RoutingTrackDirection::kTrackVertical;
-  met2_layer_info.area = pre_route_bounds;
-  met2_layer_info.offset = 50;
-
-  // TODO(aryap): Store connectivity information (which layers connect through
-  // which vias) in the PhysicalPropertiesDatabase's via_layers_.
-  bfg::RoutingViaInfo routing_via_info =
-      db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
-  routing_via_info.set_cost(0.5);
-  routing_grid.AddRoutingViaInfo(
-      met1_layer_info.layer, met2_layer_info.layer, routing_via_info)
-      .IgnoreError();
-
-  routing_via_info = db.GetRoutingViaInfoOrDie("li.drawing", "met1.drawing");
-  routing_via_info.set_cost(0.5);
-  routing_grid.AddRoutingViaInfo(
-      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info)
-      .IgnoreError();
-
-  routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
-  routing_via_info.set_cost(0.5);
-  routing_grid.AddRoutingViaInfo(
-      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info)
-      .IgnoreError();
-
-  //routing_grid.AddRoutingLayerInfo(li_layer_info);
-  routing_grid.AddRoutingLayerInfo(met1_layer_info).IgnoreError();
-  routing_grid.AddRoutingLayerInfo(met2_layer_info).IgnoreError();
-
-  routing_grid.ConnectLayers(met1_layer_info.layer, met2_layer_info.layer)
-      .IgnoreError();
-
-  {
-    // Add blockages from all existing shapes.
-    geometry::ShapeCollection shapes;
-    layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
-    routing_grid.AddBlockages(shapes);
-  }
-  {
-    geometry::ShapeCollection shapes;
-    layout->CopyShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
-    routing_grid.AddBlockages(shapes);
-  }
+  ConfigureRoutingGrid(&routing_grid, layout);
 
   // Debug only.
   //routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
@@ -401,6 +342,8 @@ void LutB::Route(Layout *layout) const {
   // BankArrangement.
   std::map<geometry::Instance*, std::string> memory_output_net_names;
 
+  AddClockAndPowerStraps(&routing_grid, layout);
+
   //RouteScanChain(&routing_grid, layout, &memory_output_net_names);
   //RouteRemainder(&routing_grid, layout);
   RouteClockBuffers(&routing_grid, layout);
@@ -414,6 +357,67 @@ void LutB::Route(Layout *layout) const {
   std::unique_ptr<bfg::Layout> grid_layout;
   grid_layout.reset(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");
+}
+
+void LutB::ConfigureRoutingGrid(
+    RoutingGrid *routing_grid, Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
+  LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
+  bfg::RoutingLayerInfo met1_layer_info =
+      db.GetRoutingLayerInfoOrDie("met1.drawing");
+  met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+  met1_layer_info.area = pre_route_bounds;
+  // TODO(aryap): Need an easier way of lining this up!
+  //met1_layer_info.offset = 95;
+
+  bfg::RoutingLayerInfo met2_layer_info =
+      db.GetRoutingLayerInfoOrDie("met2.drawing");
+  met2_layer_info.direction = bfg::RoutingTrackDirection::kTrackVertical;
+  met2_layer_info.area = pre_route_bounds;
+  met2_layer_info.offset = 50;
+
+  // TODO(aryap): Store connectivity information (which layers connect through
+  // which vias) in the PhysicalPropertiesDatabase's via_layers_.
+  bfg::RoutingViaInfo routing_via_info =
+      db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid->AddRoutingViaInfo(
+      met1_layer_info.layer, met2_layer_info.layer, routing_via_info)
+      .IgnoreError();
+
+  routing_via_info = db.GetRoutingViaInfoOrDie("li.drawing", "met1.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid->AddRoutingViaInfo(
+      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info)
+      .IgnoreError();
+
+  routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid->AddRoutingViaInfo(
+      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info)
+      .IgnoreError();
+
+  //routing_grid.AddRoutingLayerInfo(li_layer_info);
+  routing_grid->AddRoutingLayerInfo(met1_layer_info).IgnoreError();
+  routing_grid->AddRoutingLayerInfo(met2_layer_info).IgnoreError();
+
+  routing_grid->ConnectLayers(met1_layer_info.layer, met2_layer_info.layer)
+      .IgnoreError();
+
+  {
+    // Add blockages from all existing shapes.
+    geometry::ShapeCollection shapes;
+    layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+    routing_grid->AddBlockages(shapes);
+  }
+  {
+    geometry::ShapeCollection shapes;
+    layout->CopyShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+    routing_grid->AddBlockages(shapes);
+  }
+
 }
 
 void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
@@ -444,10 +448,13 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
         source_spec.instance->GetFirstPortNamed(source_spec.port_name);
     const std::string &target_net = *clk_connection.net_name;
 
-    geometry::ShapeCollection non_net_connectables;
-    layout->CopyConnectableShapesNotOnNets(target_net, &non_net_connectables);
+    // Note that source_port->net() will include the source_port's instance
+    // name, which is important for disambiguating the port in the context of
+    // the instantiating cell.
+    EquivalentNets net_aliases({target_net, source_port->net()});
 
-    EquivalentNets net_aliases({target_net, source_spec.port_name});
+    geometry::ShapeCollection non_net_connectables;
+    layout->CopyConnectableShapesNotOnNets(net_aliases, &non_net_connectables);
 
     auto result = routing_grid->AddRouteToNet(
         *source_port, target_net, net_aliases, non_net_connectables);
@@ -656,7 +663,7 @@ void LutB::RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const {
   }
 }
 
-void LutB::AddVerticalSpineWithFingers(
+geometry::Group LutB::AddVerticalSpineWithFingers(
     const std::string &spine_layer_name,
     const std::string &via_layer_name,
     const std::string &finger_layer_name,
@@ -671,9 +678,11 @@ void LutB::AddVerticalSpineWithFingers(
   const auto &spine_via_rules = db.Rules(spine_layer_name, via_layer_name);
   const auto &finger_via_rules = db.Rules(finger_layer_name, via_layer_name);
 
+  geometry::Group created_shapes;
+
   std::vector<geometry::Point> points(connections.begin(), connections.end());
   if (points.size() < 2) {
-    return;
+    return created_shapes;
   }
   // Points should be sorted in y.
   std::sort(points.begin(), points.end(), geometry::Point::CompareYThenX);
@@ -709,10 +718,14 @@ void LutB::AddVerticalSpineWithFingers(
     finger.InsertBulge(spine_via, finger_bulge_width, finger_bulge_length);
     finger.set_net(net);
     layout->SetActiveLayerByName(finger_layer_name);
-    layout->AddPolyLine(finger);
+    geometry::Polygon *finger_polygon = layout->AddPolyLine(finger);
+    created_shapes.Add(finger_polygon);
+
     layout->RestoreLastActiveLayer();
 
-    layout->MakeVia(via_layer_name, spine_via, net);
+    geometry::Rectangle *via = layout->MakeVia(via_layer_name, spine_via, net);
+    created_shapes.Add(via);
+
     spine_line.InsertBulge(spine_via, spine_bulge_width, spine_bulge_length);
 
     // TODO: do we worry about the via from the finger to the connection pin
@@ -722,11 +735,15 @@ void LutB::AddVerticalSpineWithFingers(
 
   layout->SetActiveLayerByName(spine_layer_name);
   geometry::Polygon *spine_metal_pour = layout->AddPolyLine(spine_line);
+  created_shapes.Add(spine_metal_pour);
   layout->RestoreLastActiveLayer();
+
+  return created_shapes;
 }
 
 // Align ports by x position and connect them.
-void LutB::AddClockAndPowerStraps(Layout *layout) const {
+void LutB::AddClockAndPowerStraps(
+    RoutingGrid *routing_grid, Layout *layout) const {
   static const std::array<std::string, 4> kPortNames =
       {"VPWR", "VGND", "CLK", "CLKI"};
   static const std::array<std::string, 4> kNets =
@@ -771,13 +788,15 @@ void LutB::AddClockAndPowerStraps(Layout *layout) const {
 
       std::string net = absl::StrCat(kNets[i], "_", bank);
 
-      AddVerticalSpineWithFingers("met2.drawing",
-                                  "via1.drawing",
-                                  "met1.drawing",
-                                  net,
-                                  connections,
-                                  spine_x,
-                                  layout);
+      geometry::Group new_shapes =
+          AddVerticalSpineWithFingers("met2.drawing",
+                                      "via1.drawing",
+                                      "met1.drawing",
+                                      net,
+                                      connections,
+                                      spine_x,
+                                      layout);
+      routing_grid->AddBlockages(new_shapes);
     }
   }
 }
