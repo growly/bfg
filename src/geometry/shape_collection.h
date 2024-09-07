@@ -48,6 +48,7 @@ class ShapeCollection : public Manipulable {
   void AddConnectableShapesNotOnNets(
       const ShapeCollection &other, const EquivalentNets &nets);
   void AddConnectableShapes(const ShapeCollection &other);
+  void AddNonConnectableShapes(const ShapeCollection &other);
 
   const Rectangle GetBoundingBox() const;
 

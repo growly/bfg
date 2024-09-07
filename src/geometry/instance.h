@@ -115,6 +115,9 @@ class Instance : public Manipulable {
   void CopyShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
 
+  void CopyNonConnectableShapesOnLayer(
+      const geometry::Layer &layer, ShapeCollection *shapes) const;
+
   void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets, ShapeCollection *shapes) const;
   void CopyConnectableShapes(ShapeCollection *shapes) const;

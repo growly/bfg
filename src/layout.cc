@@ -440,13 +440,25 @@ void Layout::LabelNet(const geometry::Point &point, const std::string &net) {
 }
 
 void Layout::CopyShapesOnLayer(const geometry::Layer &layer,
-                              ShapeCollection *shapes) const {
+                               ShapeCollection *shapes) const {
   ShapeCollection *layer_shapes = GetShapeCollection(layer);
   if (layer_shapes) {
     shapes->Add(*layer_shapes);
   }
   for (const auto &instance : instances_) {
     instance->CopyShapesOnLayer(layer, shapes);
+  }
+}
+
+void Layout::CopyNonConnectableShapesOnLayer(
+    const geometry::Layer &layer,
+    ShapeCollection *shapes) const {
+  ShapeCollection *layer_shapes = GetShapeCollection(layer);
+  if (layer_shapes) {
+    shapes->AddNonConnectableShapes(*layer_shapes);
+  }
+  for (const auto &instance : instances_) {
+    instance->CopyNonConnectableShapesOnLayer(layer, shapes);
   }
 }
 

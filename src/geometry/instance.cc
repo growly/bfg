@@ -150,8 +150,8 @@ void Instance::GeneratePorts() {
   ports_generated_ = true;
 }
 
-void Instance::CopyShapesOnLayer(const geometry::Layer &layer,
-                                 ShapeCollection *shapes) const {
+void Instance::CopyShapesOnLayer(
+    const geometry::Layer &layer, ShapeCollection *shapes) const {
   ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
   if (!master_shapes)
     return;
@@ -163,6 +163,21 @@ void Instance::CopyShapesOnLayer(const geometry::Layer &layer,
   instance_shapes.PrefixNetNames(name_, ".");
 
   shapes->Add(instance_shapes);
+}
+
+void Instance::CopyNonConnectableShapesOnLayer(
+    const geometry::Layer &layer, ShapeCollection *shapes) const {
+  ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
+  if (!master_shapes)
+    return;
+
+  ShapeCollection instance_shapes;
+  instance_shapes.Add(*master_shapes);
+  instance_shapes.Rotate(rotation_degrees_ccw_);
+  instance_shapes.Translate(lower_left_);
+  instance_shapes.PrefixNetNames(name_, ".");
+
+  shapes->AddNonConnectableShapes(instance_shapes);
 }
 
 void Instance::CopyConnectableShapesNotOnNets(const EquivalentNets &nets,

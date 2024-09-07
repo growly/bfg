@@ -185,6 +185,9 @@ class Layout : public geometry::Manipulable {
       const geometry::Layer &layer, ShapeCollection *shapes) const;
   ShapeCollection *GetShapeCollection(const geometry::Layer &layer) const;
 
+  void CopyNonConnectableShapesOnLayer(
+      const geometry::Layer &layer, ShapeCollection *shapes) const;
+
   void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets, ShapeCollection *shapes) const;
 

@@ -344,10 +344,10 @@ void LutB::Route(Layout *layout) const {
 
   AddClockAndPowerStraps(&routing_grid, layout);
 
-  //RouteScanChain(&routing_grid, layout, &memory_output_net_names);
-  //RouteRemainder(&routing_grid, layout);
+  RouteScanChain(&routing_grid, layout, &memory_output_net_names);
+  RouteRemainder(&routing_grid, layout);
   RouteClockBuffers(&routing_grid, layout);
-  //RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
+  RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
 
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
@@ -409,12 +409,14 @@ void LutB::ConfigureRoutingGrid(
   {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
-    layout->CopyShapesOnLayer(db.GetLayer("met1.drawing"), &shapes);
+    layout->CopyNonConnectableShapesOnLayer(
+        db.GetLayer("met1.drawing"), &shapes);
     routing_grid->AddBlockages(shapes);
   }
   {
     geometry::ShapeCollection shapes;
-    layout->CopyShapesOnLayer(db.GetLayer("met2.drawing"), &shapes);
+    layout->CopyNonConnectableShapesOnLayer(
+        db.GetLayer("met2.drawing"), &shapes);
     routing_grid->AddBlockages(shapes);
   }
 

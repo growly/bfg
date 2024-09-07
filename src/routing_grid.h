@@ -147,8 +147,8 @@ class RoutingGrid {
       int64_t padding = 0,
       bool is_temporary = false,
       std::set<RoutingVertex*> *changed_out = nullptr) {
-    // When adding permanent blockages (is_temporary == false) we skip pin shapes,
-    // since those might be needed for connection by the routing grid.
+    // When adding permanent blockages (is_temporary == false) we skip pin
+    // shapes, since those might be needed for connection by the routing grid.
     // TODO(aryap): Not sure about this interaction... maybe this is a flag?
     for (const auto &rectangle : shapes.rectangles()) {
       if (!is_temporary && rectangle->is_connectable())

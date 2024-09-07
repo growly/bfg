@@ -77,8 +77,7 @@ void ShapeCollection::AddConnectableShapesNotOnNets(
       is_connectable_and_not_on_net);
 }
 
-void ShapeCollection::AddConnectableShapes(
-    const ShapeCollection &other) {
+void ShapeCollection::AddConnectableShapes(const ShapeCollection &other) {
   auto is_connectable = [&](const Shape &shape) {
     return shape.is_connectable();
   };
@@ -87,6 +86,17 @@ void ShapeCollection::AddConnectableShapes(
       is_connectable,
       is_connectable,
       is_connectable);
+}
+
+void ShapeCollection::AddNonConnectableShapes(const ShapeCollection &other) {
+  auto is_not_connectable = [&](const Shape &shape) {
+    return !shape.is_connectable();
+  };
+  Add(other,
+      is_not_connectable,
+      is_not_connectable,
+      is_not_connectable,
+      is_not_connectable);
 }
 
 void ShapeCollection::Add(const ShapeCollection &other) {
