@@ -151,18 +151,12 @@ class RoutingGrid {
     // shapes, since those might be needed for connection by the routing grid.
     // TODO(aryap): Not sure about this interaction... maybe this is a flag?
     for (const auto &rectangle : shapes.rectangles()) {
-      if (!is_temporary && rectangle->is_connectable())
-        continue;
       AddBlockage(*rectangle, padding, is_temporary, changed_out);
     }
     for (const auto &polygon : shapes.polygons()) {
-      if (!is_temporary && polygon->is_connectable())
-        continue;
       AddBlockage(*polygon, padding, is_temporary, changed_out);
     }
     for (const auto &port : shapes.ports()) {
-      if (!is_temporary && port->is_connectable())
-        continue;
       AddBlockage(*port, padding);
     }
   }
