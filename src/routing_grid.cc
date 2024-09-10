@@ -1976,7 +1976,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
           if (!neighbour->available() &&
               neighbour->ChangesEdge() &&
               !to_nets.Contains(neighbour->net())) {
-            VLOG(16) << "(ShortestPath) Vertex " << *v->centre()
+            VLOG(16) << "(ShortestPath) Vertex " << v->centre()
                      << " not viable because a via wouldn't fit here";
             return false;
           }
