@@ -1970,13 +1970,16 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
         // conflict):
         std::set<RoutingVertex*> neighbours = v->GetNeighbours();
         // ChangesEdge is a proxy for a vertex that might become a via.
-        // NOTE: It's not the *same* as a vertex that might become a via, but
+        // NOTE: It's not the *same* as a vertex that will become a via, but
         // that isn't decided til RoutingPath has to export geometry :/
         for (RoutingVertex *neighbour : neighbours) {
           if (!neighbour->available() &&
               neighbour->ChangesEdge() &&
-              !to_nets.Contains(neighbour->net()))
+              !to_nets.Contains(neighbour->net())) {
+            VLOG(16) << "(ShortestPath) Vertex " << *v->centre()
+                     << " not viable because a via wouldn't fit here";
             return false;
+          }
         }
         return to_nets.Contains(v->net());
       },
