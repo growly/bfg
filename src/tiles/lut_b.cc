@@ -344,10 +344,10 @@ void LutB::Route(Layout *layout) const {
 
   AddClockAndPowerStraps(&routing_grid, layout);
 
-  RouteScanChain(&routing_grid, layout, &memory_output_net_names);
-  RouteRemainder(&routing_grid, layout);
+  //RouteScanChain(&routing_grid, layout, &memory_output_net_names);
+  //RouteRemainder(&routing_grid, layout);
   RouteClockBuffers(&routing_grid, layout);
-  RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
+  //RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
 
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);

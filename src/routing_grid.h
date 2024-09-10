@@ -141,15 +141,14 @@ class RoutingGrid {
   // ShapeCollection contains std::unique_ptr and Group contains straight
   // pointers. It would be nicer to simply provide converting accessors and use
   // a standard interface. As is this is kind of gross, sorry.
+  //
+  // Be careful when adding connectable shapes (i.e. pins) as "blockages"!
   template<typename T>
   void AddBlockages(
       const T &shapes,
       int64_t padding = 0,
       bool is_temporary = false,
       std::set<RoutingVertex*> *changed_out = nullptr) {
-    // When adding permanent blockages (is_temporary == false) we skip pin
-    // shapes, since those might be needed for connection by the routing grid.
-    // TODO(aryap): Not sure about this interaction... maybe this is a flag?
     for (const auto &rectangle : shapes.rectangles()) {
       AddBlockage(*rectangle, padding, is_temporary, changed_out);
     }
