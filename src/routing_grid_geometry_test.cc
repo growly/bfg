@@ -6,6 +6,7 @@
 #include "geometry/rectangle.h"
 #include "geometry/point.h"
 #include "geometry/layer.h"
+#include "geometry/line.h"
 #include "routing_layer_info.h"
 #include "routing_grid_geometry.h"
 #include "physical_properties_database.h"
@@ -472,6 +473,22 @@ TEST_F(RoutingGridGeometryTestFixture, NearestTrackIndices_OffGrid) {
   grid_geometry_.NearestTrackIndices({45, 55}, &horizontal, &vertical);
   EXPECT_THAT(horizontal, ContainerEq(expected_horizontal));
   EXPECT_THAT(vertical, ContainerEq(expected_vertical));
+}
+
+TEST_F(RoutingGridGeometryTestFixture, HorizontalLineThrough) {
+  geometry::Line line = grid_geometry_.HorizontalLineThrough(5, 8);
+  EXPECT_EQ(0, line.start().x());
+  EXPECT_EQ(200, line.end().x());
+  EXPECT_EQ(90, line.start().y());
+  EXPECT_EQ(90, line.end().y());
+}
+
+TEST_F(RoutingGridGeometryTestFixture, VerticalLineThrough) {
+  geometry::Line line = grid_geometry_.VerticalLineThrough(2, 3);
+  EXPECT_EQ(0, line.start().y());
+  EXPECT_EQ(200, line.end().y());
+  EXPECT_EQ(30, line.start().x());
+  EXPECT_EQ(30, line.end().x());
 }
 
 }  // namespace

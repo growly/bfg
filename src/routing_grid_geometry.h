@@ -6,11 +6,13 @@
 #include <set>
 
 #include "geometry/layer.h"
+#include "geometry/line.h"
 #include "geometry/point.h"
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 #include "routing_layer_info.h"
 #include "routing_vertex.h"
+#include "routing_track_direction.h"
 
 namespace bfg {
 
@@ -70,6 +72,14 @@ class RoutingGridGeometry {
                         int64_t *column_upper,
                         int64_t *row_lower,
                         int64_t *row_upper) const;
+
+  geometry::Line HorizontalLineThrough(
+      size_t column_index,
+      size_t row_index) const;
+
+  geometry::Line VerticalLineThrough(
+      size_t column_index,
+      size_t row_index) const;
 
   RoutingVertex *VertexAt(const geometry::Point &point) const;
   RoutingVertex *VertexAt(size_t column_index, size_t row_index) const;
@@ -201,7 +211,8 @@ class RoutingGridGeometry {
   geometry::Layer vertical_layer_;
 
   // All the vertices arranged into grid position, per layer. This class does
-  // not own the RoutingVertex*, they always belong to a RoutingGrid.
+  // not own the RoutingVertex*, they always belong to the RoutingGrid that owns
+  // this RoutingGridGeometry.
   std::vector<std::vector<RoutingVertex*>> vertices_by_grid_position_;
 
   std::vector<RoutingTrack*> horizontal_tracks_by_index_;

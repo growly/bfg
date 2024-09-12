@@ -26,7 +26,6 @@ class RoutingEdge {
       first_(first),
       second_(second),
       cost_(0.0) {
-    Direction();    // DEBUG
     ApproximateCost();
   }
   ~RoutingEdge() {}
@@ -36,7 +35,8 @@ class RoutingEdge {
 
   void PrepareForRemoval();
 
-  // Whether the edge is blocked, considering both permanent and temporary blockages.
+  // Whether the edge is blocked, considering both permanent and temporary
+  // blockages.
   bool Blocked() const;
   const std::optional<std::string> &EffectiveNet() const;
   const std::optional<std::string> &PermanentNet() const;

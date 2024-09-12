@@ -8,9 +8,11 @@
 #include <glog/logging.h>
 
 #include "geometry/layer.h"
+#include "geometry/line.h"
 #include "geometry/point.h"
 #include "geometry/rectangle.h"
 #include "routing_layer_info.h"
+#include "routing_track_direction.h"
 
 namespace bfg {
 
@@ -137,10 +139,11 @@ void RoutingGridGeometry::ComputeForLayers(
   LOG(INFO) << "Layers " << horizontal_info.layer
             << ", " << vertical_info.layer << " overlap on " << overlap;
   
-  // We used to calculate 'offset' as a difference from the origin, making the
-  // routing area a sort of mask that removes tracks outside the defined bounds.
-  // Then finding the start coordinate was a matter of finding the first
-  // track position that would've landed within the masked area, as follows:
+  // NOTE(aryap): We used to calculate 'offset' as a difference from the origin,
+  // making the routing area a sort of mask that removes tracks outside the
+  // defined bounds.  Then finding the start coordinate was a matter of finding
+  // the first track position that would've landed within the masked area, as
+  // follows:
   //
   //                        x_min   x_start
   //                            v   v
@@ -160,6 +163,18 @@ void RoutingGridGeometry::ComputeForLayers(
   // this code should understand where their routing area is going to end up, so
   // setting offset in this way has a more direct relationship with where the
   // tracks end up.
+  //
+  //               x_min   x_start
+  //                   v   v
+  //         |      |  +   |      |
+  //         |      |  +   |      |
+  //         |      |  +   |      |
+  //         |      |  +   |      |
+  //         |      |  +   |      |
+  //  O <--- | <--- | <+-- | ---> |
+  //                   ^     ^ x_pitch
+  //                   start of grid boundary
+  //
   x_offset_ = vertical_info.offset;
   x_pitch_ = vertical_info.pitch;
   LOG_IF(FATAL, x_pitch_ == 0)
@@ -182,6 +197,24 @@ void RoutingGridGeometry::ComputeForLayers(
       max_column_index_ + 1, std::vector<RoutingVertex*>(
           max_row_index_ + 1, nullptr));
 }
+
+// Enumerate the nearest vertices surrounding the given shape that can directly
+// connect to it with a single horizontal or vertical edge. Avoids unavailable
+// vertices unless they have the same connectable net.
+//
+//   +     [+]     +      +      +      +
+//       +-------+
+//  [+]  |  +    |[+]    [+]    [+]     +
+//       |       +------------------+
+//  [+]  |  +      +      +      +  |  [+]
+//       +--------------------------+
+//   +     [+]    [+]    [+]    [+]     +
+//
+// The set of connectable vertices are those in [] brackets for this example
+// polygon.
+//void RoutingGridGeometry::ConnectingVertices() {
+//
+//}
 
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Point &point,
@@ -287,7 +320,7 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
     std::set<std::pair<size_t, size_t>> *vertices,
     int64_t padding,
     int64_t num_concentric_layers) const {
-  // There is a smart way to do this, and then there is this way.
+  // There is the smart way to do this, and then there is this way.
   return EnvelopingVertexIndices(polygon.GetBoundingBox(), vertices, padding);
 
   // The smart way is to do a sort of raster scan along all of the rows which
@@ -304,6 +337,20 @@ void RoutingGridGeometry::VerticesAt(
       continue;
     vertices->insert(vertex);
   }
+}
+
+geometry::Line RoutingGridGeometry::HorizontalLineThrough(
+    size_t column_index,
+    size_t row_index) const {
+  int64_t y = y_start_ + y_pitch_ * row_index;
+  return geometry::Line({x_min_, y}, {x_max_, y});
+}
+
+geometry::Line RoutingGridGeometry::VerticalLineThrough(
+    size_t column_index,
+    size_t row_index) const {
+  int64_t x = x_start_ + x_pitch_ * column_index;
+  return geometry::Line({x, y_min_}, {x, y_max_});
 }
 
 void RoutingGridGeometry::AssignVertexAt(
