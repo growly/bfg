@@ -1235,11 +1235,12 @@ void GenerateOutput2To1MuxLayout(
     int64_t met1_mcon_via_encap_length =
         mcon_rules.via_width + 2 * met1_mcon_rules.via_overhang;
     main_layout->SetActiveLayerByName("met1.drawing");
-    main_layout->AddRectangle({
+    geometry::Rectangle *output_via_encap = main_layout->AddRectangle({
         mcon_via_point - Point(
             met1_mcon_via_encap_width / 2, met1_mcon_via_encap_length / 2),
         static_cast<uint64_t>(met1_mcon_via_encap_width),
         static_cast<uint64_t>(met1_mcon_via_encap_length)});
+    output_via_encap->set_net("Z");
 
   } else {
     LOG(WARNING) << "Not enough room for direct li1 connection between both "
