@@ -371,6 +371,11 @@ class RoutingGrid {
   template<typename T>
   void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
 
+  template<typename T>
+  void AddOffGridVerticesForBlockage(
+      const RoutingGridGeometry &grid_geometry,
+      const RoutingGridBlockage<T> &blockage);
+
   absl::StatusOr<RoutingPath*> FindRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,

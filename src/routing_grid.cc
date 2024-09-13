@@ -224,6 +224,12 @@ void RoutingGrid::ApplyBlockage(
         }
       }
     }
+
+    if (blockage.shape().net().empty()) {
+      continue;
+    }
+    // Connect net-labelled blockages with off-grid vertices:
+    AddOffGridVerticesForBlockage(*grid_geometry, blockage);
   }
 }
 
@@ -253,6 +259,46 @@ void RoutingGrid::ForgetBlockage(
   if (it == polygon_blockages_.end())
     return;
   polygon_blockages_.erase(it);
+}
+
+template<>
+void RoutingGrid::AddOffGridVerticesForBlockage(
+    const RoutingGridGeometry &grid_geometry,
+    const RoutingGridBlockage<geometry::Rectangle> &blockage) {
+  LOG(WARNING) << "doing nothing for rectangle on net: "
+               << blockage.shape().net();
+}
+
+// We rely on the RoutingGridBlockage to generate candidate positions and
+// because it can efficiently determine which tracks the polygon intersects,
+// since it can relate the bounding box of the given object to the
+// possibly-implicated tracks.
+template<>
+void RoutingGrid::AddOffGridVerticesForBlockage(
+    const RoutingGridGeometry &grid_geometry,
+    const RoutingGridBlockage<geometry::Polygon> &blockage) {
+  auto tracks_and_positions =
+      grid_geometry.CandidateVertexPositionsOnCrossedTracks(
+          blockage.shape());
+  
+  for (auto entry : tracks_and_positions) {
+    RoutingTrack *track = entry.first;
+    const geometry::Layer &other_layer =
+        track->layer() == grid_geometry.horizontal_layer() ?
+            grid_geometry.vertical_layer() : grid_geometry.horizontal_layer();
+
+    for (const geometry::Point &point : entry.second) {
+      RoutingVertex *new_vertex =
+          track->CreateNewVertexAndConnect(*this,
+                                           point,
+                                           other_layer,
+                                           blockage.shape().net());
+      if (!new_vertex) {
+        continue;
+      }
+      AddVertex(new_vertex);
+    }
+  }
 }
 
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
@@ -2271,16 +2317,6 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
       new RoutingGridBlockage<geometry::Polygon>(
           *this, polygon, padding + min_separation);
   polygon_blockages_.emplace_back(blockage);
-
-  // FIXME(aryap): Move to ApplyBlockage, actually apply
-  std::vector<RoutingGridGeometry*> grid_geometries =
-      FindRoutingGridGeometriesUsingLayer(polygon.layer());
-  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
-    auto connectable = grid_geometry->ConnectablePerimeter(polygon);
-    for (RoutingVertex *vertex : connectable) {
-      LOG(INFO) << "connectable: " << vertex->centre();
-    }
-  }
 
   // Find tracks on the blockage layer, if any.
   auto it = tracks_by_layer_.find(layer);

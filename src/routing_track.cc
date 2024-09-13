@@ -66,7 +66,7 @@ bool RoutingTrack::AddVertex(
   LOG_IF(FATAL, !Intersects(vertex))
       << "RoutingTrack " << Describe() << " cannot accommodate new vertex "
       << vertex->centre();
-  LOG_IF(FATAL, IsBlocked(vertex->centre(), 0, for_nets))
+  LOG_IF(WARNING, IsBlocked(vertex->centre(), 0, for_nets))
       << "RoutingTrack cannot add vertex at " << vertex->centre()
       << ", it is blocked";
   LOG_IF(FATAL, ContainsVertex(vertex))
@@ -146,6 +146,33 @@ RoutingVertex *RoutingTrack::GetVertexAtOffset(int64_t offset) const {
     return nullptr;
   }
   return it->second;
+}
+
+RoutingVertex *RoutingTrack::GetVertexAt(
+    const geometry::Point &point) const {
+  if (!IsPointOnTrack(point))
+    return nullptr;
+  int64_t position = ProjectOntoTrack(point);
+  return GetVertexAtOffset(position);
+}
+
+bool RoutingTrack::IsPointOnTrack(const geometry::Point &point) const {
+  switch (direction_) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      if (point.y() != offset_) {
+        return false;
+      }
+      break;
+    case RoutingTrackDirection::kTrackVertical:
+      if (point.x() != offset_) {
+        return false;
+      }
+      break;
+    default:
+      LOG(FATAL) << "This RoutingTrack has an unrecognised "
+                 << "RoutingTrackDirection: " << direction_;
+  }
+  return true;
 }
 
 void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
@@ -326,36 +353,12 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
       return true;
     }
 
-    std::unique_ptr<RoutingVertex> added_vertex(
-        new RoutingVertex(candidate_centre));
     *bridging_vertex_is_new = true;
-    // We need to ask if this candidate fits in with other installed vertices.
-    // This is specifically to check that vertices on adjacent tracks do not
-    // violate spacing rules. The track itself only ensures correct spacing
-    // along its dimension. Consider these horizontal tracks:
-    //
-    // -------------A----------------
-    //
-    //             +-----+
-    // ------------|--B--|-----------
-    //             +-----+
-    //
-    // The candidate x might collide with the existing B on the neighbouring
-    // track.
-    added_vertex->AddConnectedLayer(layer_);
-    if (target_layer != layer_) {
-      added_vertex->AddConnectedLayer(target_layer);
-    }
-    absl::Status valid_against_installed_paths =
-        grid.ValidAgainstInstalledPaths(*added_vertex, for_nets);
-    if (!valid_against_installed_paths.ok()) {
-      LOG(WARNING) << "Bridging vertex " << added_vertex->centre()
-                   << " on " << Describe()
-                   << " is not valid against other installed paths: "
-                   << valid_against_installed_paths.message();
+    bridging_vertex = MakeAndCheckVertexAt(
+        grid, candidate_centre, target_layer, for_nets);
+    if (!bridging_vertex) {
       return false;
     }
-    bridging_vertex = added_vertex.release();
   }
 
   if (!AddVertex(bridging_vertex, for_nets)) {
@@ -365,6 +368,69 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
 
   *connecting_vertex = bridging_vertex;
   return true;
+}
+
+RoutingVertex *RoutingTrack::CreateNewVertexAndConnect(
+    const RoutingGrid &grid,
+    const geometry::Point &candidate_centre,
+    const geometry::Layer &target_layer,
+    const EquivalentNets &for_nets) {
+  if (!IsPointOnTrack(candidate_centre)) {
+    return nullptr;
+  }
+
+  RoutingVertex *existing_vertex = GetVertexAt(candidate_centre);
+  if (existing_vertex) {
+    return nullptr;
+  }
+
+  RoutingVertex *validated_vertex = MakeAndCheckVertexAt(
+      grid, candidate_centre, target_layer, for_nets);
+  if (!validated_vertex) {
+    return nullptr;
+  }
+
+  if (!AddVertex(validated_vertex, for_nets)) {
+    RemoveVertex(validated_vertex);
+    return nullptr;
+  }
+
+  return validated_vertex;
+}
+
+RoutingVertex *RoutingTrack::MakeAndCheckVertexAt(
+    const RoutingGrid &grid,
+    const geometry::Point &point,
+    const geometry::Layer &target_layer,
+    const EquivalentNets &for_nets) {
+  // We need to ask if this candidate fits in with other installed vertices.
+  // This is specifically to check that vertices on adjacent tracks do not
+  // violate spacing rules. The track itself only ensures correct spacing
+  // along its dimension. Consider these horizontal tracks:
+  //
+  // -------------A----------------
+  //
+  //             +-----+
+  // ------------|--B--|-----------
+  //             +-----+
+  //
+  // The candidate x might collide with the existing B on the neighbouring
+  // track.
+  std::unique_ptr<RoutingVertex> added_vertex(new RoutingVertex(point));
+  added_vertex->AddConnectedLayer(layer_);
+  if (target_layer != layer_) {
+    added_vertex->AddConnectedLayer(target_layer);
+  }
+  absl::Status valid_against_installed_paths =
+      grid.ValidAgainstInstalledPaths(*added_vertex, for_nets);
+  if (!valid_against_installed_paths.ok()) {
+    LOG(WARNING) << "New vertex " << added_vertex->centre()
+                 << " on " << Describe()
+                 << " is not valid against other installed paths: "
+                 << valid_against_installed_paths.message();
+    return nullptr;
+  }
+  return added_vertex.release();
 }
 
 void RoutingTrack::ReportAvailableEdges(

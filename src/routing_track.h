@@ -84,6 +84,8 @@ class RoutingTrack {
 
   bool ContainsVertex(RoutingVertex *vertex) const;
 
+  bool IsPointOnTrack(const geometry::Point &point) const;
+  RoutingVertex *GetVertexAt(const geometry::Point &point) const;
   RoutingVertex *GetVertexAtOffset(int64_t offset) const;
 
   bool Intersects(RoutingVertex *vertex) const;
@@ -127,6 +129,12 @@ class RoutingTrack {
       RoutingVertex **connecting_vertex,
       bool *bridging_vertex_is_new,
       bool *target_already_exists);
+
+  RoutingVertex *CreateNewVertexAndConnect(
+      const RoutingGrid &grid,
+      const geometry::Point &candidate_centre,
+      const geometry::Layer &target_layer,
+      const EquivalentNets &for_nets);
 
   // Returned vertices will be in order of their position along the track, but
   // the direction is not guaranteed.
@@ -194,6 +202,12 @@ class RoutingTrack {
   //static bool EdgeComp(RoutingEdge *lhs, RoutingEdge *rhs);
 
   void AssignThisTrackToVertex(RoutingVertex *vertex);
+
+  RoutingVertex *MakeAndCheckVertexAt(
+      const RoutingGrid &grid,
+      const geometry::Point &point,
+      const geometry::Layer &target_layer,
+      const EquivalentNets &for_nets);
  
   bool BlockageBlocks(
       const RoutingTrackBlockage &blockage,
