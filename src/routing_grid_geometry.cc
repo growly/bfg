@@ -262,8 +262,8 @@ std::set<RoutingVertex*> RoutingGridGeometry::ConnectingVertices(
     std::vector<std::pair<geometry::Point, geometry::Point>> points;
     polygon.IntersectingPoints(vertical_line, &points);
 
-    // TODO(aryap): Deal with the problem of having two intersecting point pairs
-    // that are very close.
+    // TODO(aryap): Test dealing with the problem of having two intersecting
+    // point pairs that are very close. I *think* this deals with it.
     // TODO(aryap): The connection point could be half-way between the two
     // intersection points in the pair.
 
