@@ -81,11 +81,30 @@ class RoutingGridGeometry {
 
   geometry::Line VerticalLineThrough(size_t column_index) const;
 
+  // Enumerate the nearest vertices surrounding the given shape that can
+  // directly connect to it with a single horizontal or vertical edge. Avoids
+  // unavailable vertices unless they have the same connectable net.
+  //
+  //   +     [+]     +      +      +      +
+  //       +-------+
+  //  [+]  |  +    |[+]    [+]    [+]     +
+  //       |       +------------------+
+  //  [+]  |  +      +      +      +  |  [+]
+  //       +--------------------------+
+  //   +     [+]    [+]    [+]    [+]     +
+  //
+  // The set of connectable vertices are those in [] brackets for this example
+  // polygon.
   std::set<RoutingVertex*> ConnectablePerimeter(
       const geometry::Polygon &polygon) const;
 
-  std::set<RoutingTrack*> CrossingTracks(
+  // Returns the set of tracks crossing the given Polygon.
+  std::set<RoutingTrack*> CrossedTracks(
       const geometry::Polygon &polygon) const;
+
+  std::map<RoutingTrack*, std::vector<geometry::Point>>
+      CandidateVertexPositionsOnCrossedTracks(
+          const geometry::Polygon &polygon) const;
 
   RoutingVertex *VertexAt(const geometry::Point &point) const;
   RoutingVertex *VertexAt(size_t column_index, size_t row_index) const;

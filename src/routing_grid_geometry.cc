@@ -220,20 +220,6 @@ void RoutingGridGeometry::ComputeForLayers(
           max_row_index_ + 1, nullptr));
 }
 
-// Enumerate the nearest vertices surrounding the given shape that can directly
-// connect to it with a single horizontal or vertical edge. Avoids unavailable
-// vertices unless they have the same connectable net.
-//
-//   +     [+]     +      +      +      +
-//       +-------+
-//  [+]  |  +    |[+]    [+]    [+]     +
-//       |       +------------------+
-//  [+]  |  +      +      +      +  |  [+]
-//       +--------------------------+
-//   +     [+]    [+]    [+]    [+]     +
-//
-// The set of connectable vertices are those in [] brackets for this example
-// polygon.
 std::set<RoutingVertex*> RoutingGridGeometry::ConnectablePerimeter(
     const geometry::Polygon &polygon) const {
   std::set<RoutingVertex*> vertices;
@@ -352,7 +338,7 @@ geometry::Point RoutingGridGeometry::PointAt(
   return {ColumnCoordinate(column_index), RowCoordinate(row_index)};
 }
 
-std::set<RoutingTrack*> RoutingGridGeometry::CrossingTracks(
+std::set<RoutingTrack*> RoutingGridGeometry::CrossedTracks(
     const geometry::Polygon &polygon) const {
   std::set<RoutingTrack*> tracks;
   auto [i_lower, i_upper, j_lower, j_upper] = MapToBoundingGridIndices(polygon);
@@ -382,6 +368,53 @@ std::set<RoutingTrack*> RoutingGridGeometry::CrossingTracks(
     }
   }
   return tracks;
+}
+
+
+std::map<RoutingTrack*, std::vector<geometry::Point>>
+    RoutingGridGeometry::CandidateVertexPositionsOnCrossedTracks(
+        const geometry::Polygon &polygon) const {
+  std::map<RoutingTrack*, std::vector<geometry::Point>> positions_by_track;
+
+  auto [i_lower, i_upper, j_lower, j_upper] = MapToBoundingGridIndices(polygon);
+
+  // Iterate over columns:
+  for (int64_t i = i_lower; i <= i_upper; ++i) {
+    geometry::Line vertical_line = VerticalLineThrough(i);
+    RoutingTrack *track = vertical_tracks_by_index_[i];
+    if (!track) {
+      continue;
+    }
+
+    std::vector<geometry::PointPair> points =
+        polygon.IntersectingPoints(vertical_line);
+
+    for (auto pair : points) {
+      // TODO(aryap): Will be useful to generate multiple points per range
+      // here.
+      int64_t offset = (pair.first.y() + pair.second.y()) / 2;
+      geometry::Point point(pair.first.x(), offset);
+      positions_by_track[track].push_back(point);
+    }
+  }
+  // Iterate over rows:
+  for (int64_t j = j_lower; j <= j_upper; ++j) {
+    geometry::Line horizontal_line = HorizontalLineThrough(j);
+    RoutingTrack *track = horizontal_tracks_by_index_[j];
+    if (!track) {
+      continue;
+    }
+
+    std::vector<geometry::PointPair> points =
+        polygon.IntersectingPoints(horizontal_line);
+
+    for (auto pair : points) {
+      int64_t offset = (pair.first.x() + pair.second.x()) / 2;
+      geometry::Point point(offset, pair.first.y());
+      positions_by_track[track].push_back(point);
+    }
+  }
+  return positions_by_track;
 }
 
 void RoutingGridGeometry::EnvelopingVertexIndices(

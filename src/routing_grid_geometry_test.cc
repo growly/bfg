@@ -9,6 +9,7 @@
 #include "geometry/point.h"
 #include "geometry/layer.h"
 #include "geometry/line.h"
+#include "routing_track.h"
 #include "routing_layer_info.h"
 #include "routing_grid_geometry.h"
 #include "physical_properties_database.h"
@@ -595,6 +596,174 @@ TEST_F(RoutingGridGeometryTestFixture,
 
   for (auto vertex : all_vertices) {
     delete vertex;
+  }
+}
+
+TEST_F(RoutingGridGeometryTestFixture, CrossedTracks) {
+  // We have to fake the track set up like we faked vertices being added above.
+  std::set<RoutingTrack*> all_tracks;
+  for (int64_t i = 0; i <= grid_geometry_.max_column_index(); ++i) {
+    // Dummy.
+    RoutingTrack *track = new RoutingTrack(
+        0,                                        // layer
+        RoutingTrackDirection::kTrackVertical,    // direction
+        1,                                        // pitch
+        1,                                        // width
+        1,                                        // vertex_via_width
+        1,                                        // vertex_via_length
+        1,                                        // min_separation
+        i);                                       // offset
+    grid_geometry_.vertical_tracks_by_index().push_back(track);
+    all_tracks.insert(track);
+  }
+  for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
+    // Dummy.
+    RoutingTrack *track = new RoutingTrack(
+        0,                                        // layer
+        RoutingTrackDirection::kTrackHorizontal,  // direction
+        1,                                        // pitch
+        1,                                        // width
+        1,                                        // vertex_via_width
+        1,                                        // vertex_via_length
+        1,                                        // min_separation
+        j);                                       // offset
+    grid_geometry_.horizontal_tracks_by_index().push_back(track);
+    all_tracks.insert(track);
+  }
+
+  geometry::Polygon polygon({
+      {15, 15},
+      {15, 35},
+      {28, 35},
+      {28, 25},
+      {54, 25},
+      {54, 15}
+  });
+
+  std::set<int64_t> expected_horizontal_offsets = {1, 2};
+  std::set<int64_t> expected_vertical_offsets = {1, 2, 3, 4};
+
+  std::set<int64_t> returned_horizontal_offsets;
+  std::set<int64_t> returned_vertical_offsets;
+
+  std::set<RoutingTrack*> crossed_tracks =
+      grid_geometry_.CrossedTracks(polygon);
+  for (RoutingTrack *track : crossed_tracks) {
+    switch(track->direction()) {
+      case RoutingTrackDirection::kTrackVertical:
+        returned_vertical_offsets.insert(track->offset());
+        break;
+      case RoutingTrackDirection::kTrackHorizontal:
+        returned_horizontal_offsets.insert(track->offset());
+        break;
+      default:
+        break;
+    }
+  }
+
+  EXPECT_THAT(returned_horizontal_offsets,
+              ContainerEq(expected_horizontal_offsets));
+  EXPECT_THAT(returned_vertical_offsets,
+              ContainerEq(expected_vertical_offsets));
+
+  for (RoutingTrack *track : all_tracks) {
+    delete track;
+  }
+}
+
+TEST_F(RoutingGridGeometryTestFixture,
+       CandidateVertexPositionsOnCrossedTracks) {
+  // We have to fake the track set up like we faked vertices being added above.
+  std::set<RoutingTrack*> all_tracks;
+  for (int64_t i = 0; i <= grid_geometry_.max_column_index(); ++i) {
+    // Dummy.
+    RoutingTrack *track = new RoutingTrack(
+        0,                                        // layer
+        RoutingTrackDirection::kTrackVertical,    // direction
+        1,                                        // pitch
+        1,                                        // width
+        1,                                        // vertex_via_width
+        1,                                        // vertex_via_length
+        1,                                        // min_separation
+        i);                                       // offset
+    grid_geometry_.vertical_tracks_by_index().push_back(track);
+    all_tracks.insert(track);
+  }
+  for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
+    // Dummy.
+    RoutingTrack *track = new RoutingTrack(
+        0,                                        // layer
+        RoutingTrackDirection::kTrackHorizontal,  // direction
+        1,                                        // pitch
+        1,                                        // width
+        1,                                        // vertex_via_width
+        1,                                        // vertex_via_length
+        1,                                        // min_separation
+        j);                                       // offset
+    grid_geometry_.horizontal_tracks_by_index().push_back(track);
+    all_tracks.insert(track);
+  }
+
+  geometry::Polygon polygon({
+      {15, 15},
+      {15, 35},
+      {28, 35},
+      {28, 25},
+      {54, 25},
+      {54, 15}
+  });
+
+  std::set<int64_t> expected_horizontal_offsets = {1, 2};
+  std::set<int64_t> expected_vertical_offsets = {1, 2, 3, 4};
+  std::map<int64_t, std::vector<geometry::Point>>
+      expected_points_by_horizontal_track_offset = {
+      {1, {{34, 20}}},
+      {2, {{21, 30}}}
+  };
+  std::map<int64_t, std::vector<geometry::Point>>
+      expected_points_by_vertical_track_offset = {
+      {1, {{20, 25}}},
+      {2, {{30, 20}}},
+      {3, {{40, 20}}},
+      {4, {{50, 20}}},
+  };
+
+  std::set<int64_t> returned_horizontal_offsets;
+  std::set<int64_t> returned_vertical_offsets;
+
+  auto positions_by_track =
+      grid_geometry_.CandidateVertexPositionsOnCrossedTracks(polygon);
+
+  for (auto entry : positions_by_track) {
+    RoutingTrack *track = entry.first;
+    switch(track->direction()) {
+      case RoutingTrackDirection::kTrackVertical:
+        returned_vertical_offsets.insert(track->offset());
+        EXPECT_THAT(
+            entry.second,
+            ContainerEq(
+                expected_points_by_vertical_track_offset[track->offset()]));
+        break;
+      case RoutingTrackDirection::kTrackHorizontal:
+        returned_horizontal_offsets.insert(track->offset());
+        EXPECT_THAT(
+            entry.second,
+            ContainerEq(
+                expected_points_by_horizontal_track_offset[track->offset()]));
+        break;
+      default:
+        break;
+    }
+
+  }
+
+  EXPECT_THAT(returned_horizontal_offsets,
+              ContainerEq(expected_horizontal_offsets));
+  EXPECT_THAT(returned_vertical_offsets,
+              ContainerEq(expected_vertical_offsets));
+
+  for (RoutingTrack *track : all_tracks) {
+    delete track;
   }
 }
 
