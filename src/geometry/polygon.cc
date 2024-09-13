@@ -16,10 +16,10 @@
 namespace bfg {
 namespace geometry {
 
-void Polygon::ResolveIntersectingPointsFrom(
+std::vector<PointPair> Polygon::ResolveIntersectingPointsFrom(
     const std::vector<PointOrChoice> &choices,
-    const Point &reference_point,
-    std::vector<PointPair> *intersections) {
+    const Point &reference_point) {
+  std::vector<PointPair> intersections;
   std::vector<PointOrChoice> choices_copy(choices);
 
   for (const auto &choice : choices) {
@@ -172,16 +172,15 @@ void Polygon::ResolveIntersectingPointsFrom(
       << "Expected pairs of intersecting point choices, got " << sorted.size();
 
   for (size_t i = 0; i < sorted.size() - 1; i += 2) {
-    intersections->push_back({sorted[i], sorted[i + 1]});
+    intersections.push_back({sorted[i], sorted[i + 1]});
   }
+  return intersections;
 }
 
-void Polygon::IntersectingPoints(
-    const Line &line, std::vector<PointPair> *points) const {
-  points->clear();
+std::vector<PointPair> Polygon::IntersectingPoints(const Line &line) const {
   if (vertices_.empty()) {
     LOG(WARNING) << "Polygon with no vertices!";
-    return;
+    return std::vector<PointPair>();
   }
 
   std::vector<PointOrChoice> intersections;
@@ -276,14 +275,14 @@ void Polygon::IntersectingPoints(
   }
 
   if (intersections.empty())
-    return;
+    return std::vector<PointPair>();
 
   Point outside_point = GetBoundingBox().PointOnLineOutside(line);
   VLOG(12) << "outside point: " << outside_point;
   VLOG(13) << *this;
 
   // Go through all points and choices among points. 
-  ResolveIntersectingPointsFrom(intersections, outside_point, points);
+  return ResolveIntersectingPointsFrom(intersections, outside_point);
 }
 
 // Compute the points at which a line intersects with a polygon, returning the
@@ -538,8 +537,7 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
                                      // line is always zero.
     double end_coefficient = test.ProjectionCoefficient(test.end());
 
-    std::vector<PointPair> points;
-    IntersectingPoints(test, &points);
+    std::vector<PointPair> points = IntersectingPoints(test);
 
     for (const auto &point_pair : points) {
       const Point &entry = point_pair.first;

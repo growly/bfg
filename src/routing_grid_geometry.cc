@@ -84,7 +84,7 @@ RoutingGridGeometry::MapToBoundingGridIndices(
 }
 
 void RoutingGridGeometry::BoundGridIndices(int64_t num_concentric_layers,
-                                           int64_t *column_lower,
+                                        int64_t *column_lower,
                                            int64_t *column_upper,
                                            int64_t *row_lower,
                                            int64_t *row_upper) const {
@@ -259,8 +259,8 @@ std::set<RoutingVertex*> RoutingGridGeometry::ConnectablePerimeter(
   for (int64_t i = i_lower; i <= i_upper; ++i) {
     geometry::Line vertical_line = VerticalLineThrough(i);
 
-    std::vector<std::pair<geometry::Point, geometry::Point>> points;
-    polygon.IntersectingPoints(vertical_line, &points);
+    std::vector<geometry::PointPair> points =
+        polygon.IntersectingPoints(vertical_line);
 
     // TODO(aryap): Test dealing with the problem of having two intersecting
     // point pairs that are very close. I *think* this deals with it.
@@ -302,8 +302,8 @@ std::set<RoutingVertex*> RoutingGridGeometry::ConnectablePerimeter(
   for (int64_t j = j_lower; j <= j_upper; ++j) {
     geometry::Line horizontal_line = HorizontalLineThrough(j);
 
-    std::vector<std::pair<geometry::Point, geometry::Point>> points;
-    polygon.IntersectingPoints(horizontal_line, &points);
+    std::vector<geometry::PointPair> points =
+        polygon.IntersectingPoints(horizontal_line);
 
     for (size_t k = 0; k < points.size(); ++k) {
       int64_t lower_bound = 0;
@@ -350,6 +350,38 @@ int64_t RoutingGridGeometry::RowCoordinate(size_t row_index) const {
 geometry::Point RoutingGridGeometry::PointAt(
     size_t column_index, size_t row_index) const {
   return {ColumnCoordinate(column_index), RowCoordinate(row_index)};
+}
+
+std::set<RoutingTrack*> RoutingGridGeometry::CrossingTracks(
+    const geometry::Polygon &polygon) const {
+  std::set<RoutingTrack*> tracks;
+  auto [i_lower, i_upper, j_lower, j_upper] = MapToBoundingGridIndices(polygon);
+  // Iterate over columns:
+  for (int64_t i = i_lower; i <= i_upper; ++i) {
+    RoutingTrack *track = vertical_tracks_by_index_[i];
+    if (!track)
+      continue;
+    geometry::Line vertical_line = VerticalLineThrough(i);
+
+    std::vector<geometry::PointPair> points =
+        polygon.IntersectingPoints(vertical_line);
+    if (!points.empty()) {
+      tracks.insert(track);
+    }
+  }
+  for (int64_t j = j_lower; j <= j_upper; ++j) {
+    RoutingTrack *track = horizontal_tracks_by_index_[j];
+    if (!track)
+      continue;
+    geometry::Line horizontal_line = HorizontalLineThrough(j);
+
+    std::vector<geometry::PointPair> points =
+        polygon.IntersectingPoints(horizontal_line);
+    if (!points.empty())  {
+      tracks.insert(track);
+    }
+  }
+  return tracks;
 }
 
 void RoutingGridGeometry::EnvelopingVertexIndices(

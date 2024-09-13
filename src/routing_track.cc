@@ -727,11 +727,11 @@ bool RoutingTrack::Intersects(
     return true;
   }
 
-  std::vector<geometry::PointPair> intersections_low;
-  polygon.IntersectingPoints(major_axis_lines.first, &intersections_low);
+  std::vector<geometry::PointPair> intersections_low =
+      polygon.IntersectingPoints(major_axis_lines.first);
  
-  std::vector<geometry::PointPair> intersections_high;
-  polygon.IntersectingPoints(major_axis_lines.second, &intersections_high);
+  std::vector<geometry::PointPair> intersections_high =
+      polygon.IntersectingPoints(major_axis_lines.second);
 
   auto comp = [](const geometry::PointPair &lhs,
                  const geometry::PointPair &rhs) {

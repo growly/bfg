@@ -44,9 +44,8 @@ class Polygon : public Shape {
   bool Overlaps(const Rectangle &rectangle) const;
   bool ContainsVertex(const Point &point) const;
 
-  void IntersectingPoints(
-      const Line &line,
-      std::vector<std::pair<Point, Point>> *points) const;
+
+  std::vector<geometry::PointPair> IntersectingPoints(const Line &line) const;
 
   void MirrorY() override;
   void MirrorX() override;
@@ -63,10 +62,9 @@ class Polygon : public Shape {
   const std::vector<Point> &vertices() const { return vertices_; }
 
  private:
-  static void ResolveIntersectingPointsFrom(
+  static std::vector<geometry::PointPair> ResolveIntersectingPointsFrom(
       const std::vector<PointOrChoice> &choices,
-      const Point &reference_point,
-      std::vector<std::pair<Point, Point>> *intersections);
+      const Point &reference_point);
 
   std::vector<Point> vertices_;
 };
