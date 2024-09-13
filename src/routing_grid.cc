@@ -2272,6 +2272,12 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
           *this, polygon, padding + min_separation);
   polygon_blockages_.emplace_back(blockage);
 
+  std::vector<RoutingGridGeometry*> grid_geometries =
+      FindRoutingGridGeometriesUsingLayer(polygon.layer());
+  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
+    grid_geometry->ConnectingVertices(polygon);
+  }
+
   // Find tracks on the blockage layer, if any.
   auto it = tracks_by_layer_.find(layer);
   if (it != tracks_by_layer_.end()) {

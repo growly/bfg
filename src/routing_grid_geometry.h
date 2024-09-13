@@ -64,8 +64,12 @@ class RoutingGridGeometry {
       int64_t padding = 0,
       int64_t num_concentric_layers = 1) const;
 
-  std::tuple<int64_t, int64_t, int64_t, int64_t> MapPointToBoundingGridIndices(
+  std::tuple<int64_t, int64_t, int64_t, int64_t> MapToBoundingGridIndices(
       const geometry::Point &point) const;
+  std::tuple<int64_t, int64_t, int64_t, int64_t> MapToBoundingGridIndices(
+      const geometry::Rectangle &rectangle) const;
+  std::tuple<int64_t, int64_t, int64_t, int64_t> MapToBoundingGridIndices(
+      const geometry::Polygon &polygon) const;
 
   void BoundGridIndices(int64_t num_concentric_layers,
                         int64_t *column_lower,
@@ -73,13 +77,12 @@ class RoutingGridGeometry {
                         int64_t *row_lower,
                         int64_t *row_upper) const;
 
-  geometry::Line HorizontalLineThrough(
-      size_t column_index,
-      size_t row_index) const;
+  geometry::Line HorizontalLineThrough(size_t row_index) const;
 
-  geometry::Line VerticalLineThrough(
-      size_t column_index,
-      size_t row_index) const;
+  geometry::Line VerticalLineThrough(size_t column_index) const;
+
+  std::set<RoutingVertex*> ConnectingVertices(
+      const geometry::Polygon &polygon) const;
 
   RoutingVertex *VertexAt(const geometry::Point &point) const;
   RoutingVertex *VertexAt(size_t column_index, size_t row_index) const;
@@ -185,6 +188,9 @@ class RoutingGridGeometry {
   std::vector<RoutingTrack*> &vertical_tracks_by_index() {
     return vertical_tracks_by_index_;
   }
+
+  int64_t max_column_index() const { return max_column_index_; }
+  int64_t max_row_index() const { return max_row_index_; }
 
  private:
   void VerticesAt(

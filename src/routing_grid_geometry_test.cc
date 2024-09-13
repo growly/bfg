@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include <set>
+
 #include <glog/logging.h>
 
 #include "geometry/rectangle.h"
@@ -476,7 +478,7 @@ TEST_F(RoutingGridGeometryTestFixture, NearestTrackIndices_OffGrid) {
 }
 
 TEST_F(RoutingGridGeometryTestFixture, HorizontalLineThrough) {
-  geometry::Line line = grid_geometry_.HorizontalLineThrough(5, 8);
+  geometry::Line line = grid_geometry_.HorizontalLineThrough(8);
   EXPECT_EQ(0, line.start().x());
   EXPECT_EQ(200, line.end().x());
   EXPECT_EQ(90, line.start().y());
@@ -484,11 +486,116 @@ TEST_F(RoutingGridGeometryTestFixture, HorizontalLineThrough) {
 }
 
 TEST_F(RoutingGridGeometryTestFixture, VerticalLineThrough) {
-  geometry::Line line = grid_geometry_.VerticalLineThrough(2, 3);
+  geometry::Line line = grid_geometry_.VerticalLineThrough(2);
   EXPECT_EQ(0, line.start().y());
   EXPECT_EQ(200, line.end().y());
   EXPECT_EQ(30, line.start().x());
   EXPECT_EQ(30, line.end().x());
+}
+
+TEST_F(RoutingGridGeometryTestFixture, ConnectingVertices_Polygon) {
+  std::set<RoutingVertex*> all_vertices;
+  for (int64_t i = 0; i <= grid_geometry_.max_column_index(); ++i) {
+    for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
+      // Dummy.
+      RoutingVertex *vertex = new RoutingVertex({i, j});
+      grid_geometry_.AssignVertexAt(i, j, vertex);
+      all_vertices.insert(vertex);
+    }
+  }
+  geometry::Polygon polygon({
+      {15, 15},
+      {15, 35},
+      {28, 35},
+      {28, 25},
+      {54, 25},
+      {54, 15}
+  });
+
+  auto surrounds = grid_geometry_.ConnectingVertices(polygon);
+  // These are the row/col indices packed into the centre coordinate.
+  std::set<geometry::Point> centres;
+  for (auto vertex : surrounds) {
+    centres.insert(vertex->centre());
+  }
+
+  std::set<geometry::Point> expected = {
+    {0, 1},
+    {0, 2},
+    {1, 0},
+    {1, 3},
+    {2, 0},
+    {2, 2},
+    {3, 0},
+    {3, 2},
+    {4, 0},
+    {4, 2},
+    {5, 1}
+  };
+
+  EXPECT_THAT(centres, ContainerEq(expected));
+
+  for (auto vertex : all_vertices) {
+    delete vertex;
+  }
+}
+
+TEST_F(RoutingGridGeometryTestFixture,
+       ConnectingVertices_Polygon_SomeUnavailable) {
+  std::set<RoutingVertex*> all_vertices;
+  for (int64_t i = 0; i <= grid_geometry_.max_column_index(); ++i) {
+    for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
+      // Dummy.
+      RoutingVertex *vertex = new RoutingVertex({i, j});
+      grid_geometry_.AssignVertexAt(i, j, vertex);
+      if (j > 0 && i == 3) {
+        vertex->set_available(false);
+      }
+      if (j == 1 && i == 5) {
+        vertex->set_available(false);
+      }
+      if (j == 2 && i == 4) {
+        vertex->set_available(false);
+      }
+      all_vertices.insert(vertex);
+    }
+  }
+  geometry::Polygon polygon({
+      {15, 15},
+      {15, 35},
+      {28, 35},
+      {28, 25},
+      {54, 25},
+      {54, 15}
+  });
+
+  auto surrounds = grid_geometry_.ConnectingVertices(polygon);
+  // These are the row/col indices packed into the centre coordinate.
+  std::set<geometry::Point> centres;
+  for (auto vertex : surrounds) {
+    centres.insert(vertex->centre());
+  }
+
+  std::set<geometry::Point> expected = {
+    {0, 1},
+    {0, 2},
+    {1, 0},
+    {1, 3},
+    {2, 0},
+    {2, 2},
+    {3, 0},
+    // The other vertices north of {3, 1} are unavailable.
+    {4, 0},
+    // {4, 2} is (manually) unavailable also so:
+    {4, 3},
+    {6, 1}    // {5, 1} is unavailable so the next one right should be ok.
+  };
+
+  EXPECT_THAT(centres, ContainerEq(expected));
+
+  for (auto vertex : all_vertices) {
+    delete vertex;
+  }
 }
 
 }  // namespace

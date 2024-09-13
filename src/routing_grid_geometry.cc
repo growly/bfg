@@ -47,7 +47,7 @@ int64_t modulo(int64_t a, int64_t b) {
 }   // namespace
 
 std::tuple<int64_t, int64_t, int64_t, int64_t>
-RoutingGridGeometry::MapPointToBoundingGridIndices(const geometry::Point &point)
+RoutingGridGeometry::MapToBoundingGridIndices(const geometry::Point &point)
     const {
   int64_t column_lower = std::floor(static_cast<double>(
       point.x() - x_start_) / static_cast<double>(x_pitch_));
@@ -59,6 +59,28 @@ RoutingGridGeometry::MapPointToBoundingGridIndices(const geometry::Point &point)
       point.y() - y_start_) / static_cast<double>(y_pitch_));
 
   return std::make_tuple(column_lower, column_upper, row_lower, row_upper);
+}
+
+std::tuple<int64_t, int64_t, int64_t, int64_t>
+RoutingGridGeometry::MapToBoundingGridIndices(
+    const geometry::Rectangle &rectangle) const {
+  int64_t column_lower = std::floor(static_cast<double>(
+      rectangle.lower_left().x() - x_start_) / static_cast<double>(x_pitch_));
+  int64_t row_lower = std::floor(static_cast<double>(
+      rectangle.lower_left().y() - y_start_) / static_cast<double>(y_pitch_));
+  int64_t column_upper = std::ceil(static_cast<double>(
+      rectangle.upper_right().x() - x_start_) / static_cast<double>(x_pitch_));
+  int64_t row_upper = std::ceil(static_cast<double>(
+      rectangle.upper_right().y() - y_start_) / static_cast<double>(y_pitch_));
+
+  return std::make_tuple(column_lower, column_upper, row_lower, row_upper);
+}
+
+std::tuple<int64_t, int64_t, int64_t, int64_t>
+RoutingGridGeometry::MapToBoundingGridIndices(
+    const geometry::Polygon &polygon) const {
+  geometry::Rectangle bounding_box = polygon.GetBoundingBox();
+  return MapToBoundingGridIndices(bounding_box);
 }
 
 void RoutingGridGeometry::BoundGridIndices(int64_t num_concentric_layers,
@@ -109,7 +131,7 @@ void RoutingGridGeometry::NearestTrackIndices(
   // This departure from the style used elsewhere in the code is a personal
   // experiment to see if I like the sauce:
   auto [column_lower, column_upper, row_lower, row_upper] = 
-      MapPointToBoundingGridIndices(point);
+      MapToBoundingGridIndices(point);
   // (I think I like the sauce.)
 
   BoundGridIndices(num_concentric_layers,
@@ -212,9 +234,110 @@ void RoutingGridGeometry::ComputeForLayers(
 //
 // The set of connectable vertices are those in [] brackets for this example
 // polygon.
-//void RoutingGridGeometry::ConnectingVertices() {
-//
-//}
+std::set<RoutingVertex*> RoutingGridGeometry::ConnectingVertices(
+    const geometry::Polygon &polygon) const {
+  std::set<RoutingVertex*> vertices;
+  auto check_vertex = [&](int64_t i, int64_t j) {
+    RoutingVertex *vertex = VertexAt(i, j);
+    if (!vertex) {
+      LOG(WARNING) << "There is no vertex at grid " << i << ", " << j;
+      return false;
+    }
+    if (vertex->available() ||
+        polygon.net() != "" && vertex->connectable_net() &&
+            *vertex->connectable_net() == polygon.net()) {
+      // This vertex can be used to connect to the shape, with a jog.
+      VLOG(17) << "vertex at " << i << ", " << j << " can be used";
+      vertices.insert(vertex);
+      return true;
+    }
+    return false;
+  };
+
+  auto [i_lower, i_upper, j_lower, j_upper] = MapToBoundingGridIndices(polygon);
+  // Iterate over columns:
+  for (int64_t i = i_lower; i <= i_upper; ++i) {
+    geometry::Line vertical_line = VerticalLineThrough(i);
+
+    std::vector<std::pair<geometry::Point, geometry::Point>> points;
+    polygon.IntersectingPoints(vertical_line, &points);
+
+    // TODO(aryap): Deal with the problem of having two intersecting point pairs
+    // that are very close.
+    // TODO(aryap): The connection point could be half-way between the two
+    // intersection points in the pair.
+
+    for (size_t k = 0; k < points.size(); ++k) {
+      int64_t lower_bound = 0;
+      if (k > 0) {
+        std::tie(std::ignore, std::ignore, std::ignore, lower_bound) =
+            MapToBoundingGridIndices(points[k - 1].second);
+      }
+
+      auto &pair = points[k];
+      int64_t row_lower;
+      std::tie(std::ignore, std::ignore, row_lower, std::ignore) =
+          MapToBoundingGridIndices(pair.first);
+      // Check vertices from the low-side upper-limit down.
+      for (int64_t j = row_lower; j >= lower_bound; --j) {
+        if (check_vertex(i, j))
+          break;
+      }
+
+      int64_t row_upper;
+      std::tie(std::ignore, std::ignore, std::ignore, row_upper) =
+          MapToBoundingGridIndices(pair.second);
+      int64_t upper_bound = max_row_index_;
+      if (k < points.size() - 1) {
+        std::tie(std::ignore, std::ignore, upper_bound, std::ignore) =
+            MapToBoundingGridIndices(points[k + 1].first);
+      }
+      for (int64_t j = row_upper; j <= upper_bound; ++j) {
+        if (check_vertex(i, j))
+          break;
+      }
+    }
+  }
+  // Iterate over rows:
+  for (int64_t j = j_lower; j <= j_upper; ++j) {
+    geometry::Line horizontal_line = HorizontalLineThrough(j);
+
+    std::vector<std::pair<geometry::Point, geometry::Point>> points;
+    polygon.IntersectingPoints(horizontal_line, &points);
+
+    for (size_t k = 0; k < points.size(); ++k) {
+      int64_t lower_bound = 0;
+      if (k > 0) {
+        std::tie(std::ignore, lower_bound, std::ignore, std::ignore) =
+            MapToBoundingGridIndices(points[k - 1].second);
+      }
+
+      auto &pair = points[k];
+      int64_t column_lower;
+      std::tie(column_lower, std::ignore, std::ignore, std::ignore) =
+          MapToBoundingGridIndices(pair.first);
+      // Check vertices from the low-side upper-limit down.
+      for (int64_t i = column_lower; i >= lower_bound; --i) {
+        if (check_vertex(i, j))
+          break;
+      }
+
+      int64_t column_upper;
+      std::tie(std::ignore, column_upper, std::ignore, std::ignore) =
+          MapToBoundingGridIndices(pair.second);
+      int64_t upper_bound = max_column_index_;
+      if (k < points.size() - 1) {
+        std::tie(upper_bound, std::ignore, std::ignore, std::ignore) =
+            MapToBoundingGridIndices(points[k + 1].first);
+      }
+      for (int64_t i = column_upper; i <= upper_bound; ++i) {
+        if (check_vertex(i, j))
+          break;
+      }
+    }
+  }
+  return vertices;
+}
 
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Point &point,
@@ -242,8 +365,7 @@ void RoutingGridGeometry::EnvelopingVertexIndices(
   // to x-position), increasing up and right.
 
   // Find the bounding corner positions of an infinite grid:
-  auto [i_lower, i_upper, j_lower, j_upper] = 
-      MapPointToBoundingGridIndices(point);
+  auto [i_lower, i_upper, j_lower, j_upper] = MapToBoundingGridIndices(point);
 
   // If the point ends up on a multiple of pitch exactly, there will be no
   // spread in one dimension. We explicitly widen the spread to include +/-1
@@ -339,16 +461,14 @@ void RoutingGridGeometry::VerticesAt(
   }
 }
 
-geometry::Line RoutingGridGeometry::HorizontalLineThrough(
-    size_t column_index,
-    size_t row_index) const {
+geometry::Line RoutingGridGeometry::HorizontalLineThrough(size_t row_index)
+  const {
   int64_t y = y_start_ + y_pitch_ * row_index;
   return geometry::Line({x_min_, y}, {x_max_, y});
 }
 
-geometry::Line RoutingGridGeometry::VerticalLineThrough(
-    size_t column_index,
-    size_t row_index) const {
+geometry::Line RoutingGridGeometry::VerticalLineThrough(size_t column_index)
+  const {
   int64_t x = x_start_ + x_pitch_ * column_index;
   return geometry::Line({x, y_min_}, {x, y_max_});
 }
@@ -367,7 +487,7 @@ void RoutingGridGeometry::AssignVertexAt(
 RoutingVertex *RoutingGridGeometry::VertexAt(const geometry::Point &point)
     const {
   auto [column_lower, column_upper, row_lower, row_upper] = 
-      MapPointToBoundingGridIndices(point);
+      MapToBoundingGridIndices(point);
   if (column_lower != column_upper) {
     return nullptr;
   }
