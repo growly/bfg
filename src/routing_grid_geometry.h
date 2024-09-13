@@ -81,7 +81,10 @@ class RoutingGridGeometry {
 
   geometry::Line VerticalLineThrough(size_t column_index) const;
 
-  std::set<RoutingVertex*> ConnectingVertices(
+  std::set<RoutingVertex*> ConnectablePerimeter(
+      const geometry::Polygon &polygon) const;
+
+  std::set<RoutingTrack*> CrossingTracks(
       const geometry::Polygon &polygon) const;
 
   RoutingVertex *VertexAt(const geometry::Point &point) const;

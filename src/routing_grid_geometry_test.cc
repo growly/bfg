@@ -493,7 +493,7 @@ TEST_F(RoutingGridGeometryTestFixture, VerticalLineThrough) {
   EXPECT_EQ(30, line.end().x());
 }
 
-TEST_F(RoutingGridGeometryTestFixture, ConnectingVertices_Polygon) {
+TEST_F(RoutingGridGeometryTestFixture, ConnectablePerimeter_Polygon) {
   std::set<RoutingVertex*> all_vertices;
   for (int64_t i = 0; i <= grid_geometry_.max_column_index(); ++i) {
     for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
@@ -512,7 +512,7 @@ TEST_F(RoutingGridGeometryTestFixture, ConnectingVertices_Polygon) {
       {54, 15}
   });
 
-  auto surrounds = grid_geometry_.ConnectingVertices(polygon);
+  auto surrounds = grid_geometry_.ConnectablePerimeter(polygon);
   // These are the row/col indices packed into the centre coordinate.
   std::set<geometry::Point> centres;
   for (auto vertex : surrounds) {
@@ -520,17 +520,17 @@ TEST_F(RoutingGridGeometryTestFixture, ConnectingVertices_Polygon) {
   }
 
   std::set<geometry::Point> expected = {
-    {0, 1},
-    {0, 2},
-    {1, 0},
-    {1, 3},
-    {2, 0},
-    {2, 2},
-    {3, 0},
-    {3, 2},
-    {4, 0},
-    {4, 2},
-    {5, 1}
+      {0, 1},
+      {0, 2},
+      {1, 0},
+      {1, 3},
+      {2, 0},
+      {2, 2},
+      {3, 0},
+      {3, 2},
+      {4, 0},
+      {4, 2},
+      {5, 1}
   };
 
   EXPECT_THAT(centres, ContainerEq(expected));
@@ -541,7 +541,7 @@ TEST_F(RoutingGridGeometryTestFixture, ConnectingVertices_Polygon) {
 }
 
 TEST_F(RoutingGridGeometryTestFixture,
-       ConnectingVertices_Polygon_SomeUnavailable) {
+       ConnectablePerimeter_Polygon_SomeUnavailable) {
   std::set<RoutingVertex*> all_vertices;
   for (int64_t i = 0; i <= grid_geometry_.max_column_index(); ++i) {
     for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
@@ -569,7 +569,7 @@ TEST_F(RoutingGridGeometryTestFixture,
       {54, 15}
   });
 
-  auto surrounds = grid_geometry_.ConnectingVertices(polygon);
+  auto surrounds = grid_geometry_.ConnectablePerimeter(polygon);
   // These are the row/col indices packed into the centre coordinate.
   std::set<geometry::Point> centres;
   for (auto vertex : surrounds) {
@@ -577,18 +577,18 @@ TEST_F(RoutingGridGeometryTestFixture,
   }
 
   std::set<geometry::Point> expected = {
-    {0, 1},
-    {0, 2},
-    {1, 0},
-    {1, 3},
-    {2, 0},
-    {2, 2},
-    {3, 0},
-    // The other vertices north of {3, 1} are unavailable.
-    {4, 0},
-    // {4, 2} is (manually) unavailable also so:
-    {4, 3},
-    {6, 1}    // {5, 1} is unavailable so the next one right should be ok.
+      {0, 1},
+      {0, 2},
+      {1, 0},
+      {1, 3},
+      {2, 0},
+      {2, 2},
+      {3, 0},
+      // The other vertices north of {3, 1} are unavailable.
+      {4, 0},
+      // {4, 2} is (manually) unavailable also so:
+      {4, 3},
+      {6, 1}    // {5, 1} is unavailable so the next one right should be ok.
   };
 
   EXPECT_THAT(centres, ContainerEq(expected));

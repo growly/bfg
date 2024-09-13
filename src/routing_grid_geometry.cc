@@ -234,7 +234,7 @@ void RoutingGridGeometry::ComputeForLayers(
 //
 // The set of connectable vertices are those in [] brackets for this example
 // polygon.
-std::set<RoutingVertex*> RoutingGridGeometry::ConnectingVertices(
+std::set<RoutingVertex*> RoutingGridGeometry::ConnectablePerimeter(
     const geometry::Polygon &polygon) const {
   std::set<RoutingVertex*> vertices;
   auto check_vertex = [&](int64_t i, int64_t j) {

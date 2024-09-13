@@ -2272,10 +2272,14 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
           *this, polygon, padding + min_separation);
   polygon_blockages_.emplace_back(blockage);
 
+  // FIXME(aryap): Move to ApplyBlockage, actually apply
   std::vector<RoutingGridGeometry*> grid_geometries =
       FindRoutingGridGeometriesUsingLayer(polygon.layer());
   for (RoutingGridGeometry *grid_geometry : grid_geometries) {
-    grid_geometry->ConnectingVertices(polygon);
+    auto connectable = grid_geometry->ConnectablePerimeter(polygon);
+    for (RoutingVertex *vertex : connectable) {
+      LOG(INFO) << "connectable: " << vertex->centre();
+    }
   }
 
   // Find tracks on the blockage layer, if any.
