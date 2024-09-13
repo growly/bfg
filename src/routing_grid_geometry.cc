@@ -339,6 +339,19 @@ std::set<RoutingVertex*> RoutingGridGeometry::ConnectingVertices(
   return vertices;
 }
 
+int64_t RoutingGridGeometry::ColumnCoordinate(size_t column_index) const {
+  return x_start_ + x_pitch_ * column_index;
+}
+
+int64_t RoutingGridGeometry::RowCoordinate(size_t row_index) const {
+  return y_start_ + y_pitch_ * row_index;
+}
+
+geometry::Point RoutingGridGeometry::PointAt(
+    size_t column_index, size_t row_index) const {
+  return {ColumnCoordinate(column_index), RowCoordinate(row_index)};
+}
+
 void RoutingGridGeometry::EnvelopingVertexIndices(
     const geometry::Point &point,
     std::set<std::pair<size_t, size_t>> *vertices,
@@ -463,13 +476,13 @@ void RoutingGridGeometry::VerticesAt(
 
 geometry::Line RoutingGridGeometry::HorizontalLineThrough(size_t row_index)
   const {
-  int64_t y = y_start_ + y_pitch_ * row_index;
+  int64_t y = RowCoordinate(row_index);
   return geometry::Line({x_min_, y}, {x_max_, y});
 }
 
 geometry::Line RoutingGridGeometry::VerticalLineThrough(size_t column_index)
   const {
-  int64_t x = x_start_ + x_pitch_ * column_index;
+  int64_t x = ColumnCoordinate(column_index);
   return geometry::Line({x, y_min_}, {x, y_max_});
 }
 

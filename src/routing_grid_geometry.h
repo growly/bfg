@@ -90,6 +90,10 @@ class RoutingGridGeometry {
   void AssignVertexAt(
       size_t column_index, size_t row_index, RoutingVertex *vertex);
 
+  int64_t ColumnCoordinate(size_t column_index) const;
+  int64_t RowCoordiante(size_t row_index) const;
+  geometry::Point PointAt(size_t column_index, size_t row_index) const;
+
   int64_t x_offset() const {
     return x_offset_;
   }
