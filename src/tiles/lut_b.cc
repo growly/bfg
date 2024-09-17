@@ -682,16 +682,30 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
 
   geometry::Group created_shapes;
 
-  std::vector<geometry::Point> points(connections.begin(), connections.end());
+  // Sort points by y (the key) and remove duplicates by keeping either the
+  // closest or the furthest point from spine_x.
+  std::map<int64_t, geometry::Point> points;
+  for (const geometry::Point &point : connections) {
+    auto it = points.find(point.y());
+    if (it != points.end()) {
+      geometry::Point on_spine = {spine_x, point.y()};
+      const geometry::Point &existing = it->second;
+      // Keeps closest point:
+      if (point.L1DistanceTo(on_spine) < existing.L1DistanceTo(on_spine)) {
+        points[point.y()] = point;
+      }
+    } else {
+      points[point.y()] = point;
+    }
+  }
+
   if (points.size() < 2) {
     return created_shapes;
   }
-  // Points should be sorted in y.
-  std::sort(points.begin(), points.end(), geometry::Point::CompareYThenX);
 
   // Draw spine.
-  int64_t y_min = points.front().y();
-  int64_t y_max = points.back().y();
+  int64_t y_min = points.begin()->second.y();
+  int64_t y_max = points.rbegin()->second.y();
 
   geometry::PolyLine spine_line({{spine_x, y_min}, {spine_x, y_max}});
   spine_line.SetWidth(spine_rules.min_width);
@@ -705,7 +719,8 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
       2 * finger_via_rules.via_overhang_wide + via_side;
   uint64_t finger_bulge_length = 2 * finger_via_rules.via_overhang + via_side;
 
-  for (const geometry::Point &point : points) {
+  for (const auto &entry : points) {
+    const geometry::Point &point = entry.second;
     if (point.x() == spine_x) {
       spine_line.InsertBulge(point, spine_bulge_width, spine_bulge_length);
       layout->MakeVia(via_layer_name, point, net);
