@@ -672,6 +672,7 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
     const std::string &net,
     const std::vector<geometry::Point> &connections,
     int64_t spine_x,
+    int64_t spine_width,
     Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &spine_rules = db.Rules(spine_layer_name);
@@ -708,7 +709,8 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
   int64_t y_max = points.rbegin()->second.y();
 
   geometry::PolyLine spine_line({{spine_x, y_min}, {spine_x, y_max}});
-  spine_line.SetWidth(spine_rules.min_width);
+  spine_line.SetWidth(
+      std::max(spine_rules.min_width, spine_width));
   spine_line.set_min_separation(spine_rules.min_separation);
   spine_line.set_net(net);
 
@@ -769,6 +771,16 @@ void LutB::AddClockAndPowerStraps(
   // FIXME(aryap): We are leaking technology-specific concerns into what was
   // previously somewhat agnostic; but was it ever really agnostic? There could
   // just be a strap configuration sction in the parameters:
+  // TODO(aryap): What if we has a class SyntheticRules that created common
+  // derivative rules from the base rule structs? Maybe users can define them
+  // with std::functions (functors) in a standard form...
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &spine_via_rules = db.Rules("met2.drawing", "via1.drawing");
+  const auto &spine_rules = db.Rules("met2.drawing");
+  const auto &via_rules = db.Rules("via1.drawing");
+  uint64_t via_side = std::max(via_rules.via_width, via_rules.via_height);
+  uint64_t spine_bulge_width = 2 * spine_via_rules.via_overhang_wide + via_side;
+  int64_t strap_pitch = spine_bulge_width + spine_rules.min_separation;
 
   const LutB::LayoutConfig layout_config =
       *LutB::GetLayoutConfiguration(lut_size_);
@@ -777,6 +789,7 @@ void LutB::AddClockAndPowerStraps(
       layout_config.right.strap_alignment};
 
   for (size_t bank = 0; bank < banks_.size(); ++bank) {
+    std::optional<int64_t> last_spine_x;
     for (size_t i = 0; i < kPortNames.size(); ++i) {
       const std::string &port_name = kPortNames[i];
       std::vector<geometry::Point> connections;
@@ -799,9 +812,16 @@ void LutB::AddClockAndPowerStraps(
       int64_t spine_x = 0;
       if (strap_alignment_per_bank[bank] == geometry::Compass::LEFT) {
         spine_x = connections.front().x();
+        if (last_spine_x) {
+          spine_x = std::min(spine_x, *last_spine_x - strap_pitch);
+        }
       } else if (strap_alignment_per_bank[bank] == geometry::Compass::RIGHT) {
         spine_x = connections.back().x();
+        if (last_spine_x) {
+          spine_x = std::max(spine_x, *last_spine_x + strap_pitch);
+        }
       }
+      last_spine_x = spine_x;
 
       std::string net = absl::StrCat(kNets[i], "_", bank);
 
@@ -812,6 +832,7 @@ void LutB::AddClockAndPowerStraps(
                                       net,
                                       connections,
                                       spine_x,
+                                      spine_bulge_width,
                                       layout);
       routing_grid->AddBlockages(new_shapes);
     }

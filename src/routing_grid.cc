@@ -64,14 +64,14 @@ namespace bfg {
 template<>
 bool RoutingGridBlockage<geometry::Rectangle>::IntersectsPoint(
     const geometry::Point &point, int64_t margin) const {
-  LOG(WARNING) << "Unimplemented!";
+  VLOG(20) << "Unimplemented!";
   return false;
 }
 
 template<>
 bool RoutingGridBlockage<geometry::Polygon>::IntersectsPoint(
     const geometry::Point &point, int64_t margin) const {
-  LOG(WARNING) << "Unimplemented!";
+  VLOG(20) << "Unimplemented!";
   return false;
 }
 
@@ -307,6 +307,13 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       if (!new_vertex) {
         continue;
       }
+      new_vertex->set_available(false);
+      new_vertex->set_net(blockage.shape().net());
+      new_vertex->set_explicit_net_layer(blockage.shape().layer());
+      // TODO(aryap): This actually requires a test on the blockage shape
+      // accommodating the encap rules as-is, which we could do, but which would
+      // require me to be less lazy.
+      new_vertex->set_explicit_net_layer_requires_encap(true);
       AddVertex(new_vertex);
     }
   }
@@ -1710,15 +1717,23 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   // to the given net.
   //
   // We can assume that the vertex attaches to the net on one of its
-  // connectable_layers_, but which one is the best to use depends on which path
-  // the vertex is installed in.
+  // connectable_layers_, but which one exactly is the best to use depends on
+  // which path the vertex is installed in.
   //
   // Because we haven't called InstallPath yet, vertices have not been assigned
   // permanent in/out_edge() values.
   std::set<geometry::Layer> end_layers = EffectiveLayersForInstalledVertex(
       end_vertex);
+  // TODO(aryap): Is this ever not-empty? InstallPath also populates
+  // installed_in_paths on the RoutingVertex...
   shortest_path->end_access_layers().insert(
       end_layers.begin(), end_layers.end());
+
+  if (shortest_path->End()->net() != "" &&
+      shortest_path->End()->explicit_net_layer()) {
+    shortest_path->end_access_layers().insert(
+        *shortest_path->End()->explicit_net_layer());
+  }
 
   LOG(INFO) << "Found path: " << *shortest_path;
 

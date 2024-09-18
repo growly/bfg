@@ -120,6 +120,7 @@ class LutB : public Tile {
       const std::string &net,
       const std::vector<geometry::Point> &connections,
       int64_t spine_x,
+      int64_t spine_width,
       Layout *layout) const;
 
   size_t lut_size_;

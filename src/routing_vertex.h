@@ -70,6 +70,22 @@ class RoutingVertex {
     return installed_in_paths_;
   }
 
+  const std::optional<geometry::Layer> &explicit_net_layer() const {
+    return explicit_net_layer_;
+  }
+  void set_explicit_net_layer(
+      const std::optional<geometry::Layer> &explicit_net_layer) {
+    explicit_net_layer_ = explicit_net_layer;
+  }
+
+  bool explicit_net_layer_requires_encap() const {
+    return explicit_net_layer_requires_encap_;
+  }
+  void set_explicit_net_layer_requires_encap(
+      bool explicit_net_layer_requires_encap) {
+    explicit_net_layer_requires_encap_ = explicit_net_layer_requires_encap;
+  }
+
   const geometry::Point &centre() const { return centre_; }
 
   void set_net(const std::string &net) { net_ = net; }
@@ -161,6 +177,13 @@ class RoutingVertex {
   // in the path. When multiple paths join, the shared vertex will have mutliple
   // installed paths here.
   std::map<RoutingPath*, std::set<RoutingEdge*>> installed_in_paths_;
+
+  // If defined, this identifies the layer on which the RoutingVertex is known
+  // (or expected to be) connected to the assigned net_ label.
+  // TODO(aryap): Not handled: being able to connect to the net on multiple
+  // layers; needing an encap on some of them.
+  std::optional<geometry::Layer> explicit_net_layer_;
+  bool explicit_net_layer_requires_encap_;
 
   geometry::Point centre_;
 
