@@ -1,5 +1,7 @@
 #include "rectangle.h"
+
 #include <algorithm>
+#include <optional>
 #include <glog/logging.h>
 #include <sstream>
 
@@ -113,13 +115,74 @@ bool Rectangle::Intersects(const Point &point, int64_t margin) const {
   return modified.Intersects(point);
 }
 
-void Rectangle::GetBoundaryLines(std::vector<Line> *lines) const {
+std::optional<PointPair> Rectangle::IntersectingPoints(const Line &line) const {
+  std::vector<Line> boundary_lines = GetBoundaryLines();
+  std::vector<Point> intersections;
+  // Unlike for Polygon, we have a very limited number of cases to deal with. A
+  // line can intersect a Rectangle at at most two points. If it intersects a
+  // corner, we record that as two points, in keeping with the convention
+  // defined for intersections with a Polygon.
+  //
+  // The only exceptional handling we need is for lines that are incident on a
+  // boundary line. In that case the start and end of the boundary line are the
+  // intersections and we don't consider any other boundary lines.
+  //
+  // FIXME(aryap): DUDE a DIAGONAL line that hits two DIAGONALLY OPPOSITE
+  // corners will yield 4 intersections! Maybe we disable end hit testing.
+  bool any_intersection = false;
+  for (const Line &boundary : boundary_lines) {
+    Point hit;
+    bool incident = false;
+    bool unused_is_start_or_end = false;
+    bool intersects = boundary.IntersectsInBounds(line,
+                                                  &incident,
+                                                  &unused_is_start_or_end,
+                                                  &hit,
+                                                  true,     // ignore_start
+                                                  false);   // ignore_end
+    if (intersects) {
+      any_intersection = true;
+      if (incident) {
+        intersections = {boundary.start(), boundary.end()};
+        break;
+      }
+      intersections.push_back(hit);
+    }
+  }
+
+  if (!any_intersection) {
+    LOG_IF(FATAL, !intersections.empty())
+        << "No intersections but intersections exist";
+    return std::nullopt;
+  }
+  if (intersections.size() == 1) {
+    intersections.push_back(intersections.front());
+  }
+
+  LOG_IF(FATAL, intersections.size() != 2)
+      << "There should be exactly two intersections of a line and a rectangle";
+
+  std::sort(
+      intersections.begin(), intersections.end(),
+      [&](const Point &lhs, const Point &rhs) {
+          return line.ProjectionCoefficient(lhs) <
+              line.ProjectionCoefficient(rhs);
+      });
+
+  PointPair intersection = {intersections.front(), intersections.back()};
+  return intersection;
+}
+
+std::vector<Line> Rectangle::GetBoundaryLines() const {
   Point upper_left = UpperLeft();
   Point lower_right = LowerRight();
-  lines->emplace_back(lower_left_, upper_left);
-  lines->emplace_back(upper_left, upper_right_);
-  lines->emplace_back(upper_right_, lower_right);
-  lines->emplace_back(lower_right, lower_left_);
+  std::vector<Line> lines = {
+      Line(lower_left_, upper_left),
+      Line(upper_left, upper_right_),
+      Line(upper_right_, lower_right),
+      Line(lower_right, lower_left_)
+  };
+  return lines;
 }
 
 void Rectangle::MirrorY() {

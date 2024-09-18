@@ -179,8 +179,7 @@ TEST(LineTest, ProjectionCoefficient) {
 TEST(LineTest, ExtendToNearestIntersection) {
   geometry::Rectangle rectangle = Rectangle({0, 0}, {20, 20});
 
-  std::vector<Line> boundary_lines;
-  rectangle.GetBoundaryLines(&boundary_lines);
+  std::vector<Line> boundary_lines = rectangle.GetBoundaryLines();
 
   for (const auto &line: boundary_lines) {
     LOG(INFO) << line;

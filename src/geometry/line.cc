@@ -68,7 +68,7 @@ bool Line::Intersect(
   VLOG(11) << rhs.start() << " -> " << rhs.end()
            << ": y2 = " << m2 << "*x2 + " << c2;
 
-  // FIXME(aryap): What about antiparallel lines?
+  // FIXME(aryap): What about antiparallel lines? Just check if m1 == -m2?
   if (m1 == m2) {
     // Return true if the offsets are the same, since that means the two lines
     // are the same.
@@ -234,7 +234,7 @@ bool Line::IntersectsInBounds(const Point &point) const {
   if (!Intersects(point))
     return false;
 
-  // This is a very common operation of order the two ys or xs:
+  // This is the very common operation of ordering the two ys or xs:
   int64_t max_y = std::max(start_.y(), end_.y());
   int64_t min_y = std::min(start_.y(), end_.y());
   int64_t max_x = std::max(start_.x(), end_.x());

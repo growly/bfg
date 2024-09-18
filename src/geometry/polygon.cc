@@ -481,8 +481,7 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
 
   // The regular case is is that some line on the rectangle intersects some line
   // on the polygon:
-  std::vector<Line> rectangle_perimeter;
-  rectangle.GetBoundaryLines(&rectangle_perimeter);
+  std::vector<Line> rectangle_perimeter = rectangle.GetBoundaryLines();
 
   for (size_t i = 0; i < vertices_.size(); ++i) {
     // Check for intersects of any of the lines of the polygon with any of the

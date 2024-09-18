@@ -105,6 +105,9 @@ class RoutingGridGeometry {
   std::map<RoutingTrack*, std::vector<geometry::Point>>
       CandidateVertexPositionsOnCrossedTracks(
           const geometry::Polygon &polygon) const;
+  std::map<RoutingTrack*, std::vector<geometry::Point>>
+      CandidateVertexPositionsOnCrossedTracks(
+          const geometry::Rectangle &rectangle) const;
 
   RoutingVertex *VertexAt(const geometry::Point &point) const;
   RoutingVertex *VertexAt(size_t column_index, size_t row_index) const;

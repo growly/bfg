@@ -96,6 +96,42 @@ TEST(RectangleTest, Intersects_WithPositiveMargin) {
   EXPECT_FALSE(test.Intersects({2, -3}, 1));
 }
 
+TEST(RectangleTest, IntersectingPoints) {
+  Rectangle test = Rectangle({0, 0}, {4, 4});
+
+  Line ray = Line({0, -1}, {0, 5});
+  auto intersection = test.IntersectingPoints(ray);
+  ASSERT_NE(std::nullopt, intersection);
+  EXPECT_EQ(Point(0, 0), intersection->first);
+  EXPECT_EQ(Point(0, 4), intersection->second);
+
+  ray = Line({0, 5}, {0, -1});
+  intersection = test.IntersectingPoints(ray);
+  ASSERT_NE(std::nullopt, intersection);
+  EXPECT_EQ(Point(0, 4), intersection->first);
+  EXPECT_EQ(Point(0, 0), intersection->second);
+
+  ray = Line({-1, 1}, {4, 1});
+  intersection = test.IntersectingPoints(ray);
+  ASSERT_NE(std::nullopt, intersection);
+  EXPECT_EQ(Point(0, 1), intersection->first);
+  EXPECT_EQ(Point(4, 1), intersection->second);
+
+  ray = Line({2, -1}, {2, 3});
+  intersection = test.IntersectingPoints(ray);
+  ASSERT_NE(std::nullopt, intersection);
+  EXPECT_EQ(Point(2, 0), intersection->first);
+  EXPECT_EQ(Point(2, 4), intersection->second);
+
+  // The pathological case. This would intersect all four boundary lines if not
+  // deliberately accounted for.
+  ray = Line({0, 0}, {4, 4});
+  intersection = test.IntersectingPoints(ray);
+  ASSERT_NE(std::nullopt, intersection);
+  EXPECT_EQ(Point(0, 0), intersection->first);
+  EXPECT_EQ(Point(4, 4), intersection->second);
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

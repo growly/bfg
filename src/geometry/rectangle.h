@@ -2,6 +2,7 @@
 #define GEOMETRY_RECTANGLE_H_
 
 #include <ostream>
+#include <optional>
 
 #include "shape.h"
 #include "point.h"
@@ -59,7 +60,11 @@ class Rectangle : public Shape {
   bool Intersects(const Point &point) const;
   bool Intersects(const Point &point, int64_t margin) const;
 
-  void GetBoundaryLines(std::vector<Line> *lines) const;
+  // Returns the intersections of the _infinite line_ 'line' with this
+  // Rectangle.
+  std::optional<PointPair> IntersectingPoints(const Line &line) const;
+
+  std::vector<Line> GetBoundaryLines() const;
 
   uint64_t Width() const { return upper_right_.x() - lower_left_.x(); }
   uint64_t Height() const { return upper_right_.y() - lower_left_.y(); }
