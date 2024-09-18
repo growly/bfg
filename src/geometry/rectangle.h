@@ -56,6 +56,8 @@ class Rectangle : public Shape {
 
   bool Overlaps(const Rectangle &other) const;
   const Rectangle OverlapWith(const Rectangle &other) const;
+  bool Intersects(const Point &point) const;
+  bool Intersects(const Point &point, int64_t margin) const;
 
   void GetBoundaryLines(std::vector<Line> *lines) const;
 

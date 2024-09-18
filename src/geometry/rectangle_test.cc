@@ -57,6 +57,45 @@ TEST(RectangleTest, ClosestDistanceBetween) {
       anchor, Rectangle({-4, -5}, {2, -4})));
 }
 
+TEST(RectangleTest, Intersects) {
+  Rectangle test = Rectangle({1, 1}, {3, 3});
+  for (int64_t i = 1; i <= 3; i++) {
+    for (int64_t j = 1; j <= 3; j++) {
+      EXPECT_TRUE(test.Intersects({i, j}));
+    }
+  }
+  EXPECT_FALSE(test.Intersects({4, 4}));
+  EXPECT_FALSE(test.Intersects({0, 0}));
+  EXPECT_FALSE(test.Intersects({1, 5}));
+  EXPECT_FALSE(test.Intersects({2, -3}));
+}
+
+TEST(RectangleTest, Intersects_WithNegativeMargin) {
+  Rectangle test = Rectangle({0, 0}, {4, 4});
+  for (int64_t i = 1; i <= 3; i++) {
+    for (int64_t j = 1; j <= 3; j++) {
+      EXPECT_TRUE(test.Intersects({i, j}, -1));
+    }
+  }
+  EXPECT_FALSE(test.Intersects({4, 4}, -1));
+  EXPECT_FALSE(test.Intersects({0, 0}, -1));
+  EXPECT_FALSE(test.Intersects({1, 5}, -1));
+  EXPECT_FALSE(test.Intersects({2, -3}, -1));
+}
+
+TEST(RectangleTest, Intersects_WithPositiveMargin) {
+  Rectangle test = Rectangle({1, 1}, {3, 3});
+  for (int64_t i = 0; i <= 4; i++) {
+    for (int64_t j = 0; j <= 4; j++) {
+      EXPECT_TRUE(test.Intersects({i, j}, 1));
+    }
+  }
+  EXPECT_FALSE(test.Intersects({5, 5}, 1));
+  EXPECT_FALSE(test.Intersects({-1, -1}, 1));
+  EXPECT_FALSE(test.Intersects({1, 5}, 1));
+  EXPECT_FALSE(test.Intersects({2, -3}, 1));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

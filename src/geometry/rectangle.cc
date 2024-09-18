@@ -100,6 +100,19 @@ const Rectangle Rectangle::OverlapWith(const Rectangle &other) const {
   return Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
 
+bool Rectangle::Intersects(const Point &point) const {
+  return point.x() >= lower_left_.x() && point.x() <= upper_right_.x() &&
+         point.y() >= lower_left_.y() && point.y() <= upper_right_.y();
+}
+
+bool Rectangle::Intersects(const Point &point, int64_t margin) const {
+  if (margin == 0) {
+    return Intersects(point);
+  }
+  Rectangle modified = WithPadding(margin);
+  return modified.Intersects(point);
+}
+
 void Rectangle::GetBoundaryLines(std::vector<Line> *lines) const {
   Point upper_left = UpperLeft();
   Point lower_right = LowerRight();
@@ -180,8 +193,17 @@ Rectangle Rectangle::BoundingBoxIfRotated(
 }
 
 Rectangle Rectangle::WithPadding(int64_t padding) const {
-  return {{lower_left_ - Point {padding, padding},
-           upper_right_ + Point {padding, padding}}};
+  Point lower_left = lower_left_ - Point {padding, padding};
+  Point upper_right = upper_right_ + Point {padding, padding};
+  if (lower_left.x() > upper_right.x()) {
+    lower_left.set_x((lower_left.x() + upper_right.x())/2);
+    upper_right.set_x(lower_left.x());
+  }
+  if (lower_left.y() > upper_right.y()) {
+    lower_left.set_y((lower_left.y() + upper_right.y())/2);
+    upper_right.set_y(lower_left.y());
+  }
+  return {lower_left, upper_right};
 }
 
 ::vlsir::raw::Rectangle Rectangle::ToVLSIRRectangle(
