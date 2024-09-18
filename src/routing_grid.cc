@@ -60,7 +60,21 @@ namespace bfg {
 
 // These partial specialisations need to occur before any use because dem's the
 // rulz.
-//
+
+template<>
+bool RoutingGridBlockage<geometry::Rectangle>::IntersectsPoint(
+    const geometry::Point &point, int64_t margin) const {
+  LOG(WARNING) << "Unimplemented!";
+  return false;
+}
+
+template<>
+bool RoutingGridBlockage<geometry::Polygon>::IntersectsPoint(
+    const geometry::Point &point, int64_t margin) const {
+  LOG(WARNING) << "Unimplemented!";
+  return false;
+}
+
 // We have a specialisation for {Rectangle, Polygon} X {Vertex, Edge}.
 //
 // Since these methods test for intersection, or that the two geometric objects
@@ -197,12 +211,11 @@ void RoutingGrid::ApplyBlockage(
         bool blocked_at_all = false;
         // We use the RoutingGridBlockage to do a hit test; set
         // exceptional_nets = nullopt so that no exception is made.
-        if (blockage.BlocksWithoutPadding(*vertex, std::nullopt, direction)) {
-          blocked_at_all = true;
+        if (blockage.IntersectsPoint(vertex->centre(), 0)) {
           vertex->set_net(blockage.shape().net());
           VLOG(16) << "Blockage: " << blockage.shape()
-                   << " blocks " << vertex->centre()
-                   << " directly (without padding) in "
+                   << " intersects " << vertex->centre()
+                   << " with margin " << 0
                    << direction << " direction";
         } else if (blockage.Blocks(*vertex, std::nullopt, direction)) {
           blocked_at_all = true;
@@ -225,11 +238,9 @@ void RoutingGrid::ApplyBlockage(
       }
     }
 
-    if (blockage.shape().net().empty()) {
-      continue;
+    if (!blockage.shape().net().empty()) {
+      AddOffGridVerticesForBlockage(*grid_geometry, blockage);
     }
-    // Connect net-labelled blockages with off-grid vertices:
-    AddOffGridVerticesForBlockage(*grid_geometry, blockage);
   }
 }
 

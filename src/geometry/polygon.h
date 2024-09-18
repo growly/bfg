@@ -42,7 +42,7 @@ class Polygon : public Shape {
   }
 
   bool Overlaps(const Rectangle &rectangle) const;
-  bool ContainsVertex(const Point &point) const;
+  bool HasVertex(const Point &point) const;
 
   std::vector<PointPair> IntersectingPoints(const Line &line) const;
 

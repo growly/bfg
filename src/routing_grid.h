@@ -565,6 +565,13 @@ class RoutingGridBlockage {
 
   ~RoutingGridBlockage();
 
+  // Tests intersection of the blockage with a given point. This differs from
+  // the RoutingVertex and the RoutingEdge tests because no footprint is
+  // assumed: the point is either in the shape or not. (Margin is applied to the
+  // shape before testing and can be negative, if the point needs to be "more
+  // inside" to be considered a hit.)
+  bool IntersectsPoint(const geometry::Point &point, int64_t margin) const;
+
   bool BlocksWithoutPadding(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &exceptional_nets =

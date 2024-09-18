@@ -560,7 +560,7 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
   return false;
 }
 
-bool Polygon::ContainsVertex(const Point &point) const {
+bool Polygon::HasVertex(const Point &point) const {
   return std::find(
       vertices_.begin(), vertices_.end(), point) != vertices_.end();
 }
