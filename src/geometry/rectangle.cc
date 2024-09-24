@@ -115,7 +115,7 @@ bool Rectangle::Intersects(const Point &point, int64_t margin) const {
   return modified.Intersects(point);
 }
 
-std::optional<PointPair> Rectangle::IntersectingPoints(const Line &line) const {
+std::vector<PointPair> Rectangle::IntersectingPoints(const Line &line) const {
   std::vector<Line> boundary_lines = GetBoundaryLines();
   std::vector<Point> intersections;
   // Unlike for Polygon, we have a very limited number of cases to deal with. A
@@ -153,7 +153,7 @@ std::optional<PointPair> Rectangle::IntersectingPoints(const Line &line) const {
   if (!any_intersection) {
     LOG_IF(FATAL, !intersections.empty())
         << "No intersections but intersections exist";
-    return std::nullopt;
+    return {};
   }
   if (intersections.size() == 1) {
     intersections.push_back(intersections.front());
@@ -170,7 +170,7 @@ std::optional<PointPair> Rectangle::IntersectingPoints(const Line &line) const {
       });
 
   PointPair intersection = {intersections.front(), intersections.back()};
-  return intersection;
+  return {intersection};
 }
 
 std::vector<Line> Rectangle::GetBoundaryLines() const {

@@ -101,35 +101,35 @@ TEST(RectangleTest, IntersectingPoints) {
 
   Line ray = Line({0, -1}, {0, 5});
   auto intersection = test.IntersectingPoints(ray);
-  ASSERT_NE(std::nullopt, intersection);
-  EXPECT_EQ(Point(0, 0), intersection->first);
-  EXPECT_EQ(Point(0, 4), intersection->second);
+  ASSERT_NE(0, intersection.size());
+  EXPECT_EQ(Point(0, 0), intersection.front().first);
+  EXPECT_EQ(Point(0, 4), intersection.front().second);
 
   ray = Line({0, 5}, {0, -1});
   intersection = test.IntersectingPoints(ray);
-  ASSERT_NE(std::nullopt, intersection);
-  EXPECT_EQ(Point(0, 4), intersection->first);
-  EXPECT_EQ(Point(0, 0), intersection->second);
+  ASSERT_NE(0, intersection.size());
+  EXPECT_EQ(Point(0, 4), intersection.front().first);
+  EXPECT_EQ(Point(0, 0), intersection.front().second);
 
   ray = Line({-1, 1}, {4, 1});
   intersection = test.IntersectingPoints(ray);
-  ASSERT_NE(std::nullopt, intersection);
-  EXPECT_EQ(Point(0, 1), intersection->first);
-  EXPECT_EQ(Point(4, 1), intersection->second);
+  ASSERT_NE(0, intersection.size());
+  EXPECT_EQ(Point(0, 1), intersection.front().first);
+  EXPECT_EQ(Point(4, 1), intersection.front().second);
 
   ray = Line({2, -1}, {2, 3});
   intersection = test.IntersectingPoints(ray);
-  ASSERT_NE(std::nullopt, intersection);
-  EXPECT_EQ(Point(2, 0), intersection->first);
-  EXPECT_EQ(Point(2, 4), intersection->second);
+  ASSERT_NE(0, intersection.size());
+  EXPECT_EQ(Point(2, 0), intersection.front().first);
+  EXPECT_EQ(Point(2, 4), intersection.front().second);
 
   // The pathological case. This would intersect all four boundary lines if not
   // deliberately accounted for.
   ray = Line({0, 0}, {4, 4});
   intersection = test.IntersectingPoints(ray);
-  ASSERT_NE(std::nullopt, intersection);
-  EXPECT_EQ(Point(0, 0), intersection->first);
-  EXPECT_EQ(Point(4, 4), intersection->second);
+  ASSERT_NE(0, intersection.size());
+  EXPECT_EQ(Point(0, 0), intersection.front().first);
+  EXPECT_EQ(Point(4, 4), intersection.front().second);
 }
 
 }  // namespace

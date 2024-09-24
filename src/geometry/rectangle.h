@@ -62,7 +62,7 @@ class Rectangle : public Shape {
 
   // Returns the intersections of the _infinite line_ 'line' with this
   // Rectangle.
-  std::optional<PointPair> IntersectingPoints(const Line &line) const;
+  std::vector<PointPair> IntersectingPoints(const Line &line) const;
 
   std::vector<Line> GetBoundaryLines() const;
 

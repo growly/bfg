@@ -102,12 +102,9 @@ class RoutingGridGeometry {
   std::set<RoutingTrack*> CrossedTracks(
       const geometry::Polygon &polygon) const;
 
+  template <typename T>
   std::map<RoutingTrack*, std::vector<geometry::Point>>
-      CandidateVertexPositionsOnCrossedTracks(
-          const geometry::Polygon &polygon) const;
-  std::map<RoutingTrack*, std::vector<geometry::Point>>
-      CandidateVertexPositionsOnCrossedTracks(
-          const geometry::Rectangle &rectangle) const;
+      CandidateVertexPositionsOnCrossedTracks(const T &shape) const;
 
   RoutingVertex *VertexAt(const geometry::Point &point) const;
   RoutingVertex *VertexAt(size_t column_index, size_t row_index) const;
@@ -253,6 +250,53 @@ class RoutingGridGeometry {
   std::vector<RoutingTrack*> horizontal_tracks_by_index_;
   std::vector<RoutingTrack*> vertical_tracks_by_index_;
 };
+
+template <typename T>
+std::map<RoutingTrack*, std::vector<geometry::Point>>
+    RoutingGridGeometry::CandidateVertexPositionsOnCrossedTracks(const T &shape)
+    const {
+  std::map<RoutingTrack*, std::vector<geometry::Point>> positions_by_track;
+
+  auto [i_lower, i_upper, j_lower, j_upper] = MapToBoundingGridIndices(shape);
+
+  // Iterate over columns:
+  for (int64_t i = i_lower; i <= i_upper; ++i) {
+    geometry::Line vertical_line = VerticalLineThrough(i);
+    RoutingTrack *track = vertical_tracks_by_index_[i];
+    if (!track) {
+      continue;
+    }
+
+    std::vector<geometry::PointPair> points =
+        shape.IntersectingPoints(vertical_line);
+
+    for (auto pair : points) {
+      // TODO(aryap): Will be useful to generate multiple points per range
+      // here.
+      int64_t offset = (pair.first.y() + pair.second.y()) / 2;
+      geometry::Point point(pair.first.x(), offset);
+      positions_by_track[track].push_back(point);
+    }
+  }
+  // Iterate over rows:
+  for (int64_t j = j_lower; j <= j_upper; ++j) {
+    geometry::Line horizontal_line = HorizontalLineThrough(j);
+    RoutingTrack *track = horizontal_tracks_by_index_[j];
+    if (!track) {
+      continue;
+    }
+
+    std::vector<geometry::PointPair> points =
+        shape.IntersectingPoints(horizontal_line);
+
+    for (auto pair : points) {
+      int64_t offset = (pair.first.x() + pair.second.x()) / 2;
+      geometry::Point point(offset, pair.first.y());
+      positions_by_track[track].push_back(point);
+    }
+  }
+  return positions_by_track;
+}
 
 }   // namespace bfg
 

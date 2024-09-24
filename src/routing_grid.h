@@ -193,6 +193,7 @@ class RoutingGrid {
   template<typename T>
   void ApplyBlockage(
       const RoutingGridBlockage<T> &blockage,
+      bool is_temporary = false,
       std::set<RoutingVertex*> *blocked_vertices = nullptr);
 
   // Check if the given routing vertex or edge clears all known explicit

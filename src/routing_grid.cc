@@ -189,6 +189,7 @@ RoutingGridBlockage<T>::~RoutingGridBlockage() {
 template<typename T>
 void RoutingGrid::ApplyBlockage(
     const RoutingGridBlockage<T> &blockage,
+    bool is_temporary,
     std::set<RoutingVertex*> *blocked_vertices) {
   const geometry::Layer &layer = blockage.shape().layer();
   // Find any possibly-blocked vertices and make them unavailable:
@@ -238,7 +239,10 @@ void RoutingGrid::ApplyBlockage(
       }
     }
 
-    if (!blockage.shape().net().empty()) {
+    // TODO(aryap): Do we need a facility to roll back off-grid vertices for
+    // shapes on nets that are temporary blockages? Practically this includes
+    // via footprints for ports!
+    if (!is_temporary && !blockage.shape().net().empty()) {
       AddOffGridVerticesForBlockage(*grid_geometry, blockage);
     }
   }
@@ -272,22 +276,14 @@ void RoutingGrid::ForgetBlockage(
   polygon_blockages_.erase(it);
 }
 
-template<>
-void RoutingGrid::AddOffGridVerticesForBlockage(
-    const RoutingGridGeometry &grid_geometry,
-    const RoutingGridBlockage<geometry::Rectangle> &blockage) {
-  LOG(WARNING) << "doing nothing for rectangle on net: "
-               << blockage.shape().net();
-}
-
 // We rely on the RoutingGridBlockage to generate candidate positions and
 // because it can efficiently determine which tracks the polygon intersects,
 // since it can relate the bounding box of the given object to the
 // possibly-implicated tracks.
-template<>
+template<typename T>
 void RoutingGrid::AddOffGridVerticesForBlockage(
     const RoutingGridGeometry &grid_geometry,
-    const RoutingGridBlockage<geometry::Polygon> &blockage) {
+    const RoutingGridBlockage<T> &blockage) {
   auto tracks_and_positions =
       grid_geometry.CandidateVertexPositionsOnCrossedTracks(
           blockage.shape());
@@ -2325,7 +2321,7 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
     }
   }
 
-  ApplyBlockage(*blockage, blocked_vertices);
+  ApplyBlockage(*blockage, is_temporary, blocked_vertices);
   return blockage;
 }
 
@@ -2359,7 +2355,7 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
     }
   }
 
-  ApplyBlockage(*blockage, blocked_vertices);
+  ApplyBlockage(*blockage, is_temporary, blocked_vertices);
   return blockage;
 }
 
