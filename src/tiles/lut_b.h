@@ -5,6 +5,8 @@
 #include <utility>
 #include <string>
 
+#include <absl/status/status.h>
+
 #include "tile.h"
 
 #include "../geometry/compass.h"
@@ -66,7 +68,7 @@ class LutB : public Tile {
     BankArrangement left;
     BankArrangement right;
     int64_t mux_area_horizontal_padding;
-    int64_t mux_area_vertical_padding;
+    int64_t mux_area_vertical_min_padding;
     size_t mux_area_rows;
     size_t mux_area_columns;
   };
@@ -111,6 +113,11 @@ class LutB : public Tile {
       Layout *layout,
       std::map<geometry::Instance*, std::string> *memory_output_net_names)
       const;
+
+  absl::Status AddMultiPointRoute(
+      const PortKeyCollection &collection,
+      RoutingGrid *routing_grid,
+      Layout *layout) const;
 
   // TODO(aryap): This feels like a nice general feature of the Layout class.
   geometry::Group AddVerticalSpineWithFingers(

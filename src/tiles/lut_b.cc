@@ -52,7 +52,7 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
       .strap_alignment = geometry::Compass::LEFT
     },
     .mux_area_horizontal_padding = 2500,
-    .mux_area_vertical_padding = 1250,
+    .mux_area_vertical_min_padding = 1250,
     .mux_area_rows = 2,
     .mux_area_columns = 2,
   }},
@@ -288,8 +288,17 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
       layout_config.mux_area_horizontal_padding;
-  y_pos = mux_grid.GetBoundingBox()->lower_left().y() -
-      layout_config.mux_area_vertical_padding;
+
+  int64_t y_pitch = db.Rules("met1.drawing").min_pitch;
+  // To maintain the relative alignment of the RoutingGrid to the cells, we
+  // restrict the vertical space between the left and right banks to a multiple
+  // of the vertical pitch. The minimum value this should take is the min
+  // vertical spacing to the mux.
+  int64_t y_diff = banks_[0].Origin().y() - (
+      mux_grid.GetBoundingBox()->lower_left().y() -
+      layout_config.mux_area_vertical_min_padding);
+  y_pos = banks_[0].Origin().y() - std::ceil(
+      static_cast<double>(y_diff) / static_cast<double>(y_pitch));
 
   banks_[1].AlignPointTo(
       {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
@@ -344,10 +353,10 @@ void LutB::Route(Layout *layout) const {
 
   AddClockAndPowerStraps(&routing_grid, layout);
 
-  //RouteScanChain(&routing_grid, layout, &memory_output_net_names);
+  RouteScanChain(&routing_grid, layout, &memory_output_net_names);
   //RouteRemainder(&routing_grid, layout);
-  RouteClockBuffers(&routing_grid, layout);
-  //RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
+  //RouteClockBuffers(&routing_grid, layout);
+  RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
 
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
@@ -370,7 +379,7 @@ void LutB::ConfigureRoutingGrid(
   met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
   met1_layer_info.area = pre_route_bounds;
   // TODO(aryap): Need an easier way of lining this up!
-  //met1_layer_info.offset = 95;
+  met1_layer_info.offset = 70;
 
   bfg::RoutingLayerInfo met2_layer_info =
       db.GetRoutingLayerInfoOrDie("met2.drawing");
@@ -461,6 +470,15 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
     auto result = routing_grid->AddRouteToNet(
         *source_port, target_net, net_aliases, non_net_connectables);
   }
+
+  PortKeyCollection clk_inputs;
+  for (geometry::Instance *clk_buf : clk_buf_order_) {
+    clk_inputs.port_keys.push_back({
+        .instance = clk_buf,
+        .port_name = "A"
+    });
+  }
+  AddMultiPointRoute(clk_inputs, routing_grid, layout).IgnoreError();
 }
 
 void LutB::RouteScanChain(
@@ -516,25 +534,25 @@ void LutB::RouteMuxInputs(
   // input_0  --|
   // input_1  --+---------
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-    {banks_[0].instances()[7][0], mux_order_[1], "input_5"},
-    {banks_[0].instances()[6][0], mux_order_[1], "input_4"},
-    {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
-    {banks_[0].instances()[4][0], mux_order_[1], "input_7"},
+    //{banks_[0].instances()[7][0], mux_order_[1], "input_5"},
+    // {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
+    //{banks_[0].instances()[6][0], mux_order_[1], "input_4"},
+    //{banks_[0].instances()[4][0], mux_order_[1], "input_7"},
 
-    {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
-    {banks_[0].instances()[2][0], mux_order_[0], "input_2"},
-    {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
-    {banks_[0].instances()[0][0], mux_order_[0], "input_1"},
+    // {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
+    // {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
+    //{banks_[0].instances()[2][0], mux_order_[0], "input_2"},
+    //{banks_[0].instances()[0][0], mux_order_[0], "input_1"},
 
-    {banks_[1].instances()[7][0], mux_order_[1], "input_3"},
-    {banks_[1].instances()[6][0], mux_order_[1], "input_2"},
     {banks_[1].instances()[5][0], mux_order_[1], "input_0"},
-    {banks_[1].instances()[4][0], mux_order_[1], "input_1"},
+    //{banks_[1].instances()[7][0], mux_order_[1], "input_3"},
+    //{banks_[1].instances()[6][0], mux_order_[1], "input_2"},
+    //{banks_[1].instances()[4][0], mux_order_[1], "input_1"},
 
-    {banks_[1].instances()[3][0], mux_order_[0], "input_5"},
-    {banks_[1].instances()[2][0], mux_order_[0], "input_4"},
-    {banks_[1].instances()[1][0], mux_order_[0], "input_6"},
-    {banks_[1].instances()[0][0], mux_order_[0], "input_7"},
+    //{banks_[1].instances()[3][0], mux_order_[0], "input_5"},
+    //{banks_[1].instances()[2][0], mux_order_[0], "input_4"},
+    //{banks_[1].instances()[1][0], mux_order_[0], "input_6"},
+    //{banks_[1].instances()[0][0], mux_order_[0], "input_7"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {
@@ -561,6 +579,7 @@ void LutB::RouteMuxInputs(
         << "Nearest port named " << input_name
         << " did not appear in list of all ports for same name";
 
+    // TODO(aryap): Why can't AddMultiPointRoute just replace this? Speed?
     while (mux_port) {
       EquivalentNets net_names = EquivalentNets(
           {memory_output->net(), mux_port->net()});
@@ -633,36 +652,43 @@ void LutB::RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const {
   };
 
   for (const PortKeyCollection &collection : auto_connections) {
-    std::vector<std::vector<geometry::Port*>> route_targets;
-    for (auto &port_key : collection.port_keys) {
-      std::vector<geometry::Port*> &port_list =
-          route_targets.emplace_back();
-      geometry::Instance *instance = port_key.instance;
-
-      std::set<geometry::Port*> matching_ports;
-      instance->GetInstancePorts(port_key.port_name, &matching_ports);
-      if (matching_ports.empty()) {
-        LOG(WARNING) << "No port found named \"" << port_key.port_name
-                     << "\" on instance \"" << instance->name();
-        continue;
-      }
-      port_list.insert(
-          port_list.end(), matching_ports.begin(), matching_ports.end());
-    }
-
-    std::string net = collection.net_name ? *collection.net_name : "default";
-
-    LOG(INFO) << "Connecting (net: " << net << ") all of: " << absl::StrJoin(
-        collection.port_keys, ", ",
-        [](std::string *out, const PortKey &port_key) {
-          absl::StrAppend(
-              out, port_key.instance->name(), "/", port_key.port_name);
-        });
-
-    auto result = routing_grid->AddMultiPointRoute(*layout,
-                                                   route_targets,
-                                                   collection.net_name);
+    AddMultiPointRoute(collection, routing_grid, layout).IgnoreError();
   }
+}
+
+// TODO(aryap): This clearly needs to be factored out of this class somehow.
+absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
+                                      RoutingGrid *routing_grid,
+                                      Layout *layout) const {
+  std::vector<std::vector<geometry::Port*>> route_targets;
+  for (auto &port_key : collection.port_keys) {
+    std::vector<geometry::Port*> &port_list =
+        route_targets.emplace_back();
+    geometry::Instance *instance = port_key.instance;
+
+    std::set<geometry::Port*> matching_ports;
+    instance->GetInstancePorts(port_key.port_name, &matching_ports);
+    if (matching_ports.empty()) {
+      LOG(WARNING) << "No port found named \"" << port_key.port_name
+                   << "\" on instance \"" << instance->name();
+      continue;
+    }
+    port_list.insert(
+        port_list.end(), matching_ports.begin(), matching_ports.end());
+  }
+
+  std::string net = collection.net_name ? *collection.net_name : "default";
+
+  LOG(INFO) << "Connecting (net: " << net << ") all of: " << absl::StrJoin(
+      collection.port_keys, ", ",
+      [](std::string *out, const PortKey &port_key) {
+        absl::StrAppend(
+            out, port_key.instance->name(), "/", port_key.port_name);
+      });
+
+  return routing_grid->AddMultiPointRoute(*layout,
+                                          route_targets,
+                                          collection.net_name);
 }
 
 geometry::Group LutB::AddVerticalSpineWithFingers(

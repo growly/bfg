@@ -2154,17 +2154,53 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     // queue is already mostly sorted so an insertion would be fast.)
     // std::sort(queue.begin(), queue.end(), vertex_sort_fn);
 
+    struct DebugVertexStatus {
+      bool is_target;
+      bool is_unusable_vertex;
+    };
+
     RoutingVertex *current = queue.top();
-    //LOG(INFO) << "current: " << current->centre();
     queue.pop();
+
+    DebugVertexStatus status = {
+      .is_target = false,
+      .is_unusable_vertex = false
+    };
+#ifndef NDEBUG
+    // NDEBUG is defined to disable C assertions and is set by cmake for
+    // optimised builds by defaults. If we excuse that's forces us into a
+    // double-negative, this makes a convenient debug-only post-iteration
+    // report:
+    absl::Cleanup report = [&]() {
+      std::stringstream ss;
+      ss << current->centre();
+      if (status.is_target) {
+        ss << " target";
+      }
+      if (status.is_unusable_vertex) {
+        ss << " unusable_vertex";
+      }
+      ss << (current->available() ? " available" : " not_available");
+      if (!current->net().empty()) {
+        ss << " net:" << current->net();
+      }
+      if (current->connectable_net()) {
+        ss << " connectable_net:" << *current->connectable_net();
+      }
+      LOG(INFO) << ss.str();
+    };
+#endif  // NDEBUG
 
     if (target_must_be_usable) {
       // If the target must be usable for a valid route (e.g. point to point
       // routing from vertex to vertex), we ignore unusable nodes as possible
       // targets.
-      if (!usable_vertex(current))
+      if (!usable_vertex(current)) {
+        status.is_unusable_vertex = true;
         continue;
+      }
       if (is_target(current)) {
+        status.is_target = true;
         found_targets.insert(current);
         continue;
       }
@@ -2172,11 +2208,14 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       // If the target doesn't necessarily have to be usable, we check for a
       // valid target _before_ culling unusable nodes.
       if (is_target(current)) {
+        status.is_target = true;
         found_targets.insert(current);
         continue;
       }
-      if (!usable_vertex(current))
+      if (!usable_vertex(current)) {
+        status.is_unusable_vertex = true;
         continue;
+      }
     }
 
     size_t current_index = current->contextual_index();

@@ -62,6 +62,13 @@ struct InterLayerConstraints {
   std::optional<geometry::Layer> connecting_via_layer;
 };
 
+// TODO(aryap): We have primitive rules, like those above, and we have
+// synthesised rules, that come from some combination of those primitive rules.
+// We need a SynthesisedConstraints class or equivalent to organise and capture
+// these. This is currently managed by creating the entries in the structs and
+// manually computing them when the PDK is loaded, but could usefully be a
+// user-defined callback or something.
+
 // Manages information about physical layout constraints.
 //
 // TODO(aryap): It seems that there will be so many parameters that designers
