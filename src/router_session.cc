@@ -164,10 +164,10 @@ absl::Status RouterSession::SetUpRoutingGrid(
 
     switch (layer_pb.direction()) {
       case router_service::RoutingLayerDirection::TRACK_DIRECTION_VERTICAL:
-        layer_info.direction = RoutingTrackDirection::kTrackVertical;
+        layer_info.set_direction(RoutingTrackDirection::kTrackVertical);
         break;
       case router_service::RoutingLayerDirection::TRACK_DIRECTION_HORIZONTAL:
-        layer_info.direction = RoutingTrackDirection::kTrackHorizontal;
+        layer_info.set_direction(RoutingTrackDirection::kTrackHorizontal);
         break;
       case router_service::RoutingLayerDirection::TRACK_DIRECTION_NONE:
         // Fallthrough intended.
@@ -175,7 +175,7 @@ absl::Status RouterSession::SetUpRoutingGrid(
         break;
     }
 
-    layer_info.area = geometry::Rectangle(
+    layer_info.set_area(geometry::Rectangle(
         geometry::Point(
             layer_pb.area().lower_left().x(),
             layer_pb.area().lower_left().y()
@@ -183,9 +183,9 @@ absl::Status RouterSession::SetUpRoutingGrid(
         geometry::Point(
             layer_pb.area().upper_right().x(),
             layer_pb.area().upper_right().y()
-        ));
+        )));
 
-    layer_info.offset = layer_pb.offset();
+    layer_info.set_offset(layer_pb.offset());
     layer_infos.push_back(layer_info);
 
     absl::Status maybe_add = routing_grid_->AddRoutingLayerInfo(layer_info);
@@ -227,7 +227,7 @@ absl::Status RouterSession::SetUpRoutingGrid(
   }
   
   absl::Status try_connect = routing_grid_->ConnectLayers(
-          layer_infos[0].layer, layer_infos[1].layer);
+          layer_infos[0].layer(), layer_infos[1].layer());
   if (!try_connect.ok()) {
     return try_connect;
   }

@@ -376,16 +376,15 @@ void LutB::ConfigureRoutingGrid(
   LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
   bfg::RoutingLayerInfo met1_layer_info =
       db.GetRoutingLayerInfoOrDie("met1.drawing");
-  met1_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
-  met1_layer_info.area = pre_route_bounds;
+  met1_layer_info.set_direction(bfg::RoutingTrackDirection::kTrackHorizontal);
+  met1_layer_info.set_area(pre_route_bounds);
   // TODO(aryap): Need an easier way of lining this up!
-  met1_layer_info.offset = 70;
+  // met1_layer_info.offset = 70;
 
   bfg::RoutingLayerInfo met2_layer_info =
       db.GetRoutingLayerInfoOrDie("met2.drawing");
-  met2_layer_info.direction = bfg::RoutingTrackDirection::kTrackVertical;
-  met2_layer_info.area = pre_route_bounds;
-  met2_layer_info.offset = 50;
+  met2_layer_info.set_direction(bfg::RoutingTrackDirection::kTrackVertical);
+  met2_layer_info.set_area(pre_route_bounds);
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.
@@ -393,26 +392,26 @@ void LutB::ConfigureRoutingGrid(
       db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid->AddRoutingViaInfo(
-      met1_layer_info.layer, met2_layer_info.layer, routing_via_info)
+      met1_layer_info.layer(), met2_layer_info.layer(), routing_via_info)
       .IgnoreError();
 
   routing_via_info = db.GetRoutingViaInfoOrDie("li.drawing", "met1.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid->AddRoutingViaInfo(
-      met1_layer_info.layer, db.GetLayer("li.drawing"), routing_via_info)
+      met1_layer_info.layer(), db.GetLayer("li.drawing"), routing_via_info)
       .IgnoreError();
 
   routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid->AddRoutingViaInfo(
-      db.GetLayer("met3.drawing"), met2_layer_info.layer, routing_via_info)
+      db.GetLayer("met3.drawing"), met2_layer_info.layer(), routing_via_info)
       .IgnoreError();
 
   //routing_grid.AddRoutingLayerInfo(li_layer_info);
   routing_grid->AddRoutingLayerInfo(met1_layer_info).IgnoreError();
   routing_grid->AddRoutingLayerInfo(met2_layer_info).IgnoreError();
 
-  routing_grid->ConnectLayers(met1_layer_info.layer, met2_layer_info.layer)
+  routing_grid->ConnectLayers(met1_layer_info.layer(), met2_layer_info.layer())
       .IgnoreError();
 
   {

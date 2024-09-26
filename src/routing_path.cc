@@ -437,7 +437,7 @@ void RoutingPath::ToPolyLinesAndVias(
       AbstractVia *via = nullptr;
       if (last) {
         // This is a change in layer, so we finish the last line and store it.
-        last->AddSegment(current->centre(), info.wire_width);
+        last->AddSegment(current->centre(), info.wire_width());
 
         via = new AbstractVia(current->centre(), last->layer(), layer);
         vias->emplace_back(via);
@@ -472,11 +472,11 @@ void RoutingPath::ToPolyLinesAndVias(
       last->set_overhang_end(0);
       last->set_layer(layer);
       last->set_start(current->centre());
-      last->set_min_separation(info.min_separation);
+      last->set_min_separation(info.min_separation());
       last->set_net(net_);
       continue;
     }
-    last->AddSegment(current->centre(), info.wire_width);
+    last->AddSegment(current->centre(), info.wire_width());
 
     if (last_edge) {
       CheckEdgeInPolyLineForIncidenceOfOtherPaths(
@@ -489,7 +489,7 @@ void RoutingPath::ToPolyLinesAndVias(
 
   const RoutingLayerInfo &last_info = routing_grid_.GetRoutingLayerInfoOrDie(
       next_edge->EffectiveLayer());
-  last->AddSegment(vertices_.back()->centre(), last_info.wire_width);
+  last->AddSegment(vertices_.back()->centre(), last_info.wire_width());
   last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
 
   CheckEdgeInPolyLineForIncidenceOfOtherPaths(

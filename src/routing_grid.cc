@@ -420,7 +420,7 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     // TODO(aryap): We have fragmented sources for this information. Some
     // places I've used the PhysicalPropertiesDatabase, others the copies of
     // the data in the RoutingLayerInfo etc structures. Gross!
-    int64_t min_separation = routing_layer_info->get().min_separation;
+    int64_t min_separation = routing_layer_info->get().min_separation();
 
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
         vertex, candidate_layer, 0);   // No additional padding.
@@ -511,12 +511,12 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
         const geometry::Layer &lhs, const geometry::Layer &rhs) const {
   const RoutingLayerInfo &lhs_info = GetRoutingLayerInfoOrDie(lhs);
   const RoutingLayerInfo &rhs_info = GetRoutingLayerInfoOrDie(rhs);
-  if (lhs_info.direction == RoutingTrackDirection::kTrackHorizontal &&
-      rhs_info.direction == RoutingTrackDirection::kTrackVertical) {
+  if (lhs_info.direction() == RoutingTrackDirection::kTrackHorizontal &&
+      rhs_info.direction() == RoutingTrackDirection::kTrackVertical) {
     return std::pair<const RoutingLayerInfo&, const RoutingLayerInfo&>(
         lhs_info, rhs_info);
-  } else if (lhs_info.direction == RoutingTrackDirection::kTrackVertical &&
-             rhs_info.direction == RoutingTrackDirection::kTrackHorizontal) {
+  } else if (lhs_info.direction() == RoutingTrackDirection::kTrackVertical &&
+             rhs_info.direction() == RoutingTrackDirection::kTrackHorizontal) {
     return std::pair<const RoutingLayerInfo&, const RoutingLayerInfo&>(
         rhs_info, lhs_info);
   }
@@ -1108,7 +1108,7 @@ std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
     const RoutingEdge &edge, int64_t padding) const {
   const geometry::Layer &layer = edge.EffectiveLayer();
   const RoutingLayerInfo &layer_info = GetRoutingLayerInfoOrDie(layer);
-  auto edge_as_rectangle = edge.AsRectangle(layer_info.wire_width);
+  auto edge_as_rectangle = edge.AsRectangle(layer_info.wire_width());
   if (!edge_as_rectangle)
     return std::nullopt;
   if (padding == 0)
@@ -1135,7 +1135,7 @@ std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
   }
 
   const geometry::Layer &layer = *edge.layer();
-  int64_t width = GetRoutingLayerInfoOrDie(layer).wire_width + padding;
+  int64_t width = GetRoutingLayerInfoOrDie(layer).wire_width() + padding;
 
   // A rectangle of wire-width without via encaps at either end represents the
   // middle section of the edge.
@@ -1250,8 +1250,8 @@ absl::Status RoutingGrid::ConnectLayers(
   }
   const RoutingViaInfo &routing_via_info = maybe_routing_via_info->get();
 
-  LOG(INFO) << "Drawing grid between layers " << horizontal_info.layer
-            << ", " << vertical_info.layer;
+  LOG(INFO) << "Drawing grid between layers " << horizontal_info.layer()
+            << ", " << vertical_info.layer();
 
   RoutingGridGeometry grid_geometry;
   grid_geometry.ComputeForLayers(horizontal_info, vertical_info);
@@ -1268,17 +1268,17 @@ absl::Status RoutingGrid::ConnectLayers(
        x <= grid_geometry.x_max();
        x += grid_geometry.x_pitch()) {
     RoutingTrack *track = new RoutingTrack(
-        vertical_info.layer,
+        vertical_info.layer(),
         RoutingTrackDirection::kTrackVertical,
         grid_geometry.x_pitch(),
-        vertical_info.wire_width,
-        routing_via_info.EncapWidth(vertical_info.layer),
-        routing_via_info.EncapLength(vertical_info.layer),
-        vertical_info.min_separation,
+        vertical_info.wire_width(),
+        routing_via_info.EncapWidth(vertical_info.layer()),
+        routing_via_info.EncapLength(vertical_info.layer()),
+        vertical_info.min_separation(),
         x);
     vertical_tracks.insert({x, track});
     grid_geometry.vertical_tracks_by_index().push_back(track);
-    AddTrackToLayer(track, vertical_info.layer);
+    AddTrackToLayer(track, vertical_info.layer());
     num_x++;
   }
 
@@ -1286,17 +1286,17 @@ absl::Status RoutingGrid::ConnectLayers(
        y <= grid_geometry.y_max();
        y += grid_geometry.y_pitch()) {
     RoutingTrack *track = new RoutingTrack(
-        horizontal_info.layer,
+        horizontal_info.layer(),
         RoutingTrackDirection::kTrackHorizontal,
         grid_geometry.y_pitch(),
-        horizontal_info.wire_width,
-        routing_via_info.EncapWidth(horizontal_info.layer),
-        routing_via_info.EncapLength(horizontal_info.layer),
-        horizontal_info.min_separation,
+        horizontal_info.wire_width(),
+        routing_via_info.EncapWidth(horizontal_info.layer()),
+        routing_via_info.EncapLength(horizontal_info.layer()),
+        horizontal_info.min_separation(),
         y);
     horizontal_tracks.insert({y, track});
     grid_geometry.horizontal_tracks_by_index().push_back(track);
-    AddTrackToLayer(track, horizontal_info.layer);
+    AddTrackToLayer(track, horizontal_info.layer());
     num_y++;
   }
 
@@ -1927,7 +1927,7 @@ void RoutingGrid::InstallVertexInPath(
         // No routing on this layer and no known direction, ignore.
         continue;
       }
-      direction = routing_layer_info->get().direction;
+      direction = routing_layer_info->get().direction();
     }
 
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
@@ -2491,7 +2491,7 @@ RoutingGrid::GetRoutingViaInfo(const Layer &lhs, const Layer &rhs) const {
 }
 
 absl::Status RoutingGrid::AddRoutingLayerInfo(const RoutingLayerInfo &info) {
-  const Layer &layer = info.layer;
+  const Layer &layer = info.layer();
   auto layer_info_it = routing_layer_info_.find(layer);
   if (layer_info_it != routing_layer_info_.end()) {
     std::stringstream ss;
@@ -2559,7 +2559,7 @@ bool RoutingGrid::PointsAreTooCloseForVias(
   int64_t rhs_max_via_half_width = rhs_via.MaxViaSide() / 2;
   int64_t rhs_max_via_overhang = rhs_via.MaxOverhang();
 
-  int64_t min_separation = shared_layer_info.min_separation;
+  int64_t min_separation = shared_layer_info.min_separation();
 
   int64_t required =
       lhs_max_via_half_width + lhs_max_via_overhang +

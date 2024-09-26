@@ -152,14 +152,14 @@ void RoutingGridGeometry::NearestTrackIndices(
 void RoutingGridGeometry::ComputeForLayers(
     const RoutingLayerInfo &horizontal_info,
     const RoutingLayerInfo &vertical_info) {
-  horizontal_layer_ = horizontal_info.layer;
-  vertical_layer_ = vertical_info.layer;
+  horizontal_layer_ = horizontal_info.layer();
+  vertical_layer_ = vertical_info.layer();
 
   // Determine the area over which the grid is valid.
   geometry::Rectangle overlap =
-      horizontal_info.area.OverlapWith(vertical_info.area);
-  LOG(INFO) << "Layers " << horizontal_info.layer
-            << ", " << vertical_info.layer << " overlap on " << overlap;
+      horizontal_info.area().OverlapWith(vertical_info.area());
+  LOG(INFO) << "Layers " << horizontal_info.layer()
+            << ", " << vertical_info.layer() << " overlap on " << overlap;
   
   // NOTE(aryap): We used to calculate 'offset' as a difference from the origin,
   // making the routing area a sort of mask that removes tracks outside the
@@ -197,19 +197,19 @@ void RoutingGridGeometry::ComputeForLayers(
   //                   ^     ^ x_pitch
   //                   start of grid boundary
   //
-  x_offset_ = vertical_info.offset;
-  x_pitch_ = vertical_info.pitch;
+  x_offset_ = vertical_info.offset();
+  x_pitch_ = vertical_info.pitch();
   LOG_IF(FATAL, x_pitch_ == 0)
-      << "Routing pitch for layer " << vertical_info.layer << " is 0";
+      << "Routing pitch for layer " << vertical_info.layer() << " is 0";
   x_min_ = overlap.lower_left().x();
   x_start_ = x_min_ + x_offset_;
   x_max_ = overlap.upper_right().x();
   max_column_index_ = (x_max_ - x_start_) / x_pitch_;
   
-  y_offset_ = horizontal_info.offset;
-  y_pitch_ = horizontal_info.pitch;
+  y_offset_ = horizontal_info.offset();
+  y_pitch_ = horizontal_info.pitch();
   LOG_IF(FATAL, y_pitch_ == 0)
-      << "Routing pitch for layer " << horizontal_info.layer << " is 0";
+      << "Routing pitch for layer " << horizontal_info.layer() << " is 0";
   y_min_ = overlap.lower_left().y();
   y_start_ = y_min_ + y_offset_;
   y_max_ = overlap.upper_right().y();

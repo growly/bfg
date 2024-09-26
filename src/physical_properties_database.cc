@@ -289,8 +289,8 @@ std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
   if (!layer) {
     return std::nullopt;
   }
-  RoutingLayerInfo routing_info = {0};
-  routing_info.layer = *layer;
+  RoutingLayerInfo routing_info;
+  routing_info.set_layer(*layer);
   auto maybe_rules = GetRules(*layer);
   if (!maybe_rules) {
     LOG(WARNING) << "No intra-layer constraints for layer " << *layer
@@ -298,9 +298,9 @@ std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
     return std::nullopt;
   }
   const IntraLayerConstraints &layer_rules = maybe_rules->get();
-  routing_info.wire_width = layer_rules.min_width;
-  routing_info.pitch = layer_rules.min_pitch;
-  routing_info.min_separation = layer_rules.min_separation;
+  routing_info.set_wire_width(layer_rules.min_width);
+  routing_info.set_pitch(layer_rules.min_pitch);
+  routing_info.set_min_separation(layer_rules.min_separation);
   return routing_info;
 }
 

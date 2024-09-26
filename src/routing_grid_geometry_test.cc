@@ -21,23 +21,21 @@ namespace {
 using ::testing::ContainerEq;
 
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
-  RoutingLayerInfo horizontal = RoutingLayerInfo {
-    .layer = 0,
-    .area = Rectangle({0, 0}, {200, 200}),
-    .wire_width = 1,
-    .offset = 10,
-    .direction = RoutingTrackDirection::kTrackHorizontal,
-    .pitch = 10,
-  };
+  RoutingLayerInfo horizontal;
+  horizontal.set_layer(0);
+  horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+  horizontal.set_wire_width(1);
+  horizontal.set_offset(10);
+  horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
+  horizontal.set_pitch(10);
 
-  RoutingLayerInfo vertical = RoutingLayerInfo {
-    .layer = 1,
-    .area = Rectangle({0, 0}, {200, 200}),
-    .wire_width = 1,
-    .offset = 10,
-    .direction = RoutingTrackDirection::kTrackVertical,
-    .pitch = 10,
-  };
+  RoutingLayerInfo vertical;
+  vertical.set_layer(1);
+  vertical.set_area(Rectangle({0, 0}, {200, 200}));
+  vertical.set_wire_width(1);
+  vertical.set_offset(10);
+  vertical.set_direction(RoutingTrackDirection::kTrackVertical);
+  vertical.set_pitch(10);
 
   RoutingGridGeometry grid_geometry;
   grid_geometry.ComputeForLayers(horizontal, vertical);
@@ -134,23 +132,21 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
 }
 
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point_2ConcentricLayers) {
-  RoutingLayerInfo horizontal = RoutingLayerInfo {
-    .layer = 0,
-    .area = Rectangle({0, 0}, {200, 200}),
-    .wire_width = 1,
-    .offset = 10,
-    .direction = RoutingTrackDirection::kTrackHorizontal,
-    .pitch = 10,
-  };
+  RoutingLayerInfo horizontal;
+  horizontal.set_layer(0);
+  horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+  horizontal.set_wire_width(1);
+  horizontal.set_offset(10);
+  horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
+  horizontal.set_pitch(10);
 
-  RoutingLayerInfo vertical = RoutingLayerInfo {
-    .layer = 1,
-    .area = Rectangle({0, 0}, {200, 200}),
-    .wire_width = 1,
-    .offset = 10,
-    .direction = RoutingTrackDirection::kTrackVertical,
-    .pitch = 10,
-  };
+  RoutingLayerInfo vertical;
+  vertical.set_layer(1);
+  vertical.set_area(Rectangle({0, 0}, {200, 200}));
+  vertical.set_wire_width(1);
+  vertical.set_offset(10);
+  vertical.set_direction(RoutingTrackDirection::kTrackVertical);
+  vertical.set_pitch(10);
 
   RoutingGridGeometry grid_geometry;
   grid_geometry.ComputeForLayers(horizontal, vertical);
@@ -316,23 +312,21 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point_2ConcentricLayers) {
 }
 
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
-  RoutingLayerInfo horizontal = RoutingLayerInfo {
-    .layer = 0,
-    .area = Rectangle({0, 0}, {200, 200}),
-    .wire_width = 1,
-    .offset = 10,
-    .direction = RoutingTrackDirection::kTrackHorizontal,
-    .pitch = 10,
-  };
+  RoutingLayerInfo horizontal;
+  horizontal.set_layer(0);
+  horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+  horizontal.set_wire_width(1);
+  horizontal.set_offset(10);
+  horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
+  horizontal.set_pitch(10);
 
-  RoutingLayerInfo vertical = RoutingLayerInfo {
-    .layer = 1,
-    .area = Rectangle({0, 0}, {200, 200}),
-    .wire_width = 1,
-    .offset = 10,
-    .direction = RoutingTrackDirection::kTrackVertical,
-    .pitch = 10,
-  };
+  RoutingLayerInfo vertical;
+  vertical.set_layer(1);
+  vertical.set_area(Rectangle({0, 0}, {200, 200}));
+  vertical.set_wire_width(1);
+  vertical.set_offset(10);
+  vertical.set_direction(RoutingTrackDirection::kTrackVertical);
+  vertical.set_pitch(10);
 
   RoutingGridGeometry grid_geometry;
   grid_geometry.ComputeForLayers(horizontal, vertical);
@@ -372,23 +366,21 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
 }
 
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
-  RoutingLayerInfo horizontal = RoutingLayerInfo {
-    .layer = 244,
-    .area = Rectangle({0, -600}, {39840, 11600}),
-    .wire_width = 140,
-    .offset = 50,
-    .direction = RoutingTrackDirection::kTrackHorizontal,
-    .pitch = 340
-  };
+  RoutingLayerInfo horizontal;
+  horizontal.set_layer(244);
+  horizontal.set_area(Rectangle({0, -600}, {39840, 11600}));
+  horizontal.set_wire_width(140);
+  horizontal.set_offset(50);
+  horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
+  horizontal.set_pitch(34);
 
-  RoutingLayerInfo vertical = RoutingLayerInfo {
-    .layer = 220,
-    .area = Rectangle({0, -600}, {39840, 11600}),
-    .wire_width = 140,
-    .offset = 50,
-    .direction = RoutingTrackDirection::kTrackVertical,
-    .pitch = 340
-  };
+  RoutingLayerInfo vertical;
+  horizontal.set_layer(220);
+  horizontal.set_area(Rectangle({0, -600}, {39840, 11600}));
+  horizontal.set_wire_width(140);
+  horizontal.set_offset(50);
+  horizontal.set_direction(RoutingTrackDirection::kTrackVertical);
+  horizontal.set_pitch(34);
 
   RoutingGridGeometry grid_geometry;
   grid_geometry.ComputeForLayers(horizontal, vertical);
@@ -411,23 +403,21 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
 class RoutingGridGeometryTestFixture : public testing::Test {
  protected:
   void SetUp() override {
-    RoutingLayerInfo horizontal = RoutingLayerInfo {
-      .layer = 0,
-      .area = Rectangle({0, 0}, {200, 200}),
-      .wire_width = 1,
-      .offset = 10,
-      .direction = RoutingTrackDirection::kTrackHorizontal,
-      .pitch = 10,
-    };
+    RoutingLayerInfo horizontal;
+    horizontal.set_layer(0);
+    horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+    horizontal.set_wire_width(1);
+    horizontal.set_offset(10);
+    horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
+    horizontal.set_pitch(10);
 
-    RoutingLayerInfo vertical = RoutingLayerInfo {
-      .layer = 1,
-      .area = Rectangle({0, 0}, {200, 200}),
-      .wire_width = 1,
-      .offset = 10,
-      .direction = RoutingTrackDirection::kTrackVertical,
-      .pitch = 10,
-    };
+    RoutingLayerInfo vertical;
+    vertical.set_layer(1);
+    vertical.set_area(Rectangle({0, 0}, {200, 200}));
+    vertical.set_wire_width(1);
+    vertical.set_offset(10);
+    vertical.set_direction(RoutingTrackDirection::kTrackVertical);
+    vertical.set_pitch(10);
 
     grid_geometry_.ComputeForLayers(horizontal, vertical);
   }
