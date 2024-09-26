@@ -158,6 +158,11 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   banks_[0].MoveTo(geometry::Point(0, 0));
 
+  // Set the grid alignment point to fall on the output port of this memory:
+  std::vector<geometry::Port*> q_ports;
+  memories_[0]->GetInstancePorts("Q", &q_ports);
+  layout->SavePoint("grid_alignment_point", q_ports.front()->centre());
+
   bfg::atoms::Sky130Mux::Parameters mux_params;
   mux_params.extend_inputs_top = true;
   mux_params.extend_inputs_bottom = false;
@@ -385,6 +390,13 @@ void LutB::ConfigureRoutingGrid(
       db.GetRoutingLayerInfoOrDie("met2.drawing");
   met2_layer_info.set_direction(bfg::RoutingTrackDirection::kTrackVertical);
   met2_layer_info.set_area(pre_route_bounds);
+
+  auto alignment_point = layout->GetPoint("grid_alignment_point");
+  if (alignment_point) {
+    LOG(INFO) << "Aligning grid to " << *alignment_point;
+    RoutingGridGeometry::AlignRoutingLayerInfos(
+        *alignment_point, &met1_layer_info, &met2_layer_info);
+  }
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.

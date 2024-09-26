@@ -15,6 +15,38 @@
 #include "routing_track_direction.h"
 
 namespace bfg {
+namespace {
+
+// C++ modulo is more 'remainder' than 'modulo' because of how negative numbers
+// are handled:
+//    mod(-3, 5) = 2
+//    rem(-3, 5) = -3 (since -3 / 5 = 0)
+// So we have to do this:
+int64_t modulo(int64_t a, int64_t b) {
+  int64_t remainder = a % b;
+  return remainder < 0 ? remainder + b : remainder;
+}
+
+}   // namespace
+
+
+void RoutingGridGeometry::AlignRoutingLayerInfos(
+    const geometry::Point &point,
+    RoutingLayerInfo *horizontal,
+    RoutingLayerInfo *vertical) {
+  geometry::Rectangle overlap =
+      horizontal->area().OverlapWith(vertical->area());
+
+  int64_t x_pitch = vertical->pitch();
+  int64_t y_pitch = horizontal->pitch();
+
+  // The offset is relative to the lower left point of the overlapping area
+  // between the two routing layers.
+  geometry::Point diff = point - overlap.lower_left();
+
+  horizontal->set_offset(modulo(diff.y(), y_pitch));
+  vertical->set_offset(modulo(diff.x(), x_pitch));
+}
 
 RoutingGridGeometry::RoutingGridGeometry()
     : x_offset_(0),
@@ -31,20 +63,6 @@ RoutingGridGeometry::RoutingGridGeometry()
       max_row_index_(0),
       horizontal_layer_(0),
       vertical_layer_(0) {}
-
-namespace {
-
-// C++ modulo is more 'remainder' than 'modulo' because of how negative numbers
-// are handled:
-//    mod(-3, 5) = 2
-//    rem(-3, 5) = -3 (since -3 / 5 = 0)
-// So we have to do this:
-int64_t modulo(int64_t a, int64_t b) {
-  int64_t remainder = a % b;
-  return remainder < 0 ? remainder + b : remainder;
-}
-
-}   // namespace
 
 std::tuple<int64_t, int64_t, int64_t, int64_t>
 RoutingGridGeometry::MapToBoundingGridIndices(const geometry::Point &point)
