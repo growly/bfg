@@ -359,8 +359,8 @@ void LutB::Route(Layout *layout) const {
   AddClockAndPowerStraps(&routing_grid, layout);
 
   RouteScanChain(&routing_grid, layout, &memory_output_net_names);
-  //RouteRemainder(&routing_grid, layout);
-  //RouteClockBuffers(&routing_grid, layout);
+  RouteRemainder(&routing_grid, layout);
+  RouteClockBuffers(&routing_grid, layout);
   RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
 
   // Debug only.
@@ -546,12 +546,12 @@ void LutB::RouteMuxInputs(
   // input_1  --+---------
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
     //{banks_[0].instances()[7][0], mux_order_[1], "input_5"},
-    // {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
+    {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
     //{banks_[0].instances()[6][0], mux_order_[1], "input_4"},
     //{banks_[0].instances()[4][0], mux_order_[1], "input_7"},
 
-    // {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
-    // {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
+    {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
+    {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
     //{banks_[0].instances()[2][0], mux_order_[0], "input_2"},
     //{banks_[0].instances()[0][0], mux_order_[0], "input_1"},
 
