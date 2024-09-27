@@ -23,8 +23,10 @@ bool RoutingEdge::Blocked() const {
 
 const std::optional<std::string> &RoutingEdge::EffectiveNet() const {
   LOG_IF(FATAL, temporarily_in_use_by_net_ && in_use_by_net_)
-      << "RoutingEdge should not be assigned both in_use_by_net_ and "
-      << "temporarily_in_use_by_net_ simultaneously";
+      << "RoutingEdge should not be assigned both in_use_by_net_ ("
+      << *in_use_by_net_ << ") and temporarily_in_use_by_net_ ("
+      << *temporarily_in_use_by_net_
+      << ") simultaneously";
   if (temporarily_in_use_by_net_) {
     return temporarily_in_use_by_net_;
   }
@@ -38,8 +40,11 @@ const std::optional<std::string> &RoutingEdge::PermanentNet() const {
 void RoutingEdge::SetNet(
     const std::optional<std::string> &in_use_by_net, bool temporary) {
   if (temporary) {
+    // LOG_IF(FATAL, in_use_by_net_) << "in_use_by_net_ already set";
     temporarily_in_use_by_net_ = in_use_by_net;
   } else {
+    // LOG_IF(FATAL, temporarily_in_use_by_net_)
+    //     << "temporarily_in_use_by_net_ already set";
     in_use_by_net_ = in_use_by_net;
   }
 }

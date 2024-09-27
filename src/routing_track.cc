@@ -1037,7 +1037,7 @@ void RoutingTrack::ApplyBlockage(
                        min_separation_to_new_blockages_)) {
       edge->SetBlocked(true, is_temporary);
       if (net != "" && !(
-            edge->EffectiveNet() && edge->EffectiveNet() == "")) {
+            edge->EffectiveNet() && edge->EffectiveNet() != "")) {
         edge->SetNet(net, is_temporary);
       }
       if (blocked_edges)
