@@ -570,6 +570,8 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     return true;
   };
 
+  std::set<RoutingEdge*> new_edges;
+
   bool any_success = false;
   for (RoutingTrack *track : nearest_tracks) {
     RoutingVertex *bridging_vertex = nullptr;
@@ -609,6 +611,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
       std::stringstream ss;
       ss << *track << " already has a vertex at the position of off_grid "
          << off_grid->centre();
+      // Cleanup any previous attempts:
       return absl::InternalError(ss.str());
     }
 
@@ -644,9 +647,12 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
 
     bridging_vertex->AddEdge(edge);
     off_grid->AddEdge(edge);
-    off_grid_edges_.insert(edge);
+    new_edges.insert(edge);
     any_success = true || any_success;
   }
+
+  for (
+
   return any_success ? absl::OkStatus() : absl::NotFoundError("");
 }
 
@@ -771,6 +777,8 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
       continue;
     }
 
+    // If ConnectToSurroundingTracks has any success, we keep move ownership of
+    // the off_grid vertex to the parent RoutingGrid.
     if (!ConnectToSurroundingTracks(*grid_geometry,
                                     access_layer,
                                     for_nets,

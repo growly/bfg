@@ -26,7 +26,6 @@ class RoutingEdge {
       first_(first),
       second_(second),
       cost_(0.0) {
-    Direction();    // DEBUG
     ApproximateCost();
   }
   ~RoutingEdge() {}
