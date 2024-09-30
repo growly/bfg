@@ -570,7 +570,8 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     return true;
   };
 
-  std::set<RoutingEdge*> new_edges;
+  std::vector<RoutingEdge*> new_edges;
+  std::vector<std::string> errors;
 
   bool any_success = false;
   for (RoutingTrack *track : nearest_tracks) {
@@ -591,9 +592,10 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     } else if (bridging_vertex == off_grid) {
 
       if (bridging_vertex_is_new) {
-        return absl::InternalError(
-          "Doesn't make sense for bridging_vertex == target "
-          "and bridging_vertex_is_new to both be true");
+        errors.push_back(
+            "Doesn't make sense for bridging_vertex == target "
+            "and bridging_vertex_is_new to both be true");
+        continue;
       }
 
       // Since our off_grid vertex has landed on the track, the access direction
@@ -611,8 +613,8 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
       std::stringstream ss;
       ss << *track << " already has a vertex at the position of off_grid "
          << off_grid->centre();
-      // Cleanup any previous attempts:
-      return absl::InternalError(ss.str());
+      errors.push_back(ss.str());
+      continue;
     }
 
     if (bridging_vertex_is_new) {
@@ -645,15 +647,20 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
       continue;
     }
 
+    for (RoutingEdge *edge : new_edges) {
+      off_grid_edges_.insert(edge);
+    }
+
     bridging_vertex->AddEdge(edge);
     off_grid->AddEdge(edge);
-    new_edges.insert(edge);
+    new_edges.push_back(edge);
     any_success = true || any_success;
   }
 
-  for (
-
-  return any_success ? absl::OkStatus() : absl::NotFoundError("");
+  std::string message = absl::StrJoin(errors, "; ");
+  return any_success ?
+      absl::Status(absl::StatusCode::kOk, message) :
+      absl::NotFoundError(message);
 }
 
 absl::StatusOr<RoutingGrid::VertexWithLayer>
