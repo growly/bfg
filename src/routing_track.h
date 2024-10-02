@@ -88,8 +88,6 @@ class RoutingTrack {
   RoutingVertex *GetVertexAt(const geometry::Point &point) const;
   RoutingVertex *GetVertexAtOffset(int64_t offset) const;
 
-  bool Intersects(RoutingVertex *vertex) const;
-
   void MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net);
 
   bool IsPerpendicularTo(const RoutingTrackDirection &other) const;
@@ -149,13 +147,6 @@ class RoutingTrack {
       bool available_only,
       Layout *layout) const;
 
-  bool Intersects(const geometry::Rectangle &rectangle,
-                  int64_t padding = 0) const;
-  bool Intersects(
-      const geometry::Polygon &polygon,
-      std::vector<geometry::PointPair> *intersections,
-      int64_t padding = 0) const;
-
   // Rectangle blockages create single RoutingTrackBlockages or none at all, so
   // we can return one or nullptr here:
   RoutingTrackBlockage *AddBlockage(const geometry::Rectangle &rectangle,
@@ -200,6 +191,20 @@ class RoutingTrack {
   // TODO(aryap): Maybe we sort edges and vertices by their starting/centre
   // positions?
   //static bool EdgeComp(RoutingEdge *lhs, RoutingEdge *rhs);
+
+  struct BlockageGroup {
+    std::vector<RoutingTrackBlockage*> vertex_blockages;
+    std::vector<RoutingTrackBlockage*> edge_blockages;
+  };
+
+  bool Intersects(RoutingVertex *vertex) const;
+
+  bool Intersects(const geometry::Rectangle &rectangle,
+                  int64_t padding = 0) const;
+  bool Intersects(
+      const geometry::Polygon &polygon,
+      std::vector<geometry::PointPair> *intersections,
+      int64_t padding = 0) const;
 
   void AssignThisTrackToVertex(RoutingVertex *vertex);
 
@@ -311,7 +316,14 @@ class RoutingTrack {
   // std::set we can't mutate the objects (since they will not automatically be
   // re-sorted). Instead we keep a vector and make sure to sort it ourselves.
   // We OWN these objects.
-  std::vector<RoutingTrackBlockage*> blockages_;
+  //
+  // There are four distinct "planes" of blockages:
+  //  - permanent vertex blockages, which prevent vertices being available or
+  //  created the track (these also disable edges starting from or ending at any
+  //  of the points within the blockage);
+  //  - permanent edge blockages, which prevent valid edges on the track; and
+  //  - the temporary versions of both of these.
+  BlockageGroup blockages_;
 
   // We need a separate plane of blockages for temporary obstructions, perhaps
   // those that only apply in one path search but not the next (e.g. pins).
@@ -321,7 +333,7 @@ class RoutingTrack {
   //
   // These can be cleared by pointer or all at once. The caller takes ownership
   // of the object, we DO NOT OWN temporary blockages.
-  std::vector<RoutingTrackBlockage*> temporary_blockages_;
+  BlockageGroup temporary_blockages_;
 
   FRIEND_TEST(RoutingTrackTest, MergesBlockages);
   FRIEND_TEST(RoutingTrackTest, DoesNotMergeDifferingNets);

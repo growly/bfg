@@ -23,7 +23,14 @@ namespace bfg {
 
 RoutingTrack::~RoutingTrack() {
   for (RoutingEdge *edge : edges_) { delete edge; }
-  for (RoutingTrackBlockage *blockage : blockages_) { delete blockage; }
+  for (const BlockageGroup &group : blockages_) {
+    for (RoutingTrackBlockage *blockage : group.vertex_blockages) {
+      delete blockage;
+    }
+    for (RoutingTrackBlockage *blockage : group.edge_blockages) {
+      delete blockage;
+    }
+  }
 }
 
 std::set<RoutingEdge*>::iterator RoutingTrack::RemoveEdge(
@@ -836,8 +843,8 @@ void RoutingTrack::AddBlockage(
     const geometry::Polygon &polygon,
     int64_t padding,
     const std::string &net) {
-  //LOG(INFO) << "Adding polygon blockage to routing track " << offset_ << " padding="
-  //          << padding << ": " << polygon.Describe();
+  //LOG(INFO) << "Adding polygon blockage to routing track " << offset_
+  //          << " padding=" << padding << ": " << polygon.Describe();
   geometry::Line track = AsLine();
   std::vector<geometry::PointPair> intersections;
   Intersects(polygon, &intersections, padding);
@@ -1002,6 +1009,12 @@ bool RoutingTrack::RemoveTemporaryBlockage(RoutingTrackBlockage *blockage) {
   return true;
 }
 
+// FIXME(aryap): Some blockages only block vertices and the edges
+// starting/finishing there, not crossing edges. Some block edges too. Because
+// the test is how close the blockage is to the track, blockages which interfere
+// with passing edges are a probably superset of those which just block
+// vertices (unless track width at vertex is smaller than track width
+// elsewhere?!)
 void RoutingTrack::ApplyBlockage(
     const RoutingTrackBlockage &blockage,
     const std::string &net,

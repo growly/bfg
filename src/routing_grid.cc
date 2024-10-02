@@ -658,7 +658,9 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
   }
 
   std::string message = absl::StrJoin(errors, "; ");
-  return any_success ? absl::OkStatus() : absl::NotFoundError(message);
+  return any_success ?
+      absl::Status(absl::StatusCode::kOk, message) :
+      absl::NotFoundError(message);
 }
 
 absl::StatusOr<RoutingGrid::VertexWithLayer>
@@ -2200,7 +2202,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       if (current->connectable_net()) {
         ss << " connectable_net:" << *current->connectable_net();
       }
-      LOG(INFO) << ss.str();
+      VLOG(15) << ss.str();
     };
 #endif  // NDEBUG
 
@@ -2235,6 +2237,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
 
     for (RoutingEdge *edge : current->edges()) {
       if (!usable_edge(edge)) {
+#ifndef NDEBUG
+        VLOG(15) << *edge << " unusable_edge";
+#endif  // NDEBUG
         continue;
       }
 

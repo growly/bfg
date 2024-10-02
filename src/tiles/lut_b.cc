@@ -545,25 +545,25 @@ void LutB::RouteMuxInputs(
   // input_0  --|
   // input_1  --+---------
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-    //{banks_[0].instances()[7][0], mux_order_[1], "input_5"},
+    {banks_[0].instances()[7][0], mux_order_[1], "input_5"},
     {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
-    //{banks_[0].instances()[6][0], mux_order_[1], "input_4"},
-    //{banks_[0].instances()[4][0], mux_order_[1], "input_7"},
+    {banks_[0].instances()[6][0], mux_order_[1], "input_4"},
+    {banks_[0].instances()[4][0], mux_order_[1], "input_7"},
 
     {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
     {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
-    //{banks_[0].instances()[2][0], mux_order_[0], "input_2"},
-    //{banks_[0].instances()[0][0], mux_order_[0], "input_1"},
+    {banks_[0].instances()[2][0], mux_order_[0], "input_2"},
+    {banks_[0].instances()[0][0], mux_order_[0], "input_1"},
 
     {banks_[1].instances()[5][0], mux_order_[1], "input_0"},
-    //{banks_[1].instances()[7][0], mux_order_[1], "input_3"},
-    //{banks_[1].instances()[6][0], mux_order_[1], "input_2"},
-    //{banks_[1].instances()[4][0], mux_order_[1], "input_1"},
+    {banks_[1].instances()[7][0], mux_order_[1], "input_3"},
+    {banks_[1].instances()[6][0], mux_order_[1], "input_2"},
+    {banks_[1].instances()[4][0], mux_order_[1], "input_1"},
 
-    //{banks_[1].instances()[3][0], mux_order_[0], "input_5"},
-    //{banks_[1].instances()[2][0], mux_order_[0], "input_4"},
-    //{banks_[1].instances()[1][0], mux_order_[0], "input_6"},
-    //{banks_[1].instances()[0][0], mux_order_[0], "input_7"},
+    {banks_[1].instances()[3][0], mux_order_[0], "input_5"},
+    {banks_[1].instances()[2][0], mux_order_[0], "input_4"},
+    {banks_[1].instances()[1][0], mux_order_[0], "input_6"},
+    {banks_[1].instances()[0][0], mux_order_[0], "input_7"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {
