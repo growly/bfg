@@ -1954,7 +1954,7 @@ void RoutingGrid::InstallVertexInPath(
     for (RoutingTrack *track : blocked_tracks) {
       if (track->layer() != layer)
         continue;
-      track->AddBlockage(*via_encap, 0, net);
+      track->AddBlockage(*via_encap, 0, net, nullptr, nullptr);
     }
 
     int64_t min_separation = physical_db_.Rules(layer).min_separation;
@@ -2367,14 +2367,24 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
       // the blockage 'AddChildTrackBlockage' function. That way managing
       // temporary track blockages as a result of RoutingGridBlockages is kept
       // together in one place.
-      RoutingTrackBlockage* track_blockage = track->AddTemporaryBlockage(
-          rectangle, padding, rectangle.net(), blocked_vertices, blocked_edges);
-      if (track_blockage) {
-        blockage->AddChildTrackBlockage(track, track_blockage);
+      RoutingTrackBlockage *vertex_blockage = nullptr;
+      RoutingTrackBlockage *edge_blockage = nullptr;
+      track->AddTemporaryBlockage(rectangle,
+                                  padding,
+                                  rectangle.net(), 
+                                  &vertex_blockage,
+                                  &edge_blockage,
+                                  blocked_vertices,
+                                  blocked_edges);
+      if (vertex_blockage) {
+        blockage->AddChildTrackBlockage(track, vertex_blockage);
+      }
+      if (edge_blockage) {
+        blockage->AddChildTrackBlockage(track, edge_blockage);
       }
     } else {
       // Add permanent blockage.
-      track->AddBlockage(rectangle, padding, rectangle.net());
+      track->AddBlockage(rectangle, padding, rectangle.net(), nullptr, nullptr);
     }
   }
 
@@ -2676,9 +2686,20 @@ std::vector<RoutingGridBlockage<geometry::Rectangle>*> RoutingGrid::AddBlockage(
       if (!GetRoutingViaInfo(access_layer, footprint_layer)) {
         continue;
       }
+
+      // If the footprint layer has an associated routing track direction, we
+      // use that to determine the footprint.
+      std::optional<RoutingTrackDirection> access_direction;
+      auto routing_info = GetRoutingLayerInfo(footprint_layer);
+      if (routing_info) {
+        access_direction = routing_info->get().direction();
+      }
+
       auto pin_projection = ViaFootprint(port.centre(),
                                          access_layer,
-                                         footprint_layer);
+                                         footprint_layer,
+                                         0,
+                                         access_direction);
       if (!pin_projection) {
         continue;
       }

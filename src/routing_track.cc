@@ -23,13 +23,11 @@ namespace bfg {
 
 RoutingTrack::~RoutingTrack() {
   for (RoutingEdge *edge : edges_) { delete edge; }
-  for (const BlockageGroup &group : blockages_) {
-    for (RoutingTrackBlockage *blockage : group.vertex_blockages) {
-      delete blockage;
-    }
-    for (RoutingTrackBlockage *blockage : group.edge_blockages) {
-      delete blockage;
-    }
+  for (RoutingTrackBlockage *blockage : blockages_.vertex_blockages) {
+    delete blockage;
+  }
+  for (RoutingTrackBlockage *blockage : blockages_.edge_blockages) {
+    delete blockage;
   }
 }
 
@@ -193,8 +191,15 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   // TODO(aryap): This could be a problem because if the current edge merges
   // with an existing blockage, we will treat that blockage as touching this
   // net!
-  //
-  RoutingTrackBlockage *current_blockage = MergeNewBlockage(
+
+  // Record the vertex and edge blockage.
+  MergeNewVertexBlockage(
+      edge->first()->centre(),
+      edge->second()->centre(),
+      min_separation_between_edges_,
+      net);
+
+  RoutingTrackBlockage *current_blockage = MergeNewEdgeBlockage(
       edge->first()->centre(),
       edge->second()->centre(),
       min_separation_between_edges_,
@@ -661,14 +666,27 @@ bool RoutingTrack::IsBlockedBetween(
   low -= (margin - 1);
   high += (margin - 1);
 
-  for (RoutingTrackBlockage *blockage : blockages_) {
+  for (RoutingTrackBlockage *blockage : blockages_.edge_blockages) {
+    if (blockage->Blocks(low, high) && (
+          !for_nets || !for_nets->Contains(blockage->net()))) {
+      return true;
+    }
+  }
+  for (RoutingTrackBlockage *blockage : blockages_.vertex_blockages) {
     if (blockage->Blocks(low, high) && (
           !for_nets || !for_nets->Contains(blockage->net()))) {
       return true;
     }
   }
 
-  for (RoutingTrackBlockage *blockage : temporary_blockages_) {
+  for (RoutingTrackBlockage *blockage : temporary_blockages_.edge_blockages) {
+    if (blockage->Blocks(low, high) && (
+          !for_nets || !for_nets->Contains(blockage->net()))) {
+      return true;
+    }
+  }
+
+  for (RoutingTrackBlockage *blockage : temporary_blockages_.vertex_blockages) {
     if (blockage->Blocks(low, high) && (
           !for_nets || !for_nets->Contains(blockage->net()))) {
       return true;
@@ -724,8 +742,8 @@ int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
 // intersections.
 bool RoutingTrack::Intersects(
     const geometry::Rectangle &rectangle,
-    int64_t min_separation,
-    int64_t padding) {
+    int64_t padding,
+    int64_t min_transverse_separation) const {
   // First check that the minor direction falls on this offset:
   int64_t offset_axis_low = ProjectOntoOffset(rectangle.lower_left());
   int64_t offset_axis_high = ProjectOntoOffset(rectangle.upper_right());
@@ -736,8 +754,8 @@ bool RoutingTrack::Intersects(
   bool intersected_vertices = false;
   bool intersected_edges = false;
 
-  int64_t low = offset_ - (min_separation - 1) - padding;
-  int64_t high = offset_ + (min_separation - 1) + padding;
+  int64_t low = offset_ - (min_transverse_separation - 1) - padding;
+  int64_t high = offset_ + (min_transverse_separation - 1) + padding;
 
   // There is no intersection if both the track edges are on the low or the
   // high side of the blockage. Otherwise if one of the edges is straddled or
@@ -769,7 +787,7 @@ bool RoutingTrack::Intersects(
     const geometry::Polygon &polygon,
     std::vector<geometry::PointPair> *intersections,
     int64_t padding,
-    int64_t min_separation) const {
+    int64_t min_transverse_separation) const {
   // FIXME(aryap): This should be width_ / 2, or at least consider the actual
   // maximum thickness (still divided by 2) at vertices, wherever they are.
   //
@@ -780,7 +798,7 @@ bool RoutingTrack::Intersects(
   // ----------|-----|-----------
   //         |          | <- undetected
   // ----------|-----|-----------
-  int64_t boundary_from_offset = min_separation + padding; 
+  int64_t boundary_from_offset = min_transverse_separation + padding; 
   std::pair<geometry::Line, geometry::Line> major_axis_lines =
       MajorAxisLines(boundary_from_offset);
 
@@ -828,10 +846,12 @@ bool RoutingTrack::Intersects(
 }
 
 
-RoutingTrackBlockage *RoutingTrack::AddBlockage(
+void RoutingTrack::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,
-    const std::string &net) {
+    const std::string &net,
+    RoutingTrackBlockage **new_vertex_blockage,
+    RoutingTrackBlockage **new_edge_blockage) {
   if (IntersectsVertices(rectangle, padding)) {
     RoutingTrackBlockage *blockage = MergeNewVertexBlockage(
         rectangle.lower_left(),
@@ -840,7 +860,9 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
         net);
     if (blockage) {
       ApplyVertexBlockage(*blockage, rectangle.net());
-      return blockage;
+    }
+    if (new_vertex_blockage) {
+      *new_vertex_blockage = blockage;
     }
   }
   if (IntersectsEdges(rectangle, padding)) {
@@ -851,10 +873,11 @@ RoutingTrackBlockage *RoutingTrack::AddBlockage(
         net);
     if (blockage) {
       ApplyEdgeBlockage(*blockage, rectangle.net());
-      return blockage;
+    }
+    if (new_edge_blockage) {
+      *new_edge_blockage = blockage;
     }
   }
-  return nullptr;
 }
 
 void RoutingTrack::AddBlockage(
@@ -896,27 +919,48 @@ void RoutingTrack::AddBlockage(
 
 // FIXME(aryap): You are here. AddTemporaryBlockage also needs to distinguish
 // between vertex and edge blockages.
-RoutingTrackBlockage *RoutingTrack::AddTemporaryBlockage(
+//
+// There is no merge process for temporary blockages because they are owned by
+// a RoutingGrid; whatever causes the blockage to be created must be able to
+// remove it independently of other temporary blockages.
+void RoutingTrack::AddTemporaryBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,
     const std::string &net,
+    RoutingTrackBlockage **new_vertex_blockage,
+    RoutingTrackBlockage **new_edge_blockage,
     std::set<RoutingVertex*> *blocked_vertices,
     std::set<RoutingEdge*> *blocked_edges) {
-  if (Intersects(rectangle, padding)) {
+  if (IntersectsVertices(rectangle, padding)) {
     std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(
         rectangle.lower_left(), rectangle.upper_right());
 
     RoutingTrackBlockage *temporary_blockage = new RoutingTrackBlockage(
         low_high.first, low_high.second, net);
-    temporary_blockages_.push_back(temporary_blockage);
-    ApplyBlockage(*temporary_blockage,
-                  rectangle.net(),
-                  true,   // Temporary.
-                  blocked_vertices,
-                  blocked_edges);
-    return temporary_blockage;
+    temporary_blockages_.vertex_blockages.push_back(temporary_blockage);
+    ApplyVertexBlockage(*temporary_blockage,
+                        rectangle.net(),
+                        true,   // Temporary.
+                        blocked_vertices);
+    *new_vertex_blockage = temporary_blockage;
+  } else {
+    *new_vertex_blockage = nullptr;
   }
-  return nullptr;
+  if (IntersectsEdges(rectangle, padding)) {
+    std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(
+        rectangle.lower_left(), rectangle.upper_right());
+
+    RoutingTrackBlockage *temporary_blockage = new RoutingTrackBlockage(
+        low_high.first, low_high.second, net);
+    temporary_blockages_.edge_blockages.push_back(temporary_blockage);
+    ApplyEdgeBlockage(*temporary_blockage,
+                      rectangle.net(),
+                      true,   // Temporary.
+                      blocked_edges);
+    *new_edge_blockage = temporary_blockage;
+  } else {
+    *new_edge_blockage = nullptr;
+  }
 }
 
 RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
@@ -1033,16 +1077,25 @@ void RoutingTrack::SortBlockages(
     return lhs->start() != rhs->start() ?
         lhs->start() < rhs->start() : lhs->end() < rhs->end();
   };
-  std::sort(blockages_.begin(), blockages_.end(), comp);
+  std::sort(container->begin(), container->end(), comp);
 }
 
 bool RoutingTrack::RemoveTemporaryBlockage(RoutingTrackBlockage *blockage) {
+  std::vector<RoutingTrackBlockage*> &vertex_blockages =
+      temporary_blockages_.vertex_blockages;
   auto it = std::find(
-      temporary_blockages_.begin(), temporary_blockages_.end(), blockage);
-  if (it == temporary_blockages_.end()) {
-    return false;
+      vertex_blockages.begin(), vertex_blockages.end(), blockage);
+  if (it != vertex_blockages.end()) {
+    vertex_blockages.erase(it);
+    return true;
   }
-  temporary_blockages_.erase(it);
+  std::vector<RoutingTrackBlockage*> &edge_blockages =
+      temporary_blockages_.edge_blockages;
+  it = std::find(edge_blockages.begin(), edge_blockages.end(), blockage);
+  if (it != edge_blockages.end()) {
+    edge_blockages.erase(it);
+    return true;
+  }
   return true;
 }
 

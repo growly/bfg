@@ -43,46 +43,53 @@ TEST(RoutingTrackTest, MergesBlockages) {
   // y=50 -----------------------------------
   //
 
-  track.AddBlockage(geometry::Rectangle({0, 0}, {100, 100}), 0, "");
+  track.AddBlockage(
+      geometry::Rectangle({0, 0}, {100, 100}), 0, "", nullptr, nullptr);
 
-  EXPECT_EQ(1U, track.blockages_.size());
-  EXPECT_EQ(0, track.blockages_.front()->start());
-  EXPECT_EQ(100, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
+  std::vector<RoutingTrackBlockage*> &vertex_blockages =
+      track.blockages_.vertex_blockages;
+
+  EXPECT_EQ(1U, vertex_blockages.size());
+  EXPECT_EQ(0, vertex_blockages.front()->start());
+  EXPECT_EQ(100, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
 
   // Second blockages is more than min_separation away, so not merged.
 
-  track.AddBlockage(geometry::Rectangle({200, 0}, {300, 100}), 0, "");
+  track.AddBlockage(
+      geometry::Rectangle({200, 0}, {300, 100}), 0, "", nullptr, nullptr);
 
-  EXPECT_EQ(2U, track.blockages_.size());
+  EXPECT_EQ(2U, vertex_blockages.size());
   // First blockage should not have changed.
-  EXPECT_EQ(0, track.blockages_.front()->start());
-  EXPECT_EQ(100, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
+  EXPECT_EQ(0, vertex_blockages.front()->start());
+  EXPECT_EQ(100, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
   // New blockage should be the back (because it's sorted).
-  EXPECT_EQ(200, track.blockages_.back()->start());
-  EXPECT_EQ(300, track.blockages_.back()->end());
-  EXPECT_EQ("", track.blockages_.back()->net());
+  EXPECT_EQ(200, vertex_blockages.back()->start());
+  EXPECT_EQ(300, vertex_blockages.back()->end());
+  EXPECT_EQ("", vertex_blockages.back()->net());
 
   // Third blockage should also not conflict:
-  track.AddBlockage(geometry::Rectangle({600, 0}, {650, 100}), 0, "");
-  EXPECT_EQ(3U, track.blockages_.size());
+  track.AddBlockage(
+      geometry::Rectangle({600, 0}, {650, 100}), 0, "", nullptr, nullptr);
+  EXPECT_EQ(3U, vertex_blockages.size());
   // First blockage should not have changed.
-  EXPECT_EQ(0, track.blockages_.front()->start());
-  EXPECT_EQ(100, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
+  EXPECT_EQ(0, vertex_blockages.front()->start());
+  EXPECT_EQ(100, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
   // New blockage should be the back (because it's sorted).
-  EXPECT_EQ(600, track.blockages_.back()->start());
-  EXPECT_EQ(650, track.blockages_.back()->end());
-  EXPECT_EQ("", track.blockages_.back()->net());
+  EXPECT_EQ(600, vertex_blockages.back()->start());
+  EXPECT_EQ(650, vertex_blockages.back()->end());
+  EXPECT_EQ("", vertex_blockages.back()->net());
 
   // Fourth blockage should span the first two existing blockages, and should
   // thus be merged:
-  track.AddBlockage(geometry::Rectangle({-50, 0}, {450, 100}), 0, "");
-  EXPECT_EQ(2U, track.blockages_.size());
-  EXPECT_EQ(-50, track.blockages_.front()->start());
-  EXPECT_EQ(450, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
+  track.AddBlockage(
+      geometry::Rectangle({-50, 0}, {450, 100}), 0, "", nullptr, nullptr);
+  EXPECT_EQ(2U, vertex_blockages.size());
+  EXPECT_EQ(-50, vertex_blockages.front()->start());
+  EXPECT_EQ(450, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
 }
 
 TEST(RoutingTrackTest, DoesNotMergeDifferingNets) {
@@ -101,49 +108,56 @@ TEST(RoutingTrackTest, DoesNotMergeDifferingNets) {
   // y=50 -----------------------------------
   //
 
-  track.AddBlockage(geometry::Rectangle({0, 0}, {100, 100}), 0, "");
+  track.AddBlockage(
+      geometry::Rectangle({0, 0}, {100, 100}), 0, "", nullptr, nullptr);
 
-  EXPECT_EQ(1U, track.blockages_.size());
-  EXPECT_EQ(0, track.blockages_.front()->start());
-  EXPECT_EQ(100, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
+  std::vector<RoutingTrackBlockage*> &vertex_blockages =
+      track.blockages_.vertex_blockages;
+
+  EXPECT_EQ(1U, vertex_blockages.size());
+  EXPECT_EQ(0, vertex_blockages.front()->start());
+  EXPECT_EQ(100, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
 
   // Second blockages is more than min_separation away, so not merged.
 
-  track.AddBlockage(geometry::Rectangle({200, 0}, {300, 100}), 0, "some_net");
+  track.AddBlockage(geometry::Rectangle({200, 0}, {300, 100}),
+                    0, "some_net", nullptr, nullptr);
 
-  EXPECT_EQ(2U, track.blockages_.size());
+  EXPECT_EQ(2U, vertex_blockages.size());
   // First blockage should not have changed.
-  EXPECT_EQ(0, track.blockages_.front()->start());
-  EXPECT_EQ(100, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
+  EXPECT_EQ(0, vertex_blockages.front()->start());
+  EXPECT_EQ(100, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
   // New blockage should be the back (because it's sorted).
-  EXPECT_EQ(200, track.blockages_.back()->start());
-  EXPECT_EQ(300, track.blockages_.back()->end());
-  EXPECT_EQ("some_net", track.blockages_.back()->net());
+  EXPECT_EQ(200, vertex_blockages.back()->start());
+  EXPECT_EQ(300, vertex_blockages.back()->end());
+  EXPECT_EQ("some_net", vertex_blockages.back()->net());
 
   // Third blockage should also not conflict:
-  track.AddBlockage(geometry::Rectangle({600, 0}, {650, 100}), 0, "");
-  EXPECT_EQ(3U, track.blockages_.size());
+  track.AddBlockage(
+      geometry::Rectangle({600, 0}, {650, 100}), 0, "", nullptr, nullptr);
+  EXPECT_EQ(3U, vertex_blockages.size());
   // First blockage should not have changed.
-  EXPECT_EQ(0, track.blockages_.front()->start());
-  EXPECT_EQ(100, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
+  EXPECT_EQ(0, vertex_blockages.front()->start());
+  EXPECT_EQ(100, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
   // New blockage should be the back (because it's sorted).
-  EXPECT_EQ(600, track.blockages_.back()->start());
-  EXPECT_EQ(650, track.blockages_.back()->end());
-  EXPECT_EQ("", track.blockages_.back()->net());
+  EXPECT_EQ(600, vertex_blockages.back()->start());
+  EXPECT_EQ(650, vertex_blockages.back()->end());
+  EXPECT_EQ("", vertex_blockages.back()->net());
 
   // Fourth blockage should span two of the three existing blockages, and should
   // thus be merged. The blockage with a differing net should be untouched.
-  track.AddBlockage(geometry::Rectangle({-50, 0}, {625, 100}), 0, "");
-  EXPECT_EQ(2U, track.blockages_.size());
-  EXPECT_EQ(-50, track.blockages_.front()->start());
-  EXPECT_EQ(650, track.blockages_.front()->end());
-  EXPECT_EQ("", track.blockages_.front()->net());
-  EXPECT_EQ(200, track.blockages_.back()->start());
-  EXPECT_EQ(300, track.blockages_.back()->end());
-  EXPECT_EQ("some_net", track.blockages_.back()->net());
+  track.AddBlockage(
+      geometry::Rectangle({-50, 0}, {625, 100}), 0, "", nullptr, nullptr);
+  EXPECT_EQ(2U, vertex_blockages.size());
+  EXPECT_EQ(-50, vertex_blockages.front()->start());
+  EXPECT_EQ(650, vertex_blockages.front()->end());
+  EXPECT_EQ("", vertex_blockages.front()->net());
+  EXPECT_EQ(200, vertex_blockages.back()->start());
+  EXPECT_EQ(300, vertex_blockages.back()->end());
+  EXPECT_EQ("some_net", vertex_blockages.back()->net());
 }
 
 }  // namespace bfg

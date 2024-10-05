@@ -149,9 +149,11 @@ class RoutingTrack {
 
   // Rectangle blockages create single RoutingTrackBlockages or none at all, so
   // we can return one or nullptr here:
-  RoutingTrackBlockage *AddBlockage(const geometry::Rectangle &rectangle,
-                                    int64_t padding,
-                                    const std::string &net);
+  void AddBlockage(const geometry::Rectangle &rectangle,
+                   int64_t padding,
+                   const std::string &net,
+                   RoutingTrackBlockage **new_vertex_blockage,
+                   RoutingTrackBlockage **new_edge_blockage);
   // By contrast, polygons can create multiple blockages on a single track, and
   // need to return more creatively, if desired.
   void AddBlockage(const geometry::Polygon &polygon,
@@ -161,10 +163,12 @@ class RoutingTrack {
   // Returns the edges, vertices blocked by the given shape, with optional
   // padding, but does not create a permanent Blockage in the list of
   // blockages_.
-  RoutingTrackBlockage *AddTemporaryBlockage(
+  void AddTemporaryBlockage(
       const geometry::Rectangle &rectangle,
       int64_t padding,
       const std::string &net,
+      RoutingTrackBlockage **new_vertex_blockage,
+      RoutingTrackBlockage **new_edge_blockage,
       std::set<RoutingVertex*> *blocked_vertices,
       std::set<RoutingEdge*> *blocked_edges);
 
@@ -201,33 +205,31 @@ class RoutingTrack {
 
   bool Intersects(const geometry::Rectangle &rectangle,
                   int64_t padding,
-                  int64_t min_separation) const;
-
-  // TODO(growly): This does not account for the fact that a rectangle might be
+                  int64_t min_transverse_separation) const;
+// TODO(growly): This does not account for the fact that a rectangle might be
   // small enough to fit between the keep-outs around two adjacent vertices.
   bool IntersectsVertices(
       const geometry::Rectangle &rectangle,
-      int64_t padding) {
+      int64_t padding) const {
     return Intersects(rectangle, padding, vertices_min_transverse_separation_);
   }
 
   bool IntersectsEdges(
       const geometry::Rectangle &rectangle,
-      int64_t padding) {
-    return Intersects(rectangle, padding, edges_min_tranverse_separation_);
+      int64_t padding) const {
+    return Intersects(rectangle, padding, edges_min_transverse_separation_);
   }
 
   bool Intersects(
       const geometry::Polygon &polygon,
       std::vector<geometry::PointPair> *intersections,
       int64_t padding,
-      int64_t min_separation) const;
+      int64_t min_transverse_separation) const;
 
   bool IntersectsVertices(
       const geometry::Polygon &polygon,
       std::vector<geometry::PointPair> *intersections,
-      int64_t padding,
-      int64_t min_separation) const {
+      int64_t padding) const {
     return Intersects(
         polygon, intersections, padding, vertices_min_transverse_separation_);
   }
@@ -235,8 +237,7 @@ class RoutingTrack {
   bool IntersectsEdges(
       const geometry::Polygon &polygon,
       std::vector<geometry::PointPair> *intersections,
-      int64_t padding,
-      int64_t min_separation) const {
+      int64_t padding) const {
     return Intersects(
         polygon, intersections, padding, edges_min_transverse_separation_);
   }
@@ -371,8 +372,8 @@ class RoutingTrack {
 
   // The minimum distance to shapes measured in the axis perpendicular to the
   // track.
-  int64_t vertices_min_transverse_separation;
-  int64_t edges_min_transverse_separation;
+  int64_t edges_min_transverse_separation_;
+  int64_t vertices_min_transverse_separation_;
 
   // We want to keep a sorted list of blockages, but if we keep them as a
   // std::set we can't mutate the objects (since they will not automatically be
