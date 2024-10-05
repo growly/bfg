@@ -372,15 +372,15 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
   horizontal.set_wire_width(140);
   horizontal.set_offset(50);
   horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
-  horizontal.set_pitch(34);
+  horizontal.set_pitch(340);
 
   RoutingLayerInfo vertical;
-  horizontal.set_layer(220);
-  horizontal.set_area(Rectangle({0, -600}, {39840, 11600}));
-  horizontal.set_wire_width(140);
-  horizontal.set_offset(50);
-  horizontal.set_direction(RoutingTrackDirection::kTrackVertical);
-  horizontal.set_pitch(34);
+  vertical.set_layer(220);
+  vertical.set_area(Rectangle({0, -600}, {39840, 11600}));
+  vertical.set_wire_width(140);
+  vertical.set_offset(50);
+  vertical.set_direction(RoutingTrackDirection::kTrackVertical);
+  vertical.set_pitch(340);
 
   RoutingGridGeometry grid_geometry;
   grid_geometry.ComputeForLayers(horizontal, vertical);
