@@ -54,8 +54,8 @@ class RoutingTrack {
         min_separation_(min_separation) {
     min_separation_between_edges_ = vertex_via_length + min_separation;
     min_separation_to_new_blockages_ = vertex_via_length / 2 + min_separation;
-    min_transverse_separation_ =
-        std::max(width_, vertex_via_width_) / 2 + min_separation;
+    edges_min_transverse_separation_ = width_ / 2 + min_separation;
+    vertices_min_transverse_separation_ = vertex_via_width / 2 + min_separation;
   }
 
   ~RoutingTrack();
@@ -200,11 +200,46 @@ class RoutingTrack {
   bool Intersects(RoutingVertex *vertex) const;
 
   bool Intersects(const geometry::Rectangle &rectangle,
-                  int64_t padding = 0) const;
+                  int64_t padding,
+                  int64_t min_separation) const;
+
+  // TODO(growly): This does not account for the fact that a rectangle might be
+  // small enough to fit between the keep-outs around two adjacent vertices.
+  bool IntersectsVertices(
+      const geometry::Rectangle &rectangle,
+      int64_t padding) {
+    return Intersects(rectangle, padding, vertices_min_transverse_separation_);
+  }
+
+  bool IntersectsEdges(
+      const geometry::Rectangle &rectangle,
+      int64_t padding) {
+    return Intersects(rectangle, padding, edges_min_tranverse_separation_);
+  }
+
   bool Intersects(
       const geometry::Polygon &polygon,
       std::vector<geometry::PointPair> *intersections,
-      int64_t padding = 0) const;
+      int64_t padding,
+      int64_t min_separation) const;
+
+  bool IntersectsVertices(
+      const geometry::Polygon &polygon,
+      std::vector<geometry::PointPair> *intersections,
+      int64_t padding,
+      int64_t min_separation) const {
+    return Intersects(
+        polygon, intersections, padding, vertices_min_transverse_separation_);
+  }
+
+  bool IntersectsEdges(
+      const geometry::Polygon &polygon,
+      std::vector<geometry::PointPair> *intersections,
+      int64_t padding,
+      int64_t min_separation) const {
+    return Intersects(
+        polygon, intersections, padding, edges_min_transverse_separation_);
+  }
 
   void AssignThisTrackToVertex(RoutingVertex *vertex);
 
@@ -254,15 +289,41 @@ class RoutingTrack {
   RoutingTrackBlockage *MergeNewBlockage(
       const geometry::Point &one_end,
       const geometry::Point &other_end,
-      int64_t margin = 0,
-      const std::string &net = "");
-  void ApplyBlockage(const RoutingTrackBlockage &blockage,
-                     const std::string &net = "",
-                     bool is_temporary = false,
-                     std::set<RoutingVertex*> *blocked_vertices = nullptr,
-                     std::set<RoutingEdge*> *blocked_edges = nullptr);
+      int64_t margin,
+      const std::string &net,
+      std::vector<RoutingTrackBlockage*> *container);
 
-  void SortBlockages();
+  RoutingTrackBlockage *MergeNewEdgeBlockage(
+      const geometry::Point &one_end,
+      const geometry::Point &other_end,
+      int64_t margin = 0,
+      const std::string &net = "") {
+    return MergeNewBlockage(
+        one_end, other_end, margin, net, &blockages_.edge_blockages);
+  }
+
+  RoutingTrackBlockage *MergeNewVertexBlockage(
+      const geometry::Point &one_end,
+      const geometry::Point &other_end,
+      int64_t margin = 0,
+      const std::string &net = "") {
+    return MergeNewBlockage(
+        one_end, other_end, margin, net, &blockages_.vertex_blockages);
+  }
+
+  void ApplyEdgeBlockage(
+      const RoutingTrackBlockage &blockage,
+      const std::string &net = "",
+      bool is_temporary = false,
+      std::set<RoutingEdge*> *blocked_edges = nullptr);
+
+  void ApplyVertexBlockage(
+      const RoutingTrackBlockage &blockage,
+      const std::string &net = "",
+      bool is_temporary = false,
+      std::set<RoutingVertex*> *blocked_vertices = nullptr);
+
+  void SortBlockages(std::vector<RoutingTrackBlockage*> *container);
 
   // The edges generated for vertices on this track. These are OWNED by
   // RoutingTrack.
@@ -310,7 +371,8 @@ class RoutingTrack {
 
   // The minimum distance to shapes measured in the axis perpendicular to the
   // track.
-  int64_t min_transverse_separation_;
+  int64_t vertices_min_transverse_separation;
+  int64_t edges_min_transverse_separation;
 
   // We want to keep a sorted list of blockages, but if we keep them as a
   // std::set we can't mutate the objects (since they will not automatically be
