@@ -213,6 +213,24 @@ TEST(LineTest, PointOnInfiniteLineClosestTo) {
   EXPECT_EQ(Point({3, 2}), line.PointOnInfiniteLineClosestTo({3, 1}));
 }
 
+TEST(LineTest, WithUnitLengthAtAngleToHorizon) {
+  Line x_axis = Line::WithUnitLengthAtAngleToHorizon(0);
+  EXPECT_EQ(Point(0, 0), x_axis.start());
+  EXPECT_EQ(Point(1, 0), x_axis.end());
+
+  Line y_axis = Line::WithUnitLengthAtAngleToHorizon(Line::kPi / 2);
+  EXPECT_EQ(Point(0, 0), y_axis.start());
+  EXPECT_EQ(Point(0, 1), y_axis.end());
+
+  Line reverse_x_axis = Line::WithUnitLengthAtAngleToHorizon(Line::kPi);
+  EXPECT_EQ(Point(0, 0), reverse_x_axis.start());
+  EXPECT_EQ(Point(-1, 0), reverse_x_axis.end());
+
+  Line reverse_y_axis = Line::WithUnitLengthAtAngleToHorizon(3 * Line::kPi / 2);
+  EXPECT_EQ(Point(0, 0), reverse_y_axis.start());
+  EXPECT_EQ(Point(0, -1), reverse_y_axis.end());
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

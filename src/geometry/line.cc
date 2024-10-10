@@ -18,6 +18,13 @@ std::string Line::Describe() const {
   return ss.str();
 }
 
+Line Line::WithUnitLengthAtAngleToHorizon(double angle_to_horizon_radians) {
+  return Line(
+      {0, 0},
+      {std::llround(std::cos(angle_to_horizon_radians)),
+       std::llround(std::sin(angle_to_horizon_radians))});
+}
+
 bool Line::AreAntiParallel(const Line &lhs, const Line &rhs) {
   return lhs.AngleToLineCounterClockwise(rhs) == kPi;
 }
@@ -122,9 +129,9 @@ void Line::IntersectsWithAll(
   }
 }
 
-// Projection of some point on to the line. Let vector v be the the vector from
-// the start of this line to the given point, and the vector s be the vector
-// from the start of *this line to the end. Then
+// Projection of some point on to the line. Let vector v be the vector from the
+// start of this line to the given point, and the vector s be the vector from
+// the start of *this line to the end. Then
 //
 //      _ _      _   _   _   _     _
 // proj_s(v) = [(v . s)/(s . s)] * s
@@ -224,6 +231,16 @@ bool Line::AreSameInfiniteLine(const Line &lhs, const Line &rhs) {
   if (lhs.Offset() != rhs.Offset())
     return false;
   return true;
+}
+
+
+// Each line is projected onto an axis at the given angle. Any overlap is
+// returned as a pair of points on the axis.
+std::optional<std::pair<double, double>> Line::OverlappingProjectionOnAxis(
+    const Line &lhs, const Line &rhs, double axis_angle_radians) {
+  Line axis = WithUnitLengthAtAngleToHorizon(axis_angle_radians);
+
+  return std::nullopt;
 }
 
 bool Line::IsVertical() const {
@@ -476,6 +493,12 @@ double Line::AngleToLineCounterClockwise(const Line &other) const {
   return angle_rads;
 }
 
+// Remember:
+//  _   _     _     _
+//  a . b = ||a||*||b||*cos(theta)
+//                                   _     _
+//  where theta is the angle between a and b.
+//
 int64_t Line::DotProduct(const Line &with) const {
   // Turn the lines into vectors by subtracting the starting point from the end
   // point. Call them "Vectors" to make it clear what we're doing, even though

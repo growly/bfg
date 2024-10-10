@@ -29,6 +29,23 @@ class Line {
 
   static double kPi;
 
+  // NOTE(aryap): It doesn't make sense to use this with angles that aren't
+  // multiples of pi/4, since our Point has integer units:
+  //
+  //
+  //          +     + (1, 1)
+  //          |
+  //          |       (1, 0)
+  //    +-----+-----+
+  //          |(0, 0)
+  //          |
+  //          +
+  //
+  // The only unit-length
+  // lines we can represent in this format are those with angles at multiples of
+  // pi/2 to the horizon.
+  static Line WithUnitLengthAtAngleToHorizon(double angle_to_horizon_radians);
+
   // Returns true if the lines defined by lhs and rhs intersect, and if so,
   // fills `point` with the intersection point. Returns false if the lines do
   // not intersect (are parallel).
@@ -40,6 +57,9 @@ class Line {
   std::string Describe() const;
 
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
+
+  static std::optional<std::pair<double, double>> OverlappingProjectionOnAxis(
+      const Line &lhs, const Line &rhs, double axis_angle_radians);
 
   bool Intersects(const Point &point) const;
 

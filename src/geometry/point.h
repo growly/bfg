@@ -55,6 +55,17 @@ class Point : public AbstractShape, public Manipulable {
   void Rotate(double theta_radians);
   void Rotate(int32_t degrees_ccw) override;
 
+  // Treating this point as a vector from (0, 0) to (x_, y_), and likewise
+  // treating the other point as a vector from (0, 0) to (x_, y_), return the
+  // vector projection of the other onto this. The return value is likewise a
+  // point representing a vector from (0, 0).
+  Point Project(const Point &other) const;
+
+  // Treating this point as a vector from (0, 0) to (x_, y_), and likewise
+  // treating the other point as a vector from (0, 0) to (x_, y_), return the
+  // dot product of the vectors.
+  int64_t DotProduct(const Point &other) const;
+
   std::string Describe() const;
 
   int64_t L2SquaredDistanceTo(const Point &other) const;

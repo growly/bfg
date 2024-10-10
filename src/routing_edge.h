@@ -43,11 +43,9 @@ class RoutingEdge {
 
   std::vector<RoutingVertex*> SpannedVertices() const;
 
-  void set_cost(double cost) { cost_ = cost; }
-  double cost() const { return cost_; }
+  RoutingVertex *OtherVertexThan(RoutingVertex *given) const;
 
-  RoutingVertex *first() const { return first_; }
-  RoutingVertex *second() const { return second_; }
+  std::pair<int64_t, int64_t> ProjectOntoAxis() const;
 
   // Self-contained utility for imagining this edge as a rectilinear rectangle
   // of the given width.
@@ -71,6 +69,12 @@ class RoutingEdge {
     temporarily_in_use_by_net_ = std::nullopt;
     temporarily_blocked_ = false;
   }
+
+  void set_cost(double cost) { cost_ = cost; }
+  double cost() const { return cost_; }
+
+  RoutingVertex *first() const { return first_; }
+  RoutingVertex *second() const { return second_; }
 
   void set_layer(const std::optional<geometry::Layer> &layer) {
     layer_ = layer;

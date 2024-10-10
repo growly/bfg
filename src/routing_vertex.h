@@ -86,6 +86,10 @@ class RoutingVertex {
     explicit_net_layer_requires_encap_ = explicit_net_layer_requires_encap;
   }
 
+  bool IsOffGrid() const {
+    return !horizontal_track_ || !vertical_track_;
+  }
+
   const geometry::Point &centre() const { return centre_; }
 
   void set_net(const std::string &net) { net_ = net; }

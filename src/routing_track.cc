@@ -21,6 +21,45 @@
 
 namespace bfg {
 
+int64_t RoutingTrack::ProjectOntoAxis(
+    const geometry::Point &point, const RoutingTrackDirection &direction) {
+  switch (direction) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      return point.x();
+    case RoutingTrackDirection::kTrackVertical:
+      return point.y();
+    default:
+      LOG(FATAL) << "Unrecognised RoutingTrackDirection: " << direction;
+      break;
+  }
+  return 0;
+}
+
+std::pair<int64_t, int64_t> RoutingTrack::ProjectOntoAxis(
+    const geometry::Point &lhs,
+    const geometry::Point &rhs,
+    const RoutingTrackDirection &direction) {
+  int64_t low = ProjectOntoAxis(lhs, direction);
+  int64_t high = ProjectOntoAxis(rhs, direction);
+  if (low > high)
+    std::swap(low, high);
+  return {low, high};
+}
+
+RoutingTrackDirection RoutingTrack::OrthogonalDirectionTo(
+    const RoutingTrackDirection &direction) {
+  switch (direction) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      return RoutingTrackDirection::kTrackVertical;
+    case RoutingTrackDirection::kTrackVertical:
+      return RoutingTrackDirection::kTrackHorizontal;
+    default:
+      LOG(FATAL) << "Unrecognised RoutingTrackDirection: " << direction;
+      break;
+  }
+  return RoutingTrackDirection::kTrackVertical;
+}
+
 RoutingTrack::~RoutingTrack() {
   for (RoutingEdge *edge : edges_) { delete edge; }
   for (RoutingTrackBlockage *blockage : blockages_.vertex_blockages) {
@@ -559,20 +598,12 @@ geometry::Point RoutingTrack::PointOnTrack(
 
 std::pair<int64_t, int64_t> RoutingTrack::ProjectOntoTrack(
     const geometry::Point &lhs, const geometry::Point &rhs) const {
-  int64_t low = ProjectOntoTrack(lhs);
-  int64_t high = ProjectOntoTrack(rhs);
-  if (low > high)
-    std::swap(low, high);
-  return {low, high};
+  return ProjectOntoAxis(lhs, rhs, direction_);
 }
 
 std::pair<int64_t, int64_t> RoutingTrack::ProjectOntoOffset(
     const geometry::Point &lhs, const geometry::Point &rhs) const {
-  int64_t low = ProjectOntoOffset(lhs);
-  int64_t high = ProjectOntoOffset(rhs);
-  if (low > high)
-    std::swap(low, high);
-  return {low, high};
+  return ProjectOntoAxis(lhs, rhs, OrthogonalDirectionTo(direction_));
 }
 
 bool RoutingTrack::EdgeSpansVertex(
@@ -697,31 +728,13 @@ bool RoutingTrack::IsBlockedBetween(
 }
 
 int64_t RoutingTrack::ProjectOntoTrack(const geometry::Point &point) const {
-  switch (direction_) {
-    case RoutingTrackDirection::kTrackHorizontal:
-      return point.x();
-    case RoutingTrackDirection::kTrackVertical:
-      return point.y();
-    default:
-      LOG(FATAL) << "This RoutingTrack has an unrecognised "
-                 << "RoutingTrackDirection: " << direction_;
-  }
-  return 0;
+  return ProjectOntoAxis(point, direction_);
 }
 
 // Get the x- or y-coordinate of the given point if this is a vertical or
 // horizontal, respectively.
 int64_t RoutingTrack::ProjectOntoOffset(const geometry::Point &point) const {
-  switch (direction_) {
-    case RoutingTrackDirection::kTrackHorizontal:
-      return point.y();
-    case RoutingTrackDirection::kTrackVertical:
-      return point.x();
-    default:
-      LOG(FATAL) << "This RoutingTrack has an unrecognised "
-                 << "RoutingTrackDirection: " << direction_;
-  }
-  return 0;
+  return ProjectOntoAxis(point, OrthogonalDirectionTo(direction_));
 }
 
 // Given a rectangle and this track (the line):

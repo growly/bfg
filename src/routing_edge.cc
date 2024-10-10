@@ -49,6 +49,20 @@ void RoutingEdge::SetNet(
   }
 }
 
+RoutingVertex *RoutingEdge::OtherVertexThan(RoutingVertex *given) const {
+  if (given == first_) {
+    return second_;
+  } else if (given == second_) {
+    return first_;
+  }
+  return nullptr;
+}
+
+std::pair<int64_t, int64_t> RoutingEdge::ProjectOntoAxis() const {
+  return RoutingTrack::ProjectOntoAxis(
+      first_->centre(), second_->centre(), Direction());
+}
+
 void RoutingEdge::SetBlocked(bool blocked, bool temporary) {
   if (temporary) {
     temporarily_blocked_ = blocked;

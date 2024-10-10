@@ -1,6 +1,8 @@
 #ifndef GEOMETRY_VECTOR_H_
 #define GEOMETRY_VECTOR_H_
 
+#include "point.h"
+
 namespace bfg {
 namespace geometry {
 

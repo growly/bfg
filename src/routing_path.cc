@@ -70,6 +70,76 @@ double RoutingPath::Cost() const {
   return cost;
 }
 
+void RoutingPath::Abbreviate() {
+  // A nice property of the routing-grid is that paths should not be able to
+  // conflict with themselves during the shortest-path search. This is
+  // violated by off-grid vertices, since using them precludes the use of nearby
+  // vertices on the grid. This is normally not a problem because long edges are
+  // used to get away from the off-grid site to some far-away target point.
+  // There are, however, exceptions:
+  //
+  //        +     +     +     +
+  //                    |
+  //        +-----+-----+     +
+  //       B|
+  //        +-----+--+ A+ +---+
+  //                O+    |C
+  //
+  // In this example, the path B could be constructed to connect to the off-grid
+  // point O given that on-grid vertex A is invalidated by an existing path C.
+  //
+  // We do a "peephole optimisation" here and remove any cases of
+  // obviously-simplifiable edges cases. We're looking for overlapping edges in
+  // the same direction:
+  //      +-------+
+  //           +--+
+  // We will restrict ourselves to the case where they are separated by one
+  // orthogonal edge. And we will replace that edge if we find the overlapping
+  // case.
+  //
+  if (vertices_.size() <= 3) {
+    return;
+  }
+  for (size_t i = 0; i < vertices_.size() - 3; ++i) {
+    RoutingEdge *current_edge = edges_[i];
+    RoutingEdge *next_edge = edges_[i + 2];
+
+    RoutingVertex *first = vertices_[i];
+    RoutingVertex *second = current_edge->OtherVertexThan(first);
+    LOG_IF(FATAL, !second) << "First vertex was not in current edge?";
+    RoutingVertex *third = edges_[i + 1]->OtherVertexThan(second);
+    LOG_IF(FATAL, !third) << "Third vertex was not in intermediate edge?";
+    RoutingVertex *fourth = next_edge->OtherVertexThan(third);
+    LOG_IF(FATAL, !fourth) << "Fourth vertex was not in next edge?";
+
+    if (!first->IsOffGrid() && !fourth->IsOffGrid()) {
+      continue;
+    }
+
+    if (next_edge->Direction() != current_edge->Direction()) {
+      LOG(WARNING)
+          << "This is weird: alternating edges not in the same direction?";
+      continue;
+    }
+
+    // Find overlap:
+    auto projection = current_edge->ProjectOntoAxis();
+    int64_t current_min = projection.first;
+    int64_t current_max = projection.second;
+    projection = next_edge->ProjectOntoAxis();
+    int64_t next_min = projection.first;
+    int64_t next_max = projection.second;
+
+    if ((current_min >= next_max && current_max >= next_max) ||
+        (current_max <= next_min && current_min <= next_min)) {
+      // No overlap.
+      continue;
+    }
+
+    LOG(INFO) << "Overlap detected: " << *current_edge << " " << *next_edge;
+  }
+}
+
 void RoutingPath::Flatten() {
   // We look for and try to eliminate wires that are too short to allow another
   // layer N wire over the top:
@@ -139,6 +209,7 @@ void RoutingPath::Flatten() {
 void RoutingPath::Legalise() {
   if (legalised_)
     return;
+  Abbreviate();
   Flatten();
   legalised_ = true;
 }

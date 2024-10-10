@@ -93,6 +93,51 @@ int64_t Point::L1DistanceTo(const Point &point) const {
   return std::abs(dx) + std::abs(dy);
 }
 
+//                          _      _
+// The scalar projection of a onto b is
+//          _
+//    a = ||a||cos(theta)
+//
+// and the dot product is
+//    _   _     _     _
+//    a . b = ||a|| ||b|| cos(theta)
+//
+// so the vector projection is
+//         _ _          _
+//    proj_b(a) = a *   b  
+//                    --_--
+//                    ||b||
+//                                                               _
+//                (the right most term is the unit vector in the b direction)
+//                _   _   _
+//              = a . b * b
+//                -----
+//                  _  2
+//                ||b||
+//
+// But we also have
+//     _  2    _   _
+//   ||b||   = b . b
+//
+// so             _   _
+//         _ _    a . b   _
+//    proj_b(a) = ----- * b
+//                _   _
+//                b . b
+Point Point::Project(const Point &other) const {
+  double a_dot_b = this->DotProduct(other);
+  double b_dot_b = this->DotProduct(*this);
+  double projection_coefficient = a_dot_b / b_dot_b;
+  return {
+    std::llround(projection_coefficient * static_cast<double>(x_)),
+    std::llround(projection_coefficient * static_cast<double>(y_))
+  };
+}
+
+int64_t Point::DotProduct(const Point &other) const {
+  return x_ * other.x() + y_ * other.y();
+}
+
 int64_t Point::L2SquaredDistanceTo(const Point &other) const {
   int64_t dx = std::abs(x_ - other.x_);
   int64_t dy = std::abs(y_ - other.y_);

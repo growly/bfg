@@ -103,6 +103,9 @@ class RoutingPath {
       RoutingEdge *edge,
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
 
+  // Remove reundant direction switching.
+  void Abbreviate();
+
   // Remove illegal (and inefficient) jogs between tracks.
   void Flatten();
 

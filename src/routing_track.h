@@ -36,6 +36,17 @@ class RoutingGrid;
 // up.
 class RoutingTrack {
  public:
+  // TODO(aryap): Shouldn't this live in geometry?
+  static int64_t ProjectOntoAxis(
+      const geometry::Point &point, const RoutingTrackDirection &direction);
+  static std::pair<int64_t, int64_t> ProjectOntoAxis(
+      const geometry::Point &lhs,
+      const geometry::Point &rhs,
+      const RoutingTrackDirection &direction);
+  // This is only here because I can't put it in the RoutingTrackDirection enum.
+  static RoutingTrackDirection OrthogonalDirectionTo(
+      const RoutingTrackDirection &direction);
+
   RoutingTrack(const geometry::Layer &layer,
                const RoutingTrackDirection &direction,
                int64_t pitch,
@@ -281,6 +292,7 @@ class RoutingTrack {
   std::pair<int64_t, int64_t> ProjectOntoTrack(
       const geometry::Point &lhs, const geometry::Point &rhs) const;
   int64_t ProjectOntoTrack(const geometry::Point &point) const;
+
   std::pair<int64_t, int64_t> ProjectOntoOffset(
       const geometry::Point &lhs, const geometry::Point &rhs) const;
   int64_t ProjectOntoOffset(const geometry::Point &point) const;
