@@ -8,6 +8,7 @@
 
 #include "line.h"
 #include "point.h"
+#include "radian.h"
 #include "rectangle.h"
 
 namespace bfg {
@@ -95,19 +96,19 @@ TEST(LineTest, AngleToHorizon) {
   EXPECT_EQ(a.AngleToHorizon(), 0);
 
   Line b = Line({0, 0}, {0, 1});
-  EXPECT_EQ(b.AngleToHorizon(), Line::kPi / 2);
+  EXPECT_EQ(b.AngleToHorizon(), Radian::kPi / 2);
 
   Line c = Line({0, 0}, {1, 1});
-  EXPECT_EQ(c.AngleToHorizon(), Line::kPi / 4);
+  EXPECT_EQ(c.AngleToHorizon(), Radian::kPi / 4);
 
   Line d = Line({0, 0}, {-1, 0});
-  EXPECT_EQ(d.AngleToHorizon(), Line::kPi);
+  EXPECT_EQ(d.AngleToHorizon(), Radian::kPi);
 
   Line f = Line({0, 0}, {0, -1});
-  EXPECT_EQ(f.AngleToHorizon(), -Line::kPi / 2);
+  EXPECT_EQ(f.AngleToHorizon(), -Radian::kPi / 2);
 
   Line g = Line({0, 0}, {-1, -1});
-  EXPECT_EQ(g.AngleToHorizon(), 2 * Line::kPi -3 * Line::kPi / 4);
+  EXPECT_EQ(g.AngleToHorizon(), 2 * Radian::kPi -3 * Radian::kPi / 4);
 }
 
 TEST(LineTest, AngleToLineCounterClockwise) {
@@ -116,8 +117,8 @@ TEST(LineTest, AngleToLineCounterClockwise) {
 
   EXPECT_EQ(up.AngleToLineCounterClockwise(up), 0.0);
   EXPECT_EQ(right.AngleToLineCounterClockwise(right), 0.0);
-  EXPECT_EQ(up.AngleToLineCounterClockwise(right), 3 * Line::kPi / 2);
-  EXPECT_EQ(right.AngleToLineCounterClockwise(up), Line::kPi / 2);
+  EXPECT_EQ(up.AngleToLineCounterClockwise(right), 3 * Radian::kPi / 2);
+  EXPECT_EQ(right.AngleToLineCounterClockwise(up), Radian::kPi / 2);
 
   //     /
   //    /
@@ -141,13 +142,13 @@ TEST(LineTest, AngleToLineCounterClockwise_Others) {
   Line slant_down_left = Line({2, 1}, {1, 0});
 
   EXPECT_EQ(right.AngleToLineCounterClockwise(slant_down_right),
-            7 * Line::kPi / 4);
+            7 * Radian::kPi / 4);
   EXPECT_EQ(slant_down_right.AngleToLineCounterClockwise(right),
-            Line::kPi / 4);
+            Radian::kPi / 4);
   EXPECT_EQ(slant_down_right.AngleToLineCounterClockwise(slant_down_left),
-            3 * Line::kPi / 2);
+            3 * Radian::kPi / 2);
   EXPECT_EQ(slant_down_left.AngleToLineCounterClockwise(slant_down_right),
-            Line::kPi / 2);
+            Radian::kPi / 2);
 }
 
 TEST(LineTest, DotProduct) {
@@ -213,22 +214,53 @@ TEST(LineTest, PointOnInfiniteLineClosestTo) {
   EXPECT_EQ(Point({3, 2}), line.PointOnInfiniteLineClosestTo({3, 1}));
 }
 
-TEST(LineTest, WithUnitLengthAtAngleToHorizon) {
-  Line x_axis = Line::WithUnitLengthAtAngleToHorizon(0);
-  EXPECT_EQ(Point(0, 0), x_axis.start());
-  EXPECT_EQ(Point(1, 0), x_axis.end());
+TEST(LineTest, OverlappingProjectionOnAxis) {
+  Line a = Line({1, 0}, {1, 5});
+  Line b = Line({4, 3}, {4, 5});
 
-  Line y_axis = Line::WithUnitLengthAtAngleToHorizon(Line::kPi / 2);
-  EXPECT_EQ(Point(0, 0), y_axis.start());
-  EXPECT_EQ(Point(0, 1), y_axis.end());
+  auto overlap = Line::OverlappingProjectionOnAxis(a, b, Radian::kPi / 2);
+  ASSERT_TRUE(overlap);
+  EXPECT_EQ(3, overlap->first);
+  EXPECT_EQ(5, overlap->second);
 
-  Line reverse_x_axis = Line::WithUnitLengthAtAngleToHorizon(Line::kPi);
-  EXPECT_EQ(Point(0, 0), reverse_x_axis.start());
-  EXPECT_EQ(Point(-1, 0), reverse_x_axis.end());
+  //  --
+  // --
+  Line c = Line({0, 2}, {2, 2});
+  Line d = Line({1, 3}, {3, 3});
+  overlap = Line::OverlappingProjectionOnAxis(c, d, 0);
+  ASSERT_TRUE(overlap);
+  EXPECT_EQ(1, overlap->first);
+  EXPECT_EQ(2, overlap->second);
 
-  Line reverse_y_axis = Line::WithUnitLengthAtAngleToHorizon(3 * Line::kPi / 2);
-  EXPECT_EQ(Point(0, 0), reverse_y_axis.start());
-  EXPECT_EQ(Point(0, -1), reverse_y_axis.end());
+  // --
+  //  --
+  overlap = Line::OverlappingProjectionOnAxis(d, c, 0);
+  ASSERT_TRUE(overlap);
+  EXPECT_EQ(1, overlap->first);
+  EXPECT_EQ(2, overlap->second);
+
+  //  --
+  // ----
+  Line e = Line({0, 2}, {4, 2});
+  Line f = Line({1, 3}, {3, 3});
+  overlap = Line::OverlappingProjectionOnAxis(e, f, 0);
+  ASSERT_TRUE(overlap);
+  EXPECT_EQ(1, overlap->first);
+  EXPECT_EQ(3, overlap->second);
+
+  // ----
+  //  --
+  overlap = Line::OverlappingProjectionOnAxis(f, e, 0);
+  ASSERT_TRUE(overlap);
+  EXPECT_EQ(1, overlap->first);
+  EXPECT_EQ(3, overlap->second);
+
+  // --
+  //   --
+  Line g = Line({0, 2}, {2, 2});
+  Line h = Line({2, 3}, {4, 3});
+  overlap = Line::OverlappingProjectionOnAxis(g, h, 0);
+  EXPECT_FALSE(overlap);
 }
 
 }  // namespace

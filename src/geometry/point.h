@@ -25,6 +25,23 @@ class Point : public AbstractShape, public Manipulable {
   static bool CompareXThenY(const Point &lhs, const Point &rhs);
   static bool CompareYThenX(const Point &lhs, const Point &rhs);
 
+  // NOTE(aryap): It doesn't make sense to use this with angles that aren't
+  // multiples of pi/4, since our Point has integer units:
+  //
+  //
+  //          +     + (1, 1)
+  //          |
+  //          |       (1, 0)
+  //    +-----+-----+
+  //          |(0, 0)
+  //          |
+  //          +
+  //
+  // The only unit-length
+  // lines we can represent in this format are those with angles at multiples of
+  // pi/2 to the horizon.
+  static Point UnitVector(double angle_to_horizon_radians);
+
   Point() = default;
   Point(const int64_t x, const int64_t y)
       : x_(x),
@@ -55,6 +72,7 @@ class Point : public AbstractShape, public Manipulable {
   void Rotate(double theta_radians);
   void Rotate(int32_t degrees_ccw) override;
 
+  double ProjectionCoefficient(const Point &other) const;
   // Treating this point as a vector from (0, 0) to (x_, y_), and likewise
   // treating the other point as a vector from (0, 0) to (x_, y_), return the
   // vector projection of the other onto this. The return value is likewise a

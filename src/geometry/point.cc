@@ -35,6 +35,11 @@ bool Point::CompareYThenX(const Point &lhs, const Point &rhs) {
   return lhs.y() < rhs.y();
 }
 
+Point Point::UnitVector(double angle_to_horizon_radians) {
+  return {std::llround(std::cos(angle_to_horizon_radians)),
+          std::llround(std::sin(angle_to_horizon_radians))};
+}
+
 Point &Point::operator+=(const Point &other) {
   x_ = x_ + other.x_;
   y_ = y_ + other.y_;
@@ -124,10 +129,14 @@ int64_t Point::L1DistanceTo(const Point &point) const {
 //    proj_b(a) = ----- * b
 //                _   _
 //                b . b
-Point Point::Project(const Point &other) const {
+double Point::ProjectionCoefficient(const Point &other) const {
   double a_dot_b = this->DotProduct(other);
   double b_dot_b = this->DotProduct(*this);
-  double projection_coefficient = a_dot_b / b_dot_b;
+  return a_dot_b / b_dot_b;
+}
+
+Point Point::Project(const Point &other) const {
+  double projection_coefficient = ProjectionCoefficient(other);
   return {
     std::llround(projection_coefficient * static_cast<double>(x_)),
     std::llround(projection_coefficient * static_cast<double>(y_))

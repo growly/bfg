@@ -8,6 +8,7 @@ namespace geometry {
 
 class Radian {
  public:
+  static double kPi;
   static bool IsEffectivelyZero(double radians);
 };
 

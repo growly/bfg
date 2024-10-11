@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "vector.h"
+#include "radian.h"
 
 namespace bfg {
 namespace geometry {
@@ -23,6 +24,21 @@ TEST(VectorTest, Project) {
   Vector d = {1, 1};
   EXPECT_EQ(Vector(1, 1), d.Project(b));
 }
+
+TEST(VectorTest, UnitVector) {
+  Vector x_axis = Vector::UnitVector(0);
+  EXPECT_EQ(Point(1, 0), x_axis);
+
+  Vector y_axis = Vector::UnitVector(Radian::kPi / 2);
+  EXPECT_EQ(Point(0, 1), y_axis);
+
+  Vector reverse_x_axis = Vector::UnitVector(Radian::kPi);
+  EXPECT_EQ(Point(-1, 0), reverse_x_axis);
+
+  Vector reverse_y_axis = Vector::UnitVector(3 * Radian::kPi / 2);
+  EXPECT_EQ(Point(0, -1), reverse_y_axis);
+}
+
 
 }  // namespace
 }  // namespace geometry
