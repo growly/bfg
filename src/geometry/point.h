@@ -42,10 +42,10 @@ class Point : public AbstractShape, public Manipulable {
   // pi/2 to the horizon.
   static Point UnitVector(double angle_to_horizon_radians);
 
-  Point() = default;
+  Point()
+      : x_(0), y_(0) {}
   Point(const int64_t x, const int64_t y)
-      : x_(x),
-        y_(y) {}
+      : x_(x), y_(y) {}
 
   const int64_t &x() const { return x_; }
   const int64_t &y() const { return y_; }
@@ -72,11 +72,19 @@ class Point : public AbstractShape, public Manipulable {
   void Rotate(double theta_radians);
   void Rotate(int32_t degrees_ccw) override;
 
+  // This is the same as creating a unit vector with the given angle and adding
+  // it to this Point (treated as a Vector).
+  void AddComponents(double amount, double angle_rads);
+  int64_t Component(double angle_rads) const;
+
+  // The Length of a point is the length of the Vector from (0, 0) to the Point.
+  double Length() const { return L2DistanceTo(Point(0, 0)); }
+
   double ProjectionCoefficient(const Point &other) const;
   // Treating this point as a vector from (0, 0) to (x_, y_), and likewise
-  // treating the other point as a vector from (0, 0) to (x_, y_), return the
-  // vector projection of the other onto this. The return value is likewise a
-  // point representing a vector from (0, 0).
+  // treating the other point as a vector from (0, 0) to its (x_, y_), return
+  // the vector projection of the other onto this. The return value is likewise
+  // a point representing a vector from (0, 0).
   Point Project(const Point &other) const;
 
   // Treating this point as a vector from (0, 0) to (x_, y_), and likewise

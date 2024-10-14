@@ -101,6 +101,13 @@ std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(
   return std::nullopt;
 }
 
+std::optional<geometry::Line> RoutingEdge::AsLine() const {
+  if (!first_ || !second_) {
+    return std::nullopt;
+  }
+  return geometry::Line(first_->centre(), second_->centre());
+}
+
 std::vector<RoutingVertex*> RoutingEdge::SpannedVertices() const {
   if (!track_) {
     return {first_, second_};

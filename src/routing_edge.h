@@ -50,6 +50,7 @@ class RoutingEdge {
   // Self-contained utility for imagining this edge as a rectilinear rectangle
   // of the given width.
   std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
+  std::optional<geometry::Line> AsLine() const;
 
   void SetBlocked(bool blocked, bool temporary = false);
   void SetNet(

@@ -12,6 +12,7 @@
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/polygon.h"
+#include "geometry/radian.h"
 #include "geometry/rectangle.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
@@ -58,6 +59,18 @@ RoutingTrackDirection RoutingTrack::OrthogonalDirectionTo(
       break;
   }
   return RoutingTrackDirection::kTrackVertical;
+}
+
+double RoutingTrack::DirectionToAngle(const RoutingTrackDirection &direction) {
+  switch (direction) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      return 0.0;
+    case RoutingTrackDirection::kTrackVertical:
+      return geometry::Radian::kPi / 2;
+    default:
+      LOG(FATAL) << "Unknown RoutingTrackDirection: " << direction;
+  }
+  return 0.0;
 }
 
 RoutingTrack::~RoutingTrack() {

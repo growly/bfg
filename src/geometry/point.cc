@@ -6,6 +6,7 @@
 #include <glog/logging.h>
 
 #include "point.h"
+#include "radian.h"
 
 namespace bfg {
 namespace geometry {
@@ -98,6 +99,23 @@ int64_t Point::L1DistanceTo(const Point &point) const {
   return std::abs(dx) + std::abs(dy);
 }
 
+void Point::AddComponents(double amount, double angle_rads) {
+  int64_t x = std::llround(amount * std::cos(angle_rads));
+  int64_t y = std::llround(amount * std::sin(angle_rads));
+  x_ += x;
+  y_ += y;
+}
+
+int64_t Point::Component(double angle_rads) const {
+  // Shortcuts for common uses.
+  //if (angle_rads == 0.0) {
+  //  return x_;
+  //} else if (angle_rads == Radian::kPi / 2) {
+  //  return y_;
+  //}
+  return std::llround(UnitVector(angle_rads).ProjectionCoefficient(*this));
+}
+
 //                          _      _
 // The scalar projection of a onto b is
 //          _
@@ -129,12 +147,15 @@ int64_t Point::L1DistanceTo(const Point &point) const {
 //    proj_b(a) = ----- * b
 //                _   _
 //                b . b
+//
+// This is the projection coefficient of projecting 'other' onto *this.
 double Point::ProjectionCoefficient(const Point &other) const {
   double a_dot_b = this->DotProduct(other);
   double b_dot_b = this->DotProduct(*this);
   return a_dot_b / b_dot_b;
 }
 
+// Project the vector other onto *this.
 Point Point::Project(const Point &other) const {
   double projection_coefficient = ProjectionCoefficient(other);
   return {

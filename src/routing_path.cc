@@ -7,8 +7,10 @@
 
 #include <absl/strings/str_join.h>
 
+#include "geometry/radian.h"
 #include "geometry/poly_line.h"
 #include "geometry/port.h"
+#include "geometry/radian.h"
 #include "abstract_via.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
@@ -123,21 +125,92 @@ void RoutingPath::Abbreviate() {
     }
 
     // Find overlap:
-    auto projection = current_edge->ProjectOntoAxis();
-    int64_t current_min = projection.first;
-    int64_t current_max = projection.second;
-    projection = next_edge->ProjectOntoAxis();
-    int64_t next_min = projection.first;
-    int64_t next_max = projection.second;
-
-    if ((current_min >= next_max && current_max >= next_max) ||
-        (current_max <= next_min && current_min <= next_min)) {
-      // No overlap.
+    std::optional<geometry::Line> current_line = current_edge->AsLine();
+    std::optional<geometry::Line> next_line = next_edge->AsLine();
+    if (!current_line || !next_line) {
       continue;
     }
 
-    LOG(INFO) << "Overlap detected: " << *current_edge << " " << *next_edge;
+    RoutingTrackDirection axis_direction = current_edge->Direction();
+    double axis_angle = RoutingTrack::DirectionToAngle(axis_direction);
+    double off_axis_angle = RoutingTrack::DirectionToAngle(
+        RoutingTrack::OrthogonalDirectionTo(axis_direction));
+
+    auto overlap = geometry::Line::OverlappingProjectionOnAxis(
+        *current_line, *next_line, axis_angle);
+    if (!overlap) {
+      continue;
+    }
+
+    LOG(INFO) << "Overlap detected " << overlap->first << ", " << overlap->second
+              << ": " << *current_edge << " " << *next_edge;
+
+    int64_t projection_first = RoutingTrack::ProjectOntoAxis(
+        first->centre(), axis_direction);
+    int64_t projection_second = RoutingTrack::ProjectOntoAxis(
+        second->centre(), axis_direction);
+    int64_t projection_third = RoutingTrack::ProjectOntoAxis(
+        third->centre(), axis_direction);
+    int64_t projection_fourth = RoutingTrack::ProjectOntoAxis(
+        fourth->centre(), axis_direction);
+
+    // By construction we expect that 'second' and 'third' are connected by an
+    // edge perpendicular to those connecting (first, second) and (third,
+    // fourth). Any overlap must therefore include the 'second' and 'third'
+    // points. We also assume that if an overlap occurs, it will be up to where
+    // 'first' or 'fourth' falls. But for sanity will check this condition.
+    //
+    // Consider the diagram of what we're doing again before reading the
+    // following code. I'm out of English words:
+    //         +     +     +     +
+    //                  a  |
+    // track c +-----+--x--+     +
+    //         |
+    //         +-----+--+  + +---+
+    //                  b    |
+    //
+    // This is complicated because we don't know which order we're iterating
+    // over the edges in, and we don't know which way the lines extend beyond
+    // the overlapping section.
+    RoutingVertex *vertex_at_b = nullptr;
+    int64_t on_axis_a = 0;
+    if (overlap->first == projection_second &&
+        overlap->first == projection_third) {
+      LOG_IF(FATAL, overlap->second == projection_second &&
+                    overlap->second == projection_third)
+          << "Assumed overlap would never between two equal-length edges";
+      on_axis_a = overlap->second;
+    } else if (overlap->second == projection_second &&
+               overlap->second == projection_third) {
+      on_axis_a = overlap->first;
+    } else {
+      LOG(FATAL) << "I asserted this was never the case!";
+    }
+
+    geometry::Point point_a;
+    RoutingTrack *track_c = nullptr;
+    if (std::abs(projection_first - on_axis_a) <
+        std::abs(projection_fourth - on_axis_a)) {
+      vertex_at_b = first;
+      point_a.AddComponents(on_axis_a, axis_angle);
+      track_c = fourth->TracksInDirection(axis_direction).front();
+      point_a.AddComponents(track_c->offset(), off_axis_angle);
+    } else {
+      vertex_at_b = fourth;
+      point_a.AddComponents(on_axis_a, axis_angle);
+      track_c = first->TracksInDirection(axis_direction).front();
+      point_a.AddComponents(track_c->offset(), off_axis_angle);
+    }
+    LOG(INFO) << "Trying new edge from " << vertex_at_b->centre()
+              << " to " << point_a;
   }
+
+  // TODO(aryap):
+  //  - try to add new routing vertex to track_c
+  //  - try to add edge between vertex_at_b and new routing vertex on track c
+  //  - connect to edge the connect vertex_at_b and first/fourth
+  //  - undo use of three now-redundant edges
+  //
 }
 
 void RoutingPath::Flatten() {

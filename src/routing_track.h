@@ -46,6 +46,8 @@ class RoutingTrack {
   // This is only here because I can't put it in the RoutingTrackDirection enum.
   static RoutingTrackDirection OrthogonalDirectionTo(
       const RoutingTrackDirection &direction);
+  static double DirectionToAngle(
+      const RoutingTrackDirection &direction);
 
   RoutingTrack(const geometry::Layer &layer,
                const RoutingTrackDirection &direction,
