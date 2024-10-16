@@ -22,9 +22,9 @@
 namespace bfg {
 
 RoutingPath::RoutingPath(
-    const RoutingGrid &routing_grid,
     RoutingVertex *start,
-    const std::deque<RoutingEdge*> edges)
+    const std::deque<RoutingEdge*> edges,
+    RoutingGrid *routing_grid)
     : edges_(edges.begin(), edges.end()),
       start_port_(nullptr),
       end_port_(nullptr),
@@ -73,6 +73,11 @@ double RoutingPath::Cost() const {
 }
 
 void RoutingPath::Abbreviate() {
+  // Continue to Abbreviate until it is not possible.
+  while (AbbreviateOnce());
+}
+
+bool RoutingPath::AbbreviateOnce() {
   // A nice property of the routing-grid is that paths should not be able to
   // conflict with themselves during the shortest-path search. This is
   // violated by off-grid vertices, since using them precludes the use of nearby
@@ -100,16 +105,17 @@ void RoutingPath::Abbreviate() {
   // case.
   //
   if (vertices_.size() <= 3) {
-    return;
+    return false;
   }
   for (size_t i = 0; i < vertices_.size() - 3; ++i) {
     RoutingEdge *current_edge = edges_[i];
+    RoutingEdge *intervening_edge = edges_[i + 1];
     RoutingEdge *next_edge = edges_[i + 2];
 
     RoutingVertex *first = vertices_[i];
     RoutingVertex *second = current_edge->OtherVertexThan(first);
     LOG_IF(FATAL, !second) << "First vertex was not in current edge?";
-    RoutingVertex *third = edges_[i + 1]->OtherVertexThan(second);
+    RoutingVertex *third = intervening_edge->OtherVertexThan(second);
     LOG_IF(FATAL, !third) << "Third vertex was not in intermediate edge?";
     RoutingVertex *fourth = next_edge->OtherVertexThan(third);
     LOG_IF(FATAL, !fourth) << "Fourth vertex was not in next edge?";
@@ -142,8 +148,8 @@ void RoutingPath::Abbreviate() {
       continue;
     }
 
-    LOG(INFO) << "Overlap detected " << overlap->first << ", " << overlap->second
-              << ": " << *current_edge << " " << *next_edge;
+    LOG(INFO) << "Overlap detected " << overlap->first << ", "
+              << overlap->second << ": " << *current_edge << " " << *next_edge;
 
     int64_t projection_first = RoutingTrack::ProjectOntoAxis(
         first->centre(), axis_direction);
@@ -164,7 +170,7 @@ void RoutingPath::Abbreviate() {
     // following code. I'm out of English words:
     //         +     +     +     +
     //                  a  |
-    // track c +-----+--x--+     +
+    // track c +-----+--x--+ d   +
     //         |
     //         +-----+--+  + +---+
     //                  b    |
@@ -172,7 +178,6 @@ void RoutingPath::Abbreviate() {
     // This is complicated because we don't know which order we're iterating
     // over the edges in, and we don't know which way the lines extend beyond
     // the overlapping section.
-    RoutingVertex *vertex_at_b = nullptr;
     int64_t on_axis_a = 0;
     if (overlap->first == projection_second &&
         overlap->first == projection_third) {
@@ -189,28 +194,94 @@ void RoutingPath::Abbreviate() {
 
     geometry::Point point_a;
     RoutingTrack *track_c = nullptr;
+    RoutingVertex *vertex_b = nullptr;
+    RoutingVertex *vertex_d = nullptr;
+    bool new_edge_first = false;
     if (std::abs(projection_first - on_axis_a) <
         std::abs(projection_fourth - on_axis_a)) {
-      vertex_at_b = first;
+      vertex_b = first;
+      vertex_d = fourth;
       point_a.AddComponents(on_axis_a, axis_angle);
       track_c = fourth->TracksInDirection(axis_direction).front();
       point_a.AddComponents(track_c->offset(), off_axis_angle);
+      new_edge_first = true;
     } else {
-      vertex_at_b = fourth;
+      vertex_b = fourth;
+      vertex_d = first;
       point_a.AddComponents(on_axis_a, axis_angle);
       track_c = first->TracksInDirection(axis_direction).front();
       point_a.AddComponents(track_c->offset(), off_axis_angle);
     }
-    LOG(INFO) << "Trying new edge from " << vertex_at_b->centre()
+    LOG(INFO) << "Trying new edge from " << vertex_b->centre()
               << " to " << point_a;
+
+    // TODO(aryap):
+    //  - try to add new routing vertex to track_c; since this is called before
+    //  InstallPath() finishes, none of the other edges/vertices for this path
+    //  should have been used
+    //  - try to add edge between vertex_b and new routing vertex on track c
+    //  - connect to edge the connect vertex_b and first/fourth
+    //  - undo use of three now-redundant edges
+    //
+    const geometry::Layer &target_layer = track_c->layer();
+    RoutingVertex *bridging_vertex = track_c->CreateNewVertexAndConnect(
+        *routing_grid_, point_a, target_layer, nets_);
+    if (!bridging_vertex) {
+      LOG(INFO) << "Could not abbreviate: " << point_a << " not available on "
+                << *track_c;
+      continue;
+    }
+
+    RoutingEdge *new_edge = new RoutingEdge(bridging_vertex, vertex_b);
+    new_edge->set_layer(target_layer);
+    
+    if (!routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_).ok()) {
+      LOG(INFO) << "Invalid off grid edge between "
+                << bridging_vertex->centre()
+                << " and " << vertex_b->centre();
+      // TODO(aryap): Don't think this gets added to RoutingGrid, only the
+      // track.
+      routing_grid_->RemoveVertex(bridging_vertex, true);
+      delete new_edge;
+      continue;
+    }
+
+    // connect bridging_vertex with vertex d, by looking up the edge created in
+    // track_c
+
+    RoutingEdge *edge_a_d = track_c->GetEdgeBetween(bridging_vertex, vertex_d);
+    LOG_IF(FATAL, !edge_a_d) << "This edge should definitely have been made";
+
+    bridging_vertex->AddEdge(new_edge);
+    vertex_b->AddEdge(new_edge);
+    routing_grid_->AddOffGridEdge(new_edge);
+
+    // Remove second, third vertices; remove their edges; return true to
+    // indicate that the operation occurred.
+    // C++20 has std::erase!
+    vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), second),
+                    vertices_.end());
+    vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), third),
+                    vertices_.end());
+    edges_.erase(std::remove(edges_.begin(), edges_.end(), current_edge),
+                 edges_.end());
+    edges_.erase(std::remove(edges_.begin(), edges_.end(), intervening_edge),
+                 edges_.end());
+    edges_.erase(std::remove(edges_.begin(), edges_.end(), next_edge),
+                 edges_.end());
+
+    if (new_edge_first) {
+      edges_.insert(edges_.begin() + i, new_edge);
+      edges_.insert(edges_.begin() + i + 1, edge_a_d);
+    } else {
+      edges_.insert(edges_.begin() + i, edge_a_d);
+      edges_.insert(edges_.begin() + i + 1, new_edge);
+    }
+    vertices_.insert(vertices_.begin() + i + 1, bridging_vertex);
+    return true;
   }
 
-  // TODO(aryap):
-  //  - try to add new routing vertex to track_c
-  //  - try to add edge between vertex_at_b and new routing vertex on track c
-  //  - connect to edge the connect vertex_at_b and first/fourth
-  //  - undo use of three now-redundant edges
-  //
+  return false;
 }
 
 void RoutingPath::Flatten() {
@@ -267,7 +338,7 @@ void RoutingPath::Flatten() {
     }
 
     // last_vertex and current_vertex span current_edge.
-    if (routing_grid_.VerticesAreTooCloseForVias(
+    if (routing_grid_->VerticesAreTooCloseForVias(
             *last_vertex, *current_vertex) &&
         last_layer == next_layer) {
       skipped_vias_.insert(last_vertex);
@@ -327,7 +398,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       [this](const geometry::Layer &unused_layer,
              RoutingVertex *lhs,
              RoutingVertex *rhs) {
-    return this->routing_grid_.VerticesAreTooCloseForVias(*lhs, *rhs);
+    return this->routing_grid_->VerticesAreTooCloseForVias(*lhs, *rhs);
   };
   LayeredRoutingVertexCollectors close_vertices =
       LayeredRoutingVertexCollectors(vertices_too_close_for_vias);
@@ -340,8 +411,6 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     auto &installed_in_paths = vertex->installed_in_paths();
     VLOG(12) << "Vertex " << vertex->centre() << " is installed in "
              << installed_in_paths.size() << " paths";
-    std::optional<std::string> same_net = net_;
-
     // The first and last edges are explicitly considered as via candidates:
     if (i == 0 || i == spanned_vertices.size() - 1) {
       for (const geometry::Layer &layer : vertex->connected_layers()) {
@@ -356,7 +425,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       if (path == this) {
         continue;
       }
-      if (path->net() != same_net.value()) {
+      if (!nets_.ContainsAny(path->nets())) {
         // Ignore other paths crossing this vertex that aren't on the same net
         // as us.
         continue;
@@ -369,7 +438,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
         if (other_edge->EffectiveLayer() == poly_line->layer()) {
           continue;
         }
-        auto bulge = GetBulgeDimensions(routing_grid_.GetRoutingViaInfoOrDie(
+        auto bulge = GetBulgeDimensions(routing_grid_->GetRoutingViaInfoOrDie(
             poly_line->layer(), other_edge->EffectiveLayer()));
         max_bulge_length_by_layer[other_edge->EffectiveLayer()] =
             std::max(
@@ -431,7 +500,7 @@ void RoutingPath::BuildVias(
   // We need to find the stack of vias necessary to get to `last_layer` from
   // `from_layer`.
   std::optional<std::vector<RoutingViaInfo>> via_layers =
-      routing_grid_.FindViaStack(from_layer, last_layer);
+      routing_grid_->FindViaStack(from_layer, last_layer);
   if (!via_layers) {
     LOG(ERROR) << "No known via stack from " << from_layer << " to "
                << last_layer;
@@ -522,7 +591,7 @@ geometry::Layer RoutingPath::PickAccessLayer(
   }
   std::vector<std::pair<geometry::Layer, double>> costed_layers;
   for (const geometry::Layer &layer : layers) {
-    auto cost = routing_grid_.FindViaStackCost(source_layer, layer);
+    auto cost = routing_grid_->FindViaStackCost(source_layer, layer);
     if (!cost)
       continue;
     costed_layers.push_back({layer, *cost});
@@ -569,7 +638,7 @@ void RoutingPath::ToPolyLinesAndVias(
     const geometry::Layer &layer = next_edge->EffectiveLayer();
 
     const RoutingLayerInfo &info =
-        routing_grid_.GetRoutingLayerInfoOrDie(layer);
+        routing_grid_->GetRoutingLayerInfoOrDie(layer);
 
     // Insert a new PolyLine at layer crossings (or the start). Layer crossings
     // also require a via, unless the vertex via is skipped.
@@ -587,7 +656,7 @@ void RoutingPath::ToPolyLinesAndVias(
         vias->emplace_back(via);
         //last->set_end_via(via);
         auto bulge = GetBulgeDimensions(
-            routing_grid_.GetRoutingViaInfoOrDie(last->layer(), layer));
+            routing_grid_->GetRoutingViaInfoOrDie(last->layer(), layer));
         bulge_width = bulge.width;
         bulge_length = bulge.length;
         last->InsertBulgeLater(current->centre(), bulge_width, bulge_length);
@@ -617,7 +686,7 @@ void RoutingPath::ToPolyLinesAndVias(
       last->set_layer(layer);
       last->set_start(current->centre());
       last->set_min_separation(info.min_separation());
-      last->set_net(net_);
+      last->set_net(nets_.primary());
       continue;
     }
     last->AddSegment(current->centre(), info.wire_width());
@@ -631,7 +700,7 @@ void RoutingPath::ToPolyLinesAndVias(
   if (generated_lines.empty() && !last)
     return;
 
-  const RoutingLayerInfo &last_info = routing_grid_.GetRoutingLayerInfoOrDie(
+  const RoutingLayerInfo &last_info = routing_grid_->GetRoutingLayerInfoOrDie(
       next_edge->EffectiveLayer());
   last->AddSegment(vertices_.back()->centre(), last_info.wire_width());
   last->InsertBulgeLater(last->start(), bulge_width, bulge_length);

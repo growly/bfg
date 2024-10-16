@@ -124,6 +124,8 @@ class RoutingGrid {
 
   void AddVertex(RoutingVertex *vertex);
 
+  void AddOffGridEdge(RoutingEdge *edge);
+
   bool RemoveVertex(RoutingVertex *vertex, bool and_delete);
 
   bool ContainsVertex(RoutingVertex *vertex) const;

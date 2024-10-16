@@ -19,6 +19,9 @@ class RoutingPath;
 
 class RoutingVertex {
  public:
+  static bool Compare(const RoutingVertex &lhs, const RoutingVertex &rhs);
+  static bool Compare(RoutingVertex *lhs, RoutingVertex *rhs);
+
   RoutingVertex(const geometry::Point &centre)
       : net_(""),
         available_(true),

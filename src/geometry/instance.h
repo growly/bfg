@@ -22,6 +22,9 @@ namespace geometry {
 
 class Instance : public Manipulable {
  public:
+  typedef bool (*UniquePortCompare)(
+      const std::unique_ptr<Port>&, const std::unique_ptr<Port>&);
+
   // TODO(aryap): We should only need a const &Layout here!
   Instance(bfg::Layout *template_layout,
            const Point &lower_left)
@@ -145,12 +148,15 @@ class Instance : public Manipulable {
     rotation_degrees_ccw_;
   }
 
-  const std::unordered_map<std::string, std::set<std::unique_ptr<Port>>>
+  const std::unordered_map<
+    std::string, std::set<std::unique_ptr<Port>, UniquePortCompare>>
       &instance_ports() const {
     return instance_ports_;
   }
 
  private:
+  void AddNamedInstancePort(
+      const std::string &name, Port *instance_port);
   bool ports_generated_;
 
   std::string name_;
@@ -167,8 +173,9 @@ class Instance : public Manipulable {
   // FIXME(growly): Store rotation anti-clockwise.
   int32_t rotation_degrees_ccw_;
 
-  std::unordered_map<std::string, std::set<std::unique_ptr<Port>>>
-      instance_ports_;
+  std::unordered_map<
+      std::string,
+      std::set<std::unique_ptr<Port>, UniquePortCompare>> instance_ports_;
 };
 
 }  // namespace geometry

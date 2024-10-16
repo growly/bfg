@@ -35,6 +35,7 @@ class EquivalentNets {
     Add(primary);
   }
 
+  bool ContainsAny(const EquivalentNets &other) const;
   bool Contains(const std::string &name) const;
   bool Add(const std::string &name);
   bool Delete(const std::string &name);

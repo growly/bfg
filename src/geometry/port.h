@@ -14,6 +14,10 @@ namespace geometry {
 // adjacent layers (mapped by PhysicalPropertiesDatabase).
 class Port : public Rectangle {
  public:
+  static bool Compare(const Port &lhs, const Port &rhs);
+  static bool Compare(
+      const std::unique_ptr<Port> &lhs, const std::unique_ptr<Port> &rhs);
+
   Port() {}
 
   std::string Describe() const;

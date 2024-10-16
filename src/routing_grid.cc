@@ -371,9 +371,7 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
   for (const RoutingPath *path : paths_) {
     used_edges.insert(path->edges().begin(), path->edges().end());
   }
-  for (const RoutingEdge *edge : off_grid_edges_) {
-    used_edges.insert(off_grid_edges_.begin(), off_grid_edges_.end());
-  }
+  used_edges.insert(off_grid_edges_.begin(), off_grid_edges_.end());
   for (const RoutingEdge *used : used_edges) {
     if (used->EffectiveLayer() != layer)
       continue;
@@ -654,7 +652,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
   }
 
   for (RoutingEdge *edge : new_edges) {
-    off_grid_edges_.insert(edge);
+    AddOffGridEdge(edge);
   }
 
   std::string message = absl::StrJoin(errors, "; ");
@@ -1436,6 +1434,10 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
+void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) {
+  off_grid_edges_.insert(edge);
+}
+
 absl::Status RoutingGrid::AddMultiPointRoute(
     const Layout &layout,
     const std::vector<std::vector<geometry::Port*>> ports,
@@ -1644,7 +1646,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
 
   // Assign net:
   if (!nets.Empty())
-    shortest_path->set_net(nets.primary());
+    shortest_path->set_nets(nets);
 
   // It is important that temporary blockages be torn down before the path is
   // installed, but since that is managed by the caller and since teardown will
@@ -1749,7 +1751,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   LOG(INFO) << "Found path: " << *shortest_path;
 
   // Assign net and install:
-  shortest_path->set_net(target_nets.primary());
+  shortest_path->set_nets(target_nets);
 
   TearDownTemporaryBlockages(temporary_blockages);
 
@@ -1980,7 +1982,8 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
     return absl::InvalidArgumentError("Cannot install an empty path.");
   }
 
-  LOG(INFO) << "Installing path " << *path << " with net " << path->net();
+  LOG(INFO) << "Installing path " << *path << " with net "
+            << path->nets().primary();
 
   // Legalise the path. TODO(aryap): This might modify the edges the path
   // contains, which smells funny.
@@ -1989,9 +1992,9 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {
-      edge->track()->MarkEdgeAsUsed(edge, path->net());
+      edge->track()->MarkEdgeAsUsed(edge, path->nets().primary());
     } else {
-      edge->SetPermanentNet(path->net());
+      edge->SetPermanentNet(path->nets().primary());
     }
 
     std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();
@@ -2018,12 +2021,12 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
     last_vertex->set_out_edge(edge);
     next_vertex->set_in_edge(edge);
     next_vertex->set_available(false);
-    next_vertex->set_net(path->net());
+    next_vertex->set_net(path->nets().primary());
     ++i;
   }
 
   for (RoutingVertex *vertex : path->vertices()) {
-    InstallVertexInPath(vertex, path->net());
+    InstallVertexInPath(vertex, path->nets().primary());
   }
   
   paths_.push_back(path);
@@ -2136,7 +2139,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
   std::priority_queue<RoutingVertex*,
                       std::vector<RoutingVertex*>,
                       decltype(vertex_sort_fn)> queue(vertex_sort_fn);
-  std::set<RoutingVertex*> found_targets;
+  std::set<RoutingVertex*,
+           bool (*)(RoutingVertex*, RoutingVertex*)> found_targets(
+      RoutingVertex::Compare);
 
   size_t begin_index = begin->contextual_index();
 
@@ -2319,7 +2324,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     return absl::InternalError("Could not back-track to beginning vertex.");
   }
 
-  RoutingPath *path = new RoutingPath(*this, begin, shortest_edges);
+  RoutingPath *path = new RoutingPath(begin, shortest_edges, this);
   return path;
 }
 

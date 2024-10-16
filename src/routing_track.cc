@@ -99,14 +99,25 @@ bool RoutingTrack::RemoveEdge(RoutingEdge *edge, bool and_delete) {
   return true;
 }
 
+RoutingEdge *RoutingTrack::GetEdgeBetween(
+    RoutingVertex *lhs, RoutingVertex *rhs) const {
+  for (RoutingEdge *edge : edges_) {
+    if ((edge->first() == lhs && edge->second() == rhs) ||
+        (edge->first() == rhs && edge->second() == lhs)) {
+      return edge;
+    }
+  }
+  return nullptr;
+}
+
 bool RoutingTrack::MaybeAddEdgeBetween(
     RoutingVertex *one,
     RoutingVertex *the_other,
     const std::optional<EquivalentNets> &for_nets) {
-  if (IsBlockedBetween(one->centre(),
-                       the_other->centre(),
-                       min_separation_to_new_blockages_,
-                       for_nets))
+  if (IsEdgeBlockedBetween(one->centre(),
+                           the_other->centre(),
+                           min_separation_to_new_blockages_,
+                           for_nets))
     return false;
   RoutingEdge *edge = new RoutingEdge(one, the_other);
   edge->set_track(this);
@@ -696,7 +707,35 @@ bool RoutingTrack::IsProbablyBlockedForVia(const geometry::Point &point,
   return false;
 }
 
-bool RoutingTrack::IsBlockedBetween(
+bool RoutingTrack::IsVertexBlocked(
+    const geometry::Point &point,
+    int64_t margin,
+    const std::optional<EquivalentNets> &for_nets) const {
+  int64_t low = ProjectOntoTrack(point);
+  int64_t high = ProjectOntoTrack(point);
+
+  if (low > high)
+    std::swap(low, high);
+
+  low -= (margin - 1);
+  high += (margin - 1);
+
+  for (RoutingTrackBlockage *blockage : blockages_.vertex_blockages) {
+    if (blockage->Blocks(low, high) && (
+          !for_nets || !for_nets->Contains(blockage->net()))) {
+      return true;
+    }
+  }
+  for (RoutingTrackBlockage *blockage : temporary_blockages_.vertex_blockages) {
+    if (blockage->Blocks(low, high) && (
+          !for_nets || !for_nets->Contains(blockage->net()))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool RoutingTrack::IsEdgeBlockedBetween(
     const geometry::Point &one_end,
     const geometry::Point &other_end,
     int64_t margin,
@@ -716,12 +755,6 @@ bool RoutingTrack::IsBlockedBetween(
       return true;
     }
   }
-  for (RoutingTrackBlockage *blockage : blockages_.vertex_blockages) {
-    if (blockage->Blocks(low, high) && (
-          !for_nets || !for_nets->Contains(blockage->net()))) {
-      return true;
-    }
-  }
 
   for (RoutingTrackBlockage *blockage : temporary_blockages_.edge_blockages) {
     if (blockage->Blocks(low, high) && (
@@ -730,12 +763,6 @@ bool RoutingTrack::IsBlockedBetween(
     }
   }
 
-  for (RoutingTrackBlockage *blockage : temporary_blockages_.vertex_blockages) {
-    if (blockage->Blocks(low, high) && (
-          !for_nets || !for_nets->Contains(blockage->net()))) {
-      return true;
-    }
-  }
   // Does not overlap, start or stop in any blockages.
   return false;
 }

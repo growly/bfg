@@ -8,6 +8,21 @@
 
 namespace bfg {
 
+bool RoutingVertex::Compare(
+    const RoutingVertex &lhs, const RoutingVertex &rhs) {
+  return geometry::Point::CompareXThenY(lhs.centre(), rhs.centre());
+}
+
+bool RoutingVertex::Compare(RoutingVertex *lhs, RoutingVertex *rhs) {
+  // nullptrs should be ordered first.
+  // nullptr < x == true
+  // x < nullptr == false
+  // nullptr < nullptr == true
+  if (!lhs) return true;
+  if (!rhs) return false;
+  return Compare(*lhs, *rhs);
+}
+
 bool RoutingVertex::RemoveEdge(RoutingEdge *edge) {
   size_t erased = edges_.erase(edge) > 0;
   return erased > 0;

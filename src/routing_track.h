@@ -92,6 +92,9 @@ class RoutingTrack {
       RoutingVertex *vertex,
       const std::optional<EquivalentNets> &for_nets = std::nullopt);
 
+  RoutingEdge *GetEdgeBetween(
+      RoutingVertex *lhs, RoutingVertex *rhs) const;
+
   // Remove the vertex from this track, and remove any edge that uses it.
   bool RemoveVertex(RoutingVertex *vertex);
 
@@ -279,14 +282,20 @@ class RoutingTrack {
 
   bool IsBlocked(const geometry::Point &point,
                  int64_t margin,
-                 const std::optional<EquivalentNets> &net) const {
-    return IsBlockedBetween(point, point, margin, net);
+                 const std::optional<EquivalentNets> &for_nets) const {
+    return IsVertexBlocked(point, margin, for_nets) ||
+           IsEdgeBlockedBetween(point, point, margin, for_nets);
   }
 
-  bool IsBlockedBetween(const geometry::Point &one_end,
-                        const geometry::Point &other_end,
-                        int64_t margin,
-                        const std::optional<EquivalentNets> &for_nets) const;
+  bool IsVertexBlocked(const geometry::Point &point,
+                       int64_t margin,
+                       const std::optional<EquivalentNets> &for_nets) const;
+
+  bool IsEdgeBlockedBetween(
+      const geometry::Point &one_end,
+      const geometry::Point &other_end,
+      int64_t margin,
+      const std::optional<EquivalentNets> &for_nets) const;
 
   bool EdgeSpansVertex(
       const RoutingEdge &edge, const RoutingVertex &vertex) const;

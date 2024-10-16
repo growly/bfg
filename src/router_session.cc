@@ -71,7 +71,7 @@ absl::Status RouterSession::AddRoutes(
 void RouterSession::ExportRoutes(router_service::AddRoutesReply *reply) const {
   for (RoutingPath *path : routing_grid_->paths()) {
     router_service::Route *route = reply->add_routes();
-    route->set_net(path->net());
+    route->set_net(path->nets().primary());
 
     std::vector<geometry::Point> points;
     std::vector<geometry::Layer> layers;

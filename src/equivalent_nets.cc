@@ -5,6 +5,19 @@
 
 namespace bfg {
 
+bool EquivalentNets::ContainsAny(const EquivalentNets &other) const {
+  // std::vector<std::string> intersection;
+  // std::set_intersection(nets_.begin(), nets_.end(),
+  //                       other.nets_.begin(), other.nets_.end(),
+  //                       std::back_inserter(intersections));
+  // return !intersection.empty();
+  for (const std::string &net : nets_) {
+    if (other.Contains(net))
+      return true;
+  }
+  return false;
+}
+
 bool EquivalentNets::Contains(const std::string &name) const {
   return nets_.find(name) != nets_.end();
 }

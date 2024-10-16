@@ -11,6 +11,7 @@
 #include "geometry/port.h"
 #include "routing_vertex.h"
 #include "routing_edge.h"
+#include "equivalent_nets.h"
 
 namespace bfg {
 
@@ -21,9 +22,9 @@ class RoutingGrid;
 class RoutingPath {
  public:
   RoutingPath(
-      const RoutingGrid &routing_grid,
       RoutingVertex *start,
-      const std::deque<RoutingEdge*> edges);
+      const std::deque<RoutingEdge*> edges,
+      RoutingGrid *routing_grid);
 
   RoutingVertex *Begin() const {
     return Empty() ? nullptr : vertices_.front();
@@ -76,8 +77,8 @@ class RoutingPath {
 
   bool legalised() const { return legalised_; }
 
-  void set_net(const std::string &net) { net_ = net; }
-  const std::string &net() const { return net_; }
+  void set_nets(const EquivalentNets &nets) { nets_ = nets; }
+  const EquivalentNets &nets() const { return nets_; }
 
   const std::vector<RoutingVertex*> &vertices() const { return vertices_; }
   const std::vector<RoutingEdge*> &edges() const { return edges_; }
@@ -105,6 +106,7 @@ class RoutingPath {
 
   // Remove reundant direction switching.
   void Abbreviate();
+  bool AbbreviateOnce();
 
   // Remove illegal (and inefficient) jogs between tracks.
   void Flatten();
@@ -122,7 +124,7 @@ class RoutingPath {
   std::set<geometry::Layer> start_access_layers_;
   std::set<geometry::Layer> end_access_layers_;
 
-  std::string net_;
+  EquivalentNets nets_;
 
   // If true, join paths that are too short directly on the preceding/succeeding
   // layer (which must be the same).
@@ -146,7 +148,7 @@ class RoutingPath {
   // expect to have a via (since they don't represent a change in layer).
   std::set<RoutingVertex*> skipped_vias_;
 
-  const RoutingGrid &routing_grid_;
+  RoutingGrid *routing_grid_;
 };
 
 std::ostream &operator<<(std::ostream &os, const RoutingPath &path);

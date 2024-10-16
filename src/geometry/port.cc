@@ -13,6 +13,17 @@ namespace bfg {
 
 namespace geometry {
 
+bool Port::Compare(const Port &lhs, const Port &rhs) {
+  return Point::CompareXThenY(lhs.lower_left_, rhs.lower_left_);
+}
+
+bool Port::Compare(
+    const std::unique_ptr<Port> &lhs, const std::unique_ptr<Port> &rhs) {
+  if (!lhs) return true;
+  if (!rhs) return false;
+  return Compare(*lhs, *rhs);
+}
+
 std::string Port::Describe() const {
   std::stringstream ss;
   ss << "[Port " << net_ << " " << lower_left_ << " " << upper_right_ << "]";

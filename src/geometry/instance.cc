@@ -145,9 +145,22 @@ void Instance::GeneratePorts() {
     // instance, relative to the template layout origin (0, 0).
     geometry::Point translation = lower_left_ - Point {0, 0};
     instance_port->Translate(translation);
-    instance_ports_[name].insert(std::unique_ptr<Port>(instance_port));
+
+    AddNamedInstancePort(name, instance_port);
   }
   ports_generated_ = true;
+}
+
+void Instance::AddNamedInstancePort(
+    const std::string &name, Port *instance_port) {
+  auto it = instance_ports_.find(name);
+  if (it != instance_ports_.end()) {
+    it->second.insert(std::unique_ptr<Port>(instance_port));
+    return;
+  }
+  instance_ports_.insert(
+      {name,
+       std::set<std::unique_ptr<Port>, UniquePortCompare>(Port::Compare)});
 }
 
 void Instance::CopyShapesOnLayer(
