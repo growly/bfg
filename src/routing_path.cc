@@ -324,8 +324,9 @@ bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
   RoutingEdge *edge_a_d = track_c->GetEdgeBetween(bridging_vertex, vertex_d);
   LOG_IF(FATAL, !edge_a_d) << "This edge should definitely have been made";
 
-  // TODO(aryap): We should explicitly fix edge_a_d to the same layer as the
-  // new_edge (target_layer).
+  // FIXME(aryap): We should explicitly fix edge_a_d to the same layer as the
+  // new_edge (target_layer). We're currently relying on the other peephole
+  // optimisations to skip the vias around it.
 
   InstallAbbreviation(starting_index,
                       new_edge_first,
