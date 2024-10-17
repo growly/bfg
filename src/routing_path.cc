@@ -92,9 +92,248 @@ geometry::Layer RoutingPath::DetermineLayerForAbbreviation(
   return edges_[starting_index]->EffectiveLayer();
 }
 
-void RoutingPath::Abbreviate() {
-  // Continue to Abbreviate until it is not possible.
-  while (AbbreviateOnce());
+std::optional<std::pair<int64_t, int64_t>>
+RoutingPath::GetOverlapOrSkipAbbreviation(size_t starting_index) {
+  RoutingEdge *current_edge = edges_[starting_index];
+  RoutingEdge *intervening_edge = edges_[starting_index + 1];
+  RoutingEdge *next_edge = edges_[starting_index + 2];
+
+  RoutingVertex *first = vertices_[starting_index];
+  RoutingVertex *fourth = vertices_[starting_index + 3];
+
+  DCHECK(starting_index < vertices_.size() - 3);
+
+  if (!first->IsOffGrid() && !fourth->IsOffGrid()) {
+    return std::nullopt;
+  }
+
+  // Only apply abbreviations to parllel edges that are 1x pitch apart:
+  int64_t pitch = routing_grid_->GetRoutingLayerInfoOrDie(
+      current_edge->EffectiveLayer()).pitch();
+  int64_t separation = std::llround(intervening_edge->Length());
+  // NOTE(aryap): If extending this to allow abbreviations across more than 1
+  // pitch, note that the newly created off-grid edge must be added as
+  // blockage to all surrounding tracks on its layer.
+  if (separation > pitch) {
+    LOG(INFO) << "Will not abbreviate overlap with separation "
+              << separation;
+    return std::nullopt;
+  }
+
+  if (next_edge->Direction() != current_edge->Direction()) {
+    LOG(WARNING)
+        << "This is weird: alternating edges not in the same direction?";
+    return std::nullopt;
+  }
+
+  // Find overlap:
+  std::optional<geometry::Line> current_line = current_edge->AsLine();
+  std::optional<geometry::Line> next_line = next_edge->AsLine();
+  if (!current_line || !next_line) {
+    return std::nullopt;
+  }
+
+  RoutingTrackDirection axis_direction = current_edge->Direction();
+  double axis_angle = RoutingTrack::DirectionToAngle(axis_direction);
+  double off_axis_angle = RoutingTrack::DirectionToAngle(
+      RoutingTrack::OrthogonalDirectionTo(axis_direction));
+
+  return geometry::Line::OverlappingProjectionOnAxis(
+      *current_line, *next_line, axis_angle);
+}
+
+RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
+    RoutingVertex *bridging_vertex,
+    RoutingVertex *vertex_b,
+    const geometry::Layer &target_layer) {
+  // Try to add edge between vertex_b and new routing vertex on track_c. Check
+  // RoutingGrid to see if this is a valid edge.
+  RoutingEdge *new_edge = new RoutingEdge(bridging_vertex, vertex_b);
+  new_edge->set_layer(target_layer);
+
+  auto valid = routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_);
+  if (!valid.ok()) {
+    LOG(INFO) << "Invalid off grid edge between "
+              << bridging_vertex->centre()
+              << " and " << vertex_b->centre() << ": "
+              << valid.message();
+    // TODO(aryap): Don't think this gets added to RoutingGrid, only the
+    // track.
+    routing_grid_->RemoveVertex(bridging_vertex, true);
+    delete new_edge;
+    return nullptr;
+  }
+
+  bridging_vertex->AddEdge(new_edge);
+  vertex_b->AddEdge(new_edge);
+  routing_grid_->AddOffGridEdge(new_edge);
+  return new_edge;
+}
+
+void RoutingPath::InstallAbbreviation(
+    size_t starting_index,
+    bool new_edge_first,
+    RoutingVertex *bridging_vertex,
+    RoutingEdge *new_edge,
+    RoutingEdge *edge_a_d) {
+  RoutingEdge *current_edge = edges_[starting_index];
+  RoutingEdge *intervening_edge = edges_[starting_index + 1];
+  RoutingEdge *next_edge = edges_[starting_index + 2];
+  RoutingVertex *second = vertices_[starting_index + 1];
+  RoutingVertex *third = vertices_[starting_index + 2];
+
+  // Remove second, third vertices; remove their edges; return true to
+  // indicate that the operation occurred.
+  // C++20 has std::erase!
+  vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), second),
+                  vertices_.end());
+  vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), third),
+                  vertices_.end());
+  edges_.erase(std::remove(edges_.begin(), edges_.end(), current_edge),
+               edges_.end());
+  edges_.erase(std::remove(edges_.begin(), edges_.end(), intervening_edge),
+               edges_.end());
+  edges_.erase(std::remove(edges_.begin(), edges_.end(), next_edge),
+               edges_.end());
+
+  if (new_edge_first) {
+    edges_.insert(edges_.begin() + starting_index, new_edge);
+    edges_.insert(edges_.begin() + starting_index + 1, edge_a_d);
+  } else {
+    edges_.insert(edges_.begin() + starting_index, edge_a_d);
+    edges_.insert(edges_.begin() + starting_index + 1, new_edge);
+  }
+  vertices_.insert(vertices_.begin() + starting_index + 1, bridging_vertex);
+}
+
+bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
+  DCHECK(starting_index < vertices_.size() - 3);
+
+  RoutingEdge *current_edge = edges_[starting_index];
+  RoutingEdge *intervening_edge = edges_[starting_index + 1];
+  RoutingEdge *next_edge = edges_[starting_index + 2];
+
+  RoutingVertex *first = vertices_[starting_index];
+  RoutingVertex *second = vertices_[starting_index + 1];
+  RoutingVertex *third = vertices_[starting_index + 2];
+  RoutingVertex *fourth = vertices_[starting_index + 3];
+
+  auto overlap = GetOverlapOrSkipAbbreviation(starting_index);
+  if (!overlap) {
+    return false;
+  }
+  LOG(INFO) << "Overlap detected " << overlap->first << ", "
+            << overlap->second << ": " << *current_edge << " " << *next_edge;
+
+
+  RoutingTrackDirection axis_direction = current_edge->Direction();
+  int64_t projection_first = RoutingTrack::ProjectOntoAxis(
+      first->centre(), axis_direction);
+  int64_t projection_second = RoutingTrack::ProjectOntoAxis(
+      second->centre(), axis_direction);
+  int64_t projection_third = RoutingTrack::ProjectOntoAxis(
+      third->centre(), axis_direction);
+  int64_t projection_fourth = RoutingTrack::ProjectOntoAxis(
+      fourth->centre(), axis_direction);
+
+  // By construction we expect that 'second' and 'third' are connected by an
+  // edge perpendicular to those connecting (first, second) and (third,
+  // fourth). Any overlap must therefore include the 'second' and 'third'
+  // points. We also assume that if an overlap occurs, it will be up to where
+  // 'first' or 'fourth' falls. But for sanity will check this condition.
+  //
+  // For the geometryic meaning of the following points, refer to this
+  // diagram:
+  //         +     +     +     +
+  //                  a  |
+  // track c +-----+--x--+ d   +      v
+  //         |                        | separation
+  //         +-----+--+  + +---+      ^
+  //                  b    |
+  //
+  // This is complicated because we don't know which order we're iterating
+  // over the edges in, and we don't know which way the lines extend beyond
+  // the overlapping section.
+  int64_t on_axis_a = 0;
+  if (overlap->first == projection_second &&
+      overlap->first == projection_third) {
+    LOG_IF(FATAL, overlap->second == projection_second &&
+                  overlap->second == projection_third)
+        << "Assumed overlap would never between two equal-length edges";
+    on_axis_a = overlap->second;
+  } else if (overlap->second == projection_second &&
+             overlap->second == projection_third) {
+    on_axis_a = overlap->first;
+  } else {
+    LOG(FATAL) << "I asserted this was never the case!";
+  }
+
+  double axis_angle = RoutingTrack::DirectionToAngle(axis_direction);
+  double off_axis_angle = RoutingTrack::DirectionToAngle(
+      RoutingTrack::OrthogonalDirectionTo(axis_direction));
+
+  geometry::Point point_a;
+  RoutingTrack *track_c = nullptr;
+  RoutingVertex *vertex_b = nullptr;
+  RoutingVertex *vertex_d = nullptr;
+  bool new_edge_first = false;
+  if (std::abs(projection_first - on_axis_a) <
+      std::abs(projection_fourth - on_axis_a)) {
+    vertex_b = first;
+    vertex_d = fourth;
+    point_a.AddComponents(on_axis_a, axis_angle);
+    track_c = fourth->TracksInDirection(axis_direction).front();
+    point_a.AddComponents(track_c->offset(), off_axis_angle);
+    new_edge_first = true;
+  } else {
+    vertex_b = fourth;
+    vertex_d = first;
+    point_a.AddComponents(on_axis_a, axis_angle);
+    track_c = first->TracksInDirection(axis_direction).front();
+    point_a.AddComponents(track_c->offset(), off_axis_angle);
+  }
+  LOG(INFO) << "Trying new edge from " << vertex_b->centre()
+            << " to " << point_a;
+
+  // Try to add new routing vertex to track_c; since this is called before
+  // InstallPath() finishes, none of the other edges/vertices for this path
+  // should have been used and we don't need to do any additional
+  // bookkeeping.
+  //
+  // In some cases it is necessary to revert to the layer of the edges on
+  // either side of the overlap. This is mostly the case when vertex_b and
+  // vertex_d are too close together for vias.
+  geometry::Layer target_layer = DetermineLayerForAbbreviation(
+      starting_index, vertex_b, vertex_d, track_c);
+  RoutingVertex *bridging_vertex = track_c->CreateNewVertexAndConnect(
+      *routing_grid_, point_a, target_layer, nets_);
+  if (!bridging_vertex) {
+    LOG(INFO) << "Could not abbreviate: " << point_a << " not available on "
+              << *track_c;
+    return false;
+  }
+
+  RoutingEdge *new_edge = MaybeMakeAbbreviatingEdge(
+      bridging_vertex, vertex_b, target_layer);
+  if (!new_edge) {
+    return false;
+  }
+
+  // Connect bridging_vertex with vertex d, by looking up the edge created in
+  // track_c
+  RoutingEdge *edge_a_d = track_c->GetEdgeBetween(bridging_vertex, vertex_d);
+  LOG_IF(FATAL, !edge_a_d) << "This edge should definitely have been made";
+
+  // TODO(aryap): We should explicitly fix edge_a_d to the same layer as the
+  // new_edge (target_layer).
+
+  InstallAbbreviation(starting_index,
+                      new_edge_first,
+                      bridging_vertex,
+                      new_edge,
+                      edge_a_d);
+
+  return true;
 }
 
 // Remove reundant direction switching.
@@ -103,199 +342,7 @@ bool RoutingPath::AbbreviateOnce() {
     return false;
   }
   for (size_t i = 0; i < vertices_.size() - 3; ++i) {
-    RoutingEdge *current_edge = edges_[i];
-    RoutingEdge *intervening_edge = edges_[i + 1];
-    RoutingEdge *next_edge = edges_[i + 2];
-
-    RoutingVertex *first = vertices_[i];
-    RoutingVertex *second = current_edge->OtherVertexThan(first);
-    LOG_IF(FATAL, !second) << "First vertex was not in current edge?";
-    RoutingVertex *third = intervening_edge->OtherVertexThan(second);
-    LOG_IF(FATAL, !third) << "Third vertex was not in intermediate edge?";
-    RoutingVertex *fourth = next_edge->OtherVertexThan(third);
-    LOG_IF(FATAL, !fourth) << "Fourth vertex was not in next edge?";
-
-    if (!first->IsOffGrid() && !fourth->IsOffGrid()) {
-      continue;
-    }
-
-    if (next_edge->Direction() != current_edge->Direction()) {
-      LOG(WARNING)
-          << "This is weird: alternating edges not in the same direction?";
-      continue;
-    }
-
-    // Find overlap:
-    std::optional<geometry::Line> current_line = current_edge->AsLine();
-    std::optional<geometry::Line> next_line = next_edge->AsLine();
-    if (!current_line || !next_line) {
-      continue;
-    }
-
-    RoutingTrackDirection axis_direction = current_edge->Direction();
-    double axis_angle = RoutingTrack::DirectionToAngle(axis_direction);
-    double off_axis_angle = RoutingTrack::DirectionToAngle(
-        RoutingTrack::OrthogonalDirectionTo(axis_direction));
-
-    auto overlap = geometry::Line::OverlappingProjectionOnAxis(
-        *current_line, *next_line, axis_angle);
-    if (!overlap) {
-      continue;
-    }
-
-    LOG(INFO) << "Overlap detected " << overlap->first << ", "
-              << overlap->second << ": " << *current_edge << " " << *next_edge;
-
-    // Only apply abbreviations to parllel edges that are 1x pitch apart:
-    auto maybe_routing_info = routing_grid_->GetRoutingLayerInfo(
-        current_edge->EffectiveLayer());
-    if (!maybe_routing_info) {
-      LOG(WARNING) << "No routing info for edge layer";
-      continue;
-    }
-    int64_t pitch = maybe_routing_info->get().pitch();
-    int64_t separation = std::llround(intervening_edge->Length());
-    // NOTE(aryap): If extending this to allow abbreviations across more than 1
-    // pitch, note that the newly created off-grid edge must be added as
-    // blockage to all surrounding tracks on its layer.
-    if (separation > pitch) {
-      LOG(INFO) << "Will not abbreviate overlap with separation "
-                << separation;
-      continue;
-    }
-
-    int64_t projection_first = RoutingTrack::ProjectOntoAxis(
-        first->centre(), axis_direction);
-    int64_t projection_second = RoutingTrack::ProjectOntoAxis(
-        second->centre(), axis_direction);
-    int64_t projection_third = RoutingTrack::ProjectOntoAxis(
-        third->centre(), axis_direction);
-    int64_t projection_fourth = RoutingTrack::ProjectOntoAxis(
-        fourth->centre(), axis_direction);
-
-    // By construction we expect that 'second' and 'third' are connected by an
-    // edge perpendicular to those connecting (first, second) and (third,
-    // fourth). Any overlap must therefore include the 'second' and 'third'
-    // points. We also assume that if an overlap occurs, it will be up to where
-    // 'first' or 'fourth' falls. But for sanity will check this condition.
-    //
-    // For the geometryic meaning of the following points, refer to this
-    // diagram:
-    //         +     +     +     +
-    //                  a  |
-    // track c +-----+--x--+ d   +      v
-    //         |                        | separation
-    //         +-----+--+  + +---+      ^
-    //                  b    |
-    //
-    // This is complicated because we don't know which order we're iterating
-    // over the edges in, and we don't know which way the lines extend beyond
-    // the overlapping section.
-    int64_t on_axis_a = 0;
-    if (overlap->first == projection_second &&
-        overlap->first == projection_third) {
-      LOG_IF(FATAL, overlap->second == projection_second &&
-                    overlap->second == projection_third)
-          << "Assumed overlap would never between two equal-length edges";
-      on_axis_a = overlap->second;
-    } else if (overlap->second == projection_second &&
-               overlap->second == projection_third) {
-      on_axis_a = overlap->first;
-    } else {
-      LOG(FATAL) << "I asserted this was never the case!";
-    }
-
-    geometry::Point point_a;
-    RoutingTrack *track_c = nullptr;
-    RoutingVertex *vertex_b = nullptr;
-    RoutingVertex *vertex_d = nullptr;
-    bool new_edge_first = false;
-    if (std::abs(projection_first - on_axis_a) <
-        std::abs(projection_fourth - on_axis_a)) {
-      vertex_b = first;
-      vertex_d = fourth;
-      point_a.AddComponents(on_axis_a, axis_angle);
-      track_c = fourth->TracksInDirection(axis_direction).front();
-      point_a.AddComponents(track_c->offset(), off_axis_angle);
-      new_edge_first = true;
-    } else {
-      vertex_b = fourth;
-      vertex_d = first;
-      point_a.AddComponents(on_axis_a, axis_angle);
-      track_c = first->TracksInDirection(axis_direction).front();
-      point_a.AddComponents(track_c->offset(), off_axis_angle);
-    }
-    LOG(INFO) << "Trying new edge from " << vertex_b->centre()
-              << " to " << point_a;
-
-    // Try to add new routing vertex to track_c; since this is called before
-    // InstallPath() finishes, none of the other edges/vertices for this path
-    // should have been used and we don't need to do any additional
-    // bookkeeping.
-    //
-    // In some cases it is necessary to revert to the layer of the edges on
-    // either side of the overlap. This is mostly the case when vertex_b and
-    // vertex_d are too close together for vias.
-    geometry::Layer target_layer = DetermineLayerForAbbreviation(
-        i, vertex_b, vertex_d, track_c);
-    RoutingVertex *bridging_vertex = track_c->CreateNewVertexAndConnect(
-        *routing_grid_, point_a, target_layer, nets_);
-    if (!bridging_vertex) {
-      LOG(INFO) << "Could not abbreviate: " << point_a << " not available on "
-                << *track_c;
-      continue;
-    }
-
-    // Try to add edge between vertex_b and new routing vertex on track_c. Check
-    // RoutingGrid to see if this is a valid edge.
-    RoutingEdge *new_edge = new RoutingEdge(bridging_vertex, vertex_b);
-    new_edge->set_layer(target_layer);
-    
-    auto valid = routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_);
-    if (!valid.ok()) {
-      LOG(INFO) << "Invalid off grid edge between "
-                << bridging_vertex->centre()
-                << " and " << vertex_b->centre() << ": "
-                << valid.message();
-      // TODO(aryap): Don't think this gets added to RoutingGrid, only the
-      // track.
-      routing_grid_->RemoveVertex(bridging_vertex, true);
-      delete new_edge;
-      continue;
-    }
-
-    // Connect bridging_vertex with vertex d, by looking up the edge created in
-    // track_c
-    RoutingEdge *edge_a_d = track_c->GetEdgeBetween(bridging_vertex, vertex_d);
-    LOG_IF(FATAL, !edge_a_d) << "This edge should definitely have been made";
-
-    bridging_vertex->AddEdge(new_edge);
-    vertex_b->AddEdge(new_edge);
-    routing_grid_->AddOffGridEdge(new_edge);
-
-    // Remove second, third vertices; remove their edges; return true to
-    // indicate that the operation occurred.
-    // C++20 has std::erase!
-    vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), second),
-                    vertices_.end());
-    vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), third),
-                    vertices_.end());
-    edges_.erase(std::remove(edges_.begin(), edges_.end(), current_edge),
-                 edges_.end());
-    edges_.erase(std::remove(edges_.begin(), edges_.end(), intervening_edge),
-                 edges_.end());
-    edges_.erase(std::remove(edges_.begin(), edges_.end(), next_edge),
-                 edges_.end());
-
-    if (new_edge_first) {
-      edges_.insert(edges_.begin() + i, new_edge);
-      edges_.insert(edges_.begin() + i + 1, edge_a_d);
-    } else {
-      edges_.insert(edges_.begin() + i, edge_a_d);
-      edges_.insert(edges_.begin() + i + 1, new_edge);
-    }
-    vertices_.insert(vertices_.begin() + i + 1, bridging_vertex);
-    return true;
+    MaybeAbbreviate(i);
   }
 
   return false;

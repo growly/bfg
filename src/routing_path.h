@@ -129,8 +129,11 @@ class RoutingPath {
   // We will restrict ourselves to the case where they are separated by one
   // orthogonal edge. And we will replace that edge if we find the overlapping
   // case.
-  void Abbreviate();
   bool AbbreviateOnce();
+  bool MaybeAbbreviate(size_t starting_index);
+
+  // Continue to Abbreviate from the start until it is not possible.
+  inline void Abbreviate() { while (AbbreviateOnce()); }
 
   // For internal methods that implement the abbreviation refer to this diagram
   // for the names of objects:
@@ -147,6 +150,19 @@ class RoutingPath {
       RoutingVertex *vertex_d,
       RoutingTrack *track_c);
 
+  std::optional<std::pair<int64_t, int64_t>> GetOverlapOrSkipAbbreviation(
+      size_t starting_index);
+
+  RoutingEdge *MaybeMakeAbbreviatingEdge(
+      RoutingVertex *bridging_vertex,
+      RoutingVertex *vertex_b,
+      const geometry::Layer &target_layer);
+
+  void InstallAbbreviation(size_t starting_index,
+                           bool new_edge_first,
+                           RoutingVertex *bridging_vertex,
+                           RoutingEdge *new_edge,
+                           RoutingEdge *edge_a_d);
 
   // Remove illegal (and inefficient) jogs between tracks.
   void Flatten();
