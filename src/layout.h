@@ -77,7 +77,7 @@ class Layout : public geometry::Manipulable {
   geometry::Polygon *AddPolyLine(const geometry::PolyLine &line);
   void AddPort(const geometry::Port &port,
                const std::string &net_prefix = "");
-  void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out)
+  void GetPorts(const std::string &net_name, geometry::PortSet *out)
       const;
 
   // Copies the objects in other layout into this one. If a name prefix is
@@ -199,11 +199,10 @@ class Layout : public geometry::Manipulable {
       std::unordered_map<std::string, geometry::Instance *const> *mapping)
       const;
 
-  void GetAllPorts(
-      std::set<geometry::Port*> *ports) const;
+  void GetAllPorts(geometry::PortSet *ports) const;
 
   void GetAllPortsExceptNamed(
-      std::set<geometry::Port*> *ports,
+      geometry::PortSet *ports,
       const std::string &named) const;
 
   bool HasPort(const std::string &name) const;
@@ -230,9 +229,9 @@ class Layout : public geometry::Manipulable {
   };
   const geometry::Layer &active_layer() const { return active_layer_; }
 
-  const std::unordered_map<std::string, std::set<geometry::Port*>>
+  const std::unordered_map<std::string, geometry::PortSet>
       &ports_by_net() const { return ports_by_net_; }
-  const std::set<geometry::Port*> Ports() const;
+  const geometry::PortSet Ports() const;
   const std::vector<std::unique_ptr<geometry::Instance>> &instances() const {
     return instances_;
   }
@@ -242,6 +241,8 @@ class Layout : public geometry::Manipulable {
 
   std::string name_;
 
+  void AddPortByNet(const std::string &name, geometry::Port *port);
+
   ShapeCollection *GetOrInsertLayerShapes(const geometry::Layer &layer);
 
   const PhysicalPropertiesDatabase &physical_db_;
@@ -250,7 +251,7 @@ class Layout : public geometry::Manipulable {
 
   std::vector<std::unique_ptr<geometry::Instance>> instances_;
 
-  std::unordered_map<std::string, std::set<geometry::Port*>> ports_by_net_;
+  std::unordered_map<std::string, geometry::PortSet> ports_by_net_;
 
   geometry::Layer active_layer_;
   std::stack<geometry::Layer> previous_layers_;

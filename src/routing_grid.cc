@@ -1475,10 +1475,10 @@ absl::Status RoutingGrid::AddMultiPointRoute(
         break;
       }
       const std::vector<geometry::Port*> &next_port_group = *(it + 1);
-      std::set<geometry::Port*> begin_ports(
-          port_group.begin(), port_group.end());
-      std::set<geometry::Port*> end_ports(
-          next_port_group.begin(), next_port_group.end());
+      geometry::PortSet begin_ports = geometry::Port::MakePortSet();
+      begin_ports.insert(port_group.begin(), port_group.end());
+      geometry::PortSet end_ports = geometry::Port::MakePortSet();
+      end_ports.insert(next_port_group.begin(), next_port_group.end());
       bool path_found = AddBestRouteBetween(
           begin_ports,
           end_ports,
@@ -1508,8 +1508,8 @@ absl::Status RoutingGrid::AddMultiPointRoute(
 }
 
 absl::Status RoutingGrid::AddBestRouteBetween(
-    const std::set<geometry::Port*> begin_ports,
-    const std::set<geometry::Port*> end_ports,
+    const geometry::PortSet &begin_ports,
+    const geometry::PortSet &end_ports,
     const geometry::ShapeCollection &avoid,
     const EquivalentNets &nets) {
   std::vector<RoutingPath*> options;

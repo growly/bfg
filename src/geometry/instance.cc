@@ -158,9 +158,11 @@ void Instance::AddNamedInstancePort(
     it->second.insert(std::unique_ptr<Port>(instance_port));
     return;
   }
-  instance_ports_.insert(
-      {name,
-       std::set<std::unique_ptr<Port>, UniquePortCompare>(Port::Compare)});
+  auto insertion = instance_ports_.insert(
+      {name, InternalPortSet(Port::Compare)});
+  if (insertion.second) {
+    insertion.first->second.insert(std::unique_ptr<Port>(instance_port));
+  }
 }
 
 void Instance::CopyShapesOnLayer(

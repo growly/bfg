@@ -14,11 +14,18 @@ namespace bfg {
 namespace geometry {
 
 bool Port::Compare(const Port &lhs, const Port &rhs) {
+  //LOG(INFO) << "comparing " << lhs.lower_left_ << " and " << rhs.lower_left_;
   return Point::CompareXThenY(lhs.lower_left_, rhs.lower_left_);
 }
 
 bool Port::Compare(
     const std::unique_ptr<Port> &lhs, const std::unique_ptr<Port> &rhs) {
+  if (!lhs) return true;
+  if (!rhs) return false;
+  return Compare(*lhs, *rhs);
+}
+
+bool Port::Compare(const Port *const lhs, const Port *const rhs) {
   if (!lhs) return true;
   if (!rhs) return false;
   return Compare(*lhs, *rhs);
@@ -39,7 +46,7 @@ std::string Port::DescribePorts(const std::vector<geometry::Port*> &ports) {
   return absl::StrJoin(port_descriptions, ", ");
 }
 
-std::string Port::DescribePorts(const std::set<geometry::Port*> &ports) {
+std::string Port::DescribePorts(const PortSet &ports) {
   std::vector<geometry::Port*> sorted_ports(ports.begin(), ports.end());
   std::sort(sorted_ports.begin(), sorted_ports.end(),
             [](geometry::Port *lhs, geometry::Port *rhs) {

@@ -24,6 +24,7 @@ class Instance : public Manipulable {
  public:
   typedef bool (*UniquePortCompare)(
       const std::unique_ptr<Port>&, const std::unique_ptr<Port>&);
+  typedef std::set<std::unique_ptr<Port>, UniquePortCompare> InternalPortSet;
 
   // TODO(aryap): We should only need a const &Layout here!
   Instance(bfg::Layout *template_layout,
@@ -85,25 +86,13 @@ class Instance : public Manipulable {
   // deleted; we should pass out copies of the Port or shared_ptrs.
   //
   // Find the port named 'name', without the instance name prefix.
-  void GetInstancePorts(const std::string &name, std::set<Port*> *out) {
-    if (!ports_generated_) GeneratePorts();
-    const std::string actual_name = InstancePortName(name);
-    auto it = instance_ports_.find(actual_name);
-    if (it == instance_ports_.end()) {
-      return;
-    }
-    for (const auto &uniq : it->second) {
-      out->insert(uniq.get());
-    }
-  }
-
   void GetInstancePorts(const std::string &name, std::vector<Port*> *out) {
-    std::set<Port*> ports;
+    PortSet ports = Port::MakePortSet();
     GetInstancePorts(name, &ports);
     out->insert(out->end(), ports.begin(), ports.end());
   }
 
-  void GetInstancePorts(std::set<Port*> *out) {
+  void GetInstancePorts(PortSet *out) {
     if (!ports_generated_) GeneratePorts();
     for (auto &entry : instance_ports_) {
       for (auto &uniq : entry.second) {
@@ -148,15 +137,27 @@ class Instance : public Manipulable {
     rotation_degrees_ccw_;
   }
 
-  const std::unordered_map<
-    std::string, std::set<std::unique_ptr<Port>, UniquePortCompare>>
-      &instance_ports() const {
+  const std::unordered_map<std::string, InternalPortSet> &instance_ports()
+      const {
     return instance_ports_;
   }
 
  private:
   void AddNamedInstancePort(
       const std::string &name, Port *instance_port);
+
+  void GetInstancePorts(const std::string &name, PortSet *out) {
+    if (!ports_generated_) GeneratePorts();
+    const std::string actual_name = InstancePortName(name);
+    auto it = instance_ports_.find(actual_name);
+    if (it == instance_ports_.end()) {
+      return;
+    }
+    for (const auto &uniq : it->second) {
+      out->insert(uniq.get());
+    }
+  }
+
   bool ports_generated_;
 
   std::string name_;
@@ -173,9 +174,7 @@ class Instance : public Manipulable {
   // FIXME(growly): Store rotation anti-clockwise.
   int32_t rotation_degrees_ccw_;
 
-  std::unordered_map<
-      std::string,
-      std::set<std::unique_ptr<Port>, UniquePortCompare>> instance_ports_;
+  std::unordered_map<std::string, InternalPortSet> instance_ports_;
 };
 
 }  // namespace geometry

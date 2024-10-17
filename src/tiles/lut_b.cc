@@ -504,11 +504,11 @@ void LutB::RouteScanChain(
     LOG(INFO) << "Adding scan routes for pair "
               << source->name() << ", " << sink->name();
 
-    std::set<geometry::Port*> ports;
+    std::vector<geometry::Port*> ports;
     source->GetInstancePorts("Q", &ports);
     geometry::Port *start = *ports.begin();
-    ports.clear();
 
+    ports.clear();
     sink->GetInstancePorts("D", &ports);
     geometry::Port *end = *ports.begin();
 
@@ -574,11 +574,11 @@ void LutB::RouteMuxInputs(
     // Heuristically determine which mux port to use based on which which is
     // closest to the memory output, even if we're routing to the memory output
     // net instead of the port specifically.
-    std::set<geometry::Port*> memory_ports;
+    std::vector<geometry::Port*> memory_ports;
     memory->GetInstancePorts("Q", &memory_ports);
     geometry::Port *memory_output = *memory_ports.begin();
 
-    std::set<geometry::Port*> mux_ports_on_net;
+    std::vector<geometry::Port*> mux_ports_on_net;
     mux->GetInstancePorts(input_name, &mux_ports_on_net);
 
     geometry::Port *mux_port = mux->GetNearestPortNamed(*memory_output,
@@ -586,7 +586,10 @@ void LutB::RouteMuxInputs(
     if (!mux_port) {
       continue;
     }
-    LOG_IF(FATAL, mux_ports_on_net.find(mux_port) == mux_ports_on_net.end())
+    LOG_IF(
+        FATAL,
+        std::find(mux_ports_on_net.begin(), mux_ports_on_net.end(), mux_port) ==
+            mux_ports_on_net.end())
         << "Nearest port named " << input_name
         << " did not appear in list of all ports for same name";
 
@@ -623,7 +626,11 @@ void LutB::RouteMuxInputs(
       if (path_found) {
         break;
       }
-      mux_ports_on_net.erase(mux_port);
+      mux_ports_on_net.erase(
+          std::remove(mux_ports_on_net.begin(),
+                      mux_ports_on_net.end(),
+                      mux_port),
+          mux_ports_on_net.end());
       mux_port = mux_ports_on_net.empty() ? nullptr : *mux_ports_on_net.begin();
     }
   }
@@ -677,7 +684,7 @@ absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
         route_targets.emplace_back();
     geometry::Instance *instance = port_key.instance;
 
-    std::set<geometry::Port*> matching_ports;
+    std::vector<geometry::Port*> matching_ports;
     instance->GetInstancePorts(port_key.port_name, &matching_ports);
     if (matching_ports.empty()) {
       LOG(WARNING) << "No port found named \"" << port_key.port_name
@@ -832,7 +839,7 @@ void LutB::AddClockAndPowerStraps(
       std::vector<geometry::Point> connections;
       for (const auto &row : banks_.at(bank).instances()) {
         for (geometry::Instance *instance : row) {
-          std::set<geometry::Port*> ports;
+          std::vector<geometry::Port*> ports;
           instance->GetInstancePorts(port_name, &ports);
           for (geometry::Port *port : ports) {
             connections.push_back(port->centre());

@@ -7,6 +7,7 @@
 #include "cell.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
+#include "geometry/port.h"
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 #include "poly_line_inflator.h"
@@ -356,11 +357,23 @@ void Layout::AddPort(const geometry::Port &port,
   copy->set_net(net_name);
   ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
   shape_collection->ports().emplace_back(copy);
-  ports_by_net_[net_name].insert(copy);
+  AddPortByNet(net_name, copy);
+}
+
+void Layout::AddPortByNet(const std::string &name, geometry::Port *port) {
+  auto it = ports_by_net_.find(name);
+  if (it != ports_by_net_.end()) {
+    it->second.insert(port);
+    return;
+  }
+  auto insertion = ports_by_net_.insert({name, geometry::Port::MakePortSet()});
+  if (insertion.second) {
+    insertion.first->second.insert(port);
+  }
 }
 
 void Layout::GetPorts(
-    const std::string &net_name, std::set<geometry::Port*> *out) const {
+    const std::string &net_name, geometry::PortSet *out) const {
   auto it = ports_by_net_.find(net_name);
   LOG_IF(FATAL, it == ports_by_net_.end())
       << "No port associated with net: " << net_name;
@@ -510,15 +523,14 @@ void Layout::GetInstancesByName(
   }
 }
 
-void Layout::GetAllPorts(std::set<geometry::Port*> *ports) const {
+void Layout::GetAllPorts(geometry::PortSet *ports) const {
   for (const auto &instance : instances_) {
     instance->GetInstancePorts(ports);
   }
 }
 
 void Layout::GetAllPortsExceptNamed(
-    std::set<geometry::Port*> *ports,
-    const std::string &named) const {
+    geometry::PortSet *ports, const std::string &named) const {
   for (const auto &instance : instances_) {
     for (const auto &entry : instance->instance_ports()) {
       const std::string &port_name = entry.first;
@@ -535,14 +547,16 @@ bool Layout::HasPort(const std::string &name) const {
   return ports_by_net_.find(name) != ports_by_net_.end();
 }
 
-const std::set<geometry::Port*> Layout::Ports() const {
-  std::set<geometry::Port*> all_ports;
+const geometry::PortSet Layout::Ports() const {
+  geometry::PortSet all_ports = geometry::Port::MakePortSet();
   for (const auto &entry : shapes_) {
     // How is this:
     std::transform(entry.second->ports().begin(),
                    entry.second->ports().end(),
                    std::inserter(all_ports, all_ports.begin()),
-                   [](const std::unique_ptr<geometry::Port> &u) { return u.get(); });
+                   [](const std::unique_ptr<geometry::Port> &u) {
+                     return u.get();
+                   });
     // Nicer than this:
     //for (const auto &port : entry.second->ports) {
     //  all_ports.insert(port.get());

@@ -102,8 +102,8 @@ class RoutingGrid {
       const EquivalentNets &nets);
 
   absl::Status AddBestRouteBetween(
-      const std::set<geometry::Port*> begin_ports,
-      const std::set<geometry::Port*> end_ports,
+      const geometry::PortSet &begin_ports,
+      const geometry::PortSet &end_ports,
       const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
 

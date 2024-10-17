@@ -2,6 +2,7 @@
 #define GEOMETRY_PORT_H_
 
 #include <string>
+#include <set>
 
 #include "layer.h"
 #include "point.h"
@@ -10,6 +11,10 @@
 namespace bfg {
 namespace geometry {
 
+class Port;
+typedef bool (*PtrPortCompare)(const Port *const, const Port *const);
+typedef std::set<Port*, PtrPortCompare> PortSet;
+
 // A port, or pin, defines an access region either on the given layer or on
 // adjacent layers (mapped by PhysicalPropertiesDatabase).
 class Port : public Rectangle {
@@ -17,12 +22,17 @@ class Port : public Rectangle {
   static bool Compare(const Port &lhs, const Port &rhs);
   static bool Compare(
       const std::unique_ptr<Port> &lhs, const std::unique_ptr<Port> &rhs);
+  static bool Compare(const Port *const lhs, const Port *const rhs);
+
+  static PortSet MakePortSet() {
+    return PortSet(Port::Compare);
+  }
 
   Port() {}
 
   std::string Describe() const;
   static std::string DescribePorts(const std::vector<geometry::Port*> &ports);
-  static std::string DescribePorts(const std::set<geometry::Port*> &ports);
+  static std::string DescribePorts(const PortSet &ports);
 
   // TODO(aryap): Wait, is a port just a rect with some other stuff? So this is
   // a rect:

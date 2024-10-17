@@ -27,31 +27,6 @@
 namespace bfg {
 namespace tiles {
 
-namespace {
-
-std::string DescribePorts(const std::vector<geometry::Port*> &ports) {
-  std::vector<std::string> port_descriptions;
-  for (geometry::Port *port : ports) {
-    port_descriptions.push_back(
-        absl::StrFormat("(%d, %d)", port->centre().x(), port->centre().y()));
-  }
-  return absl::StrJoin(port_descriptions, ", ");
-}
-
-std::string DescribePorts(const std::set<geometry::Port*> &ports) {
-  std::vector<geometry::Port*> sorted_ports(ports.begin(), ports.end());
-  std::sort(sorted_ports.begin(), sorted_ports.end(),
-            [](geometry::Port *lhs, geometry::Port *rhs) {
-              if (lhs->centre().x() == rhs->centre().x()) {
-                return lhs->centre().y() < rhs->centre().y();
-              }
-              return lhs->centre().x() < rhs->centre().x();
-            });
-  return DescribePorts(sorted_ports);
-}
-
-}  // namespace
-
 const Lut::LayoutConfig *Lut::GetLayoutConfiguration(size_t lut_size) {
   size_t num_configurations =
       sizeof(kLayoutConfigurations) / sizeof(kLayoutConfigurations[0]);
@@ -542,7 +517,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
           std::swap(source, sink);
         }
         
-        std::set<geometry::Port*> ports;
+        std::vector<geometry::Port*> ports;
         source->GetInstancePorts("Q", &ports);
         geometry::Port *start = *ports.begin();
         ports.clear();
@@ -612,7 +587,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
         << "Could not sink memory \"" << name << "\" in main layout";
     geometry::Instance *sink = it->second;
 
-    std::set<geometry::Port*> ports;
+    std::vector<geometry::Port*> ports;
     source->GetInstancePorts("Q", &ports);
     geometry::Port *start = *ports.begin();
     ports.clear();
@@ -693,7 +668,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
           route_targets.emplace_back();
       geometry::Instance *instance = port_key.instance;
 
-      std::set<geometry::Port*> matching_ports;
+      std::vector<geometry::Port*> matching_ports;
       instance->GetInstancePorts(port_key.port_name, &matching_ports);
       if (matching_ports.empty()) {
         LOG(WARNING) << "No port found named \"" << port_key.port_name
@@ -705,7 +680,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     }
 
     for (const auto &port_list : route_targets) {
-      LOG(INFO) << DescribePorts(port_list);
+      LOG(INFO) << geometry::Port::DescribePorts(port_list);
     }
 
     bool paths_found = routing_grid.AddMultiPointRoute(
@@ -766,11 +741,11 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     // Heuristically determine which mux port to use based on which which is
     // closest to the memory output, even if we're routing to the memory output
     // net instead of the port specifically.
-    std::set<geometry::Port*> memory_ports;
+    std::vector<geometry::Port*> memory_ports;
     memory->GetInstancePorts("Q", &memory_ports);
     geometry::Port *memory_output = *memory_ports.begin();
 
-    std::set<geometry::Port*> mux_ports_on_net;
+    std::vector<geometry::Port*> mux_ports_on_net;
     mux->GetInstancePorts(input_name, &mux_ports_on_net);
 
     geometry::Port *mux_port = mux->GetNearestPortNamed(*memory_output,
@@ -778,7 +753,10 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
     if (!mux_port) {
       continue;
     }
-    LOG_IF(FATAL, mux_ports_on_net.find(mux_port) == mux_ports_on_net.end())
+    LOG_IF(
+        FATAL,
+        std::find(mux_ports_on_net.begin(), mux_ports_on_net.end(), mux_port) ==
+            mux_ports_on_net.end())
         << "Nearest port named " << input_name
         << " did not appear in list of all ports for same name";
 
@@ -814,7 +792,11 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
       if (path_found) {
         break;
       }
-      mux_ports_on_net.erase(mux_port);
+      mux_ports_on_net.erase(
+          std::remove(mux_ports_on_net.begin(),
+                      mux_ports_on_net.end(),
+                      mux_port),
+          mux_ports_on_net.end());
       mux_port = mux_ports_on_net.empty() ? nullptr : *mux_ports_on_net.begin();
     }
   }
