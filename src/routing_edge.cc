@@ -143,6 +143,10 @@ RoutingTrackDirection RoutingEdge::Direction() const {
   return RoutingTrackDirection::kTrackHorizontal;
 }
 
+double RoutingEdge::Length() const {
+  return first_->centre().L2DistanceTo(second_->centre());
+}
+
 bool RoutingEdge::TerminatesAt(const geometry::Point &point) const {
   return (first_ && first_->centre() == point) ||
       (second_ && second_->centre() == point);

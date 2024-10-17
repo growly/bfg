@@ -24,7 +24,7 @@ class Port : public Rectangle {
       const std::unique_ptr<Port> &lhs, const std::unique_ptr<Port> &rhs);
   static bool Compare(const Port *const lhs, const Port *const rhs);
 
-  static PortSet MakePortSet() {
+  static inline PortSet MakePortSet() {
     return PortSet(Port::Compare);
   }
 

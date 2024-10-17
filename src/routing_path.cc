@@ -72,38 +72,33 @@ double RoutingPath::Cost() const {
   return cost;
 }
 
+geometry::Layer RoutingPath::DetermineLayerForAbbreviation(
+    size_t starting_index,
+    RoutingVertex *vertex_b,
+    RoutingVertex *vertex_d,
+    RoutingTrack *track_c) {
+  if (!routing_grid_->VerticesAreTooCloseForVias(*vertex_b, *vertex_d)) {
+    return track_c->layer();
+  }
+  if (starting_index > 0) {
+    // Use the in-bound edge's layer.
+    return edges_[starting_index - 1]->EffectiveLayer();
+  }
+  if (starting_index < edges_.size() - 3) {
+    // Use the outbound edge's layer.
+    return edges_[starting_index + 3]->EffectiveLayer();
+  }
+  // As a fallback, use the current edge's layer.
+  return edges_[starting_index]->EffectiveLayer();
+}
+
 void RoutingPath::Abbreviate() {
   // Continue to Abbreviate until it is not possible.
   while (AbbreviateOnce());
 }
 
+// Remove reundant direction switching.
 bool RoutingPath::AbbreviateOnce() {
-  // A nice property of the routing-grid is that paths should not be able to
-  // conflict with themselves during the shortest-path search. This is
-  // violated by off-grid vertices, since using them precludes the use of nearby
-  // vertices on the grid. This is normally not a problem because long edges are
-  // used to get away from the off-grid site to some far-away target point.
-  // There are, however, exceptions:
-  //
-  //        +     +     +     +
-  //                    |
-  //        +-----+-----+     +
-  //       B|
-  //        +-----+--+ A+ +---+
-  //                O+    |C
-  //
-  // In this example, the path B could be constructed to connect to the off-grid
-  // point O given that on-grid vertex A is invalidated by an existing path C.
-  //
-  // We do a "peephole optimisation" here and remove any cases of
-  // obviously-simplifiable edges cases. We're looking for overlapping edges in
-  // the same direction:
-  //      +-------+
-  //           +--+
-  // We will restrict ourselves to the case where they are separated by one
-  // orthogonal edge. And we will replace that edge if we find the overlapping
-  // case.
-  //
   if (vertices_.size() <= 3) {
     return false;
   }
@@ -151,6 +146,24 @@ bool RoutingPath::AbbreviateOnce() {
     LOG(INFO) << "Overlap detected " << overlap->first << ", "
               << overlap->second << ": " << *current_edge << " " << *next_edge;
 
+    // Only apply abbreviations to parllel edges that are 1x pitch apart:
+    auto maybe_routing_info = routing_grid_->GetRoutingLayerInfo(
+        current_edge->EffectiveLayer());
+    if (!maybe_routing_info) {
+      LOG(WARNING) << "No routing info for edge layer";
+      continue;
+    }
+    int64_t pitch = maybe_routing_info->get().pitch();
+    int64_t separation = std::llround(intervening_edge->Length());
+    // NOTE(aryap): If extending this to allow abbreviations across more than 1
+    // pitch, note that the newly created off-grid edge must be added as
+    // blockage to all surrounding tracks on its layer.
+    if (separation > pitch) {
+      LOG(INFO) << "Will not abbreviate overlap with separation "
+                << separation;
+      continue;
+    }
+
     int64_t projection_first = RoutingTrack::ProjectOntoAxis(
         first->centre(), axis_direction);
     int64_t projection_second = RoutingTrack::ProjectOntoAxis(
@@ -166,13 +179,13 @@ bool RoutingPath::AbbreviateOnce() {
     // points. We also assume that if an overlap occurs, it will be up to where
     // 'first' or 'fourth' falls. But for sanity will check this condition.
     //
-    // Consider the diagram of what we're doing again before reading the
-    // following code. I'm out of English words:
+    // For the geometryic meaning of the following points, refer to this
+    // diagram:
     //         +     +     +     +
     //                  a  |
-    // track c +-----+--x--+ d   +
-    //         |
-    //         +-----+--+  + +---+
+    // track c +-----+--x--+ d   +      v
+    //         |                        | separation
+    //         +-----+--+  + +---+      ^
     //                  b    |
     //
     // This is complicated because we don't know which order we're iterating
@@ -215,15 +228,16 @@ bool RoutingPath::AbbreviateOnce() {
     LOG(INFO) << "Trying new edge from " << vertex_b->centre()
               << " to " << point_a;
 
-    // TODO(aryap):
-    //  - try to add new routing vertex to track_c; since this is called before
-    //  InstallPath() finishes, none of the other edges/vertices for this path
-    //  should have been used
-    //  - try to add edge between vertex_b and new routing vertex on track c
-    //  - connect to edge the connect vertex_b and first/fourth
-    //  - undo use of three now-redundant edges
+    // Try to add new routing vertex to track_c; since this is called before
+    // InstallPath() finishes, none of the other edges/vertices for this path
+    // should have been used and we don't need to do any additional
+    // bookkeeping.
     //
-    const geometry::Layer &target_layer = track_c->layer();
+    // In some cases it is necessary to revert to the layer of the edges on
+    // either side of the overlap. This is mostly the case when vertex_b and
+    // vertex_d are too close together for vias.
+    geometry::Layer target_layer = DetermineLayerForAbbreviation(
+        i, vertex_b, vertex_d, track_c);
     RoutingVertex *bridging_vertex = track_c->CreateNewVertexAndConnect(
         *routing_grid_, point_a, target_layer, nets_);
     if (!bridging_vertex) {
@@ -232,13 +246,17 @@ bool RoutingPath::AbbreviateOnce() {
       continue;
     }
 
+    // Try to add edge between vertex_b and new routing vertex on track_c. Check
+    // RoutingGrid to see if this is a valid edge.
     RoutingEdge *new_edge = new RoutingEdge(bridging_vertex, vertex_b);
     new_edge->set_layer(target_layer);
     
-    if (!routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_).ok()) {
+    auto valid = routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_);
+    if (!valid.ok()) {
       LOG(INFO) << "Invalid off grid edge between "
                 << bridging_vertex->centre()
-                << " and " << vertex_b->centre();
+                << " and " << vertex_b->centre() << ": "
+                << valid.message();
       // TODO(aryap): Don't think this gets added to RoutingGrid, only the
       // track.
       routing_grid_->RemoveVertex(bridging_vertex, true);
@@ -246,9 +264,8 @@ bool RoutingPath::AbbreviateOnce() {
       continue;
     }
 
-    // connect bridging_vertex with vertex d, by looking up the edge created in
+    // Connect bridging_vertex with vertex d, by looking up the edge created in
     // track_c
-
     RoutingEdge *edge_a_d = track_c->GetEdgeBetween(bridging_vertex, vertex_d);
     LOG_IF(FATAL, !edge_a_d) << "This edge should definitely have been made";
 

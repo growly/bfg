@@ -84,6 +84,7 @@ class RoutingEdge {
 
   const geometry::Layer EffectiveLayer() const;
   RoutingTrackDirection Direction() const;
+  double Length() const;
 
   // Off-grid edges do not have tracks.
   void set_track(RoutingTrack *track);

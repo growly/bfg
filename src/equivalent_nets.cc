@@ -22,6 +22,15 @@ bool EquivalentNets::Contains(const std::string &name) const {
   return nets_.find(name) != nets_.end();
 }
 
+bool EquivalentNets::Add(const EquivalentNets &other) {
+  bool any = false;
+  for (const std::string &net : other.nets_) {
+    bool success = Add(net);
+    any |= success;
+  }
+  return any;
+}
+
 bool EquivalentNets::Add(const std::string &name) {
   if (name == "") {
     return false;

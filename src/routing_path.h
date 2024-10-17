@@ -104,9 +104,49 @@ class RoutingPath {
       RoutingEdge *edge,
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
 
-  // Remove reundant direction switching.
+  // A nice property of the routing-grid is that paths should not be able to
+  // conflict with themselves during the shortest-path search. This is
+  // violated by off-grid vertices, since using them precludes the use of nearby
+  // vertices on the grid. This is normally not a problem because long edges are
+  // used to get away from the off-grid site to some far-away target point.
+  // There are, however, exceptions:
+  //
+  //        +     +     +     +
+  //                    |
+  //        +-----+-----+     +
+  //       B|
+  //        +-----+--+ A+ +---+
+  //                O+    |C
+  //
+  // In this example, the path B could be constructed to connect to the off-grid
+  // point O given that on-grid vertex A is invalidated by an existing path C.
+  //
+  // We do a "peephole optimisation" here and remove any cases of
+  // obviously-simplifiable edges cases. We're looking for overlapping edges in
+  // the same direction:
+  //      +-------+
+  //           +--+
+  // We will restrict ourselves to the case where they are separated by one
+  // orthogonal edge. And we will replace that edge if we find the overlapping
+  // case.
   void Abbreviate();
   bool AbbreviateOnce();
+
+  // For internal methods that implement the abbreviation refer to this diagram
+  // for the names of objects:
+  //         +     +     +     +
+  //                  a  |
+  // track c +-----+--x--+ d   +      v
+  //         |                        | separation
+  //         +-----+--+  + +---+      ^
+  //                  b    |
+  //
+  geometry::Layer DetermineLayerForAbbreviation(
+      size_t starting_index,
+      RoutingVertex *vertex_b,
+      RoutingVertex *vertex_d,
+      RoutingTrack *track_c);
+
 
   // Remove illegal (and inefficient) jogs between tracks.
   void Flatten();

@@ -1751,7 +1751,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   LOG(INFO) << "Found path: " << *shortest_path;
 
   // Assign net and install:
-  shortest_path->set_nets(target_nets);
+  EquivalentNets all_nets(target_nets);
+  all_nets.Add(usable_nets);
+  shortest_path->set_nets(all_nets);
 
   TearDownTemporaryBlockages(temporary_blockages);
 

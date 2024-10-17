@@ -337,8 +337,8 @@ void RoutingTrack::AssignThisTrackToVertex(RoutingVertex *vertex) {
   }
 }
 
-// FIXME: there are two uses of this function that differ in what 'target' means.
-// FIX. 
+// FIXME: there are two uses of this function that differ in what 'target'
+// means. FIX. 
 //  - in the earlier use case 'target' was the nearest vertex on the track to
 //  which the off-grid point was inteded to connect
 //  - in the later user case 'target' is just the vertex at 'point'
