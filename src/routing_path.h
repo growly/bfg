@@ -104,6 +104,7 @@ class RoutingPath {
       RoutingEdge *edge,
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
 
+  // --------------------------------------------------------------------------
   // A nice property of the routing-grid is that paths should not be able to
   // conflict with themselves during the shortest-path search. This is
   // violated by off-grid vertices, since using them precludes the use of nearby
@@ -163,6 +164,7 @@ class RoutingPath {
                            RoutingVertex *bridging_vertex,
                            RoutingEdge *new_edge,
                            RoutingEdge *edge_a_d);
+  // --------------------------------------------------------------------------
 
   // Remove illegal (and inefficient) jogs between tracks.
   void Flatten();

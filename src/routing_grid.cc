@@ -99,7 +99,8 @@ bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
   // with padding = 0). If we just checked that because padding == 0 already,
   // shortcut the response.
   if (intersects &&
-      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+      exceptional_nets &&
+      exceptional_nets->Contains(shape_.net())) {
     if (padding == 0) {
       return false;
     }
@@ -118,7 +119,8 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
   bool intersects = routing_grid_.ViaWouldIntersect(
       vertex, shape_, padding, access_direction);
   if (intersects &&
-      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+      exceptional_nets &&
+      exceptional_nets->Contains(shape_.net())) {
     if (padding == 0) {
       return false;
     }
@@ -135,7 +137,8 @@ bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
     const std::optional<EquivalentNets> &exceptional_nets) const {
   bool intersects = routing_grid_.WireWouldIntersect(edge, shape_, padding); 
   if (intersects &&
-      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+      exceptional_nets &&
+      exceptional_nets->Contains(shape_.net())) {
     if (padding == 0) {
       return false;
     }
@@ -151,7 +154,8 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
     const std::optional<EquivalentNets> &exceptional_nets) const {
   bool intersects = routing_grid_.WireWouldIntersect(edge, shape_, padding); 
   if (intersects &&
-      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+      exceptional_nets &&
+      exceptional_nets->Contains(shape_.net())) {
     if (padding == 0) {
       return false;
     }
