@@ -620,6 +620,15 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     }
 
     if (bridging_vertex_is_new) {
+      // Need to check if this new vertex is valid against all known blockages:
+      auto validity = ValidAgainstKnownBlockages(
+          *bridging_vertex, connectable_nets, track->direction());
+      if (!validity.ok()) {
+        track->RemoveVertex(bridging_vertex);
+        delete bridging_vertex;
+        continue;
+      }
+
       AddVertex(bridging_vertex);
     }
 
