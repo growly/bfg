@@ -124,10 +124,12 @@ void RoutingGridGeometry::BoundGridIndices(int64_t num_concentric_layers,
 void RoutingGridGeometry::NearestTracks(
     const geometry::Point &point,
     std::set<RoutingTrack*> *horizontal,
-    std::set<RoutingTrack*> *vertical) const {
+    std::set<RoutingTrack*> *vertical,
+    int64_t num_concentric_layers) const {
   std::set<size_t> horizontal_indices;
   std::set<size_t> vertical_indices;
-  NearestTrackIndices(point, &horizontal_indices, &vertical_indices);
+  NearestTrackIndices(
+      point, &horizontal_indices, &vertical_indices, num_concentric_layers);
 
   for (size_t index : horizontal_indices) {
     if (index >= horizontal_tracks_by_index_.size())

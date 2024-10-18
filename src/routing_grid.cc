@@ -560,9 +560,13 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
         std::reference_wrapper<
             const std::set<RoutingTrackDirection>>> &directions,
     RoutingVertex *off_grid) {
+  // Number of layers of tracks to connect to, outwards, from the given off-grid
+  // vertex.
+  static int64_t kTrackRadius = 2;
+
   std::set<RoutingTrack*> nearest_tracks;
   grid_geometry.NearestTracks(
-      off_grid->centre(), &nearest_tracks, &nearest_tracks);
+      off_grid->centre(), &nearest_tracks, &nearest_tracks, kTrackRadius);
 
   auto ok_access_direction = [&](const RoutingTrackDirection &candidate) {
     if (directions) {
