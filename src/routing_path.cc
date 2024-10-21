@@ -289,6 +289,8 @@ bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
     vertex_b = fourth;
     vertex_d = first;
     point_a.AddComponents(on_axis_a, axis_angle);
+    // FIXME(aryap): What if first is off-grid and has no tracks?!
+    // have to use current_edge projection...
     track_c = first->TracksInDirection(axis_direction).front();
     point_a.AddComponents(track_c->offset(), off_axis_angle);
   }

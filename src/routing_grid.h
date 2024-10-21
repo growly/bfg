@@ -500,6 +500,15 @@ class RoutingGrid {
   bool VerticesAreTooCloseForVias(
       const RoutingVertex &lhs, const RoutingVertex &rhs) const;
 
+  // FIXME(aryap): We need a 'plane' of blockages that are referred to even when
+  // the routing grid is read-only, i.e. in a parallel search of the graph
+  // according to slightly different blockages.
+  //
+  // This requires changing the 'available()' checks everywhere to also check
+  // for membership in the blockage set.
+  //
+  // AddBlockages but it records the results to an external object?
+  // Then we can multithread.
   void SetUpTemporaryBlockages(
       const geometry::ShapeCollection &avoid,
       TemporaryBlockageInfo *blockage_info);
