@@ -23,6 +23,16 @@ bool RoutingVertex::Compare(RoutingVertex *lhs, RoutingVertex *rhs) {
   return Compare(*lhs, *rhs);
 }
 
+std::set<geometry::Layer> RoutingVertex::CommonLayers(
+      const RoutingVertex &lhs, const RoutingVertex &rhs) {
+  std::set<geometry::Layer> shared_layers;
+  std::set_intersection(
+      lhs.connected_layers().begin(), lhs.connected_layers().end(),
+      rhs.connected_layers().begin(), rhs.connected_layers().end(),
+      std::inserter(shared_layers, shared_layers.begin()));
+  return shared_layers;
+}
+
 bool RoutingVertex::RemoveEdge(RoutingEdge *edge) {
   size_t erased = edges_.erase(edge) > 0;
   return erased > 0;

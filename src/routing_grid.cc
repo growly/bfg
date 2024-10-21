@@ -2634,10 +2634,8 @@ bool RoutingGrid::VerticesAreTooCloseForVias(
     const RoutingVertex &lhs, const RoutingVertex &rhs) const {
   const std::set<geometry::Layer> &lhs_layers = lhs.connected_layers();
   const std::set<geometry::Layer> &rhs_layers = rhs.connected_layers();
-  std::set<geometry::Layer> shared_layers;
-  std::set_intersection(lhs_layers.begin(), lhs_layers.end(),
-                        rhs_layers.begin(), rhs_layers.end(),
-                        std::inserter(shared_layers, shared_layers.begin()));
+  std::set<geometry::Layer> shared_layers =
+      RoutingVertex::CommonLayers(lhs, rhs);
   if (shared_layers.empty())
     return false;
 

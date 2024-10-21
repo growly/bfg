@@ -156,14 +156,14 @@ class RoutingPath {
 
   RoutingEdge *MaybeMakeAbbreviatingEdge(
       RoutingVertex *bridging_vertex,
-      RoutingVertex *vertex_b,
+      RoutingVertex *off_host_track,
       const geometry::Layer &target_layer);
 
-  void InstallAbbreviation(size_t starting_index,
-                           bool new_edge_first,
-                           RoutingVertex *bridging_vertex,
-                           RoutingEdge *new_edge,
-                           RoutingEdge *edge_a_d);
+  void InstallAbbreviatingJog(size_t starting_index,
+                              bool new_edge_first,
+                              RoutingVertex *bridging_vertex,
+                              RoutingEdge *new_edge,
+                              RoutingEdge *edge_a_d);
   // --------------------------------------------------------------------------
 
   // Remove illegal (and inefficient) jogs between tracks.
