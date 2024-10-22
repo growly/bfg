@@ -212,7 +212,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_grid.set_template_cells(&mux_templates);
   // FIXME(aryap): This is a function of track pitch, really, not some number I
   // eyeballed.
-  mux_grid.set_horizontal_overlap(-1000);
+  mux_grid.set_horizontal_overlap(2000);
   mux_grid.set_vertical_overlap(-2500);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
   mux_order_.insert(mux_order_.begin(), mux_order.begin(), mux_order.end());
@@ -550,20 +550,20 @@ void LutB::RouteMuxInputs(
     {banks_[1].instances()[3][0], mux_order_[0], "input_5"},
     {banks_[1].instances()[1][0], mux_order_[0], "input_6"},
 
-    //{banks_[0].instances()[7][0], mux_order_[1], "input_5"},
-    //{banks_[0].instances()[5][0], mux_order_[1], "input_6"},
-    //{banks_[0].instances()[6][0], mux_order_[1], "input_4"},
-    //{banks_[0].instances()[4][0], mux_order_[1], "input_7"},
+    {banks_[0].instances()[7][0], mux_order_[1], "input_5"},
+    {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
+    {banks_[0].instances()[6][0], mux_order_[1], "input_4"},
+    {banks_[0].instances()[4][0], mux_order_[1], "input_7"},
 
     {banks_[0].instances()[1][0], mux_order_[0], "input_0"},
     {banks_[0].instances()[3][0], mux_order_[0], "input_3"},
     {banks_[0].instances()[2][0], mux_order_[0], "input_2"},
     {banks_[0].instances()[0][0], mux_order_[0], "input_1"},
 
-    //{banks_[1].instances()[5][0], mux_order_[1], "input_0"},
-    //{banks_[1].instances()[7][0], mux_order_[1], "input_3"},
-    //{banks_[1].instances()[6][0], mux_order_[1], "input_2"},
-    //{banks_[1].instances()[4][0], mux_order_[1], "input_1"},
+    {banks_[1].instances()[5][0], mux_order_[1], "input_0"},
+    {banks_[1].instances()[7][0], mux_order_[1], "input_3"},
+    {banks_[1].instances()[6][0], mux_order_[1], "input_2"},
+    {banks_[1].instances()[4][0], mux_order_[1], "input_1"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {
@@ -821,10 +821,15 @@ void LutB::AddClockAndPowerStraps(
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &spine_via_rules = db.Rules("met2.drawing", "via1.drawing");
   const auto &spine_rules = db.Rules("met2.drawing");
+  const auto &finger_via_rules = db.Rules("met1.drawing", "via1.drawing");
+  const auto &finger_rules = db.Rules("met1.drawing");
   const auto &via_rules = db.Rules("via1.drawing");
   uint64_t via_side = std::max(via_rules.via_width, via_rules.via_height);
   uint64_t spine_bulge_width = 2 * spine_via_rules.via_overhang_wide + via_side;
-  int64_t strap_pitch = spine_bulge_width + spine_rules.min_separation;
+  int64_t strap_pitch = std::max(
+      spine_bulge_width + spine_rules.min_separation,
+      via_side + 2 * finger_via_rules.via_overhang +
+          finger_rules.min_separation);
 
   const LutB::LayoutConfig layout_config =
       *LutB::GetLayoutConfiguration(lut_size_);
