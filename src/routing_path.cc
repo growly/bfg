@@ -193,6 +193,9 @@ void RoutingPath::InstallAbbreviatingJog(
   // Remove second, third vertices; remove their edges; return true to
   // indicate that the operation occurred.
   // C++20 has std::erase!
+  //
+  // Also, since the positions of these entries are known we could just use
+  // those to do the erasure!
   vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), second),
                   vertices_.end());
   vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), third),
@@ -251,13 +254,22 @@ bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
   //
   // For the geometryic meaning of the following points, refer to this
   // diagram:
-  //                     +     +     +     +
+  //                     +     +     +     +     +
   //                              a  |
-  //      host track --> +-----+--x--+ d   +      v
+  //      host track --> +-----+--x--+d    +     +      v
+  //                     |                              | separation
+  //  <--axis direction->+-----+--+b +     +     +---   ^
+  //                              |              |
+  //  alternative host track -->  +        +-----+
+  //
+  // Or:
+  //                     +     +     +     +
+  //                              a     +
+  //      host track --> +-----+-----x--+d +      v
   //                     |                        | separation
-  //  <--axis direction->+-----+--+  + +---+      ^
-  //                             b|    |
-  //  alternative host track -->  | 
+  //  <--axis direction->+-----+-----+b    +---   ^
+  //                                 |     |
+  //  alternative host track ------> +e
   //
   // This is complicated because we don't know which order we're iterating
   // over the edges in, and we don't know which way the lines extend beyond
@@ -290,8 +302,7 @@ bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
   RoutingVertex *off_host_track = nullptr;  // d or b
   bool new_edge_first = false;
 
-  auto assign_labels = [&](
-      RoutingVertex *lhs, RoutingVertex *rhs) {
+  auto assign_labels = [&](RoutingVertex *lhs, RoutingVertex *rhs) {
     vertex_b = lhs;
     vertex_d = rhs;
     point_a.AddComponents(on_axis_a, axis_angle);
@@ -307,6 +318,7 @@ bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
       LOG_IF(FATAL, normal_tracks.empty())
           << "Need vertex d to have an axis-oriented track or vertex b to have "
           << "a perpendicular one";
+      // The alternate host track.
       host_track = normal_tracks.front();
       on_host_track = lhs;
       off_host_track = rhs;
@@ -380,6 +392,45 @@ bool RoutingPath::AbbreviateOnce() {
   return false;
 }
 
+void RoutingPath::MergeConsecutiveEdgesOnSameTrack() {
+  if (edges_.empty()) {
+    return;
+  }
+  RoutingEdge *last_edge = edges_[0];
+
+  for (size_t i = 1; i < edges_.size(); ++i) {
+    RoutingEdge *edge = edges_[i];
+
+    if (!edge->track() || edge->track() != last_edge->track()) {
+      last_edge = edge;
+      continue;
+    }
+
+    // last_edge and edge must be replaced with the edge that spans (previous,
+    // next);
+    RoutingVertex *previous = vertices_[i - 1];
+    RoutingVertex *next = vertices_[i + 1];
+
+    RoutingEdge *replacement = edge->track()->GetEdgeBetween(previous, next);
+    LOG_IF(WARNING, !replacement)
+        << "Consecutive edges cannot be replaced by single spanning edge "
+        << "since there is no edge between " << previous->centre()
+        << " and " << next->centre() << " on " << *edge->track();
+
+    LOG(INFO) << "Merging consecutive edges on same track: "
+              << last_edge->Describe() << ", "
+              << edge->Describe();
+
+    // Remove edge i, i-1 and remove vertex i
+    vertices_.erase(vertices_.begin() + i);
+    edges_.erase(edges_.begin() + i + 1);
+    edges_.erase(edges_.begin() + i);
+
+    edges_.insert(edges_.begin() + i, replacement);
+    last_edge = replacement;
+  }
+}
+
 void RoutingPath::Flatten() {
   // We look for and try to eliminate wires that are too short to allow another
   // layer N wire over the top:
@@ -450,6 +501,7 @@ void RoutingPath::Legalise() {
   if (legalised_)
     return;
   Abbreviate();
+  MergeConsecutiveEdgesOnSameTrack();
   Flatten();
   legalised_ = true;
 }

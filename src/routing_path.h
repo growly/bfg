@@ -166,6 +166,9 @@ class RoutingPath {
                               RoutingEdge *edge_a_d);
   // --------------------------------------------------------------------------
 
+  // Merge consecutive edges in the same direction:
+  void MergeConsecutiveEdgesOnSameTrack();
+
   // Remove illegal (and inefficient) jogs between tracks.
   void Flatten();
 
