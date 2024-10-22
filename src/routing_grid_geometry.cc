@@ -161,12 +161,13 @@ void RoutingGridGeometry::NearestTrackIndices(
                    &row_upper);
 
   // Columns (vertical tracks):
-  vertical->insert(column_lower);
-  vertical->insert(column_upper);
-
+  for (size_t column = column_lower; column <= column_upper; ++column) {
+    vertical->insert(column);
+  }
   // Rows (horizontal tracks):
-  horizontal->insert(row_lower);
-  horizontal->insert(row_upper);
+  for (size_t row = row_lower; row <= row_upper; ++row) {
+    horizontal->insert(row);
+  }
 }
 
 void RoutingGridGeometry::ComputeForLayers(

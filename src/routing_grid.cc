@@ -799,8 +799,8 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
       continue;
     }
 
-    // If ConnectToSurroundingTracks has any success, we keep move ownership of
-    // the off_grid vertex to the parent RoutingGrid.
+    // If ConnectToSurroundingTracks has any success, we move ownership of the
+    // off_grid vertex to the parent RoutingGrid.
     if (!ConnectToSurroundingTracks(*grid_geometry,
                                     access_layer,
                                     for_nets,
