@@ -1233,7 +1233,12 @@ std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
                        geometry::Point::CompareY)->y()
   };
 
-  return {{lower_left_point, upper_right_point}};
+  geometry::Rectangle footprint = {{lower_left_point, upper_right_point}};
+  if (edge.PermanentNet()) {
+    footprint.set_net(*edge.PermanentNet());
+  }
+  footprint.set_layer(layer);
+  return footprint;
 }
 
 std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
@@ -2014,6 +2019,11 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
       edge->track()->MarkEdgeAsUsed(edge, path->nets().primary());
     } else {
       edge->SetPermanentNet(path->nets().primary());
+      // Edges which aren't on a track could be blockages to other tracks!
+      auto footprint = EdgeFootprint(*edge);
+      if (footprint) {
+        AddBlockage(*footprint);
+      }
     }
 
     std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();
