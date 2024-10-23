@@ -88,17 +88,27 @@ std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(
   int64_t half_width = width / 2;
   int64_t remaining_width = width - half_width;
 
+  geometry::Rectangle rectangle;
   if (lower_left.x() == upper_right.x()) {
     // Vertical rectangle.
-    return {{{lower_left.x() - half_width, lower_left.y()},
-             {upper_right.x() + remaining_width, upper_right.y()}}};
+    rectangle = {
+      {lower_left.x() - half_width, lower_left.y()},
+      {upper_right.x() + remaining_width, upper_right.y()
+    }};
   } else if (lower_left.y() == upper_right.y()) {
     // Horizontal rectangle.
-    return {{{lower_left.x(), lower_left.y() - half_width},
-             {upper_right.x(), upper_right.y() + remaining_width}}};
+    rectangle = {
+      {lower_left.x(), lower_left.y() - half_width},
+      {upper_right.x(), upper_right.y() + remaining_width}
+    };
+  } else {
+    return std::nullopt;
   }
 
-  return std::nullopt;
+  if (layer_) {
+    rectangle.set_layer(*layer_);
+  }
+  return rectangle;
 }
 
 std::optional<geometry::Line> RoutingEdge::AsLine() const {

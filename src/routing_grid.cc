@@ -361,29 +361,96 @@ absl::Status RoutingGrid::ValidAgainstKnownBlockages(
 absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const RoutingEdge &edge,
     const std::optional<EquivalentNets> &for_nets) const {
-  auto edge_footprint = EdgeFootprint(edge);
+  auto edge_footprint = EdgeWireFootprint(edge);
   if (!edge_footprint) {
     // No way to check.
     return absl::UnavailableError(
         "Could not get footprint of edge to check its validity");
   }
-  const geometry::Layer &layer = edge.EffectiveLayer();
-  int64_t min_separation = physical_db_.Rules(layer).min_separation;
+  return ValidAgainstInstalledPaths(*edge_footprint, for_nets);
+}
+
+absl::Status RoutingGrid::ValidAgainstInstalledPaths(
+    const RoutingVertex &vertex,
+    const std::optional<EquivalentNets> &for_nets,
+    const std::optional<RoutingTrackDirection> &access_direction) const {
+  // In this case we have to do labourious check for proximity to all used paths
+  // and vertices.
+  std::vector<std::string> errors;
+  for (const geometry::Layer &candidate_layer : vertex.connected_layers()) {
+    std::optional<geometry::Rectangle> via_encap_footprint = ViaFootprint(
+        vertex, candidate_layer, 0, access_direction);
+    if (!via_encap_footprint) {
+      // ViaFootprint will return nullopt if there is no other layer to connect
+      // to at the given vertex, which happens if the vertex represents a
+      // connection on the same layer only. This is not a problem, and there is
+      // no footprint to measure here, since there is no via to cover.
+      continue;
+    }
+    auto valid = ValidAgainstInstalledPaths(*via_encap_footprint, for_nets);
+    if (!valid.ok()) {
+      errors.push_back(
+          std::string(valid.message().begin(),
+                      valid.message().end()));
+    }
+  }
+  if (errors.empty()) {
+    return absl::OkStatus();
+  }
+  std::string error_str = absl::StrJoin(errors, "; ");
+  LOG(INFO) << error_str;
+  return absl::UnavailableError(error_str);
+}
+
+absl::Status RoutingGrid::ValidAgainstInstalledPaths(
+    const geometry::Rectangle &footprint,
+    const std::optional<EquivalentNets> &for_nets) const {
+  const geometry::Layer &footprint_layer = footprint.layer();
+  // In this case we have to do labourious check for proximity to all used paths
+  // and vertices.
+  std::set<const RoutingEdge*> used_edges;
+  std::vector<std::pair<const RoutingVertex*, const RoutingTrackDirection>>
+      used_vertices_and_directions;
+  for (const RoutingPath *path : paths_) {
+    for (const RoutingEdge *edge : path->edges()) {
+      if (edge->EffectiveLayer() != footprint_layer) {
+        continue;
+      }
+      used_edges.insert(edge);
+      const RoutingTrackDirection &direction = edge->Direction();
+      used_vertices_and_directions.push_back(
+          {edge->first(), direction});
+      used_vertices_and_directions.push_back(
+          {edge->second(), direction});
+    }
+  }
+
+  // TODO(aryap): We have fragmented sources for this information. Some
+  // places I've used the PhysicalPropertiesDatabase, others the copies of
+  // the data in the RoutingLayerInfo etc structures. Gross!
+  //
+  // Also, the RoutingGrid needs to be aware of some details of layers not
+  // explicitly used for routing, but used for connection and via checking. For
+  // example, vertices which connect to li1.drawing, beneath the grid, are not
+  // in error just because we can't find connectivity info for them.
+  // auto routing_layer_info = GetRoutingLayerInfo(footprint_layer);
+  // if (!routing_layer_info) {
+  //   return absl::NotFoundError(
+  //       absl::StrCat("No routing layer info for footprint layer ",
+  //                    footprint_layer));
+  // }
+  // int64_t min_separation = routing_layer_info->get().min_separation();
+  int64_t min_separation = physical_db_.Rules(footprint_layer).min_separation;
 
   // Check proximity to all installed edges:
-  std::set<const RoutingEdge*> used_edges;
-  for (const RoutingPath *path : paths_) {
-    used_edges.insert(path->edges().begin(), path->edges().end());
-  }
-  used_edges.insert(off_grid_edges_.begin(), off_grid_edges_.end());
   for (const RoutingEdge *used : used_edges) {
-    if (used->EffectiveLayer() != layer)
+    if (used->EffectiveLayer() != footprint_layer)
       continue;
-    auto existing_footprint = EdgeFootprint(*used);
+    auto existing_footprint = EdgeWireFootprint(*used);
     if (!existing_footprint)
       continue;
     int64_t distance = static_cast<int64_t>(
-        std::ceil(existing_footprint->ClosestDistanceTo(*edge_footprint)));
+        std::ceil(existing_footprint->ClosestDistanceTo(footprint)));
     if (distance == 0 && for_nets &&
         used->EffectiveNet() &&
         for_nets->Contains(*used->EffectiveNet())) {
@@ -393,82 +460,51 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
       continue;
     } else if (distance < min_separation) {
       return absl::UnavailableError(
-          "Edge is too close to existing edge " + edge_footprint->Describe());
+          absl::StrCat("Footprint is too close to existing edge: ",
+                       footprint.Describe(),
+                       " to ",
+                       used->Describe()));
     }
   }
-  return absl::OkStatus();
-}
 
-absl::Status RoutingGrid::ValidAgainstInstalledPaths(
-    const RoutingVertex &vertex,
-    const std::optional<EquivalentNets> &for_nets,
-    const std::optional<RoutingTrackDirection> &access_direction) const {
-  // In this case we have to do labourious check for proximity to all used paths
-  // and vertices.
-  std::set<RoutingVertex*> used_vertices;
-  for (RoutingPath *path : paths_) {
-    used_vertices.insert(path->vertices().begin(), path->vertices().end());
-  }
+  for (const auto &pair : used_vertices_and_directions) {
+    const RoutingVertex *const other = pair.first;
+    const RoutingTrackDirection &access_direction = pair.second;
 
-  for (const geometry::Layer &candidate_layer :
-       vertex.connected_layers()) {
-    auto routing_layer_info = GetRoutingLayerInfo(candidate_layer);
-    if (!routing_layer_info) {
-      // No routing layer info, probably not a routing layer.
-      continue;
-    }
-    // TODO(aryap): We have fragmented sources for this information. Some
-    // places I've used the PhysicalPropertiesDatabase, others the copies of
-    // the data in the RoutingLayerInfo etc structures. Gross!
-    int64_t min_separation = routing_layer_info->get().min_separation();
-
-    std::optional<geometry::Rectangle> via_encap = ViaFootprint(
-        vertex, candidate_layer, 0, access_direction);
-
-    if (!via_encap) {
+    // Get the other vertices' footprints on the layer footprint layer we're
+    // dealing with, skipping if they don't have one.
+    std::optional<geometry::Rectangle> other_via_encap = ViaFootprint(
+       *other, footprint_layer, 0, access_direction);
+    if (!other_via_encap) {
+      // An empty footprint indicates that the via doesn't connect to a layer
+      // other than 'footprint_layer'.
       continue;
     }
 
-    for (RoutingVertex *other : used_vertices) {
-      if (other == &vertex) {
-        continue;
-      }
-
-      for (const geometry::Layer &other_layer : other->connected_layers()) {
-        if (candidate_layer != other_layer) {
-          continue;
-        }
-
-        std::optional<geometry::Rectangle> other_via_encap = ViaFootprint(
-           *other, other_layer, 0, access_direction);
-
-        int64_t distance = static_cast<int64_t>(
-            std::ceil(via_encap->ClosestDistanceTo(*other_via_encap)));
-        if (distance == 0 && for_nets &&
-            other->connectable_net() &&
-            for_nets->Contains(*other->connectable_net())) {
-          // The vias touch and they're on the same net, so no problem.
-          // NOTE(aryap): This is the same as checking
-          // via_encap->Overlaps(*other_via_encap).
-          continue;
-        } else if (distance < min_separation) {
-          std::stringstream ss;
-          ss << "Candidate vertex " << vertex.centre()
-             << " is too close to " << other->centre() << " on layer "
-             << candidate_layer << " (distance " << distance <<
-             " < min separation " << min_separation << ")";
-          VLOG(12) << ss.str();
-          return absl::UnavailableError(ss.str());
-        } else if (VLOG_IS_ON(16)) {
-          VLOG(12) << "Candidate vertex " << vertex.centre()
-                   << " is ok with " << other->centre() << " on layer "
-                   << candidate_layer << " (distance " << distance <<
-                   " >= min separation " << min_separation << ")";
-        }
-      }
+    int64_t distance = static_cast<int64_t>(
+        std::ceil(footprint.ClosestDistanceTo(*other_via_encap)));
+    if (distance == 0 && for_nets &&
+        other->connectable_net() &&
+        for_nets->Contains(*other->connectable_net())) {
+      // The shapes touch and they're on the same net, so no problem.
+      // NOTE(aryap): This is the same as checking
+      // via_encap->Overlaps(*other_via_encap).
+      continue;
+    } else if (distance < min_separation) {
+      std::stringstream ss;
+      ss << "Footprint " << footprint 
+         << " is too close to " << other->centre() << " on layer "
+         << footprint_layer << " (distance " << distance <<
+         " < min separation " << min_separation << ")";
+      VLOG(12) << ss.str();
+      return absl::UnavailableError(ss.str());
+    } else if (VLOG_IS_ON(16)) {
+      VLOG(13) << "Footprint " << footprint
+               << " is ok with " << other->centre() << " on layer "
+               << footprint_layer << " (distance " << distance
+               << " >= min separation " << min_separation << ")";
     }
   }
-
   return absl::OkStatus();
 }
 
@@ -541,7 +577,12 @@ absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
     return *try_nearest_available;
   }
 
-  return absl::NotFoundError("Could not connect to grid");
+  std::stringstream ss;
+  ss << "Could not connect to grid: "
+     << "(1) " << try_add_access_vertices.status().message()
+     << "; (2) " << try_nearest_available.status().message();
+
+  return absl::NotFoundError(ss.str());
 }
 
 // Using the given RoutingGridGeometry, find the tracks which surround
@@ -799,7 +840,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     return {{vertex, target_layer}};
   }
 
-  return absl::NotFoundError("");
+  return absl::NotFoundError("No workable options");
 }
 
 absl::StatusOr<RoutingGrid::VertexWithLayer>
@@ -1098,6 +1139,7 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
     int64_t padding,
     const std::optional<RoutingTrackDirection> &direction) const {
   if (footprint_layer == other_layer) {
+    // Empty footprint.
     return std::nullopt;
   }
   // Get the applicable via info for via sizing and encapsulation values:
@@ -1109,24 +1151,29 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
       routing_via_info.EncapLength(footprint_layer) + 2 * padding;
 
   geometry::Point lower_left;
+  geometry::Rectangle footprint;
 
   if (!direction) {
     int64_t square_width = std::max(via_width, via_length);
     lower_left = centre - geometry::Point(square_width / 2, square_width / 2);
-    return geometry::Rectangle(lower_left, square_width, square_width);
+    footprint = geometry::Rectangle(lower_left, square_width, square_width);
+    footprint.set_layer(footprint_layer);
+  } else {
+    switch (*direction) {
+      case RoutingTrackDirection::kTrackVertical:
+        lower_left = centre - geometry::Point(via_width / 2, via_length / 2);
+        footprint = geometry::Rectangle(lower_left, via_width, via_length);
+        break;
+      case RoutingTrackDirection::kTrackHorizontal:
+        lower_left = centre - geometry::Point(via_length / 2, via_width / 2);
+        footprint = geometry::Rectangle(lower_left, via_length, via_width);
+        break;
+      default:
+        LOG(FATAL) << "Unknown RoutingTrackDirection: " << *direction;
+    }
   }
-
-  switch (*direction) {
-    case RoutingTrackDirection::kTrackVertical:
-      lower_left = centre - geometry::Point(via_width / 2, via_length / 2);
-      return geometry::Rectangle(lower_left, via_width, via_length);
-    case RoutingTrackDirection::kTrackHorizontal:
-      lower_left = centre - geometry::Point(via_length / 2, via_width / 2);
-      return geometry::Rectangle(lower_left, via_length, via_width);
-    default:
-      LOG(FATAL) << "Unknown RoutingTrackDirection: " << *direction;
-  }
-  return std::nullopt;
+  footprint.set_layer(footprint_layer);
+  return footprint;
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
@@ -1138,13 +1185,23 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
 
   // We expect footprint_layer to appear in the vertex's list of connected
   // layers.
-  vertex_layers.erase(footprint_layer);
+  size_t erased = vertex_layers.erase(footprint_layer);
+  if (erased == 0) {
+    // This vertex doesn't even connect footprint_layer. It has to have an empty
+    // footprint.
+    return std::nullopt;
+  }
 
   // If there is more than 1 layer left in the connected layer list, we have a
   // problem because we assume that the vertex connects to at most 2 layers.
   // That shouldn't happen. There should be 0 or 1.
-  if (vertex_layers.size() != 1)
+  if (vertex_layers.empty()) {
     return std::nullopt;
+  }
+  if (vertex_layers.size() > 1) {
+    // This is an error.
+    LOG(FATAL) << "Vertex connects more than 2 layers!";
+  }
 
   const geometry::Layer &other_layer = *vertex_layers.begin();
 
@@ -1175,17 +1232,7 @@ std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
   return rectangle.WithPadding(padding);
 }
 
-// TODO(aryap): It's convenient to have an edge generate the footprint it would
-// imply as a wire, complete with vias at either end for the vertices (with
-// appropriate metal encap sizes given the layers the vertices connect). That
-// would require RoutingEdge to have knowledge of physical constraints or at
-// least the RoutingGrid, since we hide behind that abstraction in Routing
-// stuff. And that would require RoutingGrid to know a lot about RoutingEdge and
-// also the opposite, which is annoying and not very clean as an abstraction.
-//
-// TODO(aryap): Memoise this: we only need to generate the footprint once for
-// many checks.
-std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
+std::optional<geometry::Rectangle> RoutingGrid::EdgeWireFootprint(
     const RoutingEdge &edge, int64_t padding) const {
   if (!edge.layer()) {
     LOG(WARNING) << "Edge cannot be turned into rectangle without layer_ set";
@@ -1202,7 +1249,39 @@ std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
     LOG(FATAL) << "Edge does not have simple rectangle form!";
     return std::nullopt;
   }
-  
+  return *wire_only_bounds;
+}
+
+// TODO(aryap): It's convenient to have an edge generate the footprint it would
+// imply as a wire, complete with vias at either end for the vertices (with
+// appropriate metal encap sizes given the layers the vertices connect). That
+// would require RoutingEdge to have knowledge of physical constraints or at
+// least the RoutingGrid, since we hide behind that abstraction in Routing
+// stuff. And that would require RoutingGrid to know a lot about RoutingEdge and
+// also the opposite, which is annoying and not very clean as an abstraction.
+//
+// TODO(aryap): Memoise this: we only need to generate the footprint once for
+// many checks.
+//
+// This returns the rectangle which covers both the end via encaps and the wire
+// for the edge, and is therefore a worst-case scenario.
+std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
+    const RoutingEdge &edge, int64_t padding) const {
+  if (!edge.layer()) {
+    LOG(WARNING) << "Edge cannot be turned into rectangle without layer_ set";
+    return std::nullopt;
+  }
+
+  const geometry::Layer &layer = *edge.layer();
+
+  // A rectangle of wire-width without via encaps at either end represents the
+  // middle section of the edge.
+  auto wire_only_bounds = EdgeWireFootprint(edge, padding);
+  if (!wire_only_bounds) {
+    LOG(FATAL) << "Edge does not have simple rectangle form!";
+    return std::nullopt;
+  }
+
   // Sort [first, second] vertices into bottom-left-most to upper-right-most:
   std::vector<RoutingVertex*> vertices = {edge.first(), edge.second()};
   std::sort(
@@ -1657,9 +1736,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
 
   auto begin_connection = ConnectToGrid(begin, nets);
   if (!begin_connection.ok()) {
-    LOG(ERROR) << "Could not find available vertex for begin port.";
-    return absl::NotFoundError(
-        "Could not find available vertex for begin port.");
+    std::stringstream ss;
+    ss << "Could not find available vertex for begin port: "
+       << begin_connection.status().message();
+    LOG(ERROR) << ss.str();
+    return absl::NotFoundError(ss.str());
   }
   RoutingVertex *begin_vertex = begin_connection->vertex;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
@@ -1667,8 +1748,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
 
   auto end_connection = ConnectToGrid(end, nets);
   if (!end_connection.ok()) {
-    LOG(ERROR) << "Could not find available vertex for end port.";
-    return absl::NotFoundError("Could not find available vertex for end port.");
+    std::stringstream ss;
+    ss << "Could not find available vertex for end port: "
+       << end_connection.status().message();
+    LOG(ERROR) << ss.str();
+    return absl::NotFoundError(ss.str());
   }
   RoutingVertex *end_vertex = end_connection->vertex;
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
@@ -1748,10 +1832,12 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
 
   auto begin_connection = ConnectToGrid(begin, usable_nets);
   if (!begin_connection.ok()) {
-    LOG(ERROR) << "Could not find available vertex for begin port.";
+    std::stringstream ss;
+    ss << "Could not find available vertex for begin port: "
+       << begin_connection.status().message();
+    LOG(ERROR) << ss.str();
     TearDownTemporaryBlockages(temporary_blockages);
-    return absl::NotFoundError(
-        "Could not find available vertex for begin port.");
+    return absl::NotFoundError(ss.str());
   }
   RoutingVertex *begin_vertex = begin_connection->vertex;
   LOG(INFO) << "Nearest vertex to begin (" << begin << ") is "
@@ -2047,8 +2133,13 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
       edge->track()->MarkEdgeAsUsed(edge, path->nets().primary());
     } else {
       edge->SetPermanentNet(path->nets().primary());
-      // Edges which aren't on a track could be blockages to other tracks!
-      auto footprint = EdgeFootprint(*edge);
+      // Edges which aren't on a track (off grid edges) could be blockages to
+      // other tracks!
+      // TODO(aryap): We use the wire footprint because the full edge footprint
+      // is unnecessarily high penalty: it's as wide as the widest via encaps on
+      // either end. Until we can correctly represent the whole footprint with
+      // just a polygon, this will do.
+      auto footprint = EdgeWireFootprint(*edge);
       if (footprint) {
         AddBlockage(*footprint);
       }

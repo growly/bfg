@@ -404,6 +404,10 @@ class RoutingGrid {
               const std::set<RoutingTrackDirection>>> &directions,
       RoutingVertex *off_grid);
 
+  absl::Status ValidAgainstInstalledPaths(
+      const geometry::Rectangle &footprint,
+      const std::optional<EquivalentNets> &for_nets = std::nullopt) const;
+
   std::optional<geometry::Rectangle> ViaFootprint(
       const geometry::Point &centre,
       const geometry::Layer &first_layer,
@@ -423,6 +427,8 @@ class RoutingGrid {
   std::optional<geometry::Rectangle> TrackFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
   std::optional<geometry::Rectangle> EdgeFootprint(
+      const RoutingEdge &edge, int64_t padding = 0) const;
+  std::optional<geometry::Rectangle> EdgeWireFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
 
   // Returns the via layer (first entry) and cost (second entry) if a via is
