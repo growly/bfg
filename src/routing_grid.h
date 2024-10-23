@@ -221,6 +221,10 @@ class RoutingGrid {
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt) const;
 
+  std::set<RoutingTrackDirection> ValidAccessDirectionsForVertex(
+      const RoutingVertex &vertex,
+      const EquivalentNets &for_nets);
+
   std::optional<double> FindViaStackCost(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
   std::optional<std::vector<RoutingViaInfo>> FindViaStack(
@@ -444,7 +448,7 @@ class RoutingGrid {
 
   absl::StatusOr<RoutingVertex*> ConnectToNearestAvailableVertex(
       const geometry::Point &point,
-      const geometry::Layer &layer,
+      const geometry::Layer &target_layer,
       const EquivalentNets &connectable_nets);
 
   absl::Status AddRoutingGridGeometry(

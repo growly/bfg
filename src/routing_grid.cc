@@ -403,8 +403,6 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const RoutingVertex &vertex,
     const std::optional<EquivalentNets> &for_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const {
-  // FIXME(aryap): Use access_direction
-  //
   // In this case we have to do labourious check for proximity to all used paths
   // and vertices.
   std::set<RoutingVertex*> used_vertices;
@@ -425,7 +423,7 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     int64_t min_separation = routing_layer_info->get().min_separation();
 
     std::optional<geometry::Rectangle> via_encap = ViaFootprint(
-        vertex, candidate_layer, 0);   // No additional padding.
+        vertex, candidate_layer, 0, access_direction);
 
     if (!via_encap) {
       continue;
@@ -442,7 +440,7 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
         }
 
         std::optional<geometry::Rectangle> other_via_encap = ViaFootprint(
-           *other, other_layer, 0);
+           *other, other_layer, 0, access_direction);
 
         int64_t distance = static_cast<int64_t>(
             std::ceil(via_encap->ClosestDistanceTo(*other_via_encap)));
@@ -777,23 +775,8 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     off_grid->AddConnectedLayer(target_layer);
     off_grid->AddConnectedLayer(access_layer);
 
-    std::set<RoutingTrackDirection> access_directions = {
-        RoutingTrackDirection::kTrackHorizontal,
-        RoutingTrackDirection::kTrackVertical};
-    for (auto it = access_directions.begin(); it != access_directions.end();) {
-      const RoutingTrackDirection &direction = *it;
-      absl::Status blocked = 
-          ValidAgainstKnownBlockages(*off_grid, for_nets, direction);
-      blocked.Update(
-          ValidAgainstInstalledPaths(*off_grid, for_nets, direction));
-      if (!blocked.ok()) {
-        VLOG(15) << "Cannot connect to " << *off_grid << " in direction "
-                 << direction << ": " << blocked.message();
-        it = access_directions.erase(it);
-      } else {
-        ++it;
-      }
-    }
+    std::set<RoutingTrackDirection> access_directions =
+        ValidAccessDirectionsForVertex(*off_grid, for_nets);
     if (access_directions.empty()) {
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
       continue;
@@ -842,7 +825,7 @@ RoutingGrid::ConnectToNearestAvailableVertex(
 
 absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     const geometry::Point &point,
-    const geometry::Layer &layer,
+    const geometry::Layer &target_layer,
     const EquivalentNets &for_nets) {
   // If constrained to one or two layers on a fixed grid, we can determine the
   // nearest vertices quickly by shortlisting those vertices whose positions
@@ -862,27 +845,49 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
   // We need a copy to manipulate the layer:
   geometry::Point target_point = point;
-  target_point.set_layer(layer);
+  target_point.set_layer(target_layer);
 
+  std::map<geometry::Layer, std::unique_ptr<RoutingVertex>>
+      off_grid_candidate_by_layer;
   std::vector<CostedVertex> costed_vertices;
   for (const auto &entry : available_vertices_by_layer_) {
+    const geometry::Layer &vertex_layer = entry.first;
+
+    std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(target_point));
+    off_grid->AddConnectedLayer(target_layer);
+
     // Is this layer reachable from the target?
     std::optional<std::pair<geometry::Layer, double>> needs_via;
-    if (entry.first != layer) {
-      needs_via = ViaLayerAndCost(entry.first, layer);
-      if (!needs_via)
+    if (vertex_layer != target_layer) {
+      off_grid->AddConnectedLayer(vertex_layer);
+
+      needs_via = ViaLayerAndCost(vertex_layer, target_layer);
+      if (!needs_via) {
+        // This is a failure, since vertex_layer != target_layer.
         continue;
-      LOG(INFO) << "layer " << physical_db_.DescribeLayer(layer)
+      }
+      LOG(INFO) << "layer " << physical_db_.DescribeLayer(target_layer)
                 << " is accessible for routing via layer "
                 << physical_db_.DescribeLayer(needs_via->first);
     }
+
+    // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
+    // go too close to in-use edges and vertices!
+    if (!ValidAgainstKnownBlockages(*off_grid, for_nets).ok() ||
+        !ValidAgainstInstalledPaths(*off_grid, for_nets).ok()) {
+      VLOG(15) << "Invalid off grid candidate at " << off_grid->centre()
+               << " layers " << vertex_layer << ", " << target_layer;
+      continue;
+    }
+
+    off_grid_candidate_by_layer[vertex_layer] = std::move(off_grid);
 
     for (RoutingVertex *vertex : entry.second) {
       // Do not consider unavailable vertices! Unless they have connectable
       // nets!
       if (!vertex->available() && !(
-            vertex->connectable_net() &&
-            for_nets.Contains(*vertex->connectable_net())))
+          vertex->connectable_net() &&
+          for_nets.Contains(*vertex->connectable_net())))
         continue;
       uint64_t vertex_cost = static_cast<uint64_t>(
           vertex->L1DistanceTo(target_point));
@@ -892,7 +897,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
       }
       costed_vertices.emplace_back(CostedVertex {
           .cost = vertex_cost,
-          .layer = entry.first,
+          .layer = vertex_layer,
           .vertex = vertex
       });
     }
@@ -963,16 +968,8 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
       continue;
     }
 
-    std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(target_point));
-    off_grid->AddConnectedLayer(vertex_layer);
-    // FIXME: This function needs to allow collisions for same-net shapes!
-    // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
-    // go too close to in-use edges and vertices!
-    if (!ValidAgainstKnownBlockages(*off_grid, for_nets).ok() ||
-        !ValidAgainstInstalledPaths(*off_grid, for_nets).ok()) {
-      VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
-      continue;
-    }
+    std::unique_ptr<RoutingVertex> &off_grid =
+        off_grid_candidate_by_layer[vertex_layer];
 
     // Try putting it on the vertical track and then horizontal track.
     std::vector<RoutingTrack*> tracks = candidate->Tracks();
@@ -1045,6 +1042,14 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
       }
       RemoveVertex(off_grid_copy, true);  // and delete!
       delete edge;    
+
+      // Have to recreate an off-grid candidate vertex for the next guy:
+      std::unique_ptr<RoutingVertex> off_grid_replacement(
+          new RoutingVertex(target_point));
+      off_grid_replacement->AddConnectedLayer(vertex_layer);
+      off_grid_replacement->AddConnectedLayer(target_layer);
+      off_grid = std::move(off_grid_replacement);
+
       continue;
     }
     LOG(INFO) << "Connected new vertex " << bridging_vertex->centre()
@@ -1061,6 +1066,29 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     return off_grid_copy;
   }
   return absl::NotFoundError("");
+}
+
+std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsForVertex(
+    const RoutingVertex &vertex,
+    const EquivalentNets &for_nets) {
+  std::set<RoutingTrackDirection> access_directions = {
+      RoutingTrackDirection::kTrackHorizontal,
+      RoutingTrackDirection::kTrackVertical};
+  for (auto it = access_directions.begin(); it != access_directions.end();) {
+    const RoutingTrackDirection &direction = *it;
+    absl::Status blocked =
+        ValidAgainstKnownBlockages(vertex, for_nets, direction);
+    blocked.Update(
+        ValidAgainstInstalledPaths(vertex, for_nets, direction));
+    if (!blocked.ok()) {
+      VLOG(15) << "Cannot connect to " << vertex << " in direction "
+               << direction << ": " << blocked.message();
+      it = access_directions.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  return access_directions;
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
@@ -1475,7 +1503,7 @@ absl::Status RoutingGrid::AddMultiPointRoute(
   }
 
   geometry::ShapeCollection connectables;
-  layout.CopyConnectableShapes(&connectables);
+  layout.CopyConnectableShapesNotOnNets(net_aliases, &connectables);
 
   return AddMultiPointRoute(ports,
                             connectables,
