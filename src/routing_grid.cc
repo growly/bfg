@@ -695,8 +695,10 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
       VLOG(100) << "Invalid off grid edge between "
                 << bridging_vertex->centre()
                 << " and " << off_grid->centre();
-      // Rollback extra hard!
-      RemoveVertex(bridging_vertex, true);  // and delete!
+      if (bridging_vertex_is_new) {
+        // Rollback extra hard!
+        RemoveVertex(bridging_vertex, true);  // and delete!
+      }
       delete edge;
       continue;
     }

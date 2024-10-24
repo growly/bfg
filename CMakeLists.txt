@@ -21,6 +21,7 @@ message(STATUS "Using gRPC ${gRPC_VERSION}")
 
 configure_file(src/c_make_header.h.in src/c_make_header.h)
 
+# Comment to disable tcmalloc.
 find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
 message(STATUS "Found tcmalloc: " ${tcmalloc_lib})
 message(STATUS "Found protobuf: " ${Protobuf_LIBRARIES})
