@@ -4,6 +4,7 @@
 #include <deque>
 #include <vector>
 #include <memory>
+#include <optional>
 
 #include <absl/strings/str_join.h>
 
@@ -453,8 +454,17 @@ void RoutingPath::Flatten() {
     if (i == 1) {
       if (start_access_layers_.empty())
         continue;
-      last_layer = PickAccessLayer(
-          edges_.at(0)->EffectiveLayer(), start_access_layers_);
+      std::set<geometry::Layer> source_options = {
+          edges_.at(0)->EffectiveLayer()};
+      if (edges_.size() > 1) {
+        source_options.insert(edges_.at(1)->EffectiveLayer());
+      }
+      auto start_access = PickAccessLayerPair(
+          source_options, start_access_layers_);
+      if (!start_access) {
+        continue;
+      }
+      last_layer = start_access->source;
     } else {
       last_layer = edges_.at(i - 2)->EffectiveLayer();
     }
@@ -467,7 +477,11 @@ void RoutingPath::Flatten() {
       // appropriate end access layer based on the previous edge layer (since
       // that is the layer we will end up putting the current edge on if we do
       // decide to skip).
-      next_layer = PickAccessLayer(last_layer, end_access_layers_);
+      auto end_access = PickAccessLayerPair({last_layer}, end_access_layers_);
+      if (end_access) {
+        continue;
+      }
+      next_layer = end_access->source;
     } else {
       next_layer = edges_.at(i)->EffectiveLayer();
     }
@@ -726,6 +740,39 @@ void RoutingPath::BuildVias(
   }
 
   return;
+}
+
+std::optional<RoutingPath::CostedLayerPair> RoutingPath::PickAccessLayerPair(
+    const std::set<geometry::Layer> &source_layers,
+    const std::set<geometry::Layer> &target_layers) const {
+  std::vector<CostedLayerPair> costed_layers;
+  for (const geometry::Layer &source : source_layers) {
+    for (const geometry::Layer &target : target_layers) {
+      auto cost = routing_grid_->FindViaStackCost(source, target);
+      if (!cost)
+        continue;
+      costed_layers.push_back({
+            .cost = *cost,
+            .source = source,
+            .target = target
+          });
+    }
+  }
+  if (costed_layers.empty()) {
+    LOG(WARNING)
+        << "Could not figure out cheapest connected layer pair, sources: "
+        << absl::StrJoin(source_layers, ", ") << " targets: "
+        << absl::StrJoin(target_layers, ", ");
+    return std::nullopt;
+  }
+  // TODO(aryap): Hmmm best to define this as CostedLayerPair operator<?
+  static auto sort_fn = [](const CostedLayerPair &lhs,
+                           const CostedLayerPair &rhs) {
+    return lhs.cost < rhs.cost;
+  };
+  std::sort(costed_layers.begin(), costed_layers.end(), sort_fn);
+
+  return costed_layers.front();
 }
 
 geometry::Layer RoutingPath::PickAccessLayer(

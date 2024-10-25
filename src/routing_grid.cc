@@ -2770,6 +2770,11 @@ bool RoutingGrid::VerticesAreTooCloseForVias(
   if (shared_layers.empty())
     return false;
 
+  // TODO(aryap): This can be simplified. We don't need to assume a horizontal
+  // or vertical track is shared to check based on grid position. They are too
+  // close if their grid positions differ by 0 or 1 in both directions. (Their
+  // grid positions are not defined if they are not on the grid.)
+  //
   // Shortcuts for on-grid vertices:
   if (lhs.horizontal_track() == rhs.horizontal_track() &&
       lhs.grid_position_x() &&

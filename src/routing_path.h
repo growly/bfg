@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <memory>
+#include <optional>
 
 #include "geometry/layer.h"
 #include "geometry/poly_line.h"
@@ -86,6 +87,12 @@ class RoutingPath {
   std::string Describe() const;
 
  private:
+  struct CostedLayerPair {
+    double cost;
+    geometry::Layer source;
+    geometry::Layer target;
+  };
+
   void BuildVias(
       geometry::PolyLine *from_poly_line,
       const geometry::Point &at_point,
@@ -94,6 +101,10 @@ class RoutingPath {
       RoutingTrackDirection encap_direction,
       std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
+
+  std::optional<CostedLayerPair> PickAccessLayerPair(
+      const std::set<geometry::Layer> &source_layers,
+      const std::set<geometry::Layer> &target_layers) const;
 
   geometry::Layer PickAccessLayer(
       const geometry::Layer &source_layer,
