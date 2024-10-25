@@ -775,30 +775,6 @@ std::optional<RoutingPath::CostedLayerPair> RoutingPath::PickAccessLayerPair(
   return costed_layers.front();
 }
 
-geometry::Layer RoutingPath::PickAccessLayer(
-    const geometry::Layer &source_layer,
-    const std::set<geometry::Layer> &layers) const {
-  if (layers.empty()) {
-    return source_layer;
-  }
-  if (layers.size() == 1) {
-    return *layers.begin();
-  }
-  std::vector<std::pair<geometry::Layer, double>> costed_layers;
-  for (const geometry::Layer &layer : layers) {
-    auto cost = routing_grid_->FindViaStackCost(source_layer, layer);
-    if (!cost)
-      continue;
-    costed_layers.push_back({layer, *cost});
-  }
-  auto sort_fn = [](const std::pair<geometry::Layer, double> &lhs,
-                    const std::pair<geometry::Layer, double> &rhs) {
-    return lhs.second < rhs.second;
-  };
-  std::sort(costed_layers.begin(), costed_layers.end(), sort_fn);
-  return costed_layers.front().first;
-}
-
 void RoutingPath::ToPointsAndLayers(
     std::vector<geometry::Point> *points,
     std::vector<geometry::Layer> *layers) const {
@@ -917,8 +893,17 @@ void RoutingPath::ToPolyLinesAndVias(
 
   // If there is more than 1 access layer, we prefer the lowest-cost.
   if (!start_access_layers_.empty()) {
-    geometry::Layer start_access_layer = PickAccessLayer(
-        front->layer(), start_access_layers_);
+    auto costed_start_access_layer = PickAccessLayerPair(
+        {front->layer()}, start_access_layers_);
+    geometry::Layer start_access_layer;
+    if (!costed_start_access_layer) {
+      LOG(WARNING) << "No reachability at start access layer for this path";
+      start_access_layer =
+          start_access_layers_.empty() ?
+          front->layer() : *start_access_layers_.begin();
+    } else {
+      start_access_layer = costed_start_access_layer->target;
+    }
     // This is a no-op if front->layer() == start_access_layer:
     BuildVias(front,
               vertices_.front()->centre(),
@@ -932,8 +917,15 @@ void RoutingPath::ToPolyLinesAndVias(
 
   geometry::PolyLine *back = generated_lines.back().get();
   if (!end_access_layers_.empty()) {
-    geometry::Layer end_access_layer = PickAccessLayer(
-        back->layer(), end_access_layers_);
+    geometry::Layer end_access_layer;
+    if (!costed_end_access_layer) {
+      LOG(WARNING) << "No reachability at end access layer for this path";
+      end_access_layer =
+          end_access_layers_.empty() ?
+          front->layer() : *end_access_layers_.begin();
+    } else {
+      end_access_layer = costed_end_access_layer->target;
+    }
     BuildVias(back,
               vertices_.back()->centre(),
               end_access_layer,

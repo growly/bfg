@@ -106,10 +106,6 @@ class RoutingPath {
       const std::set<geometry::Layer> &source_layers,
       const std::set<geometry::Layer> &target_layers) const;
 
-  geometry::Layer PickAccessLayer(
-      const geometry::Layer &source_layer,
-      const std::set<geometry::Layer> &layers) const;
-
   void CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       geometry::PolyLine *last,
       RoutingEdge *edge,
