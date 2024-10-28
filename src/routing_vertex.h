@@ -53,6 +53,9 @@ class RoutingVertex {
   bool ConnectsLayer(const geometry::Layer &layer) const {
     return connected_layers_.find(layer) != connected_layers_.end();
   }
+  void RemoveConnectedLayer(const geometry::Layer &layer) {
+    connected_layers_.erase(layer);
+  }
   const std::set<geometry::Layer> &connected_layers() const {
     return connected_layers_;
   }
@@ -147,6 +150,29 @@ class RoutingVertex {
     grid_position_y_ = grid_position_y;
   }
 
+  void ClearAllForcedEncapDirections() {
+    forced_encap_directions_.clear();
+  }
+  void ClearForcedEncapDirection(const geometry::Layer &layer) {
+    forced_encap_directions_.erase(layer);
+  }
+  void SetForcedEncapDirection(
+      const geometry::Layer &layer, const RoutingTrackDirection &direction) {
+    forced_encap_directions_[layer] = direction;
+  }
+  std::optional<RoutingTrackDirection> GetForcedEncapDirection(
+      const geometry::Layer &layer) {
+    auto it = forced_encap_directions_.find(layer);
+    if (it == forced_encap_directions_.end()) {
+      return std::nullopt;
+    }
+    return it->second;
+  }
+
+  std::map<geometry::Layer, RoutingTrackDirection> &forced_encap_direction() {
+    return forced_encap_directions_;
+  }
+
  private:
   struct NeighbouringVertex {
     geometry::Compass position;
@@ -202,6 +228,8 @@ class RoutingVertex {
   std::set<geometry::Layer> connected_layers_;
 
   std::set<RoutingEdge*> edges_;
+
+  std::map<geometry::Layer, RoutingTrackDirection> forced_encap_directions_;
 };
 
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex);

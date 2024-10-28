@@ -319,6 +319,23 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
   }
 }
 
+absl::Status RoutingGrid::ValidAgainstHazards(
+    const RoutingVertex &vertex,
+    const std::optional<EquivalentNets> &exceptional_nets,
+    const std::optional<RoutingTrackDirection> &access_direction) const {
+  absl::Status status =
+      ValidAgainstKnownBlockages(vertex, exceptional_nets, access_direction);
+  if (!status.ok()) {
+    return status;
+  }
+  status = ValidAgainstInstalledPaths(
+      vertex, exceptional_nets, access_direction);
+  if (!status.ok()) {
+    return status;
+  }
+  return status;
+}
+
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingEdge &edge,
     const std::optional<EquivalentNets> &exceptional_nets) const {
@@ -916,8 +933,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
     // FIXME: Need to check if RoutingVertex and RoutingEdges we create off grid
     // go too close to in-use edges and vertices!
-    if (!ValidAgainstKnownBlockages(*off_grid, for_nets).ok() ||
-        !ValidAgainstInstalledPaths(*off_grid, for_nets).ok()) {
+    if (!ValidAgainstHazards(*off_grid, for_nets).ok()) {
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre()
                << " layers " << vertex_layer << ", " << target_layer;
       continue;
@@ -1119,13 +1135,10 @@ std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsForVertex(
       RoutingTrackDirection::kTrackVertical};
   for (auto it = access_directions.begin(); it != access_directions.end();) {
     const RoutingTrackDirection &direction = *it;
-    absl::Status blocked =
-        ValidAgainstKnownBlockages(vertex, for_nets, direction);
-    blocked.Update(
-        ValidAgainstInstalledPaths(vertex, for_nets, direction));
-    if (!blocked.ok()) {
+    absl::Status unblocked = ValidAgainstHazards(vertex, for_nets, direction);
+    if (!unblocked.ok()) {
       VLOG(15) << "Cannot connect to " << vertex << " in direction "
-               << direction << ": " << blocked.message();
+               << direction << ": " << unblocked.message();
       it = access_directions.erase(it);
     } else {
       ++it;

@@ -198,6 +198,12 @@ class RoutingGrid {
       bool is_temporary,
       std::set<RoutingVertex*> *blocked_vertices = nullptr);
 
+  absl::Status ValidAgainstHazards(
+      const RoutingVertex &vertex,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt) const;
+
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
   absl::Status ValidAgainstKnownBlockages(

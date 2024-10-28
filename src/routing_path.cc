@@ -505,8 +505,37 @@ void RoutingPath::Flatten() {
       skipped_vias_.insert(last_vertex);
       skipped_vias_.insert(current_vertex);
       RoutingEdge *flattened_edge = edges_.at(i - 1);
+
+      geometry::Layer previous_layer_value = flattened_edge->EffectiveLayer();
+
       // Downgrade the edge layer!
       flattened_edge->set_layer(last_layer);
+
+      // TODO(aryap): Hmmm.
+      // DANGER! We might now have now changed the directions of the via encaps
+      // at one end of the edge. For example, if previous it was a horizontal
+      // encap on metal 1, but now the vertical metal 2 edge above it is being
+      // reduced to metal 1, it is going to end up a vertical encap on metal 1.
+      // That's bad. So we have to check how bad. Note also! This is only really
+      // valid for one of the edges since one or both of them are having a via
+      // skipped, as is the whole point of this process. But figuring out which
+      // one is too annoying.
+      std::vector<RoutingVertex*> vertices = {last_vertex, current_vertex};
+      for (RoutingVertex *vertex : vertices) {
+        vertex->RemoveConnectedLayer(previous_layer_value);
+        // Usually (always?) a no-op.
+        vertex->AddConnectedLayer(last_layer);
+
+        // FIXME(aryap): I think we need a version of
+        // "ValidAccessDirectionsForVertex" that explicitly checks a given
+        // layer?
+        std::set<RoutingTrackDirection> access_directions =
+            routing_grid_->ValidAccessDirectionsForVertex(*vertex, nets_);
+        if (access_directions.size() == 1) {
+          vertex->SetForcedEncapDirection(
+              last_layer, *access_directions.begin());
+        }
+      }
     }
   }
 }
@@ -647,11 +676,12 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
 }
 
 void RoutingPath::BuildVias(
-    geometry::PolyLine *from_poly_line,
     const geometry::Point &at_point,
     const geometry::Layer &last_layer,
+    const std::function<RoutingTrackDirection(const geometry::Layer&)>
+        &get_encap_direction_fn,
     bool encap_last_layer,
-    RoutingTrackDirection encap_direction,
+    geometry::PolyLine *from_poly_line,
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
     std::vector<std::unique_ptr<AbstractVia>> *vias) const {
   const geometry::Layer &from_layer = from_poly_line->layer();
@@ -704,6 +734,7 @@ void RoutingPath::BuildVias(
   for (const auto &entry : metal_pours) {
     const geometry::Layer &layer = entry.first;
     const BulgeDimensions &bulge = entry.second;
+    RoutingTrackDirection encap_direction = get_encap_direction_fn(layer);
 
     if (layer == from_layer) {
       // Insert a bulge on the from_poly_line.
@@ -740,6 +771,48 @@ void RoutingPath::BuildVias(
   }
 
   return;
+}
+
+void RoutingPath::BuildTerminatingVias(
+    const std::set<geometry::Layer> &access_layers,
+    bool encap_port,
+    RoutingVertex *vertex,
+    geometry::PolyLine *active_line,
+    std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
+    std::vector<std::unique_ptr<AbstractVia>> *vias) const {
+  auto costed_access_layer = PickAccessLayerPair(
+      {active_line->layer()}, access_layers);
+  geometry::Layer access_layer;
+  if (!costed_access_layer) {
+    LOG(WARNING) << "No reachability to access layers "
+                 << absl::StrJoin(access_layers, ", ")
+                 << " at " 
+                 << vertex->centre()
+                 << " for this path";
+    access_layer =
+        access_layers.empty() ?
+        active_line->layer() : *access_layers.begin();
+  } else {
+    access_layer = costed_access_layer->target;
+  }
+
+  auto get_encap_direction_fn = [&](const geometry::Layer &layer) {
+    auto maybe_forced = vertex->GetForcedEncapDirection(layer);
+    if (maybe_forced) {
+      return *maybe_forced;
+    }
+    // Default ¯\_(ツ)_/¯
+    return RoutingTrackDirection::kTrackHorizontal;
+  };
+
+  // This is a no-op if front->layer() == start_access_layer:
+  BuildVias(vertex->centre(),
+            access_layer,
+            get_encap_direction_fn,
+            encap_port,
+            active_line,
+            polylines,
+            vias);
 }
 
 std::optional<RoutingPath::CostedLayerPair> RoutingPath::PickAccessLayerPair(
@@ -893,46 +966,23 @@ void RoutingPath::ToPolyLinesAndVias(
 
   // If there is more than 1 access layer, we prefer the lowest-cost.
   if (!start_access_layers_.empty()) {
-    auto costed_start_access_layer = PickAccessLayerPair(
-        {front->layer()}, start_access_layers_);
-    geometry::Layer start_access_layer;
-    if (!costed_start_access_layer) {
-      LOG(WARNING) << "No reachability at start access layer for this path";
-      start_access_layer =
-          start_access_layers_.empty() ?
-          front->layer() : *start_access_layers_.begin();
-    } else {
-      start_access_layer = costed_start_access_layer->target;
-    }
-    // This is a no-op if front->layer() == start_access_layer:
-    BuildVias(front,
-              vertices_.front()->centre(),
-              start_access_layer,
-              encap_start_port_,
-              RoutingTrackDirection::kTrackHorizontal,
-              polylines,
-              vias);
+    BuildTerminatingVias(start_access_layers_,
+                         encap_start_port_,
+                         vertices_.front(),
+                         front,
+                         polylines,
+                         vias);
   }
   front->set_start_port(start_port_);
 
   geometry::PolyLine *back = generated_lines.back().get();
   if (!end_access_layers_.empty()) {
-    geometry::Layer end_access_layer;
-    if (!costed_end_access_layer) {
-      LOG(WARNING) << "No reachability at end access layer for this path";
-      end_access_layer =
-          end_access_layers_.empty() ?
-          front->layer() : *end_access_layers_.begin();
-    } else {
-      end_access_layer = costed_end_access_layer->target;
-    }
-    BuildVias(back,
-              vertices_.back()->centre(),
-              end_access_layer,
-              encap_end_port_,
-              RoutingTrackDirection::kTrackHorizontal,
-              polylines,
-              vias);
+    BuildTerminatingVias(end_access_layers_,
+                         encap_end_port_,
+                         vertices_.back(),
+                         back,
+                         polylines,
+                         vias);
   }
   back->set_end_port(end_port_);
 

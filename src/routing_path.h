@@ -94,11 +94,20 @@ class RoutingPath {
   };
 
   void BuildVias(
-      geometry::PolyLine *from_poly_line,
       const geometry::Point &at_point,
-      const geometry::Layer &to_layer,
+      const geometry::Layer &last_layer,
+      const std::function<RoutingTrackDirection(const geometry::Layer&)>
+          &get_encap_direction_fn,
       bool encap_last_layer,
-      RoutingTrackDirection encap_direction,
+      geometry::PolyLine *from_poly_line,
+      std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
+      std::vector<std::unique_ptr<AbstractVia>> *vias) const;
+
+  void BuildTerminatingVias(
+      const std::set<geometry::Layer> &access_layers,
+      bool encap_port,
+      RoutingVertex *vertex,
+      geometry::PolyLine *active_line,
       std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
 
