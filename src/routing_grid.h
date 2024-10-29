@@ -204,6 +204,14 @@ class RoutingGrid {
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt) const;
 
+  absl::Status ValidAgainstHazards(
+      const geometry::Point &via_centre,
+      const geometry::Layer &other_layer,
+      const geometry::Layer &footprint_layer,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt) const;
+
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
   absl::Status ValidAgainstKnownBlockages(
@@ -363,6 +371,33 @@ class RoutingGrid {
     return obstruction.Overlaps(keep_out.value());
   }
 
+  // This is useful when you don't have a RoutingVertex connecting the 2 layers
+  // you're interested in, such as the start/end of some RoutingPaths (which
+  // might need a via stack):
+  template<typename T>
+  bool ViaWouldIntersect(
+      const geometry::Point &centre,
+      const geometry::Layer &other_layer,
+      const geometry::Layer &footprint_layer,
+      const T &obstruction,
+      int64_t padding = 0,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt)
+      const {
+    // Note that we subtract 1 from the padding, as above.
+    std::optional<geometry::Rectangle> keep_out = ViaFootprint(
+        centre,
+        other_layer,
+        obstruction.layer(),
+        std::max(padding - 1, 0L),
+        access_direction);
+    if (!keep_out) {
+      // Vertex is not a valid via:
+      return false;
+    }
+    return obstruction.Overlaps(keep_out.value());
+  }
+
   template<typename T>
   bool WireWouldIntersect(const RoutingEdge &edge,
                           const T &obstruction,
@@ -413,6 +448,11 @@ class RoutingGrid {
   absl::Status ValidAgainstInstalledPaths(
       const geometry::Rectangle &footprint,
       const std::optional<EquivalentNets> &for_nets = std::nullopt) const;
+
+  absl::Status ValidAgainstKnownBlockages(
+      const geometry::Rectangle &footprint,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
+      const;
 
   std::optional<geometry::Rectangle> ViaFootprint(
       const geometry::Point &centre,
@@ -630,6 +670,11 @@ class RoutingGridBlockage {
       const std::optional<EquivalentNets> &exceptional_nets) const {
     return Blocks(edge, padding_, exceptional_nets);
   }
+  bool Blocks(
+      const geometry::Rectangle &footprint,
+      const std::optional<EquivalentNets> &exceptional_nets) const {
+    return Blocks(footprint, padding_, exceptional_nets);
+  }
 
   // Takes ownership of the given RoutingTrackBlockage. Store the RoutingTrack
   // so that we can remove the blockage from the track if we need do.
@@ -649,6 +694,10 @@ class RoutingGridBlockage {
       const std::optional<RoutingTrackDirection> &access_direction) const;
   bool Blocks(
       const RoutingEdge &edge,
+      int64_t padding,
+      const std::optional<EquivalentNets> &exceptional_nets) const;
+  bool Blocks(
+      const geometry::Rectangle &footprint,
       int64_t padding,
       const std::optional<EquivalentNets> &exceptional_nets) const;
 

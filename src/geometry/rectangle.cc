@@ -258,12 +258,14 @@ Rectangle Rectangle::BoundingBoxIfRotated(
 Rectangle Rectangle::WithPadding(int64_t padding) const {
   Point lower_left = lower_left_ - Point {padding, padding};
   Point upper_right = upper_right_ + Point {padding, padding};
+  // Padding can be negative, so check if we've violated the
+  // lower-left/upper-right invariant:
   if (lower_left.x() > upper_right.x()) {
-    lower_left.set_x((lower_left.x() + upper_right.x())/2);
+    lower_left.set_x((lower_left.x() + upper_right.x()) / 2);
     upper_right.set_x(lower_left.x());
   }
   if (lower_left.y() > upper_right.y()) {
-    lower_left.set_y((lower_left.y() + upper_right.y())/2);
+    lower_left.set_y((lower_left.y() + upper_right.y()) / 2);
     upper_right.set_y(lower_left.y());
   }
   return {lower_left, upper_right};

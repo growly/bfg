@@ -511,8 +511,7 @@ void RoutingPath::Flatten() {
       // Downgrade the edge layer!
       flattened_edge->set_layer(last_layer);
 
-      // TODO(aryap): Hmmm.
-      // DANGER! We might now have now changed the directions of the via encaps
+      // Danger! We might now have now changed the directions of the via encaps
       // at one end of the edge. For example, if previous it was a horizontal
       // encap on metal 1, but now the vertical metal 2 edge above it is being
       // reduced to metal 1, it is going to end up a vertical encap on metal 1.
@@ -520,10 +519,10 @@ void RoutingPath::Flatten() {
       // valid for one of the edges since one or both of them are having a via
       // skipped, as is the whole point of this process. But figuring out which
       // one is too annoying.
-      std::vector<RoutingVertex*> vertices = {last_vertex, current_vertex};
-      for (RoutingVertex *vertex : vertices) {
+      std::vector<RoutingVertex*> first_and_last_vertex = {
+          last_vertex, current_vertex};
+      for (RoutingVertex *vertex : first_and_last_vertex) {
         vertex->RemoveConnectedLayer(previous_layer_value);
-        // Usually (always?) a no-op.
         vertex->AddConnectedLayer(last_layer);
 
         // FIXME(aryap): I think we need a version of

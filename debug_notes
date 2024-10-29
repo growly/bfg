@@ -155,3 +155,5 @@ if (this->first_->centre_.x_ == 32350 && this->first_->centre_.y_ == 8795 && thi
 
 break routing_edge.h:29 if (first->centre_.x_ == 32350 && first->centre_.y_ == 8795 && second->centre_.x_ == 37110) || (second->centre_.x_ == 32350 && second->centre_.y_ == 8795 && first->centre_.x_ == 37110)
 
+
+TODO:: Need to refactor ValidAgainstKnownBlockages paths for geometry::Rectangle &footprint instead of Vertex (footprint layer is the footprint.layer())

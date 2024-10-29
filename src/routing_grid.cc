@@ -99,13 +99,46 @@ bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
   // with padding = 0). If we just checked that because padding == 0 already,
   // shortcut the response.
   if (intersects &&
-      exceptional_nets &&
-      exceptional_nets->Contains(shape_.net())) {
+      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
     if (padding == 0) {
       return false;
     }
     return !routing_grid_.ViaWouldIntersect(
         vertex, shape_, 0, access_direction);
+  }
+  return intersects;
+}
+
+template<>
+bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
+    const RoutingEdge &edge,
+    int64_t padding,
+    const std::optional<EquivalentNets> &exceptional_nets) const {
+  bool intersects = routing_grid_.WireWouldIntersect(edge, shape_, padding); 
+  if (intersects &&
+      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+    if (padding == 0) {
+      return false;
+    }
+    return !routing_grid_.WireWouldIntersect(edge, shape_, 0);
+  }
+  return intersects;
+}
+
+template<typename T>
+bool RoutingGridBlockage<T>::Blocks(
+    const geometry::Rectangle &footprint,
+    int64_t padding,
+    const std::optional<EquivalentNets> &exceptional_nets) const {
+  // T should have a .Overlaps(const geometry::Rectangle &footprint).
+  bool intersects = shape_.Overlaps(
+      footprint.WithPadding(std::max(padding - 1, 0L)));
+  if (intersects &&
+      exceptional_nets && exceptional_nets->Contains(shape_.net())) {
+    if (padding == 0) {
+      return false;
+    }
+    return !shape_.Overlaps(footprint);
   }
   return intersects;
 }
@@ -126,23 +159,6 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
     }
     return !routing_grid_.ViaWouldIntersect(
       vertex, shape_, 0, access_direction);
-  }
-  return intersects;
-}
-
-template<>
-bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
-    const RoutingEdge &edge,
-    int64_t padding,
-    const std::optional<EquivalentNets> &exceptional_nets) const {
-  bool intersects = routing_grid_.WireWouldIntersect(edge, shape_, padding); 
-  if (intersects &&
-      exceptional_nets &&
-      exceptional_nets->Contains(shape_.net())) {
-    if (padding == 0) {
-      return false;
-    }
-    return !routing_grid_.WireWouldIntersect(edge, shape_, 0);
   }
   return intersects;
 }
@@ -368,6 +384,24 @@ absl::Status RoutingGrid::ValidAgainstKnownBlockages(
   }
   for (const auto &blockage : polygon_blockages_) {
     if (blockage->Blocks(vertex, exceptional_nets, access_direction)) {
+      return absl::UnavailableError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status RoutingGrid::ValidAgainstKnownBlockages(
+    const geometry::Rectangle &footprint,
+    const std::optional<EquivalentNets> &exceptional_nets) const {
+  for (const auto &blockage : rectangle_blockages_) {
+    if (blockage->Blocks(footprint, exceptional_nets)) {
+      return absl::UnavailableError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  for (const auto &blockage : polygon_blockages_) {
+    if (blockage->Blocks(footprint, exceptional_nets)) {
       return absl::UnavailableError(
           absl::StrCat("Blocked by ", blockage->shape().Describe()));
     }
@@ -1222,16 +1256,6 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
 
   return ViaFootprint(
       vertex.centre(), other_layer, footprint_layer, padding, direction);
-
-  //const std::vector<geometry::Layer> &layers = vertex.connected_layers();
-  //if (layers.size() != 2) {
-  //  return std::nullopt;
-  //}
-  //const geometry::Layer &first_layer = layers.front();
-  //const geometry::Layer &second_layer = layers.back();
-
-  //return ViaFootprint(
-  //    vertex.centre(), first_layer, second_layer, padding, direction);
 }
 
 std::optional<geometry::Rectangle> RoutingGrid::TrackFootprint(
