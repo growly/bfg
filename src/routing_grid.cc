@@ -429,13 +429,13 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
   // and vertices.
   std::vector<std::string> errors;
   for (const geometry::Layer &candidate_layer : vertex.connected_layers()) {
-    std::optional<geometry::Rectangle> via_encap_footprint = ViaFootprint(
+    std::optional<geometry::Rectangle> via_encap_footprint = VertexFootprint(
         vertex, candidate_layer, 0, access_direction);
     if (!via_encap_footprint) {
-      // ViaFootprint will return nullopt if there is no other layer to connect
-      // to at the given vertex, which happens if the vertex represents a
-      // connection on the same layer only. This is not a problem, and there is
-      // no footprint to measure here, since there is no via to cover.
+      // VertexFootprint will return nullopt if there is no other layer to
+      // connect to at the given vertex, which happens if the vertex represents
+      // a connection on the same layer only. This is not a problem, and there
+      // is no footprint to measure here, since there is no via to cover.
       continue;
     }
     auto valid = ValidAgainstInstalledPaths(*via_encap_footprint, for_nets);
@@ -524,7 +524,7 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
 
     // Get the other vertices' footprints on the layer footprint layer we're
     // dealing with, skipping if they don't have one.
-    std::optional<geometry::Rectangle> other_via_encap = ViaFootprint(
+    std::optional<geometry::Rectangle> other_via_encap = VertexFootprint(
        *other, footprint_layer, 0, access_direction);
     if (!other_via_encap) {
       // An empty footprint indicates that the via doesn't connect to a layer
@@ -1225,7 +1225,7 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
   return footprint;
 }
 
-std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
+std::optional<geometry::Rectangle> RoutingGrid::VertexFootprint(
     const RoutingVertex &vertex,
     const geometry::Layer &footprint_layer,
     int64_t padding,
@@ -1339,9 +1339,9 @@ std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
   const RoutingVertex *lower_left = vertices.front();
   const RoutingVertex *upper_right = vertices.back();
 
-  auto lower_left_footprint = ViaFootprint(
+  auto lower_left_footprint = VertexFootprint(
       *lower_left, layer, padding, edge.Direction());
-  auto upper_right_footprint = ViaFootprint(
+  auto upper_right_footprint = VertexFootprint(
       *upper_right, layer, padding, edge.Direction());
 
   std::vector<geometry::Point> lower_left_options = {
@@ -2124,7 +2124,7 @@ void RoutingGrid::InstallVertexInPath(
       direction = routing_layer_info->get().direction();
     }
 
-    std::optional<geometry::Rectangle> via_encap = ViaFootprint(
+    std::optional<geometry::Rectangle> via_encap = VertexFootprint(
        *vertex, layer, 0, direction);
     if (!via_encap)
       continue;
@@ -2138,7 +2138,7 @@ void RoutingGrid::InstallVertexInPath(
 
     int64_t min_separation = physical_db_.Rules(layer).min_separation;
     for (RoutingVertex *enveloping_vertex : outer_vertices) {
-      std::optional<geometry::Rectangle> outer_via_encap = ViaFootprint(
+      std::optional<geometry::Rectangle> outer_via_encap = VertexFootprint(
           *enveloping_vertex, layer, 0);
       int64_t min_distance = static_cast<int64_t>(std::ceil(
           via_encap->ClosestDistanceTo(*outer_via_encap)));

@@ -359,7 +359,7 @@ class RoutingGrid {
     // (unit-area-positions) between them! Testing for collisions within the
     // keep out requires testing for the rectangle inflated by 5 - 1 = 4, not by
     // just 5.
-    std::optional<geometry::Rectangle> keep_out = ViaFootprint(
+    std::optional<geometry::Rectangle> keep_out = VertexFootprint(
         vertex,
         obstruction.layer(),
         std::max(padding - 1, 0L),
@@ -461,15 +461,17 @@ class RoutingGrid {
       int64_t padding = 0,
       const std::optional<RoutingTrackDirection> &direction =
           std::nullopt) const;
+
   // FIXME(aryap): The RoutingVertex should contain enough information to figure
   // this out. It should at *least* always have its bottom and top layers
   // (ordered). the "connected_layers_" field is hard to use.
-  std::optional<geometry::Rectangle> ViaFootprint(
+  std::optional<geometry::Rectangle> VertexFootprint(
       const RoutingVertex &vertex,
       const geometry::Layer &layer,
       int64_t padding = 0,
       const std::optional<RoutingTrackDirection> &direction =
           std::nullopt) const;
+
   std::optional<geometry::Rectangle> TrackFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
   std::optional<geometry::Rectangle> EdgeFootprint(
