@@ -105,7 +105,8 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
 }
 
 void PolyLine::ExtendToInclude(const Point &point) {
-  if (PointLandsWithinAnySegment(point)) {
+  // Check if the point lands within any segment.
+  if (LineAtPoint(point)) {
     return;
   }
   Line begin_line = Line(start_, segments_.front().end);
@@ -137,17 +138,17 @@ void PolyLine::ExtendToInclude(const Point &point) {
   }
 }
 
-bool PolyLine::PointLandsWithinAnySegment(const Point &point) const {
+std::optional<Line> PolyLine::LineAtPoint(const Point &point) const {
   for (size_t i = 0; i < segments_.size(); ++i) {
     const LineSegment &segment = segments_.at(i);
     Line line = Line(
         i == 0 ? start_ : segments_.at(i - 1).end,
         segments_.at(i).end);
     if (line.IntersectsInBounds(point)) {
-      return true;
+      return line;
     }
   }
-  return false;
+  return std::nullopt;
 }
 
 double PolyLine::ComputeRequiredLengthForLastSegmentWidth(
@@ -438,6 +439,34 @@ void PolyLine::InsertBackwardBulgePoint(
 
     --k;
   } while (k >= 0);
+}
+
+void PolyLine::InsertBulge(const Point &point,
+                           uint64_t width,
+                           uint64_t length,
+                           std::optional<double> angle_rads) {
+  if (!angle_rads) {
+    InsertBulge(point, width, length);
+    return;
+  }
+
+  // Project width of box at `angle_rads` onto the coaxial width of the line,
+  // and respectively the length onto the coaxial length.
+  auto line = LineAtPoint(point);
+  if (!line) {
+    return;
+  }
+
+  double alpha = line->AngleToHorizon() - *angle_rads;
+
+  double coaxial_width = static_cast<double>(width) * std::cos(alpha) +
+                         static_cast<double>(length) * std::sin(alpha);
+  double coaxial_length = static_cast<double>(length) * std::cos(alpha) + 
+                          static_cast<double>(width) * std::sin(alpha);
+
+  InsertBulge(point,
+              std::llround(std::abs(coaxial_width)),
+              std::llround(std::abs(coaxial_length)));
 }
 
 //           _

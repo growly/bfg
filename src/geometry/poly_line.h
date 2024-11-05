@@ -72,7 +72,7 @@ class PolyLine : public Shape {
 
   void AddSegment(const Point &to, const uint64_t width);
 
-  bool PointLandsWithinAnySegment(const Point &point) const;
+  std::optional<Line> LineAtPoint(const Point &point) const;
 
   // If the given point lands on an existing line in the PolyLine, do nothing.
   // Otherwise, extend the start or end point (whichever is closest) to include
@@ -90,9 +90,16 @@ class PolyLine : public Shape {
   // value half way.
   void InsertBulge(
       const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+
   // As above, but will not be applied until ApplyDeferredBulges() call.
   void InsertBulgeLater(
       const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+
+  void InsertBulge(
+      const Point &point,
+      uint64_t width,
+      uint64_t length,
+      std::optional<double> angle_rads);
 
   void ApplyDeferredBulges();
 

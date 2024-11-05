@@ -204,14 +204,6 @@ class RoutingGrid {
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt) const;
 
-  absl::Status ValidAgainstHazards(
-      const geometry::Point &via_centre,
-      const geometry::Layer &other_layer,
-      const geometry::Layer &footprint_layer,
-      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
-      const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const;
-
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
   absl::Status ValidAgainstKnownBlockages(
@@ -237,7 +229,13 @@ class RoutingGrid {
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsForVertex(
       const RoutingVertex &vertex,
-      const EquivalentNets &for_nets);
+      const EquivalentNets &for_nets) const;
+
+  std::set<RoutingTrackDirection> ValidAccessDirectionsAt(
+      const geometry::Point &point,
+      const geometry::Layer &other_layer,
+      const geometry::Layer &footprint_layer,
+      const EquivalentNets &for_nets) const;
 
   std::optional<double> FindViaStackCost(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
@@ -325,23 +323,19 @@ class RoutingGrid {
   // function must return allowable directions. The obstruction encodes the
   // layer we need to connect form already so that's good.
 
-  // TODO(aryap): It feels awkward putting these geometric functions here...?
-  // Maybe move them into RoutingVertex? That requires giving RoutingVertex
-  // awareness of geometry, which is like a loss of innocence y'know?
-  //
-  // Test if a given obstruction overlaps an appropriately-sized via at the
-  // location of the given RoutingVertex.
+  // This is useful when you don't have a RoutingVertex connecting the 2 layers
+  // you're interested in, such as the start/end of some RoutingPaths (which
+  // might need a via stack):
   template<typename T>
   bool ViaWouldIntersect(
-      const RoutingVertex &vertex,
+      const geometry::Point &centre,
+      const geometry::Layer &other_layer,
+      const geometry::Layer &footprint_layer,
       const T &obstruction,
       int64_t padding = 0,
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt)
       const {
-    if (!vertex.ConnectsLayer(obstruction.layer())) {
-      return false;
-    }
     // Note that we subtract 1 from the padding. This is because spacing rules
     // between objects seem to implicitly be inclusive of the end points.  Given
     // two rectangles with boundaries at x = 5 and x = 10, for example:
@@ -359,8 +353,9 @@ class RoutingGrid {
     // (unit-area-positions) between them! Testing for collisions within the
     // keep out requires testing for the rectangle inflated by 5 - 1 = 4, not by
     // just 5.
-    std::optional<geometry::Rectangle> keep_out = VertexFootprint(
-        vertex,
+    std::optional<geometry::Rectangle> keep_out = ViaFootprint(
+        centre,
+        other_layer,
         obstruction.layer(),
         std::max(padding - 1, 0L),
         access_direction);
@@ -371,23 +366,26 @@ class RoutingGrid {
     return obstruction.Overlaps(keep_out.value());
   }
 
-  // This is useful when you don't have a RoutingVertex connecting the 2 layers
-  // you're interested in, such as the start/end of some RoutingPaths (which
-  // might need a via stack):
+  // TODO(aryap): It feels awkward putting these geometric functions here...?
+  // Maybe move them into RoutingVertex? That requires giving RoutingVertex
+  // awareness of geometry, which is like a loss of innocence y'know?
+  //
+  // Test if a given obstruction overlaps an appropriately-sized via at the
+  // location of the given RoutingVertex.
   template<typename T>
   bool ViaWouldIntersect(
-      const geometry::Point &centre,
-      const geometry::Layer &other_layer,
-      const geometry::Layer &footprint_layer,
+      const RoutingVertex &vertex,
       const T &obstruction,
       int64_t padding = 0,
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt)
       const {
     // Note that we subtract 1 from the padding, as above.
-    std::optional<geometry::Rectangle> keep_out = ViaFootprint(
-        centre,
-        other_layer,
+    if (!vertex.ConnectsLayer(obstruction.layer())) {
+      return false;
+    }
+    std::optional<geometry::Rectangle> keep_out = VertexFootprint(
+        vertex,
         obstruction.layer(),
         std::max(padding - 1, 0L),
         access_direction);
@@ -444,6 +442,11 @@ class RoutingGrid {
           std::reference_wrapper<
               const std::set<RoutingTrackDirection>>> &directions,
       RoutingVertex *off_grid);
+
+  absl::Status ValidAgainstHazards(
+      const geometry::Rectangle &footprint,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
+      const;
 
   absl::Status ValidAgainstInstalledPaths(
       const geometry::Rectangle &footprint,

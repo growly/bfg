@@ -7,6 +7,8 @@
 #include <memory>
 #include <optional>
 
+#include <absl/status/status.h>
+
 #include "geometry/layer.h"
 #include "geometry/poly_line.h"
 #include "geometry/port.h"
@@ -96,8 +98,8 @@ class RoutingPath {
   void BuildVias(
       const geometry::Point &at_point,
       const geometry::Layer &last_layer,
-      const std::function<RoutingTrackDirection(const geometry::Layer&)>
-          &get_encap_direction_fn,
+      const std::function<std::optional<RoutingTrackDirection>(
+          const geometry::Layer&)> &get_encap_direction_fn,
       bool encap_last_layer,
       geometry::PolyLine *from_poly_line,
       std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
@@ -110,6 +112,11 @@ class RoutingPath {
       geometry::PolyLine *active_line,
       std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
+
+  absl::Status CheckAndForceEncapDirections(
+      const geometry::Layer &from_layer,
+      const geometry::Layer &to_layer,
+      RoutingVertex *vertex) const;
 
   std::optional<CostedLayerPair> PickAccessLayerPair(
       const std::set<geometry::Layer> &source_layers,
@@ -196,8 +203,9 @@ class RoutingPath {
   // basically useless?
   const geometry::Port *start_port_;
   const geometry::Port *end_port_;
-  // The start and end layers inform where vias need to be created in order for
-  // the start and end points to be reachable.
+
+  // The layers to which the start (and end) vertices must ultimately connect in
+  // order for the start (and end) ports to be reached.
   std::set<geometry::Layer> start_access_layers_;
   std::set<geometry::Layer> end_access_layers_;
 

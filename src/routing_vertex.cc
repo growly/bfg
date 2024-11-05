@@ -23,6 +23,16 @@ bool RoutingVertex::Compare(RoutingVertex *lhs, RoutingVertex *rhs) {
   return Compare(*lhs, *rhs);
 }
 
+std::optional<geometry::Layer> RoutingVertex::ConnectedLayerOtherThan(
+    const geometry::Layer &layer) const {
+  std::set<geometry::Layer> layers = connected_layers_;
+  layers.erase(layer);
+  if (layers.empty()) {
+    return std::nullopt;
+  }
+  return *layers.begin();
+}
+
 std::set<geometry::Layer> RoutingVertex::CommonLayers(
       const RoutingVertex &lhs, const RoutingVertex &rhs) {
   std::set<geometry::Layer> shared_layers;

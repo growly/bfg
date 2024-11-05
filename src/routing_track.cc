@@ -73,6 +73,18 @@ double RoutingTrack::DirectionToAngle(const RoutingTrackDirection &direction) {
   return 0.0;
 }
 
+RoutingTrackDirection RoutingTrack::AngleToDirection(
+    double angle_to_horizon_rads) {
+  if (angle_to_horizon_rads == 0.0) {
+    return RoutingTrackDirection::kTrackHorizontal;
+  } else if (angle_to_horizon_rads == geometry::Radian::kPi / 2) {
+    return RoutingTrackDirection::kTrackVertical;
+  }
+  LOG(FATAL) << "Cannot convert angle to RoutingTrackDirection: "
+             << angle_to_horizon_rads;
+  return RoutingTrackDirection::kTrackHorizontal;
+}
+
 RoutingTrack::~RoutingTrack() {
   for (RoutingEdge *edge : edges_) { delete edge; }
   for (RoutingTrackBlockage *blockage : blockages_.vertex_blockages) {

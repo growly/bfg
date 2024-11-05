@@ -56,6 +56,11 @@ class RoutingVertex {
   void RemoveConnectedLayer(const geometry::Layer &layer) {
     connected_layers_.erase(layer);
   }
+  std::optional<geometry::Layer> ConnectedLayerOtherThan(
+      const geometry::Layer &layer) const;
+  void set_connected_layers(const std::set<geometry::Layer> &connected_layers) {
+    connected_layers_ = connected_layers;
+  }
   const std::set<geometry::Layer> &connected_layers() const {
     return connected_layers_;
   }

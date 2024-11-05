@@ -7,6 +7,7 @@
 #include <optional>
 
 #include <absl/strings/str_join.h>
+#include <absl/status/status.h>
 
 #include "geometry/radian.h"
 #include "geometry/poly_line.h"
@@ -451,11 +452,13 @@ void RoutingPath::Flatten() {
   for (size_t i = 1; i < vertices_.size(); ++i) {
     // Edge i connects vertex i and (i + 1).
     geometry::Layer last_layer;
+    geometry::Layer last_target_layer;
     if (i == 1) {
       if (start_access_layers_.empty())
         continue;
       std::set<geometry::Layer> source_options = {
-          edges_.at(0)->EffectiveLayer()};
+          edges_.at(0)->EffectiveLayer()
+      };
       if (edges_.size() > 1) {
         source_options.insert(edges_.at(1)->EffectiveLayer());
       }
@@ -465,11 +468,14 @@ void RoutingPath::Flatten() {
         continue;
       }
       last_layer = start_access->source;
+      last_target_layer = start_access->target;
     } else {
       last_layer = edges_.at(i - 2)->EffectiveLayer();
+      last_target_layer = last_layer;
     }
 
     geometry::Layer next_layer;
+    geometry::Layer next_target_layer;
     if (i == vertices_.size() - 1) {
       if (end_access_layers_.empty())
         continue;
@@ -482,8 +488,10 @@ void RoutingPath::Flatten() {
         continue;
       }
       next_layer = end_access->source;
+      next_target_layer = end_access->target;
     } else {
       next_layer = edges_.at(i)->EffectiveLayer();
+      next_target_layer = next_layer;
     }
 
     RoutingVertex *last_vertex = vertices_.at(i - 1);
@@ -519,21 +527,26 @@ void RoutingPath::Flatten() {
       // valid for one of the edges since one or both of them are having a via
       // skipped, as is the whole point of this process. But figuring out which
       // one is too annoying.
-      std::vector<RoutingVertex*> first_and_last_vertex = {
-          last_vertex, current_vertex};
-      for (RoutingVertex *vertex : first_and_last_vertex) {
-        vertex->RemoveConnectedLayer(previous_layer_value);
-        vertex->AddConnectedLayer(last_layer);
+      //
+      // These are no-ops if _layer == _target_layer.
+      //
+      // TODO(aryap): If either of these fails, we might have a DRC error. This
+      // is really bad, since this condition should have been cleared before the
+      // RoutingPath was created, as part of the path search.
+      auto check_encaps = CheckAndForceEncapDirections(
+          last_layer,
+          last_target_layer,
+          last_vertex);
+      if (check_encaps.ok()) {
+        last_vertex->set_connected_layers({last_layer, last_target_layer});
+      }
 
-        // FIXME(aryap): I think we need a version of
-        // "ValidAccessDirectionsForVertex" that explicitly checks a given
-        // layer?
-        std::set<RoutingTrackDirection> access_directions =
-            routing_grid_->ValidAccessDirectionsForVertex(*vertex, nets_);
-        if (access_directions.size() == 1) {
-          vertex->SetForcedEncapDirection(
-              last_layer, *access_directions.begin());
-        }
+      check_encaps.Update(CheckAndForceEncapDirections(
+          next_layer,
+          next_target_layer,
+          current_vertex));
+      if (check_encaps.ok()) {
+        current_vertex->set_connected_layers({next_layer, next_target_layer});
       }
     }
   }
@@ -674,11 +687,99 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   }
 }
 
+absl::Status RoutingPath::CheckAndForceEncapDirections(
+    const geometry::Layer &from_layer,
+    const geometry::Layer &to_layer,
+    RoutingVertex *vertex) const {
+  if (from_layer == to_layer) {
+    return absl::OkStatus();
+  }
+  std::optional<std::vector<RoutingViaInfo>> via_layers =
+      routing_grid_->FindViaStack(from_layer, to_layer);
+  if (!via_layers) {
+    // Bad.
+    return absl::NotFoundError(
+        absl::StrCat("No via stack from ", from_layer, " to ", to_layer));
+  }
+
+  std::map<geometry::Layer, std::set<RoutingTrackDirection>>
+      access_directions_by_layer;
+
+  auto create_or_intersect_fn = [&](
+      const geometry::Layer &layer,
+      const std::set<RoutingTrackDirection> access_directions) {
+    auto it = access_directions_by_layer.find(layer);
+    if (it == access_directions_by_layer.end()) {
+      access_directions_by_layer.insert({layer, access_directions});
+      return;
+    }
+    std::set<RoutingTrackDirection> &existing = it->second;
+    std::set<RoutingTrackDirection> intersection;
+    std::set_intersection(access_directions.begin(), access_directions.end(),
+                          existing.begin(), existing.end(),
+                          std::inserter(intersection, intersection.begin()));
+    access_directions_by_layer.insert({layer, intersection});
+  };
+
+  for (const RoutingViaInfo &info : *via_layers) {
+    const std::vector<geometry::Layer> connected_layers =
+        info.ConnectedLayers();
+
+    std::set<RoutingTrackDirection> access_directions =
+        routing_grid_->ValidAccessDirectionsAt(
+            vertex->centre(),
+            connected_layers[0],
+            connected_layers[1],  // The footprint layer.
+            nets_);
+    create_or_intersect_fn(connected_layers[1], access_directions);
+
+    access_directions =
+        routing_grid_->ValidAccessDirectionsAt(
+            vertex->centre(),
+            connected_layers[1],
+            connected_layers[0],  // The footprint layer.
+            nets_);
+    create_or_intersect_fn(connected_layers[0], access_directions);
+  }
+
+  // Now, if any layer has an empty set of access directions, it is no longer
+  // valid!
+  std::string error_message;
+  for (const auto &entry : access_directions_by_layer) {
+    std::stringstream ss;
+    for (const RoutingTrackDirection &direction : entry.second) {
+      ss << direction << "; ";
+    }
+    LOG(INFO) << entry.first << ": " << ss.str();
+
+    const geometry::Layer &layer = entry.first;
+    if (entry.second.empty()) {
+      error_message = absl::StrCat(
+          "No access directions remain valid for layer ",
+          layer, " at ", vertex->centre().Describe());
+      return absl::InternalError(error_message);
+    }
+  }
+
+  for (const auto &entry : access_directions_by_layer) {
+    const geometry::Layer &layer = entry.first;
+    const std::set<RoutingTrackDirection> &directions = entry.second;
+    if (directions.size() == 1) {
+      const RoutingTrackDirection &forced = *directions.begin();
+      LOG(INFO) << "Forcing access direction on layer "
+                << layer << " at " << vertex->centre() << " to " << forced;
+      vertex->SetForcedEncapDirection(layer, forced);
+    }
+  }
+
+  return absl::OkStatus();
+}
+
 void RoutingPath::BuildVias(
     const geometry::Point &at_point,
     const geometry::Layer &last_layer,
-    const std::function<RoutingTrackDirection(const geometry::Layer&)>
-        &get_encap_direction_fn,
+    const std::function<std::optional<RoutingTrackDirection>(
+        const geometry::Layer&)> &get_encap_direction_fn,
     bool encap_last_layer,
     geometry::PolyLine *from_poly_line,
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
@@ -733,16 +834,30 @@ void RoutingPath::BuildVias(
   for (const auto &entry : metal_pours) {
     const geometry::Layer &layer = entry.first;
     const BulgeDimensions &bulge = entry.second;
-    RoutingTrackDirection encap_direction = get_encap_direction_fn(layer);
+    std::optional<RoutingTrackDirection> maybe_forced_direction =
+        get_encap_direction_fn(layer);
+
+    std::optional<double> encap_angle;
+    if (maybe_forced_direction) {
+      encap_angle = RoutingTrack::DirectionToAngle(*maybe_forced_direction);
+    }
 
     if (layer == from_layer) {
-      // Insert a bulge on the from_poly_line.
-      from_poly_line->InsertBulge(at_point, bulge.width, bulge.length);
+      // Insert a bulge on the from_poly_line. If encap_angle is nullopt,
+      // InsertBulge with use the axis of the line where the point lands.
+      from_poly_line->InsertBulge(at_point,
+                                  bulge.width,
+                                  bulge.length,
+                                  encap_angle);
       continue;
     } else if (!encap_last_layer && layer == last_layer) {
       // Skip.
       continue;
     }
+
+    // Default ¯\_(ツ)_/¯
+    RoutingTrackDirection encap_direction = maybe_forced_direction ?
+        *maybe_forced_direction : RoutingTrackDirection::kTrackHorizontal;
 
     int64_t half_length = bulge.length / 2;
     int64_t half_width = bulge.width / 2;
@@ -796,12 +911,7 @@ void RoutingPath::BuildTerminatingVias(
   }
 
   auto get_encap_direction_fn = [&](const geometry::Layer &layer) {
-    auto maybe_forced = vertex->GetForcedEncapDirection(layer);
-    if (maybe_forced) {
-      return *maybe_forced;
-    }
-    // Default ¯\_(ツ)_/¯
-    return RoutingTrackDirection::kTrackHorizontal;
+    return vertex->GetForcedEncapDirection(layer);
   };
 
   // This is a no-op if front->layer() == start_access_layer:

@@ -352,6 +352,21 @@ absl::Status RoutingGrid::ValidAgainstHazards(
   return status;
 }
 
+absl::Status RoutingGrid::ValidAgainstHazards(
+    const geometry::Rectangle &footprint,
+    const std::optional<EquivalentNets> &exceptional_nets) const {
+  absl::Status status =
+      ValidAgainstKnownBlockages(footprint, exceptional_nets);
+  if (!status.ok()) {
+    return status;
+  }
+  status = ValidAgainstInstalledPaths(footprint, exceptional_nets);
+  if (!status.ok()) {
+    return status;
+  }
+  return status;
+}
+
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingEdge &edge,
     const std::optional<EquivalentNets> &exceptional_nets) const {
@@ -1163,7 +1178,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
 std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsForVertex(
     const RoutingVertex &vertex,
-    const EquivalentNets &for_nets) {
+    const EquivalentNets &for_nets) const {
   std::set<RoutingTrackDirection> access_directions = {
       RoutingTrackDirection::kTrackHorizontal,
       RoutingTrackDirection::kTrackVertical};
@@ -1177,6 +1192,36 @@ std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsForVertex(
     } else {
       ++it;
     }
+  }
+  return access_directions;
+}
+
+std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsAt(
+    const geometry::Point &centre,
+    const geometry::Layer &other_layer,
+    const geometry::Layer &footprint_layer,
+    const EquivalentNets &for_nets) const {
+  std::set<RoutingTrackDirection> access_directions = {
+      RoutingTrackDirection::kTrackHorizontal,
+      RoutingTrackDirection::kTrackVertical};
+  for (auto it = access_directions.begin(); it != access_directions.end();) {
+    const RoutingTrackDirection &direction = *it;
+    auto footprint = ViaFootprint(
+        centre, other_layer, footprint_layer, 0, direction);
+    absl::Status unblocked;
+    if (footprint) {
+      unblocked = ValidAgainstHazards(*footprint, for_nets);
+      if (unblocked.ok()) {
+        ++it;
+        continue;
+      }
+    }
+    VLOG(15) << "Cannot connect to "
+             << (footprint ? footprint->Describe() : "unavailable footprint")
+             << " in direction " << direction
+             << (unblocked.message().empty() ? "" :
+                    absl::StrCat(": ", unblocked.message()));
+    it = access_directions.erase(it);
   }
   return access_directions;
 }

@@ -153,6 +153,12 @@ class Line {
 
   int64_t DotProduct(const Line &with) const;
 
+  // The line if it were translated to start from the origin (0, 0), as a
+  // vector.
+  Point AsVectorFromOrigin() const {
+    return end_ - start_;
+  }
+
   void set_start(const Point &start) { start_ = start; }
   void set_end(const Point &end) { end_ = end; }
 

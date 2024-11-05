@@ -48,6 +48,7 @@ class RoutingTrack {
       const RoutingTrackDirection &direction);
   static double DirectionToAngle(
       const RoutingTrackDirection &direction);
+  static RoutingTrackDirection AngleToDirection(double angle_to_horizon_rads);
 
   RoutingTrack(const geometry::Layer &layer,
                const RoutingTrackDirection &direction,
