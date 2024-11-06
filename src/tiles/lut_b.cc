@@ -51,7 +51,7 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
       .horizontal_alignment = geometry::Compass::RIGHT,
       .strap_alignment = geometry::Compass::LEFT
     },
-    .mux_area_horizontal_padding = 2500,
+    .mux_area_horizontal_padding = 0,   // Determined at runtime.
     .mux_area_vertical_min_padding = 1250,
     .mux_area_rows = 2,
     .mux_area_columns = 2,
@@ -194,8 +194,15 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
   int64_t mux_width = base_mux_cell->layout()->GetBoundingBox().Width();
   int64_t left_bank_bottom_row_right_x = banks_[0].Row(0).Width();
+
+  int64_t met1_x_pitch = db.Rules("met1.drawing").min_pitch;
+  int64_t mux_area_horizontal_padding =
+      layout_config.mux_area_horizontal_padding +
+      3 * met1_x_pitch;
+
   int64_t x_pos =
-      left_bank_bottom_row_right_x + layout_config.mux_area_horizontal_padding;
+      left_bank_bottom_row_right_x + mux_area_horizontal_padding;
+
   // This staggers the mux area below the memories on the left:
   //int64_t y_pos = -mux_height / 2;
   int64_t y_pos = memories_.front()->Height() / 2;
@@ -212,7 +219,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_grid.set_template_cells(&mux_templates);
   // FIXME(aryap): This is a function of track pitch, really, not some number I
   // eyeballed.
-  mux_grid.set_horizontal_overlap(2000);
+  mux_grid.set_horizontal_overlap(14 * met1_x_pitch);
   mux_grid.set_vertical_overlap(-2500);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
   mux_order_.insert(mux_order_.begin(), mux_order.begin(), mux_order.end());
@@ -292,7 +299,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       banks_[1].rows().front().UpperLeft().y();
 
   x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
-      layout_config.mux_area_horizontal_padding;
+      mux_area_horizontal_padding;
 
   int64_t y_pitch = db.Rules("met1.drawing").min_pitch;
   // To maintain the relative alignment of the RoutingGrid to the cells, we
@@ -812,6 +819,8 @@ void LutB::AddClockAndPowerStraps(
   static const std::array<std::string, 4> kNets =
       {"vpwr", "vgnd", "clk", "clk_i"};
 
+  constexpr int64_t kOffsetNumPitches = 2;
+
   // FIXME(aryap): We are leaking technology-specific concerns into what was
   // previously somewhat agnostic; but was it ever really agnostic? There could
   // just be a strap configuration sction in the parameters:
@@ -860,12 +869,12 @@ void LutB::AddClockAndPowerStraps(
 
       int64_t spine_x = 0;
       if (strap_alignment_per_bank[bank] == geometry::Compass::LEFT) {
-        spine_x = connections.front().x();
+        spine_x = connections.front().x() + kOffsetNumPitches * strap_pitch;
         if (last_spine_x) {
           spine_x = std::min(spine_x, *last_spine_x - strap_pitch);
         }
       } else if (strap_alignment_per_bank[bank] == geometry::Compass::RIGHT) {
-        spine_x = connections.back().x();
+        spine_x = connections.back().x() - kOffsetNumPitches * strap_pitch;
         if (last_spine_x) {
           spine_x = std::max(spine_x, *last_spine_x + strap_pitch);
         }

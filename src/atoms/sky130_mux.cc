@@ -1393,6 +1393,7 @@ void ConnectOppositeInputs(
     bfg::Layout *layout) {
   // This structure helps us describe the connectivity of the inputs fingers to
   // each other and as ports for external wires.
+  const auto &met1_rules = db.Rules("met1.drawing");
   const auto &met2_rules = db.Rules("met2.drawing");
   const auto &via1_rules = db.Rules("via1.drawing");
   const auto &met2_via1_rules = db.Rules("met2.drawing", "via1.drawing");
@@ -1513,8 +1514,17 @@ void ConnectOppositeInputs(
         layout);
   }
 
-  left_x = layout->GetPointOrDie("upper_left.input_0").x();
-  right_x = layout->GetPointOrDie("upper_right.input_0").x();
+  int64_t met1_encap_length = std::max(
+      db.Rules("via1.drawing").via_width,
+      db.Rules("mcon.drawing").via_width) + 2 * std::max(
+      db.Rules("via1.drawing", "met1.drawing").via_overhang,
+      db.Rules("mcon.drawing", "met1.drawing").via_overhang);
+  int64_t space_to_column =
+      (met1_rules.min_width + met1_encap_length) / 2 +
+      met1_rules.min_separation;
+
+  left_x = column_x.find(0)->second - space_to_column;
+  right_x = column_x.find(12)->second + space_to_column;
 
   std::vector<ConnectionBetweenOppositePorts> second_contact_infos = {
     {
@@ -1527,7 +1537,7 @@ void ConnectOppositeInputs(
         {right_x, layout->GetPointOrDie("upper_right.input_0").y()},
         layout->GetPointOrDie("upper_right.input_0"),
       },
-      "met1.pin",
+      "li.pin",
       y_offset
     },
     {
@@ -1540,7 +1550,7 @@ void ConnectOppositeInputs(
         {right_x, layout->GetPointOrDie("upper_right.input_2").y()},
         layout->GetPointOrDie("upper_right.input_2"),
       },
-      "met1.pin",
+      "li.pin",
       y_offset
     },
     {
@@ -1553,7 +1563,7 @@ void ConnectOppositeInputs(
         {right_x, layout->GetPointOrDie("lower_right.input_2").y()},
         layout->GetPointOrDie("lower_right.input_2"),
       },
-      "met1.pin",
+      "li.pin",
       -y_offset
     },
     {
@@ -1566,7 +1576,7 @@ void ConnectOppositeInputs(
         {right_x, layout->GetPointOrDie("lower_right.input_0").y()},
         layout->GetPointOrDie("lower_right.input_0"),
       },
-      "met1.pin",
+      "li.pin",
       -y_offset
     },
   };
@@ -2413,6 +2423,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     li_rules.min_separation +
     li_rules.min_width / 2;
 
+  int64_t x_pitch = met1_rules.min_pitch;
+
   Mux2LayoutParameters mux2_params_n = {
     .diff_layer_name = "ndiff.drawing",
     .diff_contact_layer_name = "ncon.drawing",
@@ -2442,7 +2454,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_1 = std::nullopt,
     .input_2 = std::nullopt,
     .input_3 = std::nullopt,
-    .input_x_padding = db.ToInternalUnits(-600),
+    .input_x_padding = db.ToInternalUnits(-3 * x_pitch),
     .input_y_padding = db.ToInternalUnits(-200)
   };
 
@@ -2477,7 +2489,7 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
     .input_3 = std::nullopt,
     // TODO(aryap): Make this some PDK-dependent value, i.e. a multiple of
     // pitch.
-    .input_x_padding = db.ToInternalUnits(-600),
+    .input_x_padding = db.ToInternalUnits(-3 * x_pitch),
     .input_y_padding = db.ToInternalUnits(-200)
   };
 
