@@ -184,6 +184,12 @@ class RoutingVertex {
     RoutingVertex *vertex;
   };
 
+  // FIXME(aryap): I think we need to store the layers on which the nets are
+  // connectible here. It might be possible that a vertex can be used to connect
+  // to different nets on different layers. Right now I'm not sure how else to
+  // solve the problem of connecting to a net when there's a choice of layers to
+  // connect on. Usually it creates a hazard.
+
   // If the vertex is in use by some route, the name of the net should be here,
   // available_ should be false. in_edge and out_edge should point to the
   // incoming and outgoing edges used for the route through this vertex. If the
@@ -230,6 +236,10 @@ class RoutingVertex {
 
   // NOTE: A vertex can only ever connect at most 2 layers. A second vertex in
   // the same position is needed to connect to another layer.
+  //
+  // TODO(aryap): In practice we cheat and simply make the layers jump multiple
+  // vias if necessary, and figure it out later. This is mostly taken care of in
+  // RoutingPath.
   std::set<geometry::Layer> connected_layers_;
 
   std::set<RoutingEdge*> edges_;
