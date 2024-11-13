@@ -11,6 +11,8 @@
 #include "geometry/layer.h"
 #include "geometry/point.h"
 
+#include "equivalent_nets.h"
+
 namespace bfg {
 
 class RoutingEdge;
@@ -26,10 +28,12 @@ class RoutingVertex {
       const RoutingVertex &lhs, const RoutingVertex &rhs);
 
   RoutingVertex(const geometry::Point &centre)
-      : net_(""),
-        available_(true),
-        in_edge_(nullptr),
+      : in_edge_(nullptr),
         out_edge_(nullptr),
+        totally_available_(true),
+        totally_blocked_(false),
+        in_use_by_net_(std::nullopt),
+        blocked_by_nearby_net_(std::nullopt),
         cost_(0.0),
         horizontal_track_(nullptr),
         vertical_track_(nullptr),
@@ -65,7 +69,92 @@ class RoutingVertex {
     return connected_layers_;
   }
 
+  // If the vertex was available, the given net is marked as reachable from it
+  // (setting connectable_net_) and available_ is set false. If the vertex was
+  // unavailable already and connectable_net_ is set for a different net, the
+  // connectable_net_ is cleared to avoid indicating that any net can be
+  // reached.
+  void AddUsingNet(const std::string &net);
+  void AddBlockingNet(const std::string &net);
+
   RoutingEdge *GetEdgeOnLayer(const geometry::Layer &layer) const;
+
+  bool IsOffGrid() const {
+    return !horizontal_track_ || !vertical_track_;
+  }
+
+  std::vector<RoutingTrack*> Tracks() const;
+  std::vector<RoutingTrack*> TracksOnLayer(const geometry::Layer &layer) const;
+  std::vector<RoutingTrack*> TracksInDirection(
+      const RoutingTrackDirection &direction) const;
+
+  void set_horizontal_track(RoutingTrack *track) { horizontal_track_ = track; }
+  RoutingTrack *horizontal_track() const { return horizontal_track_; }
+  void set_vertical_track(RoutingTrack *track) { vertical_track_ = track; }
+  RoutingTrack *vertical_track() const { return vertical_track_; }
+
+  void AddNeighbour(const geometry::Compass &position, RoutingVertex *vertex);
+  std::set<RoutingVertex*> GetNeighbours(
+      const geometry::Compass &position) const;
+  std::set<RoutingVertex*> GetNeighbours() const;
+
+  bool ChangesEdge() const { return in_edge_ != out_edge_; }
+
+  void SetTotallyAvailable(bool totally_available) {
+    totally_available_ = totally_available;
+    if (totally_available) {
+      totally_blocked_ = false;
+    }
+  }
+  void SetTotallyBlocked(bool totally_blocked) {
+    totally_blocked_ = totally_blocked;
+    if (totally_blocked) {
+      totally_available_ = false;
+    }
+  }
+  const std::optional<std::string> &in_use_by_net() const {
+    return in_use_by_net_;
+  }
+  const std::optional<std::string> &blocked_by_nearby_net() const {
+    return blocked_by_nearby_net_;
+  }
+
+  // "inline" to make the point.
+  inline bool Available() const {
+    return totally_available_ ||
+        (!totally_blocked_ && !in_use_by_net_ && !blocked_by_nearby_net_);
+  }
+
+  inline bool AvailableForNets(const EquivalentNets &nets) const {
+    if (Available()) {
+      return true;
+    }
+    if (in_use_by_net_ && blocked_by_nearby_net_ &&
+        *in_use_by_net_ != *blocked_by_nearby_net_) {
+      return false;
+    }
+    return (in_use_by_net_ && nets.Contains(*in_use_by_net_)) ||
+           (blocked_by_nearby_net_ && nets.Contains(*blocked_by_nearby_net_));
+  }
+
+  void ClearAllForcedEncapDirections() {
+    forced_encap_directions_.clear();
+  }
+  void ClearForcedEncapDirection(const geometry::Layer &layer) {
+    forced_encap_directions_.erase(layer);
+  }
+  void SetForcedEncapDirection(
+      const geometry::Layer &layer, const RoutingTrackDirection &direction) {
+    forced_encap_directions_[layer] = direction;
+  }
+  std::optional<RoutingTrackDirection> GetForcedEncapDirection(
+      const geometry::Layer &layer) {
+    auto it = forced_encap_directions_.find(layer);
+    if (it == forced_encap_directions_.end()) {
+      return std::nullopt;
+    }
+    return it->second;
+  }
 
   // This is the cost of connecting through this vertex (i.e. a via).
   double cost() const { return cost_; }
@@ -100,47 +189,6 @@ class RoutingVertex {
     explicit_net_layer_requires_encap_ = explicit_net_layer_requires_encap;
   }
 
-  bool IsOffGrid() const {
-    return !horizontal_track_ || !vertical_track_;
-  }
-
-  const geometry::Point &centre() const { return centre_; }
-
-  void set_net(const std::string &net) { net_ = net; }
-  const std::string &net() const { return net_; }
-
-  void set_available(bool available) { available_ = available; }
-  bool available() const { return available_; }
-
-  void set_in_edge(RoutingEdge *edge) { in_edge_ = edge; }
-  RoutingEdge *in_edge() const { return in_edge_; }
-  void set_out_edge(RoutingEdge *edge) { out_edge_ = edge; }
-  RoutingEdge *out_edge() const { return out_edge_; }
-
-  void set_connectable_net(const std::optional<std::string> &connectable_net) {
-    connectable_net_ = connectable_net;
-  }
-  const std::optional<std::string> &connectable_net() const {
-    return connectable_net_;
-  }
-
-  std::vector<RoutingTrack*> Tracks() const;
-  std::vector<RoutingTrack*> TracksOnLayer(const geometry::Layer &layer) const;
-  std::vector<RoutingTrack*> TracksInDirection(
-      const RoutingTrackDirection &direction) const;
-
-  void set_horizontal_track(RoutingTrack *track) { horizontal_track_ = track; }
-  RoutingTrack *horizontal_track() const { return horizontal_track_; }
-  void set_vertical_track(RoutingTrack *track) { vertical_track_ = track; }
-  RoutingTrack *vertical_track() const { return vertical_track_; }
-
-  void AddNeighbour(const geometry::Compass &position, RoutingVertex *vertex);
-  std::set<RoutingVertex*> GetNeighbours(
-      const geometry::Compass &position) const;
-  std::set<RoutingVertex*> GetNeighbours() const;
-
-  bool ChangesEdge() const { return in_edge_ != out_edge_; }
-
   const std::optional<size_t> &grid_position_x() const {
     return grid_position_x_;
   }
@@ -155,24 +203,12 @@ class RoutingVertex {
     grid_position_y_ = grid_position_y;
   }
 
-  void ClearAllForcedEncapDirections() {
-    forced_encap_directions_.clear();
-  }
-  void ClearForcedEncapDirection(const geometry::Layer &layer) {
-    forced_encap_directions_.erase(layer);
-  }
-  void SetForcedEncapDirection(
-      const geometry::Layer &layer, const RoutingTrackDirection &direction) {
-    forced_encap_directions_[layer] = direction;
-  }
-  std::optional<RoutingTrackDirection> GetForcedEncapDirection(
-      const geometry::Layer &layer) {
-    auto it = forced_encap_directions_.find(layer);
-    if (it == forced_encap_directions_.end()) {
-      return std::nullopt;
-    }
-    return it->second;
-  }
+  const geometry::Point &centre() const { return centre_; }
+
+  void set_in_edge(RoutingEdge *edge) { in_edge_ = edge; }
+  RoutingEdge *in_edge() const { return in_edge_; }
+  void set_out_edge(RoutingEdge *edge) { out_edge_ = edge; }
+  RoutingEdge *out_edge() const { return out_edge_; }
 
   std::map<geometry::Layer, RoutingTrackDirection> &forced_encap_direction() {
     return forced_encap_directions_;
@@ -190,14 +226,30 @@ class RoutingVertex {
   // solve the problem of connecting to a net when there's a choice of layers to
   // connect on. Usually it creates a hazard.
 
-  // If the vertex is in use by some route, the name of the net should be here,
-  // available_ should be false. in_edge and out_edge should point to the
-  // incoming and outgoing edges used for the route through this vertex. If the
-  // edge spans this vertex, in_edge_ == out_edge_ == that edge.
-  std::string net_;
-  bool available_;
   RoutingEdge *in_edge_;
   RoutingEdge *out_edge_;
+
+  // The availability of the RoutingVertex for use in a route depends on the net
+  // the route is to be used for and whether there is any existing use of or
+  // proximity to the vertex.
+  //
+  //  totally   | totally   | in use    | blocked by |  can connect
+  //  available | blocked   | by net    | nearby net |  $Q?
+  //  --------------------------------------------------------------
+  //     yes    |     x     |     x     |     x      |     yes
+  //     no     |    yes    |     x     |     x      |     no
+  //     no     |    no     |    no     |    no      |     yes
+  //     no     |    no     |    $P     |    no      |  if $P == $Q
+  //     no     |    no     |    no     |    $R      |  if $R == $Q
+  //     no     |    no     |    $P     |    $R      |     no
+  //
+  // From the truth table you can tell that we don't need this many variables to
+  // represent the states, but 1) this is faster and availability checks happen
+  // very often, and 2) this is less confusing, believe it or not.
+  bool totally_available_;
+  bool totally_blocked_;
+  std::optional<std::string> in_use_by_net_;
+  std::optional<std::string> blocked_by_nearby_net_;
 
   // This is the cost of changing layer at this vertex.
   double cost_;

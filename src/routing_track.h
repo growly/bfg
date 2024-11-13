@@ -274,7 +274,7 @@ class RoutingTrack {
       int64_t margin = 0) const;
 
   // Instead of checking blockages on this track, check that the neighbouring
-  // vertices to the given point, if in use (i.e. not available()), could
+  // vertices to the given point, if in use (i.e. not Available()), could
   // accomodate a via simultaneously with a via at the given point. This is
   // an optimisation so that the caller can avoid checking all the edges created
   // on other layers by putting a via on this track for collisions.

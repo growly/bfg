@@ -313,10 +313,9 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
     // correct this if the edge participates in a RoutingPath or if the in- and
     // out-edges must otherwise be adjusted.
     if (EdgeSpansVertex(*edge, *vertex)) {
-      vertex->set_available(false);
       vertex->set_in_edge(edge);
       vertex->set_out_edge(edge);
-      vertex->set_net(net);
+      vertex->AddUsingNet(net);
     }
   }
 }
@@ -533,7 +532,7 @@ void RoutingTrack::ReportAvailableVertices(
     std::vector<RoutingVertex*> *vertices_out) const {
   for (const auto &entry : vertices_by_offset_) {
     RoutingVertex *vertex = entry.second;
-    if (vertex->available()) {
+    if (vertex->Available()) {
       vertices_out->push_back(vertex);
     }
   }
@@ -709,7 +708,7 @@ bool RoutingTrack::IsProbablyBlockedForVia(const geometry::Point &point,
     RoutingVertex *vertex = entry.second;
     int64_t spacing = std::max(
         std::abs(track_position - point_on_track) - margin, 0L);
-    if (!vertex->available() && spacing < pitch_) {
+    if (!vertex->Available() && spacing < pitch_) {
       VLOG(13) << "point " << point << " not suitable on " << *this
                << " because " << vertex->centre() << " is " << spacing
                << " away";
@@ -1171,7 +1170,7 @@ void RoutingTrack::ApplyVertexBlockage(
     std::set<RoutingVertex*> *blocked_vertices) {
   for (const auto &entry : vertices_by_offset_) {
     RoutingVertex *vertex = entry.second;
-    if (!vertex->available())
+    if (!vertex->Available())
       continue;
     // We only disable vertices if they're _completely_ blocked, i.e. with
     // margin = 0.
@@ -1179,11 +1178,12 @@ void RoutingTrack::ApplyVertexBlockage(
                        vertex->centre(),
                        vertex->centre(),
                        0)) {
-      vertex->set_available(false);
       if (net != "") {
         // TODO(aryap): Put these on temporary mutation plane so that they can
         // be undone.
-        vertex->set_connectable_net(net);
+        vertex->AddBlockingNet(net);
+      } else {
+        vertex->SetTotallyBlocked(true);
       }
       if (blocked_vertices)
         blocked_vertices->insert(vertex);

@@ -219,7 +219,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_grid.set_template_cells(&mux_templates);
   // FIXME(aryap): This is a function of track pitch, really, not some number I
   // eyeballed.
-  mux_grid.set_horizontal_overlap(14 * met1_x_pitch);
+  mux_grid.set_horizontal_overlap(16 * met1_x_pitch);
   mux_grid.set_vertical_overlap(-2500);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
   mux_order_.insert(mux_order_.begin(), mux_order.begin(), mux_order.end());
@@ -366,9 +366,9 @@ void LutB::Route(Layout *layout) const {
   AddClockAndPowerStraps(&routing_grid, layout);
 
   RouteScanChain(&routing_grid, layout, &memory_output_net_names);
-  RouteClockBuffers(&routing_grid, layout);
-  RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
-  RouteRemainder(&routing_grid, layout);
+  //RouteClockBuffers(&routing_grid, layout);
+  //RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
+  //RouteRemainder(&routing_grid, layout);
 
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);

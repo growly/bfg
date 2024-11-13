@@ -23,6 +23,26 @@ bool RoutingVertex::Compare(RoutingVertex *lhs, RoutingVertex *rhs) {
   return Compare(*lhs, *rhs);
 }
 
+void RoutingVertex::AddUsingNet(const std::string &net) {
+  totally_available_ = false;
+  if (!in_use_by_net_) {
+    in_use_by_net_ = net;
+  } else {
+    in_use_by_net_ = std::nullopt;
+    totally_blocked_ = true;
+  }
+}
+
+void RoutingVertex::AddBlockingNet(const std::string &net) {
+  totally_available_ = false;
+  if (!blocked_by_nearby_net_) {
+    blocked_by_nearby_net_ = net;
+  } else {
+    blocked_by_nearby_net_ = std::nullopt;
+    totally_blocked_ = true;
+  }
+}
+
 std::optional<geometry::Layer> RoutingVertex::ConnectedLayerOtherThan(
     const geometry::Layer &layer) const {
   std::set<geometry::Layer> layers = connected_layers_;
@@ -134,8 +154,13 @@ std::vector<RoutingTrack*> RoutingVertex::TracksInDirection(
 
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
   os << vertex.centre();
-  if (!vertex.available()) {
-    os << " net: \"" << vertex.net() << "\"";
+  os << (vertex.Available() ? " available" : " not_available");
+  if (vertex.in_use_by_net()) {
+    os << " in_use_by_net:\"" << *vertex.in_use_by_net() << "\"";
+  }
+  if (vertex.blocked_by_nearby_net()) {
+    os << " blocked_by_nearby_net:\"" << *vertex.blocked_by_nearby_net()
+       << "\"";
   }
   return os;
 }

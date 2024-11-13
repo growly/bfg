@@ -250,9 +250,8 @@ std::set<RoutingVertex*> RoutingGridGeometry::ConnectablePerimeter(
       LOG(WARNING) << "There is no vertex at grid " << i << ", " << j;
       return false;
     }
-    if (vertex->available() ||
-        polygon.net() != "" && vertex->connectable_net() &&
-            *vertex->connectable_net() == polygon.net()) {
+    if (vertex->Available() || (
+            polygon.net() != "" && vertex->AvailableForNets(polygon.net()))) {
       // This vertex can be used to connect to the shape, with a jog.
       VLOG(17) << "vertex at " << i << ", " << j << " can be used";
       vertices.insert(vertex);

@@ -219,7 +219,7 @@ void RoutingGrid::ApplyBlockage(
     std::set<RoutingVertex*> vertices;
     grid_geometry->EnvelopingVertices(blockage.shape(), &vertices);
     for (RoutingVertex *vertex : vertices) {
-      if (!vertex->available())
+      if (!vertex->Available())
         continue;
 
       std::set<RoutingTrackDirection> access_directions = {
@@ -233,7 +233,7 @@ void RoutingGrid::ApplyBlockage(
         // We use the RoutingGridBlockage to do a hit test; set
         // exceptional_nets = nullopt so that no exception is made.
         if (blockage.IntersectsPoint(vertex->centre(), 0)) {
-          vertex->set_net(blockage.shape().net());
+          vertex->AddUsingNet(blockage.shape().net());
           VLOG(16) << "Blockage: " << blockage.shape()
                    << " intersects " << vertex->centre()
                    << " with margin " << 0
@@ -241,7 +241,7 @@ void RoutingGrid::ApplyBlockage(
         } else if (blockage.Blocks(*vertex, std::nullopt, direction)) {
           blocked_at_all = true;
           if (net != "") {
-            vertex->set_connectable_net(net);
+            vertex->AddBlockingNet(net);
           }
           VLOG(16) << "Blockage: " << blockage.shape()
                    << " blocks " << vertex->centre()
@@ -252,7 +252,7 @@ void RoutingGrid::ApplyBlockage(
       }
 
       if (!any_access) {
-        vertex->set_available(false);
+        vertex->SetTotallyBlocked(false);
         if (blocked_vertices) {
           blocked_vertices->insert(vertex);
         }
@@ -323,8 +323,7 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       if (!new_vertex) {
         continue;
       }
-      new_vertex->set_available(false);
-      new_vertex->set_net(blockage.shape().net());
+      new_vertex->AddBlockingNet(blockage.shape().net());
       new_vertex->set_explicit_net_layer(blockage.shape().layer());
       // TODO(aryap): This actually requires a test on the blockage shape
       // accommodating the encap rules as-is, which we could do, but which would
@@ -550,8 +549,7 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     int64_t distance = static_cast<int64_t>(
         std::ceil(footprint.ClosestDistanceTo(*other_via_encap)));
     if (distance == 0 && for_nets &&
-        other->connectable_net() &&
-        for_nets->Contains(*other->connectable_net())) {
+        other->AvailableForNets(*for_nets)) {
       // The shapes touch and they're on the same net, so no problem.
       // NOTE(aryap): This is the same as checking
       // via_encap->Overlaps(*other_via_encap).
@@ -993,10 +991,9 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     for (RoutingVertex *vertex : entry.second) {
       // Do not consider unavailable vertices! Unless they have connectable
       // nets!
-      if (!vertex->available() && !(
-          vertex->connectable_net() &&
-          for_nets.Contains(*vertex->connectable_net())))
+      if (!vertex->AvailableForNets(for_nets)) {
         continue;
+      }
       uint64_t vertex_cost = static_cast<uint64_t>(
           vertex->L1DistanceTo(target_point));
       if (needs_via) {
@@ -1962,7 +1959,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   shortest_path->end_access_layers().insert(
       end_layers.begin(), end_layers.end());
 
-  if (shortest_path->End()->net() != "" &&
+  if (shortest_path->End()->in_use_by_net() &&
       shortest_path->End()->explicit_net_layer()) {
     shortest_path->end_access_layers().insert(
         *shortest_path->End()->explicit_net_layer());
@@ -2058,15 +2055,7 @@ void RoutingGrid::InstallVertexInPath(
     for (const auto &position : kDisabledNeighbours) {
       std::set<RoutingVertex*> neighbours = vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
-        if (neighbour->available() ) {
-          neighbour->set_available(false);
-          neighbour->set_connectable_net(vertex->net());
-        } else if (neighbour->connectable_net() &&
-                   *neighbour->connectable_net() != vertex->net()) {
-          // If the neighbour is flagged as usable for a different net, disable
-          // that.
-          neighbour->set_connectable_net(std::nullopt);
-        }
+        neighbour->AddBlockingNet(net);
       }
     };
     return;
@@ -2120,8 +2109,7 @@ void RoutingGrid::InstallVertexInPath(
 
   std::set<RoutingTrack*> blocked_tracks;
   for (RoutingVertex *enveloping_vertex : inner_vertices) {
-    enveloping_vertex->set_available(false);
-    enveloping_vertex->set_connectable_net(vertex->net());
+    enveloping_vertex->AddBlockingNet(net);
     // We also have to add blockages to the tracks on which these vertices
     // appear, since by being off-grid we're _presumably_ too close to
     // accomodate both a via and an edge next to each other.
@@ -2192,8 +2180,7 @@ void RoutingGrid::InstallVertexInPath(
         //          << " is too close (" << min_distance << " < "
         //          << min_separation << ") to "
         //          << *via_encap << " at " << vertex->centre();
-        enveloping_vertex->set_available(false);
-        enveloping_vertex->set_connectable_net(vertex->net());
+        enveloping_vertex->AddBlockingNet(net);
       }
     }
   }
@@ -2204,8 +2191,9 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
     return absl::InvalidArgumentError("Cannot install an empty path.");
   }
 
-  LOG(INFO) << "Installing path " << *path << " with net "
-            << path->nets().primary();
+  const std::string &net = path->nets().primary();
+
+  LOG(INFO) << "Installing path " << *path << " with net " << net;
 
   // Legalise the path. TODO(aryap): This might modify the edges the path
   // contains, which smells funny.
@@ -2214,9 +2202,9 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {
-      edge->track()->MarkEdgeAsUsed(edge, path->nets().primary());
+      edge->track()->MarkEdgeAsUsed(edge, net);
     } else {
-      edge->SetPermanentNet(path->nets().primary());
+      edge->SetPermanentNet(net);
       // Edges which aren't on a track (off grid edges) could be blockages to
       // other tracks!
       // TODO(aryap): We use the wire footprint because the full edge footprint
@@ -2245,20 +2233,19 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 
   size_t i = 0;
   RoutingEdge *edge = nullptr;
-  path->vertices()[0]->set_available(false);
+  path->vertices()[0]->AddUsingNet(net);
   while (i < path->edges().size()) {
     RoutingVertex *last_vertex = path->vertices()[i];
     RoutingVertex *next_vertex = path->vertices()[i + 1];
     RoutingEdge *edge = path->edges()[i];
     last_vertex->set_out_edge(edge);
     next_vertex->set_in_edge(edge);
-    next_vertex->set_available(false);
-    next_vertex->set_net(path->nets().primary());
+    next_vertex->AddUsingNet(net);
     ++i;
   }
 
   for (RoutingVertex *vertex : path->vertices()) {
-    InstallVertexInPath(vertex, path->nets().primary());
+    InstallVertexInPath(vertex, net);
   }
   
   paths_.push_back(path);
@@ -2271,7 +2258,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       begin,
       [=](RoutingVertex *v) { return v == end; },   // The target.
       nullptr,
-      [](RoutingVertex *v) { return v->available(); },
+      [](RoutingVertex *v) { return v->Available(); },
       [](RoutingEdge *e) { return e->Available(); },
       true);
 }
@@ -2283,6 +2270,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
   auto path = ShortestPath(
       begin,
       [&](RoutingVertex *v) {
+        if (!v->in_use_by_net()) {
+          return false;
+        }
         // Check that putting a via at this position doesn't conflict with vias
         // for other nets (since the encapsulating metal layers would
         // conflict):
@@ -2291,21 +2281,19 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
         // NOTE: It's not the *same* as a vertex that will become a via, but
         // that isn't decided til RoutingPath has to export geometry :/
         for (RoutingVertex *neighbour : neighbours) {
-          if (!neighbour->available() &&
-              neighbour->ChangesEdge() &&
-              !to_nets.Contains(neighbour->net())) {
+          if (!neighbour->AvailableForNets(to_nets) &&
+              neighbour->ChangesEdge()) {
             VLOG(16) << "(ShortestPath) Vertex " << v->centre()
                      << " not viable because a via wouldn't fit here";
             return false;
           }
         }
-        return to_nets.Contains(v->net());
+        return to_nets.Contains(*v->in_use_by_net());
       },
       discovered_target,
       // Usable vertices are:
       [&](RoutingVertex *v) {
-        return v->available() || (
-            v->connectable_net() && to_nets.Contains(*v->connectable_net()));
+        return v->AvailableForNets(to_nets);
       },
       // Usable edges are:
       [&](RoutingEdge *e) {
@@ -2322,8 +2310,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
         }
         return false;
       },
-      false);   // Targets don't have to be 'usable', since we expect them to
-                // already be used by the target net.
+      true);   // Targets must be 'usable', which we've defined as available
+               // _or_ matching the target net.
   // TODO(aryap): InstallPath obviates this.
   //if (path.ok()) {
   //  (*path)->set_encap_end_port(true);
@@ -2425,19 +2413,12 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     // report:
     absl::Cleanup report = [&]() {
       std::stringstream ss;
-      ss << current->centre();
+      ss << *current;
       if (status.is_target) {
         ss << " target";
       }
       if (status.is_unusable_vertex) {
         ss << " unusable_vertex";
-      }
-      ss << (current->available() ? " available" : " not_available");
-      if (!current->net().empty()) {
-        ss << " net:" << current->net();
-      }
-      if (current->connectable_net()) {
-        ss << " connectable_net:" << *current->connectable_net();
       }
       VLOG(15) << ss.str();
     };
@@ -2668,7 +2649,7 @@ void RoutingGrid::RemoveUnavailableVertices() {
     std::vector<RoutingVertex*> &available = entry.second;
     for (auto it = available.begin(); it != available.end();) {
       RoutingVertex *vertex = *it;
-      if (!vertex->available()) {
+      if (!vertex->Available()) {
         it = available.erase(it);
       } else {
         ++it;
@@ -2704,7 +2685,7 @@ void RoutingGrid::ExportVerticesAsSquares(
     const std::string &layer, bool available_only, Layout *layout) const {
   layout->SetActiveLayerByName(layer);
   for (RoutingVertex *vertex : vertices_) {
-    if (!available_only || vertex->available()) {
+    if (!available_only || vertex->Available()) {
       layout->AddSquare(vertex->centre(), 10);
     }
   }
@@ -3017,7 +2998,7 @@ void RoutingGrid::SetUpTemporaryBlockages(
 void RoutingGrid::TearDownTemporaryBlockages(
     const TemporaryBlockageInfo &blockage_info) {
   for (RoutingVertex *const vertex : blockage_info.blocked_vertices) {
-    vertex->set_available(true);
+    vertex->SetTotallyBlocked(false);
   }
   for (RoutingEdge *const edge : blockage_info.blocked_edges) {
     // This should clear any used nets and unblock the edge.
