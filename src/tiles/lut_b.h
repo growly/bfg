@@ -96,23 +96,21 @@ class LutB : public Tile {
     std::string mux_port_name;
   };
 
-  void Route(Layout *layout) const;
-
   void AddClockAndPowerStraps(RoutingGrid *routing_grid, Layout *layout) const;
 
   void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
-  void RouteClockBuffers(RoutingGrid *routing_grid, Layout *layout) const;
-  void RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const;
+
+  void Route(Layout *layout);
+  void RouteClockBuffers(RoutingGrid *routing_grid, Layout *layout);
+  void RouteRemainder(RoutingGrid *routing_grid, Layout *layout);
   void RouteMuxInputs(
       RoutingGrid *routing_grid,
       Layout *layout,
-      std::map<geometry::Instance*, std::string> *memory_output_net_names)
-      const;
+      std::map<geometry::Instance*, std::string> *memory_output_net_names);
   void RouteScanChain(
       RoutingGrid *routing_grid,
       Layout *layout,
-      std::map<geometry::Instance*, std::string> *memory_output_net_names)
-      const;
+      std::map<geometry::Instance*, std::string> *memory_output_net_names);
 
   absl::Status AddMultiPointRoute(
       const PortKeyCollection &collection,
@@ -130,6 +128,9 @@ class LutB : public Tile {
       int64_t spine_width,
       Layout *layout) const;
 
+  // TODO(aryap): Candidate for inclusion in base class.
+  void AccumulateAnyErrors(const absl::Status &status);
+
   size_t lut_size_;
 
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);
@@ -142,6 +143,8 @@ class LutB : public Tile {
   std::vector<geometry::Instance*> active_mux2s_;
   std::vector<geometry::Instance*> clk_buf_order_;
   std::vector<geometry::Instance*> memories_;
+
+  std::vector<absl::Status> errors_;
 };
 
 }  // namespace atoms

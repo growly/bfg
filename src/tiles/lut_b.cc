@@ -334,7 +334,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   return cell;
 }
 
-void LutB::Route(Layout *layout) const {
+void LutB::Route(Layout *layout) {
   RoutingGrid routing_grid(design_db_->physical_db());
 
   ConfigureRoutingGrid(&routing_grid, layout);
@@ -365,10 +365,16 @@ void LutB::Route(Layout *layout) const {
 
   AddClockAndPowerStraps(&routing_grid, layout);
 
+  errors_.clear();
+
   RouteScanChain(&routing_grid, layout, &memory_output_net_names);
   RouteClockBuffers(&routing_grid, layout);
   RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
   RouteRemainder(&routing_grid, layout);
+
+  for (const absl::Status &error : errors_) {
+    LOG(ERROR) << "Routing error: " << error;
+  }
 
   // Debug only.
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
@@ -450,7 +456,7 @@ void LutB::ConfigureRoutingGrid(
 }
 
 void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
-                             Layout *layout) const {
+                             Layout *layout) {
   // Connect clock buffers to straps.
   // Connect "X" from clock buf to CLK;
   // connect "P" from clock buf to CLKI.
@@ -496,14 +502,14 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
         .port_name = "A"
     });
   }
-  AddMultiPointRoute(clk_inputs, routing_grid, layout).IgnoreError();
+  auto result = AddMultiPointRoute(clk_inputs, routing_grid, layout);
+  AccumulateAnyErrors(result);
 }
 
 void LutB::RouteScanChain(
     RoutingGrid *routing_grid,
     Layout *layout,
-    std::map<geometry::Instance*, std::string> *memory_output_net_names)
-    const {
+    std::map<geometry::Instance*, std::string> *memory_output_net_names) {
   for (size_t i = 0; i < memories_.size() - 1; ++i) {
     geometry::Instance *source = memories_[i];
     geometry::Instance *sink = memories_[i + 1];
@@ -526,16 +532,16 @@ void LutB::RouteScanChain(
     layout->CopyConnectableShapesNotOnNets(
         net_names,
         &non_net_connectables);
-    routing_grid->AddRouteBetween(*start, *end, non_net_connectables, net_names)
-                .IgnoreError();
+    auto result = routing_grid->AddRouteBetween(
+        *start, *end, non_net_connectables, net_names);
+    AccumulateAnyErrors(result);
   }
 }
 
 void LutB::RouteMuxInputs(
     RoutingGrid *routing_grid,
     Layout *layout,
-    std::map<geometry::Instance*, std::string> *memory_output_net_names)
-    const {
+    std::map<geometry::Instance*, std::string> *memory_output_net_names) {
   // Connect flip-flops to mux.
 
   // TODO(aryap): We know that the mux connections roughly map to the nearest
@@ -601,6 +607,7 @@ void LutB::RouteMuxInputs(
         << " did not appear in list of all ports for same name";
 
     // TODO(aryap): Why can't AddMultiPointRoute just replace this? Speed?
+    bool path_found = false;
     while (mux_port) {
       EquivalentNets net_names = EquivalentNets(
           {memory_output->net(), mux_port->net()});
@@ -609,14 +616,14 @@ void LutB::RouteMuxInputs(
       LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                 << " avoiding " << non_net_connectables.Describe();
 
-      bool path_found = false;
+      absl::Status route_result;
       auto named_output_it = memory_output_net_names->find(memory);
       if (named_output_it == memory_output_net_names->end()) {
         (*memory_output_net_names)[memory] = net_names.primary();
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to " << memory->name();
-        path_found = routing_grid->AddRouteBetween(
-            *mux_port, *memory_output, non_net_connectables, net_names).ok();
+        route_result = routing_grid->AddRouteBetween(
+            *mux_port, *memory_output, non_net_connectables, net_names);
       } else {
         // FIXME(aryap): I am stupid. The set of names given to the router to
         // determine which shapes are connectable is different to the target
@@ -627,10 +634,11 @@ void LutB::RouteMuxInputs(
         net_names.set_primary(target_net);
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to net " << target_net;
-        path_found = routing_grid->AddRouteToNet(
-            *mux_port, target_net, net_names, non_net_connectables).ok();
+        route_result = routing_grid->AddRouteToNet(
+            *mux_port, target_net, net_names, non_net_connectables);
       }
-      if (path_found) {
+      if (route_result.ok()) {
+        path_found = true;
         break;
       }
       mux_ports_on_net.erase(
@@ -640,10 +648,15 @@ void LutB::RouteMuxInputs(
           mux_ports_on_net.end());
       mux_port = mux_ports_on_net.empty() ? nullptr : *mux_ports_on_net.begin();
     }
+    if (!path_found) {
+      AccumulateAnyErrors(absl::NotFoundError(absl::StrCat(
+          "Could not route ", memory->name(), "/Q->",
+          mux->name(), "/", input_name)));
+    }
   }
 }
 
-void LutB::RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const {
+void LutB::RouteRemainder(RoutingGrid *routing_grid, Layout *layout) {
   // Connect the input buffers on the selector lines.
   // TODO(aryap): These feel like first-class members of the RoutingGrid API
   // soon. "RouteGroup"?
@@ -677,7 +690,8 @@ void LutB::RouteRemainder(RoutingGrid *routing_grid, Layout *layout) const {
   };
 
   for (const PortKeyCollection &collection : auto_connections) {
-    AddMultiPointRoute(collection, routing_grid, layout).IgnoreError();
+    absl::Status result = AddMultiPointRoute(collection, routing_grid, layout);
+    AccumulateAnyErrors(result);
   }
 }
 
@@ -895,6 +909,13 @@ void LutB::AddClockAndPowerStraps(
       routing_grid->AddBlockages(new_shapes);
     }
   }
+}
+
+void LutB::AccumulateAnyErrors(const absl::Status &status) {
+  if (status.ok()) {
+    return;
+  }
+  errors_.push_back(status);
 }
 
 }  // namespace atoms
