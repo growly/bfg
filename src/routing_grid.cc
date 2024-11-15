@@ -324,7 +324,7 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       if (!new_vertex) {
         continue;
       }
-      new_vertex->AddBlockingNet(blockage.shape().net(), is_temporary);
+      new_vertex->AddUsingNet(blockage.shape().net(), is_temporary);
       new_vertex->set_explicit_net_layer(blockage.shape().layer());
       // TODO(aryap): This actually requires a test on the blockage shape
       // accommodating the encap rules as-is, which we could do, but which would
