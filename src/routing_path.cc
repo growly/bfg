@@ -414,10 +414,13 @@ void RoutingPath::MergeConsecutiveEdgesOnSameTrack() {
     RoutingVertex *next = vertices_[i + 1];
 
     RoutingEdge *replacement = edge->track()->GetEdgeBetween(previous, next);
-    LOG_IF(WARNING, !replacement)
-        << "Consecutive edges cannot be replaced by single spanning edge "
-        << "since there is no edge between " << previous->centre()
-        << " and " << next->centre() << " on " << *edge->track();
+    if (!replacement) {
+      LOG(WARNING)
+          << "These consecutive edges cannot be replaced by single spanning "
+          << "edge since there is no edge between " << previous->centre()
+          << " and " << next->centre() << " on " << *edge->track();
+      continue;
+    }
 
     LOG(INFO) << "Merging consecutive edges on same track: "
               << last_edge->Describe() << ", "

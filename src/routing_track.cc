@@ -315,7 +315,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
     if (EdgeSpansVertex(*edge, *vertex)) {
       vertex->set_in_edge(edge);
       vertex->set_out_edge(edge);
-      vertex->AddUsingNet(net, true);   // Permanent.
+      vertex->AddUsingNet(net, false);   // Permanent.
     }
   }
 }

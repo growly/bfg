@@ -2061,7 +2061,7 @@ void RoutingGrid::InstallVertexInPath(
     for (const auto &position : kDisabledNeighbours) {
       std::set<RoutingVertex*> neighbours = vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
-        neighbour->AddBlockingNet(net, true);  // Permanent.
+        neighbour->AddBlockingNet(net, false);  // Permanent.
       }
     };
     return;
@@ -2115,7 +2115,7 @@ void RoutingGrid::InstallVertexInPath(
 
   std::set<RoutingTrack*> blocked_tracks;
   for (RoutingVertex *enveloping_vertex : inner_vertices) {
-    enveloping_vertex->AddBlockingNet(net, true);   // Permanent.
+    enveloping_vertex->AddBlockingNet(net, false);   // Permanent.
     // We also have to add blockages to the tracks on which these vertices
     // appear, since by being off-grid we're _presumably_ too close to
     // accomodate both a via and an edge next to each other.
@@ -2186,7 +2186,7 @@ void RoutingGrid::InstallVertexInPath(
         //          << " is too close (" << min_distance << " < "
         //          << min_separation << ") to "
         //          << *via_encap << " at " << vertex->centre();
-        enveloping_vertex->AddBlockingNet(net, true);   // Permanent.
+        enveloping_vertex->AddBlockingNet(net, false);   // Permanent.
       }
     }
   }
@@ -2239,14 +2239,14 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 
   size_t i = 0;
   RoutingEdge *edge = nullptr;
-  path->vertices()[0]->AddUsingNet(net, true);  // Permanent.
+  path->vertices()[0]->AddUsingNet(net, false);  // Permanent.
   while (i < path->edges().size()) {
     RoutingVertex *last_vertex = path->vertices()[i];
     RoutingVertex *next_vertex = path->vertices()[i + 1];
     RoutingEdge *edge = path->edges()[i];
     last_vertex->set_out_edge(edge);
     next_vertex->set_in_edge(edge);
-    next_vertex->AddUsingNet(net, true);  // Permanent.
+    next_vertex->AddUsingNet(net, false);  // Permanent.
     ++i;
   }
 

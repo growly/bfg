@@ -540,13 +540,13 @@ TEST_F(RoutingGridGeometryTestFixture,
       RoutingVertex *vertex = new RoutingVertex({i, j});
       grid_geometry_.AssignVertexAt(i, j, vertex);
       if (j > 0 && i == 3) {
-        vertex->SetForcedBlocked(true, true);   // Permanent.
+        vertex->SetForcedBlocked(true, false);   // Permanent.
       }
       if (j == 1 && i == 5) {
-        vertex->SetForcedBlocked(true, true);
+        vertex->SetForcedBlocked(true, false);
       }
       if (j == 2 && i == 4) {
-        vertex->SetForcedBlocked(true, true);
+        vertex->SetForcedBlocked(true, false);
       }
       all_vertices.insert(vertex);
     }

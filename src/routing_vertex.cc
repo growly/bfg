@@ -7,6 +7,8 @@
 #include "routing_edge.h"
 #include "routing_track.h"
 
+#include <absl/cleanup/cleanup.h>
+
 namespace bfg {
 
 bool RoutingVertex::Compare(
@@ -30,8 +32,10 @@ void RoutingVertex::UpdateCachedStatus() {
                        blocked_by_nearby_nets_.empty();
 }
 
-// This mutates blocking state and should call UpdateCachedStatus().
 void RoutingVertex::AddUsingNet(const std::string &net, bool temporary) {
+  // This mutates blocking state and should call UpdateCachedStatus() before it
+  // exits.
+  absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
   auto it = in_use_by_nets_.find(net);
   if (it == in_use_by_nets_.end()) {
     in_use_by_nets_[net] = temporary;
@@ -42,11 +46,12 @@ void RoutingVertex::AddUsingNet(const std::string &net, bool temporary) {
   if (!temporary) {
     it->second = temporary;
   }
-  UpdateCachedStatus();
 }
 
-// This mutates blocking state and should call UpdateCachedStatus().
 void RoutingVertex::AddBlockingNet(const std::string &net, bool temporary) {
+  // This mutates blocking state and should call UpdateCachedStatus() before it
+  // exits.
+  absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
   auto it = blocked_by_nearby_nets_.find(net);
   if (it == blocked_by_nearby_nets_.end()) {
     blocked_by_nearby_nets_[net] = temporary;
@@ -57,10 +62,10 @@ void RoutingVertex::AddBlockingNet(const std::string &net, bool temporary) {
   if (!temporary) {
     it->second = temporary;
   }
-  UpdateCachedStatus();
 }
 
-// This mutates blocking state and should call UpdateCachedStatus().
+// This mutates blocking state and should call UpdateCachedStatus() before it
+// exits.
 void RoutingVertex::SetForcedBlocked(bool blocked, bool temporary) {
   bool &forced_blocked =
       temporary ? temporarily_forced_blocked_ : forced_blocked_;
@@ -68,7 +73,8 @@ void RoutingVertex::SetForcedBlocked(bool blocked, bool temporary) {
   UpdateCachedStatus();
 }
 
-// This mutates blocking state and should call UpdateCachedStatus().
+// This mutates blocking state and should call UpdateCachedStatus() before it
+// exits.
 void RoutingVertex::ResetTemporaryStatus() {
   temporarily_forced_blocked_ = false;
 
