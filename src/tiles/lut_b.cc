@@ -219,7 +219,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_grid.set_template_cells(&mux_templates);
   // FIXME(aryap): This is a function of track pitch, really, not some number I
   // eyeballed.
-  mux_grid.set_horizontal_overlap(16 * met1_x_pitch);
+  mux_grid.set_horizontal_overlap(18 * met1_x_pitch);
   mux_grid.set_vertical_overlap(-2500);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
   mux_order_.insert(mux_order_.begin(), mux_order.begin(), mux_order.end());
