@@ -233,7 +233,7 @@ void RoutingGrid::ApplyBlockage(
         // We use the RoutingGridBlockage to do a hit test; set
         // exceptional_nets = nullopt so that no exception is made.
         if (blockage.IntersectsPoint(vertex->centre(), 0)) {
-          vertex->AddUsingNet(blockage.shape().net());
+          vertex->AddUsingNet(blockage.shape().net(), is_temporary);
           VLOG(16) << "Blockage: " << blockage.shape()
                    << " intersects " << vertex->centre()
                    << " with margin " << 0
@@ -241,7 +241,7 @@ void RoutingGrid::ApplyBlockage(
         } else if (blockage.Blocks(*vertex, std::nullopt, direction)) {
           blocked_at_all = true;
           if (net != "") {
-            vertex->AddBlockingNet(net);
+            vertex->AddBlockingNet(net, is_temporary);
           }
           VLOG(16) << "Blockage: " << blockage.shape()
                    << " blocks " << vertex->centre()
@@ -252,7 +252,7 @@ void RoutingGrid::ApplyBlockage(
       }
 
       if (!any_access) {
-        vertex->SetTotallyBlocked(false);
+        vertex->SetForcedBlocked(true, is_temporary);
         if (blocked_vertices) {
           blocked_vertices->insert(vertex);
         }
@@ -263,7 +263,7 @@ void RoutingGrid::ApplyBlockage(
     // shapes on nets that are temporary blockages? Practically this includes
     // via footprints for ports!
     if (!is_temporary && !blockage.shape().net().empty()) {
-      AddOffGridVerticesForBlockage(*grid_geometry, blockage);
+      AddOffGridVerticesForBlockage(*grid_geometry, blockage, false);
     }
   }
 }
@@ -303,7 +303,8 @@ void RoutingGrid::ForgetBlockage(
 template<typename T>
 void RoutingGrid::AddOffGridVerticesForBlockage(
     const RoutingGridGeometry &grid_geometry,
-    const RoutingGridBlockage<T> &blockage) {
+    const RoutingGridBlockage<T> &blockage,
+    bool is_temporary) {
   auto tracks_and_positions =
       grid_geometry.CandidateVertexPositionsOnCrossedTracks(
           blockage.shape());
@@ -323,7 +324,7 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       if (!new_vertex) {
         continue;
       }
-      new_vertex->AddBlockingNet(blockage.shape().net());
+      new_vertex->AddBlockingNet(blockage.shape().net(), is_temporary);
       new_vertex->set_explicit_net_layer(blockage.shape().layer());
       // TODO(aryap): This actually requires a test on the blockage shape
       // accommodating the encap rules as-is, which we could do, but which would
@@ -1809,6 +1810,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
   //  return true;
   //};
   TemporaryBlockageInfo temporary_blockages;
+
+  // FIXME: short term: copy how RoutingEdge manages temporary OR permanent
+  // blockages
+  // FIXME: medium+ term: implement secondary structure to track temporary
+  // blockages (this will enable multithreading too)
   SetUpTemporaryBlockages(avoid, &temporary_blockages);
 
   absl::Cleanup tear_down_temporary_blockages = [&]() {
@@ -1959,7 +1965,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   shortest_path->end_access_layers().insert(
       end_layers.begin(), end_layers.end());
 
-  if (shortest_path->End()->in_use_by_net() &&
+  if (shortest_path->End()->InUseBySingleNet() &&
       shortest_path->End()->explicit_net_layer()) {
     shortest_path->end_access_layers().insert(
         *shortest_path->End()->explicit_net_layer());
@@ -2055,7 +2061,7 @@ void RoutingGrid::InstallVertexInPath(
     for (const auto &position : kDisabledNeighbours) {
       std::set<RoutingVertex*> neighbours = vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
-        neighbour->AddBlockingNet(net);
+        neighbour->AddBlockingNet(net, true);  // Permanent.
       }
     };
     return;
@@ -2109,7 +2115,7 @@ void RoutingGrid::InstallVertexInPath(
 
   std::set<RoutingTrack*> blocked_tracks;
   for (RoutingVertex *enveloping_vertex : inner_vertices) {
-    enveloping_vertex->AddBlockingNet(net);
+    enveloping_vertex->AddBlockingNet(net, true);   // Permanent.
     // We also have to add blockages to the tracks on which these vertices
     // appear, since by being off-grid we're _presumably_ too close to
     // accomodate both a via and an edge next to each other.
@@ -2180,7 +2186,7 @@ void RoutingGrid::InstallVertexInPath(
         //          << " is too close (" << min_distance << " < "
         //          << min_separation << ") to "
         //          << *via_encap << " at " << vertex->centre();
-        enveloping_vertex->AddBlockingNet(net);
+        enveloping_vertex->AddBlockingNet(net, true);   // Permanent.
       }
     }
   }
@@ -2233,14 +2239,14 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 
   size_t i = 0;
   RoutingEdge *edge = nullptr;
-  path->vertices()[0]->AddUsingNet(net);
+  path->vertices()[0]->AddUsingNet(net, true);  // Permanent.
   while (i < path->edges().size()) {
     RoutingVertex *last_vertex = path->vertices()[i];
     RoutingVertex *next_vertex = path->vertices()[i + 1];
     RoutingEdge *edge = path->edges()[i];
     last_vertex->set_out_edge(edge);
     next_vertex->set_in_edge(edge);
-    next_vertex->AddUsingNet(net);
+    next_vertex->AddUsingNet(net, true);  // Permanent.
     ++i;
   }
 
@@ -2270,7 +2276,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
   auto path = ShortestPath(
       begin,
       [&](RoutingVertex *v) {
-        if (!v->in_use_by_net()) {
+        if (!v->InUseBySingleNet()) {
           return false;
         }
         // Check that putting a via at this position doesn't conflict with vias
@@ -2288,7 +2294,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
             return false;
           }
         }
-        return to_nets.Contains(*v->in_use_by_net());
+        return to_nets.Contains(*v->InUseBySingleNet());
       },
       discovered_target,
       // Usable vertices are:
@@ -2998,7 +3004,7 @@ void RoutingGrid::SetUpTemporaryBlockages(
 void RoutingGrid::TearDownTemporaryBlockages(
     const TemporaryBlockageInfo &blockage_info) {
   for (RoutingVertex *const vertex : blockage_info.blocked_vertices) {
-    vertex->SetTotallyBlocked(false);
+    vertex->ResetTemporaryStatus();
   }
   for (RoutingEdge *const edge : blockage_info.blocked_edges) {
     // This should clear any used nets and unblock the edge.

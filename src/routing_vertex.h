@@ -30,17 +30,17 @@ class RoutingVertex {
   RoutingVertex(const geometry::Point &centre)
       : in_edge_(nullptr),
         out_edge_(nullptr),
-        totally_available_(true),
-        totally_blocked_(false),
-        in_use_by_net_(std::nullopt),
-        blocked_by_nearby_net_(std::nullopt),
+        forced_blocked_(false),
+        temporarily_forced_blocked_(false),
         cost_(0.0),
         horizontal_track_(nullptr),
         vertical_track_(nullptr),
         contextual_index_(-1),
         grid_position_x_(std::nullopt),
         grid_position_y_(std::nullopt),
-        centre_(centre) {}
+        centre_(centre) {
+    UpdateCachedStatus();
+  }
 
   void AddEdge(RoutingEdge *edge) { edges_.insert(edge); }
   bool RemoveEdge(RoutingEdge *edge);
@@ -74,8 +74,17 @@ class RoutingVertex {
   // unavailable already and connectable_net_ is set for a different net, the
   // connectable_net_ is cleared to avoid indicating that any net can be
   // reached.
-  void AddUsingNet(const std::string &net);
-  void AddBlockingNet(const std::string &net);
+  void AddUsingNet(const std::string &net, bool temporary);
+  void AddBlockingNet(const std::string &net, bool temporary);
+  void SetForcedBlocked(bool totally_blocked, bool temporary);
+
+  void ResetTemporaryStatus();
+
+  std::optional<std::string> InUseBySingleNet() const;
+  std::optional<std::string> BlockedBySingleNearbyNet() const;
+
+  bool Available() const { return totally_available_; }
+  bool AvailableForNets(const EquivalentNets &nets) const;
 
   RoutingEdge *GetEdgeOnLayer(const geometry::Layer &layer) const;
 
@@ -99,43 +108,6 @@ class RoutingVertex {
   std::set<RoutingVertex*> GetNeighbours() const;
 
   bool ChangesEdge() const { return in_edge_ != out_edge_; }
-
-  void SetTotallyAvailable(bool totally_available) {
-    totally_available_ = totally_available;
-    if (totally_available) {
-      totally_blocked_ = false;
-    }
-  }
-  void SetTotallyBlocked(bool totally_blocked) {
-    totally_blocked_ = totally_blocked;
-    if (totally_blocked) {
-      totally_available_ = false;
-    }
-  }
-  const std::optional<std::string> &in_use_by_net() const {
-    return in_use_by_net_;
-  }
-  const std::optional<std::string> &blocked_by_nearby_net() const {
-    return blocked_by_nearby_net_;
-  }
-
-  // "inline" to make the point.
-  inline bool Available() const {
-    return totally_available_ ||
-        (!totally_blocked_ && !in_use_by_net_ && !blocked_by_nearby_net_);
-  }
-
-  inline bool AvailableForNets(const EquivalentNets &nets) const {
-    if (Available()) {
-      return true;
-    }
-    if (in_use_by_net_ && blocked_by_nearby_net_ &&
-        *in_use_by_net_ != *blocked_by_nearby_net_) {
-      return false;
-    }
-    return (in_use_by_net_ && nets.Contains(*in_use_by_net_)) ||
-           (blocked_by_nearby_net_ && nets.Contains(*blocked_by_nearby_net_));
-  }
 
   void ClearAllForcedEncapDirections() {
     forced_encap_directions_.clear();
@@ -220,6 +192,10 @@ class RoutingVertex {
     RoutingVertex *vertex;
   };
 
+  // Updates totally_blocked_ and totally_available_ based on the using and
+  // blocking nets, permanent and temporary.
+  void UpdateCachedStatus();
+
   // FIXME(aryap): I think we need to store the layers on which the nets are
   // connectible here. It might be possible that a vertex can be used to connect
   // to different nets on different layers. Right now I'm not sure how else to
@@ -233,23 +209,26 @@ class RoutingVertex {
   // the route is to be used for and whether there is any existing use of or
   // proximity to the vertex.
   //
-  //  totally   | totally   | in use    | blocked by |  can connect
-  //  available | blocked   | by net    | nearby net |  $Q?
-  //  --------------------------------------------------------------
-  //     yes    |     x     |     x     |     x      |     yes
-  //     no     |    yes    |     x     |     x      |     no
-  //     no     |    no     |    no     |    no      |     yes
-  //     no     |    no     |    $P     |    no      |  if $P == $Q
-  //     no     |    no     |    no     |    $R      |  if $R == $Q
-  //     no     |    no     |    $P     |    $R      |     no
+  // If there are no using nets and no blocking nearby nets, and the vertex is
+  // not forced blocked, then it is available for use by any net.
   //
-  // From the truth table you can tell that we don't need this many variables to
-  // represent the states, but 1) this is faster and availability checks happen
-  // very often, and 2) this is less confusing, believe it or not.
+  // If there are conflicting using and blocking nearby nets, or if there are
+  // multiple of each, or if it permanently or temporarily forced blocked, then
+  // it is not available for any net.
+  //
+  // If there is only a single using or blocking nearby net, or one of each and
+  // they match, then the vertex is available for that single net.
+  //
+  // We cache availability into totally_available_ since the check is performed
+  // by the RoutingGrid very often.
   bool totally_available_;
-  bool totally_blocked_;
-  std::optional<std::string> in_use_by_net_;
-  std::optional<std::string> blocked_by_nearby_net_;
+  bool forced_blocked_;
+  bool temporarily_forced_blocked_;
+
+  // Map of using/blocking net name to whether they are doing so temporarily.
+  // Permanent usage/blockage trumps temporary usage/blockage.
+  std::map<std::string, bool> in_use_by_nets_;
+  std::map<std::string, bool> blocked_by_nearby_nets_;
 
   // This is the cost of changing layer at this vertex.
   double cost_;

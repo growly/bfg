@@ -1,5 +1,6 @@
 #include "routing_vertex.h"
 
+#include "equivalent_nets.h"
 #include "geometry/compass.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
@@ -23,24 +24,95 @@ bool RoutingVertex::Compare(RoutingVertex *lhs, RoutingVertex *rhs) {
   return Compare(*lhs, *rhs);
 }
 
-void RoutingVertex::AddUsingNet(const std::string &net) {
-  totally_available_ = false;
-  if (!in_use_by_net_) {
-    in_use_by_net_ = net;
-  } else {
-    in_use_by_net_ = std::nullopt;
-    totally_blocked_ = true;
-  }
+void RoutingVertex::UpdateCachedStatus() {
+  totally_available_ = !forced_blocked_ && !temporarily_forced_blocked_ &&
+                       in_use_by_nets_.empty() &&
+                       blocked_by_nearby_nets_.empty();
 }
 
-void RoutingVertex::AddBlockingNet(const std::string &net) {
-  totally_available_ = false;
-  if (!blocked_by_nearby_net_) {
-    blocked_by_nearby_net_ = net;
-  } else {
-    blocked_by_nearby_net_ = std::nullopt;
-    totally_blocked_ = true;
+// This mutates blocking state and should call UpdateCachedStatus().
+void RoutingVertex::AddUsingNet(const std::string &net, bool temporary) {
+  auto it = in_use_by_nets_.find(net);
+  if (it == in_use_by_nets_.end()) {
+    in_use_by_nets_[net] = temporary;
+    return;
   }
+  // If the blockage was previously temporary but is now not, override it as permanent.
+  // We trade one check of the existing value for what might be an unnecessary write.
+  if (!temporary) {
+    it->second = temporary;
+  }
+  UpdateCachedStatus();
+}
+
+// This mutates blocking state and should call UpdateCachedStatus().
+void RoutingVertex::AddBlockingNet(const std::string &net, bool temporary) {
+  auto it = blocked_by_nearby_nets_.find(net);
+  if (it == blocked_by_nearby_nets_.end()) {
+    blocked_by_nearby_nets_[net] = temporary;
+    return;
+  }
+  // If the blockage was previously temporary but is now not, override it as permanent.
+  // We trade one check of the existing value for what might be an unnecessary write.
+  if (!temporary) {
+    it->second = temporary;
+  }
+  UpdateCachedStatus();
+}
+
+// This mutates blocking state and should call UpdateCachedStatus().
+void RoutingVertex::SetForcedBlocked(bool blocked, bool temporary) {
+  bool &forced_blocked =
+      temporary ? temporarily_forced_blocked_ : forced_blocked_;
+  forced_blocked = blocked;
+  UpdateCachedStatus();
+}
+
+// This mutates blocking state and should call UpdateCachedStatus().
+void RoutingVertex::ResetTemporaryStatus() {
+  temporarily_forced_blocked_ = false;
+
+  auto remove_temporaries_fn = [](std::map<std::string, bool> *container) {
+    for (auto it = container->begin(); it != container->end();) {
+      if (it->second) {
+        it = container->erase(it);
+        continue;
+      }
+      ++it;
+    }
+  };
+  remove_temporaries_fn(&in_use_by_nets_);
+  remove_temporaries_fn(&blocked_by_nearby_nets_);
+
+  UpdateCachedStatus();
+}
+
+std::optional<std::string> RoutingVertex::InUseBySingleNet() const {
+  if (in_use_by_nets_.size() != 1) {
+    return std::nullopt;
+  }
+  return in_use_by_nets_.begin()->first;
+}
+
+std::optional<std::string> RoutingVertex::BlockedBySingleNearbyNet() const {
+  if (blocked_by_nearby_nets_.size() != 1) {
+    return std::nullopt;
+  }
+  return blocked_by_nearby_nets_.begin()->first;
+}
+
+bool RoutingVertex::AvailableForNets(const EquivalentNets &nets) const {
+  if (Available()) {
+    return true;
+  }
+  std::optional<std::string> in_use_by_net = InUseBySingleNet();
+  std::optional<std::string> blocked_by_nearby_net = BlockedBySingleNearbyNet();
+  if (in_use_by_net && blocked_by_nearby_net &&
+      *in_use_by_net != *blocked_by_nearby_net) {
+    return false;
+  }
+  return (in_use_by_net && nets.Contains(*in_use_by_net)) ||
+         (blocked_by_nearby_net && nets.Contains(*blocked_by_nearby_net));
 }
 
 std::optional<geometry::Layer> RoutingVertex::ConnectedLayerOtherThan(
@@ -155,11 +227,15 @@ std::vector<RoutingTrack*> RoutingVertex::TracksInDirection(
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
   os << vertex.centre();
   os << (vertex.Available() ? " available" : " not_available");
-  if (vertex.in_use_by_net()) {
-    os << " in_use_by_net:\"" << *vertex.in_use_by_net() << "\"";
+
+  std::optional<std::string> in_use_by_net = vertex.InUseBySingleNet();
+  if (in_use_by_net) {
+    os << " in_use_by_net:\"" << *in_use_by_net << "\"";
   }
-  if (vertex.blocked_by_nearby_net()) {
-    os << " blocked_by_nearby_net:\"" << *vertex.blocked_by_nearby_net()
+  std::optional<std::string> blocked_by_nearby_net =
+      vertex.BlockedBySingleNearbyNet();
+  if (blocked_by_nearby_net) {
+    os << " blocked_by_nearby_net:\"" << *blocked_by_nearby_net
        << "\"";
   }
   return os;

@@ -315,7 +315,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
     if (EdgeSpansVertex(*edge, *vertex)) {
       vertex->set_in_edge(edge);
       vertex->set_out_edge(edge);
-      vertex->AddUsingNet(net);
+      vertex->AddUsingNet(net, true);   // Permanent.
     }
   }
 }
@@ -1181,9 +1181,9 @@ void RoutingTrack::ApplyVertexBlockage(
       if (net != "") {
         // TODO(aryap): Put these on temporary mutation plane so that they can
         // be undone.
-        vertex->AddBlockingNet(net);
+        vertex->AddBlockingNet(net, is_temporary);
       } else {
-        vertex->SetTotallyBlocked(true);
+        vertex->SetForcedBlocked(true, is_temporary);
       }
       if (blocked_vertices)
         blocked_vertices->insert(vertex);

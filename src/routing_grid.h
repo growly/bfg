@@ -420,7 +420,8 @@ class RoutingGrid {
   template<typename T>
   void AddOffGridVerticesForBlockage(
       const RoutingGridGeometry &grid_geometry,
-      const RoutingGridBlockage<T> &blockage);
+      const RoutingGridBlockage<T> &blockage,
+      bool is_temporary);
 
   absl::StatusOr<RoutingPath*> FindRouteBetween(
       const geometry::Port &begin,
