@@ -124,6 +124,8 @@ class RoutingGrid {
 
   void AddVertex(RoutingVertex *vertex);
 
+  void AddOffGridVertex(RoutingVertex *vertex);
+
   void AddOffGridEdge(RoutingEdge *edge);
 
   bool RemoveVertex(RoutingVertex *vertex, bool and_delete);
@@ -597,6 +599,10 @@ class RoutingGrid {
 
   // All Owned vertices.
   std::vector<RoutingVertex*> vertices_;
+
+  // The vertices we know about which are off-grid. This container does not own
+  // the pointers.
+  std::set<RoutingVertex*> off_grid_vertices_;
 
   // All routing tracks (we own these).
   std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;

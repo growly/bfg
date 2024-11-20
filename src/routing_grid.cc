@@ -330,7 +330,7 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       // accommodating the encap rules as-is, which we could do, but which would
       // require me to be less lazy.
       new_vertex->set_explicit_net_layer_requires_encap(true);
-      AddVertex(new_vertex);
+      AddOffGridVertex(new_vertex);
     }
   }
 }
@@ -737,7 +737,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
         continue;
       }
 
-      AddVertex(bridging_vertex);
+      AddOffGridVertex(bridging_vertex);
     }
 
     // At this point, the bridging vertex needs to be connected to off_grid.
@@ -903,7 +903,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     }
 
     RoutingVertex *vertex = off_grid.release();
-    AddVertex(vertex);
+    AddOffGridVertex(vertex);
     return {{vertex, target_layer}};
   }
 
@@ -1118,7 +1118,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
     // Add off_grid now that we have a viable bridging_vertex.
     RoutingVertex *off_grid_copy = off_grid.get();
-    AddVertex(off_grid.release());
+    AddOffGridVertex(off_grid.release());
 
     if (bridging_vertex == off_grid_copy) {
       // off_grid landed on the track and was subsumed and connected, we have
@@ -1133,7 +1133,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     if (bridging_vertex_is_new) {
       // If the bridging_vertex was an existing vertex on the track, we don't
       // need to add it.
-      AddVertex(bridging_vertex);
+      AddOffGridVertex(bridging_vertex);
     }
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid_copy);
@@ -1645,6 +1645,12 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
+void RoutingGrid::AddOffGridVertex(RoutingVertex *vertex) {
+  DCHECK(!vertex->horizontal_track() || !vertex->vertical_track());
+  AddVertex(vertex);
+  off_grid_vertices_.insert(vertex);
+}
+
 void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) {
   off_grid_edges_.insert(edge);
 }
@@ -1984,10 +1990,21 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
 }
 
 bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
-  if (vertex->horizontal_track())
+  bool might_be_off_grid = false;
+  if (vertex->horizontal_track()) {
     vertex->horizontal_track()->RemoveVertex(vertex);
-  if (vertex->vertical_track())
+  } else {
+    might_be_off_grid = true;
+  }
+  if (vertex->vertical_track()) {
     vertex->vertical_track()->RemoveVertex(vertex);
+  } else {
+    might_be_off_grid = true;
+  }
+
+  if (might_be_off_grid) {
+    off_grid_vertices_.erase(vertex);
+  }
 
   // Check for instances of this vertex in off-grid edges:
   for (auto it = off_grid_edges_.begin(); it != off_grid_edges_.end();) {

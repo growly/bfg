@@ -31,6 +31,9 @@ class RoutingGridGeometry {
       const RoutingLayerInfo &horizontal_info,
       const RoutingLayerInfo &vertical_info);
 
+  // Returns on-grid vertices.
+  //
+  // FIXME(aryap): Where do we get off-grid vertices from?
   template<typename T>
   void EnvelopingVertices(
       const T &shape,
@@ -54,6 +57,8 @@ class RoutingGridGeometry {
       std::set<size_t> *vertical,
       int64_t num_concentric_layers = 1) const;
 
+  // These only return the indices of on-grid vertices, since only those
+  // vertices can have indices!
   void EnvelopingVertexIndices(
       const geometry::Point &point,
       std::set<std::pair<size_t, size_t>> *vertices,
