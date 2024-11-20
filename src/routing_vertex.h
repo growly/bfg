@@ -86,6 +86,11 @@ class RoutingVertex {
   bool Available() const { return totally_available_; }
   bool AvailableForNets(const EquivalentNets &nets) const;
 
+  // TODO(aryap): This is easier to understand:
+  //bool TraversableByNets(const EquivalentNets &nets) const;
+  //bool LandableByNets(const EquivalentNets &nets) const;
+  // We call a vertex Available if it is either of these things.
+
   RoutingEdge *GetEdgeOnLayer(const geometry::Layer &layer) const;
 
   bool IsOffGrid() const {

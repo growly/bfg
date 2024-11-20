@@ -2567,7 +2567,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       )
   );
   
-  // FIXME: COLUMNS
+  // TODO(aryap): Why not fully specify columns in the BuildMet1Columns
+  // function?
 
   // The pitches of columns _in order extending outward from the centre_.
   std::vector<int64_t> column_pitches = {

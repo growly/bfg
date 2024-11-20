@@ -8,6 +8,7 @@
 #include "routing_track.h"
 
 #include <absl/cleanup/cleanup.h>
+#include <absl/strings/str_join.h>
 
 namespace bfg {
 
@@ -41,8 +42,9 @@ void RoutingVertex::AddUsingNet(const std::string &net, bool temporary) {
     in_use_by_nets_[net] = temporary;
     return;
   }
-  // If the blockage was previously temporary but is now not, override it as permanent.
-  // We trade one check of the existing value for what might be an unnecessary write.
+  // If the blockage was previously temporary but is now not, override it as
+  // permanent. We trade one check of the existing value for what might be an
+  // unnecessary write.
   if (!temporary) {
     it->second = temporary;
   }
@@ -57,8 +59,9 @@ void RoutingVertex::AddBlockingNet(const std::string &net, bool temporary) {
     blocked_by_nearby_nets_[net] = temporary;
     return;
   }
-  // If the blockage was previously temporary but is now not, override it as permanent.
-  // We trade one check of the existing value for what might be an unnecessary write.
+  // If the blockage was previously temporary but is now not, override it as
+  // permanent. We trade one check of the existing value for what might be an
+  // unnecessary write.
   if (!temporary) {
     it->second = temporary;
   }
@@ -111,12 +114,24 @@ bool RoutingVertex::AvailableForNets(const EquivalentNets &nets) const {
   if (Available()) {
     return true;
   }
-  std::optional<std::string> in_use_by_net = InUseBySingleNet();
+
+  if (blocked_by_nearby_nets_.size() > 1) {
+    return false;
+  }
   std::optional<std::string> blocked_by_nearby_net = BlockedBySingleNearbyNet();
+
+  // TODO(aryap): We should be tracking the EquivalentNets which use the vertex,
+  // for convenience. It's possible that this will fail erroneously if two
+  // equivalent nets are added as using nets. A shortcut for this is to reduce
+  // the known-using-nets in in_use_by_nets_ according to the equivalence class
+  // given by the 'nets' argument in this function.
+  std::optional<std::string> in_use_by_net = InUseBySingleNet();
+
   if (in_use_by_net && blocked_by_nearby_net &&
       *in_use_by_net != *blocked_by_nearby_net) {
     return false;
   }
+
   return (in_use_by_net && nets.Contains(*in_use_by_net)) ||
          (blocked_by_nearby_net && nets.Contains(*blocked_by_nearby_net));
 }

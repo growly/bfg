@@ -819,7 +819,7 @@ void LutB::AddClockAndPowerStraps(
   static const std::array<std::string, 4> kNets =
       {"vpwr", "vgnd", "clk", "clk_i"};
 
-  constexpr int64_t kOffsetNumPitches = 2;
+  constexpr int64_t kOffsetNumPitches = 0;
 
   // FIXME(aryap): We are leaking technology-specific concerns into what was
   // previously somewhat agnostic; but was it ever really agnostic? There could
