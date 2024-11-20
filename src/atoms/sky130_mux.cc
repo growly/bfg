@@ -1870,6 +1870,8 @@ void BuildMet1Columns(
     std::map<size_t, int64_t> *column_x,
     bfg::Layout *layout) {
   const auto &li_rules = db.Rules("li.drawing");
+  const auto &licon_rules = db.Rules("licon.drawing");
+  const auto &licon_li_rules = db.Rules("licon.drawing", "li.drawing");
   const auto &mcon_rules = db.Rules("mcon.drawing");
   const auto &met1_rules = db.Rules("met1.drawing");
   const auto &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
@@ -1932,7 +1934,21 @@ void BuildMet1Columns(
     Point bottom_destination_point;   // On column.
 
     std::optional<std::string> net;
+
+    // The vertical met1 column builder is not sophisticated, and only considers
+    // the spacing to other met1 columns. Here we stipulate bounds from other
+    // considerations, like li1 wires.
+    std::optional<std::pair<int64_t, int64_t>> x_bounds;
   };
+
+
+  int64_t mcon_licon_min_separation =
+      std::max(licon_rules.via_width, licon_rules.via_height) / 2 +
+      licon_li_rules.via_overhang_wide +
+      std::max(mcon_rules.via_width, mcon_rules.via_height) / 2 +
+      std::max(li_mcon_rules.via_overhang,
+               li_mcon_rules.via_overhang_wide) / 2 +
+      li_rules.min_separation;
 
   // Columns are selector inputs (Sx), their complements (Sx_B) and the final
   // output (Z):
@@ -1968,6 +1984,13 @@ void BuildMet1Columns(
         .top_source_point_name = "upper_left.column_2_centre_top_via",
         .bottom_source_point_name = "lower_left.column_2_centre_top_via",
         .net = "S1_B"}},
+    {4, ColumnPlan{
+        .x_bounds = std::make_pair<int64_t, int64_t>(
+            layout->GetPointOrDie("lower_left.via_3_1_centre").x() +
+               mcon_licon_min_separation,
+            layout->GetPointOrDie("lower_left.via_4_1_centre").x() -
+               mcon_licon_min_separation)
+        }},
     {5, ColumnPlan{
         .rotate_connections = true,
         .top_source_point_name = "upper_left.column_3_centre_top_via",
@@ -1981,6 +2004,13 @@ void BuildMet1Columns(
         .top_source_point_name = "upper_right.column_3_centre_top_via",
         .bottom_source_point_name = "lower_right.column_3_centre_top_via",
         .net = "S1_B"}},
+    {last_column - 4, ColumnPlan{
+        .x_bounds = std::make_pair<int64_t, int64_t>(
+            layout->GetPointOrDie("lower_right.via_4_1_centre").x() +
+               mcon_licon_min_separation,
+            layout->GetPointOrDie("lower_right.via_3_1_centre").x() -
+               mcon_licon_min_separation)
+        }},
     {last_column - 2, ColumnPlan{
         .rotate_connections = false,
         .top_source_point_name = "upper_right.column_2_centre_top_via",
@@ -1998,6 +2028,15 @@ void BuildMet1Columns(
         .net = "S0"}},
   };
 
+  auto get_x_bounds_fn =
+      [&](size_t k) -> std::optional<std::pair<int64_t, int64_t>> {
+    auto it = column_plans.find(k);
+    if (it == column_plans.end()) {
+      return std::nullopt;
+    }
+    return it->second.x_bounds;
+  };
+
   // Determine column x-positions.
   int64_t last_x_left = central_column_x;
   int64_t last_x_right = central_column_x;
@@ -2009,6 +2048,7 @@ void BuildMet1Columns(
         last_x_left - pitches[i], last_x_right + pitches[i]};
     last_x_left = x_values[0];
     last_x_right = x_values[1];
+
     for (size_t j = 0; j < 2; ++j) {
       // Draw the left columns for j == 0, right columns for j ==1. When i ==
       // 0 we are handling the central column so no repetition is needed:
@@ -2017,6 +2057,12 @@ void BuildMet1Columns(
       }
       size_t k = k_values[j];
       int64_t x = x_values[j];
+
+      auto x_bounds = get_x_bounds_fn(k);
+      if (x_bounds) {
+        // C++17 adds std::clamp <3
+        x = std::clamp(x, x_bounds->first, x_bounds->second);
+      }
 
       column_plans[k].x_position = x;
       // We also export the x:
@@ -2500,11 +2546,12 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
 
   // Our mux can fit N tracks:
   //
-  // +------------------------------------+
+  // 0            1           2           3    ... N-1
+  // +------------+-----------+-----------+-----
   // |            ^           ^           |
   // | < offset > | < pitch > | < pitch > |
   // |            v           v           |
-  // +------------------------------------+
+  // +------------+-----------+-----------+-----
   //
   // The second half of the list is right-hand-side columns. They should be
   // moved one over depending on the overall width of the mux.
@@ -2520,7 +2567,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
       )
   );
   
-  // FIXME: COLUMNS
+  // TODO(aryap): Why not fully specify columns in the BuildMet1Columns
+  // function?
 
   // The pitches of columns _in order extending outward from the centre_.
   std::vector<int64_t> column_pitches = {
@@ -2950,9 +2998,13 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
   // Vias are named with indices according to their (column, row), skipping the
   // output via position:
   //
-  //   x (0, 1)   x (1, 1)   x (2, 1)   x (3, 1)   x (output)   x(4, 1)
+  // +----------+----------+----------+ +----------+----------+----------+
+  // | x (0, 1) | x (1, 1) | x (2, 1) | |x (3, 1)  |x (output)|  x(4, 1) |
+  // +----------+----------+----------+ +----------+----------+----------+
   //                                 
-  //   x (0, 0)   x (1, 0)   x (2, 0)
+  // +----------+----------+----------+
+  // | x (0, 0) | x (1, 0) | x (2, 0) |
+  // +----------+----------+----------+
   //
   int64_t via_centre_to_diff_edge =
       dcon_rules.via_width / 2 + diff_dcon_rules.min_enclosure;
@@ -3433,6 +3485,9 @@ bfg::Layout *Sky130Mux::GenerateMux2Layout(const Mux2LayoutParameters &params) {
       {"output", output_via},
 
       {"via_3_1_ur", via_3_1->upper_right()},
+
+      {"via_3_1_centre", via_3_1->centre()},
+      {"via_4_1_centre", via_4_1->centre()},
 
       // Save some bounds for the diff regions.
       // TODO(aryap): It would be convenient to get the bounding box for all the
