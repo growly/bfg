@@ -77,6 +77,14 @@ class RoutingGridGeometry {
       int64_t padding = 0,
       int64_t num_concentric_layers = 1) const;
 
+  // 
+  void EnvelopingOffGridVertices(
+      const std::set<RoutingVertex*> &vertex_pool,
+      const geometry::Point &point,
+      std::set<RoutingVertex*> *vertices,
+      int64_t padding = 0,
+      int64_t num_concentric_layers = 1) const;
+
   std::tuple<int64_t, int64_t, int64_t, int64_t> MapToBoundingGridIndices(
       const geometry::Point &point) const;
   std::tuple<int64_t, int64_t, int64_t, int64_t> MapToBoundingGridIndices(

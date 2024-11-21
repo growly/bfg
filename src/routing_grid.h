@@ -416,6 +416,30 @@ class RoutingGrid {
     return obstruction.Overlaps(keep_out.value());
   }
 
+  // Gathers on-grid vertices and off-grid vertices within a given radius,
+  // where the radius is given by the number of horizontal/vertical pitches on
+  // on the routing grid geometry. Blockages are checked on the layer() of the
+  // given shape.
+  template<typename T>
+  std::set<RoutingVertex*> BlockingOffGridVertices(const T &shape) const {
+    int64_t min_separation = physical_db_.Rules(shape.layer()).min_separation;
+    std::set<RoutingVertex*> vertices;
+    for (RoutingVertex *off_grid : off_grid_vertices_) {
+      if (ViaWouldIntersect(*off_grid,
+                            shape,
+                            min_separation,
+                            std::nullopt)) {
+        vertices.insert(off_grid);
+      }
+    }
+    return vertices;
+  }
+
+  std::set<RoutingVertex*> BlockingOffGridVertices(
+      const RoutingVertex &vertex,
+      const geometry::Layer &layer,
+      const std::optional<RoutingTrackDirection> direction) const;
+
   template<typename T>
   void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
 
@@ -424,6 +448,7 @@ class RoutingGrid {
       const RoutingGridGeometry &grid_geometry,
       const RoutingGridBlockage<T> &blockage,
       bool is_temporary);
+
 
   absl::StatusOr<RoutingPath*> FindRouteBetween(
       const geometry::Port &begin,

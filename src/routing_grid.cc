@@ -218,6 +218,10 @@ void RoutingGrid::ApplyBlockage(
   for (RoutingGridGeometry *grid_geometry : grid_geometries) {
     std::set<RoutingVertex*> vertices;
     grid_geometry->EnvelopingVertices(blockage.shape(), &vertices);
+
+    // Also check every off-grid vertex.
+    vertices.insert(off_grid_vertices_.begin(), off_grid_vertices_.end());
+
     for (RoutingVertex *vertex : vertices) {
       if (!vertex->Available())
         continue;
@@ -294,6 +298,17 @@ void RoutingGrid::ForgetBlockage(
   if (it == polygon_blockages_.end())
     return;
   polygon_blockages_.erase(it);
+}
+
+std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
+    const RoutingVertex &vertex,
+    const geometry::Layer &layer,
+    const std::optional<RoutingTrackDirection> direction) const {
+  auto vertex_footprint = VertexFootprint(vertex, layer, 0, direction);
+  if (!vertex_footprint) {
+    return std::set<RoutingVertex*>();
+  }
+  return BlockingOffGridVertices(*vertex_footprint);
 }
 
 // We rely on the RoutingGridBlockage to generate candidate positions and
@@ -2124,7 +2139,11 @@ void RoutingGrid::InstallVertexInPath(
           0,
           1);   // num_concentric_layers = 1 yields vertices A - D.
     }
+    std::set<RoutingVertex*> blocked_off_grid =
+        BlockingOffGridVertices(*vertex, layer, std::nullopt);
+    inner_vertices.insert(blocked_off_grid.begin(), blocked_off_grid.end());
   }
+
   std::vector<RoutingVertex*> outer_vertices;
   std::set_difference(vertices.begin(), vertices.end(),
                       inner_vertices.begin(), inner_vertices.end(),
