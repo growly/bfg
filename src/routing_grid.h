@@ -435,11 +435,6 @@ class RoutingGrid {
     return vertices;
   }
 
-  std::set<RoutingVertex*> BlockingOffGridVertices(
-      const RoutingVertex &vertex,
-      const geometry::Layer &layer,
-      const std::optional<RoutingTrackDirection> direction) const;
-
   template<typename T>
   void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
 
@@ -449,6 +444,10 @@ class RoutingGrid {
       const RoutingGridBlockage<T> &blockage,
       bool is_temporary);
 
+  std::set<RoutingVertex*> BlockingOffGridVertices(
+      const RoutingVertex &vertex,
+      const geometry::Layer &layer,
+      const std::optional<RoutingTrackDirection> direction) const;
 
   absl::StatusOr<RoutingPath*> FindRouteBetween(
       const geometry::Port &begin,
@@ -543,6 +542,46 @@ class RoutingGrid {
   std::optional<std::reference_wrapper<RoutingGridGeometry>>
       GetRoutingGridGeometry(
           const geometry::Layer &lhs, const geometry::Layer &rhs);
+
+  // FIXME(aryap): This addresses two problems that manifest in the same way:
+  // 1) We not associate a target layer with a target net when labelling a
+  // vertex; this means that we can't reason about which of two connected
+  // layers we should use to connect to a vertex that's already on a net.
+  // Sometimes that means we connect legally on e.g. met2, but create illegal
+  // met1 vias too close to each other.
+  //
+  //             +-----+
+  //            +|-----|+
+  //   ---------+|     ||
+  //   ---------+|     ||
+  //            +|-----|+
+  //             +-----+
+  //            +|-----|+
+  //            ||     |+--------
+  //            ||     |+--------
+  //            +|-----|+
+  //             ++   ++
+  //              |   |
+  //               ^met2 vertical path existed, and the new path connects
+  //               from the top left.
+  //
+  //  But now the vias on met1 are too close.
+  //
+  // 2) A similar situation happens when we try to beat a path to a net
+  // attached to imported blockages that overlap on multiple layers. We don't
+  // know which layer to connect to and so by connecting to any good one we
+  // might cause problems on the others.
+  //
+  // If we did equip the RoutingVertex with knowledge of the layers on which
+  // connects to nets, I think the most straightforward way to fix the problem
+  // would still be to disable nearby vertices that could no longer accommodate
+  // vias. But that can result in needlessly long paths (by a few pitches).
+  //
+  // What we do here is try to find these cases and patch them on the
+  // unconnected layer, to avoid DRC violation.
+  //
+  // Let's see if this is a dumb idea...
+  void ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer();
 
   // Hands out pointers to RoutingGridGeometries that have tracks in either the
   // horizontal or vertical direction on the given layer.
