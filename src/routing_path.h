@@ -83,6 +83,10 @@ class RoutingPath {
   void set_nets(const EquivalentNets &nets) { nets_ = nets; }
   const EquivalentNets &nets() const { return nets_; }
 
+  const std::vector<RoutingVertex*> SpannedVerticesWithVias() const;
+  const std::set<RoutingVertex*> SpannedVertices() const;
+  const std::set<RoutingVertex*> SpannedVerticesWithoutVias() const;
+
   const std::vector<RoutingVertex*> &vertices() const { return vertices_; }
   const std::vector<RoutingEdge*> &edges() const { return edges_; }
 

@@ -125,13 +125,16 @@ class RoutingVertex {
     forced_encap_directions_[layer] = direction;
   }
   std::optional<RoutingTrackDirection> GetForcedEncapDirection(
-      const geometry::Layer &layer) {
+      const geometry::Layer &layer) const {
     auto it = forced_encap_directions_.find(layer);
     if (it == forced_encap_directions_.end()) {
       return std::nullopt;
     }
     return it->second;
   }
+
+  std::optional<RoutingTrackDirection> GetEncapDirection(
+      const geometry::Layer &layer) const;
 
   // This is the cost of connecting through this vertex (i.e. a via).
   double cost() const { return cost_; }

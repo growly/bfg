@@ -176,6 +176,7 @@ void RoutingVertex::AddNeighbour(const geometry::Compass &position,
   });
 }
 
+// On-grid neighbours.
 std::set<RoutingVertex*> RoutingVertex::GetNeighbours(
     const geometry::Compass &position) const {
   std::set<RoutingVertex*> neighbours;
@@ -185,6 +186,19 @@ std::set<RoutingVertex*> RoutingVertex::GetNeighbours(
     }
   }
   return neighbours;
+}
+
+std::optional<RoutingTrackDirection> RoutingVertex::GetEncapDirection(
+    const geometry::Layer &layer) const {
+  auto forced = GetForcedEncapDirection(layer);
+  if (forced) {
+    return *forced;
+  }
+  RoutingEdge *edge = GetEdgeOnLayer(layer);
+  if (edge) {
+    return edge->Direction();
+  }
+  return std::nullopt;
 }
 
 RoutingEdge *RoutingVertex::GetEdgeOnLayer(const geometry::Layer &layer) const {

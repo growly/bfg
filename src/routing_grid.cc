@@ -213,11 +213,11 @@ void RoutingGrid::ApplyBlockage(
     std::set<RoutingVertex*> *blocked_vertices) {
   const geometry::Layer &layer = blockage.shape().layer();
   // Find any possibly-blocked vertices and make them unavailable:
-  std::vector<RoutingGridGeometry*> grid_geometries =
-      FindRoutingGridGeometriesUsingLayer(layer);
-  for (RoutingGridGeometry *grid_geometry : grid_geometries) {
+  std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+      grid_geometries = FindRoutingGridGeometriesUsingLayer(layer);
+  for (const RoutingGridGeometry &grid_geometry : grid_geometries) {
     std::set<RoutingVertex*> vertices;
-    grid_geometry->EnvelopingVertices(blockage.shape(), &vertices);
+    grid_geometry.EnvelopingVertices(blockage.shape(), &vertices);
 
     // Also check every off-grid vertex.
     vertices.insert(off_grid_vertices_.begin(), off_grid_vertices_.end());
@@ -267,7 +267,7 @@ void RoutingGrid::ApplyBlockage(
     // shapes on nets that are temporary blockages? Practically this includes
     // via footprints for ports!
     if (!is_temporary && !blockage.shape().net().empty()) {
-      AddOffGridVerticesForBlockage(*grid_geometry, blockage, false);
+      AddOffGridVerticesForBlockage(grid_geometry, blockage, false);
     }
   }
 }
@@ -309,6 +309,29 @@ std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
     return std::set<RoutingVertex*>();
   }
   return BlockingOffGridVertices(*vertex_footprint);
+}
+
+std::set<RoutingVertex*> RoutingGrid::GetNearbyVertices(
+    const RoutingVertex &vertex) const {
+  std::set<RoutingVertex*> nearby;
+  for (const geometry::Layer &layer : vertex.connected_layers()) {
+    std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+        grid_geometries = FindRoutingGridGeometriesUsingLayer(layer);
+    for (const RoutingGridGeometry &grid_geometry : grid_geometries) {
+      grid_geometry.EnvelopingVertices(
+          vertex.centre(),
+          &nearby,
+          0,   // No additional padding on the centre point.
+          1);  // Within 'radius' of 1 pitch.
+    }
+    std::set<RoutingVertex*> blocked_off_grid =
+        BlockingOffGridVertices(
+            vertex,
+            layer,
+            vertex.GetEncapDirection(layer));
+    nearby.insert(blocked_off_grid.begin(), blocked_off_grid.end());
+  }
+  return nearby;
 }
 
 // We rely on the RoutingGridBlockage to generate candidate positions and
@@ -837,7 +860,8 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
   }
 
   struct AccessOption {
-    RoutingGridGeometry *grid_geometry;
+    std::optional<
+        std::reference_wrapper<const RoutingGridGeometry>> grid_geometry;
     geometry::Layer target_layer;
     geometry::Layer access_layer;
     double total_via_cost;
@@ -849,8 +873,9 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
   for (const auto &entry : layer_access) {
     const geometry::Layer &target_layer = entry.first;
     for (const geometry::Layer &access_layer : entry.second) {
-      std::vector<RoutingGridGeometry*> layer_grid_geometries =
-          FindRoutingGridGeometriesUsingLayer(access_layer);
+      std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+          layer_grid_geometries = FindRoutingGridGeometriesUsingLayer(
+              access_layer);
 
       auto cost = FindViaStackCost(target_layer, access_layer);
       if (!cost) {
@@ -860,7 +885,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
         continue;
       }
 
-      for (RoutingGridGeometry *grid_geometry : layer_grid_geometries) {
+      for (const RoutingGridGeometry &grid_geometry : layer_grid_geometries) {
         access_options.push_back(AccessOption {
             .grid_geometry = grid_geometry,
             .target_layer = target_layer,
@@ -881,15 +906,15 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
   for (AccessOption &option : access_options) {
     const geometry::Layer &target_layer = option.target_layer;
     const geometry::Layer &access_layer = option.access_layer;
-    RoutingGridGeometry *grid_geometry = option.grid_geometry;
+    const RoutingGridGeometry &grid_geometry = option.grid_geometry->get();
 
     LOG(INFO) << "Access to " << point << " (layer " << target_layer
               << ") from layer " << access_layer
-              << " possible through grid geometry " << grid_geometry
+              << " possible through grid geometry " << &grid_geometry
               << " with via cost " << option.total_via_cost;
 
     // FIXME: Should check if off_grid position is an existing on-grid vertex!
-    RoutingVertex *existing = grid_geometry->VertexAt(point);
+    RoutingVertex *existing = grid_geometry.VertexAt(point);
     if (existing) {
       return {{existing, target_layer}};
     }
@@ -907,7 +932,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
 
     // If ConnectToSurroundingTracks has any success, we move ownership of the
     // off_grid vertex to the parent RoutingGrid.
-    if (!ConnectToSurroundingTracks(*grid_geometry,
+    if (!ConnectToSurroundingTracks(grid_geometry,
                                     access_layer,
                                     for_nets,
                                     access_directions,
@@ -2122,27 +2147,21 @@ void RoutingGrid::InstallVertexInPath(
   // via at Z is positioned in a certain way within the ABDC rectangle, so we
   // have to check those explicitly.
   std::set<RoutingVertex*> vertices;
-  std::set<RoutingVertex*> inner_vertices;
   for (const geometry::Layer &layer : vertex->connected_layers()) {
-    std::vector<RoutingGridGeometry*> grid_geometries =
-        FindRoutingGridGeometriesUsingLayer(layer);
-    for (RoutingGridGeometry *grid_geometry : grid_geometries) {
-      grid_geometry->EnvelopingVertices(
+    std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+        grid_geometries = FindRoutingGridGeometriesUsingLayer(layer);
+    for (const RoutingGridGeometry &grid_geometry : grid_geometries) {
+      grid_geometry.EnvelopingVertices(
           vertex->centre(),
           &vertices,
           0,
           2);   // num_concentric_layers = 2 yields vertices A - P in the above
                 // example.
-      grid_geometry->EnvelopingVertices(
-          vertex->centre(),
-          &inner_vertices,
-          0,
-          1);   // num_concentric_layers = 1 yields vertices A - D.
     }
-    std::set<RoutingVertex*> blocked_off_grid =
-        BlockingOffGridVertices(*vertex, layer, std::nullopt);
-    inner_vertices.insert(blocked_off_grid.begin(), blocked_off_grid.end());
   }
+  // Will find vertices within 1 pitch 'radius' of the vertex, but will also
+  // include blocking off-grid vertices nearby.
+  std::set<RoutingVertex*> inner_vertices = GetNearbyVertices(*vertex);
 
   std::vector<RoutingVertex*> outer_vertices;
   std::set_difference(vertices.begin(), vertices.end(),
@@ -2186,11 +2205,8 @@ void RoutingGrid::InstallVertexInPath(
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     // If there is an edge on this layer, we use its direction. Otherwise we use
     // the routing grid default direction for the layer.
-    RoutingEdge *edge = vertex->GetEdgeOnLayer(layer);
-    RoutingTrackDirection direction;
-    if (edge) {
-      direction = edge->Direction();
-    } else {
+    auto direction = vertex->GetEncapDirection(layer);
+    if (!direction) {
       auto routing_layer_info = GetRoutingLayerInfo(layer);
       if (!routing_layer_info) {
         // No routing on this layer and no known direction, ignore.
@@ -2200,7 +2216,7 @@ void RoutingGrid::InstallVertexInPath(
     }
 
     std::optional<geometry::Rectangle> via_encap = VertexFootprint(
-       *vertex, layer, 0, direction);
+       *vertex, layer, 0, *direction);
     if (!via_encap)
       continue;
     //LOG(INFO) << "via encap: " << *via_encap << " about " << vertex->centre()
@@ -3187,11 +3203,69 @@ std::optional<std::vector<RoutingViaInfo>> RoutingGrid::FindViaStack(
   return via_stack;
 }
 
+// This is actually our first sketch of a DRC check.
+void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
+    PolyLineCell *cell) const {
+  // Find neary by vertices that are too close but which have vias.
+  //
+  // Iterate over vertices in installed paths because those are the only things
+  // we've added that could've made the mess we're trying to climb out of.
+  std::set<std::pair<RoutingVertex*, RoutingVertex*>>
+      pairwise_mutual_conflicts;
+  auto record_conflict_fn = [&](RoutingVertex *lhs, RoutingVertex *rhs) {
+      auto it = pairwise_mutual_conflicts.find({lhs, rhs});
+      if (it != pairwise_mutual_conflicts.end()) {
+        return;
+      }
+      it = pairwise_mutual_conflicts.find({rhs, lhs});
+      if (it != pairwise_mutual_conflicts.end()) {
+        return;
+      }
+      pairwise_mutual_conflicts.insert({lhs, rhs});
+  };
+
+  for (RoutingPath *path : paths_) {
+    const EquivalentNets &nets = path->nets();
+    std::set<RoutingVertex*> vertices_without_vias =
+        path->SpannedVerticesWithoutVias();
+    for (RoutingVertex *vertex : path->SpannedVerticesWithVias()) {
+      auto net = vertex->InUseBySingleNet();
+      if (!net || !nets.Contains(*net)) {
+        // Yikes.
+        LOG(WARNING) << "Yikes.";
+        continue;
+      }
+      std::set<RoutingVertex*> nearby = GetNearbyVertices(*vertex);
+      for (RoutingVertex *other : nearby) {
+        if (other == vertex)
+          continue;
+        // Skip nearby vertices within this path that don't host vias.
+        if (vertices_without_vias.find(other) != vertices_without_vias.end())
+          continue;
+        auto other_net = other->InUseBySingleNet();
+        if (!other_net)
+          continue;
+        if (*net == *other_net) {
+          record_conflict_fn(vertex, other);
+        }
+      }
+    }
+  }
+
+  for (auto &entry : pairwise_mutual_conflicts) {
+    LOG(INFO) << "got one! " << entry.first->centre()
+              << " and " << entry.second->centre();
+  }
+}
+
 PolyLineCell *RoutingGrid::CreatePolyLineCell() const {
   std::unique_ptr<PolyLineCell> cell(new PolyLineCell());
   for (RoutingPath *path : paths_) {
     path->ToPolyLinesAndVias(&cell->poly_lines(), &cell->vias());
   }
+
+  ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(cell.get());
+
   return cell.release();
 }
 
@@ -3240,17 +3314,19 @@ std::optional<std::reference_wrapper<RoutingGridGeometry>>
   return second_it->second;
 }
 
-std::vector<RoutingGridGeometry*>
+std::vector<std::reference_wrapper<const RoutingGridGeometry>>
 RoutingGrid::FindRoutingGridGeometriesUsingLayer(
-    const geometry::Layer &layer) {
-  std::vector<RoutingGridGeometry*> grid_geometries;
+    const geometry::Layer &layer) const {
+  std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+      grid_geometries;
   for (auto &entry : grid_geometry_by_layers_) {
     const Layer &first = entry.first;
     for (auto &inner : entry.second) {
       const Layer &second = inner.first;
       if (first != layer && second != layer)
         continue;
-      grid_geometries.push_back(&inner.second);
+      const RoutingGridGeometry &grid_geometry = inner.second;
+      grid_geometries.push_back(grid_geometry);
     }
   }
   return grid_geometries;

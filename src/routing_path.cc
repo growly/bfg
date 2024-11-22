@@ -555,6 +555,42 @@ void RoutingPath::Flatten() {
   }
 }
 
+const std::vector<RoutingVertex*> RoutingPath::SpannedVerticesWithVias() const {
+  // Straightforward filter.
+  std::vector<RoutingVertex*> vias_;
+  for (RoutingVertex *vertex : vertices_) {
+    auto skipped = skipped_vias_.find(vertex);
+    if (skipped == skipped_vias_.end()) {
+      vias_.push_back(vertex);
+    }
+  }
+  return vias_;
+}
+
+const std::set<RoutingVertex*> RoutingPath::SpannedVertices() const {
+  std::set<RoutingVertex*> all;
+  for (RoutingEdge *const edge : edges_) {
+    std::vector<RoutingVertex*> spanned = edge->SpannedVertices();
+    all.insert(spanned.begin(), spanned.end());
+  }
+  for (RoutingVertex *const vertex : vertices_) {
+    DCHECK(all.find(vertex) != all.end())
+        << "Union of spanned vertices in path did not include crucial vertex: "
+        << *vertex;
+  }
+  return all;
+}
+
+const std::set<RoutingVertex*> RoutingPath::SpannedVerticesWithoutVias() const {
+  std::set<RoutingVertex*> all = SpannedVertices();
+  std::vector<RoutingVertex*> with_vias = SpannedVerticesWithVias();
+  std::set<RoutingVertex*> all_without_vias;
+  std::set_difference(all.begin(), all.end(),
+                      with_vias.begin(), with_vias.end(),
+                      std::inserter(all_without_vias, all_without_vias.begin()));
+  return all_without_vias;
+}
+
 void RoutingPath::Legalise() {
   if (legalised_)
     return;

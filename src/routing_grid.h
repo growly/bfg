@@ -449,6 +449,10 @@ class RoutingGrid {
       const geometry::Layer &layer,
       const std::optional<RoutingTrackDirection> direction) const;
 
+  // TODO(aryap): Would this be more useful with a 'radius' argument?
+  std::set<RoutingVertex*> GetNearbyVertices(
+      const RoutingVertex &vertex) const;
+
   absl::StatusOr<RoutingPath*> FindRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
@@ -576,17 +580,22 @@ class RoutingGrid {
   // connects to nets, I think the most straightforward way to fix the problem
   // would still be to disable nearby vertices that could no longer accommodate
   // vias. But that can result in needlessly long paths (by a few pitches).
+  // (The way to do that would be to remove nets which are connectable by a
+  // vertex if they are connectable on multiple layers. Or equivalently to
+  // check if there are multiple "blocked_by_nearby_nets_", which have an
+  // addition layer in the tuple.)
   //
   // What we do here is try to find these cases and patch them on the
   // unconnected layer, to avoid DRC violation.
   //
   // Let's see if this is a dumb idea...
-  void ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer();
+  void ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
+      PolyLineCell *cell) const;
 
   // Hands out pointers to RoutingGridGeometries that have tracks in either the
   // horizontal or vertical direction on the given layer.
-  std::vector<RoutingGridGeometry*> FindRoutingGridGeometriesUsingLayer(
-      const geometry::Layer &layer);
+  std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+      FindRoutingGridGeometriesUsingLayer(const geometry::Layer &layer) const;
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
