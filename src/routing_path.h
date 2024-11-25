@@ -131,6 +131,9 @@ class RoutingPath {
       RoutingEdge *edge,
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
 
+  void MaybeFixFirstAndLastJog(
+      std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
+
   // --------------------------------------------------------------------------
   // A nice property of the routing-grid is that paths should not be able to
   // conflict with themselves during the shortest-path search. This is

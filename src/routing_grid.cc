@@ -3224,10 +3224,18 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
       pairwise_mutual_conflicts.insert({lhs, rhs});
   };
 
+  // Determine every non-via vertex across every path;
+  std::set<RoutingVertex*> all_vertices_without_vias;
   for (RoutingPath *path : paths_) {
-    const EquivalentNets &nets = path->nets();
     std::set<RoutingVertex*> vertices_without_vias =
         path->SpannedVerticesWithoutVias();
+    all_vertices_without_vias.insert(
+        vertices_without_vias.begin(), vertices_without_vias.end());
+  }
+
+  for (RoutingPath *path : paths_) {
+    const EquivalentNets &nets = path->nets();
+    std::set<RoutingVertex*> spanned_vertices = path->SpannedVertices();
     for (RoutingVertex *vertex : path->SpannedVerticesWithVias()) {
       auto net = vertex->InUseBySingleNet();
       if (!net || !nets.Contains(*net)) {
@@ -3239,12 +3247,23 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
       for (RoutingVertex *other : nearby) {
         if (other == vertex)
           continue;
-        // Skip nearby vertices within this path that don't host vias.
-        if (vertices_without_vias.find(other) != vertices_without_vias.end())
+        // Skip nearby vertices within path that are in paths but don't host
+        // vias. If they aren't in paths they're still candidates.
+        if (!other->installed_in_paths().empty() &&
+            all_vertices_without_vias.find(other) !=
+            all_vertices_without_vias.end())
           continue;
+        // Skip other vertices in this path, because we aren't going to do
+        // anything about them.
+        if (spanned_vertices.find(other) != spanned_vertices.end())
+          continue;
+        // Skip vertices that are in use by multiple nets, since they are no
+        // going to host vias.
         auto other_net = other->InUseBySingleNet();
         if (!other_net)
           continue;
+        // Skip vertices that aren't on our net, since we can't do much about
+        // them.
         if (*net == *other_net) {
           record_conflict_fn(vertex, other);
         }

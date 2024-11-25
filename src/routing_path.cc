@@ -53,11 +53,27 @@ struct BulgeDimensions {
 
 // TODO(aryap): There are different rules for overhanging from the layer above
 // and below. RoutingViaInfo now differentiates these, so we should use them.
-BulgeDimensions GetBulgeDimensions(const RoutingViaInfo &routing_via_info) {
+BulgeDimensions GetBulgeDimensions(
+    const RoutingViaInfo &routing_via_info) {
   return BulgeDimensions {
     .width = routing_via_info.MaxEncapWidth(),
     .length = routing_via_info.MaxEncapLength()
   };
+}
+
+BulgeDimensions GetBulgeDimensions(
+    const RoutingViaInfo &routing_via_info,
+    const RoutingTrackDirection &edge_direction,
+    std::optional<RoutingTrackDirection> encap_direction) {
+  BulgeDimensions nominal_dimensions = GetBulgeDimensions(routing_via_info);
+  // If the edge and encap directions don't match, swap width/length.
+  // This assumes that there are only two valid directions, horizontal and
+  // vertical.
+  if (encap_direction && edge_direction != *encap_direction) {
+    LOG(INFO) << "should have swapped";
+    std::swap(nominal_dimensions.width, nominal_dimensions.length);
+  }
+  return nominal_dimensions;
 }
 
 }    // namespace
@@ -473,6 +489,9 @@ void RoutingPath::Flatten() {
       last_layer = start_access->source;
       last_target_layer = start_access->target;
     } else {
+      //    0     1     2     3     4
+      //  0    1     2     3     4     5
+      int64_t last_edge = 
       last_layer = edges_.at(i - 2)->EffectiveLayer();
       last_target_layer = last_layer;
     }
@@ -482,12 +501,16 @@ void RoutingPath::Flatten() {
     if (i == vertices_.size() - 1) {
       if (end_access_layers_.empty())
         continue;
+      std::set<geometry::Layer> dest_options = {
+          last_layer,
+          edges_.back()->EffectiveLayer()
+      };
       // Since we're deciding if we should skip the current edge, we pick an
       // appropriate end access layer based on the previous edge layer (since
       // that is the layer we will end up putting the current edge on if we do
       // decide to skip).
-      auto end_access = PickAccessLayerPair({last_layer}, end_access_layers_);
-      if (end_access) {
+      auto end_access = PickAccessLayerPair(dest_options, end_access_layers_);
+      if (!end_access) {
         continue;
       }
       next_layer = end_access->source;
@@ -610,7 +633,8 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   // they're at the end of edges, which require bulges, and where they do not.
   // That is, the following routine will insert bulges anytime vertices in a
   // path are crossed by vertices in another path on the same net. We might not
-  // *want* to add via in such those cases.
+  // *want* to add via in such those cases, but the bulges for the vias are
+  // made anyway.
   //
   // Inserting bulges too close to each other should result in final geometry
   // that avoids notches, or gaps between metal shapes that are larger than the
@@ -676,12 +700,17 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       int64_t bulge_width = 0;
       int64_t bulge_length = 0;
       for (RoutingEdge *other_edge : edges) {
-        LOG(INFO) << "Path " << path << " via " << *other_edge;
+        VLOG(13) << "Path " << path << " via " << *other_edge;
         if (other_edge->EffectiveLayer() == poly_line->layer()) {
           continue;
         }
-        auto bulge = GetBulgeDimensions(routing_grid_->GetRoutingViaInfoOrDie(
-            poly_line->layer(), other_edge->EffectiveLayer()));
+        auto encap_direction = vertex->GetEncapDirection(
+            other_edge->EffectiveLayer());
+        auto bulge = GetBulgeDimensions(
+            routing_grid_->GetRoutingViaInfoOrDie(
+                poly_line->layer(), other_edge->EffectiveLayer()),
+            other_edge->Direction(),
+            encap_direction);
         max_bulge_length_by_layer[other_edge->EffectiveLayer()] =
             std::max(
                 max_bulge_length_by_layer[other_edge->EffectiveLayer()],
@@ -693,6 +722,8 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       }
       max_bulge_length_by_layer[poly_line->layer()] = bulge_length;
       if (bulge_width > 0 && bulge_length > 0) {
+        LOG(INFO) << "Inserting " << bulge_width << " x " << bulge_length
+                  << " bulge at " << vertex->centre();
         poly_line->InsertBulgeLater(
             vertex->centre(), bulge_width, bulge_length);
       }
@@ -724,6 +755,35 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       poly_lines->emplace_back(cover);
     }
   }
+}
+
+// A related problem to that described for 
+// CheckEdgeInPolyLineForIncidenceOfOtherPaths is that what happens when
+// connecting to a vertex which itself is connected to our net on both of its
+// laters (typically a via-hosting vertex on some other path).
+//
+//      +-------+
+//     +--------++
+// ====+|       || path B
+//     +---------+
+//      +-+   +-+
+//        |   |   <- path B can connect to path A on the vertical layer,
+//      +-------+    but the horizontal layers are now too close together.
+//     +---------+
+//     ||       |+=======
+//     +---------+  path A
+//      +-+   +-+
+//        |   |
+//        |   |
+//
+// The general solution is to select the layer to connect to when beating the
+// path, and/or make an exception to the layer for the final edge for short
+// distances (so short that this is a problem).
+//
+// TODO(aryap): But where that doesn't work, it seems like it might be worth
+// doing this:
+void RoutingPath::MaybeFixFirstAndLastJog(
+    std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const {
 }
 
 absl::Status RoutingPath::CheckAndForceEncapDirections(
@@ -1051,11 +1111,20 @@ void RoutingPath::ToPolyLinesAndVias(
             routing_grid_->GetRoutingViaInfoOrDie(last->layer(), layer));
         bulge_width = bulge.width;
         bulge_length = bulge.length;
-        last->InsertBulgeLater(current->centre(), bulge_width, bulge_length);
+
+        if (i != vertices_.size() - 1) {
+          LOG(INFO) << "Inserting " << bulge_width << " x " << bulge_length
+                    << " bulge at " << current->centre() << " i=" << i
+                    << " " << vertices_.size();
+          last->InsertBulgeLater(current->centre(), bulge_width, bulge_length);
+        }
 
         // Insert the starting bulge on the last poly line unless it was the
         // first one:
         if (!last_poly_line_was_first) {
+          LOG(INFO) << "Inserting " << bulge_width << " x " << bulge_length
+                    << " bulge at " << last->start() << " i=" << i
+                    << " " << vertices_.size();
           last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
         } else {
           last_poly_line_was_first = false;
@@ -1095,6 +1164,8 @@ void RoutingPath::ToPolyLinesAndVias(
   const RoutingLayerInfo &last_info = routing_grid_->GetRoutingLayerInfoOrDie(
       next_edge->EffectiveLayer());
   last->AddSegment(vertices_.back()->centre(), last_info.wire_width());
+  LOG(INFO) << "Inserting " << bulge_width << " x " << bulge_length
+            << " bulge at " << last->start();
   last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
 
   CheckEdgeInPolyLineForIncidenceOfOtherPaths(
