@@ -699,13 +699,13 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       std::set<RoutingEdge*> &edges  = entry.second;
       int64_t bulge_width = 0;
       int64_t bulge_length = 0;
+      auto encap_direction = vertex->GetEncapDirection(
+          poly_line->layer());
       for (RoutingEdge *other_edge : edges) {
         VLOG(13) << "Path " << path << " via " << *other_edge;
         if (other_edge->EffectiveLayer() == poly_line->layer()) {
           continue;
         }
-        auto encap_direction = vertex->GetEncapDirection(
-            other_edge->EffectiveLayer());
         auto bulge = GetBulgeDimensions(
             routing_grid_->GetRoutingViaInfoOrDie(
                 poly_line->layer(), other_edge->EffectiveLayer()),
@@ -723,7 +723,8 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       max_bulge_length_by_layer[poly_line->layer()] = bulge_length;
       if (bulge_width > 0 && bulge_length > 0) {
         LOG(INFO) << "Inserting " << bulge_width << " x " << bulge_length
-                  << " bulge at " << vertex->centre();
+                  << " bulge at " << vertex->centre()
+                  << " on layer " << poly_line->layer();
         poly_line->InsertBulgeLater(
             vertex->centre(), bulge_width, bulge_length);
       }
@@ -1115,7 +1116,8 @@ void RoutingPath::ToPolyLinesAndVias(
         if (i != vertices_.size() - 1) {
           LOG(INFO) << "Inserting " << bulge_width << " x " << bulge_length
                     << " bulge at " << current->centre() << " i=" << i
-                    << " " << vertices_.size();
+                    << " " << vertices_.size()
+                    << " on layer " << last->layer();
           last->InsertBulgeLater(current->centre(), bulge_width, bulge_length);
         }
 
@@ -1124,7 +1126,8 @@ void RoutingPath::ToPolyLinesAndVias(
         if (!last_poly_line_was_first) {
           LOG(INFO) << "Inserting " << bulge_width << " x " << bulge_length
                     << " bulge at " << last->start() << " i=" << i
-                    << " " << vertices_.size();
+                    << " " << vertices_.size()
+                    << " on layer " << last->layer();
           last->InsertBulgeLater(last->start(), bulge_width, bulge_length);
         } else {
           last_poly_line_was_first = false;

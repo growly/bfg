@@ -226,33 +226,56 @@ void RoutingGrid::ApplyBlockage(
       if (!vertex->Available())
         continue;
 
-      std::set<RoutingTrackDirection> access_directions = {
-          RoutingTrackDirection::kTrackHorizontal,
-          RoutingTrackDirection::kTrackVertical};
-
-      const std::string &net = blockage.shape().net();
+      // TODO(aryap): Doesn't this need to be temporary and rewindable like all
+      // the other effects of blockages?
+      //
+      // We're getting closer to having to track blockages in significant detail...
+      //
+      // Alternative would be testing blockage directions every time we work
+      // against the routing grid's assumptions (edges that go in different
+      // directions to their layer)... which sucks. Also if temporary and
+      // resolving connections between multiple paths, we need to remember the
+      // rules for connecting to a vertex on that path when it was created,
+      // don't we?
       bool any_access = false;
-      for (const auto &direction : access_directions) {
-        bool blocked_at_all = false;
-        // We use the RoutingGridBlockage to do a hit test; set
-        // exceptional_nets = nullopt so that no exception is made.
-        if (blockage.IntersectsPoint(vertex->centre(), 0)) {
-          vertex->AddUsingNet(blockage.shape().net(), is_temporary);
-          VLOG(16) << "Blockage: " << blockage.shape()
-                   << " intersects " << vertex->centre()
-                   << " with margin " << 0
-                   << direction << " direction";
-        } else if (blockage.Blocks(*vertex, std::nullopt, direction)) {
-          blocked_at_all = true;
-          if (net != "") {
-            vertex->AddBlockingNet(net, is_temporary);
+      // Check if the blockage overlaps the vertex completely:
+      if (blockage.IntersectsPoint(vertex->centre(), 0)) {
+        vertex->AddUsingNet(blockage.shape().net(), is_temporary);
+        VLOG(16) << "Blockage: " << blockage.shape()
+                 << " intersects " << vertex->centre()
+                 << " with margin " << 0;
+      } else {
+        // If it doesn't, check if there are viable directions the vertex can
+        // still be used in:
+        static const std::set<RoutingTrackDirection> kAllDirections = {
+            RoutingTrackDirection::kTrackHorizontal,
+            RoutingTrackDirection::kTrackVertical};
+
+        std::set<RoutingTrackDirection> available_directions;
+
+        const std::string &net = blockage.shape().net();
+        for (const auto &direction : kAllDirections) {
+          // We use the RoutingGridBlockage to do a hit test; set
+          // exceptional_nets = nullopt so that no exception is made.
+          if (blockage.Blocks(*vertex, std::nullopt, direction)) {
+            if (net != "") {
+              vertex->AddBlockingNet(net, is_temporary);
+            }
+            VLOG(16) << "Blockage: " << blockage.shape()
+                     << " blocks " << vertex->centre()
+                     << " with padding=" << blockage.padding() << " in "
+                     << direction << " direction";
+            continue;
           }
-          VLOG(16) << "Blockage: " << blockage.shape()
-                   << " blocks " << vertex->centre()
-                   << " with padding=" << blockage.padding() << " in "
-                   << direction << " direction";
+          available_directions.insert(direction);
         }
-        any_access = !blocked_at_all || any_access;
+
+        if (available_directions.size() == 1) {
+          any_access = true;
+          vertex->SetForcedEncapDirection(layer, *available_directions.begin());
+        } else if (available_directions.size() > 1) {
+          any_access = true;
+        }
       }
 
       if (!any_access) {
