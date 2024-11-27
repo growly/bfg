@@ -89,17 +89,17 @@ class PolyLine : public Shape {
   // poly_line.InsertBulge(poly_line.End()), you would modify the underlying
   // value half way.
   void InsertBulge(
-      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
-
-  // As above, but will not be applied until ApplyDeferredBulges() call.
-  void InsertBulgeLater(
-      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
-
-  void InsertBulge(
       const Point &point,
       uint64_t width,
       uint64_t length,
-      std::optional<double> angle_rads);
+      std::optional<double> angle_rads = std::nullopt);
+
+  // As above, but will not be applied until ApplyDeferredBulges() call.
+  void InsertBulgeLater(
+      const Point point,
+      uint64_t coaxial_width,
+      uint64_t coaxial_length,
+      std::optional<double> angle_rads = std::nullopt);
 
   void ApplyDeferredBulges();
 
@@ -139,6 +139,7 @@ class PolyLine : public Shape {
     Point position;
     uint64_t width;
     uint64_t length;
+    std::optional<double> angle_rads;
   };
 
   void ReplaceDuplicateEndPointsWithWidest();
@@ -147,6 +148,10 @@ class PolyLine : public Shape {
   void RemoveNotchesAroundCorners();
 
   void EnforceInvariants();
+
+  void InsertBulgeInternal(
+      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+
   void InsertForwardBulgePoint(
       const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
       size_t intersection_index, const Line &intersected_line);

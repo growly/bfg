@@ -61,21 +61,6 @@ BulgeDimensions GetBulgeDimensions(
   };
 }
 
-BulgeDimensions GetBulgeDimensions(
-    const RoutingViaInfo &routing_via_info,
-    const RoutingTrackDirection &edge_direction,
-    std::optional<RoutingTrackDirection> encap_direction) {
-  BulgeDimensions nominal_dimensions = GetBulgeDimensions(routing_via_info);
-  // If the edge and encap directions don't match, swap width/length.
-  // This assumes that there are only two valid directions, horizontal and
-  // vertical.
-  if (encap_direction && edge_direction != *encap_direction) {
-    LOG(INFO) << "should have swapped";
-    std::swap(nominal_dimensions.width, nominal_dimensions.length);
-  }
-  return nominal_dimensions;
-}
-
 }    // namespace
 
 double RoutingPath::Cost() const {
@@ -701,6 +686,10 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
       int64_t bulge_length = 0;
       auto encap_direction = vertex->GetEncapDirection(
           poly_line->layer());
+      std::optional<double> angle_rads;
+      if (encap_direction) {
+        angle_rads = RoutingTrack::DirectionToAngle(*encap_direction);
+      }
       for (RoutingEdge *other_edge : edges) {
         VLOG(13) << "Path " << path << " via " << *other_edge;
         if (other_edge->EffectiveLayer() == poly_line->layer()) {
@@ -708,9 +697,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
         }
         auto bulge = GetBulgeDimensions(
             routing_grid_->GetRoutingViaInfoOrDie(
-                poly_line->layer(), other_edge->EffectiveLayer()),
-            other_edge->Direction(),
-            encap_direction);
+                poly_line->layer(), other_edge->EffectiveLayer()));
         max_bulge_length_by_layer[other_edge->EffectiveLayer()] =
             std::max(
                 max_bulge_length_by_layer[other_edge->EffectiveLayer()],
@@ -726,7 +713,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
                   << " bulge at " << vertex->centre()
                   << " on layer " << poly_line->layer();
         poly_line->InsertBulgeLater(
-            vertex->centre(), bulge_width, bulge_length);
+            vertex->centre(), bulge_width, bulge_length, angle_rads);
       }
     }
   }

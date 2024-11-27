@@ -446,7 +446,7 @@ void PolyLine::InsertBulge(const Point &point,
                            uint64_t length,
                            std::optional<double> angle_rads) {
   if (!angle_rads) {
-    InsertBulge(point, width, length);
+    InsertBulgeInternal(point, width, length);
     return;
   }
 
@@ -464,9 +464,9 @@ void PolyLine::InsertBulge(const Point &point,
   double coaxial_length = static_cast<double>(length) * std::cos(alpha) + 
                           static_cast<double>(width) * std::sin(alpha);
 
-  InsertBulge(point,
-              std::llround(std::abs(coaxial_width)),
-              std::llround(std::abs(coaxial_length)));
+  InsertBulgeInternal(point,
+                      std::llround(std::abs(coaxial_width)),
+                      std::llround(std::abs(coaxial_length)));
 }
 
 //           _
@@ -477,7 +477,7 @@ void PolyLine::InsertBulge(const Point &point,
 //       /
 //      o <- want this point before
 //     /
-void PolyLine::InsertBulge(
+void PolyLine::InsertBulgeInternal(
     const Point point, uint64_t coaxial_width, uint64_t coaxial_length) {
   size_t intersection_index = 0;
   if (!Intersects(point, &intersection_index)) {
@@ -517,14 +517,24 @@ void PolyLine::InsertBulge(
 }
 
 void PolyLine::InsertBulgeLater(
-    const Point point, uint64_t coaxial_width, uint64_t coaxial_length) {
+    const Point point,
+    uint64_t coaxial_width,
+    uint64_t coaxial_length,
+    std::optional<double> angle_rads) {
   deferred_bulges_.push_back(
-      DeferredBulge {point, coaxial_width, coaxial_length});
+      DeferredBulge {point, coaxial_width, coaxial_length, angle_rads});
 }
 
 void PolyLine::ApplyDeferredBulges() {
   for (const DeferredBulge &deferred : deferred_bulges_) {
-    InsertBulge(deferred.position, deferred.width, deferred.length);
+    if (deferred.angle_rads) {
+      InsertBulge(deferred.position,
+                  deferred.width,
+                  deferred.length,
+                  deferred.angle_rads);
+    } else {
+      InsertBulge(deferred.position, deferred.width, deferred.length);
+    }
   }
   deferred_bulges_.clear();
 }
