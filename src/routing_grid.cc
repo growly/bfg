@@ -240,7 +240,9 @@ void RoutingGrid::ApplyBlockage(
       bool any_access = false;
       // Check if the blockage overlaps the vertex completely:
       if (blockage.IntersectsPoint(vertex->centre(), 0)) {
-        vertex->AddUsingNet(blockage.shape().net(), is_temporary);
+        vertex->AddUsingNet(blockage.shape().net(),
+                            is_temporary,
+                            blockage.shape().layer());
         VLOG(16) << "Blockage: " << blockage.shape()
                  << " intersects " << vertex->centre()
                  << " with margin " << 0;
@@ -385,7 +387,9 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       if (!new_vertex) {
         continue;
       }
-      new_vertex->AddUsingNet(blockage.shape().net(), is_temporary);
+      new_vertex->AddUsingNet(blockage.shape().net(),
+                              is_temporary,
+                              blockage.shape().layer());
       new_vertex->set_explicit_net_layer(blockage.shape().layer());
       // TODO(aryap): This actually requires a test on the blockage shape
       // accommodating the encap rules as-is, which we could do, but which would
@@ -2312,6 +2316,8 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
     return absl::InvalidArgumentError(ss.str());
   }
 
+  // TODO(aryap): We need to track blocking layer information for each vertex
+  // here (see other usage of RoutingVertex::AddUsingNet).
   size_t i = 0;
   RoutingEdge *edge = nullptr;
   path->vertices()[0]->AddUsingNet(net, false);  // Permanent.
@@ -3270,26 +3276,27 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
       for (RoutingVertex *other : nearby) {
         if (other == vertex)
           continue;
-        // Skip nearby vertices within path that are in paths but don't host
-        // vias. If they aren't in paths they're still candidates.
-        if (!other->installed_in_paths().empty() &&
-            all_vertices_without_vias.find(other) !=
-            all_vertices_without_vias.end())
+        // Skip nearby vertices within path that are in paths.
+        if (!other->installed_in_paths().empty())
           continue;
         // Skip other vertices in this path, because we aren't going to do
         // anything about them.
         if (spanned_vertices.find(other) != spanned_vertices.end())
           continue;
-        // Skip vertices that are in use by multiple nets, since they are no
+        // FIXME(aryap): Use GetUsingNetLayers!!!
+        // Skip vertices that are in use by multiple nets, since they are not
         // going to host vias.
         auto other_net = other->InUseBySingleNet();
         if (!other_net)
           continue;
         // Skip vertices that aren't on our net, since we can't do much about
         // them.
-        if (*net == *other_net) {
-          record_conflict_fn(vertex, other);
+        if (*net != *other_net) {
+          continue;
         }
+        // Skip vertices that don't share 2 or more layers with our path.
+        //auto layers = 
+        record_conflict_fn(vertex, other);
       }
     }
   }

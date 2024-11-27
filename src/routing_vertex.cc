@@ -1,9 +1,17 @@
 #include "routing_vertex.h"
 
+#include <map>
+#include <optional>
+#include <set>
+#include <variant>
+#include <vector>
+
 #include "equivalent_nets.h"
 #include "geometry/compass.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
+#include "geometry/rectangle.h"
+#include "geometry/polygon.h"
 #include "routing_edge.h"
 #include "routing_track.h"
 
@@ -33,38 +41,67 @@ void RoutingVertex::UpdateCachedStatus() {
                        blocked_by_nearby_nets_.empty();
 }
 
-void RoutingVertex::AddUsingNet(const std::string &net, bool temporary) {
+void RoutingVertex::AddUsingNet(
+    const std::string &net,
+    bool temporary,
+    std::optional<geometry::Layer> layer,
+    std::optional<const geometry::Rectangle*> blocking_rectangle,
+    std::optional<const geometry::Polygon*> blocking_polygon) {
   // This mutates blocking state and should call UpdateCachedStatus() before it
   // exits.
   absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
+
   auto it = in_use_by_nets_.find(net);
   if (it == in_use_by_nets_.end()) {
-    in_use_by_nets_[net] = temporary;
+    auto new_entry = in_use_by_nets_.insert({net, std::vector<NetHazardInfo>()});
+    // Ignore a failed insertion because then we'd have bigger problems.
+    it = new_entry.first;
     return;
   }
-  // If the blockage was previously temporary but is now not, override it as
-  // permanent. We trade one check of the existing value for what might be an
-  // unnecessary write.
-  if (!temporary) {
-    it->second = temporary;
+
+  NetHazardInfo hazard = {
+    .is_temporary = temporary,
+    .layer = layer
+  };
+  if (blocking_rectangle) {
+    hazard.blockage = blocking_rectangle;
+  } else if (blocking_polygon) {
+    hazard.blockage = blocking_polygon;
   }
+
+  it->second.push_back(hazard);
 }
 
-void RoutingVertex::AddBlockingNet(const std::string &net, bool temporary) {
+void RoutingVertex::AddBlockingNet(
+    const std::string &net,
+    bool temporary,
+    std::optional<geometry::Layer> layer,
+    std::optional<const geometry::Rectangle*> blocking_rectangle,
+    std::optional<const geometry::Polygon*> blocking_polygon) {
   // This mutates blocking state and should call UpdateCachedStatus() before it
   // exits.
   absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
+
   auto it = blocked_by_nearby_nets_.find(net);
   if (it == blocked_by_nearby_nets_.end()) {
-    blocked_by_nearby_nets_[net] = temporary;
+    auto new_entry = blocked_by_nearby_nets_.insert(
+        {net, std::vector<NetHazardInfo>()});
+    // Ignore a failed insertion because then we'd have bigger problems.
+    it = new_entry.first;
     return;
   }
-  // If the blockage was previously temporary but is now not, override it as
-  // permanent. We trade one check of the existing value for what might be an
-  // unnecessary write.
-  if (!temporary) {
-    it->second = temporary;
+
+  NetHazardInfo hazard = {
+    .is_temporary = temporary,
+    .layer = layer
+  };
+  if (blocking_rectangle) {
+    hazard.blockage = blocking_rectangle;
+  } else if (blocking_polygon) {
+    hazard.blockage = blocking_polygon;
   }
+
+  it->second.push_back(hazard);
 }
 
 // This mutates blocking state and should call UpdateCachedStatus() before it
@@ -76,24 +113,51 @@ void RoutingVertex::SetForcedBlocked(bool blocked, bool temporary) {
   UpdateCachedStatus();
 }
 
+void RoutingVertex::RemoveTemporaryHazardsFrom(
+    std::map<std::string, std::vector<NetHazardInfo>> *container) {
+  for (auto outer_it = container->begin(); outer_it != container->end();) {
+    std::vector<NetHazardInfo> &inner = outer_it->second;
+    for (auto inner_it = inner.begin(); inner_it != inner.end();) {
+      if (inner_it->is_temporary) {
+        inner_it = inner.erase(inner_it);
+        continue;
+      }
+      ++inner_it;
+    }
+    if (inner.empty()) {
+      outer_it = container->erase(outer_it);
+      continue;
+    }
+    ++outer_it;
+  }
+}
+
 // This mutates blocking state and should call UpdateCachedStatus() before it
 // exits.
 void RoutingVertex::ResetTemporaryStatus() {
   temporarily_forced_blocked_ = false;
 
-  auto remove_temporaries_fn = [](std::map<std::string, bool> *container) {
-    for (auto it = container->begin(); it != container->end();) {
-      if (it->second) {
-        it = container->erase(it);
-        continue;
-      }
-      ++it;
-    }
-  };
-  remove_temporaries_fn(&in_use_by_nets_);
-  remove_temporaries_fn(&blocked_by_nearby_nets_);
+  RemoveTemporaryHazardsFrom(&in_use_by_nets_);
+  RemoveTemporaryHazardsFrom(&blocked_by_nearby_nets_);
 
   UpdateCachedStatus();
+}
+
+std::optional<std::set<geometry::Layer>> RoutingVertex::GetNetLayers(
+    const std::map<std::string, std::vector<NetHazardInfo>> &container,
+    const std::string &net) const {
+  auto it = container.find(net);
+  if (it == container.end()) {
+    return std::nullopt;
+  }
+  std::set<geometry::Layer> layers;
+  const auto &inner = it->second;
+  for (auto it = inner.begin(); it != inner.end(); ++it) {
+    if (it->layer) {
+      layers.insert(*it->layer);
+    }
+  }
+  return layers;
 }
 
 std::optional<std::string> RoutingVertex::InUseBySingleNet() const {

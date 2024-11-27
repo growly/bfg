@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <set>
+#include <variant>
 #include <vector>
 
 #include "glog/logging.h"
@@ -14,6 +15,11 @@
 #include "equivalent_nets.h"
 
 namespace bfg {
+
+namespace geometry {
+class Polygon;
+class Rectangle;
+};
 
 class RoutingEdge;
 class RoutingTrack;
@@ -69,13 +75,34 @@ class RoutingVertex {
     return connected_layers_;
   }
 
+  std::optional<std::set<geometry::Layer>> GetUsingNetLayers(
+      const std::string &net) const {
+    return GetNetLayers(in_use_by_nets_, net);
+  }
+  std::optional<std::set<geometry::Layer>> GetBlockingNearbyNetLayers(
+      const std::string &net) const {
+    return GetNetLayers(blocked_by_nearby_nets_, net);
+  }
+
   // If the vertex was available, the given net is marked as reachable from it
   // (setting connectable_net_) and available_ is set false. If the vertex was
   // unavailable already and connectable_net_ is set for a different net, the
   // connectable_net_ is cleared to avoid indicating that any net can be
   // reached.
-  void AddUsingNet(const std::string &net, bool temporary);
-  void AddBlockingNet(const std::string &net, bool temporary);
+  void AddUsingNet(
+      const std::string &net,
+      bool temporary,
+      std::optional<geometry::Layer> layer = std::nullopt,
+      std::optional<const geometry::Rectangle*>
+          blocking_rectangle = std::nullopt,
+      std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
+  void AddBlockingNet(
+      const std::string &net,
+      bool temporary,
+      std::optional<geometry::Layer> layer = std::nullopt,
+      std::optional<const geometry::Rectangle*>
+          blocking_rectangle = std::nullopt,
+      std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
   void SetForcedBlocked(bool totally_blocked, bool temporary);
 
   void ResetTemporaryStatus();
@@ -200,15 +227,32 @@ class RoutingVertex {
     RoutingVertex *vertex;
   };
 
-  // Updates totally_blocked_ and totally_available_ based on the using and
-  // blocking nets, permanent and temporary.
-  void UpdateCachedStatus();
-
-  // FIXME(aryap): I think we need to store the layers on which the nets are
+  // TODO(aryap): I think we need to store the layers on which the nets are
   // connectible here. It might be possible that a vertex can be used to connect
   // to different nets on different layers. Right now I'm not sure how else to
   // solve the problem of connecting to a net when there's a choice of layers to
   // connect on. Usually it creates a hazard.
+  //
+  // Not sure about this structure.
+  struct NetHazardInfo {
+    bool is_temporary;
+    std::optional<geometry::Layer> layer;
+
+    // Almost used a union!
+    std::variant<
+      std::optional<const geometry::Rectangle*>,
+      std::optional<const geometry::Polygon*>> blockage;
+  };
+
+  void RemoveTemporaryHazardsFrom(
+      std::map<std::string, std::vector<NetHazardInfo>> *container);
+  std::optional<std::set<geometry::Layer>> GetNetLayers(
+      const std::map<std::string, std::vector<NetHazardInfo>> &container,
+      const std::string &net) const;
+
+  // Updates totally_blocked_ and totally_available_ based on the using and
+  // blocking nets, permanent and temporary.
+  void UpdateCachedStatus();
 
   RoutingEdge *in_edge_;
   RoutingEdge *out_edge_;
@@ -233,10 +277,14 @@ class RoutingVertex {
   bool forced_blocked_;
   bool temporarily_forced_blocked_;
 
-  // Map of using/blocking net name to whether they are doing so temporarily.
+  // Map of using/blocking net name to whether NetHazardInfo structure that
+  // tracks principally whether the usage is permanent or temporary, but also
+  // what layer, source blockage it has. Resolution of multiple active hazards
+  // is done elsewhere.
+  //
   // Permanent usage/blockage trumps temporary usage/blockage.
-  std::map<std::string, bool> in_use_by_nets_;
-  std::map<std::string, bool> blocked_by_nearby_nets_;
+  std::map<std::string, std::vector<NetHazardInfo>> in_use_by_nets_;
+  std::map<std::string, std::vector<NetHazardInfo>> blocked_by_nearby_nets_;
 
   // This is the cost of changing layer at this vertex.
   double cost_;
