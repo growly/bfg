@@ -36,6 +36,11 @@ bool Point::CompareYThenX(const Point &lhs, const Point &rhs) {
   return lhs.y() < rhs.y();
 }
 
+bool Point::ShareHorizontalOrVerticalAxis(
+    const Point &lhs, const Point &rhs) {
+  return lhs.x() == rhs.x() || lhs.y() == rhs.y();
+}
+
 Point Point::UnitVector(double angle_to_horizon_radians) {
   return {std::llround(std::cos(angle_to_horizon_radians)),
           std::llround(std::sin(angle_to_horizon_radians))};

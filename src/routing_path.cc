@@ -595,8 +595,47 @@ const std::set<RoutingVertex*> RoutingPath::SpannedVerticesWithoutVias() const {
   std::set<RoutingVertex*> all_without_vias;
   std::set_difference(all.begin(), all.end(),
                       with_vias.begin(), with_vias.end(),
-                      std::inserter(all_without_vias, all_without_vias.begin()));
+                      std::inserter(
+                          all_without_vias, all_without_vias.begin()));
   return all_without_vias;
+}
+
+void RoutingPath::ResolveTerminatingLayersAtBothEnds() {
+  if (edges_.empty()) {
+    return;
+  }
+  ResolveTerminatingLayers(start_access_layers_,
+                           *edges_.front(),
+                           &picked_start_layers_);
+  ResolveTerminatingLayers(end_access_layers_,
+                           *edges_.back(),
+                           &picked_end_layers_);
+}
+
+void RoutingPath::ResolveTerminatingLayers(
+    const std::set<geometry::Layer> &access_layers,
+    const RoutingEdge &edge,
+    std::optional<CostedLayerPair> *picked) {
+  LOG_IF(FATAL, !edge.layer())
+      << "Edge must have a layer assigned by this point.";
+  const geometry::Layer &source_layer = *edge.layer();
+  auto costed_access_layer = PickAccessLayerPair(
+      {source_layer}, access_layers);
+  geometry::Layer access_layer;
+  if (!costed_access_layer) {
+    LOG(WARNING) << "No reachability to access layers "
+                 << absl::StrJoin(access_layers, ", ")
+                 << " from layer " << source_layer;
+    access_layer =
+        access_layers.empty() ?  source_layer : *access_layers.begin();
+    *picked = CostedLayerPair {
+      .cost = 0.0,
+      .source = source_layer,
+      .target = access_layer
+    };
+    return;
+  }
+  *picked = *costed_access_layer;
 }
 
 void RoutingPath::Legalise() {
@@ -605,6 +644,7 @@ void RoutingPath::Legalise() {
   Abbreviate();
   MergeConsecutiveEdgesOnSameTrack();
   Flatten();
+  ResolveTerminatingLayersAtBothEnds();
   legalised_ = true;
 }
 
@@ -975,28 +1015,12 @@ void RoutingPath::BuildVias(
 }
 
 void RoutingPath::BuildTerminatingVias(
-    const std::set<geometry::Layer> &access_layers,
+    const geometry::Layer &access_layer,
     bool encap_port,
     RoutingVertex *vertex,
     geometry::PolyLine *active_line,
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
     std::vector<std::unique_ptr<AbstractVia>> *vias) const {
-  auto costed_access_layer = PickAccessLayerPair(
-      {active_line->layer()}, access_layers);
-  geometry::Layer access_layer;
-  if (!costed_access_layer) {
-    LOG(WARNING) << "No reachability to access layers "
-                 << absl::StrJoin(access_layers, ", ")
-                 << " at " 
-                 << vertex->centre()
-                 << " for this path";
-    access_layer =
-        access_layers.empty() ?
-        active_line->layer() : *access_layers.begin();
-  } else {
-    access_layer = costed_access_layer->target;
-  }
-
   auto get_encap_direction_fn = [&](const geometry::Layer &layer) {
     return vertex->GetForcedEncapDirection(layer);
   };
@@ -1175,7 +1199,10 @@ void RoutingPath::ToPolyLinesAndVias(
 
   // If there is more than 1 access layer, we prefer the lowest-cost.
   if (!start_access_layers_.empty()) {
-    BuildTerminatingVias(start_access_layers_,
+    LOG_IF(FATAL, !picked_start_layers_)
+        << "picked_start_layers_ is std::nullopt; did you call "
+        << "ResolveTerminatingLayersAtBothEnds()?";
+    BuildTerminatingVias(picked_start_layers_->target,
                          encap_start_port_,
                          vertices_.front(),
                          front,
@@ -1186,7 +1213,10 @@ void RoutingPath::ToPolyLinesAndVias(
 
   geometry::PolyLine *back = generated_lines.back().get();
   if (!end_access_layers_.empty()) {
-    BuildTerminatingVias(end_access_layers_,
+    LOG_IF(FATAL, !picked_end_layers_)
+        << "picked_end_layers_ is std::nullopt; did you call "
+        << "ResolveTerminatingLayersAtBothEnds()?";
+    BuildTerminatingVias(picked_end_layers_->target,
                          encap_end_port_,
                          vertices_.back(),
                          back,

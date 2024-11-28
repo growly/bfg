@@ -24,6 +24,8 @@ class Point : public AbstractShape, public Manipulable {
   static bool CompareY(const Point &lhs, const Point &rhs);
   static bool CompareXThenY(const Point &lhs, const Point &rhs);
   static bool CompareYThenX(const Point &lhs, const Point &rhs);
+  static bool ShareHorizontalOrVerticalAxis(
+      const Point &lhs, const Point &rhs);
 
   // NOTE(aryap): It doesn't make sense to use this with angles that aren't
   // multiples of pi/4, since our Point has integer units:

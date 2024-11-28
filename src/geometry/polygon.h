@@ -44,6 +44,9 @@ class Polygon : public Shape {
   bool Overlaps(const Rectangle &rectangle) const;
   bool HasVertex(const Point &point) const;
 
+  bool Intersects(const Point &point) const;
+  bool Intersects(const Point &point, int64_t margin) const;
+
   std::vector<PointPair> IntersectingPoints(const Line &line) const;
 
   void MirrorY() override;

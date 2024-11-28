@@ -184,6 +184,11 @@ class RoutingGrid {
 
   void ClearAllBlockages();
 
+  void ApplyExistingBlockages(
+      RoutingVertex *vertex,
+      bool is_temporary,
+      std::optional<RoutingTrackDirection> access_direction = std::nullopt);
+
   // Removes the blockage from the list of known blockages, but does not undo
   // any effects of the blockage if they've already been applied.
   template <typename T>
@@ -416,27 +421,20 @@ class RoutingGrid {
     return obstruction.Overlaps(keep_out.value());
   }
 
+  template<typename T>
+  void ApplyBlockageToOneVertex(
+      const RoutingGridBlockage<T> &blockage,
+      bool is_temporary,
+      RoutingVertex *vertex,
+      bool *any_access = nullptr,
+      std::optional<RoutingTrackDirection> access_direction = std::nullopt);
+
   // Gathers on-grid vertices and off-grid vertices within a given radius,
   // where the radius is given by the number of horizontal/vertical pitches on
   // on the routing grid geometry. Blockages are checked on the layer() of the
   // given shape.
   template<typename T>
-  std::set<RoutingVertex*> BlockingOffGridVertices(const T &shape) const {
-    int64_t min_separation = physical_db_.Rules(shape.layer()).min_separation;
-    std::set<RoutingVertex*> vertices;
-    for (RoutingVertex *off_grid : off_grid_vertices_) {
-      if (ViaWouldIntersect(*off_grid,
-                            shape,
-                            min_separation,
-                            std::nullopt)) {
-        vertices.insert(off_grid);
-      }
-    }
-    return vertices;
-  }
-
-  template<typename T>
-  void ApplyBlockage(const RoutingGridBlockage<T> &blockage);
+  std::set<RoutingVertex*> BlockingOffGridVertices(const T &shape) const;
 
   template<typename T>
   void AddOffGridVerticesForBlockage(
@@ -449,9 +447,8 @@ class RoutingGrid {
       const geometry::Layer &layer,
       const std::optional<RoutingTrackDirection> direction) const;
 
-  // TODO(aryap): Would this be more useful with a 'radius' argument?
-  std::set<RoutingVertex*> GetNearbyVertices(
-      const RoutingVertex &vertex) const;
+  template<typename T>
+  std::set<RoutingVertex*> GetNearbyVertices(const T &shape) const;
 
   absl::StatusOr<RoutingPath*> FindRouteBetween(
       const geometry::Port &begin,

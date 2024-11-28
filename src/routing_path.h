@@ -40,6 +40,19 @@ class RoutingPath {
 
   void Legalise();
 
+  std::optional<geometry::Layer> StartAccessLayer() const {
+    if (!picked_start_layers_) {
+      return std::nullopt;
+    }
+    return picked_start_layers_->target;
+  }
+  std::optional<geometry::Layer> EndAccessLayer() const {
+    if (!picked_end_layers_) {
+      return std::nullopt;
+    }
+    return picked_end_layers_->target;
+  }
+
   void ToPolyLinesAndVias(
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines,
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
@@ -110,7 +123,7 @@ class RoutingPath {
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
 
   void BuildTerminatingVias(
-      const std::set<geometry::Layer> &access_layers,
+      const geometry::Layer &access_layer,
       bool encap_port,
       RoutingVertex *vertex,
       geometry::PolyLine *active_line,
@@ -202,6 +215,12 @@ class RoutingPath {
   // Remove illegal (and inefficient) jogs between tracks.
   void Flatten();
 
+  void ResolveTerminatingLayersAtBothEnds();
+  void ResolveTerminatingLayers(
+      const std::set<geometry::Layer> &access_layers,
+      const RoutingEdge &edge,
+      std::optional<CostedLayerPair> *picked);
+
   // TODO(aryap): I don't think these port objects are needed? We get most of
   // the info from start/end layer. Possibly if these are provided are they are
   // non-standard we need to provide bigger pours on the layers that connect to
@@ -215,6 +234,11 @@ class RoutingPath {
   // order for the start (and end) ports to be reached.
   std::set<geometry::Layer> start_access_layers_;
   std::set<geometry::Layer> end_access_layers_;
+
+  // In cases where these are defined, they tell us which layer on the path
+  // (source) connects to what layer on the target port/net shape (target).
+  std::optional<CostedLayerPair> picked_start_layers_;
+  std::optional<CostedLayerPair> picked_end_layers_;
 
   EquivalentNets nets_;
 

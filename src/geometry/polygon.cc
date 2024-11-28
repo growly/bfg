@@ -546,11 +546,11 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
       double exit_coefficient = test.ProjectionCoefficient(exit);
 
       if (entry_coefficient <= start_coefficient &&
-              exit_coefficient >= start_coefficient) {
+          exit_coefficient >= start_coefficient) {
         return true;
       }
       if (entry_coefficient <= end_coefficient &&
-              exit_coefficient >= end_coefficient) {
+          exit_coefficient >= end_coefficient) {
         return true;
       }
     }
@@ -562,6 +562,51 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
 bool Polygon::HasVertex(const Point &point) const {
   return std::find(
       vertices_.begin(), vertices_.end(), point) != vertices_.end();
+}
+
+bool Polygon::Intersects(const Point &point) const {
+  return Intersects(point, 0);
+}
+
+bool Polygon::Intersects(const Point &point, int64_t margin) const {
+  if (margin != 0) {
+    return Overlaps(Rectangle::CentredAt(point, 2 * margin, 2 * margin));
+  }
+
+  // Do basic tests. Are we outside of the polygon's bounding box?
+  geometry::Rectangle bounding_box = GetBoundingBox();
+  if (point.x() < bounding_box.lower_left().x() ||
+      point.y() < bounding_box.lower_left().y() ||
+      point.x() > bounding_box.upper_right().x() ||
+      point.y() > bounding_box.upper_right().y()) {
+    return false;
+  }
+
+  // We have to cast a ray and test for intersections. Classic.
+  // Ray angle is arbitrary so we just pick a horizontal line.
+  Line ray = Line(point, {point.x() + 1, point.y()});
+
+  // The projection back onto the ray is measurable as a scalar coefficient
+  // multiplied by the original vector diagonal defines. As shorthand we just
+  // call these the 'coefficients'.
+  double point_coefficient = 0.0;  // Distance from start to start along the
+                                   // line is always zero.
+
+  std::vector<PointPair> points = IntersectingPoints(ray);
+
+  for (const auto &point_pair : points) {
+    const Point &entry = point_pair.first;
+    const Point &exit = point_pair.second;
+
+    double entry_coefficient = ray.ProjectionCoefficient(entry);
+    double exit_coefficient = ray.ProjectionCoefficient(exit);
+
+    if (entry_coefficient <= point_coefficient &&
+        exit_coefficient >= point_coefficient) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void Polygon::MirrorY() {

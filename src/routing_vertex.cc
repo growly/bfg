@@ -47,16 +47,19 @@ void RoutingVertex::AddUsingNet(
     std::optional<geometry::Layer> layer,
     std::optional<const geometry::Rectangle*> blocking_rectangle,
     std::optional<const geometry::Polygon*> blocking_polygon) {
+  if (net == "") {
+    return;
+  }
   // This mutates blocking state and should call UpdateCachedStatus() before it
   // exits.
   absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
 
   auto it = in_use_by_nets_.find(net);
   if (it == in_use_by_nets_.end()) {
-    auto new_entry = in_use_by_nets_.insert({net, std::vector<NetHazardInfo>()});
+    auto new_entry = in_use_by_nets_.insert(
+        {net, std::vector<NetHazardInfo>()});
     // Ignore a failed insertion because then we'd have bigger problems.
     it = new_entry.first;
-    return;
   }
 
   NetHazardInfo hazard = {
@@ -78,6 +81,9 @@ void RoutingVertex::AddBlockingNet(
     std::optional<geometry::Layer> layer,
     std::optional<const geometry::Rectangle*> blocking_rectangle,
     std::optional<const geometry::Polygon*> blocking_polygon) {
+  if (net == "") {
+    return;
+  }
   // This mutates blocking state and should call UpdateCachedStatus() before it
   // exits.
   absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
@@ -88,7 +94,6 @@ void RoutingVertex::AddBlockingNet(
         {net, std::vector<NetHazardInfo>()});
     // Ignore a failed insertion because then we'd have bigger problems.
     it = new_entry.first;
-    return;
   }
 
   NetHazardInfo hazard = {

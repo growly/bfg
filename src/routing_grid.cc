@@ -22,6 +22,7 @@
 #include "equivalent_nets.h"
 #include "geometry/compass.h"
 #include "geometry/poly_line.h"
+#include "geometry/point.h"
 #include "geometry/rectangle.h"
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
@@ -64,14 +65,13 @@ namespace bfg {
 template<>
 bool RoutingGridBlockage<geometry::Rectangle>::IntersectsPoint(
     const geometry::Point &point, int64_t margin) const {
-  VLOG(20) << "Unimplemented!";
-  return false;
+  return shape_.Intersects(point, margin);
 }
 
 template<>
 bool RoutingGridBlockage<geometry::Polygon>::IntersectsPoint(
     const geometry::Point &point, int64_t margin) const {
-  VLOG(20) << "Unimplemented!";
+  return shape_.Intersects(point, margin);
   return false;
 }
 
@@ -215,83 +215,32 @@ void RoutingGrid::ApplyBlockage(
   // Find any possibly-blocked vertices and make them unavailable:
   std::vector<std::reference_wrapper<const RoutingGridGeometry>>
       grid_geometries = FindRoutingGridGeometriesUsingLayer(layer);
+  // TODO(aryap): Can't we use some version of GetNearbyVertices instead of
+  // these loops?
   for (const RoutingGridGeometry &grid_geometry : grid_geometries) {
     std::set<RoutingVertex*> vertices;
     grid_geometry.EnvelopingVertices(blockage.shape(), &vertices);
 
+    std::set<RoutingVertex*> blocked_off_grid =
+        BlockingOffGridVertices(blockage.shape());
     // Also check every off-grid vertex.
-    vertices.insert(off_grid_vertices_.begin(), off_grid_vertices_.end());
+    vertices.insert(blocked_off_grid.begin(), blocked_off_grid.end());
 
     for (RoutingVertex *vertex : vertices) {
-      if (!vertex->Available())
-        continue;
-
-      // TODO(aryap): Doesn't this need to be temporary and rewindable like all
-      // the other effects of blockages?
-      //
-      // We're getting closer to having to track blockages in significant detail...
-      //
-      // Alternative would be testing blockage directions every time we work
-      // against the routing grid's assumptions (edges that go in different
-      // directions to their layer)... which sucks. Also if temporary and
-      // resolving connections between multiple paths, we need to remember the
-      // rules for connecting to a vertex on that path when it was created,
-      // don't we?
-      bool any_access = false;
-      // Check if the blockage overlaps the vertex completely:
-      if (blockage.IntersectsPoint(vertex->centre(), 0)) {
-        vertex->AddUsingNet(blockage.shape().net(),
-                            is_temporary,
-                            blockage.shape().layer());
-        VLOG(16) << "Blockage: " << blockage.shape()
-                 << " intersects " << vertex->centre()
-                 << " with margin " << 0;
-      } else {
-        // If it doesn't, check if there are viable directions the vertex can
-        // still be used in:
-        static const std::set<RoutingTrackDirection> kAllDirections = {
-            RoutingTrackDirection::kTrackHorizontal,
-            RoutingTrackDirection::kTrackVertical};
-
-        std::set<RoutingTrackDirection> available_directions;
-
-        const std::string &net = blockage.shape().net();
-        for (const auto &direction : kAllDirections) {
-          // We use the RoutingGridBlockage to do a hit test; set
-          // exceptional_nets = nullopt so that no exception is made.
-          if (blockage.Blocks(*vertex, std::nullopt, direction)) {
-            if (net != "") {
-              vertex->AddBlockingNet(net, is_temporary);
-            }
-            VLOG(16) << "Blockage: " << blockage.shape()
-                     << " blocks " << vertex->centre()
-                     << " with padding=" << blockage.padding() << " in "
-                     << direction << " direction";
-            continue;
-          }
-          available_directions.insert(direction);
-        }
-
-        if (available_directions.size() == 1) {
-          any_access = true;
-          vertex->SetForcedEncapDirection(layer, *available_directions.begin());
-        } else if (available_directions.size() > 1) {
-          any_access = true;
-        }
-      }
-
-      if (!any_access) {
-        vertex->SetForcedBlocked(true, is_temporary);
-        if (blocked_vertices) {
-          blocked_vertices->insert(vertex);
-        }
+      bool any_access;
+      ApplyBlockageToOneVertex(blockage,
+                               is_temporary,
+                               vertex,
+                               &any_access);
+      if (!any_access && blocked_vertices) {
+        blocked_vertices->insert(vertex);
       }
     }
 
     // TODO(aryap): Do we need a facility to roll back off-grid vertices for
     // shapes on nets that are temporary blockages? Practically this includes
     // via footprints for ports!
-    if (!is_temporary && !blockage.shape().net().empty()) {
+    if (!is_temporary && blockage.shape().net() != "") {
       AddOffGridVerticesForBlockage(grid_geometry, blockage, false);
     }
   }
@@ -325,6 +274,22 @@ void RoutingGrid::ForgetBlockage(
   polygon_blockages_.erase(it);
 }
 
+template<typename T>
+std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
+    const T &shape) const {
+  int64_t min_separation = physical_db_.Rules(shape.layer()).min_separation;
+  std::set<RoutingVertex*> vertices;
+  for (RoutingVertex *off_grid : off_grid_vertices_) {
+    if (ViaWouldIntersect(*off_grid,
+                          shape,
+                          min_separation,
+                          std::nullopt)) {
+      vertices.insert(off_grid);
+    }
+  }
+  return vertices;
+}
+
 std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
     const RoutingVertex &vertex,
     const geometry::Layer &layer,
@@ -336,7 +301,10 @@ std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
   return BlockingOffGridVertices(*vertex_footprint);
 }
 
-std::set<RoutingVertex*> RoutingGrid::GetNearbyVertices(
+// NOTE(aryap): This is a partial function template specialisation, but it could
+// just as well have been a straight overload.
+template<>
+std::set<RoutingVertex*> RoutingGrid::GetNearbyVertices<RoutingVertex>(
     const RoutingVertex &vertex) const {
   std::set<RoutingVertex*> nearby;
   for (const geometry::Layer &layer : vertex.connected_layers()) {
@@ -356,6 +324,27 @@ std::set<RoutingVertex*> RoutingGrid::GetNearbyVertices(
             vertex.GetEncapDirection(layer));
     nearby.insert(blocked_off_grid.begin(), blocked_off_grid.end());
   }
+  return nearby;
+}
+
+template<typename T>
+std::set<RoutingVertex*> RoutingGrid::GetNearbyVertices(const T &shape) const {
+  std::set<RoutingVertex*> nearby;
+  const geometry::Layer &layer = shape.layer();
+  std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+      grid_geometries = FindRoutingGridGeometriesUsingLayer(layer);
+  for (const RoutingGridGeometry &grid_geometry : grid_geometries) {
+    grid_geometry.EnvelopingVertices(
+        shape,
+        &nearby,
+        0,   // No additional padding on the centre point.
+        1);  // Within 'radius' of 1 pitch.
+  }
+  std::set<RoutingVertex*> blocked_off_grid =
+      BlockingOffGridVertices(
+          shape,
+          layer);
+  nearby.insert(blocked_off_grid.begin(), blocked_off_grid.end());
   return nearby;
 }
 
@@ -396,6 +385,8 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       // require me to be less lazy.
       new_vertex->set_explicit_net_layer_requires_encap(true);
       AddOffGridVertex(new_vertex);
+
+      ApplyExistingBlockages(new_vertex, is_temporary);
     }
   }
 }
@@ -2316,20 +2307,20 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
     return absl::InvalidArgumentError(ss.str());
   }
 
-  // TODO(aryap): We need to track blocking layer information for each vertex
-  // here (see other usage of RoutingVertex::AddUsingNet).
   size_t i = 0;
   RoutingEdge *edge = nullptr;
-  path->vertices()[0]->AddUsingNet(net, false);  // Permanent.
+  path->vertices().front()->AddUsingNet(net, false, *path->StartAccessLayer());
   while (i < path->edges().size()) {
     RoutingVertex *last_vertex = path->vertices()[i];
     RoutingVertex *next_vertex = path->vertices()[i + 1];
     RoutingEdge *edge = path->edges()[i];
     last_vertex->set_out_edge(edge);
+    last_vertex->AddUsingNet(net, false, *edge->layer());  // Permanent.
     next_vertex->set_in_edge(edge);
-    next_vertex->AddUsingNet(net, false);  // Permanent.
+    next_vertex->AddUsingNet(net, false, *edge->layer());  // Permanent.
     ++i;
   }
+  path->vertices().back()->AddUsingNet(net, false, *path->EndAccessLayer());
 
   for (RoutingVertex *vertex : path->vertices()) {
     InstallVertexInPath(vertex, net);
@@ -2664,7 +2655,6 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
   RoutingGridBlockage<geometry::Rectangle> *blockage =
       new RoutingGridBlockage<geometry::Rectangle>(
           *this, rectangle, padding + min_separation);
-  rectangle_blockages_.emplace_back(blockage);
 
   for (RoutingTrack *track : it->second) {
     if (is_temporary) {
@@ -2693,7 +2683,11 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
     }
   }
 
+  // ApplyBlockage might create new vertices, which will have all
+  // previously-applied blockages applied to them. That's why we don't add the
+  // blockage to the list of known-blockages til last.
   ApplyBlockage(*blockage, is_temporary, blocked_vertices);
+  rectangle_blockages_.emplace_back(blockage);
   return blockage;
 }
 
@@ -2710,7 +2704,6 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
   RoutingGridBlockage<geometry::Polygon> *blockage =
       new RoutingGridBlockage<geometry::Polygon>(
           *this, polygon, padding + min_separation);
-  polygon_blockages_.emplace_back(blockage);
 
   // Find tracks on the blockage layer, if any.
   auto it = tracks_by_layer_.find(layer);
@@ -2728,7 +2721,105 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
   }
 
   ApplyBlockage(*blockage, is_temporary, blocked_vertices);
+  polygon_blockages_.emplace_back(blockage);
   return blockage;
+}
+
+void RoutingGrid::ApplyExistingBlockages(
+    RoutingVertex *vertex,
+    bool is_temporary,
+    std::optional<RoutingTrackDirection> access_direction) {
+  for (const auto &blockage : rectangle_blockages_) {
+    ApplyBlockageToOneVertex(*blockage,
+                             is_temporary,
+                             vertex,
+                             nullptr,
+                             access_direction);
+  }
+  for (const auto &blockage : polygon_blockages_) {
+    ApplyBlockageToOneVertex(*blockage,
+                             is_temporary,
+                             vertex,
+                             nullptr,
+                             access_direction);
+  }
+};
+
+template<typename T>
+void RoutingGrid::ApplyBlockageToOneVertex(
+    const RoutingGridBlockage<T> &blockage,
+    bool is_temporary,
+    RoutingVertex *vertex,
+    bool *any_access_out,
+    std::optional<RoutingTrackDirection> access_direction) {
+  // TODO(aryap): Speed this up by returning early if the blockage is really far
+  // from the vertex. Like > 2 pitches.
+  // TODO(aryap): Doesn't this need to be temporary and rewindable like all
+  // the other effects of blockages?
+  //
+  // We're getting closer to having to track blockages in significant
+  // detail...
+  //
+  // Alternative would be testing blockage directions every time we work
+  // against the routing grid's assumptions (edges that go in different
+  // directions to their layer)... which sucks. Also if temporary and
+  // resolving connections between multiple paths, we need to remember the
+  // rules for connecting to a vertex on that path when it was created,
+  // don't we?
+  const geometry::Layer &layer = blockage.shape().layer();
+  bool any_access = false;
+  // Check if the blockage overlaps the vertex completely:
+  if (blockage.IntersectsPoint(vertex->centre(), 0)) {
+    vertex->AddUsingNet(blockage.shape().net(),
+                        is_temporary,
+                        layer);
+    VLOG(16) << "Blockage: " << blockage.shape()
+             << " intersects " << vertex->centre()
+             << " with margin " << 0;
+  } else {
+    // If it doesn't, check if there are viable directions the vertex can
+    // still be used in:
+    static const std::set<RoutingTrackDirection> kAllDirections = {
+        RoutingTrackDirection::kTrackHorizontal,
+        RoutingTrackDirection::kTrackVertical};
+
+    // Yikes. This will make a copy of kAllDirections.
+    std::set<RoutingTrackDirection> test_directions = access_direction ?
+        std::set<RoutingTrackDirection>{*access_direction} : kAllDirections;
+
+    std::set<RoutingTrackDirection> available_directions;
+
+    const std::string &net = blockage.shape().net();
+    for (const auto &direction : kAllDirections) {
+      // We use the RoutingGridBlockage to do a hit test; set
+      // exceptional_nets = nullopt so that no exception is made.
+      if (blockage.Blocks(*vertex, std::nullopt, direction)) {
+        if (net != "") {
+          vertex->AddBlockingNet(net, is_temporary);
+        }
+        VLOG(16) << "Blockage: " << blockage.shape()
+                 << " blocks " << vertex->centre()
+                 << " with padding=" << blockage.padding() << " in "
+                 << direction << " direction";
+        continue;
+      }
+      available_directions.insert(direction);
+    }
+
+    if (available_directions.size() == 1) {
+      any_access = true;
+      vertex->SetForcedEncapDirection(layer, *available_directions.begin());
+    } else if (available_directions.size() > 1) {
+      any_access = true;
+    }
+  }
+
+  if (!any_access) {
+    vertex->SetForcedBlocked(true, is_temporary);
+  }
+  if (any_access_out) {
+    *any_access_out = any_access;
+  }
 }
 
 void RoutingGrid::RemoveUnavailableVertices() {
@@ -3233,24 +3324,72 @@ std::optional<std::vector<RoutingViaInfo>> RoutingGrid::FindViaStack(
 }
 
 // This is actually our first sketch of a DRC check.
+//
+// FIXME(aryap): In order to build this dumb stupid hack I had to fix/add a lot
+// of other bookkeeping. Namely, vertices that collide with blockages (such as
+// power straps) should now accurately record all of the nets using them (i.e.
+// clock nets) and on which layers. So when we connect to a vertex, we should
+// just have to check neighbours for their nets in the same way we already do
+// when landing on an existing path. Emiting the hack patch there is much less
+// hacky actually.
 void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
     PolyLineCell *cell) const {
   // Find neary by vertices that are too close but which have vias.
   //
   // Iterate over vertices in installed paths because those are the only things
   // we've added that could've made the mess we're trying to climb out of.
-  std::set<std::pair<RoutingVertex*, RoutingVertex*>>
-      pairwise_mutual_conflicts;
-  auto record_conflict_fn = [&](RoutingVertex *lhs, RoutingVertex *rhs) {
-      auto it = pairwise_mutual_conflicts.find({lhs, rhs});
-      if (it != pairwise_mutual_conflicts.end()) {
-        return;
+  auto emit_hack_fn = [&](
+      RoutingVertex *lhs,
+      RoutingVertex *rhs) {
+    // The width of the joining rectangle is the length of the via encap on the
+    // given layer.
+    std::array<RoutingEdge*, 4> candidates = {
+        lhs->in_edge(), lhs->out_edge(), rhs->in_edge(), rhs->out_edge()};
+    RoutingEdge *edge = nullptr;
+    for (size_t i = 0; i < 4; ++i) {
+      if (candidates[i]) {
+        edge = candidates[i];
+        break;
       }
-      it = pairwise_mutual_conflicts.find({rhs, lhs});
-      if (it != pairwise_mutual_conflicts.end()) {
-        return;
-      }
-      pairwise_mutual_conflicts.insert({lhs, rhs});
+    }
+    if (!edge)
+      return;
+    RoutingTrackDirection direction = edge->Direction();
+    geometry::Layer layer =
+        edge->layer() ? *edge->layer() : *lhs->connected_layers().begin();
+
+    auto footprint = VertexFootprint(lhs->centre(), layer, 0, direction);
+    if (!footprint)
+      return;
+
+    geometry::PolyLine *fix =
+        new geometry::PolyLine({lhs->centre(), rhs->centre()});
+    fix->set_layer(layer);
+
+    if (lhs->centre().x() == rhs->centre().x() &&
+        direction == RoutingTrackDirection::kTrackHorizontal) {
+      fix->SetWidth(footprint->Width());
+    } else if (lhs->centre().y() == rhs->centre().y() &&
+               direction == RoutingTrackDirection::kTrackVertical) {
+      fix->SetWidth(footprint->Height());
+    } else if (lhs->centre().x() == rhs->centre().x() &&
+               direction == RoutingTrackDirection::kTrackVertical) {
+      fix->SetWidth(footprint->Width());
+    } else if (lhs->centre().y() == rhs->centre().y() &&
+               direction == RoutingTrackDirection::kTrackHorizontal) {
+      fix->SetWidth(footprint->Height());
+    }
+    cell->poly_lines().emplace_back(fix);
+  };
+
+  auto num_in_common_fn = [](
+      const std::set<geometry::Layer> &lhs,
+      const std::set<geometry::Layer> &rhs) {
+    std::vector<geometry::Layer> intersection;
+    std::set_intersection(lhs.begin(), lhs.end(),
+                          rhs.begin(), rhs.end(),
+                          std::inserter(intersection, intersection.begin()));
+    return intersection.size();
   };
 
   // Determine every non-via vertex across every path;
@@ -3272,38 +3411,38 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
         LOG(WARNING) << "Yikes.";
         continue;
       }
+      auto our_layers = vertex->GetUsingNetLayers(*net);
       std::set<RoutingVertex*> nearby = GetNearbyVertices(*vertex);
       for (RoutingVertex *other : nearby) {
         if (other == vertex)
           continue;
-        // Skip nearby vertices within path that are in paths.
+        // Skip nearby vertices that are in paths.
         if (!other->installed_in_paths().empty())
           continue;
         // Skip other vertices in this path, because we aren't going to do
         // anything about them.
         if (spanned_vertices.find(other) != spanned_vertices.end())
           continue;
-        // FIXME(aryap): Use GetUsingNetLayers!!!
         // Skip vertices that are in use by multiple nets, since they are not
         // going to host vias.
         auto other_net = other->InUseBySingleNet();
         if (!other_net)
           continue;
-        // Skip vertices that aren't on our net, since we can't do much about
-        // them.
-        if (*net != *other_net) {
+        auto their_layers = other->GetUsingNetLayers(*net);
+        if (!their_layers || their_layers->empty())
           continue;
-        }
-        // Skip vertices that don't share 2 or more layers with our path.
-        //auto layers = 
-        record_conflict_fn(vertex, other);
+        // We actually only care that they have two layers in common with
+        // vertex, since then we will probably have a problem:
+        if (num_in_common_fn(*our_layers, *their_layers) < 2)
+          continue;
+        // EXTRA HACKLICIOUS!
+        if (!geometry::Point::ShareHorizontalOrVerticalAxis(
+              vertex->centre(), other->centre()))
+          continue;
+
+        emit_hack_fn(vertex, other);
       }
     }
-  }
-
-  for (auto &entry : pairwise_mutual_conflicts) {
-    LOG(INFO) << "got one! " << entry.first->centre()
-              << " and " << entry.second->centre();
   }
 }
 
