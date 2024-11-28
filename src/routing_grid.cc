@@ -3358,7 +3358,7 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
     geometry::Layer layer =
         edge->layer() ? *edge->layer() : *lhs->connected_layers().begin();
 
-    auto footprint = VertexFootprint(lhs->centre(), layer, 0, direction);
+    auto footprint = VertexFootprint(*lhs, layer, 0, direction);
     if (!footprint)
       return;
 
@@ -3452,7 +3452,7 @@ PolyLineCell *RoutingGrid::CreatePolyLineCell() const {
     path->ToPolyLinesAndVias(&cell->poly_lines(), &cell->vias());
   }
 
-  ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(cell.get());
+  //ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(cell.get());
 
   return cell.release();
 }
