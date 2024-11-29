@@ -699,6 +699,17 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();
   for (size_t i = 0; i < spanned_vertices.size(); ++i) {
     RoutingVertex *vertex = spanned_vertices.at(i);
+
+    // This vertex might not be able to accomodate a new bulge; this so far
+    // only has happened when two edges on the same net cross each other but
+    // neither terminates on the other.
+    //
+    // As a reminder, being 'available' as a vertex means being able to
+    // accomodate a via.
+    if (!vertex->AvailableForNets(nets_)) {
+      continue;
+    }
+
     auto &installed_in_paths = vertex->installed_in_paths();
     VLOG(12) << "Vertex " << vertex->centre() << " is installed in "
              << installed_in_paths.size() << " paths";
