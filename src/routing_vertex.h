@@ -118,7 +118,7 @@ class RoutingVertex {
   //bool LandableByNets(const EquivalentNets &nets) const;
   // We call a vertex Available if it is either of these things.
 
-  RoutingEdge *GetEdgeOnLayer(const geometry::Layer &layer) const;
+  RoutingEdge *GetFirstEdgeOnLayer(const geometry::Layer &layer) const;
 
   bool IsOffGrid() const {
     return !horizontal_track_ || !vertical_track_;
@@ -212,10 +212,11 @@ class RoutingVertex {
 
   const geometry::Point &centre() const { return centre_; }
 
-  void set_in_edge(RoutingEdge *edge) { in_edge_ = edge; }
-  RoutingEdge *in_edge() const { return in_edge_; }
-  void set_out_edge(RoutingEdge *edge) { out_edge_ = edge; }
-  RoutingEdge *out_edge() const { return out_edge_; }
+  void AddInEdge(RoutingEdge *edge) { in_edges_.insert(edge); }
+  void AddOutEdge(RoutingEdge *edge) { out_edges_.insert(edge); }
+
+  RoutingEdge *in_edges() const { return in_edges_; }
+  RoutingEdge *out_edges() const { return out_edges_; }
 
   std::map<geometry::Layer, RoutingTrackDirection> &forced_encap_direction() {
     return forced_encap_directions_;
@@ -254,8 +255,8 @@ class RoutingVertex {
   // blocking nets, permanent and temporary.
   void UpdateCachedStatus();
 
-  RoutingEdge *in_edge_;
-  RoutingEdge *out_edge_;
+  std::set<RoutingEdge*> in_edges_;
+  std::set<RoutingEdge*> out_edges_;
 
   // The availability of the RoutingVertex for use in a route depends on the net
   // the route is to be used for and whether there is any existing use of or

@@ -2314,9 +2314,9 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
     RoutingVertex *last_vertex = path->vertices()[i];
     RoutingVertex *next_vertex = path->vertices()[i + 1];
     RoutingEdge *edge = path->edges()[i];
-    last_vertex->set_out_edge(edge);
+    last_vertex->AddOutEdge(edge);
     last_vertex->AddUsingNet(net, false, *edge->layer());  // Permanent.
-    next_vertex->set_in_edge(edge);
+    next_vertex->AddInEdge(edge);
     next_vertex->AddUsingNet(net, false, *edge->layer());  // Permanent.
     ++i;
   }
@@ -3343,17 +3343,18 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
       RoutingVertex *rhs) {
     // The width of the joining rectangle is the length of the via encap on the
     // given layer.
-    std::array<RoutingEdge*, 4> candidates = {
-        lhs->in_edge(), lhs->out_edge(), rhs->in_edge(), rhs->out_edge()};
-    RoutingEdge *edge = nullptr;
-    for (size_t i = 0; i < 4; ++i) {
-      if (candidates[i]) {
-        edge = candidates[i];
-        break;
-      }
-    }
-    if (!edge)
+    std::set<RoutingEdge*> candidates;
+    candidates.insert(lhs->in_edges().begin(), lhs->in_edges().end());
+    candidates.outsert(lhs->out_edges().begin(), lhs->out_edges().end());
+    candidates.insert(rhs->in_edges().begin(), rhs->in_edges().end());
+    candidates.outsert(rhs->out_edges().begin(), rhs->out_edges().end());
+    if (candidates.empty())
       return;
+
+    RoutingEdge *edge = *candidates.begin();
+    LOG_IF(FATAL, !edge)
+        << "A nullptr edge was in one of the edge sets?!";
+
     RoutingTrackDirection direction = edge->Direction();
     geometry::Layer layer =
         edge->layer() ? *edge->layer() : *lhs->connected_layers().begin();

@@ -63,6 +63,10 @@ class RoutingPath {
 
   bool Empty() const { return edges_.empty(); }
 
+  const std::vector<RoutingVertex*> SpannedVerticesWithVias() const;
+  const std::set<RoutingVertex*> SpannedVertices() const;
+  const std::set<RoutingVertex*> SpannedVerticesWithoutVias() const;
+
   const geometry::Port *start_port() const { return start_port_; }
   void set_start_port(const geometry::Port *port) { start_port_ = port; }
   const geometry::Port *end_port() const { return end_port_; }
@@ -95,10 +99,6 @@ class RoutingPath {
 
   void set_nets(const EquivalentNets &nets) { nets_ = nets; }
   const EquivalentNets &nets() const { return nets_; }
-
-  const std::vector<RoutingVertex*> SpannedVerticesWithVias() const;
-  const std::set<RoutingVertex*> SpannedVertices() const;
-  const std::set<RoutingVertex*> SpannedVerticesWithoutVias() const;
 
   const std::vector<RoutingVertex*> &vertices() const { return vertices_; }
   const std::vector<RoutingEdge*> &edges() const { return edges_; }
@@ -220,6 +220,11 @@ class RoutingPath {
       const std::set<geometry::Layer> &access_layers,
       const RoutingEdge &edge,
       std::optional<CostedLayerPair> *picked);
+
+  void FixLandingOnShortEdgeInAnotherPathAtBothEnds();
+  void FixLandingOnShortEdgeInAnotherPath(
+      const RoutingVertex &vertex,
+      const RoutingEdge &edge);
 
   // TODO(aryap): I don't think these port objects are needed? We get most of
   // the info from start/end layer. Possibly if these are provided are they are

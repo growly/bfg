@@ -263,23 +263,25 @@ std::optional<RoutingTrackDirection> RoutingVertex::GetEncapDirection(
   if (forced) {
     return *forced;
   }
-  RoutingEdge *edge = GetEdgeOnLayer(layer);
+  RoutingEdge *edge = GetFirstEdgeOnLayer(layer);
   if (edge) {
     return edge->Direction();
   }
   return std::nullopt;
 }
 
-RoutingEdge *RoutingVertex::GetEdgeOnLayer(const geometry::Layer &layer) const {
+RoutingEdge *RoutingVertex::GetFirstEdgeOnLayer(const geometry::Layer &layer) const {
   // FIXME(aryap): Why do we have in_edge_, out_edge_ and edges_? Since this is
   // added for RoutingGrid::InstallVertexInPath we will use the in_ and
   // out_edge_ fields:
-  for (RoutingEdge *edge : {in_edge_, out_edge_}) {
-    if (!edge) {
-      continue;
-    }
-    if (edge->EffectiveLayer() == layer) {
-      return edge;
+  for (auto edges : {in_edges_, out_edges_}) {
+    for (RoutingEdge *edge : edges) {
+      if (!edge) {
+        continue;
+      }
+      if (edge->EffectiveLayer() == layer) {
+        return edge;
+      }
     }
   }
   return nullptr;

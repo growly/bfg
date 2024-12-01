@@ -648,6 +648,33 @@ void RoutingPath::Legalise() {
   legalised_ = true;
 }
 
+// This can happen:
+//
+//            | L1|
+//            |   |
+//          +-------+
+//   +------+       |
+//   + +--+    L0   | Path A
+//   +-|--|-+       |
+//     |  | +-------+
+//     |  |^notch
+//     |  +-----     Path B
+//     |  L0      <- This path, all on L0 at the end due to some previous optimisations,
+//     +--------     terminates on an L0 pour in another path, B. No via is
+//                   needed from L0 to L0 so a small notch appears in the overall L0 pour.
+//
+//  One fix is to add a bulge to the receiving path to make sure the notch doesn't occur.
+void RoutingPath::FixLandingOnShortEdgeInAnotherPath(
+    const RoutingVertex &vertex,
+    const RoutingEdge &edge) {
+  const auto &installed_in_paths = vertex.installed_in_paths();
+  for (const auto &entry : intalled_in_paths) {
+    if (entry.first == this)
+      continue;
+    
+  }
+}
+
 void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     geometry::PolyLine *poly_line,
     RoutingEdge *edge,
