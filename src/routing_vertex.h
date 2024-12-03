@@ -139,6 +139,9 @@ class RoutingVertex {
 
   bool ChangesEdge() const;
 
+  std::optional<std::pair<geometry::Layer, geometry::Layer>>
+  ChangedEdgeAndLayers() const;
+
   void ClearAllForcedEncapDirections() {
     forced_encap_directions_.clear();
   }
@@ -253,6 +256,13 @@ class RoutingVertex {
   // blocking nets, permanent and temporary.
   void UpdateCachedStatus();
 
+  // FIXME(aryap): I think this can be entirely replaced by installed_in_paths_,
+  // since it tracks the path using the vertex and a set of edges. The only
+  // thing that doesn't track is the directionality of the edges within the
+  // path, i.e. which one is in and which is out. But does that matter? As is we
+  // have duplicated the bookeeping, and I don't think this is even that
+  // important?
+  //
   // One entry per path that crosses the vertex.
   std::set<std::pair<RoutingEdge*, RoutingEdge*>> in_out_edges_;
 

@@ -112,6 +112,14 @@ class RoutingPath {
     geometry::Layer target;
   };
 
+  struct BulgeDimensions {
+    int64_t width;
+    int64_t length;
+  };
+
+  static BulgeDimensions GetBulgeDimensions(
+      const RoutingViaInfo &routing_via_info);
+
   void BuildVias(
       const geometry::Point &at_point,
       const geometry::Layer &last_layer,
@@ -140,6 +148,16 @@ class RoutingPath {
       const std::set<geometry::Layer> &target_layers) const;
 
   void CheckEdgeInPolyLineForIncidenceOfOtherPaths(
+      geometry::PolyLine *poly_line,
+      RoutingEdge *edge,
+      std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
+
+  void CheckForViaCrowding(
+      geometry::PolyLine *poly_line,
+      RoutingEdge *edge,
+      std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;
+
+  void CheckForNotchesToPerpendicularEdges(
       geometry::PolyLine *last,
       RoutingEdge *edge,
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const;

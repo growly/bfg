@@ -51,6 +51,35 @@ bool RoutingVertex::ChangesEdge() const {
   return false;
 }
 
+std::optional<std::pair<geometry::Layer, geometry::Layer>>
+RoutingVertex::ChangedEdgeAndLayers() const {
+  for (const auto &pair : in_out_edges_) {
+    if (pair.first == pair.second) {
+      continue;
+    }
+    
+    std::optional<geometry::Layer> first_layer =
+        pair.first ? pair.first->layer() : std::nullopt;
+    std::optional<geometry::Layer> second_layer =
+        pair.second ? pair.second->layer() : std::nullopt;
+
+    if (!first_layer && second_layer) {
+      first_layer = ConnectedLayerOtherThan(*second_layer);
+    } else if (first_layer && !second_layer) {
+      second_layer = ConnectedLayerOtherThan(*first_layer);
+    }
+
+    if (!first_layer || !second_layer) {
+      return std::nullopt;
+    }
+
+    if (*first_layer != *second_layer) {
+      return {{*first_layer, *second_layer}};
+    }
+  }
+  return std::nullopt;
+}
+
 void RoutingVertex::UpdateCachedStatus() {
   totally_available_ = !forced_blocked_ && !temporarily_forced_blocked_ &&
                        in_use_by_nets_.empty() &&

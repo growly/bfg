@@ -44,24 +44,15 @@ RoutingPath::RoutingPath(
   }
 }
 
-namespace {
-
-struct BulgeDimensions {
-  int64_t width;
-  int64_t length;
-};
-
 // TODO(aryap): There are different rules for overhanging from the layer above
 // and below. RoutingViaInfo now differentiates these, so we should use them.
-BulgeDimensions GetBulgeDimensions(
+RoutingPath::BulgeDimensions RoutingPath::GetBulgeDimensions(
     const RoutingViaInfo &routing_via_info) {
   return BulgeDimensions {
     .width = routing_via_info.MaxEncapWidth(),
     .length = routing_via_info.MaxEncapLength()
   };
 }
-
-}    // namespace
 
 double RoutingPath::Cost() const {
   // TODO(aryap): Should there be costs for start/end vias in here?
@@ -659,11 +650,13 @@ void RoutingPath::Legalise() {
 //     |  | +-------+
 //     |  |^notch
 //     |  +-----     Path B
-//     |  L0      <- This path, all on L0 at the end due to some previous optimisations,
-//     +--------     terminates on an L0 pour in another path, B. No via is
-//                   needed from L0 to L0 so a small notch appears in the overall L0 pour.
+//     |  L0      <- This path, all on L0 at the end due to some previous
+//     +--------     optimisations, terminates on an L0 pour in another path, B.
+//                   No via is needed from L0 to L0 so a small notch appears in
+//                   the overall L0 pour.
 //
-//  One fix is to add a bulge to the receiving path to make sure the notch doesn't occur.
+//  One fix is to add a bulge to the receiving path to make sure the notch
+//  doesn't occur.
 void RoutingPath::FixLandingOnShortEdgeInAnotherPath(
     const RoutingVertex &vertex,
     const RoutingEdge &edge) {
@@ -676,6 +669,14 @@ void RoutingPath::FixLandingOnShortEdgeInAnotherPath(
 }
 
 void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
+    geometry::PolyLine *poly_line,
+    RoutingEdge *edge,
+    std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const {
+  CheckForViaCrowding(poly_line, edge, poly_lines);
+  CheckForNotchesToPerpendicularEdges(poly_line, edge, poly_lines);
+}
+
+void RoutingPath::CheckForViaCrowding(
     geometry::PolyLine *poly_line,
     RoutingEdge *edge,
     std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const {
@@ -740,7 +741,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     auto &installed_in_paths = vertex->installed_in_paths();
     VLOG(12) << "Vertex " << vertex->centre() << " is installed in "
              << installed_in_paths.size() << " paths";
-    // The first and last edges are explicitly considered as via candidates:
+    // The first and last vertices are explicitly considered as via candidates:
     if (i == 0 || i == spanned_vertices.size() - 1) {
       for (const geometry::Layer &layer : vertex->connected_layers()) {
         close_vertices.Offer(layer, vertex);
@@ -823,6 +824,124 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
   }
 }
 
+// When a edge comes in perpedicular to an existing one, and the presence of a
+// nearby vias, or even just wide paths, can lead to a notch:
+//             +-----------+
+// +-----------+           |
+// |           A           |
+// |  +--X--+           O  |
+// |  |     |              |
+// +--|-----|--+           |
+//    |     |  +-----------+
+//    |  B  |^notch
+//
+// Path B landing on path A on the same layer is nice, but the skinny
+// perpendicular final edge on B creates a notch to the larger via encap in A.
+//
+// There is a general, geometric way to check this, in the manner of some DRC
+// touchups. Maybe It's actually a function of PolyLine to figure out notch
+// prevention in these cases as it does in general for multiple bulges on
+// itself. But here we implement a gross hack instead.
+//
+// We follow the basic method of CheckForViaCrowding, by checking every vertex
+// in the edge to see if they are crossed by other paths on the same layer but
+// in the perpedicular direction. The fix is to emit a bulge with the same
+// dimensions as at the nearest encap site, and we only need to check vertices
+// that are close enough to create a conflict.
+//
+// The test for this hack is whether vertices X and O are both via locations
+// whose encap lengths are less than the minimum allowable separation apart, and
+// also that the distance between the side of the perpendicular edge (B) is
+// closer than the minimum separation to the end of the bulge on the vertex it's
+// landing on.
+void RoutingPath::CheckForNotchesToPerpendicularEdges(
+    geometry::PolyLine *poly_line,
+    RoutingEdge *edge,
+    std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const {
+  // Find vertices on the edge that will host vias:
+
+  std::vector<RoutingVertex*> spanned_vertices = edge->SpannedVertices();
+
+  std::map<RoutingVertex*, BulgeDimensions> bulges;
+  for (RoutingVertex *vertex : spanned_vertices) {
+    auto layers = vertex->ChangedEdgeAndLayers();
+    if (!layers)
+      continue;
+    BulgeDimensions bulge = GetBulgeDimensions(
+        routing_grid_->GetRoutingViaInfoOrDie(layers->first, layers->second));
+    bulges.insert({vertex, bulge});
+  }
+
+  const RoutingLayerInfo &layer_info = routing_grid_->GetRoutingLayerInfoOrDie(
+      edge->EffectiveLayer());
+
+  auto is_too_close_to_via = [&](
+      RoutingVertex *vertex, RoutingEdge *other_edge) ->
+          std::optional<BulgeDimensions> {
+    auto it = bulges.find(vertex);
+    if (it == bulges.end()) {
+      return std::nullopt;
+    }
+
+    const BulgeDimensions &bulge = it->second;
+    int64_t bulge_length = bulge.length;
+    int64_t edge_width = layer_info.wire_width();
+
+    int64_t edge_to_end_of_bulge = (bulge_length - edge_width) / 2;
+    if (edge_to_end_of_bulge > layer_info.min_separation()) {
+      return std::nullopt;
+    }
+
+    for (const auto &entry : bulges) {
+      RoutingVertex *via_vertex = entry.first;
+      if (via_vertex == vertex) {
+        continue;
+      }
+      const BulgeDimensions &nearby_bulge = entry.second;
+      if (nearby_bulge.width <= bulge.width) {
+        continue;
+      }
+      int64_t distance = vertex->centre().L1DistanceTo(via_vertex->centre());
+      // No laughing.
+      int64_t their_bulge_length = nearby_bulge.length;
+
+      // We're trying to pre-empt what the PolyLine is going to do when there is
+      // a notch:
+      int64_t separation =
+          distance - (their_bulge_length / 2) - (bulge_length / 2);
+      if (separation < layer_info.min_separation()) {
+        return nearby_bulge;
+      }
+    }
+    return std::nullopt;
+  };
+
+  for (RoutingVertex *vertex : spanned_vertices) {
+    auto &installed_in_paths = vertex->installed_in_paths();
+    for (auto &entry : installed_in_paths) {
+      RoutingPath *path = entry.first;
+      if (path == this) {
+        continue;
+      }
+      std::set<RoutingEdge*> &edges  = entry.second;
+      for (RoutingEdge *other_edge : edges) {
+        // Compare to the condition in CheckForViaCrowding.
+        if (other_edge->EffectiveLayer() != poly_line->layer()) {
+          continue;
+        }
+
+        std::optional<BulgeDimensions> nearby_bulge =
+            is_too_close_to_via(vertex, other_edge);
+        if (!nearby_bulge) {
+          continue;
+        }
+        poly_line->InsertBulgeLater(
+            vertex->centre(), nearby_bulge->width, nearby_bulge->length);
+      }
+    }
+  }
+}
+
 // A related problem to that described for 
 // CheckEdgeInPolyLineForIncidenceOfOtherPaths is that what happens when
 // connecting to a vertex which itself is connected to our net on both of its
@@ -850,6 +969,7 @@ void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
 // doing this:
 void RoutingPath::MaybeFixFirstAndLastJog(
     std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines) const {
+  // Unimplemented.
 }
 
 absl::Status RoutingPath::CheckAndForceEncapDirections(

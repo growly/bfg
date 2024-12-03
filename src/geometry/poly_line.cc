@@ -726,6 +726,11 @@ void PolyLine::RemoveNotchesInAStraightLine() {
     if (this_segment.width < last_segment.width &&
         this_segment.width < next_segment.width &&
         length < *min_separation_) {
+      // TODO(aryap): If instead of erasing this segment we set its with to the
+      // min (or max) of its neighbours, we will remove the notch. The
+      // RemoveRedundantSegments() process should then simplify the duplicate
+      // segments down to one. However when I tried this it yielded weird
+      // behaviour around a turn, which it shouln't? Needs testing.
       segments_.erase(segments_.begin() + i);
       --i;
     }
