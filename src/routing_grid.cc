@@ -3475,7 +3475,7 @@ PolyLineCell *RoutingGrid::CreatePolyLineCell() const {
     path->ToPolyLinesAndVias(&cell->poly_lines(), &cell->vias());
   }
 
-  //ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(cell.get());
+  ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(cell.get());
 
   return cell.release();
 }
