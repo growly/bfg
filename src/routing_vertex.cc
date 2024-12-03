@@ -35,6 +35,22 @@ bool RoutingVertex::Compare(RoutingVertex *lhs, RoutingVertex *rhs) {
   return Compare(*lhs, *rhs);
 }
 
+void RoutingVertex::AddEdges(RoutingEdge *in, RoutingEdge *out) {
+  if (in == nullptr && out == nullptr) {
+    return;
+  }
+  in_out_edges_.insert({in, out});
+}
+
+bool RoutingVertex::ChangesEdge() const {
+  for (const auto &pair : in_out_edges_) {
+    if (pair.first != pair.second) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void RoutingVertex::UpdateCachedStatus() {
   totally_available_ = !forced_blocked_ && !temporarily_forced_blocked_ &&
                        in_use_by_nets_.empty() &&
@@ -270,12 +286,13 @@ std::optional<RoutingTrackDirection> RoutingVertex::GetEncapDirection(
   return std::nullopt;
 }
 
-RoutingEdge *RoutingVertex::GetFirstEdgeOnLayer(const geometry::Layer &layer) const {
+RoutingEdge *RoutingVertex::GetFirstEdgeOnLayer(
+    const geometry::Layer &layer) const {
   // FIXME(aryap): Why do we have in_edge_, out_edge_ and edges_? Since this is
   // added for RoutingGrid::InstallVertexInPath we will use the in_ and
   // out_edge_ fields:
-  for (auto edges : {in_edges_, out_edges_}) {
-    for (RoutingEdge *edge : edges) {
+  for (const auto &pair : in_out_edges_) {
+    for (RoutingEdge *edge : {pair.first, pair.second}) {
       if (!edge) {
         continue;
       }

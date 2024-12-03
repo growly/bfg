@@ -313,8 +313,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
     // correct this if the edge participates in a RoutingPath or if the in- and
     // out-edges must otherwise be adjusted.
     if (EdgeSpansVertex(*edge, *vertex)) {
-      vertex->AddInEdge(edge);
-      vertex->AddOutEdge(edge);
+      vertex->AddEdges(edge, edge);
       vertex->AddUsingNet(net, false);   // Permanent.
     }
   }

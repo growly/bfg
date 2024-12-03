@@ -2308,19 +2308,26 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
   }
 
   size_t i = 0;
-  RoutingEdge *edge = nullptr;
-  path->vertices().front()->AddUsingNet(net, false, *path->StartAccessLayer());
+  RoutingEdge *last_edge = nullptr;
+  RoutingEdge *next_edge = nullptr;
+  RoutingVertex *last_vertex = path->vertices().front();
+  RoutingVertex *next_vertex = nullptr;
   while (i < path->edges().size()) {
-    RoutingVertex *last_vertex = path->vertices()[i];
-    RoutingVertex *next_vertex = path->vertices()[i + 1];
-    RoutingEdge *edge = path->edges()[i];
-    last_vertex->AddOutEdge(edge);
-    last_vertex->AddUsingNet(net, false, *edge->layer());  // Permanent.
-    next_vertex->AddInEdge(edge);
-    next_vertex->AddUsingNet(net, false, *edge->layer());  // Permanent.
+    next_edge = path->edges()[i];
+    next_vertex = path->vertices()[i + 1];
+
+    last_vertex->AddEdges(last_edge, next_edge);
+    last_vertex->AddUsingNet(net, false, *next_edge->layer());  // Permanent.
+    next_vertex->AddUsingNet(net, false, *next_edge->layer());  // Permanent.
+
+    last_edge = next_edge;
+    last_vertex = next_vertex;
+
     ++i;
   }
+  last_vertex->AddEdges(last_edge, nullptr);
   path->vertices().back()->AddUsingNet(net, false, *path->EndAccessLayer());
+  path->vertices().front()->AddUsingNet(net, false, *path->StartAccessLayer());
 
   for (RoutingVertex *vertex : path->vertices()) {
     InstallVertexInPath(vertex, net);
@@ -3344,10 +3351,12 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
     // The width of the joining rectangle is the length of the via encap on the
     // given layer.
     std::set<RoutingEdge*> candidates;
-    candidates.insert(lhs->in_edges().begin(), lhs->in_edges().end());
-    candidates.insert(lhs->out_edges().begin(), lhs->out_edges().end());
-    candidates.insert(rhs->in_edges().begin(), rhs->in_edges().end());
-    candidates.insert(rhs->out_edges().begin(), rhs->out_edges().end());
+    for (RoutingVertex *vertex : {lhs, rhs}) {
+      for (const auto &pair : vertex->in_out_edges()) {
+        candidates.insert(pair.first);
+        candidates.insert(pair.second);
+      }
+    }
     if (candidates.empty())
       return;
 

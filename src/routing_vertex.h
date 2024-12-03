@@ -137,9 +137,7 @@ class RoutingVertex {
       const geometry::Compass &position) const;
   std::set<RoutingVertex*> GetNeighbours() const;
 
-  bool ChangesEdge() const {
-    return in_edges_ != out_edges_;
-  }
+  bool ChangesEdge() const;
 
   void ClearAllForcedEncapDirections() {
     forced_encap_directions_.clear();
@@ -212,11 +210,11 @@ class RoutingVertex {
 
   const geometry::Point &centre() const { return centre_; }
 
-  void AddInEdge(RoutingEdge *edge) { in_edges_.insert(edge); }
-  void AddOutEdge(RoutingEdge *edge) { out_edges_.insert(edge); }
+  void AddEdges(RoutingEdge *in, RoutingEdge *out);
 
-  std::set<RoutingEdge*> in_edges() const { return in_edges_; }
-  std::set<RoutingEdge*> out_edges() const { return out_edges_; }
+  const std::set<std::pair<RoutingEdge*, RoutingEdge*>> &in_out_edges() {
+    return in_out_edges_;
+  }
 
   std::map<geometry::Layer, RoutingTrackDirection> &forced_encap_direction() {
     return forced_encap_directions_;
@@ -246,7 +244,7 @@ class RoutingVertex {
   };
 
   void RemoveTemporaryHazardsFrom(
-      std::map<std::string, std::vector<NetHazardInfo>> *container);
+      std::map<std::string, std::vector<NetHazardInfo>> *conAddOutEdge);
   std::optional<std::set<geometry::Layer>> GetNetLayers(
       const std::map<std::string, std::vector<NetHazardInfo>> &container,
       const std::string &net) const;
@@ -255,8 +253,8 @@ class RoutingVertex {
   // blocking nets, permanent and temporary.
   void UpdateCachedStatus();
 
-  std::set<RoutingEdge*> in_edges_;
-  std::set<RoutingEdge*> out_edges_;
+  // One entry per path that crosses the vertex.
+  std::set<std::pair<RoutingEdge*, RoutingEdge*>> in_out_edges_;
 
   // The availability of the RoutingVertex for use in a route depends on the net
   // the route is to be used for and whether there is any existing use of or
