@@ -308,13 +308,13 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
   // Remove other vertices that are blocked by this.
   for (auto &entry : vertices_by_offset_) {
     RoutingVertex *vertex = entry.second;
-    // NOTE: This will set the in- and out-edge of the vertex even if the vertex
-    // is the start or end vertex of the edge; something else (the caller) must
-    // correct this if the edge participates in a RoutingPath or if the in- and
-    // out-edges must otherwise be adjusted.
-    if (EdgeSpansVertex(*edge, *vertex)) {
-      vertex->AddEdges(edge, edge);
-      vertex->AddUsingNet(net, false);   // Permanent.
+    // We do _not_ set the in/out edge of the vertices at either end of the
+    // given edge, we only set in/out for edges along the way.
+    if (vertex != edge->first() && vertex != edge->second()) {
+      if (EdgeSpansVertex(*edge, *vertex)) {
+        vertex->AddEdges(edge, edge);
+        vertex->AddUsingNet(net, false);   // Permanent.
+      }
     }
   }
 }

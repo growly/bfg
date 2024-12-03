@@ -2329,6 +2329,19 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
   path->vertices().back()->AddUsingNet(net, false, *path->EndAccessLayer());
   path->vertices().front()->AddUsingNet(net, false, *path->StartAccessLayer());
 
+  // This is in lieu of a unit test :/
+  if (VLOG_IS_ON(60)) {
+    for (RoutingVertex *vertex : path->vertices()) {
+      std::stringstream ss;
+      ss << i << ": vertex " << vertex << std::endl;
+      for (const auto &pair : vertex->in_out_edges()) {
+        ss << "\tin:" << pair.first
+           << " out:" << pair.second << std::endl;
+      }
+      LOG(INFO) << ss.str();
+    }
+  }
+
   for (RoutingVertex *vertex : path->vertices()) {
     InstallVertexInPath(vertex, net);
   }
