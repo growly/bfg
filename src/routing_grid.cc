@@ -3366,8 +3366,12 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
     std::set<RoutingEdge*> candidates;
     for (RoutingVertex *vertex : {lhs, rhs}) {
       for (const auto &pair : vertex->in_out_edges()) {
-        candidates.insert(pair.first);
-        candidates.insert(pair.second);
+        if (pair.first) {
+          candidates.insert(pair.first);
+        }
+        if (pair.second) {
+          candidates.insert(pair.second);
+        }
       }
     }
     if (candidates.empty())
