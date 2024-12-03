@@ -34,9 +34,7 @@ class RoutingVertex {
       const RoutingVertex &lhs, const RoutingVertex &rhs);
 
   RoutingVertex(const geometry::Point &centre)
-      : in_edge_(nullptr),
-        out_edge_(nullptr),
-        forced_blocked_(false),
+      : forced_blocked_(false),
         temporarily_forced_blocked_(false),
         cost_(0.0),
         horizontal_track_(nullptr),
@@ -139,7 +137,9 @@ class RoutingVertex {
       const geometry::Compass &position) const;
   std::set<RoutingVertex*> GetNeighbours() const;
 
-  bool ChangesEdge() const { return in_edge_ != out_edge_; }
+  bool ChangesEdge() const {
+    return in_edges_ != out_edges_;
+  }
 
   void ClearAllForcedEncapDirections() {
     forced_encap_directions_.clear();
@@ -215,8 +215,8 @@ class RoutingVertex {
   void AddInEdge(RoutingEdge *edge) { in_edges_.insert(edge); }
   void AddOutEdge(RoutingEdge *edge) { out_edges_.insert(edge); }
 
-  RoutingEdge *in_edges() const { return in_edges_; }
-  RoutingEdge *out_edges() const { return out_edges_; }
+  std::set<RoutingEdge*> in_edges() const { return in_edges_; }
+  std::set<RoutingEdge*> out_edges() const { return out_edges_; }
 
   std::map<geometry::Layer, RoutingTrackDirection> &forced_encap_direction() {
     return forced_encap_directions_;

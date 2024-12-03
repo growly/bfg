@@ -668,7 +668,7 @@ void RoutingPath::FixLandingOnShortEdgeInAnotherPath(
     const RoutingVertex &vertex,
     const RoutingEdge &edge) {
   const auto &installed_in_paths = vertex.installed_in_paths();
-  for (const auto &entry : intalled_in_paths) {
+  for (const auto &entry : installed_in_paths) {
     if (entry.first == this)
       continue;
     
