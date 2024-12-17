@@ -105,6 +105,25 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       *LutB::GetLayoutConfiguration(lut_size_); 
   constexpr int64_t kMuxSize = 8;
 
+  // Circuit setup.
+  // ---------------------------------------------------------------------------
+
+  // Selector signals S0, S1, S2, ... S(K - 1)
+  for (size_t i = 0; i < lut_size_; ++i) {
+    circuit->AddPort(circuit->AddSignal(absl::StrCat("S", i)));
+  }
+  // Output.
+  circuit->AddPort(circuit->AddSignal("Z"));
+  // Scan in and out.
+  circuit->AddPort(circuit->AddSignal("CONFIG_IN"));
+  circuit->AddPort(circuit->AddSignal("CONFIG_OUT"));
+  // Clock, power, ground in.
+  circuit->AddPort(circuit->AddSignal("CLK"));
+  circuit->AddPort(circuit->AddSignal("VPWR"));
+  circuit->AddPort(circuit->AddSignal("VGND"));
+
+  // Layout.
+  // ---------------------------------------------------------------------------
   int64_t buf_y_pos = 0;
 
   atoms::Sky130Tap::Parameters tap_params = {
@@ -148,10 +167,6 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       memories_.push_back(installed);
       ++num_memories;
     }
-
-    //  layout->SavePoint(absl::StrCat("row_", j, "_lr"),
-    //                    geometry::Point(row_width, y_pos));
-    //}
   }
 
   LOG_IF(FATAL, banks_.size() < 1) << "Expected at least 1 bank by this point.";
@@ -214,7 +229,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
                              layout_config.mux_area_rows,
                              layout_config.mux_area_columns,
                              layout.get(),
-                             nullptr,
+                             circuit.get(),
                              design_db_);
   mux_grid.set_template_cells(&mux_templates);
   // FIXME(aryap): This is a function of track pitch, really, not some number I
@@ -252,6 +267,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell->layout());
       buf_order_.push_back(installed);
+
+      circuit->AddInstance(instance_name, buf_cell->circuit());
     }
 
     for (size_t i = 0; i < bank_arrangement.clk_buf_rows.size(); ++i) {
@@ -274,6 +291,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell->layout());
       clk_buf_order_.push_back(installed);
+
+      circuit->AddInstance(instance_name, buf_cell->circuit());
     }
 
     for (size_t i = 0; i < bank_arrangement.active_mux2_rows.size(); ++i) {
@@ -288,6 +307,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       geometry::Instance *instance = bank.InstantiateInside(
           assigned_row, instance_name, active_mux2_cell->layout());
       active_mux2s_.push_back(instance);
+
+      circuit->AddInstance(instance_name, active_mux2_cell->circuit());
     }
   }
 
@@ -316,7 +337,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
-  Route(layout.get());
+  Route(circuit.get(), layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -334,7 +355,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   return cell;
 }
 
-void LutB::Route(Layout *layout) {
+void LutB::Route(Circuit *circuit, Layout *layout) {
   RoutingGrid routing_grid(design_db_->physical_db());
 
   ConfigureRoutingGrid(&routing_grid, layout);
@@ -363,14 +384,14 @@ void LutB::Route(Layout *layout) {
   // BankArrangement.
   std::map<geometry::Instance*, std::string> memory_output_net_names;
 
-  AddClockAndPowerStraps(&routing_grid, layout);
+  AddClockAndPowerStraps(&routing_grid, circuit, layout);
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, layout, &memory_output_net_names);
-  RouteClockBuffers(&routing_grid, layout);
-  RouteMuxInputs(&routing_grid, layout, &memory_output_net_names);
-  RouteRemainder(&routing_grid, layout);
+  RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
+  RouteClockBuffers(&routing_grid, circuit, layout);
+  RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
+  RouteRemainder(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -456,6 +477,7 @@ void LutB::ConfigureRoutingGrid(
 }
 
 void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
+                             Circuit *circuit,
                              Layout *layout) {
   // Connect clock buffers to straps.
   // Connect "X" from clock buf to CLK;
@@ -508,6 +530,7 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
 
 void LutB::RouteScanChain(
     RoutingGrid *routing_grid,
+    Circuit *circuit,
     Layout *layout,
     std::map<geometry::Instance*, std::string> *memory_output_net_names) {
   for (size_t i = 0; i < memories_.size() - 1; ++i) {
@@ -540,6 +563,7 @@ void LutB::RouteScanChain(
 
 void LutB::RouteMuxInputs(
     RoutingGrid *routing_grid,
+    Circuit *circuit,
     Layout *layout,
     std::map<geometry::Instance*, std::string> *memory_output_net_names) {
   // Connect flip-flops to mux.
@@ -656,7 +680,10 @@ void LutB::RouteMuxInputs(
   }
 }
 
-void LutB::RouteRemainder(RoutingGrid *routing_grid, Layout *layout) {
+void LutB::RouteRemainder(
+    RoutingGrid *routing_grid,
+    Circuit *circuit,
+    Layout *layout) {
   // Connect the input buffers on the selector lines.
   // TODO(aryap): These feel like first-class members of the RoutingGrid API
   // soon. "RouteGroup"?
@@ -827,7 +854,7 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
 
 // Align ports by x position and connect them.
 void LutB::AddClockAndPowerStraps(
-    RoutingGrid *routing_grid, Layout *layout) const {
+    RoutingGrid *routing_grid, Circuit *circuit, Layout *layout) const {
   static const std::array<std::string, 4> kPortNames =
       {"VPWR", "VGND", "CLK", "CLKI"};
   static const std::array<std::string, 4> kNets =
