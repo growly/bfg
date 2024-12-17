@@ -19,6 +19,10 @@ namespace bfg {
 
 class Circuit;
 
+namespace geometry {
+class Instance;
+}  // namespace geometry
+
 namespace circuit {
 
 class Instance {
@@ -61,6 +65,13 @@ class Instance {
   }
   Circuit *const module() const { return module_; }
 
+  void set_geometry_instance(geometry::Instance *geometry_instance) {
+    geometry_instance_ = geometry_instance;
+  }
+  geometry::Instance *geometry_instance() {
+    return geometry_instance_;
+  }
+
   const std::unordered_map<std::string, Parameter> &parameters() const {
     return parameters_; }
   const std::unordered_map<std::string, Connection> &connections() const {
@@ -76,6 +87,9 @@ class Instance {
   // The template circuit object. Other databases call this "Master" or
   // "Module".
   Circuit *module_;
+
+  // The corresponding geometry (layout) instance, if available.
+  geometry::Instance *geometry_instance_;
 
   std::unordered_map<std::string, Parameter> parameters_;
   std::unordered_map<std::string, Connection> connections_;

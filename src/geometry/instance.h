@@ -18,6 +18,10 @@ namespace bfg {
 
 class Layout;
 
+namespace circuit {
+class Instance;
+}  // namespace circuit
+
 namespace geometry {
 
 class Instance : public Manipulable {
@@ -30,6 +34,7 @@ class Instance : public Manipulable {
   Instance(bfg::Layout *template_layout,
            const Point &lower_left)
       : ports_generated_(false),
+        circuit_instance_(nullptr),
         template_layout_(template_layout),
         lower_left_(lower_left),
         reflect_vertical_(false),
@@ -116,6 +121,13 @@ class Instance : public Manipulable {
 
   void CopyAllShapes(ShapeCollection *shapes) const;
 
+  void set_circuit_instance(circuit::Instance *circuit_instance) {
+    circuit_instance_ = circuit_instance;
+  }
+  circuit::Instance *circuit_instance() {
+    return circuit_instance_;
+  }
+
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 
@@ -161,6 +173,8 @@ class Instance : public Manipulable {
   bool ports_generated_;
 
   std::string name_;
+
+  circuit::Instance *circuit_instance_;
 
   // This is the template cell.
   bfg::Layout *const template_layout_;
