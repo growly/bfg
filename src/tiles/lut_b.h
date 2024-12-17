@@ -77,7 +77,7 @@ class LutB : public Tile {
       : Tile(design_db),
         lut_size_(lut_size) {}
 
-  bfg::Cell *GenerateIntoDatabase(const std::string &name) override;
+  Cell *GenerateIntoDatabase(const std::string &name) override;
 
  protected:
   struct PortKey {

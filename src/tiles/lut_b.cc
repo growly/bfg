@@ -88,11 +88,11 @@ const LutB::LayoutConfig *LutB::GetLayoutConfiguration(size_t lut_size) {
   return nullptr;
 }
 
-bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
+Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<bfg::Cell> lut_cell(new bfg::Cell("lut"));
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
-  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+  std::unique_ptr<Cell> lut_cell(new Cell("lut"));
+  std::unique_ptr<Layout> layout(new Layout(db));
+  std::unique_ptr<Circuit> circuit(new Circuit());
 
   memories_.clear();
   clk_buf_order_.clear();
@@ -107,12 +107,12 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   int64_t buf_y_pos = 0;
 
-  bfg::atoms::Sky130Tap::Parameters tap_params = {
+  atoms::Sky130Tap::Parameters tap_params = {
     .height_nm = 2720,
     .width_nm = 460
   };
-  bfg::atoms::Sky130Tap tap_generator(tap_params, design_db_);
-  bfg::Cell *tap_cell = tap_generator.GenerateIntoDatabase(
+  atoms::Sky130Tap tap_generator(tap_params, design_db_);
+  Cell *tap_cell = tap_generator.GenerateIntoDatabase(
       "lut_tap_template");
 
   std::vector<std::reference_wrapper<const BankArrangement>> arrangements = {
@@ -121,11 +121,11 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   for (size_t p = 0; p < arrangements.size(); ++p) {
     const BankArrangement &bank_arrangement = arrangements[p].get();
     banks_.push_back(MemoryBank(layout.get(),
-                               design_db_,
-                               tap_cell,
-                               true,      // Rotate alternate rows.
-                               true,      // Rotate the first row.
-                               bank_arrangement.horizontal_alignment));
+                                design_db_,
+                                tap_cell,
+                                true,      // Rotate alternate rows.
+                                true,      // Rotate the first row.
+                                bank_arrangement.horizontal_alignment));
     MemoryBank &bank = banks_.back();
 
     // We now want to assign things to rows and have the memory bank create the
@@ -138,9 +138,9 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       std::string instance_name = absl::StrFormat(
           "lut_dfxtp_%d_%d", p, num_memories);
       std::string cell_name = absl::StrCat(instance_name, "_template");
-      bfg::atoms::Sky130Dfxtp::Parameters params;
-      bfg::atoms::Sky130Dfxtp generator(params, design_db_);
-      bfg::Cell *cell = generator.GenerateIntoDatabase(cell_name);
+      atoms::Sky130Dfxtp::Parameters params;
+      atoms::Sky130Dfxtp generator(params, design_db_);
+      Cell *cell = generator.GenerateIntoDatabase(cell_name);
 
       geometry::Instance *installed =
           bank.InstantiateRight(assigned_row, instance_name, cell->layout());
@@ -163,20 +163,20 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   memories_[0]->GetInstancePorts("Q", &q_ports);
   layout->SavePoint("grid_alignment_point", q_ports.front()->centre());
 
-  bfg::atoms::Sky130Mux::Parameters mux_params;
+  atoms::Sky130Mux::Parameters mux_params;
   mux_params.extend_inputs_top = true;
   mux_params.extend_inputs_bottom = false;
 
-  bfg::atoms::Sky130Mux mux(mux_params, design_db_);
-  bfg::Cell *base_mux_cell = mux.GenerateIntoDatabase("sky130_mux");
+  atoms::Sky130Mux mux(mux_params, design_db_);
+  Cell *base_mux_cell = mux.GenerateIntoDatabase("sky130_mux");
 
   // A second version of the mux has its inputs on the bottom instead of the
   // top:
-  bfg::atoms::Sky130Mux::Parameters alt_mux_params;
+  atoms::Sky130Mux::Parameters alt_mux_params;
   alt_mux_params.extend_inputs_top = false;
   alt_mux_params.extend_inputs_bottom = true;
 
-  bfg::Cell *alt_mux_cell = bfg::atoms::Sky130Mux(
+  Cell *alt_mux_cell = atoms::Sky130Mux(
       alt_mux_params, design_db_).GenerateIntoDatabase("alt_sky130_mux");
 
   // Muxes are positioned like so:
@@ -207,7 +207,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   //int64_t y_pos = -mux_height / 2;
   int64_t y_pos = memories_.front()->Height() / 2;
 
-  std::vector<bfg::Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
+  std::vector<Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
 
   CheckerboardGuide mux_grid(geometry::Point(x_pos, y_pos),
                              "mux",
@@ -247,7 +247,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
         .pfet_1_width_nm = 790
       };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
-      bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell->layout());
@@ -269,7 +269,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
         .pfet_1_width_nm = 790
       };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
-      bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell->layout());
@@ -282,7 +282,7 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       std::string instance_name = absl::StrFormat("hd_mux2_1_%d", i);
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
-      bfg::Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
+      Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
           cell_name);
       active_mux2_cell->layout()->ResetY();
       geometry::Instance *instance = bank.InstantiateInside(
@@ -322,13 +322,13 @@ bfg::Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // ///DEBUG
   // //lut_cell->SetLayout(layout.release());
   // //lut_cell->SetCircuit(circuit.release());
-  // //bfg::Cell *pre = lut_cell.release();
+  // //Cell *pre = lut_cell.release();
   // //pre->set_name(name);
   // //design_db_->ConsumeCell(pre);
   // //return pre;
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());
-  bfg::Cell *cell = lut_cell.release();
+  Cell *cell = lut_cell.release();
   cell->set_name(name);
   design_db_->ConsumeCell(cell);
   return cell;
@@ -381,7 +381,7 @@ void LutB::Route(Layout *layout) {
   routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
   //routing_grid.ExportEdgesAsRectangles("areaid.frameRect", true, layout.get());
 
-  std::unique_ptr<bfg::Layout> grid_layout;
+  std::unique_ptr<Layout> grid_layout;
   grid_layout.reset(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");
 }
@@ -392,16 +392,16 @@ void LutB::ConfigureRoutingGrid(
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
   LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
-  bfg::RoutingLayerInfo met1_layer_info =
+  RoutingLayerInfo met1_layer_info =
       db.GetRoutingLayerInfoOrDie("met1.drawing");
-  met1_layer_info.set_direction(bfg::RoutingTrackDirection::kTrackHorizontal);
+  met1_layer_info.set_direction(RoutingTrackDirection::kTrackHorizontal);
   met1_layer_info.set_area(pre_route_bounds);
   // TODO(aryap): Need an easier way of lining this up!
   // met1_layer_info.offset = 70;
 
-  bfg::RoutingLayerInfo met2_layer_info =
+  RoutingLayerInfo met2_layer_info =
       db.GetRoutingLayerInfoOrDie("met2.drawing");
-  met2_layer_info.set_direction(bfg::RoutingTrackDirection::kTrackVertical);
+  met2_layer_info.set_direction(RoutingTrackDirection::kTrackVertical);
   met2_layer_info.set_area(pre_route_bounds);
 
   auto alignment_point = layout->GetPoint("grid_alignment_point");
@@ -413,7 +413,7 @@ void LutB::ConfigureRoutingGrid(
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.
-  bfg::RoutingViaInfo routing_via_info =
+  RoutingViaInfo routing_via_info =
       db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid->AddRoutingViaInfo(
