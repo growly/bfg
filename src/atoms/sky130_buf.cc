@@ -57,6 +57,14 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   circuit::Wire VPB = circuit->AddSignal("VPB");
   circuit::Wire VNB = circuit->AddSignal("VNB");
 
+  circuit->AddPort(X);
+  circuit->AddPort(P);
+  circuit->AddPort(A);
+  circuit->AddPort(VPWR);
+  circuit->AddPort(VGND);
+  circuit->AddPort(VPB);
+  circuit->AddPort(VNB);
+
   bfg::Circuit *nfet_01v8 =
       design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
   bfg::Circuit *pfet_01v8 =

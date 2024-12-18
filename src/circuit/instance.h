@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -27,6 +28,8 @@ namespace circuit {
 
 class Instance {
  public:
+  // TODO(aryap): Don't need this to be explicit since no other constructor is
+  // available.
   Instance() = default;
 
   static Instance *FromVLSIRInstance(
@@ -45,9 +48,11 @@ class Instance {
   // std::initializer_list for this:
   // TODO(aryap): How to use temporaries without a copy in the std::pair?
   void Connect(std::initializer_list<
-      std::pair<const std::string, const Wire&>>  connect);
+      std::pair<const std::string, const Wire&>> connect);
 
   void Connect(const std::string &port_name, const Signal &signal);
+
+  std::optional<Connection> GetConnection(const std::string &port_name) const;
 
   void SetParameter(const std::string &name, const Parameter &value);
 

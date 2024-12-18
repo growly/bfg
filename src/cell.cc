@@ -7,6 +7,23 @@
 
 namespace bfg {
 
+void Cell::TieInstances(
+    circuit::Instance *circuit, geometry::Instance *geometry) {
+  LOG_IF(FATAL, circuit->geometry_instance())
+      << "Circuit instance " << circuit->name()
+      << " already points to a instance "
+      << circuit->geometry_instance() << " ("
+      << circuit->geometry_instance()->name() << ")";
+  LOG_IF(FATAL, geometry->circuit_instance())
+      << "Geometry instance " << geometry->name()
+      << " already points to a instance "
+      << geometry->circuit_instance() << " ("
+      << geometry->circuit_instance()->name() << ")";
+
+  circuit->set_geometry_instance(geometry);
+  geometry->set_circuit_instance(circuit);
+}
+
 ::vlsir::raw::Cell Cell::ToVLSIRCell() const {
   ::vlsir::raw::Cell cell_pb;
   cell_pb.set_name(name_);

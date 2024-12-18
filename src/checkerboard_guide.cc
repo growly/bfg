@@ -75,11 +75,6 @@ const std::vector<geometry::Instance*> &CheckerboardGuide::InstantiateAll() {
 
       std::string name = absl::StrCat(name_prefix_, "_", k);
 
-      // Add instance to circuit.
-      if (circuit_) {
-        circuit_->AddInstance(name, cell->circuit());
-      }
-
       // Add instance to layout.
       geometry::Point position = {x_pos, y_pos};
       geometry::Instance layout_instance_template(cell->layout(), position);
@@ -88,6 +83,13 @@ const std::vector<geometry::Instance*> &CheckerboardGuide::InstantiateAll() {
           layout_->AddInstance(layout_instance_template);
       layout_instances_.push_back(layout_instance);
       LOG(INFO) << "Put " << *layout_instance << " at " << position;
+
+      // Add instance to circuit.
+      if (circuit_) {
+        circuit::Instance *circuit_instance = circuit_->AddInstance(
+            name, cell->circuit());
+        Cell::TieInstances(circuit_instance, layout_instance);
+      }
 
       max_row_height = std::max(max_row_height, cell_bb.Height());
 

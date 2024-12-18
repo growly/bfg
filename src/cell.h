@@ -13,6 +13,9 @@ namespace bfg {
 
 class Cell {
  public:
+  static void TieInstances(
+      circuit::Instance *circuit, geometry::Instance *geometry);
+
   Cell() = default;
   Cell(const std::string &name)
     : is_external_(false),

@@ -27,16 +27,16 @@ bfg::Cell *Sky130HdMux21::Generate() {
   //                       /            /
   //      +-----------+   _|        _  _|
   //      |           +--|_  p1   --S-|_  p3
-  //      |    /           |            |             /
+  //      |    /        I0 |         I2 |             /
   //      |   _|          _|           _|            _|
   //      +-o|_ p0   A0 o|_  p2   A1 o|_  p4     +-o|_  p5
-  //      |    | _         |            |        |    |
+  //      |    | _         |            |    X_B |    |
   // S ---+    +-S-+       +------------+--------+    +-- X
   //      |   _|   |      _|           _|        |   _|
   //      +--|_ n0 | A1 -|_  n2   A0 -|_  n4     +--|_  n5
-  //           |   |       |            |             |
-  //           V   |   _  _|           _|             V
-  //               +---S-|_  n1   --S-|_  n3
+  //           |   |    I1 |         I3 |             |
+  //           V   |      _|           _|             V
+  //               +-S_B-|_  n1   --S-|_  n3
   //                       |            |
   //                       V            V
   //
@@ -75,7 +75,69 @@ bfg::Cell *Sky130HdMux21::Generate() {
 bfg::Circuit *Sky130HdMux21::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
-  // TODO(aryap): Fill out.
+  circuit::Wire S = circuit->AddSignal("S");
+  circuit::Wire A0 = circuit->AddSignal("A0");
+  circuit::Wire A1 = circuit->AddSignal("A1");
+  circuit::Wire X = circuit->AddSignal("X");
+  circuit::Wire VPWR = circuit->AddSignal("VPWR");
+  circuit::Wire VGND = circuit->AddSignal("VGND");
+  circuit::Wire VPB = circuit->AddSignal("VPB");
+  circuit::Wire VNB = circuit->AddSignal("VNB");
+
+  circuit->AddPort(S);
+  circuit->AddPort(A0);
+  circuit->AddPort(A1);
+  circuit->AddPort(X);
+  circuit->AddPort(VPWR);
+  circuit->AddPort(VGND);
+  circuit->AddPort(VPB);
+  circuit->AddPort(VNB);
+
+  bfg::Circuit *nfet_01v8 =
+      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
+  bfg::Circuit *pfet_01v8 =
+      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__pfet_01v8")->circuit();
+
+  circuit::Instance *n0 = circuit->AddInstance("n0", nfet_01v8);
+  circuit::Instance *n1 = circuit->AddInstance("n1", nfet_01v8);
+  circuit::Instance *n2 = circuit->AddInstance("n2", nfet_01v8);
+  circuit::Instance *n3 = circuit->AddInstance("n3", nfet_01v8);
+  circuit::Instance *n4 = circuit->AddInstance("n4", nfet_01v8);
+  circuit::Instance *n5 = circuit->AddInstance("n5", nfet_01v8);
+
+  circuit::Instance *p0 = circuit->AddInstance("p0", pfet_01v8);
+  circuit::Instance *p1 = circuit->AddInstance("p1", pfet_01v8);
+  circuit::Instance *p2 = circuit->AddInstance("p2", pfet_01v8);
+  circuit::Instance *p3 = circuit->AddInstance("p3", pfet_01v8);
+  circuit::Instance *p4 = circuit->AddInstance("p4", pfet_01v8);
+  circuit::Instance *p5 = circuit->AddInstance("p5", pfet_01v8);
+
+  circuit::Wire S_B = circuit->AddSignal("S_B");
+  circuit::Wire I0 = circuit->AddSignal("I0");
+  circuit::Wire I1 = circuit->AddSignal("I1");
+  circuit::Wire I2 = circuit->AddSignal("I2");
+  circuit::Wire I3 = circuit->AddSignal("I3");
+  circuit::Wire X_B = circuit->AddSignal("X_B");
+
+  p0->Connect({{"d", S_B}, {"s", VPWR}, {"g", S}, {"b", VPB}});
+  n0->Connect({{"d", S_B}, {"s", VGND}, {"g", S}, {"b", VNB}});
+
+  p5->Connect({{"d", X}, {"s", VPWR}, {"g", X_B}, {"b", VPB}});
+  n5->Connect({{"d", X}, {"s", VGND}, {"g", X_B}, {"b", VNB}});
+
+  p1->Connect({{"d", I0}, {"s", VPWR}, {"g", S}, {"b", VPB}});
+  // TODO(aryap): Are the substrate connections "b" correct on the inner
+  // transistors here?
+  p2->Connect({{"d", X_B}, {"s", I0}, {"g", A0}, {"b", VPB}});
+
+  n2->Connect({{"d", X_B}, {"s", I1}, {"g", A1}, {"b", VNB}});
+  n1->Connect({{"d", I1}, {"s", VGND}, {"g", S_B}, {"b", VNB}});
+
+  p3->Connect({{"d", I2}, {"s", VPWR}, {"g", S_B}, {"b", VPB}});
+  p4->Connect({{"d", X_B}, {"s", I2}, {"g", A1}, {"b", VPB}});
+
+  n4->Connect({{"d", X_B}, {"s", I3}, {"g", A0}, {"b", VNB}});
+  n3->Connect({{"d", I3}, {"s", VGND}, {"g", S_B}, {"b", VNB}});
 
   return circuit.release();
 }

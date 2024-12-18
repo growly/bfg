@@ -1,7 +1,7 @@
 #include "lut_b.h"
 
 #include <map>
-#include <set>
+#include <optional>
 #include <unordered_map>
 
 #include <absl/strings/str_cat.h>
@@ -100,9 +100,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_order_.clear();
   buf_order_.clear();
   banks_.clear();
-  
+
   const LutB::LayoutConfig layout_config =
-      *LutB::GetLayoutConfiguration(lut_size_); 
+      *LutB::GetLayoutConfiguration(lut_size_);
   constexpr int64_t kMuxSize = 8;
 
   // Circuit setup.
@@ -117,6 +117,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // Scan in and out.
   circuit->AddPort(circuit->AddSignal("CONFIG_IN"));
   circuit->AddPort(circuit->AddSignal("CONFIG_OUT"));
+
+  // FIXME(aryap): There's actually one of these per bank.
   // Clock, power, ground in.
   circuit->AddPort(circuit->AddSignal("CLK"));
   circuit->AddPort(circuit->AddSignal("VPWR"));
@@ -164,6 +166,10 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       geometry::Instance *installed =
           bank.InstantiateRight(assigned_row, instance_name, cell->layout());
 
+      circuit::Instance *circuit_instance =
+          circuit->AddInstance(instance_name, cell->circuit());
+      Cell::TieInstances(circuit_instance, installed);
+
       memories_.push_back(installed);
       ++num_memories;
     }
@@ -197,7 +203,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // Muxes are positioned like so:
   //
   // | 4-LUT | 5-LUT | 6-LUT
-  //                 
+  //
   // |       |   x   |   x x
   // |       | x     | x     x
   // |   x   |   x   |   x x
@@ -268,7 +274,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
           assigned_row, instance_name, buf_cell->layout());
       buf_order_.push_back(installed);
 
-      circuit->AddInstance(instance_name, buf_cell->circuit());
+      circuit::Instance *circuit_instance = circuit->AddInstance(
+          instance_name, buf_cell->circuit());
+      Cell::TieInstances(circuit_instance, installed);
     }
 
     for (size_t i = 0; i < bank_arrangement.clk_buf_rows.size(); ++i) {
@@ -292,7 +300,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
           assigned_row, instance_name, buf_cell->layout());
       clk_buf_order_.push_back(installed);
 
-      circuit->AddInstance(instance_name, buf_cell->circuit());
+      circuit::Instance *circuit_instance = circuit->AddInstance(
+          instance_name, buf_cell->circuit());
+      Cell::TieInstances(circuit_instance, installed);
     }
 
     for (size_t i = 0; i < bank_arrangement.active_mux2_rows.size(); ++i) {
@@ -308,7 +318,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
           assigned_row, instance_name, active_mux2_cell->layout());
       active_mux2s_.push_back(instance);
 
-      circuit->AddInstance(instance_name, active_mux2_cell->circuit());
+      circuit::Instance *circuit_instance = circuit->AddInstance(
+          instance_name, active_mux2_cell->circuit());
+      Cell::TieInstances(circuit_instance, instance);
     }
   }
 
@@ -513,6 +525,10 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
     geometry::ShapeCollection non_net_connectables;
     layout->CopyConnectableShapesNotOnNets(net_aliases, &non_net_connectables);
 
+    circuit::Signal *signal = circuit->GetOrAddSignal(target_net, 1);
+    source_spec.instance->circuit_instance()->Connect(
+        source_spec.port_name, *signal);
+
     auto result = routing_grid->AddRouteToNet(
         *source_port, target_net, net_aliases, non_net_connectables);
   }
@@ -524,7 +540,7 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
         .port_name = "A"
     });
   }
-  auto result = AddMultiPointRoute(clk_inputs, routing_grid, layout);
+  auto result = AddMultiPointRoute(clk_inputs, routing_grid, circuit, layout);
   AccumulateAnyErrors(result);
 }
 
@@ -551,10 +567,16 @@ void LutB::RouteScanChain(
     EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
     (*memory_output_net_names)[source] = net_names.primary();
 
+    circuit::Signal *signal = circuit->GetOrAddSignal(net_names.primary(), 1);
+
+    source->circuit_instance()->Connect("Q", *signal);
+    sink->circuit_instance()->Connect("D", *signal);
+
     geometry::ShapeCollection non_net_connectables;
     layout->CopyConnectableShapesNotOnNets(
         net_names,
         &non_net_connectables);
+
     auto result = routing_grid->AddRouteBetween(
         *start, *end, non_net_connectables, net_names);
     AccumulateAnyErrors(result);
@@ -640,14 +662,21 @@ void LutB::RouteMuxInputs(
       LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                 << " avoiding " << non_net_connectables.Describe();
 
+      std::string target_net;
       absl::Status route_result;
       auto named_output_it = memory_output_net_names->find(memory);
       if (named_output_it == memory_output_net_names->end()) {
-        (*memory_output_net_names)[memory] = net_names.primary();
+        target_net = net_names.primary();
+        (*memory_output_net_names)[memory] = target_net;
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to " << memory->name();
         route_result = routing_grid->AddRouteBetween(
             *mux_port, *memory_output, non_net_connectables, net_names);
+
+        circuit::Signal *signal =
+            circuit->GetOrAddSignal(net_names.primary(), 1);
+        memory->circuit_instance()->Connect("Q", *signal);
+        mux->circuit_instance()->Connect(input_name, *signal);
       } else {
         // FIXME(aryap): I am stupid. The set of names given to the router to
         // determine which shapes are connectable is different to the target
@@ -660,6 +689,9 @@ void LutB::RouteMuxInputs(
                   << " to net " << target_net;
         route_result = routing_grid->AddRouteToNet(
             *mux_port, target_net, net_names, non_net_connectables);
+
+        circuit::Signal *signal = circuit->GetOrAddSignal(target_net, 1);
+        mux->circuit_instance()->Connect(input_name, *signal);
       }
       if (route_result.ok()) {
         path_found = true;
@@ -717,20 +749,29 @@ void LutB::RouteRemainder(
   };
 
   for (const PortKeyCollection &collection : auto_connections) {
-    absl::Status result = AddMultiPointRoute(collection, routing_grid, layout);
+    absl::Status result = AddMultiPointRoute(
+        collection, routing_grid, circuit, layout);
     AccumulateAnyErrors(result);
   }
 }
 
-// TODO(aryap): This clearly needs to be factored out of this class somehow.
+// TODO(aryap): This clearly needs to be factored out of this class.
 absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
                                       RoutingGrid *routing_grid,
+                                      Circuit *circuit,
                                       Layout *layout) const {
+  circuit::Wire internal_wire = circuit->AddSignal(
+      collection.net_name ? *collection.net_name : "");
+  std::string net = internal_wire.signal().name();
+
   std::vector<std::vector<geometry::Port*>> route_targets;
   for (auto &port_key : collection.port_keys) {
     std::vector<geometry::Port*> &port_list =
         route_targets.emplace_back();
     geometry::Instance *instance = port_key.instance;
+
+    circuit::Instance *circuit_instance = instance->circuit_instance();
+    circuit_instance->Connect(port_key.port_name, internal_wire);
 
     std::vector<geometry::Port*> matching_ports;
     instance->GetInstancePorts(port_key.port_name, &matching_ports);
@@ -743,14 +784,13 @@ absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
         port_list.end(), matching_ports.begin(), matching_ports.end());
   }
 
-  std::string net = collection.net_name ? *collection.net_name : "default";
-
   LOG(INFO) << "Connecting (net: " << net << ") all of: " << absl::StrJoin(
       collection.port_keys, ", ",
       [](std::string *out, const PortKey &port_key) {
         absl::StrAppend(
             out, port_key.instance->name(), "/", port_key.port_name);
       });
+
 
   return routing_grid->AddMultiPointRoute(*layout,
                                           route_targets,
@@ -891,13 +931,26 @@ void LutB::AddClockAndPowerStraps(
     std::optional<int64_t> last_spine_x;
     for (size_t i = 0; i < kPortNames.size(); ++i) {
       const std::string &port_name = kPortNames[i];
+
+      std::string net = absl::StrCat(kNets[i], "_", bank);
+      circuit::Wire wire = circuit->AddSignal(net);
+
       std::vector<geometry::Point> connections;
       for (const auto &row : banks_.at(bank).instances()) {
         for (geometry::Instance *instance : row) {
+          circuit::Instance *circuit_instance = instance->circuit_instance();
+
           std::vector<geometry::Port*> ports;
           instance->GetInstancePorts(port_name, &ports);
+
           for (geometry::Port *port : ports) {
             connections.push_back(port->centre());
+          }
+
+          // TODO(aryap): Do we need to disambiguate multiple ports with the
+          // same name?
+          if (circuit_instance) {
+            circuit_instance->Connect(port_name, wire);
           }
         }
       }
@@ -921,8 +974,6 @@ void LutB::AddClockAndPowerStraps(
         }
       }
       last_spine_x = spine_x;
-
-      std::string net = absl::StrCat(kNets[i], "_", bank);
 
       geometry::Group new_shapes =
           AddVerticalSpineWithFingers("met2.drawing",

@@ -45,6 +45,7 @@ class Instance : public Manipulable {
 
   Instance(const Instance &other)
       : ports_generated_(false),
+        circuit_instance_(nullptr),
         name_(other.name_),
         template_layout_(other.template_layout_),
         lower_left_(other.lower_left_),

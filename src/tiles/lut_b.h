@@ -120,6 +120,7 @@ class LutB : public Tile {
   absl::Status AddMultiPointRoute(
       const PortKeyCollection &collection,
       RoutingGrid *routing_grid,
+      Circuit *circuit,
       Layout *layout) const;
 
   // TODO(aryap): This feels like a nice general feature of the Layout class.

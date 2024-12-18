@@ -210,6 +210,10 @@ circuit::Signal *Circuit::GetOrAddSignal(
   auto it = signals_by_name_.find(name);
   if (it == signals_by_name_.end()) {
     return AddSignal(name, width);
+  } else {
+    LOG_IF(WARNING, it->second->width() != width)
+        << "Requested signal " << name << " with width " << width
+        << " but it already exists and has width " << it->second->width();
   }
   return it->second;
 }
@@ -227,11 +231,14 @@ circuit::Signal *Circuit::GetSignal(const std::string &name) {
 }
 
 circuit::Signal *Circuit::AddSignal(const std::string &name, uint64_t width) {
-  LOG_IF(FATAL, signals_by_name_.find(name) != signals_by_name_.end())
-      << "Duplicate signal name: " << name;
-  circuit::Signal *signal = new circuit::Signal(name, width);
+  // Replace signals named "" with a unique default name:
+  std::string mapped_name = name.empty() ? GenerateDefaultName() : name;
+
+  LOG_IF(FATAL, signals_by_name_.find(mapped_name) != signals_by_name_.end())
+      << "Duplicate signal name: " << mapped_name;
+  circuit::Signal *signal = new circuit::Signal(mapped_name, width);
   signals_.emplace_back(signal);
-  signals_by_name_.insert({name, signal});
+  signals_by_name_.insert({mapped_name, signal});
   return signal;
 }
 
@@ -313,6 +320,12 @@ std::string Circuit::Describe() const {
   // TODO(aryap): Add spicetype.
 
   return mod_pb;
+}
+
+std::string Circuit::GenerateDefaultName() {
+  std::string name = absl::StrCat("unnamed_", unnamed_net_count_);
+  unnamed_net_count_++;
+  return name;
 }
 
 }  // namespace bfg
