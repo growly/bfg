@@ -95,8 +95,8 @@ sudo ldconfig
 
 [google/re2](https://github.com/google/re2)
 
-[!WARNING]
-RHEL9 only
+> [!WARNING]
+> RHEL9 only
 
 
 ```
@@ -109,11 +109,11 @@ sudo make install
 popd
 ```
 
-[!CAUTION]
-When I compile and build newer protobuf, abseil or grpc libraries I end
-up in a hellish pit of compilation and/or linker and/or ABI errors that I have
-not had time to fix. These libraries should all be modernised at the same
-time(along with any fixes to this code). Contributions welcome!
+> [!CAUTION]
+> When I compile and build newer protobuf, abseil or grpc libraries I end
+> up in a hellish pit of compilation and/or linker and/or ABI errors that I have
+> not had time to fix. These libraries should all be modernised at the same
+> time(along with any fixes to this code). Contributions welcome!
 
 [abseil/abseil-cpp](https://abseil.io/docs/cpp/quickstart-cmake)
 
