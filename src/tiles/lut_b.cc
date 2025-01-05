@@ -549,6 +549,18 @@ void LutB::RouteScanChain(
     Circuit *circuit,
     Layout *layout,
     std::map<geometry::Instance*, std::string> *memory_output_net_names) {
+  // For now the input/output of the first/last flip-flop (respectively) is just
+  // the port for the entire LUT; later we route this to pins on the edge:
+  memories_.front()->circuit_instance()->Connect("D",
+      *circuit->GetOrAddSignal("CONFIG_IN", 1));
+  // FIXME(aryap): This is terrible! We need a way to re-assign, or connect,
+  // nets with the same names. A first and easier step is to simply rename an
+  // existing signal... but that has problems too. Anyway this conflicts with
+  // the way routing is done to the scan chain links when connecting the mux
+  // inputs later.
+  //memories_.back()->circuit_instance()->Connect("Q",
+  //    *circuit->GetOrAddSignal("CONFIG_OUT", 1));
+
   for (size_t i = 0; i < memories_.size() - 1; ++i) {
     geometry::Instance *source = memories_[i];
     geometry::Instance *sink = memories_[i + 1];

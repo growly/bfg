@@ -50,4 +50,24 @@ vlsir::circuit::ConnectionTarget Connection::ToVLSIRConnection() const {
 }
 
 }  // namespace circuit
+
+std::ostream &operator<<(
+    std::ostream &os, const circuit::Connection &connection) {
+  os << "[";
+
+  switch (connection.connection_type()) {
+    case circuit::Connection::ConnectionType::SIGNAL:
+      os << "Signal: " << connection.signal()->name();
+      break;
+    case circuit::Connection::ConnectionType::SLICE:
+      os << "Slice: " << connection.slice()->signal().name();
+      break;
+    case circuit::Connection::ConnectionType::CONCATENATION:
+      os << "Concatenation";
+      break;
+  }
+  os << "]";
+  return os;
+}
+
 }  // namespace bfg

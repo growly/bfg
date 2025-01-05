@@ -64,6 +64,11 @@ class Connection {
 };
 
 }  // namespace circuit
+
+std::ostream &operator<<(
+    std::ostream &os,
+    const circuit::Connection &connection);
+
 }  // namespace bfg
 
 #endif  // CIRCUIT_CONNECTION_H_
