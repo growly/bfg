@@ -105,6 +105,8 @@ class Circuit {
   bool IsPowerOrGround(const circuit::Signal &signal) const;
 
  private:
+  static constexpr std::string_view kDefaultNetPrefix = "n_";
+
   std::string GenerateDefaultName();
 
   bfg::Cell *parent_cell_;

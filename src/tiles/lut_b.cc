@@ -118,11 +118,13 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   circuit->AddPort(circuit->AddSignal("CONFIG_IN"));
   circuit->AddPort(circuit->AddSignal("CONFIG_OUT"));
 
-  // FIXME(aryap): There's actually one of these per bank.
   // Clock, power, ground in.
   circuit->AddPort(circuit->AddSignal("CLK"));
-  circuit->AddPort(circuit->AddSignal("VPWR"));
-  circuit->AddPort(circuit->AddSignal("VGND"));
+  // TODO(aryap): For now there's actually one of these per bank.
+  circuit->AddPort(circuit->AddSignal("VPWR_0"));
+  circuit->AddPort(circuit->AddSignal("VPWR_1"));
+  circuit->AddPort(circuit->AddSignal("VGND_0"));
+  circuit->AddPort(circuit->AddSignal("VGND_1"));
 
   // Layout.
   // ---------------------------------------------------------------------------
@@ -539,6 +541,10 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
         .instance = clk_buf,
         .port_name = "A"
     });
+
+    // This matches the input port name, so that the connecting net label
+    // matches the incoming port label.
+    clk_inputs.net_name = "CLK";
   }
   auto result = AddMultiPointRoute(clk_inputs, routing_grid, circuit, layout);
   AccumulateAnyErrors(result);
@@ -689,6 +695,7 @@ void LutB::RouteMuxInputs(
             circuit->GetOrAddSignal(net_names.primary(), 1);
         memory->circuit_instance()->Connect("Q", *signal);
         mux->circuit_instance()->Connect(input_name, *signal);
+        LOG(INFO) << input_name << " <- " << signal->name();
       } else {
         // FIXME(aryap): I am stupid. The set of names given to the router to
         // determine which shapes are connectable is different to the target
@@ -704,6 +711,7 @@ void LutB::RouteMuxInputs(
 
         circuit::Signal *signal = circuit->GetOrAddSignal(target_net, 1);
         mux->circuit_instance()->Connect(input_name, *signal);
+        LOG(INFO) << input_name << " <- " << signal->name();
       }
       if (route_result.ok()) {
         path_found = true;
@@ -756,7 +764,7 @@ void LutB::RouteRemainder(
     }, {
       .port_keys = {{mux_order_[1], "Z"}, {active_mux2s_[0], "A1"}},
     }, {
-      .port_keys = {{active_mux2s_[0], "X"}, {buf_order_[3], "A"}},
+      .port_keys = {{active_mux2s_[0], "X"}, {buf_order_[3], "P"}},
     }
   };
 
@@ -765,6 +773,14 @@ void LutB::RouteRemainder(
         collection, routing_grid, circuit, layout);
     AccumulateAnyErrors(result);
   }
+
+  // FIXME(aryap): Make circuit-only connections (this is fake).
+  for (size_t i = 0; i < buf_order_.size(); ++i) {
+    std::string port_name = absl::StrCat("S", i);
+    circuit::Signal *signal = circuit->GetOrAddSignal(port_name, 1);
+
+    buf_order_[i]->circuit_instance()->Connect("A", *signal);
+  }
 }
 
 // TODO(aryap): This clearly needs to be factored out of this class.
@@ -772,9 +788,9 @@ absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
                                       RoutingGrid *routing_grid,
                                       Circuit *circuit,
                                       Layout *layout) const {
-  circuit::Wire internal_wire = circuit->AddSignal(
-      collection.net_name ? *collection.net_name : "");
-  std::string net = internal_wire.signal().name();
+  circuit::Signal *internal_signal = circuit->GetOrAddSignal(
+      collection.net_name ? *collection.net_name : "", 1);
+  std::string net = internal_signal->name();
 
   std::vector<std::vector<geometry::Port*>> route_targets;
   for (auto &port_key : collection.port_keys) {
@@ -783,7 +799,7 @@ absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
     geometry::Instance *instance = port_key.instance;
 
     circuit::Instance *circuit_instance = instance->circuit_instance();
-    circuit_instance->Connect(port_key.port_name, internal_wire);
+    circuit_instance->Connect(port_key.port_name, *internal_signal);
 
     std::vector<geometry::Port*> matching_ports;
     instance->GetInstancePorts(port_key.port_name, &matching_ports);
@@ -912,6 +928,9 @@ void LutB::AddClockAndPowerStraps(
   static const std::array<std::string, 4> kNets =
       {"vpwr", "vgnd", "clk", "clk_i"};
 
+  static const std::array<std::string, 2> kCircuitOnlyPorts = {"VPB", "VNB"};
+  static const std::array<std::string, 2> kCircuitOnlyPortNets = {"vpwr", "vgnd"};
+
   constexpr int64_t kOffsetNumPitches = 0;
 
   // FIXME(aryap): We are leaking technology-specific concerns into what was
@@ -997,6 +1016,23 @@ void LutB::AddClockAndPowerStraps(
                                       spine_bulge_width,
                                       layout);
       routing_grid->AddBlockages(new_shapes);
+    }
+
+    // Connect circuit-only ports.
+    for (size_t i = 0; i < kCircuitOnlyPorts.size(); ++i) {
+      std::string net = absl::StrCat(kCircuitOnlyPortNets[i], "_", bank);
+      circuit::Signal *signal = circuit->GetOrAddSignal(net, 1);
+      const std::string &port_name = kCircuitOnlyPorts[i];
+      
+      for (const auto &row : banks_.at(bank).instances()) {
+        for (geometry::Instance *instance : row) {
+          circuit::Instance *circuit_instance = instance->circuit_instance();
+          if (!circuit_instance) {
+            continue;
+          }
+          circuit_instance->Connect(port_name, *signal);
+        }
+      }
     }
   }
 }

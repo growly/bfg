@@ -93,10 +93,34 @@ sudo ldconfig
   popd
   ```
 
+[google/re2](https://github.com/google/re2)
+
+> [!WARNING]
+> RHEL9 only
+
+
+```
+git clone https://github.com/google/re2.git
+pushd re2
+mkdir build && cd build
+cmake ../
+make -j $(nproc)
+sudo make install
+popd
+```
+
+> [!CAUTION]
+> When I compile and build newer protobuf, abseil or grpc libraries I end
+> up in a hellish pit of compilation and/or linker and/or ABI errors that I have
+> not had time to fix. These libraries should all be modernised at the same
+> time(along with any fixes to this code). Contributions welcome!
+
 [abseil/abseil-cpp](https://abseil.io/docs/cpp/quickstart-cmake)
+
 
   ```
   git clone git@github.com:abseil/abseil-cpp.git
+  git checkout 1a31b81c0a467c1c8e229b9fc172a4eb0db5bd85
   pushd abseil-cpp
   mkdir build && cd build
   cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON ../
@@ -118,23 +142,6 @@ sudo ldconfig
   sudo ldconfig # refresh shared library cache.
   popd
   ```
-
-Note: when I compile and build protocol buffers from [HEAD on
-GitHub](https://github.com/protocolbuffers/protobuf), I get compilation errors
-because the file `port_def.inc` doesn't get installed. Compiling and installing
-from a release tarball, it seems fine.
-
-[google/re2](https://github.com/google/re2) (for RHEL9)
-
-```
-git clone https://github.com/google/re2.git
-pushd re2
-mkdir build && cd build
-cmake ../
-make -j $(nproc)
-sudo make install
-popd
-```
 
 [grpc/grpc](https://github.com/grpc/grpc)
 

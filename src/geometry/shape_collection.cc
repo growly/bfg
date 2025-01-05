@@ -360,41 +360,57 @@ void ShapeCollection::CopyConnectables(
 }
 
 void ShapeCollection::RemoveNets(const EquivalentNets &nets) {
-  std::remove_if(rectangles_.begin(), rectangles_.end(),
-                 [&](const std::unique_ptr<Rectangle> &shape) {
-                   return nets.Contains(shape->net());
-                 });
-  std::remove_if(polygons_.begin(), polygons_.end(),
-                 [&](const std::unique_ptr<Polygon> &shape) {
-                   return nets.Contains(shape->net());
-                 });
-  std::remove_if(ports_.begin(), ports_.end(),
-                 [&](const std::unique_ptr<Port> &shape) {
-                   return nets.Contains(shape->net());
-                 });
-  std::remove_if(poly_lines_.begin(), poly_lines_.end(),
-                 [&](const std::unique_ptr<PolyLine> &shape) {
-                   return nets.Contains(shape->net());
-                 });
+  rectangles_.erase(
+      std::remove_if(rectangles_.begin(), rectangles_.end(),
+                     [&](const std::unique_ptr<Rectangle> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      rectangles_.end());
+  polygons_.erase(
+      std::remove_if(polygons_.begin(), polygons_.end(),
+                     [&](const std::unique_ptr<Polygon> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      polygons_.end());
+  ports_.erase(
+      std::remove_if(ports_.begin(), ports_.end(),
+                     [&](const std::unique_ptr<Port> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      ports_.end());
+  poly_lines_.erase(
+      std::remove_if(poly_lines_.begin(), poly_lines_.end(),
+                     [&](const std::unique_ptr<PolyLine> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      poly_lines_.end());
 }
 
 void ShapeCollection::KeepOnlyLayers(const std::set<geometry::Layer> &layers) {
-  std::remove_if(rectangles_.begin(), rectangles_.end(),
-                 [&](const std::unique_ptr<Rectangle> &shape) {
-                   return layers.find(shape->layer()) == layers.end();
-                 });
-  std::remove_if(polygons_.begin(), polygons_.end(),
-                 [&](const std::unique_ptr<Polygon> &shape) {
-                   return layers.find(shape->layer()) == layers.end();
-                 });
-  std::remove_if(ports_.begin(), ports_.end(),
-                 [&](const std::unique_ptr<Port> &shape) {
-                   return layers.find(shape->layer()) == layers.end();
-                 });
-  std::remove_if(poly_lines_.begin(), poly_lines_.end(),
-                 [&](const std::unique_ptr<PolyLine> &shape) {
-                   return layers.find(shape->layer()) == layers.end();
-                 });
+  rectangles_.erase(
+      std::remove_if(rectangles_.begin(), rectangles_.end(),
+                     [&](const std::unique_ptr<Rectangle> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      rectangles_.end());
+  polygons_.erase(
+      std::remove_if(polygons_.begin(), polygons_.end(),
+                     [&](const std::unique_ptr<Polygon> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      polygons_.end());
+  ports_.erase(
+      std::remove_if(ports_.begin(), ports_.end(),
+                     [&](const std::unique_ptr<Port> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      ports_.end());
+  poly_lines_.erase(
+      std::remove_if(poly_lines_.begin(), poly_lines_.end(),
+                     [&](const std::unique_ptr<PolyLine> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      poly_lines_.end());
 }
 
 ::vlsir::raw::LayerShapes ShapeCollection::ToVLSIRLayerShapes(

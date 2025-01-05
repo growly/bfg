@@ -323,7 +323,7 @@ std::string Circuit::Describe() const {
 }
 
 std::string Circuit::GenerateDefaultName() {
-  std::string name = absl::StrCat("unnamed_", unnamed_net_count_);
+  std::string name = absl::StrCat(kDefaultNetPrefix, unnamed_net_count_);
   unnamed_net_count_++;
   return name;
 }

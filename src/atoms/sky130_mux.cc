@@ -1283,7 +1283,7 @@ void GenerateOutput2To1MuxLayout(
     Rectangle met2_bb = met2_bar->GetBoundingBox();
     main_layout->AddPort(geometry::Port(
         met2_bb.centre(), met2_bb.Height(), met2_bb.Height(),
-        met2_bar->layer(), "Y"));
+        met2_bar->layer(), "Z"));
 
     main_layout->SavePoint(
         "output_mux_met2_bar_left_contact",
@@ -2248,16 +2248,19 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   Wire S2 = circuit->AddSignal("S2");
   Wire S2_B = circuit->AddSignal("S2_B");
 
-  Wire X0 = circuit->AddSignal("X0");
-  Wire X1 = circuit->AddSignal("X1");
-  Wire X2 = circuit->AddSignal("X2");
-  Wire X3 = circuit->AddSignal("X3");
-  Wire X4 = circuit->AddSignal("X4");
-  Wire X5 = circuit->AddSignal("X5");
-  Wire X6 = circuit->AddSignal("X6");
-  Wire X7 = circuit->AddSignal("X7");
+  // TODO(aryap): It would be nice if the layout code consistently refered to
+  // these as "Xi", not "input_i", but in fairness that is much harder to keep
+  // in your head.
+  Wire X0 = circuit->AddSignal("input_0");
+  Wire X1 = circuit->AddSignal("input_1");
+  Wire X2 = circuit->AddSignal("input_2");
+  Wire X3 = circuit->AddSignal("input_3");
+  Wire X4 = circuit->AddSignal("input_4");
+  Wire X5 = circuit->AddSignal("input_5");
+  Wire X6 = circuit->AddSignal("input_6");
+  Wire X7 = circuit->AddSignal("input_7");
 
-  Wire Y = circuit->AddSignal("Y");
+  Wire Z = circuit->AddSignal("Z");
 
   Wire VPWR = circuit->AddSignal("VPWR");
   Wire VGND = circuit->AddSignal("VGND");
@@ -2282,7 +2285,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   circuit->AddPort(X5);
   circuit->AddPort(X6);
   circuit->AddPort(X7);
-  circuit->AddPort(Y);
+  circuit->AddPort(Z);
   circuit->AddPort(VPWR);
   circuit->AddPort(VGND);
 
@@ -2416,7 +2419,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
                                    A3,
                                    S2,
                                    S2_B,
-                                   Y,
+                                   Z,
                                    VPWR,
                                    VGND));
   circuit->AddCircuit(*output_mux_circuit, "output_mux2");
@@ -3528,7 +3531,7 @@ bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
       parameters.s1_b_wire.value_or(circuit->AddSignal("S1_B"));
 
   // Output.
-  Wire Y = parameters.y_wire.value_or(circuit->AddSignal("Y"));
+  Wire Z = parameters.y_wire.value_or(circuit->AddSignal("Z"));
 
   // Intermediate signals.
   Wire A0 = circuit->AddSignal("A0");
@@ -3569,8 +3572,8 @@ bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
   fet_2->Connect({{"d", X3}, {"g", S0}, {"s", A0}, {"b", VB}});
   fet_1->Connect({{"d", A1}, {"g", S0_B}, {"s", X0}, {"b", VB}});
   fet_3->Connect({{"d", X1}, {"g", S0}, {"s", A1}, {"b", VB}});
-  fet_4->Connect({{"d", Y}, {"g", S1_B}, {"s", A1}, {"b", VB}});
-  fet_5->Connect({{"d", A0}, {"g", S1}, {"s", Y}, {"b", VB}});
+  fet_4->Connect({{"d", Z}, {"g", S1_B}, {"s", A1}, {"b", VB}});
+  fet_5->Connect({{"d", A0}, {"g", S1}, {"s", Z}, {"b", VB}});
 
   // Assign model parameters from configuration struct.
   std::array<circuit::Instance*, 6> fets = {
