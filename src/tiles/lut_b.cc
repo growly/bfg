@@ -606,6 +606,14 @@ void LutB::RouteMuxInputs(
     Circuit *circuit,
     Layout *layout,
     std::map<geometry::Instance*, std::string> *memory_output_net_names) {
+  // Connect mux substrates.
+  circuit::Signal *VPWR = circuit->GetOrAddSignal("VPWR", 1);
+  circuit::Signal *VGND = circuit->GetOrAddSignal("VGND", 1);
+  for (size_t i = 0; i < mux_order_.size(); ++i) {
+    mux_order_[i]->circuit_instance()->Connect("VPB", *VPWR);
+    mux_order_[i]->circuit_instance()->Connect("VNB", *VGND);
+  }
+
   // Connect flip-flops to mux.
 
   // TODO(aryap): We know that the mux connections roughly map to the nearest

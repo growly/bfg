@@ -19,6 +19,10 @@ class Sky130Dfxtp: public Atom {
     uint64_t width_nm;
     uint64_t height_nm;
 
+    // TODO(aryap): Maybe these are queried from the PDK database?
+    std::string fet_model_length_parameter = "l";
+    std::string fet_model_width_parameter = "w";
+
     uint64_t pfet_0_width_nm = 420;
     uint64_t pfet_1_width_nm = 420;
     uint64_t pfet_2_width_nm = 420;

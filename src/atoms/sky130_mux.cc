@@ -2262,8 +2262,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
 
   Wire Z = circuit->AddSignal("Z");
 
-  Wire VPWR = circuit->AddSignal("VPWR");
-  Wire VGND = circuit->AddSignal("VGND");
+  Wire VPB = circuit->AddSignal("VPB");
+  Wire VNB = circuit->AddSignal("VNB");
 
   // Intermediate signals.
   Wire A0 = circuit->AddSignal("A0");
@@ -2286,8 +2286,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   circuit->AddPort(X6);
   circuit->AddPort(X7);
   circuit->AddPort(Z);
-  circuit->AddPort(VPWR);
-  circuit->AddPort(VGND);
+  circuit->AddPort(VPB);
+  circuit->AddPort(VNB);
 
   bfg::Circuit *nfet_01v8 =
       design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
@@ -2308,7 +2308,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.nfet_3_length_nm,
     .fet_4_length_nm = parameters_.nfet_4_length_nm,
     .fet_5_length_nm = parameters_.nfet_5_length_nm,
-    .vb_wire = VGND,
+    .vb_wire = VNB,
     .x0_wire = X0,
     .x1_wire = X1,
     .x2_wire = X2,
@@ -2338,7 +2338,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.nfet_3_length_nm,
     .fet_4_length_nm = parameters_.nfet_4_length_nm,
     .fet_5_length_nm = parameters_.nfet_5_length_nm,
-    .vb_wire = VGND,
+    .vb_wire = VNB,
     .x0_wire = X4,
     .x1_wire = X5,
     .x2_wire = X6,
@@ -2367,7 +2367,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.pfet_3_length_nm,
     .fet_4_length_nm = parameters_.pfet_4_length_nm,
     .fet_5_length_nm = parameters_.pfet_5_length_nm,
-    .vb_wire = VPWR,
+    .vb_wire = VPB,
     .x0_wire = X0,
     .x1_wire = X1,
     .x2_wire = X2,
@@ -2396,7 +2396,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.pfet_3_length_nm,
     .fet_4_length_nm = parameters_.pfet_4_length_nm,
     .fet_5_length_nm = parameters_.pfet_5_length_nm,
-    .vb_wire = VPWR,
+    .vb_wire = VPB,
     .x0_wire = X4,
     .x1_wire = X5,
     .x2_wire = X6,
@@ -2420,8 +2420,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
                                    S2,
                                    S2_B,
                                    Z,
-                                   VPWR,
-                                   VGND));
+                                   VPB,
+                                   VNB));
   circuit->AddCircuit(*output_mux_circuit, "output_mux2");
  
   return circuit.release();

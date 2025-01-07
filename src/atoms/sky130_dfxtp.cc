@@ -82,6 +82,89 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Instance *pfet_8 = circuit->AddInstance("pfet_8", pfet_01v8_hvt);
   circuit::Instance *pfet_9 = circuit->AddInstance("pfet_9", pfet_01v8_hvt);
 
+  struct FetParameters {
+    circuit::Instance *instance;
+    uint64_t width_nm;
+    uint64_t length_nm;
+  };
+  std::array<FetParameters, 20> fet_parameters = {
+    FetParameters {
+      nfet_0, parameters_.nfet_0_width_nm, parameters_.nfet_0_length_nm
+    },
+    FetParameters {
+      nfet_1, parameters_.nfet_1_width_nm, parameters_.nfet_1_length_nm
+    },
+    FetParameters {
+      nfet_2, parameters_.nfet_2_width_nm, parameters_.nfet_2_length_nm
+    },
+    FetParameters {
+      nfet_3, parameters_.nfet_3_width_nm, parameters_.nfet_3_length_nm
+    },
+    FetParameters {
+      nfet_4, parameters_.nfet_4_width_nm, parameters_.nfet_4_length_nm
+    },
+    FetParameters {
+      nfet_5, parameters_.nfet_5_width_nm, parameters_.nfet_5_length_nm
+    },
+    FetParameters {
+      nfet_6, parameters_.nfet_6_width_nm, parameters_.nfet_6_length_nm
+    },
+    FetParameters {
+      nfet_7, parameters_.nfet_7_width_nm, parameters_.nfet_7_length_nm
+    },
+    FetParameters {
+      nfet_8, parameters_.nfet_8_width_nm, parameters_.nfet_8_length_nm
+    },
+    FetParameters {
+      nfet_9, parameters_.nfet_9_width_nm, parameters_.nfet_9_length_nm
+    },
+    FetParameters {
+      pfet_0, parameters_.pfet_0_width_nm, parameters_.pfet_0_length_nm
+    },
+    FetParameters {
+      pfet_1, parameters_.pfet_1_width_nm, parameters_.pfet_1_length_nm
+    },
+    FetParameters {
+      pfet_2, parameters_.pfet_2_width_nm, parameters_.pfet_2_length_nm
+    },
+    FetParameters {
+      pfet_3, parameters_.pfet_3_width_nm, parameters_.pfet_3_length_nm
+    },
+    FetParameters {
+      pfet_4, parameters_.pfet_4_width_nm, parameters_.pfet_4_length_nm
+    },
+    FetParameters {
+      pfet_5, parameters_.pfet_5_width_nm, parameters_.pfet_5_length_nm
+    },
+    FetParameters {
+      pfet_6, parameters_.pfet_6_width_nm, parameters_.pfet_6_length_nm
+    },
+    FetParameters {
+      pfet_7, parameters_.pfet_7_width_nm, parameters_.pfet_7_length_nm
+    },
+    FetParameters {
+      pfet_8, parameters_.pfet_8_width_nm, parameters_.pfet_8_length_nm
+    },
+    FetParameters {
+      pfet_9, parameters_.pfet_9_width_nm, parameters_.pfet_9_length_nm
+    }
+  };
+  for (size_t i = 0; i < fet_parameters.size(); ++i) {
+    circuit::Instance *fet = fet_parameters[i].instance;
+    fet->SetParameter(
+        parameters_.fet_model_width_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_width_parameter,
+            static_cast<int64_t>(fet_parameters[i].width_nm),
+            Parameter::SIUnitPrefix::NANO));
+    fet->SetParameter(
+        parameters_.fet_model_length_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_length_parameter,
+            static_cast<int64_t>(fet_parameters[i].length_nm),
+            Parameter::SIUnitPrefix::NANO));
+  }
+
   //                    /                    /
   //                   _|                   _|
   //      +----------o|_ pfet0   +-------+o|_  pfet2
