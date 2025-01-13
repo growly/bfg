@@ -36,7 +36,7 @@ def main():
     #)
 
     in_file_name = '../build/package.pb'
-    out_file_name = 'package.spice'
+    out_file_name = 'package.sp'
 
     package_pb = circuit_pb.Package()
     with open(in_file_name, 'rb') as in_file:
