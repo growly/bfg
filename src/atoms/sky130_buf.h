@@ -29,10 +29,19 @@ class Sky130Buf: public Atom {
     uint64_t width_nm;
     uint64_t height_nm;
 
+    // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses Instance)?
+    std::string fet_model_length_parameter = "l";
+    std::string fet_model_width_parameter = "w";
+
     uint64_t nfet_0_width_nm;
     uint64_t nfet_1_width_nm;
     uint64_t pfet_0_width_nm;
     uint64_t pfet_1_width_nm;
+
+    uint64_t nfet_0_length_nm;
+    uint64_t nfet_1_length_nm;
+    uint64_t pfet_0_length_nm;
+    uint64_t pfet_1_length_nm;
   };
 
   Sky130Buf(const Parameters &parameters, DesignDatabase *design_db)

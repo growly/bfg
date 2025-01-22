@@ -82,6 +82,8 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Instance *pfet_8 = circuit->AddInstance("pfet_8", pfet_01v8_hvt);
   circuit::Instance *pfet_9 = circuit->AddInstance("pfet_9", pfet_01v8_hvt);
 
+  // Assign width, length parameters from the Parameters struct for each of the
+  // FETs:
   struct FetParameters {
     circuit::Instance *instance;
     uint64_t width_nm;

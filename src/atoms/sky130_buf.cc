@@ -25,15 +25,15 @@ using ::bfg::geometry::Layer;
 bfg::Cell *Sky130Buf::Generate() {
   // A buffer is two back-to-back inverters:
   //
-  //          /         /
-  //         _|        _|
-  //      +o|_ X1   +o|_  X3
-  //      |   |     |   |
-  // A ---+   +--P--+   +--- X
-  //      |  _|     |  _|
-  //      +-|_ X2   +-|_  X0
-  //          |         |
-  //          V         V
+  //          /             /
+  //         _|            _|
+  //      +o|_ pfet_0   +o|_  pfet_1
+  //      |   |         |   |
+  // A ---+   +------P--+   +--- X
+  //      |  _|         |  _|
+  //      +-|_ nfet_0   +-|_  nfet_1
+  //          |             |
+  //          V             V
   // P = ~A
   // X = ~~A
 
@@ -84,32 +84,66 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   // ~/src/skywater-pdk/libraries/sky130_fd_sc_hd/latest/cells/buf/sky130_fd_sc_hd__buf_1.spice
   //
   //  .subckt sky130_fd_sc_hd__buf_1 A VGND VNB VPB VPWR X
-  //  X0 VGND a_27_47# X VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
-  //  X1 a_27_47# A VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
-  //  X2 a_27_47# A VGND VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
-  //  X3 VPWR a_27_47# X VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
+  //  nfet_0 VGND a_27_47# X VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
+  //  pfet_0 a_27_47# A VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
+  //  nfet_1 a_27_47# A VGND VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
+  //  pfet_1 VPWR a_27_47# X VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
   //  .ends
   //
   // Model sky130_fd_pr__nfet_01v8__model has ports "d g s b":
   //  drain, gate, source, substrate bias
   // nfet_0
-  circuit::Instance *X0 = circuit->AddInstance("X0", nfet_01v8);
+  circuit::Instance *nfet_0 = circuit->AddInstance("nfet_0", nfet_01v8);
   // pfet_0
-  circuit::Instance *X1 = circuit->AddInstance("X1", pfet_01v8);
+  circuit::Instance *pfet_0 = circuit->AddInstance("pfet_0", pfet_01v8);
   // nfet_1
-  circuit::Instance *X2 = circuit->AddInstance("X2", nfet_01v8);
+  circuit::Instance *nfet_1 = circuit->AddInstance("nfet_1", nfet_01v8);
   // pfet_1
-  circuit::Instance *X3 = circuit->AddInstance("X3", pfet_01v8);
+  circuit::Instance *pfet_1 = circuit->AddInstance("pfet_1", pfet_01v8);
 
-  X0->Connect("d", VGND);
-  X0->Connect("g", P);
-  X0->Connect("s", X);
-  X0->Connect("b", VNB);
-  //X0->SetParameter("l", Parameter {
+  struct FetParameters {
+    circuit::Instance *instance;
+    uint64_t width_nm;
+    uint64_t length_nm;
+  };
+  std::array<FetParameters, 4> fet_parameters = {
+    FetParameters {
+      nfet_0, parameters_.nfet_0_width_nm, parameters_.nfet_0_length_nm
+    },
+    FetParameters {
+      nfet_1, parameters_.nfet_1_width_nm, parameters_.nfet_1_length_nm
+    },
+    FetParameters {
+      pfet_0, parameters_.pfet_0_width_nm, parameters_.pfet_0_length_nm
+    },
+    FetParameters {
+      pfet_1, parameters_.pfet_1_width_nm, parameters_.pfet_1_length_nm
+    }
+  };
+  for (size_t i = 0; i < fet_parameters.size(); ++i) {
+    circuit::Instance *fet = fet_parameters[i].instance;
+    fet->SetParameter(
+        parameters_.fet_model_width_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_width_parameter,
+            static_cast<int64_t>(fet_parameters[i].width_nm),
+            Parameter::SIUnitPrefix::NANO));
+    fet->SetParameter(
+        parameters_.fet_model_length_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_length_parameter,
+            static_cast<int64_t>(fet_parameters[i].length_nm),
+            Parameter::SIUnitPrefix::NANO));
+  }
 
-  X3->Connect({{"d", X}, {"g", P}, {"s", VPWR}, {"b", VPB}});
-  X2->Connect({{"d", P}, {"g", A}, {"s", VGND}, {"b", VNB}});
-  X1->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
+  nfet_0->Connect("d", VGND);
+  nfet_0->Connect("g", P);
+  nfet_0->Connect("s", X);
+  nfet_0->Connect("b", VNB);
+
+  pfet_1->Connect({{"d", X}, {"g", P}, {"s", VPWR}, {"b", VPB}});
+  nfet_1->Connect({{"d", P}, {"g", A}, {"s", VGND}, {"b", VNB}});
+  pfet_0->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
 
   return circuit.release();
 }
@@ -276,22 +310,22 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   // Diffusion. Intersection with gate material layer defines gate size.
   // nsdm/psdm define N/P-type diffusion.
   layout->SetActiveLayerByName("diff.drawing");
-  // X0
+  // nfet_0
   uint64_t x0_width =
       design_db_->physical_db().ToInternalUnits(parameters_.nfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 235),
                                  Point(135 + 410 + 145, 235 + x0_width)));
-  // X2
+  // nfet_1
   uint64_t x2_width =
       design_db_->physical_db().ToInternalUnits(parameters_.nfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 235),
                                  Point(1245, 235 + x2_width)));
-  // X1
+  // pfet_0
   uint64_t x1_width =
       design_db_->physical_db().ToInternalUnits(parameters_.pfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 1695),
                                  Point(135 + 410 + 145, 1695 + x1_width)));
-  // X3
+  // pfet_1
   uint64_t x3_width =
       design_db_->physical_db().ToInternalUnits(parameters_.pfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 1695),
