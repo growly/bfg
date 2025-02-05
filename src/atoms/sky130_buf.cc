@@ -14,7 +14,6 @@
 #include "../layout.h"
 
 namespace bfg {
-
 namespace atoms {
 
 using ::bfg::geometry::Point;
