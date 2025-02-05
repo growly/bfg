@@ -261,14 +261,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
       std::string instance_name = absl::StrFormat("buf_%d", buf_count);
       std::string cell_name = absl::StrCat(instance_name, "_template");
-      atoms::Sky130Buf::Parameters buf_params = {
-        .width_nm = 1380,
-        .height_nm = 2720,
-        .nfet_0_width_nm = 520,
-        .nfet_1_width_nm = 520,
-        .pfet_0_width_nm = 790,
-        .pfet_1_width_nm = 790
-      };
+      atoms::Sky130Buf::Parameters buf_params; // Default values.
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
@@ -287,14 +280,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
       std::string instance_name = absl::StrFormat("clk_buf_%d", buf_count);
       std::string cell_name = absl::StrCat(instance_name, "_template");
-      atoms::Sky130Buf::Parameters buf_params = {
-        .width_nm = 1380,
-        .height_nm = 2720,
-        .nfet_0_width_nm = 520,
-        .nfet_1_width_nm = 520,
-        .pfet_0_width_nm = 790,
-        .pfet_1_width_nm = 790
-      };
+      atoms::Sky130Buf::Parameters buf_params;  // Defaults.
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();

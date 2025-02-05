@@ -26,22 +26,25 @@ namespace atoms {
 class Sky130Buf: public Atom {
  public:
   struct Parameters {
-    uint64_t width_nm;
-    uint64_t height_nm;
+    uint64_t width_nm = 1380;
+    uint64_t height_nm = 2720;
 
     // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses Instance)?
     std::string fet_model_length_parameter = "l";
     std::string fet_model_width_parameter = "w";
 
-    uint64_t nfet_0_width_nm;
-    uint64_t nfet_1_width_nm;
-    uint64_t pfet_0_width_nm;
-    uint64_t pfet_1_width_nm;
+    // TODO(aryap): These are parameters which the layout should implement
+    // dynamically, but currently all the shapes are static from the initial
+    // import.
+    uint64_t nfet_0_width_nm = 520;
+    uint64_t nfet_1_width_nm = 520;
+    uint64_t pfet_0_width_nm = 790;
+    uint64_t pfet_1_width_nm = 790;
 
-    uint64_t nfet_0_length_nm;
-    uint64_t nfet_1_length_nm;
-    uint64_t pfet_0_length_nm;
-    uint64_t pfet_1_length_nm;
+    uint64_t nfet_0_length_nm = 150;
+    uint64_t nfet_1_length_nm = 150;
+    uint64_t pfet_0_length_nm = 150;
+    uint64_t pfet_1_length_nm = 150;
   };
 
   Sky130Buf(const Parameters &parameters, DesignDatabase *design_db)

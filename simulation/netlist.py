@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from vlsirtools.netlist.spice import SpiceNetlister
 from vlsirtools.netlist.spectre import SpectreNetlister
 
 #PDK_PATH = Path(os.environ.get("PDK_ROOT")) / "sky130A"
@@ -42,7 +43,8 @@ def main():
     with open(in_file_name, 'rb') as in_file:
       package_pb.ParseFromString(in_file.read())
     with open(out_file_name, 'w') as out_file:
-      netlister = SpectreNetlister(out_file)
+      #netlister = SpectreNetlister(out_file)
+      netlister = SpiceNetlister(out_file)
       netlister.write_package(package_pb)
     
 
