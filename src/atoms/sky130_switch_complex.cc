@@ -1,37 +1,54 @@
-#ifndef ATOMS_SKY130_SWITCH_COMPLEX_H_
-#define ATOMS_SKY130_SWITCH_COMPLEX_H_
+#include "sky130_switch_complex.h"
 
-#include <cstdint>
-
-#include "atom.h"
 #include "../circuit.h"
 #include "../layout.h"
+#include "../geometry/rectangle.h"
+#include "../geometry/point.h"
+#include "../geometry/poly_line.h"
 
 namespace bfg {
-
-class DesignDatabase;
-
 namespace atoms {
 
-class Sky130SwitchComplex: public Atom {
- public:
-  struct Parameters {
-  };
+bfg::Cell *Sky130SwitchComplex::Generate() {
+  std::unique_ptr<bfg::Cell> cell(
+      new bfg::Cell(name_.empty() ? "sky130_switch_complex": name_));
+  cell->SetLayout(GenerateLayout());
+  cell->SetCircuit(GenerateCircuit());
+  return cell.release();
+}
 
-  Sky130SwitchComplex(const Parameters &parameters, DesignDatabase *design_db)
-      : Atom(design_db),
-        parameters_(parameters) {}
+bfg::Layout *Sky130SwitchComplex::GenerateLayout() {
+  std::unique_ptr<bfg::Layout> layout(
+      new bfg::Layout(design_db_->physical_db()));
 
-  bfg::Cell *Generate() override;
+  layout->SetActiveLayerByName("poly.drawing");
 
- private:
-  bfg::Layout *GenerateLayout();
-  bfg::Circuit *GenerateCircuit();
+  //    NE_B EW_B      NS_B ES_B      NW_B SW_B
+  //     |    |         |    |         |    |
+  //     |    |         |    |         |    |
+  //     |    |         |    |         |    |
+  //
+  //
+  //     |    |         |    |         |    |
+  //     |    |         |    |         |    |
+  //     |    |         |    |         |    |
+  //    NE   EW        NS   ES        NW   SW
 
-  Parameters parameters_;
-};
+  int64_t poly_x = 0;
+  geometry::PolyLine line_ne_b = geometry::PolyLine(
+      {{poly_x, 0}, {poly_x, 300}});
+  line_ne_b.SetWidth(150);
+
+  // TODO(aryap): Add "Layout::AddInflatedPolyLineOrDie":
+  std::optional<Polygon> polygon = InflatePolyLine(db, line);
+
+  return layout.release();
+}
+
+bfg::Circuit *Sky130SwitchComplex::GenerateCircuit() {
+  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+  return circuit.release();
+}
 
 }  // namespace atoms
 }  // namespace bfg
-
-#endif  // ATOMS_SKY130_SWITCH_COMPLEX_H_

@@ -16,6 +16,7 @@
 #include "physical_properties_database.h"
 #include "cell.h"
 #include "layout.h"
+#include "atoms/sky130_switch_complex.h"
 #include "atoms/sky130_mux.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
@@ -121,6 +122,10 @@ int main(int argc, char **argv) {
   bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
+  bfg::atoms::Sky130SwitchComplex::Parameters sc_params;
+  bfg::atoms::Sky130SwitchComplex sc_generator(sc_params, &design_db);
+  bfg::Cell *switch_complex = sc_generator.GenerateIntoDatabase("switch_complex");
+
   //// TODO(aryap): This is temporary, to make sense of one possible netlist.
   //design_db.WriteTop("sky130_mux",
   //                   "sky130_mux.library.pb",
@@ -130,6 +135,11 @@ int main(int argc, char **argv) {
   //                   "lut_dfxtp_tap_template.library.pb",
   //                   "lut_dfxtp_tap_template.package.pb",
   //                   true);
+
+  design_db.WriteTop(*switch_complex,
+                     "sky130_switch_complex.library.pb",
+                     "sky130_switch_complex.package.pb",
+                     FLAGS_write_text_format);
 
   design_db.WriteTop(*top,
                      FLAGS_output_library,
