@@ -47,6 +47,9 @@ struct InterLayerConstraints {
 
   // TODO(aryap): An 'enclosure' rule seems more descriptive than via overhang
   // but does not apply equally on all sides usually.
+  //
+  // Types of rules this contains:
+  //  (min) "Extension of poly beyond diffusion (endcap)"
   int64_t min_enclosure;
 
   // Another way to express this is as min_enclosure on all sides and an

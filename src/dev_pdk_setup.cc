@@ -105,6 +105,11 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("poly.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
+    .min_enclosure = db->ToInternalUnits(130),
+  };
+  db->AddRules("poly.drawing", "pdiff.drawing", inter_constraints);
+  db->AddRules("poly.drawing", "ndiff.drawing", inter_constraints);
+  inter_constraints = {
     .min_separation = db->ToInternalUnits(50),
     .via_overhang = db->ToInternalUnits(80),
     .via_overhang_wide = db->ToInternalUnits(0)

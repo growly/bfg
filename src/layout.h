@@ -75,6 +75,7 @@ class Layout : public geometry::Manipulable {
     return copy;
   }
   geometry::Polygon *AddPolyLine(const geometry::PolyLine &line);
+
   void AddPort(const geometry::Port &port,
                const std::string &net_prefix = "");
   void GetPorts(const std::string &net_name, geometry::PortSet *out)

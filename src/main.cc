@@ -7,9 +7,10 @@
 #include <string>
 #include <unordered_map>
 
+#include <absl/cleanup/cleanup.h>
+#include <absl/strings/str_join.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <absl/strings/str_join.h>
 #include <google/protobuf/text_format.h>
 
 #include "design_database.h"
@@ -65,6 +66,10 @@ int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
+  absl::Cleanup on_shutdown = [&]() {
+    google::protobuf::ShutdownProtobufLibrary();
+  };
+
   std::string version =
       "BFG v" xstr(bfg_VERSION_MAJOR) "." xstr(bfg_VERSION_MINOR);
   std::cout << version << std::endl;
@@ -118,13 +123,19 @@ int main(int argc, char **argv) {
     design_db.LoadPackage(external_circuits_pb);
   }
 
-  std::string top_name = "lut";
-  bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);
-  bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
-
   bfg::atoms::Sky130SwitchComplex::Parameters sc_params;
   bfg::atoms::Sky130SwitchComplex sc_generator(sc_params, &design_db);
   bfg::Cell *switch_complex = sc_generator.GenerateIntoDatabase("switch_complex");
+
+  design_db.WriteTop(*switch_complex,
+                     "sky130_switch_complex.library.pb",
+                     "sky130_switch_complex.package.pb",
+                     FLAGS_write_text_format);
+  return EXIT_SUCCESS;
+
+  std::string top_name = "lut";
+  bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);
+  bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
   //// TODO(aryap): This is temporary, to make sense of one possible netlist.
   //design_db.WriteTop("sky130_mux",
@@ -136,19 +147,12 @@ int main(int argc, char **argv) {
   //                   "lut_dfxtp_tap_template.package.pb",
   //                   true);
 
-  design_db.WriteTop(*switch_complex,
-                     "sky130_switch_complex.library.pb",
-                     "sky130_switch_complex.package.pb",
-                     FLAGS_write_text_format);
-
   design_db.WriteTop(*top,
                      FLAGS_output_library,
                      FLAGS_output_package,
                      FLAGS_write_text_format);
 
   //Gf180McuMuxExperiment();
-
-  google::protobuf::ShutdownProtobufLibrary();
 
   return EXIT_SUCCESS;
 }
