@@ -94,7 +94,10 @@ bfg::Layout *Sky130SwitchComplex::GenerateLayout() {
 
   static const std::vector<std::string> kBottomRowKeys = {
     "NE", "EW", "NS", "ES", "NW", "SW"};
-  int64_t bottom_row_y_max = 0;
+  int64_t bottom_row_y_max = std::transform(
+      kBottomRowKeys.begin(), kBottomRowKeys.end(), [](int64_t existing, std::string key) {
+      return std::max(existing, poly_specs[key].length);
+      });
   // I want to do this functionally but std::transform is awkward.
   for (const auto &key : kBottomRowKeys) {
     bottom_row_y_max = std::max(bottom_row_y_max, poly_specs[key].length);
