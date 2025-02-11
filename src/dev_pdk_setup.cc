@@ -105,7 +105,10 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("poly.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
+    //  poly.8: (min) "Extension of poly beyond diffusion (endcap)"
     .min_enclosure = db->ToInternalUnits(130),
+    //  poly.7: (min) "Extension of diff beyond poly (min drain)"
+    .min_extension = db->ToInternalUnits(250)
   };
   db->AddRules("poly.drawing", "pdiff.drawing", inter_constraints);
   db->AddRules("poly.drawing", "ndiff.drawing", inter_constraints);

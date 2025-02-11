@@ -9,6 +9,8 @@
 #include "../geometry/poly_line.h"
 #include "../geometry/polygon.h"
 
+#include "sky130_simple_transistor.h"
+
 namespace bfg {
 namespace atoms {
 
@@ -64,85 +66,76 @@ bfg::Layout *Sky130SwitchComplex::GenerateLayout() {
 
   int64_t x_start = 0;
   int64_t y_min = 0;
-  struct PolyDimensions {
+  struct TransistorSpecs {
     int64_t x = 0;
-    int64_t width = 0;
-    int64_t length = 0;
+    uint64_t width_nm = 0;
+    uint64_t length_nm = 0;
+    Sky130SimpleTransistor *fet_generator;
+    bool stacks_left = false;
+    bool stacks_right = false;
   };
 
-  std::map<std::string, PolyDimensions> poly_specs = {
-    {"NE", PolyDimensions{
+  std::map<std::string, TransistorSpecs> transistor_specs = {
+    {"NE", TransistorSpecs{
       .x = x_start,
-      .width = db.ToInternalUnits(parameters_.ne_nfet_length_nm),
-      .length = 2 * poly_ndiff_overhang + db.ToInternalUnits(
-          parameters_.ne_nfet_width_nm)
-           }},
-    {"EW", PolyDimensions{
+      .width_nm = parameters_.ne_nfet_length_nm,
+      .length_nm = parameters_.ne_nfet_width_nm,
+      .stacks_right = true}},
+    {"EW", TransistorSpecs{
       .x = x_start + poly_pitch,
-      .width = db.ToInternalUnits(parameters_.ew_nfet_length_nm),
-      .length = 2 * poly_ndiff_overhang + db.ToInternalUnits(
-          parameters_.ew_nfet_width_nm)
-           }},
-    {"NS", PolyDimensions{
+      .width_nm = parameters_.ew_nfet_length_nm,
+      .length_nm = parameters_.ew_nfet_width_nm,
+      .stacks_left = true}},
+    {"NS", TransistorSpecs{
       .x = x_start + 3 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.ns_nfet_length_nm),
-      .length = 2 * poly_ndiff_overhang + db.ToInternalUnits(
-          parameters_.ns_nfet_width_nm)
-           }},
-    {"ES", PolyDimensions{
+      .width_nm = parameters_.ns_nfet_length_nm,
+      .length_nm = parameters_.ns_nfet_width_nm,
+      .stacks_right = true}},
+    {"ES", TransistorSpecs{
       .x = x_start + 4 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.es_nfet_length_nm),
-      .length = 2 * poly_ndiff_overhang + db.ToInternalUnits(
-          parameters_.es_nfet_width_nm)
-           }},
-    {"NW", PolyDimensions{
+      .width_nm = parameters_.es_nfet_length_nm,
+      .length_nm = parameters_.es_nfet_width_nm,
+      .stacks_left = true}},
+    {"NW", TransistorSpecs{
       .x = x_start + 6 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.nw_nfet_length_nm),
-      .length = 2 * poly_ndiff_overhang + db.ToInternalUnits(
-          parameters_.nw_nfet_width_nm)
-           }},
-    {"SW", PolyDimensions{
+      .width_nm = parameters_.nw_nfet_length_nm,
+      .length_nm = parameters_.nw_nfet_width_nm,
+      .stacks_right = true}},
+    {"SW", TransistorSpecs{
       .x = x_start + 7 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.sw_nfet_length_nm),
-      .length = 2 * poly_ndiff_overhang + db.ToInternalUnits(
-          parameters_.sw_nfet_width_nm)
-           }},
-    {"NE_B", PolyDimensions{
+      .width_nm = parameters_.sw_nfet_length_nm,
+      .length_nm = parameters_.sw_nfet_width_nm,
+      .stacks_left = true}},
+    {"NE_B", TransistorSpecs{
       .x = x_start,
-      .width = db.ToInternalUnits(parameters_.ne_pfet_length_nm),
-      .length = 2 * poly_pdiff_overhang + db.ToInternalUnits(
-          parameters_.ne_pfet_width_nm)
-           }},
-    {"EW_B", PolyDimensions{
+      .width_nm = parameters_.ne_pfet_length_nm,
+      .length_nm = parameters_.ne_pfet_width_nm,
+      .stacks_right = true}},
+    {"EW_B", TransistorSpecs{
       .x = x_start + poly_pitch,
-      .width = db.ToInternalUnits(parameters_.ew_pfet_length_nm),
-      .length = 2 * poly_pdiff_overhang + db.ToInternalUnits(
-          parameters_.ew_pfet_width_nm)
-           }},
-    {"NS_B", PolyDimensions{
+      .width_nm = parameters_.ew_pfet_length_nm,
+      .length_nm = parameters_.ew_pfet_width_nm,
+      .stacks_left = true}},
+    {"NS_B", TransistorSpecs{
       .x = x_start + 3 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.ns_pfet_length_nm),
-      .length = 2 * poly_pdiff_overhang + db.ToInternalUnits(
-          parameters_.ns_pfet_width_nm)
-           }},
-    {"ES_B", PolyDimensions{
+      .width_nm = parameters_.ns_pfet_length_nm,
+      .length_nm = parameters_.ns_pfet_width_nm,
+      .stacks_right = true}},
+    {"ES_B", TransistorSpecs{
       .x = x_start + 4 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.es_pfet_length_nm),
-      .length = 2 * poly_pdiff_overhang + db.ToInternalUnits(
-          parameters_.es_pfet_width_nm)
-           }},
-    {"NW_B", PolyDimensions{
+      .width_nm = parameters_.es_pfet_length_nm,
+      .length_nm = parameters_.es_pfet_width_nm,
+      .stacks_left = true}},
+    {"NW_B", TransistorSpecs{
       .x = x_start + 6 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.nw_pfet_length_nm),
-      .length = 2 * poly_pdiff_overhang + db.ToInternalUnits(
-          parameters_.nw_pfet_width_nm)
-           }},
-    {"SW_B", PolyDimensions{
+      .width_nm = parameters_.nw_pfet_length_nm,
+      .length_nm = parameters_.nw_pfet_width_nm,
+      .stacks_right = true}},
+    {"SW_B", TransistorSpecs{
       .x = x_start + 7 * poly_pitch,
-      .width = db.ToInternalUnits(parameters_.sw_pfet_length_nm),
-      .length = 2 * poly_pdiff_overhang + db.ToInternalUnits(
-          parameters_.sw_pfet_width_nm)
-           }},
+      .width_nm = parameters_.sw_pfet_length_nm,
+      .length_nm = parameters_.sw_pfet_width_nm,
+      .stacks_left = true}},
   };
 
   static const std::vector<std::string> kNfetKeys = {
@@ -155,27 +148,51 @@ bfg::Layout *Sky130SwitchComplex::GenerateLayout() {
   int64_t bottom_row_length_max = std::accumulate(
       kNfetKeys.begin(), kNfetKeys.end(),
       0, [&](int64_t existing, const std::string &key) {
-        return std::max(existing, poly_specs[key].length);
+        return std::max(existing, db.ToInternalUnits(transistor_specs[key].length_nm));
       });
 
   for (const std::string &key : kNfetKeys) {
-    const PolyDimensions &dimensions = poly_specs[key];
-    geometry::PolyLine line = geometry::PolyLine(
-        {{dimensions.x, y_min}, {dimensions.x, y_min + dimensions.length}});
-    line.SetWidth(dimensions.width);
-    layout->AddPolyLine(line);
+    TransistorSpecs &specs = transistor_specs[key];
 
-    //int64_t diff_ll_x = dimensions.x - dimensions.width / 2 -
+    Sky130SimpleTransistor::Parameters transistor_parameters = {
+      .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+      .length_nm = specs.length_nm,
+      .width_nm = specs.width_nm,
+      .stacks_left = specs.stacks_left,
+      .stacks_right = specs.stacks_right
+    };
+    Sky130SimpleTransistor *fet_generator = new Sky130SimpleTransistor(
+        transistor_parameters, design_db_);
+    specs.fet_generator = fet_generator;
+
+    std::unique_ptr<bfg::Layout> transistor_layout(fet_generator->GenerateLayout());
+    transistor_layout->Translate({specs.x, y_min});
+    layout->AddLayout(*transistor_layout);
   }
 
   // Shift y_min above the bottom row to add the PMOS FETs.
   y_min = y_min + bottom_row_length_max + poly_rules.min_separation;
   for (const std::string &key : kPfetKeys) {
-    const PolyDimensions &dimensions = poly_specs[key];
-    geometry::PolyLine line = geometry::PolyLine(
-        {{dimensions.x, y_min}, {dimensions.x, y_min + dimensions.length}});
-    line.SetWidth(dimensions.width);
-    layout->AddPolyLine(line);
+    TransistorSpecs &specs = transistor_specs[key];
+
+    Sky130SimpleTransistor::Parameters transistor_parameters = {
+      .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+      .length_nm = specs.length_nm,
+      .width_nm = specs.width_nm,
+      .stacks_left = specs.stacks_left,
+      .stacks_right = specs.stacks_right
+    };
+    Sky130SimpleTransistor *fet_generator = new Sky130SimpleTransistor(
+        transistor_parameters, design_db_);
+    specs.fet_generator = fet_generator;
+
+    std::unique_ptr<bfg::Layout> transistor_layout(fet_generator->GenerateLayout());
+    transistor_layout->Translate({specs.x, y_min});
+    layout->AddLayout(*transistor_layout);
+  }
+
+  for (const auto &entry : transistor_specs) {
+    delete entry.second.fet_generator;
   }
 
   return layout.release();

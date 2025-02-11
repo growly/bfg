@@ -45,15 +45,16 @@ struct InterLayerConstraints {
   int64_t min_separation;
   int64_t max_separation;
 
-  // TODO(aryap): An 'enclosure' rule seems more descriptive than via overhang
-  // but does not apply equally on all sides usually.
-  //
-  // Types of rules this contains:
-  //  (min) "Extension of poly beyond diffusion (endcap)"
+  // There are rules on how the minimum extension of e.g. poly over diff and
+  // diff over poly. Unfortunately we do not differentiate between the order of
+  // the keys when looking up rules, so this asymmetry is not naturally
+  // captured. We have to make up a convention for which relationship to store
+  // in "min_enclosure" and which to store in "min_extension".
   int64_t min_enclosure;
+  int64_t min_extension;
 
-  // Another way to express this is as min_enclosure on all sides and an
-  // 'overhang' in one axis, obviating the need for one of these.
+  // (Another way to express this is as min_enclosure on all sides and an
+  // 'overhang' in one axis, obviating the need for one of these.)
   int64_t via_overhang;
   int64_t via_overhang_wide;
 

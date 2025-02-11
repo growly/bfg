@@ -73,6 +73,7 @@ int64_t Sky130SimpleTransistor::GetDiffWing(
   const auto &dcon_rules = db.Rules(dcon_layer);
   const auto &diff_dcon_rules = db.Rules(diff_layer, dcon_layer);
   const auto &poly_dcon_rules = db.Rules("poly.drawing", dcon_layer);
+  const auto &poly_diff_rules = db.Rules("poly.drawing", diff_layer);
   int64_t via_side = dcon_rules.via_width;
 
   //      poly    poly
@@ -83,8 +84,10 @@ int64_t Sky130SimpleTransistor::GetDiffWing(
   // +----|   |---|
   //  <---|   |
   //   diff_wing
-  int64_t diff_wing = via_side + poly_dcon_rules.min_separation +
-      diff_dcon_rules.min_enclosure;
+  int64_t diff_wing = std::max(
+      via_side + poly_dcon_rules.min_separation + diff_dcon_rules.min_enclosure,
+      poly_diff_rules.min_extension);
+
   return diff_wing;
 }
 
@@ -92,6 +95,8 @@ int64_t Sky130SimpleTransistor::GetDiffWing(
 bfg::Layout *Sky130SimpleTransistor::GenerateLayout() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
+
+  const auto &poly_diff_rules = db.Rules("poly.drawing", DiffLayer());
 
   int64_t x_pos = 0;
   int64_t length = db.ToInternalUnits(parameters_.length_nm);
@@ -102,18 +107,16 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout() {
 
   layout->SetActiveLayerByName("poly.drawing");
   geometry::PolyLine line = geometry::PolyLine(
-      {{x_pos, y_min}, {x_pos, y_max}});
+      {{x_pos, y_min - poly_diff_rules.min_enclosure},
+       {x_pos, y_max + poly_diff_rules.min_enclosure}});
   line.SetWidth(width);
   layout->AddPolyLine(line);
 
   layout->SetActiveLayerByName(DiffLayer());
   layout->AddRectangle(geometry::Rectangle(
-      {x_pos - width / 2 - GetDiffWing(geometry::Compass::LEFT),
-       y_min + 100},  // FIXME: this is an encap rule?
-      {x_pos + width / 2 + GetDiffWing(geometry::Compass::RIGHT),
-       y_max - 100}));  // FIXME: This is that same encap rule
+      {x_pos - width / 2 - GetDiffWing(geometry::Compass::LEFT), y_min},
+      {x_pos + width / 2 + GetDiffWing(geometry::Compass::RIGHT), y_max}));
        
-
   return layout.release();
 }
 
