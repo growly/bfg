@@ -25,7 +25,7 @@ class Sky130SwitchComplex: public Atom {
 
     uint64_t nw_nfet_width_nm = 480;
     uint64_t ne_nfet_width_nm = 480;
-    uint64_t es_nfet_width_nm = 200;
+    uint64_t es_nfet_width_nm = 480;
     uint64_t sw_nfet_width_nm = 480;
     uint64_t ew_nfet_width_nm = 480;
     uint64_t ns_nfet_width_nm = 480;
