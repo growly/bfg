@@ -50,6 +50,8 @@ class ShapeCollection : public Manipulable {
   void AddConnectableShapes(const ShapeCollection &other);
   void AddNonConnectableShapes(const ShapeCollection &other);
 
+  void Consume(ShapeCollection *other);
+
   const Rectangle GetBoundingBox() const;
 
   bool Overlaps(const Rectangle &rectangle) const;

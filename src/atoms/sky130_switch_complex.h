@@ -18,14 +18,14 @@ class Sky130SwitchComplex: public Atom {
   struct Parameters {
     uint64_t nw_pfet_width_nm = 640;  // North-West
     uint64_t ne_pfet_width_nm = 640;  // North-East
-    uint64_t es_pfet_width_nm = 640;  // East-West
+    uint64_t es_pfet_width_nm = 300;  // East-West
     uint64_t sw_pfet_width_nm = 640;  // South-West
     uint64_t ew_pfet_width_nm = 640;  // East-West
     uint64_t ns_pfet_width_nm = 640;  // North-South
 
     uint64_t nw_nfet_width_nm = 480;
     uint64_t ne_nfet_width_nm = 480;
-    uint64_t es_nfet_width_nm = 480;
+    uint64_t es_nfet_width_nm = 200;
     uint64_t sw_nfet_width_nm = 480;
     uint64_t ew_nfet_width_nm = 480;
     uint64_t ns_nfet_width_nm = 480;

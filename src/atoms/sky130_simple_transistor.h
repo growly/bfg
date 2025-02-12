@@ -7,6 +7,8 @@
 #include "../circuit.h"
 #include "../layout.h"
 #include "../geometry/compass.h"
+#include "../geometry/polygon.h"
+#include "../geometry/rectangle.h"
 #include "../physical_properties_database.h"
 
 namespace bfg {
@@ -32,11 +34,23 @@ class Sky130SimpleTransistor : public Atom {
     };
 
     FetType fet_type = FetType::NMOS;
-    uint64_t length_nm = 150;
     uint64_t width_nm = 500;
+    uint64_t length_nm = 150;
     bool stacks_left = false;
     bool stacks_right = false;
   };
+
+  enum Alignment {
+    POLY_TOP_CENTRE,
+    POLY_BOTTOM_CENTRE
+  };
+
+  // This makes sense as a feature of this class and not of Atoms, or Layouts,
+  // in general, because the alignment points are meaningful only in the
+  // context of a transistor like this. An alternative would be to label points
+  // in the layout with names and align those. That would be a general
+  // solution, but we can do better I think.
+  void AlignTransistorTo(const Alignment &alignment, const geometry::Point &point);
 
   std::string DiffLayer() const;
   std::string DiffConnectionLayer() const;
@@ -48,6 +62,8 @@ class Sky130SimpleTransistor : public Atom {
   int64_t TransistorLength() const {
     return design_db_->physical_db().ToInternalUnits(parameters_.length_nm);
   }
+
+  uint64_t PolyHeight() const;
 
   int64_t GetDiffWing(const geometry::Compass &direction) const;
 
@@ -61,11 +77,18 @@ class Sky130SimpleTransistor : public Atom {
   // outputs directly into parent cell.
   bfg::Cell *Generate() override;
 
-  bfg::Layout *GenerateLayout();
+  bfg::Layout *GenerateLayout() {
+    return GenerateLayout(nullptr, nullptr);
+  }
+  bfg::Layout *GenerateLayout(
+      geometry::Polygon **poly, geometry::Rectangle **diff);
   bfg::Circuit *GenerateCircuit();
 
  private:
   Parameters parameters_;
+
+  std::optional<Alignment> alignment_;
+  std::optional<geometry::Point> alignment_point_;
 };
 
 }  // namespace atoms

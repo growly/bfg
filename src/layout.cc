@@ -380,6 +380,32 @@ void Layout::GetPorts(
   out->insert(it->second.begin(), it->second.end());
 }
 
+void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix = "") {
+  for (auto &entry : other->shapes_) {
+    active_layer_ = entry.first;
+    ShapeCollection *other_collection = entry.second.get();
+    if (name_prefix != "") {
+      // Shapes are modified in place.
+      other_collection->PrefixNetNames(name_prefix, ".");
+    }
+
+    if (shapes_.find(active_layer) == shapes_.end()) {
+      shapes_.insert({active_layer, new ShapeCollection()});
+    }
+    shapes_[active_layer].Consume(other_collection);
+  }
+  for (auto &instance : other->instances_) {
+    instances_.push_back(std::move(instance));
+  }
+  for (auto &entry : other.named_points_) {
+    std::string name = entry.first;
+    if (name_prefix != "") {
+      name = absl::StrCat(name_prefix, ".", entry.first);
+    }
+    SavePoint(name, entry.second);
+  }
+}
+
 void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   // To be able to support this we'd need to make a temporary copy of all the
   // containers:
@@ -391,6 +417,7 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
     if (name_prefix != "") {
       owner_of_copy.reset(new ShapeCollection(*other_collection));
       other_collection = owner_of_copy.get();
+      // This is now the copy!
       other_collection->PrefixNetNames(name_prefix, ".");
     }
     for (const auto &rectangle : other_collection->rectangles()) {

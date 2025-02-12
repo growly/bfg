@@ -108,6 +108,21 @@ void ShapeCollection::Add(const ShapeCollection &other) {
       always_true);
 }
 
+void ShapeCollection::Consume(ShapeCollection *other) {
+  for (auto &rectangle : other->rectangles_) {
+    rectangles_.emplace_back(std::move(rectangle));
+  }
+  for (auto &polygon : other->polygons_) {
+    polygons_.emplace_back(std::move(polygon));
+  }
+  for (auto &port : other->ports_) {
+    ports_.emplace_back(std::move(port));
+  }
+  for (auto &poly_line : other->poly_lines_) {
+    poly_lines_.emplace_back(std::move(poly_line));
+  }
+}
+
 void ShapeCollection::Add(
     const ShapeCollection &other,
     std::function<bool(const Rectangle&)> include_rectangle,

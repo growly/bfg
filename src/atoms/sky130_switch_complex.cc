@@ -68,131 +68,165 @@ bfg::Layout *Sky130SwitchComplex::GenerateLayout() {
   int64_t y_min = 0;
   struct TransistorSpecs {
     int64_t x = 0;
-    uint64_t width_nm = 0;
-    uint64_t length_nm = 0;
+    Sky130SimpleTransistor::Parameters fet_params;
     Sky130SimpleTransistor *fet_generator;
-    bool stacks_left = false;
-    bool stacks_right = false;
   };
 
   std::map<std::string, TransistorSpecs> transistor_specs = {
     {"NE", TransistorSpecs{
       .x = x_start,
-      .width_nm = parameters_.ne_nfet_length_nm,
-      .length_nm = parameters_.ne_nfet_width_nm,
-      .stacks_right = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+        .width_nm = parameters_.ne_nfet_width_nm,
+        .length_nm = parameters_.ne_nfet_length_nm,
+        .stacks_right = true
+      }}},
     {"EW", TransistorSpecs{
       .x = x_start + poly_pitch,
-      .width_nm = parameters_.ew_nfet_length_nm,
-      .length_nm = parameters_.ew_nfet_width_nm,
-      .stacks_left = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+        .width_nm = parameters_.ew_nfet_width_nm,
+        .length_nm = parameters_.ew_nfet_length_nm,
+        .stacks_left = true
+      }}},
     {"NS", TransistorSpecs{
       .x = x_start + 3 * poly_pitch,
-      .width_nm = parameters_.ns_nfet_length_nm,
-      .length_nm = parameters_.ns_nfet_width_nm,
-      .stacks_right = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+        .width_nm = parameters_.ns_nfet_width_nm,
+        .length_nm = parameters_.ns_nfet_length_nm,
+        .stacks_right = true
+      }}},
     {"ES", TransistorSpecs{
       .x = x_start + 4 * poly_pitch,
-      .width_nm = parameters_.es_nfet_length_nm,
-      .length_nm = parameters_.es_nfet_width_nm,
-      .stacks_left = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+        .width_nm = parameters_.es_nfet_width_nm,
+        .length_nm = parameters_.es_nfet_length_nm,
+        .stacks_left = true
+      }}},
     {"NW", TransistorSpecs{
       .x = x_start + 6 * poly_pitch,
-      .width_nm = parameters_.nw_nfet_length_nm,
-      .length_nm = parameters_.nw_nfet_width_nm,
-      .stacks_right = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+        .width_nm = parameters_.nw_nfet_width_nm,
+        .length_nm = parameters_.nw_nfet_length_nm,
+        .stacks_right = true
+      }}},
     {"SW", TransistorSpecs{
       .x = x_start + 7 * poly_pitch,
-      .width_nm = parameters_.sw_nfet_length_nm,
-      .length_nm = parameters_.sw_nfet_width_nm,
-      .stacks_left = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+        .width_nm = parameters_.sw_nfet_width_nm,
+        .length_nm = parameters_.sw_nfet_length_nm,
+        .stacks_left = true
+      }}},
     {"NE_B", TransistorSpecs{
       .x = x_start,
-      .width_nm = parameters_.ne_pfet_length_nm,
-      .length_nm = parameters_.ne_pfet_width_nm,
-      .stacks_right = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+        .width_nm = parameters_.ne_pfet_width_nm,
+        .length_nm = parameters_.ne_pfet_length_nm,
+        .stacks_right = true
+      }}},
     {"EW_B", TransistorSpecs{
       .x = x_start + poly_pitch,
-      .width_nm = parameters_.ew_pfet_length_nm,
-      .length_nm = parameters_.ew_pfet_width_nm,
-      .stacks_left = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+        .width_nm = parameters_.ew_pfet_width_nm,
+        .length_nm = parameters_.ew_pfet_length_nm,
+        .stacks_left = true
+      }}},
     {"NS_B", TransistorSpecs{
       .x = x_start + 3 * poly_pitch,
-      .width_nm = parameters_.ns_pfet_length_nm,
-      .length_nm = parameters_.ns_pfet_width_nm,
-      .stacks_right = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+        .width_nm = parameters_.ns_pfet_width_nm,
+        .length_nm = parameters_.ns_pfet_length_nm,
+        .stacks_right = true
+      }}},
     {"ES_B", TransistorSpecs{
       .x = x_start + 4 * poly_pitch,
-      .width_nm = parameters_.es_pfet_length_nm,
-      .length_nm = parameters_.es_pfet_width_nm,
-      .stacks_left = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+        .width_nm = parameters_.es_pfet_width_nm,
+        .length_nm = parameters_.es_pfet_length_nm,
+        .stacks_left = true
+      }}},
     {"NW_B", TransistorSpecs{
       .x = x_start + 6 * poly_pitch,
-      .width_nm = parameters_.nw_pfet_length_nm,
-      .length_nm = parameters_.nw_pfet_width_nm,
-      .stacks_right = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+        .width_nm = parameters_.nw_pfet_width_nm,
+        .length_nm = parameters_.nw_pfet_length_nm,
+        .stacks_right = true
+      }}},
     {"SW_B", TransistorSpecs{
       .x = x_start + 7 * poly_pitch,
-      .width_nm = parameters_.sw_pfet_length_nm,
-      .length_nm = parameters_.sw_pfet_width_nm,
-      .stacks_left = true}},
+      .fet_params = Sky130SimpleTransistor::Parameters{
+        .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+        .width_nm = parameters_.sw_pfet_width_nm,
+        .length_nm = parameters_.sw_pfet_length_nm,
+        .stacks_left = true
+      }}},
   };
 
   static const std::vector<std::string> kNfetKeys = {
       "NE", "EW", "NS", "ES", "NW", "SW"};
   static const std::vector<std::string> kPfetKeys = {
       "NE_B", "EW_B", "NS_B", "ES_B", "NW_B", "SW_B"};
-  // Get the max length of all the bottom row PolyDimensions.
+
+  for (auto &entry : transistor_specs) {
+    TransistorSpecs &specs = entry.second;
+    Sky130SimpleTransistor *fet_generator = new Sky130SimpleTransistor(
+        specs.fet_params, design_db_);
+    specs.fet_generator = fet_generator;
+  }
+
+  // Get the max length of all the bottom- and top-row TransistorSpecs.
   //
-  // NOTE: This is more lines than a simple for loop to do the same thing.
-  int64_t bottom_row_length_max = std::accumulate(
+  // NOTE: This is more lines of code than a simple for loop to do the same
+  // thing.
+  uint64_t bottom_row_length_max = std::accumulate(
       kNfetKeys.begin(), kNfetKeys.end(),
-      0, [&](int64_t existing, const std::string &key) {
-        return std::max(existing, db.ToInternalUnits(transistor_specs[key].length_nm));
+      0, [&](uint64_t existing, const std::string &key) {
+        return std::max(
+            existing, transistor_specs[key].fet_generator->PolyHeight());
+      });
+
+  uint64_t top_row_length_max = std::accumulate(
+      kPfetKeys.begin(), kPfetKeys.end(),
+      0, [&](uint64_t existing, const std::string &key) {
+        return std::max(
+            existing, transistor_specs[key].fet_generator->PolyHeight());
       });
 
   for (const std::string &key : kNfetKeys) {
-    TransistorSpecs &specs = transistor_specs[key];
-
-    Sky130SimpleTransistor::Parameters transistor_parameters = {
-      .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
-      .length_nm = specs.length_nm,
-      .width_nm = specs.width_nm,
-      .stacks_left = specs.stacks_left,
-      .stacks_right = specs.stacks_right
-    };
-    Sky130SimpleTransistor *fet_generator = new Sky130SimpleTransistor(
-        transistor_parameters, design_db_);
-    specs.fet_generator = fet_generator;
-
-    std::unique_ptr<bfg::Layout> transistor_layout(fet_generator->GenerateLayout());
-    transistor_layout->Translate({specs.x, y_min});
-    layout->AddLayout(*transistor_layout);
+    const TransistorSpecs &specs = transistor_specs[key];
+    Sky130SimpleTransistor *fet_generator = specs.fet_generator;
+    fet_generator->AlignTransistorTo(
+        Sky130SimpleTransistor::Alignment::POLY_BOTTOM_CENTRE,
+        {specs.x, y_min});
   }
 
-  // Shift y_min above the bottom row to add the PMOS FETs.
-  y_min = y_min + bottom_row_length_max + poly_rules.min_separation;
+  y_min = y_min + bottom_row_length_max + poly_rules.min_separation +
+          top_row_length_max;
+
   for (const std::string &key : kPfetKeys) {
-    TransistorSpecs &specs = transistor_specs[key];
-
-    Sky130SimpleTransistor::Parameters transistor_parameters = {
-      .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
-      .length_nm = specs.length_nm,
-      .width_nm = specs.width_nm,
-      .stacks_left = specs.stacks_left,
-      .stacks_right = specs.stacks_right
-    };
-    Sky130SimpleTransistor *fet_generator = new Sky130SimpleTransistor(
-        transistor_parameters, design_db_);
-    specs.fet_generator = fet_generator;
-
-    std::unique_ptr<bfg::Layout> transistor_layout(fet_generator->GenerateLayout());
-    transistor_layout->Translate({specs.x, y_min});
-    layout->AddLayout(*transistor_layout);
+    const TransistorSpecs &specs = transistor_specs[key];
+    Sky130SimpleTransistor *fet_generator = specs.fet_generator;
+    fet_generator->AlignTransistorTo(
+        Sky130SimpleTransistor::Alignment::POLY_TOP_CENTRE,
+        {specs.x, y_min});
   }
 
-  for (const auto &entry : transistor_specs) {
-    delete entry.second.fet_generator;
+  for (auto &entry : transistor_specs) {
+    TransistorSpecs &specs = entry.second;
+    std::unique_ptr<bfg::Layout> transistor_layout(
+        specs.fet_generator->GenerateLayout());
+    layout->AddLayout(*transistor_layout);
+    delete specs.fet_generator;
+    specs.fet_generator = nullptr;
   }
 
   return layout.release();

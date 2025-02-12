@@ -81,6 +81,11 @@ class Layout : public geometry::Manipulable {
   void GetPorts(const std::string &net_name, geometry::PortSet *out)
       const;
 
+  // Take ownership of all the shapes in the other Layout, deleting them from
+  // that Layout as we go. If a name_prefix is given, moved shapes will be
+  // renamed with the given prefix at the start.
+  void ConsumeLayout(Layout *other, const std::string &name_prefix = "");
+
   // Copies the objects in other layout into this one. If a name prefix is
   // given, it is apply to named points and net names copied from the other
   // Layout.
