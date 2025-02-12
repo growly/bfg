@@ -396,6 +396,9 @@ target_link_libraries(router_service_bin PUBLIC router_service
 
 # Tests
 # -----
+set(ATOMS_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor_test.cc
+)
 
 set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
@@ -409,6 +412,7 @@ set(GEOMETRY_TEST_SRC
 )
 
 set(TEST_SRC
+  ${ATOMS_TEST_SRC}
   ${GEOMETRY_TEST_SRC}
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
@@ -418,7 +422,10 @@ set(TEST_SRC
 )
 
 enable_testing()
-add_executable(bfg_test ${TEST_SRC})
+add_executable(bfg_test
+  ${TEST_SRC}
+  src/dev_pdk_setup.cc)   # Temporary hack to set up PDK data.
+
 target_link_libraries(bfg_test
   bfg
   Threads::Threads
@@ -433,3 +440,32 @@ target_link_libraries(bfg_test
 
 include(GoogleTest)
 gtest_discover_tests(bfg_test)
+
+# Test data
+# ---------
+# Since I like being able to run ./bfg_test directly, it's best to copy the test
+# data into the binary output directory. The other option seems to be to specify
+# WORKING_DIRECTORY to gtest_discovery_tests (or add_test), but I can't get that
+# to work:
+#   gtest_discover_tests(
+#     bfg_test
+#     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/tests")
+#
+set(PROJECT_TEST_DATA_DIR "${PROJECT_SOURCE_DIR}/test_data")
+set(OUTPUT_TEST_DATA_DIR "${PROJECT_BINARY_DIR}/test_data")
+message(STATUS "Configuring test data from ${PROJECT_TEST_DATA_DIR}")
+file(REMOVE_RECURSE "${OUTPUT_TEST_DATA_DIR}/")
+file(GLOB_RECURSE test_data_files "${PROJECT_TEST_DATA_DIR}/*")
+foreach(data_file ${test_data_files})
+  file(RELATIVE_PATH relative_file "${PROJECT_TEST_DATA_DIR}" "${data_file}")
+  get_filename_component(sub_directory ${relative_file} DIRECTORY)
+  get_filename_component(base_name ${relative_file} NAME)
+  if(NOT "${sub_directory}" STREQUAL "")
+    file(MAKE_DIRECTORY "${OUTPUT_TEST_DATA_DIR}/${sub_directory}")
+    set(data_file_out "${OUTPUT_TEST_DATA_DIR}/${sub_directory}/${base_name}")
+  else()
+    set(data_file_out "${OUTPUT_TEST_DATA_DIR}/${base_name}")
+  endif()
+  configure_file("${data_file}" "${data_file_out}" COPYONLY)
+  # Thanks I hate it.
+endforeach(data_file)

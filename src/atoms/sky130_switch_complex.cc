@@ -204,7 +204,7 @@ bfg::Layout *Sky130SwitchComplex::GenerateLayout() {
   for (const std::string &key : kNfetKeys) {
     const TransistorSpecs &specs = transistor_specs[key];
     Sky130SimpleTransistor *fet_generator = specs.fet_generator;
-    fet_generator->AlignTransistorTo(
+    fet_generator->AlignTransistorPartTo(
         Sky130SimpleTransistor::Alignment::POLY_BOTTOM_CENTRE,
         {specs.x, y_min});
   }
@@ -215,7 +215,7 @@ bfg::Layout *Sky130SwitchComplex::GenerateLayout() {
   for (const std::string &key : kPfetKeys) {
     const TransistorSpecs &specs = transistor_specs[key];
     Sky130SimpleTransistor *fet_generator = specs.fet_generator;
-    fet_generator->AlignTransistorTo(
+    fet_generator->AlignTransistorPartTo(
         Sky130SimpleTransistor::Alignment::POLY_TOP_CENTRE,
         {specs.x, y_min});
   }

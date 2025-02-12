@@ -380,7 +380,7 @@ void Layout::GetPorts(
   out->insert(it->second.begin(), it->second.end());
 }
 
-void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix = "") {
+void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix) {
   for (auto &entry : other->shapes_) {
     active_layer_ = entry.first;
     ShapeCollection *other_collection = entry.second.get();
@@ -389,15 +389,15 @@ void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix = "") {
       other_collection->PrefixNetNames(name_prefix, ".");
     }
 
-    if (shapes_.find(active_layer) == shapes_.end()) {
-      shapes_.insert({active_layer, new ShapeCollection()});
-    }
-    shapes_[active_layer].Consume(other_collection);
+    ShapeCollection *layer_shapes = GetOrInsertLayerShapes(active_layer_);
+    layer_shapes->Consume(other_collection);
   }
   for (auto &instance : other->instances_) {
     instances_.push_back(std::move(instance));
   }
-  for (auto &entry : other.named_points_) {
+
+  // Points are copied since they are not stored by pointer.
+  for (auto &entry : other->named_points_) {
     std::string name = entry.first;
     if (name_prefix != "") {
       name = absl::StrCat(name_prefix, ".", entry.first);

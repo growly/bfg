@@ -19,10 +19,33 @@ bfg::Cell *Sky130SimpleTransistor::Generate() {
   return cell.release();
 }
 
-void Sky130SimpleTransistor::AlignTransistorTo(
+void Sky130SimpleTransistor::AlignTransistorPartTo(
     const Alignment &alignment, const geometry::Point &point) {
   alignment_ = alignment;
   alignment_point_ = point;
+}
+
+geometry::Point Sky130SimpleTransistor::ViaLocation(
+    const ViaPosition &via_position) {
+  geometry::Point lower_left;
+  if (alignment_ && alignment_point_) {
+    switch (*alignment_) {
+      case POLY_TOP_CENTRE:
+        lower_left = geometry::Point(
+            alignment_point_->x() - TransistorLength() / 2 -
+                DiffWing(geometry::Compass::LEFT),
+            alignment_point_->y() - PolyHeight());
+        break;
+      case POLY_BOTTOM_CENTRE:
+        lower_left = geometry::Point(
+            alignment_point_->x() - TransistorLength() / 2 -
+                DiffWing(geometry::Compass::LEFT),
+            alignment_point_->y());
+        break;
+      default:
+        LOG(FATAL) << "Unsupported alignment: " << *alignment_;
+    }
+  }
 }
 
 std::string Sky130SimpleTransistor::DiffLayer() const {
@@ -53,7 +76,7 @@ std::string Sky130SimpleTransistor::DiffConnectionLayer() const {
   }
 }
 
-int64_t Sky130SimpleTransistor::GetDiffWing(
+int64_t Sky130SimpleTransistor::DiffWing(
     const geometry::Compass &direction) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &poly_rules = db.Rules("poly.drawing");
@@ -135,11 +158,11 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
   geometry::Rectangle *diff_rectangle =
       layout->AddRectangle(geometry::Rectangle(
           {
-            x_pos - poly_width / 2 - GetDiffWing(geometry::Compass::LEFT),
+            x_pos - poly_width / 2 - DiffWing(geometry::Compass::LEFT),
             diff_y_min
           },
           {
-            x_pos + poly_width / 2 + GetDiffWing(geometry::Compass::RIGHT),
+            x_pos + poly_width / 2 + DiffWing(geometry::Compass::RIGHT),
             diff_y_max
           }
       )

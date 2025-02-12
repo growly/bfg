@@ -50,7 +50,43 @@ class Sky130SimpleTransistor : public Atom {
   // context of a transistor like this. An alternative would be to label points
   // in the layout with names and align those. That would be a general
   // solution, but we can do better I think.
-  void AlignTransistorTo(const Alignment &alignment, const geometry::Point &point);
+  void AlignTransistorPartTo(
+      const Alignment &alignment, const geometry::Point &point);
+
+  // Calculates positions of key via positions for convenience:
+  //
+  //             +-----+
+  //             |  D  |
+  // +-----------|     |------+
+  // |     A     |     |      G
+  // |           |     |      |
+  // |     B     |  E  |      H
+  // |           |     |      |
+  // |     C     |     |      I
+  // +-----------|     |------+
+  //             |  F  |
+  //             +-----+
+  // A: Left diff, uppermost (shown not stacking)
+  // B: Left diff, middle (shown not stacking)
+  // C: Left diff, lowermost (shown not stacking)
+  // D: Poly, uppermost
+  // E: Poly, middle
+  // F: Poly, lowermost
+  // G: Right diff, uppermost (show stacking)
+  // H: Right diff, middle (show stacking)
+  // I: Right diff, lowermost (show stacking)
+  enum ViaPosition {
+    LEFT_DIFF_UPPER,
+    LEFT_DIFF_MIDDLE,
+    LEFT_DIFF_LOWER,
+    POLY_UPPER,
+    POLY_MIDDLE,
+    POLY_LOWER,
+    RIGHT_DIFF_UPPER,
+    RIGHT_DIFF_MIDDLE,
+    RIGHT_DIFF_LOWER
+  };
+  geometry::Point ViaLocation(const ViaPosition &via_position);
 
   std::string DiffLayer() const;
   std::string DiffConnectionLayer() const;
@@ -65,7 +101,7 @@ class Sky130SimpleTransistor : public Atom {
 
   uint64_t PolyHeight() const;
 
-  int64_t GetDiffWing(const geometry::Compass &direction) const;
+  int64_t DiffWing(const geometry::Compass &direction) const;
 
   Sky130SimpleTransistor(
       const Parameters &parameters, DesignDatabase *design_db)

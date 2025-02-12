@@ -1,0 +1,42 @@
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+#include <utility>
+
+#include "sky130_simple_transistor.h"
+#include "../physical_properties_database.h"
+#include "../dev_pdk_setup.h"
+
+namespace bfg {
+namespace atoms {
+namespace {
+
+class Sky130SimpleTransistorTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    bfg::PhysicalPropertiesDatabase &physical_db = design_db_.physical_db();
+    design_db_.physical_db().LoadTechnologyFromFile(
+        "test_data/sky130.technology.pb");
+    bfg::SetUpSky130(&physical_db);
+  }
+
+  DesignDatabase design_db_;
+};
+
+TEST_F(Sky130SimpleTransistorTest, NMOSViaPositions_AlignedPolyTop) {
+  Sky130SimpleTransistor::Parameters params = {
+    .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+    .width_nm = 500,
+    .length_nm = 150
+  };
+  Sky130SimpleTransistor xtor(params, &design_db_);
+
+  //EXPECT_FALSE(nets.Contains("a"));
+  //EXPECT_FALSE(nets.Contains("b"));
+  //EXPECT_FALSE(nets.Contains("c"));
+  //EXPECT_EQ("", nets.primary());
+}
+
+}  // namespace
+}  // namespace atoms
+}  // namespace bfg
