@@ -24,12 +24,33 @@ class Sky130SimpleTransistorTest : public testing::Test {
 };
 
 TEST_F(Sky130SimpleTransistorTest, NMOSViaPositions_AlignedPolyTop) {
+}
+
+TEST_F(Sky130SimpleTransistorTest, LowerLeft) {
   Sky130SimpleTransistor::Parameters params = {
     .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
-    .width_nm = 500,
-    .length_nm = 150
+    .width_nm = 500,   // Also 500 in internal units.
+    .length_nm = 150,  // Also 150 in internal units.
+    .stacks_left = false,
+    .stacks_right = false,
   };
   Sky130SimpleTransistor xtor(params, &design_db_);
+
+  geometry::Point origin;
+
+  EXPECT_EQ(760, xtor.PolyHeight());
+
+  // The un-stacked diffusion wing (extension beyond poly) should be 285 (since
+  // it includes space for a via), so the extension from the central y axis
+  // should be 285 + 150/2 = 360.
+
+  EXPECT_EQ(geometry::Point(-360, -380), xtor.LowerLeft());
+  xtor.AlignTransistorPartTo(
+      Sky130SimpleTransistor::Alignment::POLY_TOP_CENTRE, origin);
+  EXPECT_EQ(geometry::Point(-360, -760), xtor.LowerLeft());
+  xtor.AlignTransistorPartTo(
+      Sky130SimpleTransistor::Alignment::POLY_BOTTOM_CENTRE, origin);
+  EXPECT_EQ(geometry::Point(-360, 0), xtor.LowerLeft());
 
   //EXPECT_FALSE(nets.Contains("a"));
   //EXPECT_FALSE(nets.Contains("b"));

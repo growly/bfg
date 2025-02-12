@@ -86,7 +86,10 @@ class Sky130SimpleTransistor : public Atom {
     RIGHT_DIFF_MIDDLE,
     RIGHT_DIFF_LOWER
   };
-  geometry::Point ViaLocation(const ViaPosition &via_position);
+  geometry::Point ViaLocation(const ViaPosition &via_position) const;
+
+  // Computes the lower left point without generating the layout.
+  geometry::Point LowerLeft() const;
 
   std::string DiffLayer() const;
   std::string DiffConnectionLayer() const;

@@ -32,7 +32,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   polycon.purpose = "drawing";
   db->AddLayerInfo(polycon);
 
-  std::cout << "\n" << db->DescribeLayers();
+  //std::cout << "\n" << db->DescribeLayers();
 
   // The following constants are specified in nm, but the internal units are the
   // minimum manufacturing grid resolution of also 1 nm.
@@ -310,7 +310,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
 
   db->AddLayerAlias("li.pin", "text.text");
 
-  LOG(INFO) << db->DescribeLayers();
+  //LOG(INFO) << db->DescribeLayers();
 
   // We are targeting 5 V for this experiment.
   bfg::IntraLayerConstraints intra_constraints = {

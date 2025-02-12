@@ -25,8 +25,7 @@ void Sky130SimpleTransistor::AlignTransistorPartTo(
   alignment_point_ = point;
 }
 
-geometry::Point Sky130SimpleTransistor::ViaLocation(
-    const ViaPosition &via_position) {
+geometry::Point Sky130SimpleTransistor::LowerLeft() const {
   geometry::Point lower_left;
   if (alignment_ && alignment_point_) {
     switch (*alignment_) {
@@ -45,7 +44,17 @@ geometry::Point Sky130SimpleTransistor::ViaLocation(
       default:
         LOG(FATAL) << "Unsupported alignment: " << *alignment_;
     }
+    return lower_left;
   }
+  // Assumes everything centred on actual (0, 0) origin.
+  return geometry::Point(
+      -(DiffWing(geometry::Compass::LEFT) + TransistorLength() / 2),
+      -static_cast<int64_t>(PolyHeight()) / 2);
+}
+
+geometry::Point Sky130SimpleTransistor::ViaLocation (
+    const ViaPosition &via_position) const {
+  return LowerLeft();
 }
 
 std::string Sky130SimpleTransistor::DiffLayer() const {
