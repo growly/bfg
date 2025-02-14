@@ -41,6 +41,19 @@ bool Point::ShareHorizontalOrVerticalAxis(
   return lhs.x() == rhs.x() || lhs.y() == rhs.y();
 }
 
+Point Point::MidpointOf(const Point &lhs, const Point &rhs) {
+  return Point((lhs.x() + rhs.x()) / 2, (lhs.y() + rhs.y()) / 2);
+}
+
+Point Point::PickMinY(const Point &lhs, const Point &rhs) {
+  return lhs.y() <= rhs.y() ? lhs : rhs;
+}
+
+Point Point::PickMaxY(const Point &lhs, const Point &rhs) {
+  return lhs.y() >= rhs.y() ? lhs : rhs;
+}
+
+
 Point Point::UnitVector(double angle_to_horizon_radians) {
   return {std::llround(std::cos(angle_to_horizon_radians)),
           std::llround(std::sin(angle_to_horizon_radians))};

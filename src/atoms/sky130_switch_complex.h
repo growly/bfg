@@ -7,6 +7,8 @@
 #include "../circuit.h"
 #include "../layout.h"
 
+#include "sky130_simple_transistor.h"
+
 namespace bfg {
 
 class DesignDatabase;
@@ -52,6 +54,12 @@ class Sky130SwitchComplex: public Atom {
   bfg::Cell *Generate() override;
 
  private:
+  struct TransistorSpecs {
+    int64_t x = 0;
+    Sky130SimpleTransistor::Parameters fet_params;
+    Sky130SimpleTransistor *fet_generator;
+  };
+
   bfg::Layout *GenerateLayout();
   bfg::Circuit *GenerateCircuit();
 

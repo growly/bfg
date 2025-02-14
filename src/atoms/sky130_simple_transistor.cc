@@ -26,17 +26,16 @@ void Sky130SimpleTransistor::AlignTransistorPartTo(
 }
 
 geometry::Point Sky130SimpleTransistor::LowerLeft() const {
-  geometry::Point lower_left;
   if (alignment_ && alignment_point_) {
     switch (*alignment_) {
       case POLY_TOP_CENTRE:
-        lower_left = geometry::Point(
+        return geometry::Point(
             alignment_point_->x() - TransistorLength() / 2 -
                 DiffWing(geometry::Compass::LEFT),
             alignment_point_->y() - PolyHeight());
         break;
       case POLY_BOTTOM_CENTRE:
-        lower_left = geometry::Point(
+        return geometry::Point(
             alignment_point_->x() - TransistorLength() / 2 -
                 DiffWing(geometry::Compass::LEFT),
             alignment_point_->y());
@@ -44,9 +43,8 @@ geometry::Point Sky130SimpleTransistor::LowerLeft() const {
       default:
         LOG(FATAL) << "Unsupported alignment: " << *alignment_;
     }
-    return lower_left;
   }
-  // Assumes everything centred on actual (0, 0) origin.
+  // Assumes poly centred on actual (0, 0) origin.
   return geometry::Point(
       -(DiffWing(geometry::Compass::LEFT) + TransistorLength() / 2),
       -static_cast<int64_t>(PolyHeight()) / 2);
@@ -54,7 +52,38 @@ geometry::Point Sky130SimpleTransistor::LowerLeft() const {
 
 geometry::Point Sky130SimpleTransistor::ViaLocation (
     const ViaPosition &via_position) const {
-  return LowerLeft();
+  geometry::Point lower_left = LowerLeft();
+
+  int64_t poly_height = static_cast<int64_t>(PolyHeight());
+  int64_t left_wing = DiffWing(geometry::Compass::LEFT);
+  int64_t right_wing = DiffWing(geometry::Compass::RIGHT);
+  int64_t poly_width = TransistorLength();
+  //int64_t diff_height = TransistorWidth();
+
+  int64_t offset_x = 0;
+  int64_t offset_y = 0;
+
+  switch (via_position) {
+    case ViaPosition::LEFT_DIFF_MIDDLE:
+      offset_x = parameters_.stacks_left ? 0 : left_wing / 2;
+      offset_y = poly_height / 2;
+      break;
+    case ViaPosition::RIGHT_DIFF_MIDDLE:
+      offset_x = left_wing + poly_width + (
+          parameters_.stacks_right ? right_wing : right_wing / 2);
+      offset_y = poly_height / 2;
+      break;
+    case ViaPosition::LEFT_DIFF_UPPER:
+    case ViaPosition::LEFT_DIFF_LOWER:
+    case ViaPosition::RIGHT_DIFF_UPPER:
+    case ViaPosition::RIGHT_DIFF_LOWER:
+    case ViaPosition::POLY_UPPER:
+    case ViaPosition::POLY_MIDDLE:
+    case ViaPosition::POLY_LOWER:
+    default:
+      LOG(FATAL) << "Unsupported ViaPosition: " << via_position;
+  }
+  return lower_left + geometry::Point(offset_x, offset_y);
 }
 
 std::string Sky130SimpleTransistor::DiffLayer() const {

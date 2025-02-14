@@ -23,7 +23,43 @@ class Sky130SimpleTransistorTest : public testing::Test {
   DesignDatabase design_db_;
 };
 
-TEST_F(Sky130SimpleTransistorTest, NMOSViaPositions_AlignedPolyTop) {
+TEST_F(Sky130SimpleTransistorTest,
+       ViaLocation_NMOS_AlignedPolyTop_LeftDiffMiddle) {
+  Sky130SimpleTransistor::Parameters params = {
+    .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
+    .width_nm = 500,   // Also 500 in internal units.
+    .length_nm = 150,  // Also 150 in internal units.
+    .stacks_left = false,
+    .stacks_right = true,
+  };
+  Sky130SimpleTransistor xtor(params, &design_db_);
+
+  //      285      150    175
+  //  <---------><-----><----->
+  //             +-----+          ^
+  //             |  D  |          |
+  // +-----------|     |------+   |
+  // |     A     |     |      G   |
+  // |           |     |      |   |
+  // |     B     |  E  |      H   | 780
+  // |           |     |      |   |
+  // |     C     |     |      I   |
+  // +-----------|     |------+   |
+  //             |  F  |          |
+  // L           +--x--+          v
+  // (-360, 0)      (0, 0)
+  // B should be at (-217.50 (rounded), 380)
+  // H should be at (250 (610 - 360), 380)
+
+  xtor.AlignTransistorPartTo(
+      Sky130SimpleTransistor::Alignment::POLY_BOTTOM_CENTRE,
+      geometry::Point(0, 0));
+  EXPECT_EQ(
+      geometry::Point(std::llround(-217.50f), 380),
+      xtor.ViaLocation(Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_MIDDLE));
+  EXPECT_EQ(
+      geometry::Point(610 - 360, 380),
+      xtor.ViaLocation(Sky130SimpleTransistor::ViaPosition::RIGHT_DIFF_MIDDLE));
 }
 
 TEST_F(Sky130SimpleTransistorTest, LowerLeft) {
