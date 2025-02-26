@@ -25,13 +25,13 @@ bfg::Cell *Sky130Buf::Generate() {
   // A buffer is two back-to-back inverters:
   //
   //          /             /
-  //         _|            _|
+  //      g  _| s       g  _| s
   //      +o|_ pfet_0   +o|_  pfet_1
-  //      |   |         |   |
+  //      |   | d       |   | d
   // A ---+   +------P--+   +--- X
-  //      |  _|         |  _|
+  //      |  _| d       |  _| d
   //      +-|_ nfet_0   +-|_  nfet_1
-  //          |             |
+  //      g   | s       g   | s
   //          V             V
   // P = ~A
   // X = ~~A
@@ -67,7 +67,8 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   bfg::Circuit *nfet_01v8 =
       design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
   bfg::Circuit *pfet_01v8 =
-      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__pfet_01v8")->circuit();
+      design_db_->FindCellOrDie(
+          "sky130", "sky130_fd_pr__pfet_01v8_hvt")->circuit();
 
   // TODO(aryap): Define circuit primitives within the Circuit schema per PDK.
   // We need models of different transistors and capacitors, resistors, etc.
@@ -135,14 +136,11 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
             Parameter::SIUnitPrefix::NANO));
   }
 
-  nfet_0->Connect("d", VGND);
-  nfet_0->Connect("g", P);
-  nfet_0->Connect("s", X);
-  nfet_0->Connect("b", VNB);
+  pfet_0->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
+  nfet_0->Connect({{"d", P}, {"g", A}, {"s", VGND}, {"b", VNB}});
 
   pfet_1->Connect({{"d", X}, {"g", P}, {"s", VPWR}, {"b", VPB}});
-  nfet_1->Connect({{"d", P}, {"g", A}, {"s", VGND}, {"b", VNB}});
-  pfet_0->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
+  nfet_1->Connect({{"d", X}, {"g", P}, {"s", VGND}, {"b", VNB}});
 
   return circuit.release();
 }

@@ -131,17 +131,17 @@ int main(int argc, char **argv) {
                      "sky130_switch_complex.library.pb",
                      "sky130_switch_complex.package.pb",
                      FLAGS_write_text_format);
-  return EXIT_SUCCESS;
+  //return EXIT_SUCCESS;
 
   std::string top_name = "lut";
   bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
-  //// TODO(aryap): This is temporary, to make sense of one possible netlist.
-  //design_db.WriteTop("sky130_mux",
-  //                   "sky130_mux.library.pb",
-  //                   "sky130_mux.package.pb",
-  //                   true);
+  // TODO(aryap): This is temporary, to make sense of one possible netlist.
+  design_db.WriteTop("sky130_mux",
+                     "sky130_mux.library.pb",
+                     "sky130_mux.package.pb",
+                     true);
   //design_db.WriteTop("lut_dfxtp_tap_template",
   //                   "lut_dfxtp_tap_template.library.pb",
   //                   "lut_dfxtp_tap_template.package.pb",

@@ -34,10 +34,13 @@ class Sky130Dfxtp: public Atom {
     uint64_t pfet_8_width_nm = 1000;
     uint64_t pfet_9_width_nm = 1000;
 
+    // DO NOT SET WIDTH TO LESS THAN 355. IT BREAKS SPICE MODEL CARD.
+    // REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+
     uint64_t nfet_0_width_nm = 420;
-    uint64_t nfet_1_width_nm = 355;
+    uint64_t nfet_1_width_nm = 360;
     uint64_t nfet_2_width_nm = 420;
-    uint64_t nfet_3_width_nm = 355;
+    uint64_t nfet_3_width_nm = 360;
     uint64_t nfet_4_width_nm = 640;
     uint64_t nfet_5_width_nm = 360;
     uint64_t nfet_6_width_nm = 420;

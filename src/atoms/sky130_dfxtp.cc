@@ -245,7 +245,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   //               /                    /
   //              _|                   _|
-  //      +-----o|_ pfet4   +-------+o|_  pfet6
+  //      +-----o|_ pfet8   +-------+o|_  pfet8
   //      |        |        |           |
   //      |        |        |           |
   //   f -+        |        |           |
@@ -253,7 +253,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   // Q_N ----------+-- Q_N -+           |
   //      |        |        |           |
   //      |       _|        |          _|
-  //      +------|_ nfet4   +---------|_  nfet6
+  //      +------|_ nfet9   +---------|_  nfet9
   //               |                    |
   //               V                    V
 

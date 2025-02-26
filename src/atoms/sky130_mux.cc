@@ -2274,8 +2274,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
 
   Wire Z = circuit->AddSignal("Z");
 
-  //Wire VPB = circuit->AddSignal("VPB");
-  //Wire VNB = circuit->AddSignal("VNB");
+  Wire VPB = circuit->AddSignal("VPB");
+  Wire VNB = circuit->AddSignal("VNB");
 
   // Intermediate signals.
   Wire A0 = circuit->AddSignal("A0");
@@ -2298,8 +2298,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
   circuit->AddPort(X6);
   circuit->AddPort(X7);
   circuit->AddPort(Z);
-  //circuit->AddPort(VPB);
-  //circuit->AddPort(VNB);
+  circuit->AddPort(VPB);
+  circuit->AddPort(VNB);
 
   bfg::Circuit *nfet_01v8 =
       design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
@@ -2320,7 +2320,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.nfet_3_length_nm,
     .fet_4_length_nm = parameters_.nfet_4_length_nm,
     .fet_5_length_nm = parameters_.nfet_5_length_nm,
-    //.vb_wire = VNB,
+    .vb_wire = VNB,
     .x0_wire = X0,
     .x1_wire = X1,
     .x2_wire = X2,
@@ -2350,7 +2350,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.nfet_3_length_nm,
     .fet_4_length_nm = parameters_.nfet_4_length_nm,
     .fet_5_length_nm = parameters_.nfet_5_length_nm,
-    //.vb_wire = VNB,
+    .vb_wire = VNB,
     .x0_wire = X4,
     .x1_wire = X5,
     .x2_wire = X6,
@@ -2379,7 +2379,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.pfet_3_length_nm,
     .fet_4_length_nm = parameters_.pfet_4_length_nm,
     .fet_5_length_nm = parameters_.pfet_5_length_nm,
-    //.vb_wire = VPB,
+    .vb_wire = VPB,
     .x0_wire = X0,
     .x1_wire = X1,
     .x2_wire = X2,
@@ -2408,7 +2408,7 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
     .fet_3_length_nm = parameters_.pfet_3_length_nm,
     .fet_4_length_nm = parameters_.pfet_4_length_nm,
     .fet_5_length_nm = parameters_.pfet_5_length_nm,
-    //.vb_wire = VPB,
+    .vb_wire = VPB,
     .x0_wire = X4,
     .x1_wire = X5,
     .x2_wire = X6,
@@ -2432,8 +2432,8 @@ bfg::Circuit *Sky130Mux::GenerateCircuit() {
                                    S2,
                                    S2_B,
                                    Z,
-                                   std::nullopt,
-                                   std::nullopt));
+                                   VPB,
+                                   VNB));
   circuit->AddCircuit(*output_mux_circuit, "output_mux2");
  
   return circuit.release();
@@ -3524,7 +3524,7 @@ bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
  
   // Substrate connection.
-  //Wire VB = parameters.vb_wire.value_or(circuit->AddSignal("VB"));
+  Wire VB = parameters.vb_wire.value_or(circuit->AddSignal("VB"));
 
   // Inputs.
   Wire X0 = parameters.x0_wire.value_or(circuit->AddSignal("X0"));
@@ -3553,7 +3553,7 @@ bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
   // that their names don't get mangled when the resulting Circuit here is added
   // to something else.
   std::vector<const std::optional<Wire>*> input_parameters = {
-    //&parameters.vb_wire,
+    &parameters.vb_wire,
     &parameters.x0_wire,
     &parameters.x1_wire,
     &parameters.x2_wire,
@@ -3580,12 +3580,12 @@ bfg::Circuit *Sky130Mux::GenerateMux2Circuit(
   circuit::Instance *fet_4 = circuit->AddInstance("fet4", parameters.fet_model);
   circuit::Instance *fet_5 = circuit->AddInstance("fet5", parameters.fet_model);
 
-  fet_0->Connect({{"d", A0}, {"g", S0_B}, {"s", X2}});  //, {"b", VB}});
-  fet_2->Connect({{"d", X3}, {"g", S0}, {"s", A0}});  //, {"b", VB}});
-  fet_1->Connect({{"d", A1}, {"g", S0_B}, {"s", X0}});  //, {"b", VB}});
-  fet_3->Connect({{"d", X1}, {"g", S0}, {"s", A1}});  //, {"b", VB}});
-  fet_4->Connect({{"d", Z}, {"g", S1_B}, {"s", A1}});  //, {"b", VB}});
-  fet_5->Connect({{"d", A0}, {"g", S1}, {"s", Z}});  //, {"b", VB}});
+  fet_0->Connect({{"d", A0}, {"g", S0_B}, {"s", X2}, {"b", VB}});
+  fet_2->Connect({{"d", X3}, {"g", S0}, {"s", A0}, {"b", VB}});
+  fet_1->Connect({{"d", A1}, {"g", S0_B}, {"s", X0}, {"b", VB}});
+  fet_3->Connect({{"d", X1}, {"g", S0}, {"s", A1}, {"b", VB}});
+  fet_4->Connect({{"d", Z}, {"g", S1_B}, {"s", A1}, {"b", VB}});
+  fet_5->Connect({{"d", A0}, {"g", S1}, {"s", Z}, {"b", VB}});
 
   // Assign model parameters from configuration struct.
   std::array<circuit::Instance*, 6> fets = {

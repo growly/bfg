@@ -545,6 +545,7 @@ void LutB::RouteScanChain(
   // the port for the entire LUT; later we route this to pins on the edge:
   memories_.front()->circuit_instance()->Connect("D",
       *circuit->GetOrAddSignal("CONFIG_IN", 1));
+
   // FIXME(aryap): This is terrible! We need a way to re-assign, or connect,
   // nets with the same names. A first and easier step is to simply rename an
   // existing signal... but that has problems too. Anyway this conflicts with
@@ -731,6 +732,13 @@ void LutB::RouteRemainder(
     Circuit *circuit,
     Layout *layout) {
   // Connect the input buffers on the selector lines.
+  //
+  // +-----------+
+  // |           |
+  // |           |
+  // |           |
+  // +-----------+
+  //
   // TODO(aryap): These feel like first-class members of the RoutingGrid API
   // soon. "RouteGroup"?
   std::vector<PortKeyCollection> auto_connections = {{
@@ -757,8 +765,6 @@ void LutB::RouteRemainder(
       .port_keys = {{mux_order_[0], "Z"}, {active_mux2s_[0], "A0"}},
     }, {
       .port_keys = {{mux_order_[1], "Z"}, {active_mux2s_[0], "A1"}},
-    }, {
-      .port_keys = {{active_mux2s_[0], "X"}, {buf_order_[3], "P"}},
     }
   };
 
@@ -775,6 +781,18 @@ void LutB::RouteRemainder(
 
     buf_order_[i]->circuit_instance()->Connect("A", *signal);
   }
+
+  // The hd_mux2 output needs to be connected to the output port.
+  // (FIXME(aryap): This needs to be a a real pin.)
+  circuit::Signal *output = circuit->GetOrAddSignal("Z", 1);
+  active_mux2s_[0]->circuit_instance()->Connect("X", *output);
+
+  // Create floating signals for unconnected ports.
+  // FIXME(aryap): This can be handled automatically. It should be a function of
+  // Circuits to make sure all instances have floating nets generated, if
+  // needed.
+  circuit::Signal *floating_signal = circuit->GetOrAddSignal("", 1);
+  buf_order_[3]->circuit_instance()->Connect("P", *floating_signal);
 }
 
 // TODO(aryap): This clearly needs to be factored out of this class.
