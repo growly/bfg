@@ -19,6 +19,8 @@ import pandas as pd
 
 from vlsirtools.netlist.spice import SpiceNetlister
 from vlsirtools.netlist.spectre import SpectreNetlister
+from vlsirtools.netlist.spice import NgspiceNetlister
+from vlsirtools.netlist.spice import XyceNetlister
 
 #PDK_PATH = Path(os.environ.get("PDK_ROOT")) / "sky130A"
 ##PDK_PATH = "/home/arya/src/pdk-root/sky130A_dan"
@@ -44,7 +46,9 @@ def main():
       package_pb.ParseFromString(in_file.read())
     with open(out_file_name, 'w') as out_file:
       #netlister = SpectreNetlister(out_file)
-      netlister = SpiceNetlister(out_file)
+      #netlister = NgspiceNetlister(out_file)
+      #netlister = SpiceNetlister(out_file)
+      netlister = XyceNetlister(out_file)
       netlister.write_package(package_pb)
     
 

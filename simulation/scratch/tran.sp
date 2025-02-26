@@ -6,146 +6,146 @@
 ; 
 
 .SUBCKT sky130_mux
-+ S0 S0_B S1 S1_B S2 S2_B X0 X1 X2 X3 X4 X5 X6 X7 Y VPWR VGND 
++ S0 S0_B S1 S1_B S2 S2_B input_0 input_1 input_2 input_3 input_4 input_5 input_6 input_7 Z VPB VNB 
 ; No parameters
 
 xupper_left__fet0
-+ upper_left__A0 S0_B X2 VGND 
++ upper_left__A0 S0_B input_2 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xupper_left__fet1
-+ upper_left__A1 S0_B X0 VGND 
++ upper_left__A1 S0_B input_0 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xupper_left__fet2
-+ X3 S0 upper_left__A0 VGND 
++ input_3 S0 upper_left__A0 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xupper_left__fet3
-+ X1 S0 upper_left__A1 VGND 
++ input_1 S0 upper_left__A1 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xupper_left__fet4
-+ A0 S1_B upper_left__A1 VGND 
++ A0 S1_B upper_left__A1 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xupper_left__fet5
-+ upper_left__A0 S1 A0 VGND 
++ upper_left__A0 S1 A0 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xlower_left__fet0
-+ lower_left__A0 S0_B X6 VGND 
++ lower_left__A0 S0_B input_6 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xlower_left__fet1
-+ lower_left__A1 S0_B X4 VGND 
++ lower_left__A1 S0_B input_4 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xlower_left__fet2
-+ X7 S0 lower_left__A0 VGND 
++ input_7 S0 lower_left__A0 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xlower_left__fet3
-+ X5 S0 lower_left__A1 VGND 
++ input_5 S0 lower_left__A1 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xlower_left__fet4
-+ A1 S1_B lower_left__A1 VGND 
++ A1 S1_B lower_left__A1 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xlower_left__fet5
-+ lower_left__A0 S1 A1 VGND 
++ lower_left__A0 S1 A1 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xupper_right__fet0
-+ upper_right__A0 S0 X2 VPWR 
++ upper_right__A0 S0 input_2 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xupper_right__fet1
-+ upper_right__A1 S0 X0 VPWR 
++ upper_right__A1 S0 input_0 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xupper_right__fet2
-+ X3 S0_B upper_right__A0 VPWR 
++ input_3 S0_B upper_right__A0 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xupper_right__fet3
-+ X1 S0_B upper_right__A1 VPWR 
++ input_1 S0_B upper_right__A1 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xupper_right__fet4
-+ A2 S1 upper_right__A1 VPWR 
++ A2 S1 upper_right__A1 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xupper_right__fet5
-+ upper_right__A0 S1_B A2 VPWR 
++ upper_right__A0 S1_B A2 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xlower_right__fet0
-+ lower_right__A0 S0 X6 VPWR 
++ lower_right__A0 S0 input_6 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xlower_right__fet1
-+ lower_right__A1 S0 X4 VPWR 
++ lower_right__A1 S0 input_4 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xlower_right__fet2
-+ X7 S0_B lower_right__A0 VPWR 
++ input_7 S0_B lower_right__A0 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xlower_right__fet3
-+ X5 S0_B lower_right__A1 VPWR 
++ input_5 S0_B lower_right__A1 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xlower_right__fet4
-+ A3 S1 lower_right__A1 VPWR 
++ A3 S1 lower_right__A1 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xlower_right__fet5
-+ lower_right__A0 S1_B A3 VPWR 
++ lower_right__A0 S1_B A3 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xoutput_mux2__nfet0
-+ Y S2_B A0 VGND 
++ Z S2_B A0 VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xoutput_mux2__nfet1
-+ A1 S2 Y VGND 
++ A1 S2 Z VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: w={480m} l={170m} 
 
 xoutput_mux2__pfet0
-+ Y S2 A2 VPWR 
++ Z S2 A2 VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
 xoutput_mux2__pfet1
-+ A3 S2_B Y VPWR 
++ A3 S2_B Z VPB 
 + sky130_fd_pr__pfet_01v8
 + PARAMS: w={640m} l={170m} 
 
@@ -156,19 +156,19 @@ xoutput_mux2__pfet1
 ; No parameters
 
 xdut
-+ s0 s0_b s1 s1_b s2 s2_b x0 x1 x2 x3 x4 x5 x6 x7 y dut_VPWR VSS 
++ s0 s0_b s1 s1_b s2 s2_b x0 x1 x2 x3 x4 x5 x6 x7 z dut_VPB VSS 
 + sky130_mux
 + ; No parameters
 
 vpower
-+ dut_VPWR VSS 
++ dut_VPB VSS 
 + dc {1.8} 
 + ac {0} 
 + ; No parameters
 
 cfake_load
-+ y VSS 
-+ 2f
++ z VSS 
++ 0.0018840000p
 + ; No parameters
 
 vinit_x0
@@ -257,6 +257,18 @@ xtop 0 Tb ; Top-Level DUT
 .tran 1e-12 4e-09 
 
 .print tran format=csv v(*) i(*) 
+
+.measure tran d0_0 trig v(xtop:s0)=0.9 rise=1 targ v(xtop:z)=0.9 rise=1
+.measure tran d0_1 trig v(xtop:s0)=0.9 fall=1 targ v(xtop:z)=0.9 fall=1 
+.measure tran d0_2 trig v(xtop:s0)=0.9 rise=2 targ v(xtop:z)=0.9 rise=2
+.measure tran d0_3 trig v(xtop:s0)=0.9 fall=2 targ v(xtop:z)=0.9 fall=2 
+.measure tran d0_4 trig v(xtop:s0)=0.9 rise=3 targ v(xtop:z)=0.9 rise=3
+.measure tran d0_5 trig v(xtop:s0)=0.9 fall=3 targ v(xtop:z)=0.9 fall=3 
+.measure tran d0_6 trig v(xtop:s0)=0.9 rise=4 targ v(xtop:z)=0.9 rise=4
+.measure tran d0_7 trig v(xtop:s0)=0.9 fall=4 targ v(xtop:z)=0.9 fall=4 
+
+.measure tran d1 trig v(xtop:s1)=0.9 targ v(xtop:z)=0.9
+.measure tran d2 trig v(xtop:s2)=0.9 targ v(xtop:z)=0.9 
 
 .end 
 
