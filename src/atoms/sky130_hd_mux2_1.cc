@@ -29,15 +29,15 @@ bfg::Cell *Sky130HdMux21::Generate() {
   //      |           +--|_  p1   --S-|_  p3
   //      |    /        I0 |         I2 |             /
   //      |   _|          _|           _|            _|
-  //      +-o|_ p0   A0 o|_  p2   A1 o|_  p4     +-o|_  p5
-  //      |    | _         |            |    X_B |    |
-  // S ---+    +-S-+       +------------+--------+    +-- X
-  //      |   _|   |      _|           _|        |   _|
-  //      +--|_ n0 | A1 -|_  n2   A0 -|_  n4     +--|_  n5
-  //           |   |    I1 |         I3 |             |
-  //           V   |      _|           _|             V
-  //               +-S_B-|_  n1   --S-|_  n3
-  //                       |            |
+  //      +-o|_ p0   A0 o|_  p2   A1 o|_  p4  _  +-o|_  p5
+  //      |    | _         |            |     X  |    |
+  // S ---+    +-S---      +------------+--------+    +-- X
+  //      |   _|          _|           _|        |   _|
+  //      +--|_ n0   A1 -|_  n2   A0 -|_  n4     +--|_  n5
+  //      |    |        I1 |         I3 |             |
+  //      |    V          _|        _  _|             V
+  //      |           +--|_  n1   --S-|_  n3
+  //      +-----------+    |            |
   //                       V            V
   //
   // Per the sky130 PDK verilog description, the behaviour is:
@@ -95,8 +95,8 @@ bfg::Circuit *Sky130HdMux21::GenerateCircuit() {
 
   bfg::Circuit *nfet_01v8 =
       design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
-  bfg::Circuit *pfet_01v8 =
-      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__pfet_01v8")->circuit();
+  bfg::Circuit *pfet_01v8_hvt = design_db_->FindCellOrDie(
+      "sky130", "sky130_fd_pr__pfet_01v8_hvt")->circuit();
 
   circuit::Instance *n0 = circuit->AddInstance("n0", nfet_01v8);
   circuit::Instance *n1 = circuit->AddInstance("n1", nfet_01v8);
@@ -105,12 +105,12 @@ bfg::Circuit *Sky130HdMux21::GenerateCircuit() {
   circuit::Instance *n4 = circuit->AddInstance("n4", nfet_01v8);
   circuit::Instance *n5 = circuit->AddInstance("n5", nfet_01v8);
 
-  circuit::Instance *p0 = circuit->AddInstance("p0", pfet_01v8);
-  circuit::Instance *p1 = circuit->AddInstance("p1", pfet_01v8);
-  circuit::Instance *p2 = circuit->AddInstance("p2", pfet_01v8);
-  circuit::Instance *p3 = circuit->AddInstance("p3", pfet_01v8);
-  circuit::Instance *p4 = circuit->AddInstance("p4", pfet_01v8);
-  circuit::Instance *p5 = circuit->AddInstance("p5", pfet_01v8);
+  circuit::Instance *p0 = circuit->AddInstance("p0", pfet_01v8_hvt);
+  circuit::Instance *p1 = circuit->AddInstance("p1", pfet_01v8_hvt);
+  circuit::Instance *p2 = circuit->AddInstance("p2", pfet_01v8_hvt);
+  circuit::Instance *p3 = circuit->AddInstance("p3", pfet_01v8_hvt);
+  circuit::Instance *p4 = circuit->AddInstance("p4", pfet_01v8_hvt);
+  circuit::Instance *p5 = circuit->AddInstance("p5", pfet_01v8_hvt);
 
   circuit::Wire S_B = circuit->AddSignal("S_B");
   circuit::Wire I0 = circuit->AddSignal("I0");
@@ -119,25 +119,132 @@ bfg::Circuit *Sky130HdMux21::GenerateCircuit() {
   circuit::Wire I3 = circuit->AddSignal("I3");
   circuit::Wire X_B = circuit->AddSignal("X_B");
 
+  // For reference, this is the spice model for the sky130_fd_sc_hd__mux2_1 cell
+  // given in the PDK:
+  //
+  // FET pin order:
+  //    sky130_fd_pr__nfet_01v8 d g s b
+  //    sky130_fd_pr__pfet_01v8 d g s b
+  //    sky130_fd_pr__pfet_01v8_hvt d g s b
+  //
+  // .subckt sky130_fd_sc_hd__mux2_1 A0 A1 S VGND VNB VPB VPWR X
+  // X0 VPWR S a_218_374# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X1 a_76_199# A0 a_439_47# VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X2 a_535_374# a_505_21# VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X3 VPWR S a_505_21# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X4 a_76_199# A1 a_535_374# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X5 a_218_47# A1 a_76_199# VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X6 a_218_374# A0 a_76_199# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X7 X a_76_199# VGND VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u
+  // X8 X a_76_199# VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u
+  // X9 VGND S a_218_47# VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X10 VGND S a_505_21# VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X11 a_439_47# a_505_21# VGND VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  //.ends
+  //
+  // If we rearrange this by hand and re-write the signal names according to
+  // ours, we can do a manual graph isomorphism check and it makes more sense:
+  //
+  // .subckt sky130_fd_sc_hd__mux2_1 A0 A1 S VGND VNB VPB VPWR X
+  // ; input buffer
+  // X3 VPWR S S_B VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u    ; p0
+  // X10 VGND S S_B VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u       ; n0
+  //
+  // X0 VPWR S I0 VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u     ; p1
+  // X6 I0 A0 X_B VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u     ; p2
+  // X5 I1 A1 X_B VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u         ; n2
+  // X9 VGND S I1 VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u         ; n1
+  //
+  // X2 I2 S_B VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u   ; p3
+  // X4 X_B A1 I2 VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u     ; p4
+  // X1 X_B A0 I3 VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u         ; n4
+  // X11 I3 S_B VGND VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u      ; n3
+  // 
+  // ; output buffer
+  // X8 X X_B VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u     ; p5
+  // X7 X X_B VGND VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u        ; n5
+  //.ends
+
   p0->Connect({{"d", S_B}, {"s", VPWR}, {"g", S}, {"b", VPB}});
   n0->Connect({{"d", S_B}, {"s", VGND}, {"g", S}, {"b", VNB}});
 
   p5->Connect({{"d", X}, {"s", VPWR}, {"g", X_B}, {"b", VPB}});
   n5->Connect({{"d", X}, {"s", VGND}, {"g", X_B}, {"b", VNB}});
 
+  // The substrate connections "b" correct on the inner transistors match those
+  // in the sky130 PDK netlist.
   p1->Connect({{"d", I0}, {"s", VPWR}, {"g", S}, {"b", VPB}});
-  // TODO(aryap): Are the substrate connections "b" correct on the inner
-  // transistors here?
   p2->Connect({{"d", X_B}, {"s", I0}, {"g", A0}, {"b", VPB}});
 
   n2->Connect({{"d", X_B}, {"s", I1}, {"g", A1}, {"b", VNB}});
-  n1->Connect({{"d", I1}, {"s", VGND}, {"g", S_B}, {"b", VNB}});
+  n1->Connect({{"d", I1}, {"s", VGND}, {"g", S}, {"b", VNB}});
 
   p3->Connect({{"d", I2}, {"s", VPWR}, {"g", S_B}, {"b", VPB}});
   p4->Connect({{"d", X_B}, {"s", I2}, {"g", A1}, {"b", VPB}});
 
   n4->Connect({{"d", X_B}, {"s", I3}, {"g", A0}, {"b", VNB}});
   n3->Connect({{"d", I3}, {"s", VGND}, {"g", S_B}, {"b", VNB}});
+
+  // TODO(aryap): This can definitely be factored out of here (and all the other
+  // cells it appears in).
+  struct FetParameters {
+    circuit::Instance *instance;
+    uint64_t width_nm;
+    uint64_t length_nm;
+  };
+  std::array<FetParameters, 12> fet_parameters = {
+    FetParameters {
+      n0, parameters_.nfet_0_width_nm, parameters_.nfet_0_length_nm
+    },
+    FetParameters {
+      n1, parameters_.nfet_1_width_nm, parameters_.nfet_1_length_nm
+    },
+    FetParameters {
+      n2, parameters_.nfet_2_width_nm, parameters_.nfet_2_length_nm
+    },
+    FetParameters {
+      n3, parameters_.nfet_3_width_nm, parameters_.nfet_3_length_nm
+    },
+    FetParameters {
+      n4, parameters_.nfet_4_width_nm, parameters_.nfet_4_length_nm
+    },
+    FetParameters {
+      n5, parameters_.nfet_5_width_nm, parameters_.nfet_5_length_nm
+    },
+    FetParameters {
+      p0, parameters_.pfet_0_width_nm, parameters_.pfet_0_length_nm
+    },
+    FetParameters {
+      p1, parameters_.pfet_1_width_nm, parameters_.pfet_1_length_nm
+    },
+    FetParameters {
+      p2, parameters_.pfet_2_width_nm, parameters_.pfet_2_length_nm
+    },
+    FetParameters {
+      p3, parameters_.pfet_3_width_nm, parameters_.pfet_3_length_nm
+    },
+    FetParameters {
+      p4, parameters_.pfet_4_width_nm, parameters_.pfet_4_length_nm
+    },
+    FetParameters {
+      p5, parameters_.pfet_5_width_nm, parameters_.pfet_5_length_nm
+    }
+  };
+  for (size_t i = 0; i < fet_parameters.size(); ++i) {
+    circuit::Instance *fet = fet_parameters[i].instance;
+    fet->SetParameter(
+        parameters_.fet_model_width_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_width_parameter,
+            static_cast<int64_t>(fet_parameters[i].width_nm),
+            Parameter::SIUnitPrefix::NANO));
+    fet->SetParameter(
+        parameters_.fet_model_length_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_length_parameter,
+            static_cast<int64_t>(fet_parameters[i].length_nm),
+            Parameter::SIUnitPrefix::NANO));
+  }
 
   return circuit.release();
 }
