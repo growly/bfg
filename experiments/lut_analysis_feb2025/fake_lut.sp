@@ -17,22 +17,39 @@
 .subckt lut
 + S0 S1 S2 S3 Z CONFIG_IN CONFIG_OUT CLK VPWR VGND
 
-X0  clk  CONFIG_IN VGND VGND VPWR VPWR          1 sky130_fd_sc_hd__dfxtp_1 
-X1  clk          1 VGND VGND VPWR VPWR          2 sky130_fd_sc_hd__dfxtp_1 
-X2  clk          2 VGND VGND VPWR VPWR          3 sky130_fd_sc_hd__dfxtp_1 
-X3  clk          3 VGND VGND VPWR VPWR          4 sky130_fd_sc_hd__dfxtp_1 
-X4  clk          4 VGND VGND VPWR VPWR          5 sky130_fd_sc_hd__dfxtp_1 
-X5  clk          5 VGND VGND VPWR VPWR          6 sky130_fd_sc_hd__dfxtp_1 
-X6  clk          6 VGND VGND VPWR VPWR          7 sky130_fd_sc_hd__dfxtp_1 
-X7  clk          7 VGND VGND VPWR VPWR          8 sky130_fd_sc_hd__dfxtp_1 
-X8  clk          8 VGND VGND VPWR VPWR          9 sky130_fd_sc_hd__dfxtp_1 
-X9  clk          9 VGND VGND VPWR VPWR         10 sky130_fd_sc_hd__dfxtp_1 
-X10 clk         10 VGND VGND VPWR VPWR         11 sky130_fd_sc_hd__dfxtp_1 
-X11 clk         11 VGND VGND VPWR VPWR         12 sky130_fd_sc_hd__dfxtp_1 
-X12 clk         12 VGND VGND VPWR VPWR         13 sky130_fd_sc_hd__dfxtp_1 
-X13 clk         13 VGND VGND VPWR VPWR         14 sky130_fd_sc_hd__dfxtp_1 
-X14 clk         14 VGND VGND VPWR VPWR         15 sky130_fd_sc_hd__dfxtp_1 
-X15 clk         15 VGND VGND VPWR VPWR CONFIG_OUT sky130_fd_sc_hd__dfxtp_1 
+X0  CONFIG_IN clk_0 clk_i_0          1 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X1          1 clk_0 clk_i_0          2 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X2          2 clk_0 clk_i_0          3 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X3          3 clk_0 clk_i_0          4 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X4          4 clk_0 clk_i_0          5 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X5          5 clk_0 clk_i_0          6 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X6          6 clk_0 clk_i_0          7 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X7          7 clk_0 clk_i_0          8 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X8          8 clk_0 clk_i_0          9 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X9          9 clk_0 clk_i_0         10 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X10        10 clk_0 clk_i_0         11 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X11        11 clk_0 clk_i_0         12 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X12        12 clk_0 clk_i_0         13 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X13        13 clk_0 clk_i_0         14 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X14        14 clk_0 clk_i_0         15 VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+X15        15 clk_0 clk_i_0 CONFIG_OUT VPWR VGND VPWR VGND lut_dfxtp_0_0_template 
+
+*X0  clk  CONFIG_IN VGND VGND VPWR VPWR          1 sky130_fd_sc_hd__dfxtp_1 
+*X1  clk          1 VGND VGND VPWR VPWR          2 sky130_fd_sc_hd__dfxtp_1 
+*X2  clk          2 VGND VGND VPWR VPWR          3 sky130_fd_sc_hd__dfxtp_1 
+*X3  clk          3 VGND VGND VPWR VPWR          4 sky130_fd_sc_hd__dfxtp_1 
+*X4  clk          4 VGND VGND VPWR VPWR          5 sky130_fd_sc_hd__dfxtp_1 
+*X5  clk          5 VGND VGND VPWR VPWR          6 sky130_fd_sc_hd__dfxtp_1 
+*X6  clk          6 VGND VGND VPWR VPWR          7 sky130_fd_sc_hd__dfxtp_1 
+*X7  clk          7 VGND VGND VPWR VPWR          8 sky130_fd_sc_hd__dfxtp_1 
+*X8  clk          8 VGND VGND VPWR VPWR          9 sky130_fd_sc_hd__dfxtp_1 
+*X9  clk          9 VGND VGND VPWR VPWR         10 sky130_fd_sc_hd__dfxtp_1 
+*X10 clk         10 VGND VGND VPWR VPWR         11 sky130_fd_sc_hd__dfxtp_1 
+*X11 clk         11 VGND VGND VPWR VPWR         12 sky130_fd_sc_hd__dfxtp_1 
+*X12 clk         12 VGND VGND VPWR VPWR         13 sky130_fd_sc_hd__dfxtp_1 
+*X13 clk         13 VGND VGND VPWR VPWR         14 sky130_fd_sc_hd__dfxtp_1 
+*X14 clk         14 VGND VGND VPWR VPWR         15 sky130_fd_sc_hd__dfxtp_1 
+*X15 clk         15 VGND VGND VPWR VPWR CONFIG_OUT sky130_fd_sc_hd__dfxtp_1 
 
 xmux_0
 *+ n_1 n_0 n_3 n_2 n_5 n_4 2 1 3 4 14 13 15 CONFIG_OUT n_7 VPWR VGND 
@@ -67,6 +84,8 @@ xbuf_3
 + buf_3_template
 + ; No parameters
 
+* X P A
+* P should be A inverted
 xclk_buf_0
 + clk_0 clk_i_0 CLK VPWR VGND VPWR VGND
 + clk_buf_0_template
@@ -77,25 +96,13 @@ xclk_buf_1
 + clk_buf_1_template
 + ; No parameters
 
-*xhd_mux2_1_0
-*+ n_6 n_7 n_8 Z VPWR VGND VPWR VGND
-*+ hd_mux2_1_0_template
-*+ ; No parameters
+xhd_mux2_1_0
++ n_6 n_7 n_8 Z VPWR VGND VPWR VGND
++ hd_mux2_1_0_template
++ ; No parameters
 
-* fake parasitic capacitance of ~12 um wires
-c0 n_0 0 2f
-c1 n_1 0 2f
-c2 n_2 0 2f
-c3 n_3 0 2f
-c4 n_4 0 2f
-c5 n_5 0 2f
-
-* fake parasitic capacitance of 20 um wires
-c6 n_8 0 3.5f
-c7 n_7 0 3.5f
-
-xoutputmux
-+ n_7 n_8 n_6 VGND VGND VPWR VPWR Z
-+ sky130_fd_sc_hd__mux2_1
+*xoutputmux
+*+ n_7 n_8 n_6 VGND VGND VPWR VPWR Z
+*+ sky130_fd_sc_hd__mux2_1
 
 .ends

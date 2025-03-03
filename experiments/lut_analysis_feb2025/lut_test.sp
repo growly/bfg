@@ -11,6 +11,7 @@
 
 
 ; sky130 models seem to require mosfet params scaled by 1e6 ffs
+; you can use (in vim) %s/\(\d\+\)\@<=n/m/g
 .include fake_lut.sp
 ;.include package.sp
 ;.include lut.sp
@@ -51,6 +52,10 @@ vpower
 vclock
 + config_clk VSS
 + pat ({1.8} {0} {0} {50p} {50p} {config_clock_period / 2} b010101010101010101010101010101010 0)
+
+vclocki
++ config_clk_i VSS
++ pat ({1.8} {0} {50p} {50p} {50p} {config_clock_period / 2} b010101010101010101010101010101010 0)
 
 vdata
 + config_in VSS
@@ -96,16 +101,16 @@ xtop 0 testbench
 
 .param first=8
 
-.measure tran d0 trig v(xtop:a0)=0.9 rise=1 targ v(xtop:out)=0.9 rise={first+1}
-.measure tran d1 trig v(xtop:a0)=0.9 fall=1 targ v(xtop:out)=0.9 fall={first+1}
-.measure tran d2 trig v(xtop:a0)=0.9 rise=2 targ v(xtop:out)=0.9 rise={first+2}
-.measure tran d3 trig v(xtop:a0)=0.9 fall=2 targ v(xtop:out)=0.9 fall={first+2}
-.measure tran d4 trig v(xtop:a0)=0.9 rise=3 targ v(xtop:out)=0.9 rise={first+3}
-.measure tran d5 trig v(xtop:a0)=0.9 fall=3 targ v(xtop:out)=0.9 fall={first+3}
-.measure tran d6 trig v(xtop:a0)=0.9 rise=4 targ v(xtop:out)=0.9 rise={first+4}
-.measure tran d7 trig v(xtop:a0)=0.9 fall=4 targ v(xtop:out)=0.9 fall={first+4}
-.measure tran d8 trig v(xtop:a0)=0.9 rise=5 targ v(xtop:out)=0.9 rise={first+5}
-.measure tran d9 trig v(xtop:a0)=0.9 fall=5 targ v(xtop:out)=0.9 fall={first+5}
+.measure tran  d0 trig v(xtop:a0)=0.9 rise=1 targ v(xtop:out)=0.9 rise={first+1}
+.measure tran  d1 trig v(xtop:a0)=0.9 fall=1 targ v(xtop:out)=0.9 fall={first+1}
+.measure tran  d2 trig v(xtop:a0)=0.9 rise=2 targ v(xtop:out)=0.9 rise={first+2}
+.measure tran  d3 trig v(xtop:a0)=0.9 fall=2 targ v(xtop:out)=0.9 fall={first+2}
+.measure tran  d4 trig v(xtop:a0)=0.9 rise=3 targ v(xtop:out)=0.9 rise={first+3}
+.measure tran  d5 trig v(xtop:a0)=0.9 fall=3 targ v(xtop:out)=0.9 fall={first+3}
+.measure tran  d6 trig v(xtop:a0)=0.9 rise=4 targ v(xtop:out)=0.9 rise={first+4}
+.measure tran  d7 trig v(xtop:a0)=0.9 fall=4 targ v(xtop:out)=0.9 fall={first+4}
+.measure tran  d8 trig v(xtop:a0)=0.9 rise=5 targ v(xtop:out)=0.9 rise={first+5}
+.measure tran  d9 trig v(xtop:a0)=0.9 fall=5 targ v(xtop:out)=0.9 fall={first+5}
 .measure tran d10 trig v(xtop:a0)=0.9 rise=6 targ v(xtop:out)=0.9 rise={first+6}
 .measure tran d11 trig v(xtop:a0)=0.9 fall=6 targ v(xtop:out)=0.9 fall={first+6}
 .measure tran d12 trig v(xtop:a0)=0.9 rise=7 targ v(xtop:out)=0.9 rise={first+7}

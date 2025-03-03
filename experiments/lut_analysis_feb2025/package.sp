@@ -18,7 +18,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -43,7 +43,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -53,12 +53,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -68,17 +68,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -93,7 +93,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -103,12 +103,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -124,7 +124,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -149,7 +149,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -159,12 +159,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -174,17 +174,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -199,7 +199,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -209,12 +209,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -230,7 +230,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -255,7 +255,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -265,12 +265,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -280,17 +280,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -305,7 +305,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -315,12 +315,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -336,7 +336,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -361,7 +361,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -371,12 +371,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -386,17 +386,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -411,7 +411,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -421,12 +421,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -442,7 +442,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -467,7 +467,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -477,12 +477,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -492,17 +492,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -517,7 +517,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -527,12 +527,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -548,7 +548,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -573,7 +573,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -583,12 +583,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -598,17 +598,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -623,7 +623,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -633,12 +633,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -654,7 +654,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -679,7 +679,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -689,12 +689,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -704,17 +704,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -729,7 +729,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -739,12 +739,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -760,7 +760,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -785,7 +785,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -795,12 +795,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -810,17 +810,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -835,7 +835,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -845,12 +845,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -866,7 +866,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -891,7 +891,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -901,12 +901,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -916,17 +916,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -941,7 +941,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -951,12 +951,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -998,7 +998,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -1023,7 +1023,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -1033,12 +1033,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -1048,17 +1048,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1073,7 +1073,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1083,12 +1083,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -1104,7 +1104,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -1129,7 +1129,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -1139,12 +1139,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -1154,17 +1154,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1179,7 +1179,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1189,12 +1189,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -1210,7 +1210,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -1235,7 +1235,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -1245,12 +1245,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -1260,17 +1260,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1285,7 +1285,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1295,12 +1295,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -1316,7 +1316,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -1341,7 +1341,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -1351,12 +1351,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -1366,17 +1366,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1391,7 +1391,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1401,12 +1401,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -1422,7 +1422,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -1447,7 +1447,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -1457,12 +1457,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -1472,17 +1472,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1497,7 +1497,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1507,12 +1507,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -1528,7 +1528,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -1553,7 +1553,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -1563,12 +1563,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -1578,17 +1578,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1603,7 +1603,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1613,12 +1613,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -1634,7 +1634,7 @@ xnfet_0
 + PARAMS: l={150m} w={420m} 
 
 xnfet_1
-+ b CLK a VNB 
++ b CLKI a VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={360m} 
 
@@ -1659,7 +1659,7 @@ xnfet_5
 + PARAMS: l={150m} w={360m} 
 
 xnfet_6
-+ i Q_N VGND VNB 
++ i Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={420m} 
 
@@ -1669,12 +1669,12 @@ xnfet_7
 + PARAMS: l={150m} w={360m} 
 
 xnfet_8
-+ Q_N f VGND VNB 
++ Q_B f VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
 xnfet_9
-+ Q f VGND VNB 
++ Q Q_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
 + PARAMS: l={150m} w={650m} 
 
@@ -1684,17 +1684,17 @@ xpfet_0
 + PARAMS: l={150m} w={420m} 
 
 xpfet_1
-+ b CLKI a VPB 
++ b CLK a VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_2
-+ d c VPWR VPB 
++ j c VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
 xpfet_3
-+ b CLKI d VPB 
++ b CLKI j VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1709,7 +1709,7 @@ xpfet_5
 + PARAMS: l={150m} w={420m} 
 
 xpfet_6
-+ h Q_N VPWR VPB 
++ h Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={420m} 
 
@@ -1719,12 +1719,12 @@ xpfet_7
 + PARAMS: l={150m} w={420m} 
 
 xpfet_8
-+ Q_N f VPWR VPB 
++ Q_B f VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
 xpfet_9
-+ Q f VPWR VPB 
++ Q Q_B VPWR VPB 
 + sky130_fd_pr__pfet_01v8_hvt
 + PARAMS: l={150m} w={1000m} 
 
@@ -1935,62 +1935,62 @@ xpfet_1
 xn0
 + S_B S VGND VNB 
 + sky130_fd_pr__nfet_01v8
-+ ; No parameters
++ PARAMS: l={150m} w={420m} 
 
 xn1
-+ I1 S_B VGND VNB 
++ I1 S VGND VNB 
 + sky130_fd_pr__nfet_01v8
-+ ; No parameters
++ PARAMS: l={150m} w={420m} 
 
 xn2
 + X_B A1 I1 VNB 
 + sky130_fd_pr__nfet_01v8
-+ ; No parameters
++ PARAMS: l={150m} w={420m} 
 
 xn3
 + I3 S_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
-+ ; No parameters
++ PARAMS: l={150m} w={420m} 
 
 xn4
 + X_B A0 I3 VNB 
 + sky130_fd_pr__nfet_01v8
-+ ; No parameters
++ PARAMS: l={150m} w={420m} 
 
 xn5
 + X X_B VGND VNB 
 + sky130_fd_pr__nfet_01v8
-+ ; No parameters
++ PARAMS: l={150m} w={650m} 
 
 xp0
 + S_B S VPWR VPB 
-+ sky130_fd_pr__pfet_01v8
-+ ; No parameters
++ sky130_fd_pr__pfet_01v8_hvt
++ PARAMS: l={150m} w={420m} 
 
 xp1
 + I0 S VPWR VPB 
-+ sky130_fd_pr__pfet_01v8
-+ ; No parameters
++ sky130_fd_pr__pfet_01v8_hvt
++ PARAMS: l={150m} w={420m} 
 
 xp2
 + X_B A0 I0 VPB 
-+ sky130_fd_pr__pfet_01v8
-+ ; No parameters
++ sky130_fd_pr__pfet_01v8_hvt
++ PARAMS: l={150m} w={420m} 
 
 xp3
 + I2 S_B VPWR VPB 
-+ sky130_fd_pr__pfet_01v8
-+ ; No parameters
++ sky130_fd_pr__pfet_01v8_hvt
++ PARAMS: l={150m} w={420m} 
 
 xp4
 + X_B A1 I2 VPB 
-+ sky130_fd_pr__pfet_01v8
-+ ; No parameters
++ sky130_fd_pr__pfet_01v8_hvt
++ PARAMS: l={150m} w={420m} 
 
 xp5
 + X X_B VPWR VPB 
-+ sky130_fd_pr__pfet_01v8
-+ ; No parameters
++ sky130_fd_pr__pfet_01v8_hvt
++ PARAMS: l={150m} w={1000m} 
 
 .ENDS
 
@@ -2348,4 +2348,4 @@ xpfet_1
 *+ ; No parameters
 *
 *.ENDS
-
+*

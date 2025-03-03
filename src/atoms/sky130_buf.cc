@@ -24,15 +24,17 @@ using ::bfg::geometry::Layer;
 bfg::Cell *Sky130Buf::Generate() {
   // A buffer is two back-to-back inverters:
   //
-  //          /             /
-  //      g  _| s       g  _| s
-  //      +o|_ pfet_0   +o|_  pfet_1
-  //      |   | d       |   | d
-  // A ---+   +------P--+   +--- X
-  //      |  _| d       |  _| d
-  //      +-|_ nfet_0   +-|_  nfet_1
-  //      g   | s       g   | s
-  //          V             V
+  //           /              /
+  //           |              |
+  //      g   _| s       g   _| s
+  //      +-o|_ pfet_0   +-o|_  pfet_1
+  //      |    | d       |    | d
+  // A ---+    +------P--+    +--- X
+  //      |   _| d       |   _| d
+  //      +--|_ nfet_0   +--|_  nfet_1
+  //      g    | s       g    | s
+  //           |              |
+  //           V              V
   // P = ~A
   // X = ~~A
 

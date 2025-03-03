@@ -167,11 +167,78 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
             Parameter::SIUnitPrefix::NANO));
   }
 
+  // For reference (and as a sanity check), this is the spice model for the
+  // sky130_fd_sc_hd__mux2_1 cell given in the PDK:
+  //
+  // FET pin order:
+  //    sky130_fd_pr__nfet_01v8 d g s b
+  //    sky130_fd_pr__pfet_01v8 d g s b
+  //    sky130_fd_pr__pfet_01v8_hvt d g s b
+  //                              /   |  \    \
+  //                         drain gate source substrate
+  //
+  // .subckt sky130_fd_sc_hd__dfxtp_1 CLK D VGND VNB VPB VPWR Q
+  // X0 a_891_413# a_193_47# a_975_413# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X1 a_1059_315# a_891_413# VGND VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u
+  // X2 a_466_413# a_27_47# a_561_413# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X3 a_634_159# a_27_47# a_891_413# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X4 a_381_47# a_193_47# a_466_413# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X5 VPWR D a_381_47# VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X6 VPWR a_466_413# a_634_159# VPB sky130_fd_pr__pfet_01v8_hvt w=750000u l=150000u
+  // X7 VGND a_466_413# a_634_159# VNB sky130_fd_pr__nfet_01v8 w=640000u l=150000u
+  // X8 a_1017_47# a_1059_315# VGND VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X9 a_1059_315# a_891_413# VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u
+  // X10 a_561_413# a_634_159# VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X11 VPWR a_1059_315# Q VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u 
+  // X12 a_891_413# a_27_47# a_1017_47# VNB sky130_fd_pr__nfet_01v8 w=360000u l=150000u
+  // X13 a_634_159# a_193_47# a_891_413# VNB sky130_fd_pr__nfet_01v8 w=360000u l=150000u
+  // X14 a_592_47# a_634_159# VGND VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X15 a_466_413# a_193_47# a_592_47# VNB sky130_fd_pr__nfet_01v8 w=360000u l=150000u
+  // X16 VGND a_27_47# a_193_47# VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X17 a_381_47# a_27_47# a_466_413# VNB sky130_fd_pr__nfet_01v8 w=360000u l=150000u
+  // X18 a_27_47# CLK VGND VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X19 a_27_47# CLK VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=640000u l=150000u
+  // X20 VPWR a_27_47# a_193_47# VPB sky130_fd_pr__pfet_01v8_hvt w=640000u l=150000u
+  // X21 VGND D a_381_47# VNB sky130_fd_pr__nfet_01v8 w=420000u l=150000u
+  // X22 a_975_413# a_1059_315# VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u
+  // X23 VGND a_1059_315# Q VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u
+  // .ends
+  //
+  // After some transformations (X16, X18, X19, X20 are deleted):
+  //
+  // .subckt sky130_fd_sc_hd__dfxtp_1 CLK D VGND VNB VPB VPWR Q
+  // X5 VPWR D a VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u          ; pfet0
+  // X4 a CLK b VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u           ; pfet1
+  // X17 a CLKI b VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u             ; nfet1
+  // X21 VGND D a VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u             ; nfet0
+  //
+  // X10 j c VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u         ; pfet2
+  // X2 b CLKI j VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u          ; pfet3
+  // X15 b CLK e VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u              ; nfet3
+  // X14 e c VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u             ; nfet2
+  //
+  // X6 VPWR b c VPB sky130_gd_pr__pfet_01v8_hvt w=750000u l=150000u          ; pfet4
+  // X3 c CLKI f VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u          ; pfet5
+  // X13 c CLK f VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u              ; nfet5
+  // X7 VGND b c VNB sky130_gd_pr__nfet_01v8 w=640000u l=150000u              ; nfet4
+  //
+  // X22 h Q_B VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u       ; pfet6 
+  // X0 f CLK h VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u           ; pfet7
+  // X12 f CLKI i VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u             ; nfet7
+  // X8 i Q_B VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u            ; nfet6
+  //
+  // X9 Q_B f VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=1e+06u l=150000u         ; pfet8
+  // X1 Q_B f VGND VNB sky130_gd_pr__nfet_01v8 w=650000u l=150000u            ; nfet8
+  //
+  // X11 VPWR Q_B Q VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u        ; pfet9
+  // X23 VGND Q_B Q VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u           ; pfet8
+  // .ends
+
   //                    /                    /
   //                   _|                   _|
   //      +----------o|_ pfet0   +-------+o|_  pfet2
   //      |             |        |           |
-  //      |  +----------+        |           d
+  //      |  +----------+        |           j
   //      |  |         _|        c          _|
   //      |  |  CLK -o|_ pfet1   |  CLKI -o|_  pfet3
   //      |  |          |        |           |
@@ -193,18 +260,21 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Wire b = circuit->AddSignal("b");
 
   pfet_0->Connect({{"d", a}, {"g", D}, {"s", VPWR}, {"b", VPB}});
+  pfet_1->Connect({{"d", b}, {"g", CLK}, {"s", a}, {"b", VPB}});
+  nfet_1->Connect({{"d", b}, {"g", CLKI}, {"s", a}, {"b", VNB}});
   nfet_0->Connect({{"d", a}, {"g", D}, {"s", VGND}, {"b", VNB}});
-  pfet_1->Connect({{"d", b}, {"g", CLKI}, {"s", a}, {"b", VPB}});
-  nfet_1->Connect({{"d", b}, {"g", CLK}, {"s", a}, {"b", VNB}});
+
+  // FIXME(aryap): Signals might not be case-sensitive in all downstream
+  // applications. We should de-dupe in a case-insensitive way!
 
   circuit::Wire c = circuit->AddSignal("c");
-  circuit::Wire d = circuit->AddSignal("d");
+  circuit::Wire j = circuit->AddSignal("j");
   circuit::Wire e = circuit->AddSignal("e");
 
-  pfet_2->Connect({{"d", d}, {"g", c}, {"s", VPWR}, {"b", VPB}});
-  nfet_2->Connect({{"d", e}, {"g", c}, {"s", VGND}, {"b", VNB}});
-  pfet_3->Connect({{"d", b}, {"g", CLKI}, {"s", d}, {"b", VPB}});
+  pfet_2->Connect({{"d", j}, {"g", c}, {"s", VPWR}, {"b", VPB}});
+  pfet_3->Connect({{"d", b}, {"g", CLKI}, {"s", j}, {"b", VPB}});
   nfet_3->Connect({{"d", b}, {"g", CLK}, {"s", e}, {"b", VNB}});
+  nfet_2->Connect({{"d", e}, {"g", c}, {"s", VGND}, {"b", VNB}});
 
   //                    /                    /
   //                   _|                   _|
@@ -214,7 +284,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   //      |  |         _|        g          _|
   //      |  | CLKI -o|_ pfet5   |   CLK -o|_  pfet7
   //      |  |          |        |           |
-  //   c ----+          |        +--------------------- Q_N
+  //   c ----+          |        +--------------------- Q_B
   //      |  |          |        |           |
   //   b -+  |          +--- f --------------+--------- f
   //      |  |          |        |           |
@@ -230,38 +300,38 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Wire f = circuit->AddSignal("f");
 
   pfet_4->Connect({{"d", c}, {"g", b}, {"s", VPWR}, {"b", VPB}});
-  nfet_4->Connect({{"d", c}, {"g", b}, {"s", VGND}, {"b", VNB}});
   pfet_5->Connect({{"d", f}, {"g", CLKI}, {"s", c}, {"b", VPB}});
   nfet_5->Connect({{"d", f}, {"g", CLK}, {"s", c}, {"b", VNB}});
+  nfet_4->Connect({{"d", c}, {"g", b}, {"s", VGND}, {"b", VNB}});
 
-  circuit::Wire Q_N = circuit->AddSignal("Q_N");
+  circuit::Wire Q_B = circuit->AddSignal("Q_B");
   circuit::Wire h = circuit->AddSignal("h");
   circuit::Wire i = circuit->AddSignal("i");
 
-  pfet_6->Connect({{"d", h}, {"g", Q_N}, {"s", VPWR}, {"b", VPB}});
-  nfet_6->Connect({{"d", i}, {"g", Q_N}, {"s", VGND}, {"b", VNB}});
+  pfet_6->Connect({{"d", h}, {"g", Q_B}, {"s", VPWR}, {"b", VPB}});
   pfet_7->Connect({{"d", f}, {"g", CLK}, {"s", h}, {"b", VPB}});
   nfet_7->Connect({{"d", f}, {"g", CLKI}, {"s", i}, {"b", VNB}});
+  nfet_6->Connect({{"d", i}, {"g", Q_B}, {"s", VGND}, {"b", VNB}});
 
   //               /                    /
   //              _|                   _|
-  //      +-----o|_ pfet8   +-------+o|_  pfet8
+  //      +-----o|_ pfet8   +-------+o|_  pfet9
   //      |        |        |           |
   //      |        |        |           |
   //   f -+        |        |           |
   //      |        |        |           +-- Q
-  // Q_N ----------+-- Q_N -+           |
+  // Q_B ----------+-- Q_B -+           |
   //      |        |        |           |
   //      |       _|        |          _|
-  //      +------|_ nfet9   +---------|_  nfet9
+  //      +------|_ nfet8   +---------|_  nfet9
   //               |                    |
   //               V                    V
 
-  pfet_8->Connect({{"d", Q_N}, {"g", f}, {"s", VPWR}, {"b", VPB}});
-  nfet_8->Connect({{"d", Q_N}, {"g", f}, {"s", VGND}, {"b", VNB}});
+  pfet_8->Connect({{"d", Q_B}, {"g", f}, {"s", VPWR}, {"b", VPB}});
+  nfet_8->Connect({{"d", Q_B}, {"g", f}, {"s", VGND}, {"b", VNB}});
 
-  pfet_9->Connect({{"d", Q}, {"g", f}, {"s", VPWR}, {"b", VPB}});
-  nfet_9->Connect({{"d", Q}, {"g", f}, {"s", VGND}, {"b", VNB}});
+  pfet_9->Connect({{"d", Q}, {"g", Q_B}, {"s", VPWR}, {"b", VPB}});
+  nfet_9->Connect({{"d", Q}, {"g", Q_B}, {"s", VGND}, {"b", VNB}});
 
   return circuit.release();
 }
