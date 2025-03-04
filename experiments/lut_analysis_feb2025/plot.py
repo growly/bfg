@@ -62,7 +62,8 @@ def plot_lut_readout():
     data.plot("TIME", headers,
               subplots=True,
               figsize=(8,11))
-    plt.xlim(3.4e-8, 4.1e-8)
+    #plt.xlim(3.4e-8, 4.1e-8)
+    plt.xlim(0, 4.1e-8)
     plt.savefig('plot.png', dpi=300)
 
 #headers = [
@@ -141,13 +142,14 @@ def plot_register_scan_chain_load():
 
        "V(XTOP:CONFIG_IN)",
     ]
-    bfg_luts.sort(key=lambda x: x.scan_order)
+    bfg_luts.sort(key=lambda x: x.mux_order)
     for lut_order in bfg_luts:
         headers.append(f"V(XTOP:XLUT:{lut_order.name})")
 
     data.plot("TIME", headers,
               subplots=True,
               figsize=(8,11))
+    plt.xlim(0, 35e-9)
     plt.savefig('plot.png', dpi=300)
 
 def plot_fake_lut_register_scan_chain_load():

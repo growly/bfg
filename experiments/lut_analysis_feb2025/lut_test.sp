@@ -57,9 +57,13 @@ vclocki
 + config_clk_i VSS
 + pat ({1.8} {0} {50p} {50p} {50p} {config_clock_period / 2} b010101010101010101010101010101010 0)
 
-vdata
+*vconfig_data
+*+ config_in VSS
+*+ pulse ({0} {1.8} {0} {50p} {50p} {config_clock_period} {2 * config_clock_period})
+
+vconfig_data
 + config_in VSS
-+ pulse ({0} {1.8} {0} {50p} {50p} {config_clock_period} {2 * config_clock_period})
++ pat ({1.8} {0} {0} {50p} {50p} {config_clock_period} b10011001100110010)
 
 vconfig_en
 + config_en VSS
@@ -85,38 +89,38 @@ vconfig_en
 *+ pulse ({0} {1.8} {test_start} {50p} {50p} {8 * (read_clock / 2)} {8 * (read_clock)}) 
 *+ ; No parameters
 
-; the BFG LUT flip-flops are connected to the muxes in this order:
-; mux order                  scan order
-;         0  lut_dfxtp_0_1.Q          1
-;         1  lut_dfxtp_0_0.Q          0
-;         2  lut_dfxtp_0_2.Q          2
-;         3  lut_dfxtp_0_3.Q          3
-;         4  lut_dfxtp_1_5.Q         13
-;         5  lut_dfxtp_1_4.Q         12
-;         6  lut_dfxtp_1_6.Q         14
-;         7  lut_dfxtp_1_7.Q         15
-;         8  lut_dfxtp_1_2.Q         10
-;         9  lut_dfxtp_1_3.Q         11
-;        10  lut_dfxtp_1_1.Q          9
-;        11  lut_dfxtp_1_0.Q          8
-;        12  lut_dfxtp_0_6.Q          6
-;        13  lut_dfxtp_0_7.Q          7
-;        14  lut_dfxtp_0_5.Q          5
-;        15  lut_dfxtp_0_4.Q          4
-; but they are numbered for the their place in the scan chain.
-;
-; So to read in scan order, you have to read indices:
-; 1, 0, 2, 3, 15, 14, 12, 13, 11, 10, 8, 9, 5, 4, 6, 7
-va3_driver a3 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b000001111111100000 0)
-va2_driver a2 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b000001111000011110 0)
-va1_driver a1 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b000111100110000110 0)
-va0_driver a0 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b010011001100110010 0)
+*; the BFG LUT flip-flops are connected to the muxes in this order:
+*; mux order                  scan order
+*;         0  lut_dfxtp_0_1.Q          1
+*;         1  lut_dfxtp_0_0.Q          0
+*;         2  lut_dfxtp_0_2.Q          2
+*;         3  lut_dfxtp_0_3.Q          3
+*;         4  lut_dfxtp_1_5.Q         13
+*;         5  lut_dfxtp_1_4.Q         12
+*;         6  lut_dfxtp_1_6.Q         14
+*;         7  lut_dfxtp_1_7.Q         15
+*;         8  lut_dfxtp_1_2.Q         10
+*;         9  lut_dfxtp_1_3.Q         11
+*;        10  lut_dfxtp_1_1.Q          9
+*;        11  lut_dfxtp_1_0.Q          8
+*;        12  lut_dfxtp_0_6.Q          6
+*;        13  lut_dfxtp_0_7.Q          7
+*;        14  lut_dfxtp_0_5.Q          5
+*;        15  lut_dfxtp_0_4.Q          4
+*; but they are numbered for the their place in the scan chain.
+*;
+*; So to read in scan order, you have to read indices:
+*; 1, 0, 2, 3, 15, 14, 12, 13, 11, 10, 8, 9, 5, 4, 6, 7
+*va3_driver a3 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b000001111111100000 0)
+*va2_driver a2 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b000001111000011110 0)
+*va1_driver a1 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b000111100110000110 0)
+*va0_driver a0 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b010011001100110010 0)
 
 ; read address into lut vertically:
-*va3_driver a3 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b00000000111111110 0)
-*va2_driver a2 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b00001111000011110 0)
-*va1_driver a1 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b00110011001100110 0)
-*va0_driver a0 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b01010101010101010 0)
+va3_driver a3 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b00000000111111110 0)
+va2_driver a2 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b00001111000011110 0)
+va1_driver a1 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b00110011001100110 0)
+va0_driver a0 VSS pat ({1.8} {0} {test_start} {50p} {50p} {read_clock / 2} b01010101010101010 0)
 
 .ends
 
@@ -126,7 +130,9 @@ xtop 0 testbench
 
 .print tran format=csv v(*) i(*)
 
-.param first=8
+;.param first=8
+* check OUT values for this!
+.param first=4
 
 .measure tran  d0 trig v(xtop:a0)=0.9 rise=1 targ v(xtop:out)=0.9 rise={first+1}
 .measure tran  d1 trig v(xtop:a0)=0.9 fall=1 targ v(xtop:out)=0.9 fall={first+1}
