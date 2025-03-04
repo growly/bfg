@@ -47,8 +47,8 @@ def main():
     with open(out_file_name, 'w') as out_file:
       #netlister = SpectreNetlister(out_file)
       #netlister = NgspiceNetlister(out_file)
-      #netlister = SpiceNetlister(out_file)
-      netlister = XyceNetlister(out_file)
+      netlister = SpiceNetlister(out_file)
+      #netlister = XyceNetlister(out_file)
       netlister.write_package(package_pb)
     
 
