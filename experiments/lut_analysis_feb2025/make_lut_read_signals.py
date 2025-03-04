@@ -35,9 +35,9 @@ def generate_generators(patterns):
 
         # source_name p_node n_node pat_statement high_voltage low_voltage delay
         # rise_time fall_time sample_period
-        generator = f'va{i}_driver a{i} VSS pat(' + (
-            '{1.8} {0} {test_start} {50p} {50p {read_clock / 2} ' +
-            f'b{pattern}' + '0)')
+        generator = f'va{i}_driver a{i} VSS pat (' + (
+            '{1.8} {0} {test_start} {50p} {50p} {read_clock / 2} ' +
+            f'b0{pattern}' + '0 0)')
         i = i + 1
         generators.insert(0, generator)
     return generators
@@ -45,13 +45,18 @@ def generate_generators(patterns):
 #generate_patterns([1, 6, 13, 15])
 permutations = itertools.permutations([i for i in range(int(math.pow(2, LUT_SIZE)))])
 
-i = 0
-for permutation in permutations:
+#i = 0
+#for permutation in permutations:
+#
+#    generators = generate_generators(generate_patterns(permutation))
+#    for generator in generators:
+#        print(generator)
+#
+#    i = i + 1
+#    if i >= NUM_PERMUTATIONS:
+#        break
 
-    generators = generate_generators(generate_patterns(permutation))
-    for generator in generators:
-        print(generator)
-
-    i = i + 1
-    if i >= NUM_PERMUTATIONS:
-        break
+fixed = [1, 0, 2, 3, 15, 14, 12, 13, 11, 10, 8, 9, 5, 4, 6, 7]
+generators = generate_generators(generate_patterns(fixed))
+for generator in generators:
+    print(generator)

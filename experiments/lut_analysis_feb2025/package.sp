@@ -2218,134 +2218,134 @@ xpfet_1
 
 .ENDS
 
-*.SUBCKT lut
-*+ S0 S1 S2 S3 Z CONFIG_IN CONFIG_OUT CLK VPWR_0 VPWR_1 VGND_0 VGND_1 
-*; No parameters
-*
-*xlut_dfxtp_0_0
-*+ CONFIG_IN clk_0 clk_i_0 lut_dfxtp_0_0.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_0_template
-*+ ; No parameters
-*
-*xlut_dfxtp_0_1
-*+ lut_dfxtp_0_0.Q clk_0 clk_i_0 lut_dfxtp_0_1.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_1_template
-*+ ; No parameters
-*
-*xlut_dfxtp_0_2
-*+ lut_dfxtp_0_1.Q clk_0 clk_i_0 lut_dfxtp_0_2.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_2_template
-*+ ; No parameters
-*
-*xlut_dfxtp_0_3
-*+ lut_dfxtp_0_2.Q clk_0 clk_i_0 lut_dfxtp_0_3.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_3_template
-*+ ; No parameters
-*
-*xlut_dfxtp_0_4
-*+ lut_dfxtp_0_3.Q clk_0 clk_i_0 lut_dfxtp_0_4.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_4_template
-*+ ; No parameters
-*
-*xlut_dfxtp_0_5
-*+ lut_dfxtp_0_4.Q clk_0 clk_i_0 lut_dfxtp_0_5.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_5_template
-*+ ; No parameters
-*
-*xlut_dfxtp_0_6
-*+ lut_dfxtp_0_5.Q clk_0 clk_i_0 lut_dfxtp_0_6.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_6_template
-*+ ; No parameters
-*
-*xlut_dfxtp_0_7
-*+ lut_dfxtp_0_6.Q clk_0 clk_i_0 lut_dfxtp_0_7.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ lut_dfxtp_0_7_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_0
-*+ lut_dfxtp_0_7.Q clk_1 clk_i_1 lut_dfxtp_1_0.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_0_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_1
-*+ lut_dfxtp_1_0.Q clk_1 clk_i_1 lut_dfxtp_1_1.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_1_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_2
-*+ lut_dfxtp_1_1.Q clk_1 clk_i_1 lut_dfxtp_1_2.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_2_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_3
-*+ lut_dfxtp_1_2.Q clk_1 clk_i_1 lut_dfxtp_1_3.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_3_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_4
-*+ lut_dfxtp_1_3.Q clk_1 clk_i_1 lut_dfxtp_1_4.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_4_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_5
-*+ lut_dfxtp_1_4.Q clk_1 clk_i_1 lut_dfxtp_1_5.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_5_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_6
-*+ lut_dfxtp_1_5.Q clk_1 clk_i_1 lut_dfxtp_1_6.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_6_template
-*+ ; No parameters
-*
-*xlut_dfxtp_1_7
-*+ lut_dfxtp_1_6.Q clk_1 clk_i_1 lut_dfxtp_1_7.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ lut_dfxtp_1_7_template
-*+ ; No parameters
-*
-*xmux_0
-*+ n_1 n_0 n_3 n_2 n_5 n_4 lut_dfxtp_0_1.Q lut_dfxtp_0_0.Q lut_dfxtp_0_2.Q lut_dfxtp_0_3.Q lut_dfxtp_1_5.Q lut_dfxtp_1_4.Q lut_dfxtp_1_6.Q lut_dfxtp_1_7.Q n_7 VPWR VGND 
-*+ sky130_mux
-*+ ; No parameters
-*
-*xmux_1
-*+ n_1 n_0 n_3 n_2 n_5 n_4 lut_dfxtp_1_2.Q lut_dfxtp_1_3.Q lut_dfxtp_1_1.Q lut_dfxtp_1_0.Q lut_dfxtp_0_6.Q lut_dfxtp_0_7.Q lut_dfxtp_0_5.Q lut_dfxtp_0_4.Q n_8 VPWR VGND 
-*+ alt_sky130_mux
-*+ ; No parameters
-*
-*xbuf_0
-*+ n_1 n_0 S0 vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ buf_0_template
-*+ ; No parameters
-*
-*xbuf_1
-*+ n_3 n_2 S1 vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ buf_1_template
-*+ ; No parameters
-*
-*xbuf_2
-*+ n_5 n_4 S2 vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ buf_2_template
-*+ ; No parameters
-*
-*xclk_buf_0
-*+ clk_0 clk_i_0 CLK vpwr_0 vgnd_0 vpwr_0 vgnd_0 
-*+ clk_buf_0_template
-*+ ; No parameters
-*
-*xbuf_3
-*+ n_6 n_9 S3 vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ buf_3_template
-*+ ; No parameters
-*
-*xclk_buf_1
-*+ clk_1 clk_i_1 CLK vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ clk_buf_1_template
-*+ ; No parameters
-*
-*xhd_mux2_1_0
-*+ n_6 n_7 n_8 Z vpwr_1 vgnd_1 vpwr_1 vgnd_1 
-*+ hd_mux2_1_0_template
-*+ ; No parameters
-*
-*.ENDS
-*
+.SUBCKT lut
++ S0 S1 S2 S3 Z CONFIG_IN CONFIG_OUT CLK VPWR_0 VPWR_1 VGND_0 VGND_1 
+; No parameters
+
+xlut_dfxtp_0_0
++ CONFIG_IN clk_0 clk_i_0 lut_dfxtp_0_0.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_0_template
++ ; No parameters
+
+xlut_dfxtp_0_1
++ lut_dfxtp_0_0.Q clk_0 clk_i_0 lut_dfxtp_0_1.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_1_template
++ ; No parameters
+
+xlut_dfxtp_0_2
++ lut_dfxtp_0_1.Q clk_0 clk_i_0 lut_dfxtp_0_2.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_2_template
++ ; No parameters
+
+xlut_dfxtp_0_3
++ lut_dfxtp_0_2.Q clk_0 clk_i_0 lut_dfxtp_0_3.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_3_template
++ ; No parameters
+
+xlut_dfxtp_0_4
++ lut_dfxtp_0_3.Q clk_0 clk_i_0 lut_dfxtp_0_4.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_4_template
++ ; No parameters
+
+xlut_dfxtp_0_5
++ lut_dfxtp_0_4.Q clk_0 clk_i_0 lut_dfxtp_0_5.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_5_template
++ ; No parameters
+
+xlut_dfxtp_0_6
++ lut_dfxtp_0_5.Q clk_0 clk_i_0 lut_dfxtp_0_6.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_6_template
++ ; No parameters
+
+xlut_dfxtp_0_7
++ lut_dfxtp_0_6.Q clk_0 clk_i_0 lut_dfxtp_0_7.Q vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ lut_dfxtp_0_7_template
++ ; No parameters
+
+xlut_dfxtp_1_0
++ lut_dfxtp_0_7.Q clk_1 clk_i_1 lut_dfxtp_1_0.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_0_template
++ ; No parameters
+
+xlut_dfxtp_1_1
++ lut_dfxtp_1_0.Q clk_1 clk_i_1 lut_dfxtp_1_1.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_1_template
++ ; No parameters
+
+xlut_dfxtp_1_2
++ lut_dfxtp_1_1.Q clk_1 clk_i_1 lut_dfxtp_1_2.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_2_template
++ ; No parameters
+
+xlut_dfxtp_1_3
++ lut_dfxtp_1_2.Q clk_1 clk_i_1 lut_dfxtp_1_3.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_3_template
++ ; No parameters
+
+xlut_dfxtp_1_4
++ lut_dfxtp_1_3.Q clk_1 clk_i_1 lut_dfxtp_1_4.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_4_template
++ ; No parameters
+
+xlut_dfxtp_1_5
++ lut_dfxtp_1_4.Q clk_1 clk_i_1 lut_dfxtp_1_5.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_5_template
++ ; No parameters
+
+xlut_dfxtp_1_6
++ lut_dfxtp_1_5.Q clk_1 clk_i_1 lut_dfxtp_1_6.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_6_template
++ ; No parameters
+
+xlut_dfxtp_1_7
++ lut_dfxtp_1_6.Q clk_1 clk_i_1 lut_dfxtp_1_7.Q vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ lut_dfxtp_1_7_template
++ ; No parameters
+
+xmux_0
++ n_1 n_0 n_3 n_2 n_5 n_4 lut_dfxtp_0_1.Q lut_dfxtp_0_0.Q lut_dfxtp_0_2.Q lut_dfxtp_0_3.Q lut_dfxtp_1_5.Q lut_dfxtp_1_4.Q lut_dfxtp_1_6.Q lut_dfxtp_1_7.Q n_7 VPWR VGND 
++ sky130_mux
++ ; No parameters
+
+xmux_1
++ n_1 n_0 n_3 n_2 n_5 n_4 lut_dfxtp_1_2.Q lut_dfxtp_1_3.Q lut_dfxtp_1_1.Q lut_dfxtp_1_0.Q lut_dfxtp_0_6.Q lut_dfxtp_0_7.Q lut_dfxtp_0_5.Q lut_dfxtp_0_4.Q n_8 VPWR VGND 
++ alt_sky130_mux
++ ; No parameters
+
+xbuf_0
++ n_1 n_0 S0 vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ buf_0_template
++ ; No parameters
+
+xbuf_1
++ n_3 n_2 S1 vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ buf_1_template
++ ; No parameters
+
+xbuf_2
++ n_5 n_4 S2 vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ buf_2_template
++ ; No parameters
+
+xclk_buf_0
++ clk_0 clk_i_0 CLK vpwr_0 vgnd_0 vpwr_0 vgnd_0 
++ clk_buf_0_template
++ ; No parameters
+
+xbuf_3
++ n_6 n_9 S3 vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ buf_3_template
++ ; No parameters
+
+xclk_buf_1
++ clk_1 clk_i_1 CLK vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ clk_buf_1_template
++ ; No parameters
+
+xhd_mux2_1_0
++ n_6 n_7 n_8 Z vpwr_1 vgnd_1 vpwr_1 vgnd_1 
++ hd_mux2_1_0_template
++ ; No parameters
+
+.ENDS
+

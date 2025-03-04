@@ -3,6 +3,8 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from collections import namedtuple
+
 data = pd.read_csv('lut_test.sp.csv')
 
 all_columns = data.columns
@@ -60,7 +62,7 @@ def plot_lut_readout():
     data.plot("TIME", headers,
               subplots=True,
               figsize=(8,11))
-    #plt.xlim(3.5e-8, 4.1e-8)
+    plt.xlim(3.4e-8, 4.1e-8)
     plt.savefig('plot.png', dpi=300)
 
 #headers = [
@@ -111,6 +113,44 @@ def plot_lut_readout():
 #]
 
 def plot_register_scan_chain_load():
+    LutOrder = namedtuple('LutOrder', 'mux_order name scan_order')
+    # mux order                  scan order
+    bfg_luts = [
+        LutOrder( 0, "LUT_DFXTP_0_1.Q",  1),
+        LutOrder( 1, "LUT_DFXTP_0_0.Q",  0),
+        LutOrder( 2, "LUT_DFXTP_0_2.Q",  2),
+        LutOrder( 3, "LUT_DFXTP_0_3.Q",  3),
+        LutOrder( 4, "LUT_DFXTP_1_5.Q", 13),
+        LutOrder( 5, "LUT_DFXTP_1_4.Q", 12),
+        LutOrder( 6, "LUT_DFXTP_1_6.Q", 14),
+        LutOrder( 7, "LUT_DFXTP_1_7.Q", 15),
+        LutOrder( 8, "LUT_DFXTP_1_2.Q", 10),
+        LutOrder( 9, "LUT_DFXTP_1_3.Q", 11),
+        LutOrder(10, "LUT_DFXTP_1_1.Q",  9),
+        LutOrder(11, "LUT_DFXTP_1_0.Q",  8),
+        LutOrder(12, "LUT_DFXTP_0_6.Q",  6),
+        LutOrder(13, "LUT_DFXTP_0_7.Q",  7),
+        LutOrder(14, "LUT_DFXTP_0_5.Q",  5),
+        LutOrder(15, "LUT_DFXTP_0_4.Q",  4),
+    ]
+    headers = [
+       "V(XTOP:CONFIG_CLK)",
+
+       "V(XTOP:XLUT:CLK_0)",
+       "V(XTOP:XLUT:CLK_I_0)",
+
+       "V(XTOP:CONFIG_IN)",
+    ]
+    bfg_luts.sort(key=lambda x: x.scan_order)
+    for lut_order in bfg_luts:
+        headers.append(f"V(XTOP:XLUT:{lut_order.name})")
+
+    data.plot("TIME", headers,
+              subplots=True,
+              figsize=(8,11))
+    plt.savefig('plot.png', dpi=300)
+
+def plot_fake_lut_register_scan_chain_load():
     headers = [
        "V(XTOP:CONFIG_CLK)",
 
@@ -141,7 +181,7 @@ def plot_register_scan_chain_load():
     plt.savefig('plot.png', dpi=300)
 
 
-def plot_x1_debug():
+def plot_fake_lut_x1_debug():
     headers = [
        "V(XTOP:CONFIG_CLK)",
 
@@ -168,3 +208,4 @@ def plot_x1_debug():
 
 if __name__ == '__main__':
     plot_lut_readout()
+    #plot_register_scan_chain_load()
