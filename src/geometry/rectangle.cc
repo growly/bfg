@@ -278,6 +278,9 @@ Rectangle Rectangle::WithPadding(int64_t padding) const {
   rect_pb.mutable_lower_left()->set_y(db.ToExternalUnits(lower_left_.y()));
   rect_pb.set_width(db.ToExternalUnits(Width()));
   rect_pb.set_height(db.ToExternalUnits(Height()));
+  if (!net_.empty()) {
+    rect_pb.set_net(net_);
+  }
   return rect_pb;
 }
 
@@ -294,6 +297,9 @@ Rectangle Rectangle::WithPadding(int64_t padding) const {
     ::vlsir::raw::Point *point_pb = polygon_pb.add_vertices();
     point_pb->set_x(db.ToExternalUnits(point.x()));
     point_pb->set_y(db.ToExternalUnits(point.y()));
+  }
+  if (!net_.empty()) {
+    polygon_pb.set_net(net_);
   }
   return polygon_pb;
 }
