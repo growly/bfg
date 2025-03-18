@@ -1012,7 +1012,9 @@ void GenerateOutput2To1MuxLayout(
         p_1);
 
     main_layout->SetActiveLayerByName("met1.pin");
-    main_layout->AddSquareAsPort(p_0, met1_rules.min_width, net_names[target]);
+    geometry::Rectangle *pin = main_layout->AddSquareAsPort(
+        p_0, met1_rules.min_width, net_names[target]);
+    pin->set_net(net_names[target]);
   }
 
   int64_t extension_bottom = parameters.extend_inputs_bottom ? 550 : 0;
@@ -1085,8 +1087,9 @@ void GenerateOutput2To1MuxLayout(
         met1_p1);
 
     main_layout->SetActiveLayerByName("met1.pin");
-    main_layout->AddSquareAsPort(
+    geometry::Rectangle *pin = main_layout->AddSquareAsPort(
         met1_p1, met1_rules.min_width, net_names[target]);
+    pin->set_net(net_names[target]);
   }
 
   // Add the first side of the mux back to the main layout.
@@ -1238,8 +1241,9 @@ void GenerateOutput2To1MuxLayout(
 
     // Mark possible external connection point:
     main_layout->SetActiveLayerByName("met1.pin");
-    main_layout->AddSquareAsPort(
+    geometry::Rectangle *pin = main_layout->AddSquareAsPort(
         mcon_via_point, met1_rules.min_width, "Z");
+    pin->set_net("Z");
 
     // Ensure sufficient encapsulation on li1 and met1 layers:
     int64_t met1_mcon_via_encap_width =

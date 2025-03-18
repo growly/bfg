@@ -122,6 +122,11 @@ class Instance : public Manipulable {
 
   void CopyAllShapes(ShapeCollection *shapes) const;
 
+  // Get a named point (from the template_layout_) and translate it to where it
+  // is in this instance.
+  Point GetPointOrDie(const std::string &name) const;
+  std::optional<Point> GetPoint(const std::string &name) const;
+
   void set_circuit_instance(circuit::Instance *circuit_instance) {
     circuit_instance_ = circuit_instance;
   }

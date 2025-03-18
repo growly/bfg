@@ -222,6 +222,27 @@ void Instance::CopyAllShapes(ShapeCollection *shapes) const {
   shapes->Add(instance_shapes);
 }
 
+geometry::Point Instance::GetPointOrDie(const std::string &name) const {
+  auto point = GetPoint(name);
+  if (!point) {
+    LOG(INFO) << "Instance " << name_ << " has these named points:";
+    for (auto &entry : template_layout_->named_points()) {
+      LOG(INFO) << entry.first << ": " << entry.second;
+    }
+    LOG(FATAL) << "Point " << name << " on instance " << name_ << " not found";
+  }
+  return *point;
+}
+
+std::optional<Point> Instance::GetPoint(const std::string &name) const {
+  std::optional<Point> point = template_layout_->GetPoint(name);
+  if (!point) {
+    return std::nullopt;
+  }
+  point->Translate(lower_left_);
+  return point;
+}
+
 Port *Instance::GetNearestPortNamed(
     const Port &to_port, const std::string &name) {
   std::vector<Port*> matching_ports;

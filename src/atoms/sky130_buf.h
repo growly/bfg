@@ -45,6 +45,8 @@ class Sky130Buf: public Atom {
     uint64_t nfet_1_length_nm = 150;
     uint64_t pfet_0_length_nm = 150;
     uint64_t pfet_1_length_nm = 150;
+
+    bool label_pins = true;
   };
 
   Sky130Buf(const Parameters &parameters, DesignDatabase *design_db)

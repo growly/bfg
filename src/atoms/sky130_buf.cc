@@ -344,18 +344,34 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
 
   // li.pin
   layout->SetActiveLayerByName("li.pin");
-  layout->AddRectangleAsPort(
+  geometry::Rectangle *pin = layout->AddRectangleAsPort(
       Rectangle(Point(145, 1105), Point(315, 1275)), "A");
+  if (parameters_.label_pins) {
+    pin->set_net("A");
+  }
+  layout->SavePoint("port_A_centre", pin->centre());
 
-  layout->AddRectangleAsPort(
+  pin = layout->AddRectangleAsPort(
       Rectangle(Point(735, 1140), Point(905, 1310)), "P");
+  if (parameters_.label_pins) {
+    pin->set_net("P");
+  }
 
-  layout->AddRectangleAsPort(
+  pin = layout->AddRectangleAsPort(
       Rectangle(Point(1055, 425), Point(1225, 595)), "X");
-  layout->AddRectangleAsPort(
+  if (parameters_.label_pins) {
+    pin->set_net("X");
+  }
+  pin = layout->AddRectangleAsPort(
       Rectangle(Point(1055, 1785), Point(1225, 1955)), "X");
-  layout->AddRectangleAsPort(
+  if (parameters_.label_pins) {
+    pin->set_net("X");
+  }
+  pin = layout->AddRectangleAsPort(
       Rectangle(Point(1055, 2125), Point(1225, 2295)), "X");
+  if (parameters_.label_pins) {
+    pin->set_net("X");
+  }
 
   return layout.release();
 }

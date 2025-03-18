@@ -242,6 +242,10 @@ class Layout : public geometry::Manipulable {
     return instances_;
   }
 
+  const std::unordered_map<std::string, geometry::Point> &named_points() const {
+    return named_points_;
+  }
+
  private:
   bfg::Cell *parent_cell_;
 

@@ -458,6 +458,9 @@ void ShapeCollection::KeepOnlyLayers(const std::set<geometry::Layer> &layers) {
       point_pb->set_x(db.ToExternalUnits(point.x()));
       point_pb->set_y(db.ToExternalUnits(point.y()));
     }
+    if (!poly->net().empty()) {
+      poly_pb->set_net(poly->net());
+    }
     count++;
   }
   if (!ports_.empty()) {

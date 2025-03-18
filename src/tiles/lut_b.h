@@ -116,6 +116,10 @@ class LutB : public Tile {
       Circuit *circuit,
       Layout *layout,
       std::map<geometry::Instance*, std::string> *memory_output_net_names);
+  void RouteInputs(
+      RoutingGrid *routing_grid,
+      Circuit *circuit,
+      Layout *layout);
 
   absl::Status AddMultiPointRoute(
       const PortKeyCollection &collection,

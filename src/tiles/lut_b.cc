@@ -388,10 +388,11 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteClockBuffers(&routing_grid, circuit, layout);
-  RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteRemainder(&routing_grid, circuit, layout);
+  //RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteClockBuffers(&routing_grid, circuit, layout);
+  //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteRemainder(&routing_grid, circuit, layout);
+  RouteInputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -793,6 +794,14 @@ void LutB::RouteRemainder(
   // needed.
   circuit::Signal *floating_signal = circuit->GetOrAddSignal("", 1);
   buf_order_[3]->circuit_instance()->Connect("P", *floating_signal);
+}
+
+void LutB::RouteInputs(
+    RoutingGrid *routing_grid,
+    Circuit *circuit,
+    Layout *layout) {
+  // Expect buffer inputs to be on li.drawing, identified by li.pin.
+  LOG(INFO) << buf_order_[0]->GetPointOrDie("port_A_centre");
 }
 
 // TODO(aryap): This clearly needs to be factored out of this class.
