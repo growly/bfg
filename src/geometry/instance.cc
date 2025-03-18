@@ -173,8 +173,7 @@ void Instance::CopyShapesOnLayer(
 
   ShapeCollection instance_shapes;
   instance_shapes.Add(*master_shapes);
-  instance_shapes.Rotate(rotation_degrees_ccw_);
-  instance_shapes.Translate(lower_left_);
+  ApplyInstanceTransforms(&instance_shapes);
   instance_shapes.PrefixNetNames(name_, ".");
 
   shapes->Add(instance_shapes);
@@ -188,8 +187,7 @@ void Instance::CopyNonConnectableShapesOnLayer(
 
   ShapeCollection instance_shapes;
   instance_shapes.Add(*master_shapes);
-  instance_shapes.Rotate(rotation_degrees_ccw_);
-  instance_shapes.Translate(lower_left_);
+  ApplyInstanceTransforms(&instance_shapes);
   instance_shapes.PrefixNetNames(name_, ".");
 
   shapes->AddNonConnectableShapes(instance_shapes);
@@ -216,8 +214,7 @@ void Instance::CopyAllShapes(ShapeCollection *shapes) const {
     return;
   }
 
-  instance_shapes.Rotate(rotation_degrees_ccw_);
-  instance_shapes.Translate(lower_left_);
+  ApplyInstanceTransforms(&instance_shapes);
   instance_shapes.PrefixNetNames(name_, ".");
   shapes->Add(instance_shapes);
 }
@@ -235,11 +232,13 @@ geometry::Point Instance::GetPointOrDie(const std::string &name) const {
 }
 
 std::optional<Point> Instance::GetPoint(const std::string &name) const {
-  std::optional<Point> point = template_layout_->GetPoint(name);
-  if (!point) {
+  std::optional<Point> maybe_point = template_layout_->GetPoint(name);
+  if (!maybe_point) {
     return std::nullopt;
   }
-  point->Translate(lower_left_);
+
+  Point point = *maybe_point;
+  ApplyInstanceTransforms(&point);
   return point;
 }
 

@@ -60,6 +60,16 @@ class Instance : public Manipulable {
   void ResetOrigin() override;
   void AlignPoints(const Point &our_point, const Point &align_to);
 
+  // Apply the transforms from the template layout to the instance layout.
+  void ApplyInstanceTransforms(ShapeCollection *shape_collection) const {
+    shape_collection->Rotate(rotation_degrees_ccw_);
+    shape_collection->Translate(lower_left_);
+  }
+  void ApplyInstanceTransforms(Point *point) const {
+    point->Rotate(rotation_degrees_ccw_);
+    point->Translate(lower_left_);
+  }
+
   // Apply rotation in a way that keeps the lower_left_ point the same as it
   // currently is.
   void RotatePreservingLowerLeft(int32_t rotation_degrees_ccw);

@@ -800,8 +800,32 @@ void LutB::RouteInputs(
     RoutingGrid *routing_grid,
     Circuit *circuit,
     Layout *layout) {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  // buf input pin is on li.drawing, so we put a port on li.pin. This could be
+  // handled automatically, since we already have a facility for finding a Via
+  // stack between two layers.
+
   // Expect buffer inputs to be on li.drawing, identified by li.pin.
-  LOG(INFO) << buf_order_[0]->GetPointOrDie("port_A_centre");
+  const std::array<std::pair<geometry::Instance*, std::string>, 4>
+      buf_pin_map = {
+    std::make_pair(buf_order_[0], "S0"),
+    std::make_pair(buf_order_[1], "S1"),
+    std::make_pair(buf_order_[2], "S2"),
+    std::make_pair(buf_order_[3], "S3"),
+  };
+
+  layout->SetActiveLayerByName("li.pin");
+  for (const auto &entry : buf_pin_map) {
+    geometry::Instance *buf = entry.first;
+    const std::string &port_name = entry.second;
+    geometry::Point pin_centre = buf->GetPointOrDie("port_A_centre");
+    geometry::Rectangle *pin = layout->AddSquareAsPort(
+        pin_centre,
+        db.Rules("mcon.drawing").via_width,
+        port_name);
+    pin->set_net(port_name);
+  }
 }
 
 // TODO(aryap): This clearly needs to be factored out of this class.
