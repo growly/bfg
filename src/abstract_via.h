@@ -15,9 +15,17 @@ class AbstractVia {
   AbstractVia(const geometry::Point &centre,
               const geometry::Layer &first,
               const geometry::Layer &second)
-      : centre_(centre) {
+      : add_port_on_top_(std::nullopt),
+        centre_(centre) {
     bottom_layer_ = std::min(first, second);
     top_layer_ = std::max(first, second);
+  }
+
+  const std::optional<std::string> &port_on_top() {
+    return add_port_on_top_;
+  }
+  void set_port_on_top(const std::string &label) {
+    add_port_on_top_ = label;
   }
 
   const geometry::Point &centre() const { return centre_; }
@@ -25,6 +33,7 @@ class AbstractVia {
   const geometry::Layer &top_layer() const { return top_layer_; }
 
  private:
+  std::optional<std::string> add_port_on_top_;
   geometry::Point centre_;
   geometry::Layer bottom_layer_;
   geometry::Layer top_layer_;

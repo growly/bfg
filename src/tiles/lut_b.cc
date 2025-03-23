@@ -388,11 +388,12 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  //RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
-  //RouteClockBuffers(&routing_grid, circuit, layout);
-  //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
-  //RouteRemainder(&routing_grid, circuit, layout);
+  RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
+  RouteClockBuffers(&routing_grid, circuit, layout);
+  RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
+  RouteRemainder(&routing_grid, circuit, layout);
   RouteInputs(&routing_grid, circuit, layout);
+  RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -828,6 +829,22 @@ void LutB::RouteInputs(
   }
 }
 
+void LutB::RouteOutputs(
+    RoutingGrid *routing_grid,
+    Circuit *circuit,
+    Layout *layout) {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  // Take the output from the final 2:1 mux output (for now).
+  layout->SetActiveLayerByName("li.pin");
+  geometry::Point pin_centre = active_mux2s_[0]->GetPointOrDie(
+      "port_X_centre_middle");
+  geometry::Rectangle *pin = layout->AddSquareAsPort(
+      pin_centre,
+      db.Rules("mcon.drawing").via_width,
+      "Z");
+  pin->set_net("Z");
+}
+
 // TODO(aryap): This clearly needs to be factored out of this class.
 absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
                                       RoutingGrid *routing_grid,
@@ -968,13 +985,38 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
 // Align ports by x position and connect them.
 void LutB::AddClockAndPowerStraps(
     RoutingGrid *routing_grid, Circuit *circuit, Layout *layout) const {
-  static const std::array<std::string, 4> kPortNames =
-      {"VPWR", "VGND", "CLK", "CLKI"};
-  static const std::array<std::string, 4> kNets =
-      {"vpwr", "vgnd", "clk", "clk_i"};
+  struct StrapInfo {
+    std::string port_name;
+    std::string net_name;
+    bool create_cross_bar_and_port;
+  };
+  static const std::array<StrapInfo, 4> kStrapInfo = {
+    StrapInfo {
+      .port_name = "VPWR",
+      .net_name = "vpwr",
+      .create_cross_bar_and_port = true
+    },
+    StrapInfo {
+      .port_name = "VGND",
+      .net_name = "vgnd",
+      .create_cross_bar_and_port = true
+    },
+    StrapInfo {
+      .port_name = "CLK",
+      .net_name = "clk",
+      .create_cross_bar_and_port = false
+    },
+    StrapInfo {
+      .port_name = "CLKI",
+      .net_name = "clk_i",
+      .create_cross_bar_and_port = false
+    }
+  };
 
+  // TODO(aryap): Merge into strap info above.
   static const std::array<std::string, 2> kCircuitOnlyPorts = {"VPB", "VNB"};
-  static const std::array<std::string, 2> kCircuitOnlyPortNets = {"vpwr", "vgnd"};
+  static const std::array<std::string, 2> kCircuitOnlyPortNets = {
+    "vpwr", "vgnd"};
 
   constexpr int64_t kOffsetNumPitches = 0;
 
@@ -1003,12 +1045,15 @@ void LutB::AddClockAndPowerStraps(
       layout_config.left.strap_alignment,
       layout_config.right.strap_alignment};
 
+  std::unordered_map<std::string, std::set<geometry::Polygon*>> spines;
+
   for (size_t bank = 0; bank < banks_.size(); ++bank) {
     std::optional<int64_t> last_spine_x;
-    for (size_t i = 0; i < kPortNames.size(); ++i) {
-      const std::string &port_name = kPortNames[i];
+    for (size_t i = 0; i < kStrapInfo.size(); ++i) {
+      const auto &strap_info = kStrapInfo[i];
+      const std::string &port_name = strap_info.port_name;
 
-      std::string net = absl::StrCat(kNets[i], "_", bank);
+      std::string net = absl::StrCat(strap_info.net_name, "_", bank);
       circuit::Wire wire = circuit->AddSignal(net);
 
       std::vector<geometry::Point> connections;
@@ -1060,6 +1105,14 @@ void LutB::AddClockAndPowerStraps(
                                       spine_x,
                                       spine_bulge_width,
                                       layout);
+      if (strap_info.create_cross_bar_and_port) {
+        for (geometry::Polygon *polygon : new_shapes.polygons()) {
+          if (polygon->layer() != db.GetLayer("met2.drawing"))
+            continue;
+          spines[net].insert(polygon);
+        }
+      }
+
       routing_grid->AddBlockages(new_shapes);
     }
 
@@ -1078,6 +1131,43 @@ void LutB::AddClockAndPowerStraps(
           circuit_instance->Connect(port_name, *signal);
         }
       }
+    }
+  }
+
+  // Find vertical range over which all spines are drawn:
+  std::optional<int64_t> top_y;
+  std::optional<int64_t> bottom_y;
+  for (const auto &entry : spines) {
+    for (geometry::Polygon *spine : entry.second) {
+      geometry::Rectangle bounding_box = spine->GetBoundingBox();
+      top_y = top_y ?
+          std::min(*top_y, bounding_box.upper_right().y()) :
+          bounding_box.upper_right().y();
+      bottom_y = bottom_y ?
+          std::max(*bottom_y, bounding_box.upper_right().y()) : 
+          bounding_box.upper_right().y();
+    }
+  }
+
+  // Now walk down from the top and assign pin locations:
+  const auto &met3_rules = db.Rules("met3.drawing");
+  //const auto &met3_via_rules = db.Rules("met3.drawing", "via2.drawing");
+
+  if (top_y) {
+    int64_t port_y = *top_y - met3_rules.min_pitch;
+    layout->SetActiveLayerByName("met2.pin");
+    for (const auto &entry : spines) {
+      const std::string &net = entry.first;
+
+      for (geometry::Polygon *spine : entry.second) {
+        geometry::Rectangle *pin = layout->AddSquareAsPort(
+            {spine->GetBoundingBox().centre().x(), port_y},
+            db.Rules("via1.drawing").via_width,
+            net);
+        pin->set_net(net);
+      }
+
+      port_y -= met3_rules.min_pitch;
     }
   }
 }

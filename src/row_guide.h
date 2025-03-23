@@ -31,10 +31,11 @@ class RowGuide {
         layout_(layout),
         circuit_(circuit),
         design_db(design_db),
+        start_with_tap_(true),
         num_taps_(0),
         distance_to_tap_left_(0),
         distance_to_tap_right_(0) {
-    max_tap_distance_ = 10000;
+    max_tap_distance_ = 15000;
   }
 
   // Methods to insert new instances of a given template layout, with a given
@@ -154,6 +155,7 @@ class RowGuide {
   // instance is rotated, but the order is still left-to-right.
   std::vector<geometry::Instance*> instances_;
 
+  bool start_with_tap_;
   int64_t num_taps_;
   int64_t distance_to_tap_right_;
   int64_t distance_to_tap_left_;

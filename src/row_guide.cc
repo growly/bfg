@@ -214,6 +214,9 @@ bool RowGuide::NeedsTapRight(const geometry::Instance &added_instance) const {
 
 bool RowGuide::NeedsTap(const int64_t &current_distance,
                         int64_t additional_distance) const {
+  if (start_with_tap_ && num_taps_ == 0) {
+    return true;
+  }
   if (!tap_cell_) {
     return false;
   }

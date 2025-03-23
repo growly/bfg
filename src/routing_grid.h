@@ -589,6 +589,8 @@ class RoutingGrid {
   void ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
       PolyLineCell *cell) const;
 
+  void ApplyDumbHackToPutAPortInTheMiddleOfSomePaths(PolyLineCell *cell) const;
+
   // Hands out pointers to RoutingGridGeometries that have tracks in either the
   // horizontal or vertical direction on the given layer.
   std::vector<std::reference_wrapper<const RoutingGridGeometry>>

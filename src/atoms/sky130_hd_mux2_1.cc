@@ -276,12 +276,15 @@ bfg::Layout *Sky130HdMux21::GenerateLayout() {
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
-  layout->AddRectangleAsPort(
+  geometry::Rectangle *pad = layout->AddRectangleAsPort(
       Rectangle(Point(150, 2125), Point(320, 2295)), "X");
-  layout->AddRectangleAsPort(
+  layout->SavePoint("port_X_centre_top", pad->centre());
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(150, 1785), Point(320, 1955)), "X");
-  layout->AddRectangleAsPort(
+  layout->SavePoint("port_X_centre_middle", pad->centre());
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(150, 425), Point(320, 595)), "X");
+  layout->SavePoint("port_X_centre_bottom", pad->centre());
   layout->AddRectangleAsPort(
       Rectangle(Point(2450, 1105), Point(2620, 1275)), "A1");
   layout->AddRectangleAsPort(

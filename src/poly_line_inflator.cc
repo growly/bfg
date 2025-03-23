@@ -77,6 +77,17 @@ Layout *PolyLineInflator::Inflate(
         &rectangle);
     layout->set_active_layer(rectangle.layer());
     layout->AddRectangle(rectangle);
+
+    if (via->add_port_on_top()) {
+      // Fetch the layer above the via layer:
+      const geometry::Layer above = via->top_layer();
+      const auto &info = routing_grid.GetRoutingViaInfoOrDie(
+          via->bottom_layer(), via->top_layer());
+      layout->AddSquareAsPort(
+          via->centre(),
+          std::min(info.width(), info.height()),
+          *via->add_port_on_top());
+    }
   }
   return layout.release();
 }

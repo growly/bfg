@@ -120,6 +120,10 @@ class LutB : public Tile {
       RoutingGrid *routing_grid,
       Circuit *circuit,
       Layout *layout);
+  void RouteOutputs(
+      RoutingGrid *routing_grid,
+      Circuit *circuit,
+      Layout *layout);
 
   absl::Status AddMultiPointRoute(
       const PortKeyCollection &collection,
