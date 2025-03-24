@@ -53,7 +53,7 @@ class Sky130SimpleTransistor : public Atom {
   void AlignTransistorPartTo(
       const Alignment &alignment, const geometry::Point &point);
 
-  // Calculates positions of key via positions for convenience:
+  // Calculates locations of key via positions for convenience:
   //
   //             +-----+
   //             |  D  |
@@ -72,9 +72,9 @@ class Sky130SimpleTransistor : public Atom {
   // D: Poly, uppermost
   // E: Poly, middle
   // F: Poly, lowermost
-  // G: Right diff, uppermost (show stacking)
-  // H: Right diff, middle (show stacking)
-  // I: Right diff, lowermost (show stacking)
+  // G: Right diff, uppermost (shown stacking)
+  // H: Right diff, middle (shown stacking)
+  // I: Right diff, lowermost (shown stacking)
   enum ViaPosition {
     LEFT_DIFF_UPPER,
     LEFT_DIFF_MIDDLE,
