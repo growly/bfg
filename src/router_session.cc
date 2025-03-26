@@ -115,10 +115,10 @@ absl::Status RouterSession::PerformNetRouteOrder(
   }
 
   LOG(INFO) << "Routing " << *start << " to " << *next;
-  absl::Status initial = routing_grid_->AddRouteBetween(
+  absl::StatusOr<RoutingPath*> initial = routing_grid_->AddRouteBetween(
       *start, *next, {}, request.net());
   if (!initial.ok()) {
-    return initial;
+    return initial.status();
   }
 
   for (size_t i = 2; i < request.points_size(); ++i) {
@@ -130,7 +130,7 @@ absl::Status RouterSession::PerformNetRouteOrder(
     LOG(INFO) << "Routing " << *next << " to net "
               << std::quoted(request.net());
     EquivalentNets nets = EquivalentNets({request.net()});
-    absl::Status subsequent = routing_grid_->AddRouteToNet(
+    absl::StatusOr<RoutingPath*> subsequent = routing_grid_->AddRouteToNet(
         *next, request.net(), nets, {});
     if (!subsequent.ok()) {
       // TODO(aryap): Should probably assemble these into a single status like

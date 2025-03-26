@@ -86,7 +86,7 @@ class RoutingGrid {
   // Convenient form AddMultiPointRoute which determines all net aliases for
   // the given ports and uses the given Layout to find all off-net ports to
   // use as temporary obstacles.
-  absl::Status AddMultiPointRoute(
+  absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
       const Layout &layout,
       const std::vector<std::vector<geometry::Port*>> ports,
       const std::optional<std::string> &primary_net_Name);
@@ -96,18 +96,18 @@ class RoutingGrid {
   // 
   // Routing is successful if a route is found that connects at least one port
   // from each set.
-  absl::Status AddMultiPointRoute(
+  absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
       const std::vector<std::vector<geometry::Port*>> ports,
       const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
 
-  absl::Status AddBestRouteBetween(
+  absl::StatusOr<RoutingPath*> AddBestRouteBetween(
       const geometry::PortSet &begin_ports,
       const geometry::PortSet &end_ports,
       const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
 
-  absl::Status AddRouteBetween(
+  absl::StatusOr<RoutingPath*> AddRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
       const geometry::ShapeCollection &avoid,
@@ -116,7 +116,7 @@ class RoutingGrid {
   // target_nets: the nets we're trying to reach with the path.
   // usable_nets: the nets whose objects we can use to form the path. This
   // should be a superset of target_nets.
-  absl::Status AddRouteToNet(
+  absl::StatusOr<RoutingPath*> AddRouteToNet(
       const geometry::Port &begin,
       const EquivalentNets &target_nets,
       const EquivalentNets &usable_nets,
@@ -131,6 +131,10 @@ class RoutingGrid {
   bool RemoveVertex(RoutingVertex *vertex, bool and_delete);
 
   bool ContainsVertex(RoutingVertex *vertex) const;
+
+  void AddGlobalNet(const std::string &net) {
+    global_nets_.insert(net);
+  }
 
   // Caller takes ownership.
   PolyLineCell *CreatePolyLineCell() const;
@@ -697,6 +701,9 @@ class RoutingGrid {
   // since sometimes a horizontal via encap will fit but a vertical one will
   // not.
   std::set<RoutingTrackDirection> connectable_directions_;
+
+  // Global nets when generating layout and circuit.
+  std::set<std::string> global_nets_;
 
   const PhysicalPropertiesDatabase &physical_db_;
 

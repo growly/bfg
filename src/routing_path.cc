@@ -591,6 +591,32 @@ const std::set<RoutingVertex*> RoutingPath::SpannedVerticesWithoutVias() const {
   return all_without_vias;
 }
 
+void RoutingPath::AddPortMidway(const std::optional<std::string> &port_name) {
+  // The initial cut of this algorithm is to just pick a near-midway vertex and
+  // put the port on it, since if it straddles two different layers it should
+  // be able to accommodate a port easily.
+  size_t index = (vertices_.size() - skipped_vias_.size()) / 2;
+
+  auto find_unskipped_via_by_index = [&](size_t index) -> RoutingVertex* {
+    size_t i = 0;
+    for (RoutingVertex *target : vertices_) {
+      if (skipped_vias_.find(target) != skipped_vias_.end()) {
+        continue;
+      }
+      if (i == index) {
+        return target;
+      }
+      ++i;
+    }
+    return nullptr;
+  };
+
+  RoutingVertex *target = find_unskipped_via_by_index(index);
+
+  target->set_hosts_port(
+      port_name && *port_name != "" ? *port_name : nets_.primary());
+}
+
 void RoutingPath::ResolveTerminatingLayersAtBothEnds() {
   if (edges_.empty()) {
     return;
@@ -1277,6 +1303,11 @@ void RoutingPath::ToPolyLinesAndVias(
         via = new AbstractVia(current->centre(), last->layer(), layer);
         vias->emplace_back(via);
         //last->set_end_via(via);
+
+        if (current->hosts_port()) {
+          via->set_port_on_top(*current->hosts_port());
+        }
+
         auto bulge = GetBulgeDimensions(
             routing_grid_->GetRoutingViaInfoOrDie(last->layer(), layer));
         bulge_width = bulge.width;

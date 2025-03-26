@@ -6,6 +6,7 @@
 #include <string>
 
 #include <absl/status/status.h>
+#include <absl/status/statusor.h>
 
 #include "tile.h"
 
@@ -13,6 +14,7 @@
 #include "../geometry/group.h"
 #include "../design_database.h"
 #include "../row_guide.h"
+#include "../routing_path.h"
 #include "../memory_bank.h"
 #include "../layout.h"
 
@@ -125,7 +127,7 @@ class LutB : public Tile {
       Circuit *circuit,
       Layout *layout);
 
-  absl::Status AddMultiPointRoute(
+  absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
       const PortKeyCollection &collection,
       RoutingGrid *routing_grid,
       Circuit *circuit,

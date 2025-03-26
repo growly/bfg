@@ -388,12 +388,12 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
   RouteClockBuffers(&routing_grid, circuit, layout);
-  RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteRemainder(&routing_grid, circuit, layout);
-  RouteInputs(&routing_grid, circuit, layout);
-  RouteOutputs(&routing_grid, circuit, layout);
+  //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteRemainder(&routing_grid, circuit, layout);
+  //RouteInputs(&routing_grid, circuit, layout);
+  //RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -476,6 +476,9 @@ void LutB::ConfigureRoutingGrid(
     routing_grid->AddBlockages(shapes);
   }
 
+  // TODO(aryap): Don't want designers to have to manually duplicate this
+  // information everywhere:
+  routing_grid->AddGlobalNet("CLK");
 }
 
 void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
@@ -535,7 +538,12 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
     clk_inputs.net_name = "CLK";
   }
   auto result = AddMultiPointRoute(clk_inputs, routing_grid, circuit, layout);
-  AccumulateAnyErrors(result);
+  if (result.ok()) {
+    for (RoutingPath *path : *result) {
+      path->AddPortMidway("CLK");
+    }
+  }
+  AccumulateAnyErrors(result.status());
 }
 
 void LutB::RouteScanChain(
@@ -586,7 +594,7 @@ void LutB::RouteScanChain(
 
     auto result = routing_grid->AddRouteBetween(
         *start, *end, non_net_connectables, net_names);
-    AccumulateAnyErrors(result);
+    AccumulateAnyErrors(result.status());
   }
 }
 
@@ -678,7 +686,7 @@ void LutB::RouteMuxInputs(
                 << " avoiding " << non_net_connectables.Describe();
 
       std::string target_net;
-      absl::Status route_result;
+      absl::StatusOr<RoutingPath*> route_result;
       auto named_output_it = memory_output_net_names->find(memory);
       if (named_output_it == memory_output_net_names->end()) {
         target_net = net_names.primary();
@@ -771,9 +779,8 @@ void LutB::RouteRemainder(
   };
 
   for (const PortKeyCollection &collection : auto_connections) {
-    absl::Status result = AddMultiPointRoute(
-        collection, routing_grid, circuit, layout);
-    AccumulateAnyErrors(result);
+    auto result = AddMultiPointRoute(collection, routing_grid, circuit, layout);
+    AccumulateAnyErrors(result.status());
   }
 
   // FIXME(aryap): Make circuit-only connections (this is fake).
@@ -846,10 +853,11 @@ void LutB::RouteOutputs(
 }
 
 // TODO(aryap): This clearly needs to be factored out of this class.
-absl::Status LutB::AddMultiPointRoute(const PortKeyCollection &collection,
-                                      RoutingGrid *routing_grid,
-                                      Circuit *circuit,
-                                      Layout *layout) const {
+absl::StatusOr<std::vector<RoutingPath*>>
+    LutB::AddMultiPointRoute(const PortKeyCollection &collection,
+                             RoutingGrid *routing_grid,
+                             Circuit *circuit,
+                             Layout *layout) const {
   circuit::Signal *internal_signal = circuit->GetOrAddSignal(
       collection.net_name ? *collection.net_name : "", 1);
   std::string net = internal_signal->name();

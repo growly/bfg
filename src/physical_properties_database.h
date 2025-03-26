@@ -27,8 +27,20 @@ struct LayerInfo {
   uint16_t gds_datatype;
 
   // For PIN layers in particular, we need to record which layer(s) they're
-  // providing acccess to:
+  // providing acccess to. For example, "met1.pin" is used to access
+  // "met1.drawing".
   std::optional<std::set<geometry::Layer>> accesses;
+
+  // For non-PIN layers, we record which pin layers are used to access them.
+  // For example, "met1.drawing" is accessed by "met1.pin".
+  std::optional<std::set<geometry::Layer>> accessed_by;
+
+  std::optional<std::set<geometry::Layer>> labels;
+
+  // TODO(aryap): It might also be useful to record which label layers are used
+  // for this layer. For example, "met1.label" is used to annotate "met1.pin"
+  // and "met1.drawing".
+  std::optional<std::set<geometry::Layer>> labelled_by;
 };
 
 struct IntraLayerConstraints {

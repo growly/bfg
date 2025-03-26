@@ -299,24 +299,28 @@ ShapeCollection *FindOrCreateCollection(
 
 void ShapeCollection::PrefixNetNames(
     const std::string &prefix,
-    const std::string &separator) {
+    const std::string &separator,
+    const std::set<std::string> &exceptions) {
+  auto excepted_fn = [&](const std::string &net) {
+    return exceptions.find(net) != exceptions.end();
+  };
   for (const auto &rectangle : rectangles_) {
-    if (rectangle->net() != "") {
+    if (rectangle->net() != "" && !excepted_fn(rectangle->net())) {
       rectangle->set_net(absl::StrCat(prefix, separator, rectangle->net()));
     }
   }
   for (const auto &polygon : polygons_) {
-    if (polygon->net() != "") {
+    if (polygon->net() != "" && !excepted_fn(polygon->net())) {
       polygon->set_net(absl::StrCat(prefix, separator, polygon->net()));
     }
   }
   for (const auto &port : ports_) {
-    if (port->net() != "") {
+    if (port->net() != "" && !excepted_fn(port->net())) {
       port->set_net(absl::StrCat(prefix, separator, port->net()));
     }
   }
   for (const auto &poly_line : poly_lines_) {
-    if (poly_line->net() != "") {
+    if (poly_line->net() != "" && !excepted_fn(poly_line->net())) {
       poly_line->set_net(absl::StrCat(prefix, separator, poly_line->net()));
     }
   }

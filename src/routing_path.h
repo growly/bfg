@@ -67,6 +67,10 @@ class RoutingPath {
   const std::set<RoutingVertex*> SpannedVertices() const;
   const std::set<RoutingVertex*> SpannedVerticesWithoutVias() const;
 
+  // Add a port (via, pin, label) to this path approximately half-way, wherever
+  // it can be accommodated.
+  void AddPortMidway(const std::optional<std::string> &port_name);
+
   const geometry::Port *start_port() const { return start_port_; }
   void set_start_port(const geometry::Port *port) { start_port_ = port; }
   const geometry::Port *end_port() const { return end_port_; }

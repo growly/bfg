@@ -22,6 +22,10 @@ class RoutingLayerInfo {
 
   const geometry::Layer &layer() const { return layer_; }
   void set_layer(const geometry::Layer &layer) { layer_ = layer; }
+  const std::optional<geometry::Layer> &pin_layer() const { return pin_layer_; }
+  void set_pin_layer(const std::optional<geometry::Layer> &pin_layer) {
+    pin_layer_ = pin_layer;
+  }
   const geometry::Rectangle &area() const { return area_; }
   void set_area(const geometry::Rectangle &area) { area_ = area; }
   int64_t wire_width() const { return wire_width_; }
@@ -41,6 +45,7 @@ class RoutingLayerInfo {
 
  private:
   geometry::Layer layer_;
+  std::optional<geometry::Layer> pin_layer_;
   geometry::Rectangle area_;
   int64_t wire_width_;
   int64_t offset_;

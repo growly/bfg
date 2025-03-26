@@ -415,11 +415,15 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
   for (const auto &entry : other.shapes_) {
     active_layer_ = entry.first;
     ShapeCollection *other_collection = entry.second.get();
+
+    // If a shape's net appears in global_nets_ in the other Layout, no prefix
+    // should be applied.
+
     if (name_prefix != "") {
       owner_of_copy.reset(new ShapeCollection(*other_collection));
       other_collection = owner_of_copy.get();
       // This is now the copy!
-      other_collection->PrefixNetNames(name_prefix, ".");
+      other_collection->PrefixNetNames(name_prefix, ".", other.global_nets());
     }
     for (const auto &rectangle : other_collection->rectangles()) {
       AddRectangle(*rectangle);
@@ -428,7 +432,7 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
       AddPolygon(*polygon);
     }
     for (const auto &port : other_collection->ports()) {
-      AddPort(*port, name_prefix);
+      AddPort(*port);
     }
   }
   for (const auto &instance : other.instances_) {

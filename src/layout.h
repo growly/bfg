@@ -115,6 +115,13 @@ class Layout : public geometry::Manipulable {
   // however, do colour each other with their net when they touch.
   void LabelNet(const geometry::Point &point, const std::string &net);
 
+  void AddGlobalNet(const std::string &net) {
+    global_nets_.insert(net);
+  }
+  bool HasGlobalNet(const std::string &net) const {
+    return global_nets_.find(net) != global_nets_.end();
+  }
+
   std::string Describe() const;
 
   // Report the rectangular area covered by this Layout. (This is the area of
@@ -246,6 +253,10 @@ class Layout : public geometry::Manipulable {
     return named_points_;
   }
 
+  const std::set<std::string> &global_nets() const {
+    return global_nets_;
+  }
+
  private:
   bfg::Cell *parent_cell_;
 
@@ -269,6 +280,10 @@ class Layout : public geometry::Manipulable {
   std::map<geometry::Layer, std::unique_ptr<ShapeCollection>> shapes_;
 
   std::unordered_map<std::string, geometry::Point> named_points_;
+
+  // Shapes with these net labelles do not have prefixes applied to them when
+  // this Layout is added to another Layout.
+  std::set<std::string> global_nets_;
 };
 
 }  // namespace bfg

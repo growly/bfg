@@ -75,7 +75,8 @@ class ShapeCollection : public Manipulable {
 
   void PrefixNetNames(
       const std::string &prefix,
-      const std::string &separator = ".");
+      const std::string &separator = ".",
+      const std::set<std::string> &exceptions = {});
 
   std::vector<std::unique_ptr<geometry::Rectangle>> &rectangles() {
     return rectangles_;

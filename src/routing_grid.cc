@@ -1713,7 +1713,7 @@ void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) {
   off_grid_edges_.insert(edge);
 }
 
-absl::Status RoutingGrid::AddMultiPointRoute(
+absl::StatusOr<std::vector<RoutingPath*>> RoutingGrid::AddMultiPointRoute(
     const Layout &layout,
     const std::vector<std::vector<geometry::Port*>> ports,
     const std::optional<std::string> &primary_net_name) {
@@ -1735,7 +1735,7 @@ absl::Status RoutingGrid::AddMultiPointRoute(
                             net_aliases);
 }
 
-absl::Status RoutingGrid::AddMultiPointRoute(
+absl::StatusOr<std::vector<RoutingPath*>> RoutingGrid::AddMultiPointRoute(
     const std::vector<std::vector<geometry::Port*>> ports,
     const geometry::ShapeCollection &avoid,
     const EquivalentNets &nets) {
@@ -1743,6 +1743,7 @@ absl::Status RoutingGrid::AddMultiPointRoute(
   // The net_name is set once the first route is laid between some pair of
   // ports. Subsequent routes are to the net, not any particular point.
   std::optional<std::string> net_name = std::nullopt;
+  std::vector<RoutingPath*> found_paths;
   for (auto it = ports.begin(); it != ports.end(); ++it) {
     const std::vector<geometry::Port*> &port_group = *it;
     if (!net_name) {
@@ -1754,13 +1755,14 @@ absl::Status RoutingGrid::AddMultiPointRoute(
       begin_ports.insert(port_group.begin(), port_group.end());
       geometry::PortSet end_ports = geometry::Port::MakePortSet();
       end_ports.insert(next_port_group.begin(), next_port_group.end());
-      bool path_found = AddBestRouteBetween(
+      auto route_status = AddBestRouteBetween(
           begin_ports,
           end_ports,
           avoid,
-          nets).ok();
-      if (path_found) {
+          nets);
+      if (route_status.ok()) {
         net_name = nets.primary();
+        found_paths.push_back(*route_status);
         ++it;
       } else {
         all_ok = false;
@@ -1773,16 +1775,19 @@ absl::Status RoutingGrid::AddMultiPointRoute(
       auto route_status = AddRouteToNet(*port, *net_name, nets, avoid);
       if (route_status.ok()) {
         path_found = true;
+        found_paths.push_back(*route_status);
         break;
       }
     }
     all_ok = path_found && all_ok;
   }
-  return all_ok ?
-      absl::OkStatus() : absl::NotFoundError("Not all ports could be routed");
+  if (all_ok) {
+    return found_paths;
+  }
+  return absl::NotFoundError("Not all ports could be routed");
 }
 
-absl::Status RoutingGrid::AddBestRouteBetween(
+absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
     const geometry::PortSet &begin_ports,
     const geometry::PortSet &end_ports,
     const geometry::ShapeCollection &avoid,
@@ -1811,17 +1816,22 @@ absl::Status RoutingGrid::AddBestRouteBetween(
     LOG(INFO) << "cost: " << path->Cost() << " option: " << path->Describe();
   }
 
+  RoutingPath *cheapest = options.front();
+
   // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
   // rest must be deleted.
-  absl::Status install_status = InstallPath(options.front());
+  absl::Status install_status = InstallPath(cheapest);
 
   for (auto it = options.begin() + 1; it != options.end(); ++it) {
     delete *it;
   }
+  if (install_status.ok()) {
+    return cheapest;
+  }
   return install_status;
 }
 
-absl::Status RoutingGrid::AddRouteBetween(
+absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
     const geometry::Port &begin,
     const geometry::Port &end,
     const geometry::ShapeCollection &avoid,
@@ -1832,10 +1842,9 @@ absl::Status RoutingGrid::AddRouteBetween(
   if (!find_path.ok()) {
     return find_path.status();
   }
-  std::unique_ptr<RoutingPath> shortest_path =
-      std::unique_ptr<RoutingPath>(*find_path);
-  absl::Status install = InstallPath(shortest_path.release());
-  return install;
+
+  absl::Status install = InstallPath(*find_path);
+  return *find_path;
 }
 
 absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
@@ -1957,7 +1966,7 @@ std::set<geometry::Layer> EffectiveLayersForInstalledVertex(
 
 }   // namespace
 
-absl::Status RoutingGrid::AddRouteToNet(
+absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteToNet(
     const geometry::Port &begin,
     const EquivalentNets &target_nets,
     const EquivalentNets &usable_nets,
@@ -1965,12 +1974,10 @@ absl::Status RoutingGrid::AddRouteToNet(
   absl::StatusOr<RoutingPath*> find_path =
       FindRouteToNet(begin, target_nets, usable_nets, avoid);
   if (!find_path.ok()) {
-    return find_path.status();
+    return find_path;
   }
-  std::unique_ptr<RoutingPath> shortest_path =
-      std::unique_ptr<RoutingPath>(*find_path);
-  absl::Status install = InstallPath(shortest_path.release());
-  return install;
+  absl::Status install = InstallPath(*find_path);
+  return *find_path;
 }
 
 absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
@@ -3489,6 +3496,9 @@ Layout *RoutingGrid::GenerateLayout() const {
   std::unique_ptr<PolyLineCell> grid_lines(CreatePolyLineCell());
   std::unique_ptr<bfg::Layout> grid_layout(
       inflator.Inflate(*this, *grid_lines));
+  for (const std::string &net : global_nets_) {
+    grid_layout->AddGlobalNet(net);
+  }
   return grid_layout.release();
 }
 

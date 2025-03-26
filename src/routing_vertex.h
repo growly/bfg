@@ -223,6 +223,14 @@ class RoutingVertex {
     return forced_encap_directions_;
   }
 
+  void set_hosts_port(const std::optional<std::string> port_name) {
+    hosts_port_ = port_name;
+  }
+
+  const std::optional<std::string> hosts_port() const {
+    return hosts_port_;
+  }
+
  private:
   struct NeighbouringVertex {
     geometry::Compass position;
@@ -341,6 +349,10 @@ class RoutingVertex {
   std::set<RoutingEdge*> edges_;
 
   std::map<geometry::Layer, RoutingTrackDirection> forced_encap_directions_;
+
+  // If set to a string, a port is expected to be placed at the top of the
+  // vertex connecting to the host_port_;
+  std::optional<std::string> hosts_port_;
 };
 
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex);

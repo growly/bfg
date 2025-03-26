@@ -77,6 +77,39 @@ void PhysicalPropertiesDatabase::LoadTechnology(
       } else {
         layer_info.accesses->insert(*access_layer);
       }
+      // Add back-reference.
+      auto access_it = layer_infos_.find(*access_layer);
+      auto &access_layer_info = access_it->second;
+      if (!access_layer_info.accessed_by) {
+        access_layer_info.accessed_by = std::set<Layer>{*layer};
+      } else {
+        access_layer_info.accessed_by->insert(*layer);
+      }
+    }
+
+    for (const auto &ref_key : info_pb.labels()) {
+      std::optional<Layer> target = FindLayer(ref_key.major(), ref_key.minor());
+  
+      LOG_IF(FATAL, !target)
+          << "Layer "
+          << info_pb.index().major() << "/" << info_pb.index().minor()
+          << " labels another layer which was not found: "
+          << ref_key.major() << "/" << ref_key.minor();
+
+      if (!layer_info.labels) {
+        layer_info.labels = std::set<Layer>{*target};
+      } else {
+        layer_info.labels->insert(*target);
+      }
+
+      // Add back-reference.
+      auto target_it = layer_infos_.find(*target);
+      auto &target_layer_info = target_it->second;
+      if (!target_layer_info.labelled_by) {
+        target_layer_info.labelled_by = std::set<Layer>{*layer};
+      } else {
+        target_layer_info.labelled_by->insert(*layer);
+      }
     }
   }
 }
@@ -301,6 +334,14 @@ std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
   routing_info.set_wire_width(layer_rules.min_width);
   routing_info.set_pitch(layer_rules.min_pitch);
   routing_info.set_min_separation(layer_rules.min_separation);
+
+  const LayerInfo &layer_info = GetLayerInfo(*layer);
+  if (layer_info.accessed_by) {
+    for (const geometry::Layer &pin_layer : *layer_info.accessed_by) {
+      routing_info.set_pin_layer(pin_layer);
+    }
+  }
+
   return routing_info;
 }
 
