@@ -89,7 +89,9 @@ class Layout : public geometry::Manipulable {
   // Copies the objects in other layout into this one. If a name prefix is
   // given, it is apply to named points and net names copied from the other
   // Layout.
-  void AddLayout(const Layout &other, const std::string &name_prefix = "");
+  void AddLayout(const Layout &other,
+                 const std::string &name_prefix = "",
+                 bool include_ports = true);
 
   // Translate the Layout such that the given reference point, assumed to be in
   // the coordinate space of this Layout, ends up at the target point.

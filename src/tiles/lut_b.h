@@ -90,6 +90,10 @@ class LutB : public Tile {
     std::vector<PortKey> port_keys;
     std::optional<std::string> net_name;
   };
+  struct PortKeyAlias {
+    PortKey key;
+    std::string alias;
+  };
   // TODO(aryap): This can be replaced with the more generic "PortKey" structs
   // above.
   struct AutoMemoryMuxConnection {

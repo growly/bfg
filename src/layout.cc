@@ -407,7 +407,9 @@ void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix) {
   }
 }
 
-void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
+void Layout::AddLayout(const Layout &other,
+                       const std::string &name_prefix,
+                       bool include_ports) {
   // To be able to support this we'd need to make a temporary copy of all the
   // containers:
   LOG_IF(FATAL, this == &other) << "Can't add layout to itself.";
@@ -431,8 +433,10 @@ void Layout::AddLayout(const Layout &other, const std::string &name_prefix) {
     for (const auto &polygon : other_collection->polygons()) {
       AddPolygon(*polygon);
     }
-    for (const auto &port : other_collection->ports()) {
-      AddPort(*port);
+    if (include_ports) {
+      for (const auto &port : other_collection->ports()) {
+        AddPort(*port);
+      }
     }
   }
   for (const auto &instance : other.instances_) {

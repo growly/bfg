@@ -853,10 +853,13 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
-  layout->AddRectangleAsPort(
+  geometry::Rectangle *pin = layout->AddRectangleAsPort(
       Rectangle(Point(85, 1105), Point(255, 1275)), "D");
-  layout->AddRectangleAsPort(
+  layout->SavePoint("port_D_centre", pin->centre());
+
+  pin = layout->AddRectangleAsPort(
       Rectangle(Point(5590, 425), Point(5760, 595)), "Q");
+  layout->SavePoint("port_Q_centre", pin->centre());
 
   // nwell.pin [PIN] 64/16
   layout->SetActiveLayerByName("nwell.pin");

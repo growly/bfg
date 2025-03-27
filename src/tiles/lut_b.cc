@@ -388,12 +388,12 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  //RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
+  RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
   RouteClockBuffers(&routing_grid, circuit, layout);
-  //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
-  //RouteRemainder(&routing_grid, circuit, layout);
-  //RouteInputs(&routing_grid, circuit, layout);
-  //RouteOutputs(&routing_grid, circuit, layout);
+  RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
+  RouteRemainder(&routing_grid, circuit, layout);
+  RouteInputs(&routing_grid, circuit, layout);
+  RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -815,19 +815,19 @@ void LutB::RouteInputs(
   // stack between two layers.
 
   // Expect buffer inputs to be on li.drawing, identified by li.pin.
-  const std::array<std::pair<geometry::Instance*, std::string>, 4>
-      buf_pin_map = {
-    std::make_pair(buf_order_[0], "S0"),
-    std::make_pair(buf_order_[1], "S1"),
-    std::make_pair(buf_order_[2], "S2"),
-    std::make_pair(buf_order_[3], "S3"),
+  const std::array<PortKeyAlias, 5> pin_map = {
+    PortKeyAlias {{buf_order_[0], "port_A_centre"}, "S0"},
+    PortKeyAlias {{buf_order_[1], "port_A_centre"}, "S1"},
+    PortKeyAlias {{buf_order_[2], "port_A_centre"}, "S2"},
+    PortKeyAlias {{buf_order_[3], "port_A_centre"}, "S3"},
+    PortKeyAlias {{memories_.front(), "port_D_centre"}, "CONFIG_IN"}
   };
 
   layout->SetActiveLayerByName("li.pin");
-  for (const auto &entry : buf_pin_map) {
-    geometry::Instance *buf = entry.first;
-    const std::string &port_name = entry.second;
-    geometry::Point pin_centre = buf->GetPointOrDie("port_A_centre");
+  for (const auto &entry : pin_map) {
+    const std::string &port_name = entry.alias;
+    geometry::Point pin_centre =
+        entry.key.instance->GetPointOrDie(entry.key.port_name);
     geometry::Rectangle *pin = layout->AddSquareAsPort(
         pin_centre,
         db.Rules("mcon.drawing").via_width,
@@ -841,15 +841,22 @@ void LutB::RouteOutputs(
     Circuit *circuit,
     Layout *layout) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  // Take the output from the final 2:1 mux output (for now).
+  const std::array<PortKeyAlias, 2> pin_map = {
+    // Take the output from the final 2:1 mux output (for now).
+    PortKeyAlias {{active_mux2s_[0], "port_X_centre_middle"}, "Z"},
+    PortKeyAlias {{memories_.back(), "port_Q_centre"}, "CONFIG_OUT"}
+  };
   layout->SetActiveLayerByName("li.pin");
-  geometry::Point pin_centre = active_mux2s_[0]->GetPointOrDie(
-      "port_X_centre_middle");
-  geometry::Rectangle *pin = layout->AddSquareAsPort(
-      pin_centre,
-      db.Rules("mcon.drawing").via_width,
-      "Z");
-  pin->set_net("Z");
+  for (const auto &entry : pin_map) {
+    const std::string &port_name = entry.alias;
+    geometry::Point pin_centre =
+        entry.key.instance->GetPointOrDie(entry.key.port_name);
+    geometry::Rectangle *pin = layout->AddSquareAsPort(
+        pin_centre,
+        db.Rules("mcon.drawing").via_width,
+        port_name);
+    pin->set_net(port_name);
+  }
 }
 
 // TODO(aryap): This clearly needs to be factored out of this class.
