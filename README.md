@@ -93,10 +93,33 @@ sudo ldconfig
   popd
   ```
 
+> [!CAUTION]
+> When I compile and build newer protobuf, Abseil or gRPC libraries I end
+> up in a hellish pit of compilation and/or linker and/or ABI errors that I have
+> not had time to fix. These libraries should all be modernised at the same
+> time(along with any fixes to this code). Contributions welcome!
+
+[abseil/abseil-cpp](https://abseil.io/docs/cpp/quickstart-cmake)
+
+
+  ```
+  git clone git@github.com:abseil/abseil-cpp.git
+  pushd abseil-cpp
+  git checkout 1a31b81c0a467c1c8e229b9fc172a4eb0db5bd85
+  mkdir build && cd build
+  cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON ../
+  make -j $(nproc)
+  sudo make install
+  popd
+  ```
+
 [google/re2](https://github.com/google/re2)
 
 > [!WARNING]
-> RHEL9 only
+> You must build RE2 against the Abseil library you just installed in the
+> previous step. Otherwise the wrong version of Abseil might be installed by
+> your package manager and you will have a nightmare trying to link this program
+> later.
 
 
 ```
@@ -108,26 +131,6 @@ make -j $(nproc)
 sudo make install
 popd
 ```
-
-> [!CAUTION]
-> When I compile and build newer protobuf, abseil or grpc libraries I end
-> up in a hellish pit of compilation and/or linker and/or ABI errors that I have
-> not had time to fix. These libraries should all be modernised at the same
-> time(along with any fixes to this code). Contributions welcome!
-
-[abseil/abseil-cpp](https://abseil.io/docs/cpp/quickstart-cmake)
-
-
-  ```
-  git clone git@github.com:abseil/abseil-cpp.git
-  git checkout 1a31b81c0a467c1c8e229b9fc172a4eb0db5bd85
-  pushd abseil-cpp
-  mkdir build && cd build
-  cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON ../
-  make -j $(nproc)
-  sudo make install
-  popd
-  ```
 
 [protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src)
 
