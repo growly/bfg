@@ -118,8 +118,8 @@ sudo ldconfig
 > [!WARNING]
 > You must build RE2 against the Abseil library you just installed in the
 > previous step. Otherwise the wrong version of Abseil might be installed by
-> your package manager and you will have a nightmare trying to link this program
-> later.
+> your package manager as a dependency of libre2, and you will have a nightmare
+> trying to link `bfg` later.
 
 
 ```
