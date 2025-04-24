@@ -69,6 +69,9 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
     layout->MakeVia(
         pfet_generator_->DiffConnectionLayer(),
         pfet_generator_->ViaLocation(positions[i]));
+    layout->MakeVia(
+        nfet_generator_->DiffConnectionLayer(),
+        nfet_generator_->ViaLocation(positions[i]));
   }
 
   return layout.release();

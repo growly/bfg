@@ -58,7 +58,7 @@ geometry::Point Sky130SimpleTransistor::ViaLocation (
   int64_t left_wing = DiffWing(geometry::Compass::LEFT);
   int64_t right_wing = DiffWing(geometry::Compass::RIGHT);
   int64_t poly_width = TransistorLength();
-  //int64_t diff_height = TransistorWidth();
+  int64_t diff_height = TransistorWidth();
 
   const auto &dcon_rules = db.Rules(DiffConnectionLayer());
   int64_t via_width = dcon_rules.via_width;
@@ -73,9 +73,12 @@ geometry::Point Sky130SimpleTransistor::ViaLocation (
       parameters_.stacks_left ?  0 : via_centre_to_diff_edge);
   int64_t x_right = lower_left.x() + diff_width - (
       parameters_.stacks_right ? 0 : via_centre_to_diff_edge);
-  int64_t y_lower = lower_left.y() + poly_height - via_centre_to_diff_edge;
-  int64_t y_middle = lower_left.y() + poly_height / 2;
-  int64_t y_upper = lower_left.y() + poly_height - via_centre_to_diff_edge;
+
+  // y-coordinate of the lower-left point on the diff.
+  int64_t diff_y_ll = origin_.y() + diff_y_min_;
+  int64_t y_lower = diff_y_ll + via_centre_to_diff_edge;
+  int64_t y_middle = diff_y_ll + diff_height / 2;
+  int64_t y_upper = diff_y_ll + diff_height - via_centre_to_diff_edge;
 
   switch (via_position) {
     case ViaPosition::LEFT_DIFF_LOWER:
