@@ -52,7 +52,7 @@ geometry::Point Sky130SimpleTransistor::LowerLeft() const {
 
 geometry::Point Sky130SimpleTransistor::ViaLocation (
     const ViaPosition &via_position) const {
-  geometry::Point lower_left = LowerLeft();
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
   int64_t poly_height = static_cast<int64_t>(PolyHeight());
   int64_t left_wing = DiffWing(geometry::Compass::LEFT);
@@ -60,30 +60,43 @@ geometry::Point Sky130SimpleTransistor::ViaLocation (
   int64_t poly_width = TransistorLength();
   //int64_t diff_height = TransistorWidth();
 
-  int64_t offset_x = 0;
-  int64_t offset_y = 0;
+  const auto &dcon_rules = db.Rules(DiffConnectionLayer());
+  int64_t via_width = dcon_rules.via_width;
+  int64_t via_height = dcon_rules.via_height;
+  int64_t via_centre_to_diff_edge = db.Rules(
+      DiffConnectionLayer(), DiffLayer()).min_enclosure +
+      via_width / 2;
+  int64_t diff_width = left_wing + right_wing + poly_width;
+
+  geometry::Point lower_left = LowerLeft();
+  int64_t x_left = lower_left.x() + (
+      parameters_.stacks_left ?  0 : via_centre_to_diff_edge);
+  int64_t x_right = lower_left.x() + diff_width - (
+      parameters_.stacks_right ? 0 : via_centre_to_diff_edge);
+  int64_t y_lower = lower_left.y() + poly_height - via_centre_to_diff_edge;
+  int64_t y_middle = lower_left.y() + poly_height / 2;
+  int64_t y_upper = lower_left.y() + poly_height - via_centre_to_diff_edge;
 
   switch (via_position) {
-    case ViaPosition::LEFT_DIFF_MIDDLE:
-      offset_x = parameters_.stacks_left ? 0 : left_wing / 2;
-      offset_y = poly_height / 2;
-      break;
-    case ViaPosition::RIGHT_DIFF_MIDDLE:
-      offset_x = left_wing + poly_width + (
-          parameters_.stacks_right ? right_wing : right_wing / 2);
-      offset_y = poly_height / 2;
-      break;
-    case ViaPosition::LEFT_DIFF_UPPER:
     case ViaPosition::LEFT_DIFF_LOWER:
-    case ViaPosition::RIGHT_DIFF_UPPER:
+      return {x_left, y_lower};
+    case ViaPosition::LEFT_DIFF_MIDDLE:
+      return {x_left, y_middle};
+    case ViaPosition::LEFT_DIFF_UPPER:
+      return {x_left, y_upper};
     case ViaPosition::RIGHT_DIFF_LOWER:
+      return {x_right, y_lower};
+    case ViaPosition::RIGHT_DIFF_MIDDLE:
+      return {x_right, y_middle};
+    case ViaPosition::RIGHT_DIFF_UPPER:
+      return {x_right, y_upper};
     case ViaPosition::POLY_UPPER:
     case ViaPosition::POLY_MIDDLE:
     case ViaPosition::POLY_LOWER:
     default:
       LOG(FATAL) << "Unsupported ViaPosition: " << via_position;
   }
-  return lower_left + geometry::Point(offset_x, offset_y);
+  return origin_;
 }
 
 std::string Sky130SimpleTransistor::DiffLayer() const {

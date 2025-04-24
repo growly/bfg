@@ -54,6 +54,23 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
     layout->AddRectangle(PMOSBounds().WithPadding(nwell_margin));
   }
 
+  std::vector<Sky130SimpleTransistor::ViaPosition> positions = {
+    Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_UPPER,
+    Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_MIDDLE,
+    Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_LOWER,
+    //Sky130SimpleTransistor::ViaPosition::POLY_UPPER,
+    //Sky130SimpleTransistor::ViaPosition::POLY_MIDDLE,
+    //Sky130SimpleTransistor::ViaPosition::POLY_LOWER,
+    Sky130SimpleTransistor::ViaPosition::RIGHT_DIFF_UPPER,
+    Sky130SimpleTransistor::ViaPosition::RIGHT_DIFF_MIDDLE,
+    Sky130SimpleTransistor::ViaPosition::RIGHT_DIFF_LOWER
+  };
+  for (size_t i = 0; i < positions.size(); ++i) {
+    layout->MakeVia(
+        pfet_generator_->DiffConnectionLayer(),
+        pfet_generator_->ViaLocation(positions[i]));
+  }
+
   return layout.release();
 }
 
