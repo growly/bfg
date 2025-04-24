@@ -2,11 +2,13 @@
 #define GEOMETRY_GROUP_H_
 
 #include <vector>
+#include <optional>
+
+#include "rectangle.h"
 
 namespace bfg {
 namespace geometry {
 
-class Rectangle;
 class Polygon;
 class Port;
 class PolyLine;
@@ -19,42 +21,47 @@ class Group {
  public:
   Group() = default;
 
-  void Add(geometry::Rectangle *rectangle);
-  void Add(geometry::Polygon *polygon);
-  void Add(geometry::Port *port);
-  void Add(geometry::PolyLine *poly_line);
+  Group(const std::vector<Rectangle*> rectangles)
+      : rectangles_(rectangles) {}
 
-  std::vector<geometry::Rectangle*> &rectangles() {
+  void Add(Rectangle *rectangle);
+  void Add(Polygon *polygon);
+  void Add(Port *port);
+  void Add(PolyLine *poly_line);
+
+  std::optional<Rectangle> GetBoundingBox() const;
+
+  std::vector<Rectangle*> &rectangles() {
     return rectangles_;
   }
-  std::vector<geometry::Polygon*> &polygons() {
+  std::vector<Polygon*> &polygons() {
     return polygons_;
   }
-  std::vector<geometry::Port*> &ports() {
+  std::vector<Port*> &ports() {
     return ports_;
   }
-  std::vector<geometry::PolyLine*> &poly_lines() {
+  std::vector<PolyLine*> &poly_lines() {
     return poly_lines_;
   }
 
-  const std::vector<geometry::Rectangle*> &rectangles() const {
+  const std::vector<Rectangle*> &rectangles() const {
     return rectangles_;
   }
-  const std::vector<geometry::Polygon*> &polygons() const {
+  const std::vector<Polygon*> &polygons() const {
     return polygons_;
   }
-  const std::vector<geometry::Port*> &ports() const {
+  const std::vector<Port*> &ports() const {
     return ports_;
   }
-  const std::vector<geometry::PolyLine*> &poly_lines() const {
+  const std::vector<PolyLine*> &poly_lines() const {
     return poly_lines_;
   }
 
  private:
-  std::vector<geometry::Rectangle*> rectangles_;
-  std::vector<geometry::Polygon*> polygons_;
-  std::vector<geometry::Port*> ports_;
-  std::vector<geometry::PolyLine*> poly_lines_;
+  std::vector<Rectangle*> rectangles_;
+  std::vector<Polygon*> polygons_;
+  std::vector<Port*> ports_;
+  std::vector<PolyLine*> poly_lines_;
 };
 
 }   // namespace geometry

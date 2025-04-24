@@ -38,12 +38,28 @@ class Sky130SimpleTransistor : public Atom {
     uint64_t length_nm = 150;
     bool stacks_left = false;
     bool stacks_right = false;
+
+    // TODO(aryap): Should have the option of forcing the diff width either side
+    // (left and right) of the poly, since that isn't standard in at least
+    // Sky130.
   };
 
   enum Alignment {
     POLY_TOP_CENTRE,
     POLY_BOTTOM_CENTRE
   };
+
+  Sky130SimpleTransistor(
+      const Parameters &parameters, DesignDatabase *design_db)
+      : Atom(design_db),
+        parameters_(parameters),
+        origin_({0, 0}),
+        poly_y_min_(0),
+        poly_y_max_(0),
+        diff_y_min_(0),
+        diff_y_max_(0) {
+    ComputeGeometries();
+  }
 
   // This makes sense as a feature of this class and not of Atoms, or Layouts,
   // in general, because the alignment points are meaningful only in the
@@ -106,10 +122,10 @@ class Sky130SimpleTransistor : public Atom {
 
   int64_t DiffWing(const geometry::Compass &direction) const;
 
-  Sky130SimpleTransistor(
-      const Parameters &parameters, DesignDatabase *design_db)
-      : Atom(design_db),
-        parameters_(parameters) {}
+  // This actually just returns the diffusion rectangle, but because the layout
+  // object isn't generated until GenerateLayout is called this should be
+  // treated as copy of the bounds.
+  const geometry::Rectangle DiffBounds() const;
 
   // This will return the transistor as a single Cell, which is usually
   // annoying. Prefer calling GenerateLayout and GenerateCircuit to flatly merge
@@ -119,15 +135,30 @@ class Sky130SimpleTransistor : public Atom {
   bfg::Layout *GenerateLayout() {
     return GenerateLayout(nullptr, nullptr);
   }
+  // If given, **poly and **diff will be pointed to the poly and diff shapes in
+  // the layout, respectively.
   bfg::Layout *GenerateLayout(
       geometry::Polygon **poly, geometry::Rectangle **diff);
   bfg::Circuit *GenerateCircuit();
 
  private:
+  void ComputeGeometries();
+
   Parameters parameters_;
 
   std::optional<Alignment> alignment_;
   std::optional<geometry::Point> alignment_point_;
+
+  // Defaults to (0, 0).
+  geometry::Point origin_;
+
+  // These are all extensions relative to the origin, and are poorly named. e.g.
+  // 'poly_y_min_' is actually the offset from the origin_.y() point to the
+  // bottom of the poly. TODO(aryap): Refactor, obviously.
+  int64_t poly_y_min_;
+  int64_t poly_y_max_;
+  int64_t diff_y_min_;
+  int64_t diff_y_max_;
 };
 
 }  // namespace atoms

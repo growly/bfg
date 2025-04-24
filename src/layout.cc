@@ -3,6 +3,7 @@
 #include <optional>
 #include <sstream>
 #include <absl/strings/str_cat.h>
+#include <glog/logging.h>
 
 #include "cell.h"
 #include "geometry/layer.h"
@@ -11,6 +12,7 @@
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 #include "poly_line_inflator.h"
+
 
 #include "vlsir/layout/raw.pb.h"
 

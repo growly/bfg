@@ -18,6 +18,7 @@
 #include "cell.h"
 #include "layout.h"
 #include "atoms/sky130_switch_complex.h"
+#include "atoms/sky130_transmission_gate.h"
 #include "atoms/sky130_mux.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
@@ -125,13 +126,27 @@ int main(int argc, char **argv) {
 
   bfg::atoms::Sky130SwitchComplex::Parameters sc_params;
   bfg::atoms::Sky130SwitchComplex sc_generator(sc_params, &design_db);
-  bfg::Cell *switch_complex = sc_generator.GenerateIntoDatabase("switch_complex");
+  bfg::Cell *switch_complex = sc_generator.GenerateIntoDatabase(
+      "switch_complex");
 
   design_db.WriteTop(*switch_complex,
                      "sky130_switch_complex.library.pb",
                      "sky130_switch_complex.package.pb",
                      FLAGS_write_text_format);
-  //return EXIT_SUCCESS;
+
+  bfg::atoms::Sky130TransmissionGate::Parameters tg_params;
+  bfg::atoms::Sky130TransmissionGate tg_generator(tg_params, &design_db);
+  bfg::Cell *transmission_gate = tg_generator.GenerateIntoDatabase(
+      "transmission_gate");
+
+  design_db.WriteTop(*transmission_gate,
+                     "sky130_transmission_gate.library.pb",
+                     "sky130_transmission_gate.package.pb",
+                     FLAGS_write_text_format);
+
+  Gf180McuMuxExperiment();
+
+  return EXIT_SUCCESS;
 
   std::string top_name = "lut";
   bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);
@@ -151,8 +166,6 @@ int main(int argc, char **argv) {
                      FLAGS_output_library,
                      FLAGS_output_package,
                      FLAGS_write_text_format);
-
-  //Gf180McuMuxExperiment();
 
   return EXIT_SUCCESS;
 }

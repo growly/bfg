@@ -55,6 +55,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/design_database.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
+  ${PROJECT_SOURCE_DIR}/src/scoped_layer.cc
   ${PROJECT_SOURCE_DIR}/src/memory_bank.cc
   ${PROJECT_SOURCE_DIR}/src/parameter.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
@@ -86,6 +87,7 @@ set(SKY130_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_tap.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_switch_complex.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate.cc
 )
 
 set(GF180_ATOMS_SRC

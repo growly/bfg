@@ -23,31 +23,31 @@ void Sky130SimpleTransistor::AlignTransistorPartTo(
     const Alignment &alignment, const geometry::Point &point) {
   alignment_ = alignment;
   alignment_point_ = point;
-}
 
-geometry::Point Sky130SimpleTransistor::LowerLeft() const {
   if (alignment_ && alignment_point_) {
     switch (*alignment_) {
       case POLY_TOP_CENTRE:
-        return geometry::Point(
-            alignment_point_->x() - TransistorLength() / 2 -
-                DiffWing(geometry::Compass::LEFT),
-            alignment_point_->y() - PolyHeight());
+        origin_ = geometry::Point(
+            alignment_point_->x(),
+            alignment_point_->y() - static_cast<int64_t>(PolyHeight() / 2));
         break;
       case POLY_BOTTOM_CENTRE:
-        return geometry::Point(
-            alignment_point_->x() - TransistorLength() / 2 -
-                DiffWing(geometry::Compass::LEFT),
-            alignment_point_->y());
+        origin_ = geometry::Point(
+            alignment_point_->x(),
+            alignment_point_->y() + static_cast<int64_t>(PolyHeight() / 2));
         break;
       default:
         LOG(FATAL) << "Unsupported alignment: " << *alignment_;
     }
   }
-  // Assumes poly centred on actual (0, 0) origin.
+}
+
+geometry::Point Sky130SimpleTransistor::LowerLeft() const {
+  // The origin is the centre of the poly and diff.
   return geometry::Point(
-      -(DiffWing(geometry::Compass::LEFT) + TransistorLength() / 2),
-      -static_cast<int64_t>(PolyHeight()) / 2);
+      origin_.x() - (
+          DiffWing(geometry::Compass::LEFT) + TransistorLength() / 2),
+      origin_.y() - static_cast<int64_t>(PolyHeight()) / 2);
 }
 
 geometry::Point Sky130SimpleTransistor::ViaLocation (
@@ -158,6 +158,38 @@ int64_t Sky130SimpleTransistor::DiffWing(
   return diff_wing;
 }
 
+void Sky130SimpleTransistor::ComputeGeometries() {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &poly_diff_rules = db.Rules("poly.drawing", DiffLayer());
+
+  // The "width" of the transistor poly is the "length" of the transistor, and
+  // vice versa.
+  int64_t diff_height = TransistorWidth();
+
+  // These assume an origin at (0, 0).
+  poly_y_min_ = -static_cast<int64_t>(PolyHeight()) / 2;
+  poly_y_max_ = poly_y_min_ + static_cast<int64_t>(PolyHeight());
+
+  diff_y_min_ = poly_y_min_ + poly_diff_rules.min_enclosure;
+  diff_y_max_ = diff_y_min_ + TransistorWidth();
+}
+
+const geometry::Rectangle Sky130SimpleTransistor::DiffBounds() const {
+  // The "width" of the transistor poly is the "length" of the transistor, and
+  // vice versa.
+  int64_t poly_width = TransistorLength();
+  return geometry::Rectangle(
+      {
+        origin_.x() - poly_width / 2 - DiffWing(geometry::Compass::LEFT),
+        origin_.y() + diff_y_min_
+      },
+      {
+        origin_.x() + poly_width / 2 + DiffWing(geometry::Compass::RIGHT),
+        origin_.y() + diff_y_max_
+      }
+  );
+}
+
 uint64_t Sky130SimpleTransistor::PolyHeight() const {
   const auto &poly_diff_rules =
       design_db_->physical_db().Rules("poly.drawing", DiffLayer());
@@ -167,44 +199,21 @@ uint64_t Sky130SimpleTransistor::PolyHeight() const {
 // The origin will the the centre of the poly.
 bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
     geometry::Polygon **poly, geometry::Rectangle **diff) {
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
-
-  const auto &poly_diff_rules = db.Rules("poly.drawing", DiffLayer());
-
-  int64_t x_pos = 0;
-  // The "width" of the transistor poly is the "length" of the transistor, and
-  // vice versa.
-  int64_t poly_width = TransistorLength();
-  int64_t diff_height = TransistorWidth();
-
-  int64_t poly_y_min = -PolyHeight() / 2;
-  int64_t poly_y_max = poly_y_min + PolyHeight();
-
-  int64_t diff_y_min = poly_y_min + poly_diff_rules.min_enclosure;
-  int64_t diff_y_max = diff_y_min + diff_height;
+  std::unique_ptr<bfg::Layout> layout(
+      new bfg::Layout(design_db_->physical_db()));
 
   layout->SetActiveLayerByName("poly.drawing");
-  geometry::PolyLine line = geometry::PolyLine(
-      {{x_pos, poly_y_min}, {x_pos, poly_y_max}});
-  line.SetWidth(poly_width);
+  geometry::PolyLine line = geometry::PolyLine({
+      origin_ + geometry::Point(0, poly_y_min_),
+      origin_ + geometry::Point(0, poly_y_max_)
+  });
+  line.SetWidth(TransistorLength());
   geometry::Polygon *poly_polygon = layout->AddPolyLine(line);
   layout->SavePoint("poly_top_centre", line.End());
   layout->SavePoint("poly_bottom_centre", line.start());
 
   layout->SetActiveLayerByName(DiffLayer());
-  geometry::Rectangle *diff_rectangle =
-      layout->AddRectangle(geometry::Rectangle(
-          {
-            x_pos - poly_width / 2 - DiffWing(geometry::Compass::LEFT),
-            diff_y_min
-          },
-          {
-            x_pos + poly_width / 2 + DiffWing(geometry::Compass::RIGHT),
-            diff_y_max
-          }
-      )
-  );
+  geometry::Rectangle *diff_rectangle = layout->AddRectangle(DiffBounds());
 
   if (diff) {
     *diff = diff_rectangle;

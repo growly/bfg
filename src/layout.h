@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "physical_properties_database.h"
+#include "scoped_layer.h"
 #include "geometry/instance.h"
 #include "geometry/layer.h"
 #include "geometry/manipulable.h"
