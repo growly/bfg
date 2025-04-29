@@ -82,7 +82,7 @@ sudo ldconfig
   popd
   ```
 
-[glog/glog](https://github.com/google/glog)
+[google/glog](https://github.com/google/glog)
 
   ```
   git clone https://github.com/google/glog.git
