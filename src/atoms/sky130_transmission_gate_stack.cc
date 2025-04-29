@@ -25,7 +25,8 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   const size_t num_gates = parameters_.net_sequence.empty() ?
       0 : (parameters_.net_sequence.size() - 1) / 2;
 
-  std::optional<geometry::Rectangle> all_pdiffs;
+  std::optional<geometry::Rectangle> pdiff_cover;
+  std::optional<geometry::Rectangle> ndiff_cover;
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
@@ -33,8 +34,8 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       .stacks_right = i < num_gates - 1,
       .cell_height_nm = parameters_.height_nm,
       .stacking_pitch_nm = parameters_.horizontal_pitch_nm,
-      .p_tab_position = geometry::Compass::UPPER_LEFT,
-      .n_tab_position = geometry::Compass::UPPER_LEFT
+      .p_tab_position = geometry::Compass::UPPER,
+      .n_tab_position = geometry::Compass::LOWER
     };
 
     Sky130TransmissionGate generator =
@@ -65,10 +66,17 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
     geometry::Point pmos_ll = instance->GetPointOrDie("pmos.diff_lower_left");
     geometry::Point pmos_ur = instance->GetPointOrDie("pmos.diff_upper_right");
-    if (!all_pdiffs) {
-      all_pdiffs = geometry::Rectangle(pmos_ll, pmos_ur);
+    if (!pdiff_cover) {
+      pdiff_cover = geometry::Rectangle(pmos_ll, pmos_ur);
     } else {
-      all_pdiffs->ExpandToCover(geometry::Rectangle(pmos_ll, pmos_ur));
+      pdiff_cover->ExpandToCover(geometry::Rectangle(pmos_ll, pmos_ur));
+    }
+    geometry::Point nmos_ll = instance->GetPointOrDie("nmos.diff_lower_left");
+    geometry::Point nmos_ur = instance->GetPointOrDie("nmos.diff_upper_right");
+    if (!ndiff_cover) {
+      ndiff_cover = geometry::Rectangle(nmos_ll, nmos_ur);
+    } else {
+      ndiff_cover->ExpandToCover(geometry::Rectangle(pmos_ll, pmos_ur));
     }
 
     geometry::Point top = instance->GetPointOrDie("pmos.via_left_diff_upper");
@@ -85,12 +93,19 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   }
 
   // Add nwell.
-  if (all_pdiffs) {
-    ScopedLayer layer(cell->layout(), "nwell.drawing");
-
-    int64_t nwell_margin = db.Rules(
-        "nwell.drawing", "pdiff.drawing").min_enclosure;
-    cell->layout()->AddRectangle(all_pdiffs->WithPadding(nwell_margin));
+  if (pdiff_cover) {
+    {
+      ScopedLayer layer(cell->layout(), "psdm.drawing");
+      int64_t psdm_margin = db.Rules(
+          "psdm.drawing", "pdiff.drawing").min_enclosure;
+      cell->layout()->AddRectangle(pdiff_cover->WithPadding(psdm_margin));
+    }
+    {
+      ScopedLayer layer(cell->layout(), "nwell.drawing");
+      int64_t nwell_margin = db.Rules(
+          "nwell.drawing", "pdiff.drawing").min_enclosure;
+      cell->layout()->AddRectangle(pdiff_cover->WithPadding(nwell_margin));
+    }
   }
 
 //  cell->SetLayout(GenerateLayout());

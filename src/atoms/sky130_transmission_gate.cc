@@ -44,6 +44,11 @@ geometry::Rectangle *Sky130TransmissionGate::AddPolyTab(
       tab_ll = geometry::Point(poly_ll.x(), poly_ur.y());
       tab_ur = tab_ll + tab_diagonal;
       break;
+    case geometry::Compass::UPPER:
+      tab_ll = geometry::Point((poly_ll.x() + poly_ur.x() - tab_width) / 2,
+                               poly_ur.y());
+      tab_ur = tab_ll + tab_diagonal;
+      break;
     case geometry::Compass::LOWER_LEFT:
       tab_ur = geometry::Point(poly_ur.x(), poly_ll.y());
       tab_ll = tab_ur - tab_diagonal;
@@ -51,6 +56,11 @@ geometry::Rectangle *Sky130TransmissionGate::AddPolyTab(
     case geometry::Compass::LOWER_RIGHT:
       tab_ll = poly_ll - geometry::Vector(0, tab_height); 
       tab_ur = tab_ll + tab_diagonal;
+      break;
+    case geometry::Compass::LOWER:
+      tab_ur = geometry::Point((poly_ll.x() + poly_ur.x() + tab_width) / 2,
+                               poly_ll.y());
+      tab_ll = tab_ur - tab_diagonal;
       break;
     default:
       LOG(FATAL) << "Unsupported poly tab position: " << position;
