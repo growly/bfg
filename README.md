@@ -11,7 +11,7 @@ The easiest and safest way to build and run ```bfg``` is via Docker:
 ```
 docker build bfg/router:latest -f docker/Dockerfile .
 
-docker-compose up -d docker/docker-compose.yml
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 ### Prerequisites
