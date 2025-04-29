@@ -2,14 +2,29 @@
 
 #include "../circuit.h"
 #include "../layout.h"
+#include "../scoped_layer.h"
 #include "../geometry/compass.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/point.h"
+#include "../geometry/vector.h"
 #include "../geometry/poly_line.h"
 #include "../geometry/polygon.h"
 
 namespace bfg {
 namespace atoms {
+
+const std::map<Sky130SimpleTransistor::ViaPosition, std::string>
+Sky130SimpleTransistor::kSavedPointNameByViaPosition = {
+  {LEFT_DIFF_UPPER, "via_left_diff_upper"},
+  {LEFT_DIFF_MIDDLE, "via_left_diff_middle"},
+  {LEFT_DIFF_LOWER, "via_left_diff_lower"},
+  //{POLY_UPPER, "via_poly_upper"},
+  //{POLY_MIDDLE, "via_poly_middle"},
+  //{POLY_LOWER, "via_poly_lower"},
+  {RIGHT_DIFF_UPPER, "via_right_diff_upper"},
+  {RIGHT_DIFF_MIDDLE, "via_right_diff_middle"},
+  {RIGHT_DIFF_LOWER, "via_right_diff_lower"}
+};
 
 bfg::Cell *Sky130SimpleTransistor::Generate() {
   std::unique_ptr<bfg::Cell> cell(
@@ -20,34 +35,28 @@ bfg::Cell *Sky130SimpleTransistor::Generate() {
 }
 
 void Sky130SimpleTransistor::AlignTransistorPartTo(
-    const Alignment &alignment, const geometry::Point &point) {
-  alignment_ = alignment;
-  alignment_point_ = point;
-
-  if (alignment_ && alignment_point_) {
-    switch (*alignment_) {
-      case POLY_TOP_CENTRE:
-        origin_ = geometry::Point(
-            alignment_point_->x(),
-            alignment_point_->y() - static_cast<int64_t>(PolyHeight() / 2));
-        break;
-      case POLY_BOTTOM_CENTRE:
-        origin_ = geometry::Point(
-            alignment_point_->x(),
-            alignment_point_->y() + static_cast<int64_t>(PolyHeight() / 2));
-        break;
-      default:
-        LOG(FATAL) << "Unsupported alignment: " << *alignment_;
-    }
+    const Landmark &landmark, const geometry::Point &point) {
+  // Set the origin, which should be in the middle of the gate, according to the
+  // which alignment point we're using and where we're aligning that point to:
+  switch (landmark) {
+    case POLY_TOP_CENTRE:
+      origin_ = point + geometry::Vector(0, poly_y_min_);
+      break;
+    case POLY_BOTTOM_CENTRE:
+      origin_ = point + geometry::Vector(0, poly_y_max_);
+      break;
+    default:
+      LOG(FATAL) << "Unsupported alignment: " << landmark;
   }
+  LOG(INFO) << "Origin set so that " << landmark << " is at " << point;
 }
 
 geometry::Point Sky130SimpleTransistor::LowerLeft() const {
-  // The origin is the centre of the poly and diff.
+  // The origin is the centre of the gate (overlap of the poly and diff).
   return geometry::Point(
       origin_.x() - (
           DiffWing(geometry::Compass::LEFT) + TransistorLength() / 2),
-      origin_.y() - static_cast<int64_t>(PolyHeight()) / 2);
+      origin_.y() + poly_y_min_);
 }
 
 geometry::Point Sky130SimpleTransistor::ViaLocation (
@@ -102,6 +111,22 @@ geometry::Point Sky130SimpleTransistor::ViaLocation (
   return origin_;
 }
 
+geometry::Point Sky130SimpleTransistor::PolyTopCentre() const {
+  return {origin_.x(), origin_.y() + poly_y_max_};
+}
+
+geometry::Point Sky130SimpleTransistor::PolyBottomCentre() const {
+  return {origin_.x(), origin_.y() + poly_y_min_};
+}
+
+geometry::Point Sky130SimpleTransistor::PolyLowerLeft() const {
+  return {origin_.x() - TransistorLength() / 2, origin_.y() + poly_y_min_};
+
+}
+geometry::Point Sky130SimpleTransistor::PolyUpperRight() const {
+  return {origin_.x() + TransistorLength() / 2, origin_.y() + poly_y_max_};
+}
+
 std::string Sky130SimpleTransistor::DiffLayer() const {
   switch (parameters_.fet_type) {
     case Parameters::FetType::PMOS:
@@ -133,7 +158,7 @@ std::string Sky130SimpleTransistor::DiffConnectionLayer() const {
 int64_t Sky130SimpleTransistor::DiffWing(
     const geometry::Compass &direction) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  const auto &poly_rules = db.Rules("poly.drawing");
+  const auto &poly_rules = db.Rules(PolyLayer());
 
   bool stacks = false;
   switch (direction) {
@@ -148,15 +173,21 @@ int64_t Sky130SimpleTransistor::DiffWing(
       return 0;
   }
   if (stacks) {
-    return (poly_rules.min_pitch - TransistorLength()) / 2;
+    int64_t wing = (poly_rules.min_pitch - TransistorLength()) / 2;
+    if (parameters_.stacking_pitch_nm) {
+      int64_t stacking_pitch =
+          db.ToInternalUnits(*parameters_.stacking_pitch_nm);
+      wing = std::max(wing, (stacking_pitch - TransistorLength()) / 2);
+    }
+    return wing;
   }
 
   std::string diff_layer = DiffLayer();
   std::string dcon_layer = DiffConnectionLayer();
   const auto &dcon_rules = db.Rules(dcon_layer);
   const auto &diff_dcon_rules = db.Rules(diff_layer, dcon_layer);
-  const auto &poly_dcon_rules = db.Rules("poly.drawing", dcon_layer);
-  const auto &poly_diff_rules = db.Rules("poly.drawing", diff_layer);
+  const auto &poly_dcon_rules = db.Rules(PolyLayer(), dcon_layer);
+  const auto &poly_diff_rules = db.Rules(PolyLayer(), diff_layer);
   int64_t via_side = dcon_rules.via_width;
 
   //      poly    poly
@@ -225,8 +256,6 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
   });
   line.SetWidth(TransistorLength());
   geometry::Polygon *poly_polygon = layout->AddPolyLine(line);
-  layout->SavePoint("poly_top_centre", line.End());
-  layout->SavePoint("poly_bottom_centre", line.start());
 
   layout->SetActiveLayerByName(DiffLayer());
   geometry::Rectangle *diff_rectangle = layout->AddRectangle(DiffBounds());
@@ -238,28 +267,41 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
     *poly = poly_polygon;
   }
 
-  // Align.
-  if (alignment_ && alignment_point_) {
-    geometry::Point reference;
-    switch (*alignment_) {
-      case Alignment::POLY_BOTTOM_CENTRE:
-        reference = layout->GetPointOrDie("poly_bottom_centre");
-        break;
-      case Alignment::POLY_TOP_CENTRE:
-        reference = layout->GetPointOrDie("poly_top_centre");
-        break;
-      default:
-        LOG(FATAL) << "Unsupported alignment: " << *alignment_;
-    }
-    layout->AlignPointTo(reference, *alignment_point_);
+  // Save points of interest into the Layout.
+  layout->SavePoint("poly_top_centre", line.End());
+  layout->SavePoint("poly_bottom_centre", line.start());
+  for (const auto &entry : kSavedPointNameByViaPosition) {
+    layout->SavePoint(entry.second, ViaLocation(entry.first));
   }
-       
+  layout->SavePoint("diff_lower_left", diff_rectangle->lower_left());
+  layout->SavePoint("diff_upper_right", diff_rectangle->upper_right());
+
   return layout.release();
 }
 
+std::string Sky130SimpleTransistor::CircuitCellName() const {
+  switch (parameters_.fet_type) {
+    case Parameters::FetType::PMOS:
+      return "sky130_fd_pr__pfet_01v8";
+    case Parameters::FetType::PMOS_HVT:
+      return "sky130_fd_pr__pfet_01v8_hvt";
+    case Parameters::FetType::PMOS_LVT:
+      return "sky130_fd_pr__pfet_01v8_lvt";
+    case Parameters::FetType::NMOS:
+      return "sky130_fd_pr__nfet_01v8";
+    case Parameters::FetType::NMOS_HVT:
+      return "sky130_fd_pr__nfet_01v8_hvt";
+    case Parameters::FetType::NMOS_LVT:
+    default:
+      return "sky130_fd_pr__nfet_01v8_lvt";
+  }
+}
+
 bfg::Circuit *Sky130SimpleTransistor::GenerateCircuit() {
-  std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
-  // TODO(aryap): This.
+  std::unique_ptr<bfg::Circuit> circuit(new Circuit());
+  Circuit *parent_cell =
+      design_db_->FindCellOrDie("sky130", CircuitCellName())->circuit();
+  circuit::Instance *nfet_0 = circuit->AddInstance("fet", parent_cell);
   return circuit.release();
 }
 

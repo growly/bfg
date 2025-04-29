@@ -32,10 +32,12 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> cell_height_nm = 2720; //std::nullopt;
 
-    bool draw_nwell = false;
-  };
+    std::optional<uint64_t> stacking_pitch_nm;
 
-  enum Alignment {
+    bool draw_nwell = false;
+
+    std::optional<geometry::Compass> p_tab_position;
+    std::optional<geometry::Compass> n_tab_position;
   };
 
   Sky130TransmissionGate(
@@ -49,6 +51,7 @@ class Sky130TransmissionGate : public Atom {
       .length_nm = parameters_.n_length_nm,
       .stacks_left = parameters_.stacks_left,
       .stacks_right = parameters_.stacks_right,
+      .stacking_pitch_nm = parameters_.stacking_pitch_nm
     };
 
     nfet_generator_.reset(new Sky130SimpleTransistor(nfet_params, design_db_));
@@ -59,6 +62,7 @@ class Sky130TransmissionGate : public Atom {
       .length_nm = parameters_.p_length_nm,
       .stacks_left = parameters_.stacks_left,
       .stacks_right = parameters_.stacks_right,
+      .stacking_pitch_nm = parameters_.stacking_pitch_nm
     }; 
  
     pfet_generator_.reset(new Sky130SimpleTransistor(pfet_params, design_db_));
@@ -70,6 +74,41 @@ class Sky130TransmissionGate : public Atom {
   const geometry::Rectangle NMOSBounds() const {
     return nfet_generator_->DiffBounds();
   }
+
+  const Sky130SimpleTransistor &pfet_generator() const {
+    return *pfet_generator_;
+  }
+  const Sky130SimpleTransistor &nfet_generator() const {
+    return *nfet_generator_;
+  }
+
+  // Adds a tab to the poly for a via there:
+  //
+  //   +--------+
+  //   |   A    |  < tab to the top left
+  //   +--------+
+  //      |     |
+  // -----|     |-----
+  //      |     |     
+  //      |     |     
+  //      |     |     
+  //      |     |     
+  //      |     |     
+  // -----|     |-----
+  //      |     |
+  //      +--------+
+  //      |    B   |  < tab to the bottom right
+  //      +--------+
+  //
+  // Returns the point at centre of where the tab will be (connection point for
+  // via).
+  // FIXME(aryap): Making this a function of the transistor class itself adds
+  // complexity to its contract and removes flexibility. If it's adding
+  // convenience, it's not clear what that is yet. So move this out and maybe
+  // readd it if necessary later.
+  geometry::Rectangle *AddPolyTab(const Sky130SimpleTransistor &fet_generator,
+                                  const geometry::Compass &position,
+                                  Layout *layout);
 
   // This will return the transistor as a single Cell, which is usually
   // annoying. Prefer calling GenerateLayout and GenerateCircuit to flatly merge

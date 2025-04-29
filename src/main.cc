@@ -19,6 +19,7 @@
 #include "layout.h"
 #include "atoms/sky130_switch_complex.h"
 #include "atoms/sky130_transmission_gate.h"
+#include "atoms/sky130_transmission_gate_stack.h"
 #include "atoms/sky130_mux.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
@@ -124,24 +125,25 @@ int main(int argc, char **argv) {
     design_db.LoadPackage(external_circuits_pb);
   }
 
-  bfg::atoms::Sky130SwitchComplex::Parameters sc_params;
-  bfg::atoms::Sky130SwitchComplex sc_generator(sc_params, &design_db);
-  bfg::Cell *switch_complex = sc_generator.GenerateIntoDatabase(
-      "switch_complex");
+  //bfg::atoms::Sky130SwitchComplex::Parameters sc_params;
+  //bfg::atoms::Sky130SwitchComplex sc_generator(sc_params, &design_db);
+  //bfg::Cell *switch_complex = sc_generator.GenerateIntoDatabase(
+  //    "switch_complex");
 
-  design_db.WriteTop(*switch_complex,
-                     "sky130_switch_complex.library.pb",
-                     "sky130_switch_complex.package.pb",
-                     FLAGS_write_text_format);
+  //design_db.WriteTop(*switch_complex,
+  //                   "sky130_switch_complex.library.pb",
+  //                   "sky130_switch_complex.package.pb",
+  //                   FLAGS_write_text_format);
 
-  bfg::atoms::Sky130TransmissionGate::Parameters tg_params;
-  bfg::atoms::Sky130TransmissionGate tg_generator(tg_params, &design_db);
-  bfg::Cell *transmission_gate = tg_generator.GenerateIntoDatabase(
-      "transmission_gate");
+  bfg::atoms::Sky130TransmissionGateStack::Parameters tg_params = {
+  };
+  bfg::atoms::Sky130TransmissionGateStack tg_generator(tg_params, &design_db);
+  bfg::Cell *transmission_gate_stack = tg_generator.GenerateIntoDatabase(
+      "transmission_gate_stack");
 
-  design_db.WriteTop(*transmission_gate,
-                     "sky130_transmission_gate.library.pb",
-                     "sky130_transmission_gate.package.pb",
+  design_db.WriteTop(*transmission_gate_stack,
+                     "sky130_transmission_gate_stack.library.pb",
+                     "sky130_transmission_gate_stack.package.pb",
                      FLAGS_write_text_format);
 
   Gf180McuMuxExperiment();

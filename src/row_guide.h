@@ -31,6 +31,7 @@ class RowGuide {
         layout_(layout),
         circuit_(circuit),
         design_db(design_db),
+        rotate_instances_(false),
         start_with_tap_(true),
         num_taps_(0),
         distance_to_tap_left_(0),

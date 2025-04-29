@@ -52,7 +52,7 @@ TEST_F(Sky130SimpleTransistorTest,
   // H should be at (250 (610 - 360), 380)
 
   xtor.AlignTransistorPartTo(
-      Sky130SimpleTransistor::Alignment::POLY_BOTTOM_CENTRE,
+      Sky130SimpleTransistor::Landmark::POLY_BOTTOM_CENTRE,
       geometry::Point(0, 0));
   EXPECT_EQ(
       geometry::Point(std::llround(-217.50f), 380),
@@ -82,10 +82,10 @@ TEST_F(Sky130SimpleTransistorTest, LowerLeft) {
 
   EXPECT_EQ(geometry::Point(-360, -380), xtor.LowerLeft());
   xtor.AlignTransistorPartTo(
-      Sky130SimpleTransistor::Alignment::POLY_TOP_CENTRE, origin);
+      Sky130SimpleTransistor::Landmark::POLY_TOP_CENTRE, origin);
   EXPECT_EQ(geometry::Point(-360, -760), xtor.LowerLeft());
   xtor.AlignTransistorPartTo(
-      Sky130SimpleTransistor::Alignment::POLY_BOTTOM_CENTRE, origin);
+      Sky130SimpleTransistor::Landmark::POLY_BOTTOM_CENTRE, origin);
   EXPECT_EQ(geometry::Point(-360, 0), xtor.LowerLeft());
 
   //EXPECT_FALSE(nets.Contains("a"));

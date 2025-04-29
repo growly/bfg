@@ -205,10 +205,12 @@ void RowGuide::Place(
 }
 
 bool RowGuide::NeedsTapLeft(const geometry::Instance &added_instance) const {
+  if (!tap_cell_) return false;
   return NeedsTap(distance_to_tap_left_, added_instance.TilingWidth());
 }
 
 bool RowGuide::NeedsTapRight(const geometry::Instance &added_instance) const {
+  if (!tap_cell_) return false;
   return NeedsTap(distance_to_tap_right_, added_instance.TilingWidth());
 }
 

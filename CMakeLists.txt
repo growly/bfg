@@ -88,6 +88,7 @@ set(SKY130_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_switch_complex.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate_stack.cc
 )
 
 set(GF180_ATOMS_SRC

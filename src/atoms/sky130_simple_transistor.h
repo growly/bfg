@@ -1,4 +1,5 @@
 #ifndef ATOMS_SKY130_SIMPLE_TRANSISTOR_H_
+
 #define ATOMS_SKY130_SIMPLE_TRANSISTOR_H_
 
 #include <cstdint>
@@ -31,6 +32,7 @@ class Sky130SimpleTransistor : public Atom {
       NMOS,
       NMOS_HVT,
       NMOS_LVT
+      // There are also higher-voltage types in Sky130. For now assume 1.8v.
     };
 
     FetType fet_type = FetType::NMOS;
@@ -39,15 +41,34 @@ class Sky130SimpleTransistor : public Atom {
     bool stacks_left = false;
     bool stacks_right = false;
 
+    // If given, this forces the diff extension on stacking sides of the
+    // transistor such that another transistor with the same stacking pitch
+    // would have its poly this many nm away.
+    std::optional<uint64_t> stacking_pitch_nm;
+
     // TODO(aryap): Should have the option of forcing the diff width either side
     // (left and right) of the poly, since that isn't standard in at least
     // Sky130.
   };
 
-  enum Alignment {
+  enum ViaPosition {
+    LEFT_DIFF_UPPER,
+    LEFT_DIFF_MIDDLE,
+    LEFT_DIFF_LOWER,
+    POLY_UPPER,
+    POLY_MIDDLE,
+    POLY_LOWER,
+    RIGHT_DIFF_UPPER,
+    RIGHT_DIFF_MIDDLE,
+    RIGHT_DIFF_LOWER
+  };
+
+  enum Landmark {
     POLY_TOP_CENTRE,
     POLY_BOTTOM_CENTRE
   };
+
+  static const std::map<ViaPosition, std::string> kSavedPointNameByViaPosition;
 
   Sky130SimpleTransistor(
       const Parameters &parameters, DesignDatabase *design_db)
@@ -67,7 +88,9 @@ class Sky130SimpleTransistor : public Atom {
   // in the layout with names and align those. That would be a general
   // solution, but we can do better I think.
   void AlignTransistorPartTo(
-      const Alignment &alignment, const geometry::Point &point);
+      const Landmark &alignment, const geometry::Point &point);
+
+  geometry::Point Locate(const Landmark &alignment);
 
   // Calculates locations of key via positions for convenience:
   //
@@ -91,24 +114,21 @@ class Sky130SimpleTransistor : public Atom {
   // G: Right diff, uppermost (shown stacking)
   // H: Right diff, middle (shown stacking)
   // I: Right diff, lowermost (shown stacking)
-  enum ViaPosition {
-    LEFT_DIFF_UPPER,
-    LEFT_DIFF_MIDDLE,
-    LEFT_DIFF_LOWER,
-    POLY_UPPER,
-    POLY_MIDDLE,
-    POLY_LOWER,
-    RIGHT_DIFF_UPPER,
-    RIGHT_DIFF_MIDDLE,
-    RIGHT_DIFF_LOWER
-  };
   geometry::Point ViaLocation(const ViaPosition &via_position) const;
+
+  geometry::Point PolyTopCentre() const;
+  geometry::Point PolyBottomCentre() const;
+  geometry::Point PolyLowerLeft() const;
+  geometry::Point PolyUpperRight() const;
 
   // Computes the lower left point without generating the layout.
   geometry::Point LowerLeft() const;
 
   std::string DiffLayer() const;
   std::string DiffConnectionLayer() const;
+
+  std::string PolyLayer() const { return "poly.drawing"; }
+  std::string PolyConnectionLayer() const { return "licon.drawing"; }
 
   int64_t TransistorWidth() const {
     return design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
@@ -127,6 +147,8 @@ class Sky130SimpleTransistor : public Atom {
   // treated as copy of the bounds.
   const geometry::Rectangle DiffBounds() const;
 
+  std::string CircuitCellName() const;
+
   // This will return the transistor as a single Cell, which is usually
   // annoying. Prefer calling GenerateLayout and GenerateCircuit to flatly merge
   // outputs directly into parent cell.
@@ -140,14 +162,12 @@ class Sky130SimpleTransistor : public Atom {
   bfg::Layout *GenerateLayout(
       geometry::Polygon **poly, geometry::Rectangle **diff);
   bfg::Circuit *GenerateCircuit();
+  const geometry::Point &origin() const { return origin_; }
 
  private:
   void ComputeGeometries();
 
   Parameters parameters_;
-
-  std::optional<Alignment> alignment_;
-  std::optional<geometry::Point> alignment_point_;
 
   // Defaults to (0, 0).
   geometry::Point origin_;
