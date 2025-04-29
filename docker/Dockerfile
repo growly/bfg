@@ -94,10 +94,10 @@ WORKDIR /usr/local/lib
 RUN ln -s libvlsir_lib.so.0.1 libvlsir_lib.so
 
 # Now install libraries and binaries into fresh image
-#FROM base
-#COPY --from=builder --exclude=*.a /usr/local/lib /usr/local/lib
-#WORKDIR /bfg
-#COPY --from=builder /src/bfg/build/router_service /bfg
-#COPY --from=builder /src/bfg/build/bfg /bfg
-#COPY --from=builder /src/bfg/build/bfg_test /bfg
-#CMD ["/bfg/router_service"]
+FROM base
+COPY --from=builder --exclude=*.a /usr/local/lib /usr/local/lib
+WORKDIR /bfg
+COPY --from=builder /src/bfg/build/router_service /bfg
+COPY --from=builder /src/bfg/build/bfg /bfg
+COPY --from=builder /src/bfg/build/bfg_test /bfg
+CMD ["/bfg/router_service"]
