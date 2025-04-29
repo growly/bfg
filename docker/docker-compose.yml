@@ -1,0 +1,8 @@
+services:
+  router:
+    image: bfg/router:latest
+    container_name: router
+    restart: always
+    ports:
+      - "8222:8222"
+

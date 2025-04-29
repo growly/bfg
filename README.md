@@ -4,6 +4,16 @@ An Open-Source Silicon Compiler for Reduced-Complexity Reconfigurable Fabrics
 
 ## Installation
 
+### Via Docker
+
+The easiest and safest way to build and run ```bfg``` is via Docker:
+
+```
+docker build bfg/router:latest -f docker/Dockerfile .
+
+docker compose -f docker/docker-compose.yml up -d
+```
+
 ### Prerequisites
 
 Libraries
@@ -82,7 +92,7 @@ sudo ldconfig
   popd
   ```
 
-[glog/glog](https://github.com/google/glog)
+[google/glog](https://github.com/google/glog)
 
   ```
   git clone https://github.com/google/glog.git
