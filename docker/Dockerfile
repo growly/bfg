@@ -97,7 +97,10 @@ RUN ln -s libvlsir_lib.so.0.1 libvlsir_lib.so
 FROM base
 COPY --from=builder --exclude=*.a /usr/local/lib /usr/local/lib
 WORKDIR /bfg
-COPY --from=builder /src/bfg/build/router_service /bfg
-COPY --from=builder /src/bfg/build/bfg /bfg
-COPY --from=builder /src/bfg/build/bfg_test /bfg
-CMD ["/bfg/router_service"]
+COPY --from=builder /src/bfg/gf180mcu.technology.pb .
+COPY --from=builder /src/bfg/sky130.technology.pb .
+WORKDIR bin
+COPY --from=builder /src/bfg/build/router_service .
+COPY --from=builder /src/bfg/build/bfg .
+COPY --from=builder /src/bfg/build/bfg_test .
+CMD ["/bfg/bin/router_service"]
