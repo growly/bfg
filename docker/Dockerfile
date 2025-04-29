@@ -3,13 +3,15 @@
 # Base image for router code.
 # This downloads and builds all the supporting modules.
 # A separate base image is used to avoid redownloading and rebuilding
-FROM ubuntu:latest AS builder
+FROM ubuntu:latest AS base
 
 # Add timezone data and certs
 RUN apt update -y
 RUN apt upgrade -y
+RUN apt install -y libc-ares-dev
+FROM base as builder
 RUN apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip clang
-RUN apt install -y ninja-build python3 libre2-dev libc-ares-dev libssl-dev git wget zlib1g-dev
+RUN apt install -y ninja-build python3 libre2-dev libssl-dev git wget zlib1g-dev
 
 WORKDIR /src
 
@@ -92,5 +94,10 @@ WORKDIR /usr/local/lib
 RUN ln -s libvlsir_lib.so.0.1 libvlsir_lib.so
 
 # Now install libraries and binaries into fresh image
-FROM scratch
-COPY --from=builder --exclude=*.a /usr/local/lib /usr/local/lib
+#FROM base
+#COPY --from=builder --exclude=*.a /usr/local/lib /usr/local/lib
+#WORKDIR /bfg
+#COPY --from=builder /src/bfg/build/router_service /bfg
+#COPY --from=builder /src/bfg/build/bfg /bfg
+#COPY --from=builder /src/bfg/build/bfg_test /bfg
+#CMD ["/bfg/router_service"]
