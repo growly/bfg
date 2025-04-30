@@ -1,5 +1,8 @@
 #include "sky130_transmission_gate.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "../layout.h"
 #include "../scoped_layer.h"
 #include "../geometry/compass.h"
@@ -10,24 +13,34 @@
 namespace bfg {
 namespace atoms {
 
-geometry::Rectangle *Sky130TransmissionGate::AddPolyTab(
-    const Sky130SimpleTransistor &fet_generator,
-    const geometry::Compass &position,
-    Layout *layout) {
+int64_t Sky130TransmissionGate::PolyTabHeight(
+    const Sky130SimpleTransistor &fet_generator) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  // The tab will be a horizontal rectangle, whose height and width must
-  // accommodate a via on the DiffConnectionLayer().
-
-  const geometry::Point &origin = fet_generator.origin();
 
   const auto &dcon_rules = db.Rules(fet_generator.DiffConnectionLayer());
   const auto &diff_dcon_rules = db.Rules(
       fet_generator.DiffLayer(), fet_generator.DiffConnectionLayer());
-  int64_t via_width = dcon_rules.via_width;
   int64_t via_height = dcon_rules.via_height;
+  return via_height + 2 * diff_dcon_rules.via_overhang_wide;
+}
 
-  int64_t tab_height = via_height + 2 * diff_dcon_rules.via_overhang_wide;
-  int64_t tab_width = via_width + 2 * diff_dcon_rules.via_overhang;
+int64_t Sky130TransmissionGate::PolyTabWidth(
+    const Sky130SimpleTransistor &fet_generator) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &dcon_rules = db.Rules(fet_generator.DiffConnectionLayer());
+
+  const auto &diff_dcon_rules = db.Rules(
+      fet_generator.DiffLayer(), fet_generator.DiffConnectionLayer());
+  int64_t via_width = dcon_rules.via_width;
+  return via_width + 2 * diff_dcon_rules.via_overhang;
+}
+
+geometry::Rectangle *Sky130TransmissionGate::AddPolyTab(
+    const Sky130SimpleTransistor &fet_generator,
+    const geometry::Compass &position,
+    Layout *layout) {
+  int64_t tab_height = PolyTabHeight(fet_generator);
+  int64_t tab_width = PolyTabWidth(fet_generator);
 
   geometry::Point poly_ll = fet_generator.PolyLowerLeft();
   geometry::Point poly_ur = fet_generator.PolyUpperRight();
@@ -83,35 +96,115 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
   return circuit.release();
 }
 
-bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
+int64_t Sky130TransmissionGate::PMOSPolyHeight() const {
+  return pfet_generator_->PolyHeight() + (
+      parameters_.p_tab_position ?  PMOSPolyTabHeight() : 0);
+}
+
+int64_t Sky130TransmissionGate::NMOSPolyHeight() const {
+  return nfet_generator_->PolyHeight() + (
+      parameters_.n_tab_position ?  NMOSPolyTabHeight() : 0);
+}
+
+int64_t Sky130TransmissionGate::FigureCellHeight() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
-
-  // Assume the PMOS and NMOS poly layers are the same!
+  if (parameters_.cell_height_nm && parameters_.height_divisor_nm) {
+    double minimum = db.ToInternalUnits(*parameters_.cell_height_nm);
+    double divisor = db.ToInternalUnits(*parameters_.height_divisor_nm);
+    return std::ceilf(minimum / divisor) * divisor;
+  }
   const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
-
-  int64_t n_height = nfet_generator_->PolyHeight();
-  int64_t p_height = pfet_generator_->PolyHeight();
+ 
+  // TODO(aryap): Hmmm.
+  int64_t minimum =
+      NMOSPolyHeight() + PMOSPolyHeight() + 2 * poly_rules.min_separation;
 
   // FIXME(aryap): Cell height should be the *tiling* cell height, so there
   // should be sapce at the top and bottom so that the diff regions are not to
   // close to (what we can expect will be) external instances of diff regions...
-  int64_t anchor_y = parameters_.cell_height_nm ?
-      db.ToInternalUnits(*parameters_.cell_height_nm) - p_height :
-      n_height + poly_rules.min_separation;
+  if (parameters_.cell_height_nm) {
+    return std::max(minimum, db.ToInternalUnits(*parameters_.cell_height_nm));
+  } else if (parameters_.height_divisor_nm) {
+    double divisor = db.ToInternalUnits(*parameters_.height_divisor_nm);
+    return std::ceilf(static_cast<double>(minimum) / divisor) * divisor;
+  }
+  return minimum;
+}
+
+bool Sky130TransmissionGate::PMOSHasLowerTab() const {
+  if (!parameters_.p_tab_position)
+    return false;
+  switch (*parameters_.p_tab_position) {
+    case geometry::Compass::LOWER_LEFT:
+      // Fallthrough intended.
+    case geometry::Compass::LOWER:
+      // Fallthrough intended.
+    case geometry::Compass::LOWER_RIGHT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool Sky130TransmissionGate::NMOSHasLowerTab() const {
+  if (!parameters_.n_tab_position)
+    return false;
+  switch (*parameters_.n_tab_position) {
+    case geometry::Compass::LOWER_LEFT:
+      // Fallthrough intended.
+    case geometry::Compass::LOWER:
+      // Fallthrough intended.
+    case geometry::Compass::LOWER_RIGHT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
+
+  const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
+
+  int64_t cell_height = FigureCellHeight();
+
+  int64_t anchor_y_high = cell_height - (
+      PMOSPolyHeight() +  poly_rules.min_separation / 2);
+  if (PMOSHasLowerTab()) {
+    anchor_y_high += PMOSPolyTabHeight();
+  }
+
+  int64_t anchor_y_low = poly_rules.min_separation / 2;
+  if (NMOSHasLowerTab()) {
+    anchor_y_low += NMOSPolyTabHeight();
+  }
 
   nfet_generator_->AlignTransistorPartTo(
       Sky130SimpleTransistor::Landmark::POLY_BOTTOM_CENTRE,
-      {0, 0});
+      {0, anchor_y_low});
   pfet_generator_->AlignTransistorPartTo(
       Sky130SimpleTransistor::Landmark::POLY_BOTTOM_CENTRE,
-      {0, anchor_y});
-
+      {0, anchor_y_high});
 
   std::unique_ptr<bfg::Layout> nfet_layout(nfet_generator_->GenerateLayout());
   layout->AddLayout(*nfet_layout, "nmos");
   std::unique_ptr<bfg::Layout> pfet_layout(pfet_generator_->GenerateLayout());
   layout->AddLayout(*pfet_layout, "pmos");
+
+  if (parameters_.n_tab_position) {
+    geometry::Rectangle *ntab = AddPolyTab(
+        *nfet_generator_, *parameters_.n_tab_position, layout.get());
+
+    //layout->MakeVia(
+    //    nfet_generator_->DiffConnectionLayer(), ntab->centre());
+  }
+  if (parameters_.p_tab_position) {
+    geometry::Rectangle *ptab = AddPolyTab(
+        *pfet_generator_, *parameters_.p_tab_position, layout.get());
+  }
+
+  geometry::Rectangle pre_well_bounds = layout->GetBoundingBox();
 
   if (parameters_.draw_nwell) {
     ScopedLayer layer(layout.get(), "nwell.drawing");
@@ -140,16 +233,18 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
   //      nfet_generator_->DiffConnectionLayer(),
   //      nfet_generator_->ViaLocation(positions[i]));
   //}
-  if (parameters_.n_tab_position) {
-    geometry::Rectangle *ntab = AddPolyTab(
-        *nfet_generator_, *parameters_.n_tab_position, layout.get());
 
-    //layout->MakeVia(
-    //    nfet_generator_->DiffConnectionLayer(), ntab->centre());
-  }
-  if (parameters_.p_tab_position) {
-    geometry::Rectangle *ptab = AddPolyTab(
-        *pfet_generator_, *parameters_.p_tab_position, layout.get());
+  // Set tiling bounds.
+  {
+    int64_t min_y = pre_well_bounds.lower_left().y();
+    geometry::Rectangle tiling_bounds = geometry::Rectangle(
+        {pre_well_bounds.lower_left().x(),
+         min_y + poly_rules.min_separation / 2},
+        {pre_well_bounds.upper_right().x(),
+         min_y + cell_height});
+    ScopedLayer layer(layout.get(), "areaid.standardc");
+    layout->AddRectangle(tiling_bounds);
+    layout->SetTilingBounds(tiling_bounds);
   }
 
   return layout.release();

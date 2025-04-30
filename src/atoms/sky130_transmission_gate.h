@@ -32,6 +32,7 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> cell_height_nm = 2720; //std::nullopt;
 
+    std::optional<uint64_t> height_divisor_nm;
     std::optional<uint64_t> stacking_pitch_nm;
 
     bool draw_nwell = false;
@@ -120,6 +121,29 @@ class Sky130TransmissionGate : public Atom {
   bfg::Circuit *GenerateCircuit();
 
  private:
+  bool PMOSHasLowerTab() const;
+  bool NMOSHasLowerTab() const;
+
+  int64_t FigureCellHeight() const;
+  int64_t PMOSPolyHeight() const;
+  int64_t NMOSPolyHeight() const;
+  // The tab will be a horizontal rectangle, whose height and width must
+  // accommodate a via on the DiffConnectionLayer().
+  int64_t PolyTabHeight(const Sky130SimpleTransistor &fet_generator) const;
+  int64_t PolyTabWidth(const Sky130SimpleTransistor &fet_generator) const;
+  int64_t NMOSPolyTabHeight() const {
+    return PolyTabHeight(*nfet_generator_);
+  }
+  int64_t NMOSPolyTabWidth() const {
+    return PolyTabWidth(*nfet_generator_);
+  }
+  int64_t PMOSPolyTabHeight() const {
+    return PolyTabHeight(*pfet_generator_);
+  }
+  int64_t PMOSPolyTabWidth() const {
+    return PolyTabWidth(*pfet_generator_);
+  }
+
   Parameters parameters_;
 
   std::unique_ptr<Sky130SimpleTransistor> nfet_generator_;

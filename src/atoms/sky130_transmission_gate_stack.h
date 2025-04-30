@@ -49,7 +49,7 @@ class Sky130TransmissionGateStack : public Atom {
     // The height of the transmission gate cells. If not specified, transmission
     // gates are sized to fit PMOS and NMOS FETs as close to each other as
     // possible. TODO(aryap): including room for routing?
-    std::optional<uint64_t> height_nm = 2720;
+    std::optional<uint64_t> min_height_nm = 2720;
 
     // Vertical pitch of ports across the gates, if specified.
     std::optional<uint64_t> vertical_pitch_nm = 300;

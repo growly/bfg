@@ -28,11 +28,13 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   std::optional<geometry::Rectangle> pdiff_cover;
   std::optional<geometry::Rectangle> ndiff_cover;
 
+  std::optional<uint64_t> height;
+
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
       .stacks_left = i > 0,
       .stacks_right = i < num_gates - 1,
-      .cell_height_nm = parameters_.height_nm,
+      .cell_height_nm = parameters_.min_height_nm,
       .stacking_pitch_nm = parameters_.horizontal_pitch_nm,
       .p_tab_position = geometry::Compass::UPPER,
       .n_tab_position = geometry::Compass::LOWER
@@ -76,7 +78,7 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
     if (!ndiff_cover) {
       ndiff_cover = geometry::Rectangle(nmos_ll, nmos_ur);
     } else {
-      ndiff_cover->ExpandToCover(geometry::Rectangle(pmos_ll, pmos_ur));
+      ndiff_cover->ExpandToCover(geometry::Rectangle(nmos_ll, nmos_ur));
     }
 
     geometry::Point top = instance->GetPointOrDie("pmos.via_left_diff_upper");
@@ -94,18 +96,25 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   // Add nwell.
   if (pdiff_cover) {
+    int64_t psdm_margin = db.Rules(
+        "psdm.drawing", "pdiff.drawing").min_enclosure;
     {
       ScopedLayer layer(cell->layout(), "psdm.drawing");
-      int64_t psdm_margin = db.Rules(
-          "psdm.drawing", "pdiff.drawing").min_enclosure;
       cell->layout()->AddRectangle(pdiff_cover->WithPadding(psdm_margin));
     }
+    int64_t nwell_margin = db.Rules(
+        "nwell.drawing", "pdiff.drawing").min_enclosure;
     {
       ScopedLayer layer(cell->layout(), "nwell.drawing");
-      int64_t nwell_margin = db.Rules(
-          "nwell.drawing", "pdiff.drawing").min_enclosure;
-      cell->layout()->AddRectangle(pdiff_cover->WithPadding(nwell_margin));
+      cell->layout()->AddRectangle(
+          pdiff_cover->WithPadding(nwell_margin));
     }
+  }
+  if (ndiff_cover) {
+    ScopedLayer layer(cell->layout(), "nsdm.drawing");
+    int64_t nsdm_margin = db.Rules(
+        "nsdm.drawing", "ndiff.drawing").min_enclosure;
+    cell->layout()->AddRectangle(ndiff_cover->WithPadding(nsdm_margin));
   }
 
 //  cell->SetLayout(GenerateLayout());
