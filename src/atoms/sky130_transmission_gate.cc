@@ -111,7 +111,7 @@ int64_t Sky130TransmissionGate::FigureCellHeight() const {
   if (parameters_.cell_height_nm && parameters_.height_divisor_nm) {
     double minimum = db.ToInternalUnits(*parameters_.cell_height_nm);
     double divisor = db.ToInternalUnits(*parameters_.height_divisor_nm);
-    return std::ceilf(minimum / divisor) * divisor;
+    return std::ceil(minimum / divisor) * divisor;
   }
   const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
  
@@ -126,7 +126,7 @@ int64_t Sky130TransmissionGate::FigureCellHeight() const {
     return std::max(minimum, db.ToInternalUnits(*parameters_.cell_height_nm));
   } else if (parameters_.height_divisor_nm) {
     double divisor = db.ToInternalUnits(*parameters_.height_divisor_nm);
-    return std::ceilf(static_cast<double>(minimum) / divisor) * divisor;
+    return std::ceil(static_cast<double>(minimum) / divisor) * divisor;
   }
   return minimum;
 }
