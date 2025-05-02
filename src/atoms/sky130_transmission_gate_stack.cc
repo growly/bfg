@@ -35,8 +35,9 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       .stacks_left = i > 0,
       .stacks_right = i < num_gates - 1,
       .cell_height_nm = parameters_.min_height_nm,
-      .stacking_pitch_nm = parameters_.horizontal_pitch_nm,
-      .p_tab_position = geometry::Compass::UPPER,
+      .vertical_tab_pitch_nm = parameters_.vertical_pitch_nm,
+      .poly_pitch_nm = parameters_.horizontal_pitch_nm,
+      .p_tab_position = geometry::Compass::LOWER,
       .n_tab_position = geometry::Compass::LOWER
     };
 

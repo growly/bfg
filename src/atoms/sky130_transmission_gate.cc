@@ -106,29 +106,74 @@ int64_t Sky130TransmissionGate::NMOSPolyHeight() const {
       parameters_.n_tab_position ?  NMOSPolyTabHeight() : 0);
 }
 
+int64_t Sky130TransmissionGate::FigureVerticalPadding(
+    const Sky130SimpleTransistor &fet_generator, bool abuts_tab) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &poly_rules = db.Rules(fet_generator.PolyLayer());
+  int64_t minimum = poly_rules.min_separation / 2;
+  if (!parameters_.vertical_tab_pitch_nm || !abuts_tab) {
+    return minimum;
+  }
+  int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+  int64_t padding = (pitch - PolyTabHeight(fet_generator)) / 2;
+
+  if (padding < minimum) {
+    padding += pitch / 2;
+  }
+
+  return padding;
+}
+
+int64_t Sky130TransmissionGate::FigureTopPadding() const {
+  return FigureVerticalPadding(*pfet_generator_, PMOSHasUpperTab());
+}
+
+int64_t Sky130TransmissionGate::FigureBottomPadding() const {
+  return FigureVerticalPadding(*nfet_generator_, NMOSHasLowerTab());
+}
+
 int64_t Sky130TransmissionGate::FigureCellHeight() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  if (parameters_.cell_height_nm && parameters_.height_divisor_nm) {
-    double minimum = db.ToInternalUnits(*parameters_.cell_height_nm);
-    double divisor = db.ToInternalUnits(*parameters_.height_divisor_nm);
-    return std::ceilf(minimum / divisor) * divisor;
-  }
+
+  // FIXME(aryap): This should also account for the minimum nwell/nsdm/psdm
+  // spacing rules!
   const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
- 
-  // TODO(aryap): Hmmm.
-  int64_t minimum =
-      NMOSPolyHeight() + PMOSPolyHeight() + 2 * poly_rules.min_separation;
+  int64_t minimum = FigureBottomPadding() + NMOSPolyHeight() +
+      poly_rules.min_separation + PMOSPolyHeight() + FigureTopPadding();
+
+  if (parameters_.cell_height_nm && parameters_.vertical_tab_pitch_nm) {
+    minimum = std::max(
+        minimum, db.ToInternalUnits(*parameters_.cell_height_nm));
+    double divisor = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+    return std::ceil(static_cast<double>(minimum) / divisor) * divisor;
+  }
 
   // FIXME(aryap): Cell height should be the *tiling* cell height, so there
   // should be sapce at the top and bottom so that the diff regions are not to
   // close to (what we can expect will be) external instances of diff regions...
   if (parameters_.cell_height_nm) {
     return std::max(minimum, db.ToInternalUnits(*parameters_.cell_height_nm));
-  } else if (parameters_.height_divisor_nm) {
-    double divisor = db.ToInternalUnits(*parameters_.height_divisor_nm);
-    return std::ceilf(static_cast<double>(minimum) / divisor) * divisor;
+  } else if (parameters_.vertical_tab_pitch_nm) {
+    double divisor = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+    return std::ceil(static_cast<double>(minimum) / divisor) * divisor;
   }
   return minimum;
+}
+
+
+bool Sky130TransmissionGate::PMOSHasUpperTab() const {
+  if (!parameters_.p_tab_position)
+    return false;
+  switch (*parameters_.p_tab_position) {
+    case geometry::Compass::UPPER_LEFT:
+      // Fallthrough intended.
+    case geometry::Compass::UPPER:
+      // Fallthrough intended.
+    case geometry::Compass::UPPER_RIGHT:
+      return true;
+    default:
+      return false;
+  }
 }
 
 bool Sky130TransmissionGate::PMOSHasLowerTab() const {
@@ -140,6 +185,21 @@ bool Sky130TransmissionGate::PMOSHasLowerTab() const {
     case geometry::Compass::LOWER:
       // Fallthrough intended.
     case geometry::Compass::LOWER_RIGHT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool Sky130TransmissionGate::NMOSHasUpperTab() const {
+  if (!parameters_.n_tab_position)
+    return false;
+  switch (*parameters_.n_tab_position) {
+    case geometry::Compass::UPPER_LEFT:
+      // Fallthrough intended.
+    case geometry::Compass::UPPER:
+      // Fallthrough intended.
+    case geometry::Compass::UPPER_RIGHT:
       return true;
     default:
       return false;
@@ -169,13 +229,12 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
 
   int64_t cell_height = FigureCellHeight();
 
-  int64_t anchor_y_high = cell_height - (
-      PMOSPolyHeight() +  poly_rules.min_separation / 2);
+  int64_t anchor_y_high = cell_height - (PMOSPolyHeight() + FigureTopPadding());
   if (PMOSHasLowerTab()) {
     anchor_y_high += PMOSPolyTabHeight();
   }
 
-  int64_t anchor_y_low = poly_rules.min_separation / 2;
+  int64_t anchor_y_low = FigureBottomPadding();
   if (NMOSHasLowerTab()) {
     anchor_y_low += NMOSPolyTabHeight();
   }
@@ -214,34 +273,12 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
     layout->AddRectangle(PMOSBounds().WithPadding(nwell_margin));
   }
 
-  //std::vector<Sky130SimpleTransistor::ViaPosition> positions = {
-  //  Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_UPPER,
-  //  Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_MIDDLE,
-  //  Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_LOWER,
-  //  //Sky130SimpleTransistor::ViaPosition::POLY_UPPER,
-  //  //Sky130SimpleTransistor::ViaPosition::POLY_MIDDLE,
-  //  //Sky130SimpleTransistor::ViaPosition::POLY_LOWER,
-  //  Sky130SimpleTransistor::ViaPosition::RIGHT_DIFF_UPPER,
-  //  Sky130SimpleTransistor::ViaPosition::RIGHT_DIFF_MIDDLE,
-  //  Sky130SimpleTransistor::ViaPosition::RIGHT_DIFF_LOWER
-  //};
-  //for (size_t i = 0; i < positions.size(); ++i) {
-  //  layout->MakeVia(
-  //      pfet_generator_->DiffConnectionLayer(),
-  //      pfet_generator_->ViaLocation(positions[i]));
-  //  layout->MakeVia(
-  //      nfet_generator_->DiffConnectionLayer(),
-  //      nfet_generator_->ViaLocation(positions[i]));
-  //}
-
   // Set tiling bounds.
   {
     int64_t min_y = pre_well_bounds.lower_left().y();
     geometry::Rectangle tiling_bounds = geometry::Rectangle(
-        {pre_well_bounds.lower_left().x(),
-         min_y + poly_rules.min_separation / 2},
-        {pre_well_bounds.upper_right().x(),
-         min_y + cell_height});
+        {pre_well_bounds.lower_left().x(), 0},
+        {pre_well_bounds.upper_right().x(), cell_height});
     ScopedLayer layer(layout.get(), "areaid.standardc");
     layout->AddRectangle(tiling_bounds);
     layout->SetTilingBounds(tiling_bounds);

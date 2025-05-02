@@ -32,8 +32,10 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> cell_height_nm = 2720; //std::nullopt;
 
-    std::optional<uint64_t> height_divisor_nm;
-    std::optional<uint64_t> stacking_pitch_nm;
+    std::optional<uint64_t> vertical_tab_pitch_nm;
+    std::optional<uint64_t> vertical_tab_offset_nm;
+    
+    std::optional<uint64_t> poly_pitch_nm;
 
     bool draw_nwell = false;
 
@@ -52,7 +54,7 @@ class Sky130TransmissionGate : public Atom {
       .length_nm = parameters_.n_length_nm,
       .stacks_left = parameters_.stacks_left,
       .stacks_right = parameters_.stacks_right,
-      .stacking_pitch_nm = parameters_.stacking_pitch_nm
+      .stacking_pitch_nm = parameters_.poly_pitch_nm
     };
 
     nfet_generator_.reset(new Sky130SimpleTransistor(nfet_params, design_db_));
@@ -63,7 +65,7 @@ class Sky130TransmissionGate : public Atom {
       .length_nm = parameters_.p_length_nm,
       .stacks_left = parameters_.stacks_left,
       .stacks_right = parameters_.stacks_right,
-      .stacking_pitch_nm = parameters_.stacking_pitch_nm
+      .stacking_pitch_nm = parameters_.poly_pitch_nm
     }; 
  
     pfet_generator_.reset(new Sky130SimpleTransistor(pfet_params, design_db_));
@@ -121,10 +123,56 @@ class Sky130TransmissionGate : public Atom {
   bfg::Circuit *GenerateCircuit();
 
  private:
+  // The layout's vertical axis has these components, schematically:
+  //
+  // ----------- top boundary
+  //           ^
+  //           | space to boundary
+  //           v
+  //    +-+    ^
+  //    | |    | pmos tab (complex) height
+  //    +-+    v 
+  //    | |    ^
+  //    | |    | pmos poly height
+  //    +-+    v
+  //           ^
+  //           | gap
+  //           v
+  //    +-+    ^
+  //    | |    | nmos poly height
+  //    | |    v
+  //    +-+    ^
+  //    | |    | nmos tab (complex) height
+  //    +-+    v
+  //           ^
+  //           | space to boundary
+  //           v
+  // ----------- bottom boundary (y = 0)
+  //
+  // For convenience we can force the tabs to line up with an overlying grid
+  // with two parameters: pitch (spacing between lines) and offset (distance to
+  // first line from y = 0).
+  //
+  // The algorithm for placement will be something like:
+  //  - If no grid is given, place NMOS, PMOS and their tabs as compactly as
+  //  possible.
+  //  - If a grid is given, starting at y = 0 and going up, place tabs, then
+  //  their corresponding transistors (or vice versa depending on where the tabs
+  //  are needed), so that tabs line up with the nearest grid position.
+  //  Placement can be expanded up with increasing y, but not down.
+
+  bool PMOSHasUpperTab() const;
   bool PMOSHasLowerTab() const;
+  bool NMOSHasUpperTab() const;
   bool NMOSHasLowerTab() const;
 
+  int64_t FigureVerticalPadding(
+    const Sky130SimpleTransistor &fet_generator, bool abuts_tab) const;
+  int64_t FigureTopPadding() const;
+  int64_t FigureBottomPadding() const;
+
   int64_t FigureCellHeight() const;
+
   int64_t PMOSPolyHeight() const;
   int64_t NMOSPolyHeight() const;
   // The tab will be a horizontal rectangle, whose height and width must

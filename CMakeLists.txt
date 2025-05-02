@@ -401,6 +401,7 @@ target_link_libraries(router_service_bin PUBLIC router_service
 # -----
 set(ATOMS_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor_test.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate_test.cc
 )
 
 set(GEOMETRY_TEST_SRC
