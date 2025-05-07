@@ -128,7 +128,7 @@ class Sky130SimpleTransistor : public Atom {
   std::string DiffConnectionLayer() const;
 
   std::string PolyLayer() const { return "poly.drawing"; }
-  std::string PolyConnectionLayer() const { return "licon.drawing"; }
+  std::string PolyConnectionLayer() const { return "polycon.drawing"; }
 
   int64_t TransistorWidth() const {
     return design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
@@ -138,6 +138,8 @@ class Sky130SimpleTransistor : public Atom {
     return design_db_->physical_db().ToInternalUnits(parameters_.length_nm);
   }
 
+  uint64_t PolyOverhang() const;
+
   uint64_t PolyHeight() const;
 
   int64_t DiffWing(const geometry::Compass &direction) const;
@@ -146,6 +148,8 @@ class Sky130SimpleTransistor : public Atom {
   // object isn't generated until GenerateLayout is called this should be
   // treated as copy of the bounds.
   const geometry::Rectangle DiffBounds() const;
+
+  geometry::Rectangle PolyContactingVia(const geometry::Point &centre) const;
 
   std::string CircuitCellName() const;
 

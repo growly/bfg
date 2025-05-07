@@ -42,7 +42,8 @@ class Sky130TransmissionGateStack : public Atom {
     //
     // TODO(aryap): Right?
     std::vector<std::string> net_sequence =
-        {"A", "B", "C", "B", "D", "E", "F", "G", "H", "I", "J", "K"};
+        {"A", "B", "C", "B", "D", "E", "D", "G", "E", "I", "J", "K", "L", "M",
+         "N", "O", "P", "O"};
 
     std::optional<uint64_t> li_width_nm;
 
@@ -52,7 +53,7 @@ class Sky130TransmissionGateStack : public Atom {
     std::optional<uint64_t> min_height_nm = 2720;
 
     // Vertical pitch of ports across the gates, if specified.
-    std::optional<uint64_t> vertical_pitch_nm = 300;
+    std::optional<uint64_t> vertical_pitch_nm = 400;
 
     // Horizontal pitch of ports across the gates. Will force transistor spacing
     // as well.

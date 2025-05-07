@@ -196,7 +196,7 @@ int64_t Sky130SimpleTransistor::DiffWing(
   // |    |   |   |
   // |    |   |   |
   // +----|   |---|
-  //  <---|   |
+  //  <---|   |   |
   //   diff_wing
   int64_t diff_wing = std::max(
       via_side + poly_dcon_rules.min_separation + diff_dcon_rules.min_enclosure,
@@ -237,10 +237,25 @@ const geometry::Rectangle Sky130SimpleTransistor::DiffBounds() const {
   );
 }
 
+uint64_t Sky130SimpleTransistor::PolyOverhang() const {
+  const auto &poly_diff_rules =
+      design_db_->physical_db().Rules("poly.drawing", DiffLayer());
+  return poly_diff_rules.min_enclosure;
+}
+
 uint64_t Sky130SimpleTransistor::PolyHeight() const {
   const auto &poly_diff_rules =
       design_db_->physical_db().Rules("poly.drawing", DiffLayer());
-  return TransistorWidth() + 2 * poly_diff_rules.min_enclosure;
+  return TransistorWidth() + 2 * PolyOverhang();
+}
+
+
+geometry::Rectangle Sky130SimpleTransistor::PolyContactingVia(
+    const geometry::Point &centre) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &pcon_rules = db.Rules(PolyConnectionLayer());
+  int64_t via_width = pcon_rules.via_width;
+  return geometry::Rectangle::CentredAt(centre, via_width, via_width);
 }
 
 // The origin will the the centre of the poly.

@@ -74,6 +74,15 @@ void Rectangle::ExpandBounds(const Rectangle &subsume,
       subsume.upper_right().y(), bounding_box->upper_right_.y()));
 }
 
+void Rectangle::ExpandAccumulate(const Rectangle &subsume,
+                                 std::optional<Rectangle> *target) {
+  if (!target->has_value()) {
+    *target = subsume;
+    return;
+  }
+  (*target)->ExpandToCover(subsume);
+}
+
 Rectangle Rectangle::CentredAt(
     const Point &centre, uint64_t width, uint64_t height) {
   Point lower_left = centre - Point{

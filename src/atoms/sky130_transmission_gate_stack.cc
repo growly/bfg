@@ -27,17 +27,24 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   std::optional<geometry::Rectangle> pdiff_cover;
   std::optional<geometry::Rectangle> ndiff_cover;
+  std::optional<geometry::Rectangle> p_poly_via_cover;
+  std::optional<geometry::Rectangle> n_poly_via_cover;
 
   std::optional<uint64_t> height;
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
+      .p_width_nm = 450,
+      .p_length_nm = 150,
+      .n_width_nm = 450,
+      .n_length_nm = 150,
       .stacks_left = i > 0,
       .stacks_right = i < num_gates - 1,
-      .cell_height_nm = parameters_.min_height_nm,
+      //.min_cell_height_nm = parameters_.min_height_nm,
       .vertical_tab_pitch_nm = parameters_.vertical_pitch_nm,
+      .vertical_tab_offset_nm = parameters_.vertical_pitch_nm.value_or(0) / 2,
       .poly_pitch_nm = parameters_.horizontal_pitch_nm,
-      .p_tab_position = geometry::Compass::LOWER,
+      .p_tab_position = geometry::Compass::UPPER,
       .n_tab_position = geometry::Compass::LOWER
     };
 
@@ -69,17 +76,30 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
     geometry::Point pmos_ll = instance->GetPointOrDie("pmos.diff_lower_left");
     geometry::Point pmos_ur = instance->GetPointOrDie("pmos.diff_upper_right");
-    if (!pdiff_cover) {
-      pdiff_cover = geometry::Rectangle(pmos_ll, pmos_ur);
-    } else {
-      pdiff_cover->ExpandToCover(geometry::Rectangle(pmos_ll, pmos_ur));
+    geometry::Rectangle::ExpandAccumulate(
+        geometry::Rectangle(pmos_ll, pmos_ur), &pdiff_cover);
+
+    std::optional<geometry::Point> p_via_ll =
+        instance->GetPoint("pmos.poly_tab_ll");
+    std::optional<geometry::Point> p_via_ur =
+        instance->GetPoint("pmos.poly_tab_ur");
+    if (p_via_ll && p_via_ur) {
+      geometry::Rectangle::ExpandAccumulate(
+          geometry::Rectangle(*p_via_ll, *p_via_ur), &p_poly_via_cover);
     }
+
     geometry::Point nmos_ll = instance->GetPointOrDie("nmos.diff_lower_left");
     geometry::Point nmos_ur = instance->GetPointOrDie("nmos.diff_upper_right");
-    if (!ndiff_cover) {
-      ndiff_cover = geometry::Rectangle(nmos_ll, nmos_ur);
-    } else {
-      ndiff_cover->ExpandToCover(geometry::Rectangle(nmos_ll, nmos_ur));
+    geometry::Rectangle::ExpandAccumulate(
+        geometry::Rectangle(nmos_ll, nmos_ur), &ndiff_cover);
+
+    std::optional<geometry::Point> n_via_ll =
+        instance->GetPoint("nmos.poly_tab_ll");
+    std::optional<geometry::Point> n_via_ur =
+        instance->GetPoint("nmos.poly_tab_ur");
+    if (n_via_ll && n_via_ur) {
+      geometry::Rectangle::ExpandAccumulate(
+          geometry::Rectangle(*n_via_ll, *n_via_ur), &n_poly_via_cover);
     }
 
     geometry::Point top = instance->GetPointOrDie("pmos.via_left_diff_upper");
@@ -93,6 +113,15 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       bottom = instance->GetPointOrDie("nmos.via_right_diff_lower");
       ConnectDiffs(generator, top, bottom, right_net, cell->layout());
     }
+  }
+
+  // Turn the transmission gates into a single flat layout so that the nsdm/psdm
+  // layers can cover their diffusion regions without causing DRC violations.
+  cell->layout()->Flatten();
+  cell->layout()->EraseLayerByName("areaid.standardc");
+  {
+    ScopedLayer layer(cell->layout(), "areaid.standardc");
+    cell->layout()->AddRectangle(cell->layout()->GetTilingBounds());
   }
 
   // Add nwell.
@@ -116,6 +145,20 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
     int64_t nsdm_margin = db.Rules(
         "nsdm.drawing", "ndiff.drawing").min_enclosure;
     cell->layout()->AddRectangle(ndiff_cover->WithPadding(nsdm_margin));
+  }
+
+  // Draw npc.drawing box around poly contacts.
+  if (p_poly_via_cover) {
+    ScopedLayer layer(cell->layout(), "npc.drawing");
+    int64_t npc_margin = db.Rules(
+        "npc.drawing", "polycon.drawing").min_enclosure;
+    cell->layout()->AddRectangle(p_poly_via_cover->WithPadding(npc_margin));
+  }
+  if (n_poly_via_cover) {
+    ScopedLayer layer(cell->layout(), "npc.drawing");
+    int64_t npc_margin = db.Rules(
+        "npc.drawing", "polycon.drawing").min_enclosure;
+    cell->layout()->AddRectangle(n_poly_via_cover->WithPadding(npc_margin));
   }
 
 //  cell->SetLayout(GenerateLayout());

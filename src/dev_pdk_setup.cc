@@ -104,6 +104,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("poly.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
+
   inter_constraints = {
     //  poly.8: (min) "Extension of poly beyond diffusion (endcap)"
     .min_enclosure = db->ToInternalUnits(130),
@@ -112,6 +113,12 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("poly.drawing", "pdiff.drawing", inter_constraints);
   db->AddRules("poly.drawing", "ndiff.drawing", inter_constraints);
+
+  inter_constraints = {
+    .min_enclosure = db->ToInternalUnits(100)
+  };
+  db->AddRules("npc.drawing", "polycon.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(50),
     .via_overhang = db->ToInternalUnits(80),
@@ -120,6 +127,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("li.drawing", "polycon.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(50),
     .min_enclosure = db->ToInternalUnits(80),    // li.5.-
@@ -180,8 +188,13 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("ndiff.drawing", "nsdm.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "psdm.drawing", inter_constraints);
-  db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "nwell.drawing", inter_constraints);
+
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(340)
+  };
+  db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(130),
     .min_enclosure = db->ToInternalUnits(130)
@@ -380,6 +393,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
     .via_overhang_wide = db->ToInternalUnits(70)
   };
   db->AddRules("poly.drawing", "polycon.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(150),
     .via_overhang = db->ToInternalUnits(80),
@@ -389,6 +403,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("li.drawing", "polycon.drawing", inter_constraints);
   db->AddRules("li.drawing", "licon.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(40),
     .max_separation = db->ToInternalUnits(190),
@@ -397,6 +412,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
     .via_overhang = db->ToInternalUnits(40),
   };
   db->AddRules("ndiff.drawing", "ncon.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(150),
     .max_separation = db->ToInternalUnits(170),
@@ -406,6 +422,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("pdiff.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("ndiff.drawing", "polycon.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "polycon.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(50),
     .via_overhang = db->ToInternalUnits(60),
@@ -413,6 +430,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("li.drawing", "mcon.drawing", inter_constraints);
   db->AddRules("met1.drawing", "mcon.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(50),
     .via_overhang = db->ToInternalUnits(85),
@@ -423,6 +441,7 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   // Lazy but doesn't make sense:
   db->AddRules("met2.drawing", "via2.drawing", inter_constraints);
   db->AddRules("met3.drawing", "via2.drawing", inter_constraints);
+
   // TODO(growly): Need to alias these layer names so that they apply to any
   // process.
   inter_constraints = {
@@ -435,17 +454,20 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("ndiff.drawing", "psdm.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "psdm.drawing", inter_constraints);
   db->AddRules("diff.drawing", "nwell.drawing", inter_constraints);
-  db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "nwell.drawing", inter_constraints);
+  db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
+
   inter_constraints = {
     .min_enclosure = db->ToInternalUnits(180)
   };
   db->AddRules("psdm.drawing", "nwell.drawing", inter_constraints);
+
   inter_constraints = {
     .min_separation = db->ToInternalUnits(430),
   };
   // This is spacing to ndiff
   db->AddRules("ndiff.drawing", "nwell.drawing", inter_constraints);
+
   inter_constraints = {
     .min_enclosure = db->ToInternalUnits(430)
   };

@@ -107,6 +107,11 @@ class Layout : public geometry::Manipulable {
                 const geometry::Point &centre,
                 const std::string &layer_name = "");
 
+  // Add the layout of every instance to the this layout directly, removing one
+  // layer of hierarchy. To flatten completely, this must be called repeatedly
+  // until no more instances_ remain.
+  void Flatten();
+
   // TODO(aryap): Every shape electrically (passively) connected to 'point' is
   // given the net 'net'.
   //
@@ -144,6 +149,7 @@ class Layout : public geometry::Manipulable {
   // lies at the origin.
   void ResetOrigin() override;
 
+  void Rotate(int32_t degrees_ccw) override;
   void Translate(const geometry::Point &offset) override;
 
   // Shifts the layout so that the left-most point of the bounding box
@@ -182,11 +188,14 @@ class Layout : public geometry::Manipulable {
   }
 
   void SetTilingBounds(const geometry::Rectangle &rectangle) {
-    tiling_bounds_.reset(new geometry::Rectangle(rectangle));
+    tiling_bounds_ = rectangle;
   }
   void UnsetTilingBounds() {
     tiling_bounds_.reset();
   }
+
+  void EraseLayerByName(const std::string &name);
+  void EraseLayer(const geometry::Layer &layer);
 
   void SavePoint(const std::string &name, const geometry::Point &point);
   void SavePoints(
@@ -271,7 +280,7 @@ class Layout : public geometry::Manipulable {
 
   const PhysicalPropertiesDatabase &physical_db_;
 
-  std::unique_ptr<geometry::Rectangle> tiling_bounds_;
+  std::optional<geometry::Rectangle> tiling_bounds_;
 
   std::vector<std::unique_ptr<geometry::Instance>> instances_;
 

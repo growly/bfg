@@ -30,7 +30,8 @@ class Sky130TransmissionGate : public Atom {
     bool stacks_left = false;
     bool stacks_right = false;
 
-    std::optional<uint64_t> cell_height_nm = 2720; //std::nullopt;
+    // TODO(aryap): Not sure how this would work or what it would accomplish.
+    // std::optional<uint64_t> min_cell_height_nm = 2720;
 
     std::optional<uint64_t> vertical_tab_pitch_nm;
     std::optional<uint64_t> vertical_tab_offset_nm;
@@ -58,6 +59,7 @@ class Sky130TransmissionGate : public Atom {
     };
 
     nfet_generator_.reset(new Sky130SimpleTransistor(nfet_params, design_db_));
+    nfet_generator_->set_name("nmos");
 
     Sky130SimpleTransistor::Parameters pfet_params = {
       .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
@@ -69,6 +71,7 @@ class Sky130TransmissionGate : public Atom {
     }; 
  
     pfet_generator_.reset(new Sky130SimpleTransistor(pfet_params, design_db_));
+    pfet_generator_->set_name("pmos");
   }
 
   const geometry::Rectangle PMOSBounds() const {
@@ -84,6 +87,74 @@ class Sky130TransmissionGate : public Atom {
   const Sky130SimpleTransistor &nfet_generator() const {
     return *nfet_generator_;
   }
+
+  // This will return the transistor as a single Cell, which is usually
+  // annoying. Prefer calling GenerateLayout and GenerateCircuit to flatly merge
+  // outputs directly into parent cell.
+  bfg::Cell *Generate() override;
+
+  bfg::Layout *GenerateLayout();
+
+  bfg::Circuit *GenerateCircuit();
+
+ private:
+  // The layout's vertical axis has these components, schematically:
+  //
+  // ----------- top boundary
+  //           ^
+  //           | top padding: space to top boundary
+  //           v
+  //    +-+    ^
+  //    | |    | pmos tab (complex) height (fixed)
+  //    +-+    v 
+  //    | |    ^  
+  //    | |    v pmos tab connector (variable)
+  //    +-+    ^ 
+  //    | |    |
+  //    | |    | pmos poly height (fixed)
+  //    +-+    v
+  //           ^
+  //           | cmos gap (variable)
+  //           v
+  //    +-+    ^
+  //    | |    | nmos poly height (fixed)
+  //    | |    v
+  //    +-+    ^
+  //    | |    | nmos tab connector (variable)
+  //    | |    v
+  //    +-+    ^
+  //    | |    | nmos tab (complex) height (fixed)
+  //    +-+    v
+  //           ^
+  //           | bottom padding: space to bottom boundary
+  //           v
+  // ----------- bottom boundary (y = 0)
+  //
+  // For convenience we can force the tabs to line up with an overlying grid
+  // with two parameters: pitch (spacing between lines) and offset (distance to
+  // first line from y = 0).
+  //
+  // The algorithm for placement will be something like:
+  //  - If no grid is given, place NMOS, PMOS and their tabs as compactly as
+  //  possible.
+  //  - If a grid is given, starting at y = 0 and going up, place tabs, then
+  //  their corresponding transistors (or vice versa depending on where the tabs
+  //  are needed), so that tabs line up with the nearest grid position.
+  //  Placement can be expanded up with increasing y, but not down.
+  struct VerticalSpacings {
+    int64_t bottom_padding;
+    //int64_t nmos_tab_height;
+    int64_t nmos_tab_extension;
+    int64_t nmos_poly_bottom_y;
+    //int64_t nmos_poly_height;
+    //int64_t cmos_gap;
+    //int64_t pmos_tab_height;
+    int64_t pmos_tab_extension;
+    //int64_t pmos_poly_height;
+    int64_t pmos_poly_bottom_y;
+    int64_t top_padding;
+    int64_t cell_height;
+  };
 
   // Adds a tab to the poly for a via there:
   //
@@ -109,69 +180,26 @@ class Sky130TransmissionGate : public Atom {
   // complexity to its contract and removes flexibility. If it's adding
   // convenience, it's not clear what that is yet. So move this out and maybe
   // readd it if necessary later.
-  geometry::Rectangle *AddPolyTab(const Sky130SimpleTransistor &fet_generator,
-                                  const geometry::Compass &position,
-                                  Layout *layout);
+  geometry::Polygon *AddPolyTab(const Sky130SimpleTransistor &fet_generator,
+                                const geometry::Compass &position,
+                                int64_t connector_height,
+                                Layout *layout);
 
-  // This will return the transistor as a single Cell, which is usually
-  // annoying. Prefer calling GenerateLayout and GenerateCircuit to flatly merge
-  // outputs directly into parent cell.
-  bfg::Cell *Generate() override;
-
-  bfg::Layout *GenerateLayout();
-
-  bfg::Circuit *GenerateCircuit();
-
- private:
-  // The layout's vertical axis has these components, schematically:
-  //
-  // ----------- top boundary
-  //           ^
-  //           | space to boundary
-  //           v
-  //    +-+    ^
-  //    | |    | pmos tab (complex) height
-  //    +-+    v 
-  //    | |    ^
-  //    | |    | pmos poly height
-  //    +-+    v
-  //           ^
-  //           | gap
-  //           v
-  //    +-+    ^
-  //    | |    | nmos poly height
-  //    | |    v
-  //    +-+    ^
-  //    | |    | nmos tab (complex) height
-  //    +-+    v
-  //           ^
-  //           | space to boundary
-  //           v
-  // ----------- bottom boundary (y = 0)
-  //
-  // For convenience we can force the tabs to line up with an overlying grid
-  // with two parameters: pitch (spacing between lines) and offset (distance to
-  // first line from y = 0).
-  //
-  // The algorithm for placement will be something like:
-  //  - If no grid is given, place NMOS, PMOS and their tabs as compactly as
-  //  possible.
-  //  - If a grid is given, starting at y = 0 and going up, place tabs, then
-  //  their corresponding transistors (or vice versa depending on where the tabs
-  //  are needed), so that tabs line up with the nearest grid position.
-  //  Placement can be expanded up with increasing y, but not down.
+  const VerticalSpacings FigureSpacings() const;
 
   bool PMOSHasUpperTab() const;
   bool PMOSHasLowerTab() const;
   bool NMOSHasUpperTab() const;
   bool NMOSHasLowerTab() const;
 
-  int64_t FigureVerticalPadding(
-    const Sky130SimpleTransistor &fet_generator, bool abuts_tab) const;
-  int64_t FigureTopPadding() const;
-  int64_t FigureBottomPadding() const;
+  int64_t NextYOnGrid(int64_t current_y) const;
 
-  int64_t FigureCellHeight() const;
+  int64_t FigureBottomPadding() const;
+  int64_t FigureNMOSTabConnectorHeight(int64_t nmos_poly_top_y) const;
+  int64_t FigurePMOSTabConnectorHeight(int64_t pmos_poly_top_y) const;
+  int64_t FigureCMOSGap(int64_t current_y) const;
+
+  int64_t FigureTopPadding(int64_t pmos_poly_top_y) const;
 
   int64_t PMOSPolyHeight() const;
   int64_t NMOSPolyHeight() const;

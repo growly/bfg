@@ -88,6 +88,18 @@ void Layout::Translate(const Point &offset) {
   }
 }
 
+void Layout::Rotate(int32_t degrees_ccw) {
+  for (const auto &entry : shapes_) {
+    ShapeCollection *shapes = entry.second.get();
+    shapes->Rotate(degrees_ccw);
+  }
+  for (const auto &instance : instances_) { instance->Rotate(degrees_ccw); }
+  for (auto &entry : named_points_) { entry.second.Rotate(degrees_ccw); }
+  if (tiling_bounds_) {
+    tiling_bounds_->Rotate(degrees_ccw);
+  }
+}
+
 void Layout::ResetX() {
   geometry::Rectangle bounding_box = GetBoundingBox();
   Translate({-bounding_box.lower_left().x(), 0});
@@ -486,6 +498,41 @@ void Layout::MakePort(
   AddPort(port);
 }
 
+void Layout::Flatten() {
+  std::set<geometry::Instance*> instances_weak_copy;
+  std::transform(
+      instances_.begin(), instances_.end(),
+      std::inserter(instances_weak_copy, instances_weak_copy.begin()),
+      [](const std::unique_ptr<geometry::Instance> &uniq)
+          -> geometry::Instance* {
+        return uniq.get();
+      });
+
+  for (geometry::Instance *instance : instances_weak_copy) {
+    Layout staging(physical_db_);
+    staging.AddLayout(*instance->template_layout());
+    instance->ApplyInstanceTransforms(&staging);
+
+    // It is convenient to expand our tiling bounds automatically while doing
+    // this:
+    geometry::Rectangle::ExpandAccumulate(
+        instance->GetTilingBounds(), &tiling_bounds_);
+
+    AddLayout(staging);
+  }
+
+  // Remove old instances, noting that new instances could have been added as
+  // part of the flattening.
+  instances_.erase(
+      std::remove_if(
+          instances_.begin(), instances_.end(),
+          [&](const std::unique_ptr<geometry::Instance> &uniq) {
+            return instances_weak_copy.find(
+                uniq.get()) != instances_weak_copy.end();
+          }),
+      instances_.end());
+}
+
 void Layout::LabelNet(const geometry::Point &point, const std::string &net) {
   LOG(FATAL) << "Not implemented.";
 }
@@ -601,6 +648,14 @@ const geometry::PortSet Layout::Ports() const {
     //}
   }
   return all_ports;
+}
+
+void Layout::EraseLayerByName(const std::string &name) {
+  EraseLayer(physical_db_.GetLayerInfo(name).internal_layer);
+}
+
+void Layout::EraseLayer(const geometry::Layer &layer) {
+  shapes_.erase(layer);
 }
 
 void Layout::SavePoint(const std::string &name, const geometry::Point &point) {

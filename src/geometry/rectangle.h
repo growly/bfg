@@ -29,6 +29,8 @@ class Rectangle : public Shape {
 
   // Expand the 'bounding_box' rectangle to include the bounds of 'subsume'.
   static void ExpandBounds(const Rectangle &subsume, Rectangle *bounding_box);
+  static void ExpandAccumulate(const Rectangle &subsume,
+                               std::optional<Rectangle> *target);
 
   static Rectangle CentredAt(
       const Point &centre, uint64_t width, uint64_t height);

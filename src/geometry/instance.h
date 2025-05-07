@@ -60,6 +60,8 @@ class Instance : public Manipulable {
   void ResetOrigin() override;
   void AlignPoints(const Point &our_point, const Point &align_to);
 
+  void ApplyInstanceTransforms(Layout *layout) const;
+
   // Apply the transforms from the template layout to the instance layout.
   void ApplyInstanceTransforms(ShapeCollection *shape_collection) const {
     shape_collection->Rotate(rotation_degrees_ccw_);
@@ -195,9 +197,9 @@ class Instance : public Manipulable {
   // This is the template cell.
   bfg::Layout *const template_layout_;
 
-  // FIXME(aryap): This is confusing because "lower_left_" actually actually
-  // stored the origin of the cell, not the "lower left" point. This should be
-  // renamed to origin for instances.
+  // FIXME(aryap): This is confusing because "lower_left_" actually stores the
+  // origin of the cell, not the "lower left" point. This should be renamed to
+  // origin for instances.
   Point lower_left_;
   // This is mirroring in the X axis.
   bool reflect_vertical_;

@@ -2,11 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 #include "../layout.h"
 #include "../scoped_layer.h"
 #include "../geometry/compass.h"
 #include "../geometry/point.h"
+#include "../geometry/polygon.h"
+#include "../geometry/rectangle.h"
 #include "../geometry/vector.h"
 #include "sky130_simple_transistor.h"
 
@@ -35,9 +38,10 @@ int64_t Sky130TransmissionGate::PolyTabWidth(
   return via_width + 2 * diff_dcon_rules.via_overhang;
 }
 
-geometry::Rectangle *Sky130TransmissionGate::AddPolyTab(
+geometry::Polygon *Sky130TransmissionGate::AddPolyTab(
     const Sky130SimpleTransistor &fet_generator,
     const geometry::Compass &position,
+    int64_t connector_height,
     Layout *layout) {
   int64_t tab_height = PolyTabHeight(fet_generator);
   int64_t tab_width = PolyTabWidth(fet_generator);
@@ -78,8 +82,72 @@ geometry::Rectangle *Sky130TransmissionGate::AddPolyTab(
     default:
       LOG(FATAL) << "Unsupported poly tab position: " << position;
   }
+
+  geometry::Rectangle via = fet_generator.PolyContactingVia(
+      geometry::Point::MidpointOf(tab_ll, tab_ur));
+
   ScopedLayer layer(layout, fet_generator.PolyLayer());
-  return layout->AddRectangle(geometry::Rectangle(tab_ll, tab_ur));
+  if (connector_height <= 0) {
+    layout->SavePoint(absl::StrCat(fet_generator.name(), ".", "poly_tab_ll"),
+                      via.lower_left());
+    layout->SavePoint(absl::StrCat(fet_generator.name(), ".", "poly_tab_ur"),
+                      via.upper_right());
+
+    std::vector<geometry::Point> vertices = {
+      tab_ll,
+      geometry::Point(tab_ll.x(), tab_ur.y()),
+      tab_ur,
+      geometry::Point(tab_ur.x(), tab_ll.y())
+    };
+    return layout->AddPolygon(geometry::Polygon(vertices));
+  }
+
+  // There is some connector height, so we have to add the connector bits to the
+  // polygon:
+  geometry::Vector translator = {0, connector_height};
+
+  layout->SavePoint(
+      absl::StrCat(fet_generator.name(), ".", "poly_tab_ll"),
+      via.lower_left() + translator);
+  layout->SavePoint(
+      absl::StrCat(fet_generator.name(), ".", "poly_tab_ur"),
+      via.upper_right() + translator);
+
+  switch (position) {
+    case geometry::Compass::UPPER_LEFT:
+    case geometry::Compass::UPPER_RIGHT:
+    case geometry::Compass::UPPER: {
+      std::vector<geometry::Point> vertices = {
+        geometry::Point(poly_ll.x(), poly_ur.y()),
+        geometry::Point(poly_ll.x(), poly_ur.y()) + translator,
+        tab_ll + translator,
+        geometry::Point(tab_ll.x(), tab_ur.y()) + translator,
+        tab_ur + translator,
+        geometry::Point(tab_ur.x(), tab_ll.y()) + translator,
+        poly_ur + translator,
+        poly_ur
+      };
+      return layout->AddPolygon(geometry::Polygon(vertices));
+    }
+    case geometry::Compass::LOWER_LEFT:
+    case geometry::Compass::LOWER_RIGHT:
+    case geometry::Compass::LOWER: {
+      std::vector<geometry::Point> vertices = {
+        poly_ll,
+        poly_ll - translator,
+        geometry::Point(tab_ll.x(), tab_ur.y()) - translator,
+        tab_ll - translator,
+        geometry::Point(tab_ur.x(), tab_ll.y()) - translator,
+        tab_ur - translator,
+        geometry::Point(poly_ur.x(), poly_ll.y()) - translator,
+        geometry::Point(poly_ur.x(), poly_ll.y())
+      };
+      return layout->AddPolygon(geometry::Polygon(vertices));
+    }
+    default:
+      LOG(FATAL) << "Unsupported poly tab position: " << position;
+  }
+  return nullptr;
 }
 
 bfg::Cell *Sky130TransmissionGate::Generate() {
@@ -97,69 +165,110 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
 }
 
 int64_t Sky130TransmissionGate::PMOSPolyHeight() const {
-  return pfet_generator_->PolyHeight() + (
-      parameters_.p_tab_position ?  PMOSPolyTabHeight() : 0);
+  return pfet_generator_->PolyHeight();
 }
 
 int64_t Sky130TransmissionGate::NMOSPolyHeight() const {
-  return nfet_generator_->PolyHeight() + (
-      parameters_.n_tab_position ?  NMOSPolyTabHeight() : 0);
+  return nfet_generator_->PolyHeight();
 }
 
-int64_t Sky130TransmissionGate::FigureVerticalPadding(
-    const Sky130SimpleTransistor &fet_generator, bool abuts_tab) const {
+int64_t Sky130TransmissionGate::FigureTopPadding(
+    int64_t pmos_poly_top_y) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  const auto &poly_rules = db.Rules(fet_generator.PolyLayer());
+  const auto &poly_rules = db.Rules(pfet_generator_->PolyLayer());
   int64_t minimum = poly_rules.min_separation / 2;
-  if (!parameters_.vertical_tab_pitch_nm || !abuts_tab) {
+
+  if (!parameters_.vertical_tab_pitch_nm) {
     return minimum;
   }
+
   int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
-  int64_t padding = (pitch - PolyTabHeight(fet_generator)) / 2;
-
-  if (padding < minimum) {
-    padding += pitch / 2;
-  }
-
-  return padding;
-}
-
-int64_t Sky130TransmissionGate::FigureTopPadding() const {
-  return FigureVerticalPadding(*pfet_generator_, PMOSHasUpperTab());
+  int64_t max_y = (((pmos_poly_top_y + minimum) / pitch) + 1) * pitch;
+  return max_y - pmos_poly_top_y;
 }
 
 int64_t Sky130TransmissionGate::FigureBottomPadding() const {
-  return FigureVerticalPadding(*nfet_generator_, NMOSHasLowerTab());
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
+  int64_t minimum = poly_rules.min_separation / 2;
+  if (!parameters_.vertical_tab_pitch_nm || !NMOSHasLowerTab()) {
+    return minimum;
+  }
+  int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+  int64_t offset = db.ToInternalUnits(
+      parameters_.vertical_tab_offset_nm.value_or(0)) % pitch;
+
+  int64_t tab_height = NMOSPolyTabHeight();
+
+  int64_t padding = offset - tab_height / 2;
+  if (padding < minimum) {
+    padding += pitch;
+  }
+  return padding;
 }
 
-int64_t Sky130TransmissionGate::FigureCellHeight() const {
+int64_t Sky130TransmissionGate::NextYOnGrid(int64_t current_y) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  if (!parameters_.vertical_tab_pitch_nm) {
+    return current_y;
+  }
+  int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+  int64_t offset = db.ToInternalUnits(
+      parameters_.vertical_tab_offset_nm.value_or(0)) % pitch;
+
+  // We want floor() behaviour:
+  int64_t quotient = (current_y - offset) / pitch;
+  return (quotient + 1) * pitch + offset;
+}
+
+// Only called if the NMOS has an upper tab, which means we need to find the
+// next on-grid position above nmos_poly_top_y where the tab can fit:
+int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
-  // FIXME(aryap): This should also account for the minimum nwell/nsdm/psdm
-  // spacing rules!
-  const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
-  int64_t minimum = FigureBottomPadding() + NMOSPolyHeight() +
-      poly_rules.min_separation + PMOSPolyHeight() + FigureTopPadding();
+  int64_t nwell_ndiff_separation = db.Rules(
+      "nwell.drawing", nfet_generator_->DiffLayer()).min_separation;
+  int64_t nwell_margin = db.Rules(
+      "nwell.drawing", pfet_generator_->DiffLayer()).min_enclosure;
 
-  if (parameters_.cell_height_nm && parameters_.vertical_tab_pitch_nm) {
-    minimum = std::max(
-        minimum, db.ToInternalUnits(*parameters_.cell_height_nm));
-    double divisor = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
-    return std::ceil(static_cast<double>(minimum) / divisor) * divisor;
+  int64_t min_y = 
+      std::max(
+          current_y + db.Rules(nfet_generator_->PolyLayer()).min_separation,
+          current_y - static_cast<int64_t>(nfet_generator_->PolyOverhang()) +
+              nwell_ndiff_separation + nwell_margin -
+              static_cast<int64_t>(pfet_generator_->PolyOverhang()));
+
+
+  // If the PMOS transistor has a lower-side tab, we might need to add a gap
+  // here to get it onto the grid:
+  if (PMOSHasLowerTab()) {
+    int64_t tab_height = PMOSPolyTabHeight();
+    int64_t next_y = NextYOnGrid(min_y + tab_height / 2);
+    return next_y - tab_height / 2 - current_y;
   }
 
-  // FIXME(aryap): Cell height should be the *tiling* cell height, so there
-  // should be sapce at the top and bottom so that the diff regions are not to
-  // close to (what we can expect will be) external instances of diff regions...
-  if (parameters_.cell_height_nm) {
-    return std::max(minimum, db.ToInternalUnits(*parameters_.cell_height_nm));
-  } else if (parameters_.vertical_tab_pitch_nm) {
-    double divisor = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
-    return std::ceil(static_cast<double>(minimum) / divisor) * divisor;
-  }
-  return minimum;
+  return min_y - current_y;
 }
 
+// Only called if the NMOS has an upper tab, which means we need to find the
+// next on-grid position above nmos_poly_top_y where the tab can fit:
+int64_t Sky130TransmissionGate::FigureNMOSTabConnectorHeight(
+    int64_t nmos_poly_top_y) const {
+  int64_t tab_height = NMOSPolyTabHeight();
+  int64_t default_tab_centre = nmos_poly_top_y + tab_height / 2;
+
+  int64_t next_on_grid = NextYOnGrid(default_tab_centre);
+  return next_on_grid - default_tab_centre;
+}
+
+int64_t Sky130TransmissionGate::FigurePMOSTabConnectorHeight(
+    int64_t pmos_poly_top_y) const {
+  int64_t tab_height = PMOSPolyTabHeight();
+  int64_t default_tab_centre = pmos_poly_top_y + tab_height / 2;
+
+  int64_t next_on_grid = NextYOnGrid(default_tab_centre);
+  return next_on_grid - default_tab_centre;
+}
 
 bool Sky130TransmissionGate::PMOSHasUpperTab() const {
   if (!parameters_.p_tab_position)
@@ -221,53 +330,97 @@ bool Sky130TransmissionGate::NMOSHasLowerTab() const {
   }
 }
 
+const Sky130TransmissionGate::VerticalSpacings
+Sky130TransmissionGate::FigureSpacings() const {
+  VerticalSpacings spacings;
+
+  // This just tracks where we expect our y value to end up as we construct
+  // upwards. It starts with whatever gap is necessary to put the bottom tab on
+  // the grid, if a grid is defined, or at minimum spacing to the cell edge.
+  spacings.bottom_padding = FigureBottomPadding();
+  int64_t y = spacings.bottom_padding;
+
+  int64_t nmos_align_y = y;
+  int64_t nmos_tab_connector_height = 0;
+  if (NMOSHasLowerTab()) {
+    nmos_align_y += NMOSPolyTabHeight();
+    y += NMOSPolyTabHeight();
+  } else if (NMOSHasUpperTab()) {
+    nmos_tab_connector_height =
+        FigureNMOSTabConnectorHeight(y + NMOSPolyHeight());
+    y += NMOSPolyTabHeight() + nmos_tab_connector_height;
+  }
+  spacings.nmos_poly_bottom_y = nmos_align_y;
+  spacings.nmos_tab_extension = nmos_tab_connector_height;
+
+  y += NMOSPolyHeight();
+
+  // TODO(aryap): This should also account for the minimum nwell/nsdm/psdm
+  // spacing rules!
+  int64_t cmos_gap = FigureCMOSGap(y);
+  y += cmos_gap;
+
+  int64_t pmos_align_y = y;
+  int64_t pmos_tab_connector_height = 0;
+  if (PMOSHasLowerTab()) {
+    pmos_align_y += PMOSPolyTabHeight();
+    y += PMOSPolyTabHeight();
+  } else if (PMOSHasUpperTab()) {
+    pmos_tab_connector_height =
+        FigurePMOSTabConnectorHeight(pmos_align_y + PMOSPolyHeight());
+    y += PMOSPolyTabHeight() + pmos_tab_connector_height;
+  }
+  spacings.pmos_tab_extension = pmos_tab_connector_height;
+  spacings.pmos_poly_bottom_y = pmos_align_y;
+  y += PMOSPolyHeight();
+
+  int64_t top_padding = FigureTopPadding(y);
+  y += top_padding;
+
+  spacings.cell_height = y;
+  return spacings;
+}
+
 bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
 
-  const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
-
-  int64_t cell_height = FigureCellHeight();
-
-  int64_t anchor_y_high = cell_height - (PMOSPolyHeight() + FigureTopPadding());
-  if (PMOSHasLowerTab()) {
-    anchor_y_high += PMOSPolyTabHeight();
-  }
-
-  int64_t anchor_y_low = FigureBottomPadding();
-  if (NMOSHasLowerTab()) {
-    anchor_y_low += NMOSPolyTabHeight();
-  }
+  const auto spacings = FigureSpacings();
 
   nfet_generator_->AlignTransistorPartTo(
       Sky130SimpleTransistor::Landmark::POLY_BOTTOM_CENTRE,
-      {0, anchor_y_low});
+      {0, spacings.nmos_poly_bottom_y});
   pfet_generator_->AlignTransistorPartTo(
       Sky130SimpleTransistor::Landmark::POLY_BOTTOM_CENTRE,
-      {0, anchor_y_high});
+      {0, spacings.pmos_poly_bottom_y});
 
   std::unique_ptr<bfg::Layout> nfet_layout(nfet_generator_->GenerateLayout());
-  layout->AddLayout(*nfet_layout, "nmos");
+  layout->AddLayout(*nfet_layout, nfet_generator_->name());
   std::unique_ptr<bfg::Layout> pfet_layout(pfet_generator_->GenerateLayout());
-  layout->AddLayout(*pfet_layout, "pmos");
+  layout->AddLayout(*pfet_layout, pfet_generator_->name());
 
   if (parameters_.n_tab_position) {
-    geometry::Rectangle *ntab = AddPolyTab(
-        *nfet_generator_, *parameters_.n_tab_position, layout.get());
+    geometry::Polygon *ntab = AddPolyTab(
+        *nfet_generator_, *parameters_.n_tab_position,
+        spacings.nmos_tab_extension, layout.get());
 
     //layout->MakeVia(
     //    nfet_generator_->DiffConnectionLayer(), ntab->centre());
   }
   if (parameters_.p_tab_position) {
-    geometry::Rectangle *ptab = AddPolyTab(
-        *pfet_generator_, *parameters_.p_tab_position, layout.get());
+    geometry::Polygon *ptab = AddPolyTab(
+        *pfet_generator_, *parameters_.p_tab_position,
+        spacings.pmos_tab_extension, layout.get());
   }
 
   geometry::Rectangle pre_well_bounds = layout->GetBoundingBox();
 
+  // TODO(aryap): nwell.drawing has a minimum width that must be considered
+  // here. Does it make sense to make the nwell boundary generation a part of
+  // the Sky130SimpleTransistor? Otherwise we have to check for min. dimensions
+  // everywhere.
   if (parameters_.draw_nwell) {
     ScopedLayer layer(layout.get(), "nwell.drawing");
-
     int64_t nwell_margin = db.Rules(
         "nwell.drawing", "pdiff.drawing").min_enclosure;
     layout->AddRectangle(PMOSBounds().WithPadding(nwell_margin));
@@ -278,7 +431,7 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
     int64_t min_y = pre_well_bounds.lower_left().y();
     geometry::Rectangle tiling_bounds = geometry::Rectangle(
         {pre_well_bounds.lower_left().x(), 0},
-        {pre_well_bounds.upper_right().x(), cell_height});
+        {pre_well_bounds.upper_right().x(), spacings.cell_height});
     ScopedLayer layer(layout.get(), "areaid.standardc");
     layout->AddRectangle(tiling_bounds);
     layout->SetTilingBounds(tiling_bounds);
