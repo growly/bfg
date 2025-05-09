@@ -11,6 +11,7 @@
 #include "../geometry/polygon.h"
 #include "../geometry/rectangle.h"
 #include "../physical_properties_database.h"
+#include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "sky130_simple_transistor.h"
 
 namespace bfg {
@@ -42,6 +43,9 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<geometry::Compass> p_tab_position;
     std::optional<geometry::Compass> n_tab_position;
+
+    void ToProto(proto::parameters::Sky130TransmissionGate *pb) const;
+    void FromProto(const proto::parameters::Sky130TransmissionGate &pb);
   };
 
   Sky130TransmissionGate(

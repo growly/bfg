@@ -11,8 +11,10 @@
 #include "../geometry/polygon.h"
 #include "../geometry/rectangle.h"
 #include "../physical_properties_database.h"
+#include "proto/parameters/sky130_transmission_gate_stack.pb.h"
 #include "sky130_simple_transistor.h"
 #include "sky130_transmission_gate.h"
+
 
 namespace bfg {
 
@@ -58,6 +60,9 @@ class Sky130TransmissionGateStack : public Atom {
     // Horizontal pitch of ports across the gates. Will force transistor spacing
     // as well.
     std::optional<uint64_t> horizontal_pitch_nm = 600;
+
+    void ToProto(proto::parameters::Sky130TransmissionGateStack *pb) const;
+    void FromProto(const proto::parameters::Sky130TransmissionGateStack &pb);
   };
 
   Sky130TransmissionGateStack(

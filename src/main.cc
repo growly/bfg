@@ -63,6 +63,12 @@ void Gf180McuMuxExperiment() {
   design_db.WriteTop(*top, "gf180_mux.pb", "gf180_mux.package.pb", true);
 }
 
+void MakeParameterisedCell(
+    const std::string &generator_name,
+    const std::string &parameter_pb_path,
+    const std::string &output_path) {
+}
+
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
@@ -148,7 +154,7 @@ int main(int argc, char **argv) {
 
   Gf180McuMuxExperiment();
 
-  return EXIT_SUCCESS;
+  //return EXIT_SUCCESS;
 
   std::string top_name = "lut";
   bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);

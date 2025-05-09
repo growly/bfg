@@ -33,6 +33,7 @@ set(BUILD_DEPS true)
 include_directories(${GTEST_INCLUDE_DIR})
 
 set(PROTO_SRC_DIR ${PROJECT_SOURCE_DIR}/proto)
+file(GLOB_RECURSE PROTO_SRC "${PROTO_SRC_DIR}/*.proto")
 #set(PROTO_SRC
 #  ${PROTO_SRC_DIR}/router_service.proto
 #)
@@ -219,15 +220,21 @@ target_include_directories(vlsir_lib PRIVATE ${VLSIR_OUT_DIR})
 # Internal protocol buffers
 # -------------------------
 #
-# Included directly as code in our main library.
+# Internal protocol buffers are included directly as code in our main library.
+# As a result, we must take care to ensure that the include paths used in the
+# generated proto sources match the scheme we use for the rest of the bfg
+# source. protoc, via our generate_protos macro, generates these based on the
+# relative paths to protos from the proto root directory.
 #
+# So don't do this:
 #file(RELATIVE_PATH proto_src_relative ${PROJECT_SOURCE_DIR} ${PROTO_SRC_DIR})
 #set(PROTO_OUT_DIR ${PROJECT_BINARY_DIR}/${proto_src_relative})
-#set(GENERATED_PROTO_SRCS)
-#set(GENERATED_PROTO_HDRS)
-#generate_protos(${PROTO_SRC_DIR} "${PROTO_SRC}" ${PROJECT_BINARY_DIR})
-#set(PROTO_GENERATED_HDRS ${GENERATED_PROTO_HDRS})
-#set(PROTO_GENERATED_SRCS ${GENERATED_PROTO_SRCS})
+set(PROTO_OUT_DIR ${PROJECT_BINARY_DIR})
+set(GENERATED_PROTO_SRCS)
+set(GENERATED_PROTO_HDRS)
+generate_protos(${PROJECT_SOURCE_DIR} "${PROTO_SRC}" ${PROTO_OUT_DIR})
+set(PROTO_GENERATED_HDRS ${GENERATED_PROTO_HDRS})
+set(PROTO_GENERATED_SRCS ${GENERATED_PROTO_SRCS})
 
 # bfg library
 # -----------
@@ -239,7 +246,7 @@ set(BFG_LIB_SRC
   ${CIRCUIT_SRC}
   ${GEOMETRY_SRC}
   ${CIRCUIT_SRC}
-  #${PROTO_GENERATED_SRCS}
+  ${PROTO_GENERATED_SRCS}
 )
 
 add_library(bfg STATIC ${BFG_LIB_SRC})

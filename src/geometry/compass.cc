@@ -3,7 +3,58 @@
 #include <string>
 #include <ostream>
 
+#include "proto/compass_direction.pb.h"
+
 namespace bfg {
+namespace geometry {
+
+proto::CompassDirection CompassToProtoCompassDirection(
+    const Compass &compass) {
+  switch (compass) {
+    case Compass::WEST:
+      return proto::CompassDirection::WEST;
+    case Compass::NORTH_WEST:
+      return proto::CompassDirection::NORTH_WEST;
+    case Compass::NORTH:
+      return proto::CompassDirection::NORTH;
+    case Compass::NORTH_EAST:
+      return proto::CompassDirection::NORTH_EAST;
+    case Compass::EAST:
+      return proto::CompassDirection::EAST;
+    case Compass::SOUTH_EAST:
+      return proto::CompassDirection::SOUTH_EAST;
+    case Compass::SOUTH:
+      return proto::CompassDirection::SOUTH;
+    case Compass::SOUTH_WEST:
+      return proto::CompassDirection::SOUTH_WEST;
+  }
+  return proto::CompassDirection::WEST;
+}
+
+Compass ProtoCompassDirectionToCompass(
+    const proto::CompassDirection &compass_pb) {
+  switch (compass_pb) {
+    case proto::CompassDirection::WEST:
+      return Compass::WEST;
+    case proto::CompassDirection::NORTH_WEST:
+      return Compass::NORTH_WEST;
+    case proto::CompassDirection::NORTH:
+      return Compass::NORTH;
+    case proto::CompassDirection::NORTH_EAST:
+      return Compass::NORTH_EAST;
+    case proto::CompassDirection::EAST:
+      return Compass::EAST;
+    case proto::CompassDirection::SOUTH_EAST:
+      return Compass::SOUTH_EAST;
+    case proto::CompassDirection::SOUTH:
+      return Compass::SOUTH;
+    case proto::CompassDirection::SOUTH_WEST:
+      return Compass::SOUTH_WEST;
+  }
+  return Compass::WEST;
+}
+
+}  // namespace geometry
 
 // NOTE(aryap): namespace geometry is not in this file, because nothing in it
 // needs to be defined.

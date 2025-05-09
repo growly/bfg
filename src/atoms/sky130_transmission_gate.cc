@@ -11,10 +11,118 @@
 #include "../geometry/polygon.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/vector.h"
+#include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "sky130_simple_transistor.h"
 
 namespace bfg {
 namespace atoms {
+
+void Sky130TransmissionGate::Parameters::ToProto(
+    proto::parameters::Sky130TransmissionGate *pb) const {
+  pb->set_p_width_nm(p_width_nm);
+  pb->set_p_length_nm(p_length_nm);
+  pb->set_n_width_nm(n_width_nm);
+  pb->set_n_length_nm(n_length_nm);
+
+  pb->set_stacks_left(stacks_left);
+  pb->set_stacks_right(stacks_right);
+
+  if (vertical_tab_pitch_nm) {
+    pb->set_vertical_tab_pitch_nm(*vertical_tab_pitch_nm);
+  } else {
+    pb->clear_vertical_tab_pitch_nm();
+  }
+
+  if (vertical_tab_offset_nm) {
+    pb->set_vertical_tab_offset_nm(*vertical_tab_offset_nm);
+  } else {
+    pb->clear_vertical_tab_offset_nm();
+  }
+
+  if (poly_pitch_nm) {
+    pb->set_poly_pitch_nm(*poly_pitch_nm);
+  } else {
+    pb->clear_poly_pitch_nm();
+  }
+
+  pb->set_draw_nwell(draw_nwell);
+
+  if (p_tab_position) {
+    pb->set_p_tab_position(
+        geometry::CompassToProtoCompassDirection(*p_tab_position));
+  } else {
+    pb->clear_p_tab_position();
+  }
+
+  if (n_tab_position) {
+    pb->set_n_tab_position(
+        geometry::CompassToProtoCompassDirection(*n_tab_position));
+  } else {
+    pb->clear_n_tab_position();
+  }
+}
+
+void Sky130TransmissionGate::Parameters::FromProto(
+    const proto::parameters::Sky130TransmissionGate &pb) {
+  if (pb.has_p_width_nm()) {
+    p_width_nm = pb.p_width_nm();
+  }
+
+  if (pb.has_p_length_nm()) {
+    p_length_nm = pb.p_length_nm();
+  }
+
+  if (pb.has_n_width_nm()) {
+    n_width_nm = pb.n_width_nm();
+  }
+
+  if (pb.has_n_length_nm()) {
+    n_length_nm = pb.n_length_nm();
+  }
+
+  if (pb.has_n_width_nm()) {
+    n_width_nm = pb.n_width_nm();
+  }
+
+  if (pb.has_stacks_left()) {
+    stacks_left = pb.stacks_left();
+  }
+
+  if (pb.has_stacks_right()) {
+    stacks_right = pb.stacks_right();
+  }
+
+  if (pb.has_vertical_tab_pitch_nm()) {
+    vertical_tab_pitch_nm = pb.vertical_tab_pitch_nm();
+  } else {
+    vertical_tab_pitch_nm.reset();
+  }
+
+  if (pb.has_vertical_tab_offset_nm()) {
+    vertical_tab_offset_nm = pb.vertical_tab_offset_nm();
+  } else {
+    vertical_tab_offset_nm.reset();
+  }
+
+  if (pb.has_draw_nwell()) {
+    draw_nwell = pb.draw_nwell();
+  }
+
+  if (pb.has_p_tab_position()) {
+    p_tab_position = geometry::ProtoCompassDirectionToCompass(
+        pb.p_tab_position());
+  } else {
+    p_tab_position.reset();
+  }
+
+  if (pb.has_n_tab_position()) {
+    n_tab_position = geometry::ProtoCompassDirectionToCompass(
+        pb.n_tab_position());
+  } else {
+    n_tab_position.reset();
+  }
+}
+
 
 int64_t Sky130TransmissionGate::PolyTabHeight(
     const Sky130SimpleTransistor &fet_generator) const {

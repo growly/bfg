@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <ostream>
 
+#include "proto/compass_direction.pb.h"
+
 namespace bfg {
 namespace geometry {
 
@@ -26,6 +28,11 @@ enum class Compass : uint8_t {
   LOWER       = 6,
   LOWER_LEFT  = 7
 };
+
+proto::CompassDirection CompassToProtoCompassDirection(
+    const Compass &compass);
+Compass ProtoCompassDirectionToCompass(
+    const proto::CompassDirection &compass_pb);
 
 }  // namespace geometry
 

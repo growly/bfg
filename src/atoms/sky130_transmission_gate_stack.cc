@@ -6,10 +6,73 @@
 #include "../scoped_layer.h"
 #include "../geometry/point.h"
 #include "../geometry/poly_line.h"
+#include "proto/parameters/sky130_transmission_gate_stack.pb.h"
 #include "sky130_transmission_gate.h"
 
 namespace bfg {
 namespace atoms {
+
+void Sky130TransmissionGateStack::Parameters::ToProto(
+    proto::parameters::Sky130TransmissionGateStack *pb) const {
+  pb->mutable_net_sequence()->Clear();
+  pb->mutable_net_sequence()->Add(net_sequence.begin(), net_sequence.end());
+
+  // TODO(aryap): This could be a macro. I hate that. Also the Google C++ style
+  // guide thinks they have bad vibes.
+  if (li_width_nm) {
+    pb->set_li_width_nm(*li_width_nm);
+  } else {
+    pb->clear_li_width_nm();
+  }
+
+  if (min_height_nm) {
+    pb->set_min_height_nm(*min_height_nm);
+  } else {
+    pb->clear_min_height_nm();
+  }
+
+  if (vertical_pitch_nm) {
+    pb->set_vertical_pitch_nm(*vertical_pitch_nm);
+  } else {
+    pb->clear_vertical_pitch_nm();
+  }
+
+  if (horizontal_pitch_nm) {
+    pb->set_horizontal_pitch_nm(*horizontal_pitch_nm);
+  } else {
+    pb->clear_horizontal_pitch_nm();
+  }
+}
+
+void Sky130TransmissionGateStack::Parameters::FromProto(
+    const proto::parameters::Sky130TransmissionGateStack &pb) {
+  net_sequence = std::vector<std::string>(
+      pb.net_sequence().begin(), pb.net_sequence().end());
+
+  if (pb.has_li_width_nm()) {
+    li_width_nm = pb.li_width_nm();
+  } else {
+    li_width_nm.reset();
+  }
+
+  if (pb.has_min_height_nm()) {
+    min_height_nm = pb.min_height_nm();
+  } else {
+    min_height_nm.reset();
+  }
+
+  if (pb.has_vertical_pitch_nm()) {
+    vertical_pitch_nm = pb.vertical_pitch_nm();
+  } else {
+    vertical_pitch_nm.reset();
+  }
+
+  if (pb.has_horizontal_pitch_nm()) {
+    horizontal_pitch_nm = pb.horizontal_pitch_nm();
+  } else {
+    horizontal_pitch_nm.reset();
+  }
+}
 
 bfg::Cell *Sky130TransmissionGateStack::Generate() {
   std::unique_ptr<bfg::Cell> cell(
