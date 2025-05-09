@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package bfg.proto.parameters;
+
+message Sky130TransmissionGateStack {
+  repeated string net_sequence = 1;
+  optional uint64 li_width_nm = 2;
+  optional uint64 min_height_nm = 3;
+  optional uint64 vertical_pitch_nm = 4;
+  optional uint64 horizontal_pitch_nm = 5;
+}

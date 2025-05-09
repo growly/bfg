@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package bfg.proto.parameters;
+
+import "proto/compass_direction.proto";
+
+message Sky130TransmissionGate {
+    optional uint64 p_width_nm = 1;
+    optional uint64 p_length_nm = 2;
+    optional uint64 n_width_nm = 3;
+    optional uint64 n_length_nm = 4;
+
+    optional bool stacks_left = 5;
+    optional bool stacks_right = 6;
+
+    optional uint64 vertical_tab_pitch_nm = 7;
+    optional uint64 vertical_tab_offset_nm = 8;
+    optional uint64 poly_pitch_nm = 9;
+
+    optional bool draw_nwell = 10;
+
+    optional proto.CompassDirection p_tab_position = 11;
+    optional proto.CompassDirection n_tab_position = 12;
+}
