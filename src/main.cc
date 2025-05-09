@@ -25,6 +25,9 @@
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
 
+#include "proto/parameters/sky130_transmission_gate.pb.h"
+#include "proto/parameters/sky130_transmission_gate_stack.pb.h"
+
 #include "vlsir/tech.pb.h"
 #include "vlsir/layout/raw.pb.h"
 
@@ -40,6 +43,11 @@ DEFINE_string(output_package, "package.pb", "Output Vlsir Package path");
 // FIXME(aryap): Writing text format seems to cause a segfault with libprotoc
 // 3.21.5.
 DEFINE_bool(write_text_format, false, "Also write text format protobufs");
+
+DEFINE_string(run_generator, "", "Name of a generator to run");
+DEFINE_string(
+    params,
+    "", "Path to text proto containing parameters for the named generator");
 
 DEFINE_string(primitives, "primitives.pb", "Path to binary circuits proto");
 
@@ -63,10 +71,44 @@ void Gf180McuMuxExperiment() {
   design_db.WriteTop(*top, "gf180_mux.pb", "gf180_mux.package.pb", true);
 }
 
-void MakeParameterisedCell(
+bool ReadTextProtoOrDie(
+    const std::string &path,
+    google::protobuf::Message *message_pb) {
+  std::ifstream input(path);
+  LOG_IF(FATAL, !input.is_open())
+      << "Could not open text proto: " << path;
+  std::ostringstream ss;
+  ss << input.rdbuf();
+  return google::protobuf::TextFormat::ParseFromString(ss.str(), message_pb);
+}
+
+int RunGenerator(
     const std::string &generator_name,
     const std::string &parameter_pb_path,
-    const std::string &output_path) {
+    const std::string &output_prefix,
+    bfg::DesignDatabase *design_db) {
+  bfg::Cell *cell;
+  if (generator_name == "Sky130TransmissionGate") {
+    bfg::proto::parameters::Sky130TransmissionGate params_pb;
+    ReadTextProtoOrDie(parameter_pb_path, &params_pb);
+
+    bfg::atoms::Sky130TransmissionGate::Parameters params;
+    params.FromProto(params_pb);
+
+    bfg::atoms::Sky130TransmissionGate generator(params, design_db);
+    cell = generator.GenerateIntoDatabase(generator_name);
+  } else if (generator_name == "Sky130TransmissionGateStack") {
+
+  } else {
+    LOG(ERROR) << "Unrecognised generator name: " << generator_name;
+    return EXIT_FAILURE;
+  }
+
+  design_db->WriteTop(*cell,
+                      absl::StrCat(output_prefix, ".library.pb"),
+                      absl::StrCat(output_prefix, ".package.pb"),
+                      FLAGS_write_text_format);
+  return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv) {
@@ -129,6 +171,13 @@ int main(int argc, char **argv) {
                  << FLAGS_external_circuits;
     }
     design_db.LoadPackage(external_circuits_pb);
+  }
+
+  if (FLAGS_run_generator != "")  {
+    return RunGenerator(FLAGS_run_generator,
+                        FLAGS_params,
+                        FLAGS_output_library,
+                        &design_db);
   }
 
   //bfg::atoms::Sky130SwitchComplex::Parameters sc_params;
