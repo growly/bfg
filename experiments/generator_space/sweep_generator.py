@@ -1,5 +1,8 @@
+import cairosvg
+import imageio.v3 as iio
 import gdspy
 import subprocess
+import os
 
 SKY130_SVG_STYLE = {
     # areaid.standardc
@@ -8,6 +11,7 @@ SKY130_SVG_STYLE = {
         'stroke': 'red'
     },
 }
+
 
 def make_svg(gds_path: str, image_path: str):
     library = gdspy.GdsLibrary(infile=gds_path)
@@ -19,18 +23,41 @@ def make_svg(gds_path: str, image_path: str):
         style=SKY130_SVG_STYLE
     )
 
+
+def make_png(svg_path: str, png_path: str):
+    cairosvg.svg2png(url=svg_path, write_to=png_path)
+
+
+def make_subdirs():
+    for subdir in ('gds', 'pb.txt', 'svg', 'png', 'gif'):
+        try:
+            os.mkdir(subdir)
+        except FileExistsError:
+            pass
+
+
+def make_gif(png_paths: str, gif_name):
+    images = [iio.imread(path) for path in png_paths]
+    iio.imwrite(gif_name, images, duration=500, loop=0)
+
+
 def sweep():
+    make_subdirs()
+
+    svgs = []
+    pngs = []
+
     i = 0
-    for p_width_nm in range(400, 1001, 50):
-        for n_width_nm in range(350, 651, 50):
+    for stacks in ('true', 'false'):
+        for add in range(0, 301, 50):
             params = f'''\
-p_width_nm: {p_width_nm};
+p_width_nm: {700 + add};
 p_length_nm: 150;
-n_width_nm: {n_width_nm};
+n_width_nm: {350 + add};
 n_length_nm: 150;
 
-stacks_left: false;
-stacks_right: false;
+stacks_left: {stacks};
+stacks_right: {stacks};
 
 vertical_tab_pitch_nm: 400;
 vertical_tab_offset_nm: 200;
@@ -41,11 +68,11 @@ draw_nwell: false;
 p_tab_position: NORTH;
 n_tab_position: SOUTH;
 '''
-            param_path = f'{i}.pb.txt'
+            param_path = f'pb.txt/{i}.pb.txt'
             with open(param_path, 'w') as f:
                 f.write(params)
 
-            image_path = f'{i}.svg'
+            image_path = f'svg/{i}.svg'
 
             out_prefix = 'transmission_gate'
 
@@ -62,7 +89,7 @@ n_tab_position: SOUTH;
                 ]
             );
 
-            gds_path = f'{i}.gds'
+            gds_path = f'gds/{i}.gds'
 
             subprocess.run(
                 [
@@ -75,7 +102,17 @@ n_tab_position: SOUTH;
             )
 
             make_svg(gds_path, image_path)
+            svgs.append(image_path)
             i = i + 1
+
+
+    for svg_path in svgs:
+        png_path = svg_path.replace('.svg', '.png').replace('svg/', 'png/')
+        make_png(svg_path, png_path)
+        pngs.append(png_path)
+
+    #make_gif(pngs, 'all.gif')
+
 
 if __name__ == '__main__':
     sweep()

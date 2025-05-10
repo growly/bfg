@@ -13,5 +13,5 @@ python3 sweep_generator.py
 ## Cleanup
 
 ```
-rm *.gds *.pb.txt *.svg
+rm -rf pb.txt gds png svg gif *.pb *.pb.txt
 ```
