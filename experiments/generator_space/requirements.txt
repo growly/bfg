@@ -1,3 +1,4 @@
 gdspy
 cairosvg
 imageio
+Pillow

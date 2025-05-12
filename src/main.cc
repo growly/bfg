@@ -98,7 +98,14 @@ int RunGenerator(
     bfg::atoms::Sky130TransmissionGate generator(params, design_db);
     cell = generator.GenerateIntoDatabase(generator_name);
   } else if (generator_name == "Sky130TransmissionGateStack") {
+    bfg::proto::parameters::Sky130TransmissionGateStack params_pb;
+    ReadTextProtoOrDie(parameter_pb_path, &params_pb);
 
+    bfg::atoms::Sky130TransmissionGateStack::Parameters params;
+    params.FromProto(params_pb);
+
+    bfg::atoms::Sky130TransmissionGateStack generator(params, design_db);
+    cell = generator.GenerateIntoDatabase(generator_name);
   } else {
     LOG(ERROR) << "Unrecognised generator name: " << generator_name;
     return EXIT_FAILURE;
