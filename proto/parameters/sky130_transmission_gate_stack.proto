@@ -4,8 +4,12 @@ package bfg.proto.parameters;
 
 message Sky130TransmissionGateStack {
   repeated string net_sequence = 1;
-  optional uint64 li_width_nm = 2;
-  optional uint64 min_height_nm = 3;
-  optional uint64 vertical_pitch_nm = 4;
-  optional uint64 horizontal_pitch_nm = 5;
+  optional uint64 p_width_nm = 2;
+  optional uint64 p_length_nm = 3;
+  optional uint64 n_width_nm = 4;
+  optional uint64 n_length_nm = 5;
+  optional uint64 li_width_nm = 6;
+  optional uint64 min_height_nm = 7;
+  optional uint64 vertical_pitch_nm = 8;
+  optional uint64 horizontal_pitch_nm = 9;
 }

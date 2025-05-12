@@ -17,6 +17,11 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
   pb->mutable_net_sequence()->Clear();
   pb->mutable_net_sequence()->Add(net_sequence.begin(), net_sequence.end());
 
+  pb->set_p_width_nm(p_width_nm);
+  pb->set_p_length_nm(p_length_nm);
+  pb->set_n_width_nm(n_width_nm);
+  pb->set_n_length_nm(n_length_nm);
+
   // TODO(aryap): This could be a macro. I hate that. Also the Google C++ style
   // guide thinks they have bad vibes.
   if (li_width_nm) {
@@ -48,6 +53,26 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
     const proto::parameters::Sky130TransmissionGateStack &pb) {
   net_sequence = std::vector<std::string>(
       pb.net_sequence().begin(), pb.net_sequence().end());
+
+  if (pb.has_p_width_nm()) {
+    p_width_nm = pb.p_width_nm();
+  }
+
+  if (pb.has_p_length_nm()) {
+    p_length_nm = pb.p_length_nm();
+  }
+
+  if (pb.has_n_width_nm()) {
+    n_width_nm = pb.n_width_nm();
+  }
+
+  if (pb.has_n_length_nm()) {
+    n_length_nm = pb.n_length_nm();
+  }
+
+  if (pb.has_n_width_nm()) {
+    n_width_nm = pb.n_width_nm();
+  }
 
   if (pb.has_li_width_nm()) {
     li_width_nm = pb.li_width_nm();
@@ -97,10 +122,10 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
-      .p_width_nm = 450,
-      .p_length_nm = 150,
-      .n_width_nm = 450,
-      .n_length_nm = 150,
+      .p_width_nm = parameters_.p_width_nm,
+      .p_length_nm = parameters_.p_length_nm,
+      .n_width_nm = parameters_.n_width_nm,
+      .n_length_nm = parameters_.n_length_nm,
       .stacks_left = i > 0,
       .stacks_right = i < num_gates - 1,
       //.min_cell_height_nm = parameters_.min_height_nm,

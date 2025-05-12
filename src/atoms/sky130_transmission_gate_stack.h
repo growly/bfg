@@ -47,6 +47,12 @@ class Sky130TransmissionGateStack : public Atom {
         {"A", "B", "C", "B", "D", "E", "D", "G", "E", "I", "J", "K", "L", "M",
          "N", "O", "P", "O"};
 
+    uint64_t p_width_nm = 450;
+    uint64_t p_length_nm = 150;
+
+    uint64_t n_width_nm = 450;
+    uint64_t n_length_nm = 150;
+
     std::optional<uint64_t> li_width_nm;
 
     // The height of the transmission gate cells. If not specified, transmission
