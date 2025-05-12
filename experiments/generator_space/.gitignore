@@ -1,0 +1,10 @@
+*.gif
+frames/
+gds/
+pb.txt/
+png/
+svg/
+transmission_gate.library.pb
+transmission_gate.library.pb.txt
+transmission_gate.package.pb
+transmission_gate.package.pb.txt
