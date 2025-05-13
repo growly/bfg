@@ -17,3 +17,11 @@ optionality in a `Tile` thus depends on the architecture and the process, but it
 is not concerned with the details of a particular component. `Tile`s do need to
 worry about how to piece and route other components together, but not much more
 than that.
+
+## Sky130TransmissionGate
+
+![A few different design points.](/assets/img/transmission_gate.gif)
+
+## Sky130TransmissionGateStack
+
+![A few different design points.](/assets/img/transmission_gate_stack.gif)

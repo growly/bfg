@@ -50,7 +50,8 @@ def make_subdirs():
             pass
 
 
-def make_gif(png_paths: str, gif_name, all_params):
+def make_gif(png_paths: str, gif_name, all_params,
+             centred_crop: bool = False):
     sources = [Image.open(png) for png in png_paths]
 
     max_width = max(image.size[0] for image in sources)
@@ -69,8 +70,14 @@ def make_gif(png_paths: str, gif_name, all_params):
 
     paths = []
     for i, source in enumerate(sources):
-        # (0, 0) is top left, grows down
-        cropped = source.crop((0, 0, max_width, max_height))
+        # (0, 0) is top left, y grows down
+        if centred_crop:
+            width, length = source.size
+            wing = (max_width - width) / 2
+            cropped = source.crop((-wing, 0, max_width - wing, max_height))
+        else:
+            cropped = source.crop((0, 0, max_width, max_height))
+
         image = Image.alpha_composite(white_background, cropped)
         image = image.convert("P", palette=Image.WEB)
 
@@ -162,8 +169,8 @@ def sweep_transmission_gate():
     for stacks_left in ('true', 'false'):
         for stacks_right in ('true', 'false'):
             for p_tab, n_tab in itertools.product(tab_positions, tab_positions):
-                for add in range(0, 301, 50):
-                    for pitch in (300, 340, 400):
+                for pitch in (300, 340, 400):
+                    for add in range(0, 301, 50):
                         params = f'''\
 p_width_nm: {700 + add};
 p_length_nm: 150;
@@ -192,7 +199,7 @@ n_tab_position: {n_tab};
         make_png(svg_path, png_path)
         pngs.append(png_path)
 
-    make_gif(pngs, 'transmission_gate.gif', all_params)
+    make_gif(pngs, 'transmission_gate.gif', all_params, centred_crop=True)
 
 
 def sweep_transmission_gate_stack():
@@ -205,12 +212,12 @@ def sweep_transmission_gate_stack():
     i = 0
     net_sequence = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
                     "M", "N", "O"]
-    for add in range(0, 351, 50):
-        p_width_nm = 650 + add
-        n_width_nm = 350 + add
-        for vertical_pitch in (None, 340, 400):
-            for j in range(2, int(len(net_sequence) / 2)):
-                sequence = net_sequence[0:2*j + 1]
+    for vertical_pitch in (None, 340, 400):
+        for j in range(2, int(len(net_sequence) / 2)):
+            sequence = net_sequence[0:2*j + 1]
+            for add in range(0, 351, 50):
+                p_width_nm = 650 + add
+                n_width_nm = 350 + add
                 params = '\n'.join(f'net_sequence: "{net}"'
                                    for net in sequence)
                 params += f'''
@@ -234,7 +241,8 @@ horizontal_pitch_nm: {vertical_pitch}
         make_png(svg_path, png_path)
         pngs.append(png_path)
 
-    make_gif(pngs, 'transmission_gate_stack.gif', all_params)
+    make_gif(
+        pngs, 'transmission_gate_stack.gif', all_params, centred_crop=False)
 
 
 if __name__ == '__main__':
