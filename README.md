@@ -8,6 +8,7 @@ An Open-Source Silicon Compiler for Reduced-Complexity Reconfigurable Fabrics
 
 Libraries
 
+#### Linux
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip
   sudo apt install -y clang ninja-build python
@@ -44,7 +45,9 @@ Libraries
   ```
   git clone git@github.com:gflags/gflags.git
   cd gflags
-  mkdir build && cd build
+  # On case-insensitive (insane) file systems (macOS) "build" conflicts
+  # with the "BUILD" file that comes with the package.
+  mkdir _build && cd _build
   cmake .. -DBUILD_SHARED_LIBS=ON
   make -j $(nproc) && sudo make install
   ```
@@ -105,6 +108,22 @@ from a release tarball, it seems fine.
   ninja -C out/Static
   ```
 --->
+
+#### macOS
+
+1. Install xcode.
+2. Install xcode command line tools.
+   ```
+   sudo xcode-select --install
+   ```
+3. Install additional packages, e.g. using macports:
+   ```
+   sudo port selfupdate
+   sudo port install cmake autoconf automake libtool curl gmake unzip m4 wget
+   ```
+4. Follow the instructions to install additional dependencies exactly as for
+   Linux, above. (`ldconfig` will fail since it doesn't apply on macOS
+   platforms, but that won't matter.)
 
 ## Building
 
