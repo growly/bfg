@@ -7,6 +7,7 @@
 
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
+#include "physical_properties_database.h"
 
 namespace bfg {
 
@@ -17,9 +18,11 @@ class RoutingEdge {
  public:
   RoutingEdge(RoutingVertex *first, RoutingVertex *second)
     : in_use_by_net_(std::nullopt),
+      temporarily_in_use_by_net_(std::nullopt),
       blocked_(false),
+      temporarily_blocked_(false),
       track_(nullptr),
-      layer_(-1),
+      layer_(std::nullopt),
       first_(first),
       second_(second),
       cost_(0.0) {
@@ -27,7 +30,46 @@ class RoutingEdge {
   }
   ~RoutingEdge() {}
 
+  std::string Describe() const;
+  bool TerminatesAt(const geometry::Point &point) const;
+
   void PrepareForRemoval();
+
+  // Whether the edge is blocked, considering both permanent and temporary
+  // blockages.
+  bool Blocked() const;
+  const std::optional<std::string> &EffectiveNet() const;
+  const std::optional<std::string> &PermanentNet() const;
+
+  std::vector<RoutingVertex*> SpannedVertices() const;
+
+  RoutingVertex *OtherVertexThan(RoutingVertex *given) const;
+
+  std::pair<int64_t, int64_t> ProjectOntoAxis() const;
+
+  // Self-contained utility for imagining this edge as a rectilinear rectangle
+  // of the given width.
+  std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
+  std::optional<geometry::Line> AsLine() const;
+
+  void SetBlocked(bool blocked, bool temporary = false);
+  void SetNet(
+      const std::optional<std::string> &in_use_by_net, bool temporary = false);
+
+  void SetPermanentlyBlocked(bool blocked) {
+    SetBlocked(blocked, false);
+  }
+  void SetPermanentNet(
+      const std::optional<std::string> &in_use_by_net) {
+    SetNet(in_use_by_net, false);
+  }
+
+  bool Available() const { return !Blocked() && !EffectiveNet(); }
+
+  void ResetTemporaryStatus() {
+    temporarily_in_use_by_net_ = std::nullopt;
+    temporarily_blocked_ = false;
+  }
 
   void set_cost(double cost) { cost_ = cost; }
   double cost() const { return cost_; }
@@ -35,44 +77,38 @@ class RoutingEdge {
   RoutingVertex *first() const { return first_; }
   RoutingVertex *second() const { return second_; }
 
-  // Self-contained utility for imagining this edge as a rectilinear rectangle
-  // of the given width.
-  std::optional<geometry::Rectangle> AsRectangle(int64_t width) const;
-
-  void set_in_use_by_net(const std::optional<std::string> &in_use_by_net);
-  const std::optional<std::string> &in_use_by_net() const {
-    return in_use_by_net_;
+  void set_layer(const std::optional<geometry::Layer> &layer) {
+    layer_ = layer;
   }
-  void set_blocked(bool blocked) { blocked_ = blocked; }
-  bool blocked() const { return blocked_; }
+  const std::optional<geometry::Layer> &layer() const { return layer_; }
 
-  bool Available() const { return !blocked_ && !in_use_by_net_; }
-  void ResetStatus() {
-    in_use_by_net_ = std::nullopt;
-    blocked_ = false;
-  }
-
-  void set_layer(const geometry::Layer &layer) { layer_ = layer; }
-  const geometry::Layer &layer() const { return layer_; }
-
-  const geometry::Layer &ExplicitOrTrackLayer() const;
+  const geometry::Layer EffectiveLayer() const;
+  RoutingTrackDirection Direction() const;
+  double Length() const;
 
   // Off-grid edges do not have tracks.
   void set_track(RoutingTrack *track);
   RoutingTrack *track() const { return track_; }
-
-  std::vector<RoutingVertex*> VertexList() const;
 
  private:
   void ApproximateCost();
 
   bool IsRectilinear() const;
 
+  void ResetStatus() {
+    in_use_by_net_ = std::nullopt;
+    temporarily_in_use_by_net_ = std::nullopt;
+    blocked_ = false;
+    temporarily_blocked_ = false;
+  }
+
   std::optional<std::string> in_use_by_net_;
+  std::optional<std::string> temporarily_in_use_by_net_;
   bool blocked_;
+  bool temporarily_blocked_;
 
   RoutingTrack *track_;
-  geometry::Layer layer_;
+  std::optional<geometry::Layer> layer_;
 
   RoutingVertex *first_;
   RoutingVertex *second_;

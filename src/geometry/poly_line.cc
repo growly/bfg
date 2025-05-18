@@ -8,8 +8,11 @@
 #include <vector>
 #include <optional>
 
+#include <absl/cleanup/cleanup.h>
+
 #include "line_segment.h"
 #include "point.h"
+#include "radian.h"
 #include "rectangle.h"
 
 namespace bfg {
@@ -101,270 +104,369 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
   segments_.push_back(LineSegment{to, width});
 }
 
-void PolyLine::InsertForwardBulgePoint(
-    const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
-    size_t intersection_index, const Line &intersected_line) {
-
-  double half_length = static_cast<double>(coaxial_length) / 2.0;
-
-  // - Proceed to the end of all segments in a straight line, stopping at the
-  // first turn or when the bulge end point would fall on the current
-  // segment (index k).
-  // - Fatten covered segments in the line to at least the width of the bulge.
-  // - When the loop terminates, either we are at the end of the line, the next
-  // segment turns a corner, or we have to insert a point into the current
-  // segment.
-
-  // Just after the first corner turn or at the end of the poly line we have to
-  // insert a new point to maintain the bulge shape when the poly line is
-  // inflated.
-
-  double d_end = point.L2DistanceTo(segments_[intersection_index].end);
-  double d_insertion = half_length;
-  double overflow = d_insertion - d_end;
-
-  Point insertion_start = point;
-
-  size_t k = intersection_index;
-  while (k < segments_.size() - 1) {
-    Line next_line = Line(segments_[k].end, segments_[k + 1].end);
-
-    if (!intersected_line.IsSameInfiniteLine(next_line))
-      // Next segment turns a corner, so break.
-      break;
-
-    if (overflow <= 0) {
-      // Inserted point should fall on the current segment (k), so break.
-      break;
-    }
-
-    insertion_start = segments_[k].end;
-    double next_line_length = next_line.Length();
-    d_insertion = overflow;
-    overflow -= next_line_length;
-
-    // The current segment (k) is exceeded, so it must be at least as wide as
-    // the new bulge. But as a cleaner alternative, we just delete the existing
-    // segment. We can do this because the next segment is on the same line and
-    // would become the same width.
-    if (segments_[k].width <= coaxial_width) {
-      if (segments_[k + 1].width <= coaxial_width) {
-        segments_.erase(segments_.begin() + k);
-        continue;
-      }
-      segments_[k].width = coaxial_width;
-    }
-
-    ++k;
+void PolyLine::ExtendToInclude(const Point &point) {
+  // Check if the point lands within any segment.
+  if (LineAtPoint(point)) {
+    return;
   }
-
-  uint64_t half_width = std::llround(static_cast<double>(
-        std::max(segments_[k].width, coaxial_width) / 2.0));
-
-  // TODO(aryap): Close to zero good enough here?
-  if (overflow < 0) {
-    // The segment to alter is k, but only if it would increase the segment's
-    // existing width:
-    if (segments_[k].width <= coaxial_width) {
-      Point point_after = intersected_line.PointOnLineAtDistance(
-          insertion_start, d_insertion);
-      segments_.insert(segments_.begin() + k,
-                       LineSegment {
-                         .end = point_after,
-                         .width = coaxial_width,
-                       });
-    }
-  } else if (overflow == 0 || k == segments_.size() - 1) {
-    // Effectively at the end of the poly line or only need to change the width
-    // of this line, so only need modify the last segment instead of inserting
-    // a new one.
-    if (segments_[k].width <= coaxial_width) {
-      segments_[k].end = intersected_line.PointOnLineAtDistance(
-          segments_[k].end, overflow);
-      segments_[k].width = coaxial_width;
-    } else if (overflow > 0) {
-      Point point_after =
-          intersected_line.PointOnLineAtDistance(segments_[k].end, overflow);
-      segments_.push_back(
-          LineSegment { .end = point_after, .width = coaxial_width });
-    }
+  Line begin_line = Line(start_, segments_.front().end);
+  Line end_line = Line(
+      segments_.size() > 1 ? (segments_.end() - 1)->end : start_,
+      segments_.back().end);
+  std::vector<Line> lines = {begin_line, end_line};
+  Point nearest_begin = begin_line.PointOnLineClosestTo(point);
+  Point nearest_end = end_line.PointOnLineClosestTo(point);
+  bool intersects_begin = begin_line.Intersects(point);
+  bool intersects_end = end_line.Intersects(point);
+  if (!intersects_begin && !intersects_end) {
+    // Do nothing.
+    return;
+  }
+  if (intersects_begin && !intersects_end) {
+    start_ = point;
+    return;
+  }
+  if (!intersects_begin && intersects_end) {
+    segments_.back().end = point;
+    return;
+  }
+  // Intersects both.
+  if (nearest_begin.L2DistanceTo(point) < nearest_end.L2DistanceTo(point)) {
+    start_ = point;
   } else {
-    // The next segment is around a corner.
-    //
-    // The intersected segment `segment` will remain and be enlarged to the
-    // given width.
-    segments_[k].width = std::max(coaxial_width, segments_[k].width);
-
-    // A new segment should created along the next segment we were going to
-    // embark on, with an appropriate new width.
-    LineSegment &next_segment = segments_[k + 1];
-    Line current_line = Line(
-        k == 0 ? start_ : segments_[k - 1].end, segments_[k].end);
-    Line next_line = Line(segments_[k].end, next_segment.end);
-
-    // Let theta be the angle from the next line to the previous. Then the
-    // distance along the axis of the next segment to the next segment end point
-    // is half_width / sin(theta). The width of that segment must be at least
-    // overflow * sin(theta).
-    //
-    // The proof is as follows: trust me bro
-    //
-    // (Also note that since sin(theta) = -sin(2*pi - theta) we can simplify
-    // life by just taking the absolute value and not worrying about the
-    // relative angle.)
-    double theta = next_line.AngleToLine(current_line);
-    double sin_theta = std::sin(theta);
-
-    // Minimum length of the new segment, found by project the width of this
-    // bulge onto the diverging line:
-    double minimum_length = sin_theta == 0 ?
-        overflow : std::abs(half_width / sin_theta);
-
-    // Minimum width of new segment to cover far corner of the bulge we are
-    // trying insert:
-    uint64_t overflow_width = static_cast<uint64_t>(2.0 * std::abs(
-        overflow * sin_theta + half_width * std::cos(theta)));
-
-    double width_consumed = std::abs(next_line.Length() * sin_theta);
-    uint64_t remaining_width = static_cast<uint64_t>(
-        std::max(0.0, 2.0 * (half_width - width_consumed)));
-
-    Point point_after = next_line.PointOnLineAtDistance(
-        segments_[k].end, minimum_length);
-
-    if (next_line.IntersectsInBounds(point_after)) {
-      segments_.insert(
-          segments_.begin() + k + 1,
-          LineSegment {
-            .end = point_after,
-            .width = std::max(overflow_width, next_segment.width)
-      });
-    } else {
-      // As a special case, we must consider if the next point on the line of
-      // the next segment exceeds that segment's length! If it does, just give
-      // up and inflate the width of the next segment to subsume our overflow
-      // length.
-      next_segment.width = std::max(overflow_width, next_segment.width);
-
-      if (k + 2 < segments_.size()) {
-        segments_[k + 2].width = std::max(
-            remaining_width, segments_[k + 2].width);
-      } else {
-        // next_segment is the last segment, so we should just extend it.
-        next_segment.end = point_after;
-      }
-    }
+    segments_.back().end = point;
   }
 }
 
+std::optional<Line> PolyLine::LineAtPoint(const Point &point) const {
+  for (size_t i = 0; i < segments_.size(); ++i) {
+    const LineSegment &segment = segments_.at(i);
+    Line line = Line(
+        i == 0 ? start_ : segments_.at(i - 1).end,
+        segments_.at(i).end);
+    if (line.IntersectsInBounds(point)) {
+      return line;
+    }
+  }
+  return std::nullopt;
+}
+
+double PolyLine::ComputeRequiredLengthForLastSegmentWidth(
+    uint64_t previous_segment_original_width,
+    const Line &current_line,
+    const Line &previous_line,
+    double required_length) {
+  double alpha = previous_line.AngleToLineCounterClockwise(current_line);
+  double sin_alpha = std::sin(alpha);
+
+  // Sometimes we get a number very close to zero, but no actually zero!
+  // Like 1.2246467991473532e-16 D-:
+  if (Radian::IsEffectivelyZero(sin_alpha)) {
+    // No change.
+    return required_length;
+  }
+
+  double half_previous_segment_width =
+      static_cast<double>(previous_segment_original_width) / 2.0;
+  double previous_width_projection =
+      std::round(std::abs(half_previous_segment_width / sin_alpha));
+  return std::max(required_length, previous_width_projection);
+}
+
+std::tuple<double, uint64_t, double, double>
+    PolyLine::ComputeRequiredLengthAndWidth(
+        const Line &intersected_line,
+        const Line &current_line,
+        double on_axis_overflow,
+        double off_axis_overflow) {
+    // The original intersected line gives the axis of the bulge, so we measure
+    // relative to that:
+    double theta = current_line.AngleToLineCounterClockwise(intersected_line);
+    double sin_theta = std::sin(theta);
+    double cos_theta = std::cos(theta);
+
+    // The length required of this segment to "escape" the bulge.
+    double required_length = std::round(
+        std::abs(on_axis_overflow * cos_theta) +
+        std::abs(off_axis_overflow * sin_theta));
+    double half_required_width =
+        std::abs(on_axis_overflow * sin_theta) +
+        std::abs(off_axis_overflow * cos_theta);
+
+    uint64_t new_width = static_cast<uint64_t>(
+        std::round(2.0 * half_required_width));
+
+    return std::make_tuple(
+        required_length, new_width, sin_theta, cos_theta);
+}
+
+void PolyLine::InsertForwardBulgePoint(
+    const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
+    size_t intersection_index, const Line &intersected_line) {
+  // The starting point for the line we've intersected.
+  Line current_line = intersected_line;
+  double current_length = point.L2DistanceTo(segments_[intersection_index].end);
+
+  double on_axis_overflow = static_cast<double>(coaxial_length) / 2.0;
+  double off_axis_overflow = static_cast<double>(coaxial_width) / 2.0;
+
+  std::optional<uint64_t> previous_segment_original_width = std::nullopt;
+
+  size_t k = intersection_index;
+  Point reference_point = point;
+  do {
+    LineSegment &current_segment = segments_[k];
+
+    uint64_t current_segment_original_width = current_segment.width;
+
+    double required_length;
+    uint64_t new_width;
+    double sin_theta;
+    double cos_theta;
+    std::tie(required_length, new_width, sin_theta, cos_theta) =
+        ComputeRequiredLengthAndWidth(intersected_line,
+                                      current_line,
+                                      on_axis_overflow,
+                                      off_axis_overflow);
+
+    // If current_length exceeds required_length, the current segments takes us
+    // out of the bulge, and we're done.
+    VLOG(13) << current_line
+             << " [fwd] k: " << k
+             << " current_length: " << current_length
+             << " required_length: " << required_length
+             << " reference_point: " << reference_point
+             << " on_axis: " << on_axis_overflow
+             << " off_axis: " << off_axis_overflow;
+
+    // This is a very annoying special case to avoid creating notches and it
+    // doesn't make a lot of sense. The projection of the width of the previous
+    // segment must be accommodated when changing direction. Otherwise, by
+    // creating a segment only long enough to escape the bulge, we might be
+    // creating smaller segments that contradict the thicker segments originally
+    // around them. See the InsertBulge_DoesNotCreateNotch test.
+    if (previous_segment_original_width) {
+      LOG_IF(FATAL, k == 0)
+          << "Assume k > 0 here because previous_segment_original_width not "
+          << "set until k incremented";
+      Line previous_line = Line(
+          k > 1 ? segments_[k - 2].end : start_, segments_[k - 1].end);
+
+      required_length = ComputeRequiredLengthForLastSegmentWidth(
+          previous_segment_original_width.value(),
+          current_line,
+          previous_line,
+          required_length);
+    }
+
+    if (current_length > required_length) {
+      // Only insert a new segment if the existing width was exceeded.
+      if (new_width > current_segment_original_width) {
+        Point new_boundary = current_line.PointOnLineAtDistance(
+            reference_point, required_length);
+
+        segments_.insert(segments_.begin() + k,
+                         LineSegment {
+                           .end = new_boundary,
+                           .width = std::max(current_segment.width, new_width)
+                         });
+      }
+      break;
+    }
+
+    current_segment.width = std::max(current_segment.width, new_width);
+
+    if (current_length == required_length) {
+      break;
+    }
+
+    // Updates:
+    on_axis_overflow -= std::abs(current_length * cos_theta);
+    off_axis_overflow -= std::abs(current_length * sin_theta);
+
+    // TODO(aryap): This does not consider overhang_end_. The easiest way to do
+    // that is to treat the end point of the final segment as being pushed out
+    // by overhang_end_ distance along the final segment. Likewise for
+    // overhang_start_ at the start.
+    if (k == segments_.size() - 1) {
+      // We hit the last segment without getting out of the bulge. Elongate the
+      // segment by shifting the final end point. But, if the final segment was
+      // thicker than the bulge, we have to add a new segment and continue only
+      // the with required thickness.
+      Point new_boundary = current_line.PointOnLineAtDistance(
+          reference_point, required_length);
+
+      if (enable_narrowing_extensions_ &&
+          current_segment_original_width > new_width) {
+        segments_.push_back(LineSegment {
+            .end = new_boundary,
+            .width = new_width });
+      } else {
+        segments_[k].end = new_boundary;
+      }
+      break;
+    }
+
+    reference_point = segments_[k].end;
+    current_line = Line(segments_[k].end, segments_[k + 1].end);
+    current_length = current_line.Length();
+    previous_segment_original_width = current_segment_original_width;
+
+    ++k;
+  } while (k < segments_.size());
+}
+
+// For this and InsertForwardBulgePoint, the general problem to solve is that of
+// modifying PolyLine segments so that, in the resulting polygon, a rectangular
+// bulge of at least the given width and length is covered around the given
+// point `point`.
+//
+// To do this most generally, we need to follow line segments out from the
+// bulge centre point until we find one that lands outside. We have to modify
+// the widths (and sometimes lengths) of segments to ensure the bulge appears
+// correctly.
 void PolyLine::InsertBackwardBulgePoint(
     const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
     size_t intersection_index, const Line &intersected_line,
     uint64_t intersected_previous_width) {
 
-  const Point &start =
+  // The starting point for the line we've intersected.
+  const Point &line_start =
       intersection_index == 0 ? start_ : segments_[intersection_index - 1].end;
 
-  double half_length = static_cast<double>(coaxial_length) / 2.0;
+  Line current_line = intersected_line;
+  double current_length = point.L2DistanceTo(line_start);
 
-  double d_start = point.L2DistanceTo(start);
-  double d_insertion = half_length;
-  double overflow = d_insertion - d_start;
+  double on_axis_overflow = static_cast<double>(coaxial_length) / 2.0;
+  double off_axis_overflow = static_cast<double>(coaxial_width) / 2.0;
+
+  std::optional<uint64_t> previous_segment_original_width = std::nullopt;
 
   size_t k = intersection_index;
-  while (k > 0) {
-    Line previous_line = Line(
+  Point reference_point = point;
+  do {
+    LineSegment &current_segment = segments_[k];
+
+    // Because InsertBackwardsBulgePoint comes after InsertForwardsBulgePoint,
+    // it's possible that the intersected segment's width was already changed
+    // in the forward pass, so we must use the original value passed in. That
+    // can only happen to the intersected segment though.
+    uint64_t current_segment_original_width = k == intersection_index ?
+        intersected_previous_width : current_segment.width;
+
+    double required_length;
+    uint64_t new_width;
+    double sin_theta;
+    double cos_theta;
+    std::tie(required_length, new_width, sin_theta, cos_theta) =
+        ComputeRequiredLengthAndWidth(intersected_line,
+                                      current_line,
+                                      on_axis_overflow,
+                                      off_axis_overflow);
+
+    // If current_length exceeds required_length, the current segments takes us
+    // out of the bulge, and we're done.
+    VLOG(13) << current_line
+             << " [rwd] k: " << k
+             << " current_length: " << current_length
+             << " required_length: " << required_length
+             << " reference_point: " << reference_point
+             << " on_axis: " << on_axis_overflow
+             << " off_axis: " << off_axis_overflow;
+
+    current_segment.width = std::max(current_segment.width, new_width);
+
+    if (previous_segment_original_width) {
+      LOG_IF(FATAL, k == segments_.size() - 1)
+          << "Assume k < final here because previous_segment_original_width "
+          << "not set until k incremented";
+      Line previous_line = Line(segments_[k].end, segments_[k + 1].end);
+
+      required_length = ComputeRequiredLengthForLastSegmentWidth(
+          previous_segment_original_width.value(),
+          current_line,
+          previous_line,
+          required_length);
+    }
+
+    if (current_length > required_length) {
+      // Only insert a new segment if the existing width was exceeded.
+      if (new_width > current_segment_original_width) {
+        Point new_boundary = current_line.PointOnLineAtDistance(
+            reference_point, -required_length);
+
+        // NOTE(aryap): We use a negative distance because we are traversing
+        // lines backwards.
+        segments_.insert(segments_.begin() + k,
+                         LineSegment {
+                           .end = new_boundary,
+                           .width = current_segment_original_width
+                         });
+      }
+      break;
+    } else if (current_length == required_length) {
+      break;
+    }
+
+    // Updates:
+    on_axis_overflow -= std::abs(current_length * cos_theta);
+    off_axis_overflow -= std::abs(current_length * sin_theta);
+
+    if (k == 0) {
+      // We hit the last segment without getting out of the bulge. Elongate the
+      // segment by shifting the start_ point. Widen the segement to the minimum
+      // required.
+      Point new_boundary = current_line.PointOnLineAtDistance(
+          reference_point, -required_length);
+
+      if (enable_narrowing_extensions_ &&
+          current_segment_original_width > new_width) {
+        segments_.insert(segments_.begin(),
+                         LineSegment {
+                             .end = start_,
+                             .width = new_width });
+      }
+      start_ = new_boundary;
+      break;
+    }
+
+    reference_point = segments_[k - 1].end;
+    current_line = Line(
         k == 1 ? start_ : segments_[k - 2].end,
         segments_[k - 1].end);
-
-    if (!intersected_line.IsSameInfiniteLine(previous_line)) {
-      break;
-    }
-
-    if (overflow <= 0) {
-      break;
-    }
-
-    double previous_line_length = previous_line.Length();
-    d_insertion = overflow;
-    overflow -= previous_line_length;
+    current_length = current_line.Length();
+    previous_segment_original_width = current_segment_original_width;
 
     --k;
+  } while (k >= 0);
+}
 
-    if (segments_[k].width <= coaxial_width) {
-      if (segments_[k + 1].width <= coaxial_width) {
-        segments_.erase(segments_.begin() + k);
-      } else {
-        segments_[k].width = coaxial_width;
-      }
-    }
+void PolyLine::InsertBulge(const Point &point,
+                           uint64_t width,
+                           uint64_t length,
+                           std::optional<double> angle_rads) {
+  if (!angle_rads) {
+    InsertBulgeInternal(point, width, length);
+    return;
   }
 
-  uint64_t half_width = std::llround(static_cast<double>(
-        std::max(segments_[k].width, coaxial_width) / 2.0));
-
-  if (overflow < 0) {
-    if (segments_[k].width <= coaxial_width) {
-      Point point_before = intersected_line.PointOnLineAtDistance(
-          point, -d_insertion);
-      segments_.insert(segments_.begin() + k,
-                       LineSegment {
-                         .end = point_before,
-                         .width = (k == intersection_index ?
-                            intersected_previous_width : segments_[k].width)
-                       });
-    }
-  } else if (overflow == 0) {
-    segments_[k].width = std::max(segments_[k].width, coaxial_width);
-  } else if (k == 0) {
-    start_ = intersected_line.PointOnLineAtDistance(start_, -overflow);
-  } else {
-    // Skip inflating segment k width since it should be done in the forward
-    // pass.
-
-    // In this case we have overflow and a corner turn.
-    LineSegment &last_segment = segments_[k - 1];
-    Line current_line = Line(last_segment.end, point);
-
-    uint64_t previous_width = last_segment.width;
-    Point last_line_start = k == 1 ?  start_ : segments_[k - 2].end;
-    // The end of the last line is the start of this line. The start of the
-    // last line is the end of the line before it.
-    Line last_line = Line(last_line_start, last_segment.end);
-
-    double theta = last_line.AngleToLine(current_line);
-    double sin_theta = std::sin(theta);
-    double minimum_length = sin_theta == 0 ?
-        overflow : std::abs(half_width / sin_theta);
-    uint64_t overflow_width = static_cast<uint64_t>(2.0 * std::abs(
-        overflow * sin_theta + half_width * std::cos(theta)));
-
-    double width_consumed = std::abs(last_line.Length() * sin_theta);
-    uint64_t remaining_width = static_cast<uint64_t>(
-        std::max(0.0, 2.0 * (half_width - width_consumed)));
-
-    Point point_before = last_line.PointOnLineAtDistance(
-        last_segment.end, -minimum_length);
-
-    if (last_line.IntersectsInBounds(point_before)) {
-      last_segment.width = std::max(overflow_width, previous_width);
-      segments_.insert(
-          segments_.begin() + k - 1,
-          LineSegment {
-            .end = point_before,
-            .width = previous_width
-          });
-    } else {
-      last_segment.width = std::max(overflow_width, previous_width);
-
-      if (k - 1 > 0) {
-        segments_[k - 2].width = std::max(
-            remaining_width, segments_[k - 2].width);
-      } else {
-        start_ = point_before;
-      }
-    }
+  // Project width of box at `angle_rads` onto the coaxial width of the line,
+  // and respectively the length onto the coaxial length.
+  auto line = LineAtPoint(point);
+  if (!line) {
+    return;
   }
+
+  double alpha = line->AngleToHorizon() - *angle_rads;
+
+  double coaxial_width = static_cast<double>(width) * std::cos(alpha) +
+                         static_cast<double>(length) * std::sin(alpha);
+  double coaxial_length = static_cast<double>(length) * std::cos(alpha) + 
+                          static_cast<double>(width) * std::sin(alpha);
+
+  InsertBulgeInternal(point,
+                      std::llround(std::abs(coaxial_width)),
+                      std::llround(std::abs(coaxial_length)));
 }
 
 //           _
@@ -375,7 +477,7 @@ void PolyLine::InsertBackwardBulgePoint(
 //       /
 //      o <- want this point before
 //     /
-void PolyLine::InsertBulge(
+void PolyLine::InsertBulgeInternal(
     const Point point, uint64_t coaxial_width, uint64_t coaxial_length) {
   size_t intersection_index = 0;
   if (!Intersects(point, &intersection_index)) {
@@ -414,6 +516,29 @@ void PolyLine::InsertBulge(
   EnforceInvariants();
 }
 
+void PolyLine::InsertBulgeLater(
+    const Point point,
+    uint64_t coaxial_width,
+    uint64_t coaxial_length,
+    std::optional<double> angle_rads) {
+  deferred_bulges_.push_back(
+      DeferredBulge {point, coaxial_width, coaxial_length, angle_rads});
+}
+
+void PolyLine::ApplyDeferredBulges() {
+  for (const DeferredBulge &deferred : deferred_bulges_) {
+    if (deferred.angle_rads) {
+      InsertBulge(deferred.position,
+                  deferred.width,
+                  deferred.length,
+                  deferred.angle_rads);
+    } else {
+      InsertBulge(deferred.position, deferred.width, deferred.length);
+    }
+  }
+  deferred_bulges_.clear();
+}
+
 void PolyLine::SetWidth(const uint64_t width) {
   for (LineSegment &segment : segments_) {
     segment.width = width;
@@ -445,24 +570,128 @@ bool PolyLine::Intersects(const Point &point, size_t *segment_index) const {
   return k >= 0;
 }
 
-void PolyLine::EnforceInvariants() {
-  // Remove duplicate segment end-points, enlarging the remaining to the max of
-  // all the segment widths which had the same end-point.
-  Point last = start_;
-  auto last_segment = segments_.end();
-  for (auto it = segments_.begin(); it != segments_.end();) {
-    if (it->end == last) {
-      if (last_segment != segments_.end()) {
-        last_segment->width = std::max(last_segment->width, it->width);
+void PolyLine::RemoveNotchesAroundCorners() {
+  //
+  //             /        /
+  //            /        /
+  //           /        /
+  //          /        / ^
+  //         +        +  |
+  //         |        |  | does this notch violate min_separation_?
+  //         |        |  |
+  //         |        |  v
+  //    +----+        +----+
+  //    |                  |
+  //    |                  |
+  //    |                  |
+
+  // In the most general case, we have to check all pairs of segments that are
+  // not adjacent to see if they violate min_separation_. This can occur if the
+  // two segments are in a straight line and the maximum width of any segment
+  // between them is less than both of their widths, _or_ if of the othe
+  // segments is at a non-zero angle to the other. One way of doing this is to
+  // track the change in spacing with each successive segment given its angle to
+  // previous segments and the original, for each original in the list of
+  // segments. Another way is to generate the boundary lines and find the
+  // distance between them, basically pre-empting the inflation process itself.
+  //
+  // Ok the principle of this algorithm is as follows:
+  //  - find the axis between the end of a starting line and the start of
+  //  another line (at least 2 segments away)
+  //  - find the angles of the starting and subsequent lines to the intervening
+  //  axis
+  //  - project the widths of lines at each end onto the intervening axis,
+  //  these are the quantities by which the space between the lines is reduced
+  //  in the worst case
+  //
+  // TODO(aryap): Currently use std::abs to avoid this problem, but is treatment
+  // of various angles around the unit circle (where sin becomes negative)
+  // correct?
+  if (!min_separation_)
+    return;
+  for (size_t i = 0; i < segments_.size() - 1; ++i) {
+    LineSegment &first_segment = segments_[i];
+    Line first_line = Line(i == 0 ? start_ : segments_[i - 1].end,
+                           first_segment.end);
+
+    if (i + 1 >= segments_.size()) {
+      break;
+    }
+    // This is half-baked idea to shortcut work when there are no intervening
+    // segments with smaller widths (as would be required for a notch in some
+    // cases).
+    // if (segments_[i + 1].width >= first_segment.width) {
+    //   continue;
+    // }
+
+    uint64_t intervening_width = segments_[i + 1].width;
+
+    for (size_t j = i + 2; j < segments_.size(); ++j) {
+      LineSegment &last_segment = segments_[j - 1];
+      LineSegment &next_segment = segments_[j];
+
+      intervening_width = last_segment.width;
+
+      Line next_line = Line(segments_[j - 1].end, next_segment.end);
+      Line intervening_line = Line(first_line.end(), next_line.start());
+
+      double theta_first =
+          intervening_line.AngleToLineCounterClockwise(first_line);
+      double theta_next =
+          next_line.AngleToLineCounterClockwise(intervening_line);
+
+      double intervening_length = intervening_line.Length();
+
+      double first_projection_onto_intervening =
+          std::abs(std::sin(theta_first) *
+              static_cast<double>(first_segment.width) / 2.0);
+      double next_projection_onto_intervening =
+          std::abs(std::sin(theta_next) *
+              static_cast<double>(next_segment.width) / 2.0);
+
+      double spacing = intervening_length - (
+          first_projection_onto_intervening + next_projection_onto_intervening);
+
+      VLOG(16) << "i: " << i << ", " << "j: " << j << std::endl
+               << "first_segment: " << first_segment.end << std::endl
+               << "last_segment: " << last_segment.end << std::endl
+               << "next_segment: " << next_segment.end << std::endl
+               << "first_line: " << first_line << std::endl
+               << "intervening_line: " << intervening_line << std::endl
+               << "next_line: " << next_line << std::endl
+               << "theta_first: " << theta_first << std::endl
+               << "theta_next: " << theta_next << std::endl
+               << "intervening_length: " << intervening_length << std::endl
+               << "first_projection_onto_intervening: "
+               << first_projection_onto_intervening << std::endl
+               << "next_projection_onto_intervening: "
+               << next_projection_onto_intervening << std::endl
+               << "spacing: " << spacing;
+      if (spacing >= *min_separation_) {
+        // Nothing to do.
+        continue;
       }
-      it = segments_.erase(it);
-    } else {
-      last = it->end;
-      last_segment = it;
-      ++it;
+
+      // Widen all intervening segments to the width of the max within the span:
+      std::vector<uint64_t> span_widths;
+      // We measure the maximum width of segments in the span [i, j], i.e.
+      // inclusive of i and j.
+      std::transform(segments_.begin() + i,
+                     segments_.begin() + j + 1,
+                     std::back_inserter(span_widths),
+                     [](const LineSegment &segment) { return segment.width; });
+      uint64_t max_width_in_span =
+          *std::max_element(span_widths.begin(), span_widths.end());
+      // But we overwrite the widths of only the segments interior to the span,
+      // excluding i and j themselves, (i, j).
+      for (size_t k = i + 1; k < j; ++k) {
+        segments_[k].width = max_width_in_span;
+      }
     }
   }
+}
 
+void PolyLine::RemoveNotchesInAStraightLine() {
   // If min_separation_ is defined, also remove segments in a straight line
   // that would a violation of min_separation between the segments before and
   // after due to contracting/expanding widths:
@@ -497,10 +726,65 @@ void PolyLine::EnforceInvariants() {
     if (this_segment.width < last_segment.width &&
         this_segment.width < next_segment.width &&
         length < *min_separation_) {
+      // TODO(aryap): If instead of erasing this segment we set its with to the
+      // min (or max) of its neighbours, we will remove the notch. The
+      // RemoveRedundantSegments() process should then simplify the duplicate
+      // segments down to one. However when I tried this it yielded weird
+      // behaviour around a turn, which it shouln't? Needs testing.
       segments_.erase(segments_.begin() + i);
       --i;
     }
   }
+}
+
+void PolyLine::ReplaceDuplicateEndPointsWithWidest() {
+  // Remove duplicate segment end-points, enlarging the remaining to the max of
+  // all the segment widths which had the same end-point.
+  Point last = start_;
+  auto last_segment = segments_.end();
+  for (auto it = segments_.begin(); it != segments_.end();) {
+    if (it->end == last) {
+      if (last_segment != segments_.end()) {
+        last_segment->width = std::max(last_segment->width, it->width);
+      }
+      it = segments_.erase(it);
+    } else {
+      last = it->end;
+      last_segment = it;
+      ++it;
+    }
+  }
+}
+
+void PolyLine::RemoveRedundantSegments() {
+  // Remove successive segments in a line with the same width.
+  if (!segments_.empty()) {
+    Line previous_line = Line(start_, segments_[0].end);
+    for (auto it = segments_.begin() + 1; it != segments_.end();) {
+      LineSegment &previous_segment = *(it - 1);
+      LineSegment &current_segment = *it;
+      Line current_line = Line(previous_segment.end, current_segment.end);
+      absl::Cleanup rotate_line = [&]() {
+        previous_line = current_line;
+      };
+      if (!current_line.IsSameInfiniteLine(previous_line) ||
+          current_segment.width != previous_segment.width) {
+        ++it;
+        continue;
+      }
+      previous_segment.end = current_segment.end;
+      it = segments_.erase(it);
+    }
+  }
+}
+
+void PolyLine::EnforceInvariants() {
+  ReplaceDuplicateEndPointsWithWidest();
+  RemoveRedundantSegments();
+  RemoveNotchesInAStraightLine();
+  RemoveNotchesAroundCorners();
+  // TODO(aryap): Remove anti-parallel segments that overlap parallel
+  // segments...?
 }
 
 }  // namespace geometry

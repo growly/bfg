@@ -7,10 +7,13 @@
 #include "atom.h"
 #include "../circuit/wire.h"
 #include "../cell.h"
+#include "../geometry/layer.h"
+#include "../geometry/point.h"
+#include "../geometry/polygon.h"
+#include "../geometry/rectangle.h"
 #include "../layout.h"
 
 namespace bfg {
-
 namespace atoms {
 
 using ::bfg::geometry::Point;
@@ -21,15 +24,19 @@ using ::bfg::geometry::Layer;
 bfg::Cell *Sky130Buf::Generate() {
   // A buffer is two back-to-back inverters:
   //
-  //          /         /
-  //         _|        _|
-  //      +o|_ X1   +o|_  X3
-  //      |   |     |   |
-  // A ---+   +--P--+   +--- X
-  //      |  _|     |  _|
-  //      +-|_ X2   +-|_  X0
-  //          |         |
-  //          V         V
+  //           /              /
+  //           |              |
+  //      g   _| s       g   _| s
+  //      +-o|_ pfet_0   +-o|_  pfet_1
+  //      |    | d       |    | d
+  // A ---+    +------P--+    +--- X
+  //      |   _| d       |   _| d
+  //      +--|_ nfet_0   +--|_  nfet_1
+  //      g    | s       g    | s
+  //           |              |
+  //           V              V
+  // P = ~A
+  // X = ~~A
 
   std::unique_ptr<bfg::Cell> cell(
       new bfg::Cell(name_.empty() ? "sky130_buf": name_));
@@ -43,13 +50,6 @@ bfg::Cell *Sky130Buf::Generate() {
 bfg::Circuit *Sky130Buf::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
-  //  X   ,
-  //  A   ,
-  //  VPWR,
-  //  VGND,
-  //  VPB ,
-  //  VNB
-
   circuit::Wire X = circuit->AddSignal("X");
   circuit::Wire P = circuit->AddSignal("P");
   circuit::Wire A = circuit->AddSignal("A");
@@ -58,10 +58,19 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   circuit::Wire VPB = circuit->AddSignal("VPB");
   circuit::Wire VNB = circuit->AddSignal("VNB");
 
+  circuit->AddPort(X);
+  circuit->AddPort(P);
+  circuit->AddPort(A);
+  circuit->AddPort(VPWR);
+  circuit->AddPort(VGND);
+  circuit->AddPort(VPB);
+  circuit->AddPort(VNB);
+
   bfg::Circuit *nfet_01v8 =
       design_db_->FindCellOrDie("sky130", "sky130_fd_pr__nfet_01v8")->circuit();
   bfg::Circuit *pfet_01v8 =
-      design_db_->FindCellOrDie("sky130", "sky130_fd_pr__pfet_01v8")->circuit();
+      design_db_->FindCellOrDie(
+          "sky130", "sky130_fd_pr__pfet_01v8_hvt")->circuit();
 
   // TODO(aryap): Define circuit primitives within the Circuit schema per PDK.
   // We need models of different transistors and capacitors, resistors, etc.
@@ -77,38 +86,70 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   // ~/src/skywater-pdk/libraries/sky130_fd_sc_hd/latest/cells/buf/sky130_fd_sc_hd__buf_1.spice
   //
   //  .subckt sky130_fd_sc_hd__buf_1 A VGND VNB VPB VPWR X
-  //  X0 VGND a_27_47# X VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
-  //  X1 a_27_47# A VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
-  //  X2 a_27_47# A VGND VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
-  //  X3 VPWR a_27_47# X VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
+  //  nfet_0 VGND a_27_47# X VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
+  //  pfet_0 a_27_47# A VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
+  //  nfet_1 a_27_47# A VGND VNB sky130_fd_pr__nfet_01v8 w=520000u l=150000u
+  //  pfet_1 VPWR a_27_47# X VPB sky130_fd_pr__pfet_01v8_hvt w=790000u l=150000u
   //  .ends
   //
   // Model sky130_fd_pr__nfet_01v8__model has ports "d g s b":
   //  drain, gate, source, substrate bias
   // nfet_0
-  circuit::Instance *X0 = circuit->AddInstance("X0", nfet_01v8);
+  circuit::Instance *nfet_0 = circuit->AddInstance("nfet_0", nfet_01v8);
   // pfet_0
-  circuit::Instance *X1 = circuit->AddInstance("X1", pfet_01v8);
+  circuit::Instance *pfet_0 = circuit->AddInstance("pfet_0", pfet_01v8);
   // nfet_1
-  circuit::Instance *X2 = circuit->AddInstance("X2", nfet_01v8);
+  circuit::Instance *nfet_1 = circuit->AddInstance("nfet_1", nfet_01v8);
   // pfet_1
-  circuit::Instance *X3 = circuit->AddInstance("X3", pfet_01v8);
+  circuit::Instance *pfet_1 = circuit->AddInstance("pfet_1", pfet_01v8);
 
-  X0->Connect("d", VGND);
-  X0->Connect("g", P);
-  X0->Connect("s", X);
-  X0->Connect("b", VNB);
-  //X0->SetParameter("l", Parameter {
+  struct FetParameters {
+    circuit::Instance *instance;
+    uint64_t width_nm;
+    uint64_t length_nm;
+  };
+  std::array<FetParameters, 4> fet_parameters = {
+    FetParameters {
+      nfet_0, parameters_.nfet_0_width_nm, parameters_.nfet_0_length_nm
+    },
+    FetParameters {
+      nfet_1, parameters_.nfet_1_width_nm, parameters_.nfet_1_length_nm
+    },
+    FetParameters {
+      pfet_0, parameters_.pfet_0_width_nm, parameters_.pfet_0_length_nm
+    },
+    FetParameters {
+      pfet_1, parameters_.pfet_1_width_nm, parameters_.pfet_1_length_nm
+    }
+  };
+  for (size_t i = 0; i < fet_parameters.size(); ++i) {
+    circuit::Instance *fet = fet_parameters[i].instance;
+    fet->SetParameter(
+        parameters_.fet_model_width_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_width_parameter,
+            static_cast<int64_t>(fet_parameters[i].width_nm),
+            Parameter::SIUnitPrefix::NANO));
+    fet->SetParameter(
+        parameters_.fet_model_length_parameter,
+        Parameter::FromInteger(
+            parameters_.fet_model_length_parameter,
+            static_cast<int64_t>(fet_parameters[i].length_nm),
+            Parameter::SIUnitPrefix::NANO));
+  }
 
-  X3->Connect({{"d", X}, {"g", P}, {"s", VPWR}, {"b", VPB}});
-  X2->Connect({{"d", P}, {"g", A}, {"s", VGND}, {"b", VNB}});
-  X1->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
+  pfet_0->Connect({{"d", P}, {"g", A}, {"s", VPWR}, {"b", VPB}});
+  nfet_0->Connect({{"d", P}, {"g", A}, {"s", VGND}, {"b", VNB}});
+
+  pfet_1->Connect({{"d", X}, {"g", P}, {"s", VPWR}, {"b", VPB}});
+  nfet_1->Connect({{"d", X}, {"g", P}, {"s", VGND}, {"b", VNB}});
 
   return circuit.release();
 }
 
 bfg::Layout *Sky130Buf::GenerateLayout() {
-  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(design_db_->physical_db()));
+  std::unique_ptr<bfg::Layout> layout(
+      new bfg::Layout(design_db_->physical_db()));
 
   uint64_t width =
       design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
@@ -178,11 +219,39 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(855, 2635),
                               Point(855, 1875)}));
 
+  // mcon.drawing 67/44
+  // Metal to li1.drawing contacts (VPWR side).
+  layout->SetActiveLayerByName("mcon.drawing");
+  layout->AddRectangle(Rectangle(Point(145, 2635), Point(315, 2805)));
+  layout->AddRectangle(Rectangle(Point(605, 2635), Point(775, 2805)));
+  layout->AddRectangle(Rectangle(Point(1065, 2635), Point(1235, 2805)));
+
+  // Metal to li1.drawing contacts (VGND side).
+  layout->AddRectangle(Rectangle(Point(145, -85), Point(315, 85)));
+  layout->AddRectangle(Rectangle(Point(605, -85), Point(775, 85)));
+  layout->AddRectangle(Rectangle(Point(1065, -85), Point(1235, 85)));
+
   // licon.drawing 66/44
   // Contacts from li layer to diffusion.
   layout->SetActiveLayerByName("licon.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 1380), Point(975, 1410)));
-                 
+  // Input and output.
+  layout->AddRectangle(Rectangle(Point(185, 1075), Point(355, 1245)));
+  layout->AddRectangle(Rectangle(Point(775, 1140), Point(945, 1310)));
+
+  // TODO(aryap): These are a function of transistor width.
+  layout->AddSquare(Point(260, 2300), 170);
+  layout->AddSquare(Point(260, 1960), 170);
+
+  layout->AddSquare(Point(690, 2300), 170);
+  layout->AddSquare(Point(690, 1960), 170);
+
+  layout->AddSquare(Point(1120, 2300), 170);
+  layout->AddSquare(Point(1120, 1895), 170);
+
+  // TODO(aryap): So are these!
+  layout->AddSquare(Point(260, 445), 170);
+  layout->AddSquare(Point(690, 380), 170);
+  layout->AddSquare(Point(1120, 530), 170);
 
   // npc.drawing 95/20
   // "The SKY130 process requires an 'NPC' layer to enclose all poly contacts."
@@ -229,33 +298,33 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(985, 105)}));
 
   // nsdm.drawing 93/44
-  layout->SetActiveLayerByName("nsdm.drawing");
+  layout->SetActiveLayerByName("psdm.drawing");
   layout->AddRectangle({{0, 1420}, {1380, 2910}});
 
   // psdm.drawing 94/20
-  layout->SetActiveLayerByName("psdm.drawing");
+  layout->SetActiveLayerByName("nsdm.drawing");
   layout->AddRectangle({{0, -190}, {1380, 1015}});
 
   // diff.drawing 65/20
   // Diffusion. Intersection with gate material layer defines gate size.
   // nsdm/psdm define N/P-type diffusion.
   layout->SetActiveLayerByName("diff.drawing");
-  // X0
+  // nfet_0
   uint64_t x0_width =
       design_db_->physical_db().ToInternalUnits(parameters_.nfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 235),
                                  Point(135 + 410 + 145, 235 + x0_width)));
-  // X2
+  // nfet_1
   uint64_t x2_width =
       design_db_->physical_db().ToInternalUnits(parameters_.nfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 235),
                                  Point(1245, 235 + x2_width)));
-  // X1
+  // pfet_0
   uint64_t x1_width =
       design_db_->physical_db().ToInternalUnits(parameters_.pfet_0_width_nm);
   layout->AddRectangle(Rectangle(Point(135, 1695),
                                  Point(135 + 410 + 145, 1695 + x1_width)));
-  // X3
+  // pfet_1
   uint64_t x3_width =
       design_db_->physical_db().ToInternalUnits(parameters_.pfet_1_width_nm);
   layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 1695),
@@ -272,6 +341,37 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   // pwell.pin 122/16
   layout->SetActiveLayerByName("pwell.pin");
   layout->AddRectangle({{155, -85}, {325 , 85}});
+
+  // li.pin
+  layout->SetActiveLayerByName("li.pin");
+  geometry::Rectangle *pin = layout->AddRectangleAsPort(
+      Rectangle(Point(145, 1105), Point(315, 1275)), "A");
+  if (parameters_.label_pins) {
+    pin->set_net("A");
+  }
+  layout->SavePoint("port_A_centre", pin->centre());
+
+  pin = layout->AddRectangleAsPort(
+      Rectangle(Point(735, 1140), Point(905, 1310)), "P");
+  if (parameters_.label_pins) {
+    pin->set_net("P");
+  }
+
+  pin = layout->AddRectangleAsPort(
+      Rectangle(Point(1055, 425), Point(1225, 595)), "X");
+  if (parameters_.label_pins) {
+    pin->set_net("X");
+  }
+  pin = layout->AddRectangleAsPort(
+      Rectangle(Point(1055, 1785), Point(1225, 1955)), "X");
+  if (parameters_.label_pins) {
+    pin->set_net("X");
+  }
+  pin = layout->AddRectangleAsPort(
+      Rectangle(Point(1055, 2125), Point(1225, 2295)), "X");
+  if (parameters_.label_pins) {
+    pin->set_net("X");
+  }
 
   return layout.release();
 }

@@ -53,7 +53,7 @@ class Sky130MuxSim:
         s0, s1, s2 = h.Signals(3)
         s0_b, s1_b, s2_b = h.Signals(3)
         x0, x1, x2, x3, x4, x5, x6, x7 = h.Signals(8)
-        y = h.Signal()
+        z = h.Signal()
 
         dut = mux()(S0=s0,
                     S0_B=s0_b,
@@ -61,20 +61,22 @@ class Sky130MuxSim:
                     S1_B=s1_b,
                     S2=s2,
                     S2_B=s2_b,
-                    X0=x0,
-                    X1=x1,
-                    X2=x2,
-                    X3=x3,
-                    X4=x4,
-                    X5=x5,
-                    X6=x6,
-                    X7=x7,
-                    Y=y,
-                    VGND=VSS)
+                    input_0=x0,
+                    input_1=x1,
+                    input_2=x2,
+                    input_3=x3,
+                    input_4=x4,
+                    input_5=x5,
+                    input_6=x6,
+                    input_7=x7,
+                    Z=z,
+                    VNB=VSS)
+                    #VGND=VSS)
 
-        power = primitives.DcVoltageSource(dc=HIGH)(p=dut.VPWR, n=VSS)
+        # Does the mux have a power source?
+        power = primitives.DcVoltageSource(dc=HIGH)(p=dut.VPB, n=VSS)
 
-        fake_load = primitives.IdealCapacitor(c=2*f)(p=y, n=VSS)
+        fake_load = primitives.IdealCapacitor(c=2*f)(p=z, n=VSS)
 
         init_x0 = primitives.DcVoltageSource(dc=LOW)(p=x0, n=VSS)
         init_x1 = primitives.DcVoltageSource(dc=HIGH)(p=x1, n=VSS)
@@ -164,7 +166,7 @@ def plot(tran_result: spice.sim_data.TranResult):
         #"V(XTOP:XDUT:LOWER_RIGHT__A0)",
         #"V(XTOP:XDUT:LOWER_RIGHT__A1)",
 
-        "V(XTOP:DUT_VPWR)",
+        #"V(XTOP:DUT_VPWR)",
 
         "V(XTOP:X0)",
         "V(XTOP:X1)",
@@ -180,7 +182,7 @@ def plot(tran_result: spice.sim_data.TranResult):
         #"V(XTOP:XDUT:A2)",
         #"V(XTOP:XDUT:A3)",
 
-        "V(XTOP:Y)"
+        "V(XTOP:Z)"
     ]
 
     fig, subs = plt.subplots(len(lines))

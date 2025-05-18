@@ -6,11 +6,10 @@
 #include "line.h"
 #include "point.h"
 #include "vector.h"
+#include "radian.h"
 
 namespace bfg {
 namespace geometry {
-
-double Line::kPi = std::acos(-1);
 
 std::string Line::Describe() const {
   std::stringstream ss;
@@ -19,7 +18,7 @@ std::string Line::Describe() const {
 }
 
 bool Line::AreAntiParallel(const Line &lhs, const Line &rhs) {
-  return lhs.AngleToLine(rhs) == kPi;
+  return lhs.AngleToLineCounterClockwise(rhs) == Radian::kPi;
 }
 
 bool Line::Intersect(
@@ -68,7 +67,7 @@ bool Line::Intersect(
   VLOG(11) << rhs.start() << " -> " << rhs.end()
            << ": y2 = " << m2 << "*x2 + " << c2;
 
-  // FIXME(aryap): What about antiparallel lines?
+  // FIXME(aryap): What about antiparallel lines? Just check if m1 == -m2?
   if (m1 == m2) {
     // Return true if the offsets are the same, since that means the two lines
     // are the same.
@@ -122,9 +121,9 @@ void Line::IntersectsWithAll(
   }
 }
 
-// Projection of some point on to the line. Let vector v be the the vector from
-// the start of this line to the given point, and the vector s be the vector
-// from the start of *this line to the end. Then
+// Projection of some point on to the line. Let vector v be the vector from the
+// start of this line to the given point, and the vector s be the vector from
+// the start of *this line to the end. Then
 //
 //      _ _      _   _   _   _     _
 // proj_s(v) = [(v . s)/(s . s)] * s
@@ -226,6 +225,52 @@ bool Line::AreSameInfiniteLine(const Line &lhs, const Line &rhs) {
   return true;
 }
 
+
+// Each line is projected onto an axis at the given angle. Any overlap is
+// returned as a pair of points on the axis.
+std::optional<std::pair<int64_t, int64_t>> Line::OverlappingProjectionOnAxis(
+    const Line &lhs, const Line &rhs, double axis_angle_radians) {
+  Vector axis = Vector::UnitVector(axis_angle_radians);
+
+  std::vector<std::pair<double, const Line*>> projections {
+    {axis.ProjectionCoefficient(lhs.start()), &lhs},
+    {axis.ProjectionCoefficient(lhs.end()), &lhs},
+    {axis.ProjectionCoefficient(rhs.start()), &rhs},
+    {axis.ProjectionCoefficient(rhs.end()), &rhs}
+  };
+  std::sort(projections.begin(), projections.end(),
+            [](const std::pair<int64_t, const Line*> &lhs,
+               const std::pair<int64_t, const Line*> &rhs) {
+              return lhs.first < rhs.first;
+            });
+
+  bool overlap = false;
+  const Line *last = projections.front().second;
+  std::optional<int64_t> overlap_start;
+  std::optional<int64_t> overlap_end;
+  for (size_t i = 1; i < projections.size(); ++i) {
+    int64_t position = std::llround(projections[i].first);
+    const Line *next = projections[i].second;
+    if (overlap) {
+      overlap_end = position;
+      overlap = false;
+      break;
+    } else if (i >= 2) {
+      // No overlap by the 3rd entry means no overlap ever.
+      break;
+    } else if (next != last) {
+      overlap_start = position;
+      overlap = true;
+    }
+    last = next;
+  }
+
+  if (overlap_start && overlap_end && overlap_start != overlap_end) {
+    return {{*overlap_start, *overlap_end}};
+  }
+  return std::nullopt;
+}
+
 bool Line::IsVertical() const {
   return start_.x() == end_.x();
 }
@@ -234,7 +279,7 @@ bool Line::IntersectsInBounds(const Point &point) const {
   if (!Intersects(point))
     return false;
 
-  // This is a very common operation of order the two ys or xs:
+  // This is the very common operation of ordering the two ys or xs:
   int64_t max_y = std::max(start_.y(), end_.y());
   int64_t min_y = std::min(start_.y(), end_.y());
   int64_t max_x = std::max(start_.x(), end_.x());
@@ -433,9 +478,9 @@ double Line::AngleToHorizon() const {
 
   double theta = 0;
   if (dx == 0) {
-    theta = dy >= 0? kPi / 2.0 : -kPi / 2.0;
+    theta = dy >= 0? Radian::kPi / 2.0 : -Radian::kPi / 2.0;
   } else if (dx < 0) {
-    theta = kPi + std::atan(dy/dx);
+    theta = Radian::kPi + std::atan(dy/dx);
   } else {
     theta = std::atan(dy/dx);
   }
@@ -468,21 +513,27 @@ double Line::AngleToHorizon() const {
 //
 // i.e. the angle "from a to b" and the angle "from b to a" always sum to 2 *
 // pi.
-double Line::AngleToLine(const Line &other) const {
+double Line::AngleToLineCounterClockwise(const Line &other) const {
   double angle_rads = other.AngleToHorizon() - AngleToHorizon();
   if (angle_rads < 0) {
-    angle_rads += 2 * kPi;
+    angle_rads += 2 * Radian::kPi;
   }
   return angle_rads;
 }
 
+// Remember:
+//  _   _     _     _
+//  a . b = ||a||*||b||*cos(theta)
+//                                   _     _
+//  where theta is the angle between a and b.
+//
 int64_t Line::DotProduct(const Line &with) const {
   // Turn the lines into vectors by subtracting the starting point from the end
   // point. Call them "Vectors" to make it clear what we're doing, even though
   // Vectors are just Points (i.e. Points are Vectors from the origin (0, 0)).
   Vector a = end_ - start_;
   Vector b = with.end() - with.start();
-  return a.x() * b.x() + a.y() * b.y();
+  return a.DotProduct(b);
 }
 
 }  // namespace geometry

@@ -154,6 +154,21 @@ layers {
   }
 }
 layers {
+  name: "metal1"
+  purpose {
+    description: "label"
+    type: LABEL
+  }
+  index {
+    major: 34
+    minor: 1
+  }
+  labels {
+    major: 34
+    minor: 0
+  }
+}
+layers {
   name: "via1"
   purpose {
     description: "via1"

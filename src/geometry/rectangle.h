@@ -2,6 +2,7 @@
 #define GEOMETRY_RECTANGLE_H_
 
 #include <ostream>
+#include <optional>
 
 #include "shape.h"
 #include "point.h"
@@ -25,6 +26,14 @@ class Rectangle : public Shape {
  public:
   static double ClosestDistanceBetween(
       const Rectangle &lhs, const Rectangle &rhs);
+
+  // Expand the 'bounding_box' rectangle to include the bounds of 'subsume'.
+  static void ExpandBounds(const Rectangle &subsume, Rectangle *bounding_box);
+  static void ExpandAccumulate(const Rectangle &subsume,
+                               std::optional<Rectangle> *target);
+
+  static Rectangle CentredAt(
+      const Point &centre, uint64_t width, uint64_t height);
 
   Rectangle() : Shape(0, "") {}
   Rectangle(const Point &lower_left, uint64_t width, uint64_t height)
@@ -50,8 +59,14 @@ class Rectangle : public Shape {
 
   bool Overlaps(const Rectangle &other) const;
   const Rectangle OverlapWith(const Rectangle &other) const;
+  bool Intersects(const Point &point) const;
+  bool Intersects(const Point &point, int64_t margin) const;
 
-  void GetBoundaryLines(std::vector<Line> *lines) const;
+  // Returns the intersections of the _infinite line_ 'line' with this
+  // Rectangle.
+  std::vector<PointPair> IntersectingPoints(const Line &line) const;
+
+  std::vector<Line> GetBoundaryLines() const;
 
   uint64_t Width() const { return upper_right_.x() - lower_left_.x(); }
   uint64_t Height() const { return upper_right_.y() - lower_left_.y(); }
@@ -62,12 +77,21 @@ class Rectangle : public Shape {
   void ResetOrigin() override;
   void FlipHorizontal() override {}   // No-op for a rectangle.
   void FlipVertical() override {}   // No-op for rectangle.
-  void MoveLowerLeftTo(const Point &point) override { Translate(point); }
+  void MoveLowerLeftTo(const Point &point) override {
+    ResetOrigin();
+    Translate(point);
+  }
   void Rotate(int32_t degrees_ccw) override;
+
+  void ExpandToCover(const Rectangle &subsume) {
+    ExpandBounds(subsume, this);
+  }
 
   double ClosestDistanceTo(const Rectangle &other) const {
     return ClosestDistanceBetween(*this, other);
   }
+
+  const std::string Describe() const;
 
   Point PointOnLineOutside(const Line &line) const;
   Rectangle BoundingBoxIfRotated(const Point &about, int32_t degrees_ccw) const;

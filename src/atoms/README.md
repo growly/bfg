@@ -18,4 +18,10 @@ is not concerned with the details of a particular component. `Tile`s do need to
 worry about how to piece and route other components together, but not much more
 than that.
 
-Where is my Remarkable? I should be writing this down.
+## Sky130TransmissionGate
+
+![A few different design points.](/assets/img/transmission_gate.gif)
+
+## Sky130TransmissionGateStack
+
+![A few different design points.](/assets/img/transmission_gate_stack.gif)

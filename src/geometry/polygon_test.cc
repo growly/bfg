@@ -33,8 +33,8 @@ TEST(Polygon, IntersectingPoints_IntersectionAtStartCorner) {
 
   Line line = Line({-2, -2}, {0, 0});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   ASSERT_EQ(2, intersections.size());
   EXPECT_EQ(intersections[0].first, Point(0, 0));
@@ -67,8 +67,8 @@ TEST(Polygon, IntersectingPoints_SplitVertical_Intersection) {
 
   Line line = Line({-2, -2}, {0, 0});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{0, 0}, {0, 0}},
@@ -102,8 +102,8 @@ TEST(Polygon, IntersectingPoints_IntersectionAtInnerCorner) {
 
   Line line = Line({-2, -4}, {0, -2});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{0, -2}, {4, 2}}
@@ -133,8 +133,8 @@ TEST(Polygon, IntersectingPoints_InterfaceAtAcuteCorner) {
 
   Line line = Line({-2, -2}, {0, 0});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{0, 0}, {2, 2}}
@@ -166,8 +166,8 @@ TEST(Polygon, IntersectingPoints_VerticalLine) {
 
   Line line = Line({15170, 0}, {15170, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{15170, 1755}, {15170, 1985}}
@@ -194,8 +194,8 @@ TEST(Polygon, IntersectingPoints_SimpleVerticalLine) {
 
   Line line = Line({2, -2}, {2, 0});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{2, 0}, {2, 2}}
@@ -212,8 +212,7 @@ TEST(Polygon, IntersectingPoints_SimpleVerticalLine) {
   //              x (4, -2)
   line = Line({4, -2}, {4, 0});
 
-  intersections.clear();
-  polygon.IntersectingPoints(line, &intersections);
+  intersections = polygon.IntersectingPoints(line);
 
   expected = {
       {{4, 0}, {4, 2}}
@@ -238,8 +237,8 @@ TEST(Polygon, IntersectingPoints_SimpleHorizontalLine) {
 
   Line line = Line({0, 2}, {2, 2});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{2, 2}, {4, 2}}
@@ -249,8 +248,7 @@ TEST(Polygon, IntersectingPoints_SimpleHorizontalLine) {
 
   line = Line({0, 0}, {2, 0});
 
-  intersections.clear();
-  polygon.IntersectingPoints(line, &intersections);
+  intersections = polygon.IntersectingPoints(line);
 
   expected = {
       {{2, 0}, {4, 0}}
@@ -295,8 +293,8 @@ TEST(Polygon, IntersectingPoints_YetAnotherVerticalLine) {
 
   Line line = Line({28950, 0}, {28950, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{28950, 3695}, {28950, 3925}}
@@ -327,8 +325,8 @@ TEST(Polygon, IntersectingPoints_AnotherVerticalLine) {
 
   Line line = Line({15170, 0}, {15170, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{15170, 7195}, {15170, 7425}}
@@ -372,8 +370,8 @@ TEST(Polygon, IntersectingPoints_TODO) {
 
   Line line = Line({32010, 0}, {32010, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{32010, 6185}, {32010, 6415}},
@@ -402,8 +400,8 @@ TEST(Polygon, IntersectingPoints_BogusPolygonStillWorks) {
 
   Line line = Line({32010, 0}, {32010, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
   for (const auto &p : intersections)
     LOG(INFO) <<  p.first << " " << p.second;
 
@@ -454,8 +452,8 @@ TEST(Polygon, IntersectingPoints_BogusPolygonStillWorks2) {
 
   Line line = Line({28270, 0}, {28270, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
   for (const auto &p : intersections)
     LOG(INFO) <<  p.first << " " << p.second;
 
@@ -511,8 +509,8 @@ TEST(Polygon, IntersectingPoints_VerticalTwoPlus) {
 
   Line line = Line({13990, 0}, {13990, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
 
   std::vector<std::pair<Point, Point>> expected = {
       {{13990, 15}, {13990, 5135}}
@@ -522,8 +520,7 @@ TEST(Polygon, IntersectingPoints_VerticalTwoPlus) {
 
   line = Line({14130, 0}, {14130, 1});
 
-  intersections.clear();
-  polygon.IntersectingPoints(line, &intersections);
+  intersections = polygon.IntersectingPoints(line);
 
   expected = {
       {{14130, 15}, {14130, 5135}}
@@ -573,8 +570,8 @@ TEST(Polygon, OutsideVerticalEdgeSpanningEndAndStartPoints) {
 
   Line line = Line({29150, 0}, {29150, 1});
 
-  std::vector<std::pair<Point, Point>> intersections;
-  polygon.IntersectingPoints(line, &intersections);
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
   for (const auto &p : intersections)
     LOG(INFO) <<  p.first << " " << p.second;
 

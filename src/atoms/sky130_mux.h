@@ -62,6 +62,9 @@ class Sky130Mux: public Atom {
     // TODO(aryap): Maybe these are queried from the PDK database?
     std::string fet_model_length_parameter = "l";
     std::string fet_model_width_parameter = "w";
+
+    bool extend_inputs_top = false;
+    bool extend_inputs_bottom = false;
   };
 
   struct Mux2CircuitParameters {
@@ -164,6 +167,8 @@ class Sky130Mux: public Atom {
   Parameters parameters_;
 
   double internal_units_per_nm_;
+
+ private:
 };
 
 }  // namespace atoms

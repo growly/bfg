@@ -16,10 +16,10 @@
 namespace bfg {
 namespace geometry {
 
-void Polygon::ResolveIntersectingPointsFrom(
+std::vector<PointPair> Polygon::ResolveIntersectingPointsFrom(
     const std::vector<PointOrChoice> &choices,
-    const Point &reference_point,
-    std::vector<PointPair> *intersections) {
+    const Point &reference_point) {
+  std::vector<PointPair> intersections;
   std::vector<PointOrChoice> choices_copy(choices);
 
   for (const auto &choice : choices) {
@@ -38,23 +38,13 @@ void Polygon::ResolveIntersectingPointsFrom(
     //
     // We do not need to maintain a sorted structure; we only need the minimum
     // in the collection at a given time.
-    std::function<bool (const PointOrChoice&, const PointOrChoice&)> comparator;
-    // TODO(aryap): These are the same. wtf.
-    if (outside) {
-      comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
-        const Point left = lhs.ClosestPointTo(reference_point);
-        const Point right = rhs.ClosestPointTo(reference_point);
-        return reference_point.L2SquaredDistanceTo(
-            left) > reference_point.L2SquaredDistanceTo(right);
-      };
-    } else {
-      comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
-        const Point left = lhs.ClosestPointTo(reference_point);
-        const Point right = rhs.ClosestPointTo(reference_point);
-        return reference_point.L2SquaredDistanceTo(
-            left) > reference_point.L2SquaredDistanceTo(right);
-      };
-    }
+    std::function<bool (const PointOrChoice&, const PointOrChoice&)>
+        comparator = [&](const PointOrChoice &lhs, const PointOrChoice &rhs) {
+      const Point left = lhs.ClosestPointTo(reference_point);
+      const Point right = rhs.ClosestPointTo(reference_point);
+      return reference_point.L2SquaredDistanceTo(
+          left) < reference_point.L2SquaredDistanceTo(right);
+    };
     auto it = std::min_element(
         choices_copy.begin(), choices_copy.end(), comparator);
     LOG_IF(FATAL, it == choices_copy.end())
@@ -182,17 +172,15 @@ void Polygon::ResolveIntersectingPointsFrom(
       << "Expected pairs of intersecting point choices, got " << sorted.size();
 
   for (size_t i = 0; i < sorted.size() - 1; i += 2) {
-    intersections->push_back({sorted[i], sorted[i + 1]});
+    intersections.push_back({sorted[i], sorted[i + 1]});
   }
+  return intersections;
 }
 
-void Polygon::IntersectingPoints(
-    const Line &line,
-    std::vector<PointPair> *points) const {
-  points->clear();
+std::vector<PointPair> Polygon::IntersectingPoints(const Line &line) const {
   if (vertices_.empty()) {
     LOG(WARNING) << "Polygon with no vertices!";
-    return;
+    return std::vector<PointPair>();
   }
 
   std::vector<PointOrChoice> intersections;
@@ -287,14 +275,14 @@ void Polygon::IntersectingPoints(
   }
 
   if (intersections.empty())
-    return;
+    return std::vector<PointPair>();
 
   Point outside_point = GetBoundingBox().PointOnLineOutside(line);
   VLOG(12) << "outside point: " << outside_point;
   VLOG(13) << *this;
 
   // Go through all points and choices among points. 
-  ResolveIntersectingPointsFrom(intersections, outside_point, points);
+  return ResolveIntersectingPointsFrom(intersections, outside_point);
 }
 
 // Compute the points at which a line intersects with a polygon, returning the
@@ -493,18 +481,17 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
 
   // The regular case is is that some line on the rectangle intersects some line
   // on the polygon:
-  std::vector<Line> rectangle_perimeter;
-  rectangle.GetBoundaryLines(&rectangle_perimeter);
+  std::vector<Line> rectangle_perimeter = rectangle.GetBoundaryLines();
 
   for (size_t i = 0; i < vertices_.size(); ++i) {
     // Check for intersects of any of the lines of the polygon with any of the
     // lines of the Rectangle.
     Line boundary_line = Line(
         vertices_[i], vertices_[(i + 1) % vertices_.size()]);
-    for (Line &rectangle_perimeter : rectangle_perimeter) {
+    for (Line &line : rectangle_perimeter) {
       bool incident_unused;
       Point point_unused;
-      if (rectangle_perimeter.IntersectsInMutualBounds(
+      if (line.IntersectsInMutualBounds(
               boundary_line,
               &incident_unused,
               &point_unused)) {
@@ -549,8 +536,7 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
                                      // line is always zero.
     double end_coefficient = test.ProjectionCoefficient(test.end());
 
-    std::vector<PointPair> points;
-    IntersectingPoints(test, &points);
+    std::vector<PointPair> points = IntersectingPoints(test);
 
     for (const auto &point_pair : points) {
       const Point &entry = point_pair.first;
@@ -560,16 +546,66 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
       double exit_coefficient = test.ProjectionCoefficient(exit);
 
       if (entry_coefficient <= start_coefficient &&
-              exit_coefficient >= start_coefficient) {
+          exit_coefficient >= start_coefficient) {
         return true;
       }
       if (entry_coefficient <= end_coefficient &&
-              exit_coefficient >= end_coefficient) {
+          exit_coefficient >= end_coefficient) {
         return true;
       }
     }
   }
 
+  return false;
+}
+
+bool Polygon::HasVertex(const Point &point) const {
+  return std::find(
+      vertices_.begin(), vertices_.end(), point) != vertices_.end();
+}
+
+bool Polygon::Intersects(const Point &point) const {
+  return Intersects(point, 0);
+}
+
+bool Polygon::Intersects(const Point &point, int64_t margin) const {
+  if (margin != 0) {
+    return Overlaps(Rectangle::CentredAt(point, 2 * margin, 2 * margin));
+  }
+
+  // Do basic tests. Are we outside of the polygon's bounding box?
+  geometry::Rectangle bounding_box = GetBoundingBox();
+  if (point.x() < bounding_box.lower_left().x() ||
+      point.y() < bounding_box.lower_left().y() ||
+      point.x() > bounding_box.upper_right().x() ||
+      point.y() > bounding_box.upper_right().y()) {
+    return false;
+  }
+
+  // We have to cast a ray and test for intersections. Classic.
+  // Ray angle is arbitrary so we just pick a horizontal line.
+  Line ray = Line(point, {point.x() + 1, point.y()});
+
+  // The projection back onto the ray is measurable as a scalar coefficient
+  // multiplied by the original vector diagonal defines. As shorthand we just
+  // call these the 'coefficients'.
+  double point_coefficient = 0.0;  // Distance from start to start along the
+                                   // line is always zero.
+
+  std::vector<PointPair> points = IntersectingPoints(ray);
+
+  for (const auto &point_pair : points) {
+    const Point &entry = point_pair.first;
+    const Point &exit = point_pair.second;
+
+    double entry_coefficient = ray.ProjectionCoefficient(entry);
+    double exit_coefficient = ray.ProjectionCoefficient(exit);
+
+    if (entry_coefficient <= point_coefficient &&
+        exit_coefficient >= point_coefficient) {
+      return true;
+    }
+  }
   return false;
 }
 

@@ -26,8 +26,8 @@ class Line {
   Line() = default;
   Line(const Point &start, const Point &end)
       : start_(start), end_(end) {}
-
-  static double kPi;
+  Line(const Point &end)
+      : start_(Point(0, 0)), end_(end) {}
 
   // Returns true if the lines defined by lhs and rhs intersect, and if so,
   // fills `point` with the intersection point. Returns false if the lines do
@@ -40,6 +40,9 @@ class Line {
   std::string Describe() const;
 
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
+
+  static std::optional<std::pair<int64_t, int64_t>> OverlappingProjectionOnAxis(
+      const Line &lhs, const Line &rhs, double axis_angle_radians);
 
   bool Intersects(const Point &point) const;
 
@@ -135,10 +138,26 @@ class Line {
   // horizontally to the right. Returns the angle in radians.
   double AngleToHorizon() const;
 
-  // Angle in radians.
-  double AngleToLine(const Line &other) const;
+  // The angle from this line, counter-clockwise, to the other line. Result in
+  // radians.
+  //
+  // other            this
+  // ^                ^
+  // | _ pi/4         |
+  // |  \           / |
+  //  ----> this    |  ----> other
+  //                \__/
+  //                  3*pi/2
+  //
+  double AngleToLineCounterClockwise(const Line &other) const;
 
   int64_t DotProduct(const Line &with) const;
+
+  // The line if it were translated to start from the origin (0, 0), as a
+  // vector.
+  Point AsVectorFromOrigin() const {
+    return end_ - start_;
+  }
 
   void set_start(const Point &start) { start_ = start; }
   void set_end(const Point &end) { end_ = end; }

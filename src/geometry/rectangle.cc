@@ -1,6 +1,9 @@
 #include "rectangle.h"
+
 #include <algorithm>
+#include <optional>
 #include <glog/logging.h>
+#include <sstream>
 
 #include "point.h"
 #include "../physical_properties_database.h"
@@ -18,15 +21,13 @@ double Rectangle::ClosestDistanceBetween(
   // Don't overthink it. If the two rectangles do not overlap, there are only a
   // few places they can be relative to one another:
   //
-  //
-  //
   //                |                |
   //      top       |                |     top
   //      left      |                |     right
   //                |                |
   // ---------------+----------------+----------------
   //                |                |
-  //                |      lhs       |     right
+  //                |     'lhs'      |     right
   //                |   rectangle    |
   //                |                |
   // ---------------+----------------+----------------
@@ -47,18 +48,47 @@ double Rectangle::ClosestDistanceBetween(
   } else if (top && left) {
     return lhs.UpperLeft().L2DistanceTo(rhs.LowerRight());
   } else if (right) {
-    return rhs.lower_left().x() - lhs.upper_right().x();
+    return std::abs(lhs.upper_right().x() - rhs.lower_left().x());
   } else if (bottom) {
-    return lhs.lower_left().y() - rhs.upper_right().y();
+    return std::abs(lhs.lower_left().y() - rhs.upper_right().y());
   } else if (left) {
-    return lhs.lower_left().x() - rhs.upper_right().x();
+    return std::abs(lhs.lower_left().x() - rhs.upper_right().x());
   } else if (top) {
-    return rhs.lower_left().y() - rhs.upper_right().y();
+    return std::abs(lhs.upper_right().y() - rhs.lower_left().y());
   } else {
     LOG(FATAL) << "If " << lhs << " and " << rhs << " don't overlap, "
                << "how did we get here?";
   }
   return 0;
+}
+
+void Rectangle::ExpandBounds(const Rectangle &subsume,
+                             Rectangle *bounding_box) {
+  bounding_box->lower_left_.set_x(std::min(
+      subsume.lower_left().x(), bounding_box->lower_left_.x()));
+  bounding_box->lower_left_.set_y(std::min(
+      subsume.lower_left().y(), bounding_box->lower_left_.y()));
+  bounding_box->upper_right_.set_x(std::max(
+      subsume.upper_right().x(), bounding_box->upper_right_.x()));
+  bounding_box->upper_right_.set_y(std::max(
+      subsume.upper_right().y(), bounding_box->upper_right_.y()));
+}
+
+void Rectangle::ExpandAccumulate(const Rectangle &subsume,
+                                 std::optional<Rectangle> *target) {
+  if (!target->has_value()) {
+    *target = subsume;
+    return;
+  }
+  (*target)->ExpandToCover(subsume);
+}
+
+Rectangle Rectangle::CentredAt(
+    const Point &centre, uint64_t width, uint64_t height) {
+  Point lower_left = centre - Point{
+      static_cast<int64_t>(width) / 2,
+      static_cast<int64_t>(height) / 2};
+  return Rectangle(lower_left, width, height);
 }
 
 bool Rectangle::Overlaps(const Rectangle &other) const {
@@ -81,13 +111,87 @@ const Rectangle Rectangle::OverlapWith(const Rectangle &other) const {
   return Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
 
-void Rectangle::GetBoundaryLines(std::vector<Line> *lines) const {
+bool Rectangle::Intersects(const Point &point) const {
+  return point.x() >= lower_left_.x() && point.x() <= upper_right_.x() &&
+         point.y() >= lower_left_.y() && point.y() <= upper_right_.y();
+}
+
+bool Rectangle::Intersects(const Point &point, int64_t margin) const {
+  if (margin == 0) {
+    return Intersects(point);
+  }
+  Rectangle modified = WithPadding(margin);
+  return modified.Intersects(point);
+}
+
+std::vector<PointPair> Rectangle::IntersectingPoints(const Line &line) const {
+  std::vector<Line> boundary_lines = GetBoundaryLines();
+  std::vector<Point> intersections;
+  // Unlike for Polygon, we have a very limited number of cases to deal with. A
+  // line can intersect a Rectangle at at most two points. If it intersects a
+  // corner, we record that as two points, in keeping with the convention
+  // defined for intersections with a Polygon.
+  //
+  // The only exceptional handling we need is for lines that are incident on a
+  // boundary line. In that case the start and end of the boundary line are the
+  // intersections and we don't consider any other boundary lines.
+  //
+  // FIXME(aryap): DUDE a DIAGONAL line that hits two DIAGONALLY OPPOSITE
+  // corners will yield 4 intersections! Maybe we disable end hit testing.
+  bool any_intersection = false;
+  for (const Line &boundary : boundary_lines) {
+    Point hit;
+    bool incident = false;
+    bool unused_is_start_or_end = false;
+    bool intersects = boundary.IntersectsInBounds(line,
+                                                  &incident,
+                                                  &unused_is_start_or_end,
+                                                  &hit,
+                                                  true,     // ignore_start
+                                                  false);   // ignore_end
+    if (intersects) {
+      any_intersection = true;
+      if (incident) {
+        intersections = {boundary.start(), boundary.end()};
+        break;
+      }
+      intersections.push_back(hit);
+    }
+  }
+
+  if (!any_intersection) {
+    LOG_IF(FATAL, !intersections.empty())
+        << "No intersections but intersections exist";
+    return {};
+  }
+  if (intersections.size() == 1) {
+    intersections.push_back(intersections.front());
+  }
+
+  LOG_IF(FATAL, intersections.size() != 2)
+      << "There should be exactly two intersections of a line and a rectangle";
+
+  std::sort(
+      intersections.begin(), intersections.end(),
+      [&](const Point &lhs, const Point &rhs) {
+          return line.ProjectionCoefficient(lhs) <
+              line.ProjectionCoefficient(rhs);
+      });
+
+  PointPair intersection = {intersections.front(), intersections.back()};
+  return {intersection};
+}
+
+std::vector<Line> Rectangle::GetBoundaryLines() const {
   Point upper_left = UpperLeft();
   Point lower_right = LowerRight();
-  lines->emplace_back(lower_left_, upper_left);
-  lines->emplace_back(upper_left, upper_right_);
-  lines->emplace_back(upper_right_, lower_right);
-  lines->emplace_back(lower_right, lower_left_);
+  std::vector<Line> lines = {
+      Line(lower_left_, upper_left),
+      Line(upper_left, upper_right_),
+      Line(upper_right_, lower_right),
+      Line(lower_right, lower_left_)
+  };
+  return lines;
 }
 
 void Rectangle::MirrorY() {
@@ -161,8 +265,19 @@ Rectangle Rectangle::BoundingBoxIfRotated(
 }
 
 Rectangle Rectangle::WithPadding(int64_t padding) const {
-  return {{lower_left_ - Point {padding, padding},
-           upper_right_ + Point {padding, padding}}};
+  Point lower_left = lower_left_ - Point {padding, padding};
+  Point upper_right = upper_right_ + Point {padding, padding};
+  // Padding can be negative, so check if we've violated the
+  // lower-left/upper-right invariant:
+  if (lower_left.x() > upper_right.x()) {
+    lower_left.set_x((lower_left.x() + upper_right.x()) / 2);
+    upper_right.set_x(lower_left.x());
+  }
+  if (lower_left.y() > upper_right.y()) {
+    lower_left.set_y((lower_left.y() + upper_right.y()) / 2);
+    upper_right.set_y(lower_left.y());
+  }
+  return {lower_left, upper_right};
 }
 
 ::vlsir::raw::Rectangle Rectangle::ToVLSIRRectangle(
@@ -172,6 +287,9 @@ Rectangle Rectangle::WithPadding(int64_t padding) const {
   rect_pb.mutable_lower_left()->set_y(db.ToExternalUnits(lower_left_.y()));
   rect_pb.set_width(db.ToExternalUnits(Width()));
   rect_pb.set_height(db.ToExternalUnits(Height()));
+  if (!net_.empty()) {
+    rect_pb.set_net(net_);
+  }
   return rect_pb;
 }
 
@@ -189,7 +307,16 @@ Rectangle Rectangle::WithPadding(int64_t padding) const {
     point_pb->set_x(db.ToExternalUnits(point.x()));
     point_pb->set_y(db.ToExternalUnits(point.y()));
   }
+  if (!net_.empty()) {
+    polygon_pb.set_net(net_);
+  }
   return polygon_pb;
+}
+
+const std::string Rectangle::Describe() const {
+  std::stringstream ss;
+  ss << "[Rectangle " << lower_left_ << " " << upper_right_ << "]";
+  return ss.str();
 }
 
 bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
@@ -199,9 +326,9 @@ bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
 
 }  // namespace geometry
 
-std::ostream &operator<<(std::ostream &os, const geometry::Rectangle &rectangle) {
-  os << "[Rectangle " << rectangle.lower_left()
-     << " " << rectangle.upper_right() << "]";
+std::ostream &operator<<(
+    std::ostream &os, const geometry::Rectangle &rectangle) {
+  os << rectangle.Describe();
   return os;
 }
 

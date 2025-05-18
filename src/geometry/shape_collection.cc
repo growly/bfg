@@ -7,11 +7,14 @@
 #include <sstream>
 #include <optional>
 
+#include <absl/strings/str_cat.h>
+
 #include "layer.h"
 #include "polygon.h"
 #include "port.h"
 #include "rectangle.h"
 #include "poly_line.h"
+#include "../equivalent_nets.h"
 #include "../physical_properties_database.h"
 
 #include "vlsir/layout/raw.pb.h"
@@ -21,7 +24,6 @@ namespace geometry {
 
 std::string ShapeCollection::Describe() const {
   std::stringstream ss;
-
   for (const auto &rectangle : rectangles_) {
     ss << "    rect " << rectangle->lower_left().x() << " "
        << rectangle->lower_left().y() << " "
@@ -59,23 +61,95 @@ std::string ShapeCollection::Describe() const {
 }
 
 bool ShapeCollection::Empty() const {
-  return rectangles_.empty() && polygons_.empty() && ports_.empty();
+  return rectangles_.empty() && polygons_.empty() && ports_.empty() &&
+      poly_lines_.empty();
+}
+
+void ShapeCollection::AddConnectableShapesNotOnNets(
+    const ShapeCollection &other, const EquivalentNets &nets) {
+  auto is_connectable_and_not_on_net = [&](const Shape &shape) {
+    return shape.is_connectable() && !nets.Contains(shape.net());
+  };
+  Add(other,
+      is_connectable_and_not_on_net,
+      is_connectable_and_not_on_net,
+      is_connectable_and_not_on_net,
+      is_connectable_and_not_on_net);
+}
+
+void ShapeCollection::AddConnectableShapes(const ShapeCollection &other) {
+  auto is_connectable = [&](const Shape &shape) {
+    return shape.is_connectable();
+  };
+  Add(other,
+      is_connectable,
+      is_connectable,
+      is_connectable,
+      is_connectable);
+}
+
+void ShapeCollection::AddNonConnectableShapes(const ShapeCollection &other) {
+  auto is_not_connectable = [&](const Shape &shape) {
+    return !shape.is_connectable();
+  };
+  Add(other,
+      is_not_connectable,
+      is_not_connectable,
+      is_not_connectable,
+      is_not_connectable);
 }
 
 void ShapeCollection::Add(const ShapeCollection &other) {
+  auto always_true = [](const Shape &shape) { return true; };
+  Add(other,
+      always_true,
+      always_true,
+      always_true,
+      always_true);
+}
+
+void ShapeCollection::Consume(ShapeCollection *other) {
+  for (auto &rectangle : other->rectangles_) {
+    rectangles_.emplace_back(std::move(rectangle));
+  }
+  for (auto &polygon : other->polygons_) {
+    polygons_.emplace_back(std::move(polygon));
+  }
+  for (auto &port : other->ports_) {
+    ports_.emplace_back(std::move(port));
+  }
+  for (auto &poly_line : other->poly_lines_) {
+    poly_lines_.emplace_back(std::move(poly_line));
+  }
+}
+
+void ShapeCollection::Add(
+    const ShapeCollection &other,
+    std::function<bool(const Rectangle&)> include_rectangle,
+    std::function<bool(const Polygon&)> include_polygon,
+    std::function<bool(const Port&)> include_port,
+    std::function<bool(const PolyLine&)> include_poly_line) {
   for (const auto &rectangle : other.rectangles_) {
+    if (!include_rectangle(*rectangle))
+      continue;
     Rectangle *copy = new Rectangle(*rectangle);
     rectangles_.emplace_back(copy);
   }
   for (const auto &polygon : other.polygons_) {
+    if (!include_polygon(*polygon))
+      continue;
     Polygon *copy = new Polygon(*polygon);
     polygons_.emplace_back(copy);
   }
   for (const auto &port : other.ports_) {
+    if (!include_port(*port))
+      continue;
     Port *copy = new Port(*port);
     ports_.emplace_back(copy);
   }
   for (const auto &poly_line : other.poly_lines_) {
+    if (!include_poly_line(*poly_line))
+      continue;
     PolyLine *copy = new PolyLine(*poly_line);
     poly_lines_.emplace_back(copy);
   }
@@ -221,21 +295,47 @@ ShapeCollection *FindOrCreateCollection(
   return inner_it->second.get();
 }
 
-
 }   // namespace
 
+void ShapeCollection::PrefixNetNames(
+    const std::string &prefix,
+    const std::string &separator,
+    const std::set<std::string> &exceptions) {
+  auto excepted_fn = [&](const std::string &net) {
+    return exceptions.find(net) != exceptions.end();
+  };
+  for (const auto &rectangle : rectangles_) {
+    if (rectangle->net() != "" && !excepted_fn(rectangle->net())) {
+      rectangle->set_net(absl::StrCat(prefix, separator, rectangle->net()));
+    }
+  }
+  for (const auto &polygon : polygons_) {
+    if (polygon->net() != "" && !excepted_fn(polygon->net())) {
+      polygon->set_net(absl::StrCat(prefix, separator, polygon->net()));
+    }
+  }
+  for (const auto &port : ports_) {
+    if (port->net() != "" && !excepted_fn(port->net())) {
+      port->set_net(absl::StrCat(prefix, separator, port->net()));
+    }
+  }
+  for (const auto &poly_line : poly_lines_) {
+    if (poly_line->net() != "" && !excepted_fn(poly_line->net())) {
+      poly_line->set_net(absl::StrCat(prefix, separator, poly_line->net()));
+    }
+  }
+}
 
-void ShapeCollection::CopyPins(
+void ShapeCollection::CopyConnectables(
     const std::optional<Layer> expected_layer,
     std::unordered_map<
         std::string,
         std::map<geometry::Layer,
                  std::unique_ptr<ShapeCollection>>> *shapes_by_layer_by_net)
     const {
-
   // Collect shapes by layer.
   for (const auto &rect : rectangles_) {
-    if (!rect->is_pin()) {
+    if (!rect->is_connectable()) {
       continue;
     }
     LOG_IF(FATAL,
@@ -249,7 +349,7 @@ void ShapeCollection::CopyPins(
     collection->rectangles_.emplace_back(copy);
   }
   for (const auto &poly : polygons_) {
-    if (!poly->is_pin()) {
+    if (!poly->is_connectable()) {
       continue;
     }
     LOG_IF(FATAL,
@@ -263,7 +363,7 @@ void ShapeCollection::CopyPins(
     collection->polygons_.emplace_back(copy);
   }
   for (const auto &port : ports_) {
-    if (!port->is_pin()) {
+    if (!port->is_connectable()) {
       continue;
     }
     LOG_IF(FATAL,
@@ -278,6 +378,60 @@ void ShapeCollection::CopyPins(
   }
 }
 
+void ShapeCollection::RemoveNets(const EquivalentNets &nets) {
+  rectangles_.erase(
+      std::remove_if(rectangles_.begin(), rectangles_.end(),
+                     [&](const std::unique_ptr<Rectangle> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      rectangles_.end());
+  polygons_.erase(
+      std::remove_if(polygons_.begin(), polygons_.end(),
+                     [&](const std::unique_ptr<Polygon> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      polygons_.end());
+  ports_.erase(
+      std::remove_if(ports_.begin(), ports_.end(),
+                     [&](const std::unique_ptr<Port> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      ports_.end());
+  poly_lines_.erase(
+      std::remove_if(poly_lines_.begin(), poly_lines_.end(),
+                     [&](const std::unique_ptr<PolyLine> &shape) {
+                       return nets.Contains(shape->net());
+                     }),
+      poly_lines_.end());
+}
+
+void ShapeCollection::KeepOnlyLayers(const std::set<geometry::Layer> &layers) {
+  rectangles_.erase(
+      std::remove_if(rectangles_.begin(), rectangles_.end(),
+                     [&](const std::unique_ptr<Rectangle> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      rectangles_.end());
+  polygons_.erase(
+      std::remove_if(polygons_.begin(), polygons_.end(),
+                     [&](const std::unique_ptr<Polygon> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      polygons_.end());
+  ports_.erase(
+      std::remove_if(ports_.begin(), ports_.end(),
+                     [&](const std::unique_ptr<Port> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      ports_.end());
+  poly_lines_.erase(
+      std::remove_if(poly_lines_.begin(), poly_lines_.end(),
+                     [&](const std::unique_ptr<PolyLine> &shape) {
+                       return layers.find(shape->layer()) == layers.end();
+                     }),
+      poly_lines_.end());
+}
+
 ::vlsir::raw::LayerShapes ShapeCollection::ToVLSIRLayerShapes(
     const PhysicalPropertiesDatabase &db,
     bool include_non_pins,
@@ -289,16 +443,16 @@ void ShapeCollection::CopyPins(
 
   // Collect shapes by layer.
   for (const auto &rect : rectangles_) {
-    if ((rect->is_pin() && !include_pins) ||
-        (!rect->is_pin() && !include_non_pins)) {
+    if ((rect->is_connectable() && !include_pins) ||
+        (!rect->is_connectable() && !include_non_pins)) {
       continue;
     }
     count++;
     *layer_shapes_pb.add_rectangles() = rect->ToVLSIRRectangle(db);
   }
   for (const auto &poly : polygons_) {
-    if ((poly->is_pin() && !include_pins) ||
-        (!poly->is_pin() && !include_non_pins)) {
+    if ((poly->is_connectable() && !include_pins) ||
+        (!poly->is_connectable() && !include_non_pins)) {
       continue;
     }
     ::vlsir::raw::Polygon *poly_pb = layer_shapes_pb.add_polygons();
@@ -307,6 +461,9 @@ void ShapeCollection::CopyPins(
       ::vlsir::raw::Point *point_pb = poly_pb->add_vertices();
       point_pb->set_x(db.ToExternalUnits(point.x()));
       point_pb->set_y(db.ToExternalUnits(point.y()));
+    }
+    if (!poly->net().empty()) {
+      poly_pb->set_net(poly->net());
     }
     count++;
   }

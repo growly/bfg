@@ -29,6 +29,9 @@ class Atom : public tiles::Tile {
     return cell;
   }
 
+  void set_name(const std::string &name) { name_ = name; }
+  const std::string &name() const { return name_; }
+
   virtual bfg::Cell *Generate() = 0;
  protected:
   std::string name_;

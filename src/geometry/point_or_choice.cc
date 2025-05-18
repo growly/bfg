@@ -33,7 +33,7 @@ const Point PointOrChoice::MinOrMaxPoint(const Point &reference, bool use_max)
       << "available.";
   auto comparator = [&](const Point &lhs, const Point &rhs) {
     return reference.L2SquaredDistanceTo(
-        lhs) > reference.L2SquaredDistanceTo(rhs);
+        lhs) < reference.L2SquaredDistanceTo(rhs);
   };
   auto it = use_max ?
       std::max_element(choose_one_->begin(), choose_one_->end(), comparator) :

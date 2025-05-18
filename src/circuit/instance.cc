@@ -4,7 +4,6 @@
 
 #include "vlsir/circuit.pb.h"
 
-#include <unordered_map>
 #include <glog/logging.h>
 
 #include "connection.h"
@@ -24,7 +23,8 @@ Instance *Instance::FromVLSIRInstance(
     instance->parameters_.insert({parameter.name, parameter});
   }
   for (const auto &connection_pb : instance_pb.connections()) {
-    //Connection connection = 
+    LOG(WARNING) << "Yikes! Nothing is happening with these connections!";
+    //Connection connection =
   }
   return instance.release();
 }
@@ -35,9 +35,12 @@ bool Instance::Disconnect(const std::string &port_name) {
 
 void Instance::Connect(
     const std::string &port_name, const Signal &signal) {
-  LOG_IF(FATAL, Disconnect(port_name))
+  auto existing = GetConnection(port_name);
+  LOG_IF(FATAL, existing)
       << "Instance \"" << name_ << "\" port \"" << port_name
-      << "\" was already connected when trying to Connect.";
+      << "\" was already connected "
+      << *existing
+      << " when trying to Connect.";
   Connection connection;
   connection.set_signal(&signal);
   connections_.insert({port_name, connection});
@@ -68,6 +71,15 @@ void Instance::Connect(
   }
 }
 
+std::optional<Connection> Instance::GetConnection(
+    const std::string &port_name) const {
+  auto it = connections_.find(port_name);
+  if (it == connections_.end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
 void Instance::SetParameter(const std::string &name, const Parameter &value) {
   parameters_[name] = value;
 }
@@ -75,7 +87,7 @@ void Instance::SetParameter(const std::string &name, const Parameter &value) {
 ::vlsir::circuit::Instance Instance::ToVLSIRInstance() const {
   ::vlsir::circuit::Instance instance_pb;
   instance_pb.set_name(name_);
-  
+
   // TODO(aryap): This is where externally-referenced modules are recorded.
   if (module_) {
     const std::string &name = module_->NameOrParentName();

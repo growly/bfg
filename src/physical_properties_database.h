@@ -7,33 +7,14 @@
 #include <functional>
 #include <optional>
 
+#include "routing_track_direction.h"
 #include "geometry/layer.h"
+#include "routing_via_info.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {
 
 class RoutingLayerInfo;
-
-enum RoutingTrackDirection {
-  kTrackHorizontal,
-  kTrackVertical
-};
-
-struct RoutingViaInfo {
-  // Vias have their own layer.
-  geometry::Layer layer;
-  // Need some measure of cost for connecting between these two layers. Maybe
-  // a function that describes the cost based on something (like length,
-  // sheet resistance).
-  double cost;
-  int64_t width;
-  int64_t height;
-
-  // These are the via encapsulations in the axis of the bulge and the
-  // orthogonal axis respectively.
-  int64_t overhang_length;
-  int64_t overhang_width;
-};
 
 struct LayerInfo {
   geometry::Layer internal_layer;
@@ -46,8 +27,20 @@ struct LayerInfo {
   uint16_t gds_datatype;
 
   // For PIN layers in particular, we need to record which layer(s) they're
-  // providing acccess to:
+  // providing acccess to. For example, "met1.pin" is used to access
+  // "met1.drawing".
   std::optional<std::set<geometry::Layer>> accesses;
+
+  // For non-PIN layers, we record which pin layers are used to access them.
+  // For example, "met1.drawing" is accessed by "met1.pin".
+  std::optional<std::set<geometry::Layer>> accessed_by;
+
+  std::optional<std::set<geometry::Layer>> labels;
+
+  // TODO(aryap): It might also be useful to record which label layers are used
+  // for this layer. For example, "met1.label" is used to annotate "met1.pin"
+  // and "met1.drawing".
+  std::optional<std::set<geometry::Layer>> labelled_by;
 };
 
 struct IntraLayerConstraints {
@@ -64,12 +57,16 @@ struct InterLayerConstraints {
   int64_t min_separation;
   int64_t max_separation;
 
-  // TODO(aryap): An 'enclosure' rule seems more descriptive than via overhang
-  // but does not apply equally on all sides usually.
+  // There are rules on how the minimum extension of e.g. poly over diff and
+  // diff over poly. Unfortunately we do not differentiate between the order of
+  // the keys when looking up rules, so this asymmetry is not naturally
+  // captured. We have to make up a convention for which relationship to store
+  // in "min_enclosure" and which to store in "min_extension".
   int64_t min_enclosure;
+  int64_t min_extension;
 
-  // Another way to express this is as min_enclosure on all sides and an
-  // 'overhang' in one axis, obviating the need for one of these.
+  // (Another way to express this is as min_enclosure on all sides and an
+  // 'overhang' in one axis, obviating the need for one of these.)
   int64_t via_overhang;
   int64_t via_overhang_wide;
 
@@ -80,6 +77,13 @@ struct InterLayerConstraints {
   // other routing layers.
   std::optional<geometry::Layer> connecting_via_layer;
 };
+
+// TODO(aryap): We have primitive rules, like those above, and we have
+// synthesised rules, that come from some combination of those primitive rules.
+// We need a SynthesisedConstraints class or equivalent to organise and capture
+// these. This is currently managed by creating the entries in the structs and
+// manually computing them when the PDK is loaded, but could usefully be a
+// user-defined callback or something.
 
 // Manages information about physical layout constraints.
 //
@@ -105,6 +109,8 @@ class PhysicalPropertiesDatabase {
         next_internal_layer_(0) {}
 
   void LoadTechnology(const vlsir::tech::Technology &pdk);
+
+  void LoadTechnologyFromFile(const std::string &path);
 
   // Internally, all positions and lengths are computed in integer units,
   // meaning that truncation and rounding have to be considered when it is
@@ -137,11 +143,11 @@ class PhysicalPropertiesDatabase {
       const std::string &left, const std::string &right) const;
   std::optional<const geometry::Layer> GetViaLayer(
       const geometry::Layer &left, const geometry::Layer &right) const;
-  void AddViaLayer(const std::string &first_layer,
-                   const std::string &second_layer,
+  void AddViaLayer(const std::string &one_layer,
+                   const std::string &another_layer,
                    const std::string &via_layer);
-  void AddViaLayer(const geometry::Layer &first_layer,
-                   const geometry::Layer &second_layer,
+  void AddViaLayer(const geometry::Layer &one_layer,
+                   const geometry::Layer &another_layer,
                    const geometry::Layer &via_layer);
 
   void AddRules(const std::string &first_layer,
@@ -162,19 +168,42 @@ class PhysicalPropertiesDatabase {
   const IntraLayerConstraints &Rules(const std::string &layer_name) const;
   const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
 
-  void GetRoutingLayerInfo(const std::string &routing_layer_name,
-                           RoutingLayerInfo *routing_info) const;
-  void GetRoutingViaInfo(const std::string &routing_layer,
-                         const std::string &other_routing_layer,
-                         RoutingViaInfo *routing_via_info) const;
+  RoutingLayerInfo GetRoutingLayerInfoOrDie(
+      const std::string &routing_layer_name) const;
+  std::optional<RoutingLayerInfo> GetRoutingLayerInfo(
+      const std::string &routing_layer_name) const;
 
-  // For a given pin layer, find the layers which can access it. This is
-  // transitive closure of all layers to which the pin layer provides direct
-  // access (i.e. li.pin accesses li.drawing) and all the layers which have
-  // access to those layers through vias (e.g. li.drawing can be reached by
-  // met1.drawing, diff.drawing).
-  const std::set<geometry::Layer>
+  std::optional<RoutingViaInfo> GetRoutingViaInfo(
+      const std::string &routing_layer,
+      const std::string &other_routing_layer) const;
+  RoutingViaInfo GetRoutingViaInfoOrDie(
+      const std::string &routing_layer,
+      const std::string &other_routing_layer) const;
+  RoutingViaInfo GetRoutingViaInfoOrDie(
+      const geometry::Layer &first_layer,
+      const geometry::Layer &second_layer) const;
+
+  // TODO(aryap): Port these from RoutingGrid to here.
+  // std::optional<double> FindViaStackCost(
+  //     const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+  // std::optional<std::vector<RoutingViaInfo>> FindViaStack(
+  //     const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+  //
+  // This is the same as "FindLayersReachableThroughOneViaFrom", except that it
+  // returns a set of layers with costs.
+  //  std::vector<CostedLayer> LayersReachableByVia(
+  //      const geometry::Layer &from_layer) const;
+  // Then put "BuildViaStack" or something in Layout.
+
+  // For a given pin layer, find the layers which can access it. The pin layer
+  // represents access to a given layer, which is the first entry. For each of
+  // those we have a set of layers which can be accessed through one more via.
+  const std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
       FindReachableLayersByPinLayer(const geometry::Layer &pin_layer) const;
+
+  const std::set<geometry::Layer>
+      FindLayersReachableThroughOneViaFrom(const geometry::Layer &routing_layer)
+      const;
 
   std::string DescribeLayers() const;
   std::string DescribeLayer(const geometry::Layer &layer) const;
@@ -212,7 +241,10 @@ class PhysicalPropertiesDatabase {
   std::map<uint16_t, std::map<uint16_t, geometry::Layer>> layers_by_layer_key_;
 
   // Stores the via layer required to get from the first indexed layer to the
-  // second indexed layer.
+  // second indexed layer. If an via layer exists between two layers, we assume
+  // that those layers can be connected through that single via layer. If no
+  // entry exists, we take that to mean that two layers cannot be directly
+  // connected by a via.
   std::map<geometry::Layer,
       std::map<geometry::Layer, geometry::Layer>> via_layers_;
 

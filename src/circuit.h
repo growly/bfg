@@ -105,6 +105,10 @@ class Circuit {
   bool IsPowerOrGround(const circuit::Signal &signal) const;
 
  private:
+  static constexpr std::string_view kDefaultNetPrefix = "n_";
+
+  std::string GenerateDefaultName();
+
   bfg::Cell *parent_cell_;
 
   Type type_;
@@ -135,6 +139,8 @@ class Circuit {
   std::unordered_map<std::string, circuit::Instance*> instances_by_name_;
 
   std::unordered_map<std::string, Parameter> parameters_;
+
+  uint64_t unnamed_net_count_;
 };
 
 

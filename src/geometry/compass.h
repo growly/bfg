@@ -2,6 +2,9 @@
 #define GEOMETRY_COMPASS_H_
 
 #include <cstdint>
+#include <ostream>
+
+#include "proto/compass_direction.pb.h"
 
 namespace bfg {
 namespace geometry {
@@ -26,7 +29,17 @@ enum class Compass : uint8_t {
   LOWER_LEFT  = 7
 };
 
+proto::CompassDirection CompassToProtoCompassDirection(
+    const Compass &compass);
+Compass ProtoCompassDirectionToCompass(
+    const proto::CompassDirection &compass_pb);
+
 }  // namespace geometry
+
+std::ostream &operator<<(
+    std::ostream &os,
+    const geometry::Compass &compass);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_COMPASS_H_

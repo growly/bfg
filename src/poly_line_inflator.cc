@@ -8,6 +8,7 @@
 #include "layout.h"
 #include "poly_line_cell.h"
 #include "routing_grid.h"
+#include "routing_via_info.h"
 #include "geometry/point.h"
 #include "geometry/line.h"
 #include "geometry/poly_line.h"
@@ -76,6 +77,25 @@ Layout *PolyLineInflator::Inflate(
         &rectangle);
     layout->set_active_layer(rectangle.layer());
     layout->AddRectangle(rectangle);
+
+    if (via->port_on_top()) {
+      // Fetch the layer above the via layer:
+      const geometry::Layer &above = via->top_layer();
+      if (!above)
+        continue;
+      const auto &info = routing_grid.GetRoutingViaInfoOrDie(
+          via->bottom_layer(), via->top_layer());
+      const auto &above_info = routing_grid.GetRoutingLayerInfoOrDie(above);
+      auto &pin_layer = above_info.pin_layer();
+      if (!pin_layer)
+        continue;
+      layout->set_active_layer(*pin_layer);
+      geometry::Rectangle *pin = layout->AddSquareAsPort(
+          via->centre(),
+          std::min(info.width(), info.height()),
+          *via->port_on_top());
+      pin->set_net(*via->port_on_top());
+    }
   }
   return layout.release();
 }
@@ -83,7 +103,7 @@ Layout *PolyLineInflator::Inflate(
 void PolyLineInflator::InflateVia(const RoutingViaInfo &info,
                                   const AbstractVia &via,
                                   Rectangle *rectangle) {
-  InflateVia(info.layer, info.width, info.height, via, rectangle);
+  InflateVia(info.layer(), info.width(), info.height(), via, rectangle);
 }
 
 void PolyLineInflator::InflateVia(const geometry::Layer layer,

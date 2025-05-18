@@ -5,21 +5,38 @@
 #include <unordered_map>
 #include <ostream>
 #include <sstream>
+#include <fstream>
+#include <iomanip>
 #include <optional>
 #include <utility>
 #include <glog/logging.h>
+#include <string>
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_split.h>
 
-#include "routing_layer_info.h"
 #include "geometry/layer.h"
+#include "routing_layer_info.h"
+#include "routing_via_info.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {
 
 using geometry::Layer;
+
+void PhysicalPropertiesDatabase::LoadTechnologyFromFile(
+    const std::string &path) {
+  vlsir::tech::Technology tech_pb;
+  std::fstream technology_input(path, std::ios::in | std::ios::binary);
+  LOG_IF(FATAL, !technology_input)
+      << "Could not open technology protobuf " << std::quoted(path);
+  if (!tech_pb.ParseFromIstream(&technology_input)) {
+    LOG(FATAL) << "Could not parse technology protobuf, "
+               << std::quoted(path);
+  }
+  LoadTechnology(tech_pb);
+}
 
 void PhysicalPropertiesDatabase::LoadTechnology(
     const vlsir::tech::Technology &pdk) {
@@ -59,6 +76,39 @@ void PhysicalPropertiesDatabase::LoadTechnology(
         layer_info.accesses = std::set<Layer>{*access_layer};
       } else {
         layer_info.accesses->insert(*access_layer);
+      }
+      // Add back-reference.
+      auto access_it = layer_infos_.find(*access_layer);
+      auto &access_layer_info = access_it->second;
+      if (!access_layer_info.accessed_by) {
+        access_layer_info.accessed_by = std::set<Layer>{*layer};
+      } else {
+        access_layer_info.accessed_by->insert(*layer);
+      }
+    }
+
+    for (const auto &ref_key : info_pb.labels()) {
+      std::optional<Layer> target = FindLayer(ref_key.major(), ref_key.minor());
+  
+      LOG_IF(FATAL, !target)
+          << "Layer "
+          << info_pb.index().major() << "/" << info_pb.index().minor()
+          << " labels another layer which was not found: "
+          << ref_key.major() << "/" << ref_key.minor();
+
+      if (!layer_info.labels) {
+        layer_info.labels = std::set<Layer>{*target};
+      } else {
+        layer_info.labels->insert(*target);
+      }
+
+      // Add back-reference.
+      auto target_it = layer_infos_.find(*target);
+      auto &target_layer_info = target_it->second;
+      if (!target_layer_info.labelled_by) {
+        target_layer_info.labelled_by = std::set<Layer>{*layer};
+      } else {
+        target_layer_info.labelled_by->insert(*layer);
       }
     }
   }
@@ -266,67 +316,136 @@ PhysicalPropertiesDatabase::GetRules(
   return map_it->second;
 }
 
-void PhysicalPropertiesDatabase::GetRoutingLayerInfo(
-    const std::string &routing_layer_name,
-    RoutingLayerInfo *routing_info) const {
-  routing_info->layer = GetLayer(routing_layer_name);
-  const IntraLayerConstraints layer_rules = Rules(routing_layer_name);
-  routing_info->wire_width = layer_rules.min_width;
-  routing_info->pitch = layer_rules.min_pitch;
-  routing_info->min_separation = layer_rules.min_separation;
+std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
+    const std::string &routing_layer_name) const {
+  auto layer = FindLayer(routing_layer_name);
+  if (!layer) {
+    return std::nullopt;
+  }
+  RoutingLayerInfo routing_info;
+  routing_info.set_layer(*layer);
+  auto maybe_rules = GetRules(*layer);
+  if (!maybe_rules) {
+    LOG(WARNING) << "No intra-layer constraints for layer " << *layer
+                 << " (" << routing_layer_name << ")";
+    return std::nullopt;
+  }
+  const IntraLayerConstraints &layer_rules = maybe_rules->get();
+  routing_info.set_wire_width(layer_rules.min_width);
+  routing_info.set_pitch(layer_rules.min_pitch);
+  routing_info.set_min_separation(layer_rules.min_separation);
+
+  const LayerInfo &layer_info = GetLayerInfo(*layer);
+  if (layer_info.accessed_by) {
+    for (const geometry::Layer &pin_layer : *layer_info.accessed_by) {
+      routing_info.set_pin_layer(pin_layer);
+    }
+  }
+
+  return routing_info;
 }
 
-void PhysicalPropertiesDatabase::GetRoutingViaInfo(
+RoutingLayerInfo PhysicalPropertiesDatabase::GetRoutingLayerInfoOrDie(
+    const std::string &routing_layer_name) const {
+  auto routing_info = GetRoutingLayerInfo(routing_layer_name);
+  return *routing_info;
+}
+
+std::optional<RoutingViaInfo> PhysicalPropertiesDatabase::GetRoutingViaInfo(
     const std::string &routing_layer,
-    const std::string &other_routing_layer,
-    RoutingViaInfo *routing_via_info) const {
+    const std::string &other_routing_layer) const {
+  auto first_layer = FindLayer(routing_layer);
+  auto second_layer = FindLayer(other_routing_layer);
+  if (!first_layer || !second_layer) {
+    return std::nullopt;
+  }
+  return GetRoutingViaInfoOrDie(*first_layer, *second_layer);
+}
+
+RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfoOrDie(
+    const std::string &routing_layer,
+    const std::string &other_routing_layer) const {
   const geometry::Layer first_layer = GetLayer(routing_layer);
   const geometry::Layer second_layer = GetLayer(other_routing_layer);
+  return GetRoutingViaInfoOrDie(first_layer, second_layer);
+}
 
-  auto via_layer = GetViaLayer(routing_layer, other_routing_layer);
+RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfoOrDie(
+    const geometry::Layer &first_layer,
+    const geometry::Layer &second_layer) const {
+  auto via_layer = GetViaLayer(first_layer, second_layer);
   LOG_IF(FATAL, !via_layer)
-      << "No via layer found connecting " << routing_layer << " and "
-      << other_routing_layer;
+      << "No via layer found connecting " << first_layer << " and "
+      << second_layer;
 
-  routing_via_info->layer = *via_layer;
   const IntraLayerConstraints &via_rules = Rules(*via_layer);
-  routing_via_info->width = via_rules.via_width;
-  routing_via_info->height = via_rules.via_width;
+
+  RoutingViaInfo routing_via_info;
+  routing_via_info.set_layer(*via_layer);
+  routing_via_info.set_width(via_rules.via_width);
+  routing_via_info.set_height(via_rules.via_width);
 
   const InterLayerConstraints &via_to_first_layer_rules =
       Rules(first_layer, *via_layer);
+  RoutingViaEncapInfo first_layer_encap = {0};
+  first_layer_encap.overhang_length = via_to_first_layer_rules.via_overhang;
+  first_layer_encap.overhang_width = via_to_first_layer_rules.via_overhang_wide;
+
   const InterLayerConstraints &via_to_second_layer_rules =
       Rules(second_layer, *via_layer);
-  routing_via_info->overhang_length = std::max(
-      via_to_first_layer_rules.via_overhang,
-      via_to_second_layer_rules.via_overhang);
-  routing_via_info->overhang_width = std::max(
-      via_to_first_layer_rules.via_overhang_wide,
-      via_to_second_layer_rules.via_overhang_wide);
+  RoutingViaEncapInfo second_layer_encap = {0};
+  second_layer_encap.overhang_length = via_to_second_layer_rules.via_overhang;
+  second_layer_encap.overhang_width =
+      via_to_second_layer_rules.via_overhang_wide;
+
+  routing_via_info.AddRoutingViaEncapInfo(first_layer, first_layer_encap);
+  routing_via_info.AddRoutingViaEncapInfo(second_layer, second_layer_encap);
+  return routing_via_info;
 }
 
-const std::set<geometry::Layer>
+//                    7    --------- some routing layer
+//          accesses /         ^
+//                  /          | connected through some via layer
+//   pin layer ----------      |                   L
+//                             | ---------- the via layer
+//                             |
+//                             v
+//                         --------- some other routing layer
+const std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
 PhysicalPropertiesDatabase::FindReachableLayersByPinLayer(
     const geometry::Layer &pin_layer) const {
   std::set<geometry::Layer> accessible;
   const auto &layer_info = GetLayerInfo(pin_layer);
+  std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
+      accessibility_by_access_layer;
   if (!layer_info.accesses) {
-    return accessible;
+    return accessibility_by_access_layer;
   }
-  for (const auto &directly_accessible_layer : layer_info.accesses.value()) {
-    for (const auto &outer_entry : via_layers_) {
-      const geometry::Layer &outer_layer = outer_entry.first;
-      for (const auto &inner_entry : outer_entry.second) {
-        const geometry::Layer &inner_layer = inner_entry.first;
+  for (const auto &directly_accessible_layer : *layer_info.accesses) {
+    std::set<geometry::Layer> accessible_through_at_most_one_via =
+        FindLayersReachableThroughOneViaFrom(directly_accessible_layer);
+    accessible_through_at_most_one_via.insert(directly_accessible_layer);
+    accessibility_by_access_layer.push_back(
+        {directly_accessible_layer, accessible_through_at_most_one_via});
+  }
+  return accessibility_by_access_layer;;
+}
 
-        // If they exist in this mapping, they are connecting. We do need the
-        // detail of which via layer connects them.
-
-        if (inner_layer == directly_accessible_layer) {
-          accessible.insert(outer_layer);
-        } else if (outer_layer == directly_accessible_layer) {
-          accessible.insert(inner_layer);
-        }
+const std::set<geometry::Layer>
+PhysicalPropertiesDatabase::FindLayersReachableThroughOneViaFrom(
+    const geometry::Layer &routing_layer) const {
+  // via_layers_ is indexed by two layers. Each entry indicates that the layers
+  // in the index pair are connected by a via on the layer contained at that
+  // position.
+  std::set<geometry::Layer> accessible;
+  for (const auto &outer : via_layers_) {
+    const geometry::Layer &outer_layer = outer.first;
+    for (const auto &inner : outer.second) {
+      const geometry::Layer &inner_layer = inner.first;
+      if (outer_layer == routing_layer) {
+        accessible.insert(inner_layer);
+      } else if (inner_layer == routing_layer) {
+        accessible.insert(outer_layer);
       }
     }
   }

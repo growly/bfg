@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "physical_properties_database.h"
+#include "scoped_layer.h"
 #include "geometry/instance.h"
 #include "geometry/layer.h"
 #include "geometry/manipulable.h"
@@ -48,14 +49,20 @@ class Layout : public geometry::Manipulable {
     shape_collection->rectangles().emplace_back(copy);
     return copy;
   }
+  geometry::Rectangle *AddRectangleAsPort(const geometry::Rectangle &rectangle,
+                                          const std::string &net,
+                                          const std::string &net_prefix = "");
   geometry::Rectangle *AddSquare(
       const geometry::Point &centre, uint64_t side_width) {
-    return AddRectangle(geometry::Rectangle(
-        geometry::Point(centre.x() - side_width / 2,
-                        centre.y() - side_width / 2),
-        side_width,
-        side_width));
+    return AddRectangle(
+        geometry::Rectangle::CentredAt(centre, side_width, side_width));
   }
+  geometry::Rectangle *AddSquareAsPort(
+      const geometry::Point &centre,
+      uint64_t side_width,
+      const std::string &net,
+      const std::string &net_prefix = "");
+
   geometry::Polygon *AddPolygon(const geometry::Polygon &polygon) {
     geometry::Polygon *copy = new geometry::Polygon(polygon);
     copy->set_layer(active_layer_);
@@ -69,18 +76,65 @@ class Layout : public geometry::Manipulable {
     return copy;
   }
   geometry::Polygon *AddPolyLine(const geometry::PolyLine &line);
-  void AddPort(const geometry::Port &port, const std::string &net_prefix = "");
-  void GetPorts(const std::string &net_name, std::set<geometry::Port*> *out)
+
+  void AddPort(const geometry::Port &port,
+               const std::string &net_prefix = "");
+  void GetPorts(const std::string &net_name, geometry::PortSet *out)
       const;
-  void AddLayout(const Layout &other, const std::string &name_prefix = "");
+
+  // Take ownership of all the shapes in the other Layout, deleting them from
+  // that Layout as we go. If a name_prefix is given, moved shapes will be
+  // renamed with the given prefix at the start.
+  void ConsumeLayout(Layout *other, const std::string &name_prefix = "");
+
+  // Copies the objects in other layout into this one. If a name prefix is
+  // given, it is apply to named points and net names copied from the other
+  // Layout.
+  void AddLayout(const Layout &other,
+                 const std::string &name_prefix = "",
+                 bool include_ports = true);
+
+  // Translate the Layout such that the given reference point, assumed to be in
+  // the coordinate space of this Layout, ends up at the target point.
+  void AlignPointTo(
+      const geometry::Point &reference, const geometry::Point &target);
 
   geometry::Rectangle *MakeVia(
-      const std::string &layer_name, const geometry::Point &centre);
+      const std::string &layer_name,
+      const geometry::Point &centre,
+      const std::optional<std::string> &net = std::nullopt);
   void MakePort(const std::string &net_name,
                 const geometry::Point &centre,
                 const std::string &layer_name = "");
 
+  // Add the layout of every instance to the this layout directly, removing one
+  // layer of hierarchy. To flatten completely, this must be called repeatedly
+  // until no more instances_ remain.
+  void Flatten();
+
+  // TODO(aryap): Every shape electrically (passively) connected to 'point' is
+  // given the net 'net'.
+  //
+  // This is a convenience function to save having to explicitly label all
+  // shapes known to be connected when drawing the layout. However, it requires
+  // knowledge of which layer shapes can connect electrically. For example,
+  // polysilicon does not passively label an underlying diffusion region with
+  // its net, since it is the gate to a transistor. Wire and via layers,
+  // however, do colour each other with their net when they touch.
+  void LabelNet(const geometry::Point &point, const std::string &net);
+
+  void AddGlobalNet(const std::string &net) {
+    global_nets_.insert(net);
+  }
+  bool HasGlobalNet(const std::string &net) const {
+    return global_nets_.find(net) != global_nets_.end();
+  }
+
   std::string Describe() const;
+
+  // Report the rectangular area covered by this Layout. (This is the area of
+  // the bounding box.)
+  // std::string Area() const;
 
   ::vlsir::raw::Abstract ToVLSIRAbstract(
       std::optional<geometry::Layer> top_layer = std::nullopt) const;
@@ -90,13 +144,38 @@ class Layout : public geometry::Manipulable {
   void MirrorX() override;
   void FlipHorizontal() override;
   void FlipVertical() override;
+
+  // Shifts the layout so that the lower-left-most point of the bounding box
+  // lies at the origin.
   void ResetOrigin() override;
+
+  void Rotate(int32_t degrees_ccw) override;
   void Translate(const geometry::Point &offset) override;
+
+  // Shifts the layout so that the left-most point of the bounding box
+  // lies at the origin.
+  void ResetX();
+
+  // Shifts the layout so that the lowest point of the bounding box
+  // lies at the origin.
+  void ResetY();
+
+  // Shifts the layout so that the lower-left-most point of the tiling bounds
+  // lies at the origin.
+  void ResetToTilingBounds();
+
   void MoveTo(const geometry::Point &lower_left) {
     // TODO(aryap): Surely this just takes one translation after you compute a
     // vector:
     ResetOrigin();
     Translate(lower_left);
+  }
+
+  uint64_t Height() const {
+    return GetBoundingBox().Height();
+  }
+  uint64_t Width() const {
+    return GetBoundingBox().Width();
   }
 
   const geometry::Rectangle GetBoundingBox() const;
@@ -109,31 +188,49 @@ class Layout : public geometry::Manipulable {
   }
 
   void SetTilingBounds(const geometry::Rectangle &rectangle) {
-    tiling_bounds_.reset(new geometry::Rectangle(rectangle));
+    tiling_bounds_ = rectangle;
   }
   void UnsetTilingBounds() {
     tiling_bounds_.reset();
   }
 
+  void EraseLayerByName(const std::string &name);
+  void EraseLayer(const geometry::Layer &layer);
+
   void SavePoint(const std::string &name, const geometry::Point &point);
   void SavePoints(
       std::map<const std::string, const geometry::Point> named_points);
-  geometry::Point GetPoint(const std::string &name) const;
+  geometry::Point GetPointOrDie(const std::string &name) const;
+  std::optional<geometry::Point> GetPoint(const std::string &name) const;
 
-  void GetShapesOnLayer(
+  // NOTE(aryap): It might be justified to create a "ShadowShapeCollection" or
+  // something that merely collects pointers to shapes guaranteed to outlive
+  // the ShadowShapeCollection.
+  void CopyShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
   ShapeCollection *GetShapeCollection(const geometry::Layer &layer) const;
+
+  void CopyNonConnectableShapesOnLayer(
+      const geometry::Layer &layer, ShapeCollection *shapes) const;
+
+  void CopyConnectableShapesNotOnNets(
+      const EquivalentNets &nets, ShapeCollection *shapes) const;
+
+  void CopyConnectableShapes(ShapeCollection *shapes) const;
+
+  void CopyAllShapes(ShapeCollection *shapes) const;
 
   void GetInstancesByName(
       std::unordered_map<std::string, geometry::Instance *const> *mapping)
       const;
 
-  void GetAllPorts(
-      std::set<geometry::Port*> *ports) const;
+  void GetAllPorts(geometry::PortSet *ports) const;
 
   void GetAllPortsExceptNamed(
-      std::set<geometry::Port*> *ports,
+      geometry::PortSet *ports,
       const std::string &named) const;
+
+  bool HasPort(const std::string &name) const;
 
   const std::string &NameOrParentName() const;
 
@@ -157,11 +254,19 @@ class Layout : public geometry::Manipulable {
   };
   const geometry::Layer &active_layer() const { return active_layer_; }
 
-  const std::unordered_map<std::string, std::set<geometry::Port*>>
+  const std::unordered_map<std::string, geometry::PortSet>
       &ports_by_net() const { return ports_by_net_; }
-  const std::set<geometry::Port*> Ports() const;
+  const geometry::PortSet Ports() const;
   const std::vector<std::unique_ptr<geometry::Instance>> &instances() const {
     return instances_;
+  }
+
+  const std::unordered_map<std::string, geometry::Point> &named_points() const {
+    return named_points_;
+  }
+
+  const std::set<std::string> &global_nets() const {
+    return global_nets_;
   }
 
  private:
@@ -169,15 +274,17 @@ class Layout : public geometry::Manipulable {
 
   std::string name_;
 
+  void AddPortByNet(const std::string &name, geometry::Port *port);
+
   ShapeCollection *GetOrInsertLayerShapes(const geometry::Layer &layer);
 
   const PhysicalPropertiesDatabase &physical_db_;
 
-  std::unique_ptr<geometry::Rectangle> tiling_bounds_;
+  std::optional<geometry::Rectangle> tiling_bounds_;
 
   std::vector<std::unique_ptr<geometry::Instance>> instances_;
 
-  std::unordered_map<std::string, std::set<geometry::Port*>> ports_by_net_;
+  std::unordered_map<std::string, geometry::PortSet> ports_by_net_;
 
   geometry::Layer active_layer_;
   std::stack<geometry::Layer> previous_layers_;
@@ -185,6 +292,10 @@ class Layout : public geometry::Manipulable {
   std::map<geometry::Layer, std::unique_ptr<ShapeCollection>> shapes_;
 
   std::unordered_map<std::string, geometry::Point> named_points_;
+
+  // Shapes with these net labelles do not have prefixes applied to them when
+  // this Layout is added to another Layout.
+  std::set<std::string> global_nets_;
 };
 
 }  // namespace bfg

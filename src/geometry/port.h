@@ -1,6 +1,9 @@
 #ifndef GEOMETRY_PORT_H_
 #define GEOMETRY_PORT_H_
 
+#include <string>
+#include <set>
+
 #include "layer.h"
 #include "point.h"
 #include "rectangle.h"
@@ -8,11 +11,28 @@
 namespace bfg {
 namespace geometry {
 
+class Port;
+typedef bool (*PtrPortCompare)(const Port *const, const Port *const);
+typedef std::set<Port*, PtrPortCompare> PortSet;
+
 // A port, or pin, defines an access region either on the given layer or on
 // adjacent layers (mapped by PhysicalPropertiesDatabase).
 class Port : public Rectangle {
  public:
+  static bool Compare(const Port &lhs, const Port &rhs);
+  static bool Compare(
+      const std::unique_ptr<Port> &lhs, const std::unique_ptr<Port> &rhs);
+  static bool Compare(const Port *const lhs, const Port *const rhs);
+
+  static inline PortSet MakePortSet() {
+    return PortSet(Port::Compare);
+  }
+
   Port() {}
+
+  std::string Describe() const;
+  static std::string DescribePorts(const std::vector<geometry::Port*> &ports);
+  static std::string DescribePorts(const PortSet &ports);
 
   // TODO(aryap): Wait, is a port just a rect with some other stuff? So this is
   // a rect:
@@ -23,7 +43,7 @@ class Port : public Rectangle {
     upper_right_ = lower_left_ + Point(width, height);
     layer_ = layer;
     net_ = net;
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Rectangle &from_rectangle,
@@ -32,7 +52,7 @@ class Port : public Rectangle {
                 from_rectangle.upper_right(),
                 0,
                 net) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Rectangle &from_rectangle,
@@ -42,23 +62,26 @@ class Port : public Rectangle {
                 from_rectangle.upper_right(),
                 layer,
                 net) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Point &lower_left, const Point &upper_right,
        const Layer &layer, const std::string &net)
     : Rectangle(lower_left, upper_right, layer, net) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 
   Port(const Port &other)
     : Rectangle(
         other.lower_left_, other.upper_right_, other.layer_, other.net_) {
-    is_pin_ = true;
+    is_connectable_ = true;
   }
 };
 
 }  // namespace geometry
+
+std::ostream &operator<<(std::ostream &os, const geometry::Port &port);
+
 }  // namespace bfg
 
 #endif  // GEOMETRY_PORT_H_

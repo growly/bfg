@@ -5,6 +5,8 @@
 #include <memory>
 #include <optional>
 
+#include <gtest/gtest.h>
+
 #include "line_segment.h"
 #include "point.h"
 #include "port.h"
@@ -20,7 +22,8 @@ class PolyLine : public Shape {
   PolyLine() = default;
 
   PolyLine(const std::vector<Point> &points)
-      : start_({0, 0}), overhang_start_(0), overhang_end_(0),
+      : enable_narrowing_extensions_(false),
+        start_({0, 0}), overhang_start_(0), overhang_end_(0),
         start_via_(nullptr), end_via_(nullptr),
         start_port_(nullptr), end_port_(nullptr) {
     if (points.empty()) return;
@@ -32,7 +35,8 @@ class PolyLine : public Shape {
   }
 
   PolyLine(const PolyLine &other)
-      : start_(other.start_),
+      : enable_narrowing_extensions_(false),
+        start_(other.start_),
         overhang_start_(other.overhang_start_),
         overhang_end_(other.overhang_end_),
         start_via_(nullptr),  // TODO(aryap): Should these be copied?
@@ -44,7 +48,8 @@ class PolyLine : public Shape {
   // This constructor skips the segment sanity checks in AddSegment.
   PolyLine(const Point &start,
            const std::vector<LineSegment> &segments)
-      : start_(start), overhang_start_(0), overhang_end_(0),
+      : enable_narrowing_extensions_(false),
+        start_(start), overhang_start_(0), overhang_end_(0),
         start_via_(nullptr), end_via_(nullptr),
         start_port_(nullptr), end_port_(nullptr),
         segments_(segments.begin(), segments.end()) {}
@@ -67,6 +72,13 @@ class PolyLine : public Shape {
 
   void AddSegment(const Point &to, const uint64_t width);
 
+  std::optional<Line> LineAtPoint(const Point &point) const;
+
+  // If the given point lands on an existing line in the PolyLine, do nothing.
+  // Otherwise, extend the start or end point (whichever is closest) to include
+  // the point, as long as it lands on the existing segment line.
+  void ExtendToInclude(const Point &point);
+
   // Inserts what will become a rectangular bulge into the PolyLine by creating
   // the appropriate segments. The width and length are coaxial: width is
   // distance orthogonal to the direction of the line and length is parallel.
@@ -77,7 +89,19 @@ class PolyLine : public Shape {
   // poly_line.InsertBulge(poly_line.End()), you would modify the underlying
   // value half way.
   void InsertBulge(
-      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+      const Point &point,
+      uint64_t width,
+      uint64_t length,
+      std::optional<double> angle_rads = std::nullopt);
+
+  // As above, but will not be applied until ApplyDeferredBulges() call.
+  void InsertBulgeLater(
+      const Point point,
+      uint64_t coaxial_width,
+      uint64_t coaxial_length,
+      std::optional<double> angle_rads = std::nullopt);
+
+  void ApplyDeferredBulges();
 
   void SetWidth(const uint64_t width);
   const std::vector<Point> Vertices() const;
@@ -111,7 +135,23 @@ class PolyLine : public Shape {
   const std::vector<LineSegment> &segments() const { return segments_; }
 
  private:
+  struct DeferredBulge {
+    Point position;
+    uint64_t width;
+    uint64_t length;
+    std::optional<double> angle_rads;
+  };
+
+  void ReplaceDuplicateEndPointsWithWidest();
+  void RemoveRedundantSegments();
+  void RemoveNotchesInAStraightLine();
+  void RemoveNotchesAroundCorners();
+
   void EnforceInvariants();
+
+  void InsertBulgeInternal(
+      const Point point, uint64_t coaxial_width, uint64_t coaxial_length);
+
   void InsertForwardBulgePoint(
       const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
       size_t intersection_index, const Line &intersected_line);
@@ -119,6 +159,24 @@ class PolyLine : public Shape {
       const Point &point, uint64_t coaxial_width, uint64_t coaxial_length,
       size_t intersection_index, const Line &intersected_line,
       uint64_t intersected_previous_width);
+
+  double ComputeRequiredLengthForLastSegmentWidth(
+      uint64_t previous_segment_original_width,
+      const Line &current_line,
+      const Line &previous_line,
+      double required_length);
+  // Returns (required length, new width, sin theta, cos theta).
+  std::tuple<double, uint64_t, double, double>
+      ComputeRequiredLengthAndWidth(
+          const Line &intersected_line,
+          const Line &current_line,
+          double on_axis_overflow,
+          double off_axis_overflow);
+
+  // It often doesn't make sense to create a protrusion from the line which
+  // is narrower than the existing line just for a bulge, so we explicitly
+  // disable it.
+  bool enable_narrowing_extensions_;
 
   Point start_;
 
@@ -146,6 +204,12 @@ class PolyLine : public Shape {
   const Port *end_port_;
 
   std::vector<LineSegment> segments_;
+
+  std::vector<DeferredBulge> deferred_bulges_;
+
+  FRIEND_TEST(PolyLineTest, NotchAroundCorner);
+  FRIEND_TEST(PolyLineTest, NotchAroundCorner2);
+  FRIEND_TEST(PolyLineTest, NotchAroundCorner_Backwards);
 };
 
 }  // namespace geometry

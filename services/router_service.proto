@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package bfg.router_service;
+
+service RouterService {
+  rpc CreateRoutingGrid (CreateRoutingGridRequest)
+    returns (CreateRoutingGridReply) {}
+  rpc QueryRoutingGrid (QueryRoutingGridRequest)
+    returns (QueryRoutingGridReply) {}
+  rpc AddRoutes (AddRoutesRequest)
+    returns (AddRoutesReply) {}
+  rpc DeleteRoutingGrid (DeleteRoutingGridRequest)
+    returns (DeleteRoutingGridReply) {}
+}
+
+enum PredefinedTechnology {
+  TECHNOLOGY_OTHER = 0;
+  TECHNOLOGY_SKY130 = 1;
+  TECHNOLOGY_GF180MCU = 2;
+}
+
+// FIXME(aryap): Isn't this baked into gRPC somehow?
+enum StatusCode {
+  OK = 0;
+  GRID_NOT_FOUND = 1;
+  INVALID_ARGUMENT = 2;
+  OTHER_ERROR = 100;
+}
+
+message Status {
+  StatusCode code = 1;
+  string message = 2;
+}
+
+// ! BEGIN: This stuff is copied from similar structures in VLSIR, which would
+// ideally be reused.
+enum RoutingLayerDirection {
+  TRACK_DIRECTION_NONE = 0;
+  TRACK_DIRECTION_VERTICAL = 1;
+  TRACK_DIRECTION_HORIZONTAL = 2;
+}
+
+message Point {
+  int64 x = 1;
+  int64 y = 2;
+}
+
+message PointOnLayer {
+  Point point = 1;
+  string layer_name = 2;
+}
+
+message Rectangle {
+  Point lower_left = 1;
+  Point upper_right = 2;
+}
+// ! END: This stuff is copied from similar structures in VLSIR, which would
+// ideally be reused.
+
+message RoutingLayerDefinition {
+  // Layer name and purpose, as listed in the technology. e.g. "met1.drawing"
+  // for SKY130.
+  string name = 1;
+  RoutingLayerDirection direction = 2;
+  Rectangle area = 3;
+  int64 offset = 4;
+}
+
+message RoutingViaDefinition {
+  string between_layer = 1;
+  string and_layer = 2;
+  double cost = 3;
+}
+
+message RoutingGridDefinition {
+  repeated RoutingLayerDefinition layers = 1;
+  repeated RoutingViaDefinition vias = 2;
+}
+
+message CreateRoutingGridReply {
+  Status status = 1;
+  int64 grid_id = 2;
+}
+
+message CreateRoutingGridRequest {
+  // One of "gf180mcu", "sky130".
+  PredefinedTechnology predefined_technology = 1;
+  
+  // FUTURE: Technology protobuf to describe technology directly.
+
+  RoutingGridDefinition grid_definition = 10;
+}
+
+message NetRouteOrder {
+  string net = 1;
+
+  // A list of points on layers. For now, the first two points are connected by
+  // shortest path. Each successive point is connected to the nearest point on
+  // the existing net, if it exists.
+  repeated PointOnLayer points = 2;
+}
+
+message Route {
+  string net = 1;
+  repeated Point points = 2;
+  repeated string layers = 3;
+}
+
+message AddRoutesRequest {
+  int64 grid_id = 1;
+
+  repeated NetRouteOrder net_route_orders = 2;
+}
+
+message AddRoutesReply {
+  Status status = 1;
+
+  repeated Route routes = 2;
+}
+
+message QueryRoutingGridRequest {
+  int64 grid_id = 1;
+}
+
+message QueryRoutingGridReply {
+  Status status = 1;
+}
+
+message DeleteRoutingGridRequest {
+  int64 grid_id = 1;
+}
+
+message DeleteRoutingGridReply {
+  Status status = 1;
+}

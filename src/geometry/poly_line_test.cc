@@ -258,7 +258,7 @@ TEST(PolyLineTest, InsertBulge_StartOfPolyLine) {
 //              |                       |
 //              +                       +
 //
-TEST(PolyLineTest, BulgeDoesNotFitBeforeCorner) {
+TEST(PolyLineTest, InsertBulge_BulgeDoesNotFitBeforeCorner) {
   Point p_0 = {125, 320};
   Point p_1 = {125, 480};
   Point p_2 = {-200, 480};
@@ -271,13 +271,19 @@ TEST(PolyLineTest, BulgeDoesNotFitBeforeCorner) {
   std::vector<Point> expected = {
       {125, 320 - (330 / 2)},
       {125, 480},
-      {125 - (240 / 2), 480},
+      // This is created and then removed by duplicate segment checks, since
+      // it's in line with the previous and the same width.
+      // {125 - (240 / 2), 480},
       {-200, 480}
   };
   EXPECT_EQ(expected, line.Vertices());
 
   std::vector<uint64_t> expected_widths = {
-    240, std::max(5, 170), 170
+    240,
+    // This is created and then removed by duplicate segment checks, since
+    // it's in line with the previous and the same width.
+    // std::max(5, 170),
+    170
   };
   std::vector<uint64_t> widths;
   for (const auto &segment : line.segments()) {
@@ -286,7 +292,7 @@ TEST(PolyLineTest, BulgeDoesNotFitBeforeCorner) {
   EXPECT_EQ(expected_widths, widths);
 }
 
-TEST(PolyLineTest, BulgeAfterCornerTurn) {
+TEST(PolyLineTest, InsertBulge_BulgeAfterCornerTurn) {
   Point p_0 = {2, 10};
   Point p_1 = {2, 2};
   Point p_2 = {10, 2};
@@ -298,7 +304,9 @@ TEST(PolyLineTest, BulgeAfterCornerTurn) {
 
   std::vector<Point> expected = {
       {2, 10},
-      {2, 5},
+      // This is created and then removed by duplicate segment checks, since
+      // it's in line with the previous and the same width.
+      // {2, 5},
       {2, 2},
       {7, 2},
       {10, 2}
@@ -307,7 +315,9 @@ TEST(PolyLineTest, BulgeAfterCornerTurn) {
 
   std::vector<uint64_t> expected_widths = {
     4,
-    std::max(4, 1), // (6 / 2) - 2
+    // std::max(4, 1), // (6 / 2) - 2
+    // This is created and then removed by duplicate segment checks, since it's
+    // in line with the previous and the same width.
     6,
     4
   };
@@ -318,7 +328,7 @@ TEST(PolyLineTest, BulgeAfterCornerTurn) {
   EXPECT_EQ(expected_widths, widths);
 } 
 
-TEST(PolyLineTest, What) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName1) {
   PolyLine line = PolyLine({24530, 4810}, {
       LineSegment {{24530, 4885}, 140},
       LineSegment {{24665, 4885}, 140},
@@ -328,7 +338,7 @@ TEST(PolyLineTest, What) {
   line.InsertBulge({24665, 4885}, 230, 290);
 }
 
-TEST(PolyLineTest, What2) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName2) {
 // <0| (1220, 0) |140| (1220, 2975) |240| (1220, 3305) |140| (1220, 6280) |0>
 // point = (1220, 135) w x l 240 x 330
 // <0| (1220, 105) |240| (1220, 300) |140| (1220, 2975) |240| (1220, 3305) |140| (1220, 6280) |0>
@@ -341,7 +351,7 @@ TEST(PolyLineTest, What2) {
   line.InsertBulge({1220, 135}, 240, 330);
 }
 
-TEST(PolyLineTest, What3) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName3) {
   PolyLine line = PolyLine({585, 1465}, {
       LineSegment {{585, 1135}, 240},
       LineSegment {{585, 1075}, 170},
@@ -370,7 +380,7 @@ TEST(PolyLineTest, What3) {
 //
 }
 
-TEST(PolyLineTest, What4) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName4) {
 // <0| (540, 6135) |170| (540, 5965) |170| (700, 5965) |0>
 // point = (540, 6135) w x l 230 x 290
 // <0| (540, 6280) |230| (540, 5990) |170| (540, 5965) |170| (700, 5965) |0>
@@ -431,7 +441,7 @@ TEST(PolyLineTest, What4) {
 //  EXPECT_EQ(expected_widths, widths);
 //} 
 
-TEST(PolyLineTest, HowDidThisHappen) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName6) {
   PolyLine line = PolyLine({225, 1055}, {
     LineSegment {{335, 1055}, 170},
     LineSegment {{335, 985}, 170},
@@ -445,7 +455,7 @@ TEST(PolyLineTest, HowDidThisHappen) {
   LOG(INFO) << line.Describe();
 }
 
-TEST(PolyLineTest, HowDidThisHappen2) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName7) {
   PolyLine line = PolyLine({2600, 1075}, {
     LineSegment {{2600, 1160}, 170},
     LineSegment {{2625, 1160}, 170},
@@ -456,7 +466,7 @@ TEST(PolyLineTest, HowDidThisHappen2) {
   line.InsertBulge({2625, 1245}, 230, 290);
 }
 
-TEST(PolyLineTest, HowDidThisHappen3) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName8) {
   PolyLine line = PolyLine({2765, 3355}, {
     LineSegment {{3635, 3355}, 210},
     LineSegment {{3635, 3315}, 290},
@@ -466,7 +476,7 @@ TEST(PolyLineTest, HowDidThisHappen3) {
   line.InsertBulge({3635, 3335}, 230, 290);
 }
 
-TEST(PolyLineTest, HowDidThisHappen4) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName9) {
   PolyLine line = PolyLine({2600, 1075}, {
     LineSegment {{2600, 1160}, 170},
     LineSegment {{2625, 1160}, 170},
@@ -477,7 +487,7 @@ TEST(PolyLineTest, HowDidThisHappen4) {
   line.InsertBulge({2625, 1245}, 230, 290);
 }
 
-TEST(PolyLineTest, HowDidThisHappen5) {
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName10) {
   PolyLine line = PolyLine({16030, 5830}, {
     LineSegment {{13990, 5830}, 140}
   });
@@ -521,7 +531,7 @@ TEST(PolyLineTest, HowDidThisHappen5) {
 // +----------------------+----+     |
 //                        |          |
 //                        +----------+
-TEST(PolyLineTest, BulgeAtEndLongerThanConnectingWidth) {
+TEST(PolyLineTest, InsertBulge_BulgeAtEndLongerThanConnectingWidth) {
   Point p_0 = Point(-665, 1475);
   Point p_3 = Point(675, 1405);
   PolyLine line = PolyLine(p_0, {
@@ -544,7 +554,7 @@ TEST(PolyLineTest, BulgeAtEndLongerThanConnectingWidth) {
 //               +-----+           +-----+
 // x = 2   4     6     8    10    12    14
 //
-TEST(PolyLineTest, BulgeOverlapsSameLineDifferentWidthSegments) {
+TEST(PolyLineTest, InsertBulge_BulgeOverlapsSameLineDifferentWidthSegments) {
   PolyLine line = PolyLine({2, 2}, {
       LineSegment {{4, 2}, 0},
       LineSegment {{6, 2}, 4},
@@ -641,12 +651,16 @@ TEST(PolyLineTest, BulgeOverlapsSameLineDifferentWidthSegments) {
     {6, 2},
     {8, 2},
     {12, 2},
-    {14, 2},
+  // With enable_narrowing_extensions_ = true, we expect:
+  //  {14, 2},
     {18, 2}
   };
   EXPECT_EQ(expected, five.Vertices());
 
-  expected_widths = { 6, 8, 6, 8, 6 };
+  // With enable_narrowing_extensions_ = true, we expect:
+  //expected_widths = { 6, 8, 6, 8, 6 };
+  // Otherwise:
+  expected_widths = { 6, 8, 6, 8 };
   widths.clear();
   for (const auto &segment : five.segments()) {
     widths.push_back(segment.width);
@@ -654,6 +668,168 @@ TEST(PolyLineTest, BulgeOverlapsSameLineDifferentWidthSegments) {
   EXPECT_EQ(expected_widths, widths);
 }
 
+// <0| (6010, 4130) |260| (6330, 4130) |140| (7530, 4130) |140| (7530, 4150) |140| (7510, 4150) |0> net: lut_dfxtp_0_2_Q
+TEST(PolyLineTest, InsertBulge_TightTurnWithinBulge) {
+  PolyLine line = PolyLine(
+      {6010, 4130}, {
+      LineSegment {{6330, 4130}, 140},
+      LineSegment {{7530, 4130}, 140},
+      LineSegment {{7530, 4150}, 140},
+      LineSegment {{7510, 4150}, 140}
+  });
+
+  PolyLine line2 = line;
+
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({7510, 4150}, 230, 290);
+  LOG(INFO) << line.Describe();
+}
+
+//          +-------+
+// +--------+       +--------+
+// |         <> short segment|
+// +--------+                |
+//        +-+ < notch        |
+//        +------------------+
+TEST(PolyLineTest, InsertBulge_DoesNotCreateNotch) {
+  PolyLine line = PolyLine(
+      {3065, 3355}, {
+      LineSegment {{3935, 3355}, 210},
+      LineSegment {{3935, 3315}, 290},
+      LineSegment {{4805, 3315}, 290},
+  });
+
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({3935, 3335}, 230, 290);
+  LOG(INFO) << line.Describe();
+}
+
+TEST(PolyLineTest, InsertBulge_DoesNotCreateNotch2) {
+  PolyLine line = PolyLine({
+      {3175, 5555},
+      {3175, 5725},
+      {3610, 5725}
+  });
+  line.SetWidth(230);
+
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({3175, 5555}, 170, 330);
+  //line.InsertBulge({3610, 5725}, 230, 290);
+  LOG(INFO) << line.Describe();
+}
+
+// <0| (4970, 1075) |170| (4970, 1160) |170| (4945, 1160) |230| (4945, 1245) |0>
+TEST(PolyLineTest, InsertBulge_SBlock) {
+  PolyLine line = PolyLine(
+      {4970, 1075}, {
+      LineSegment {{4970, 1160}, 170},
+      LineSegment {{4945, 1160}, 170},
+      LineSegment {{4945, 1245}, 230},
+  });
+
+  line.InsertBulge({4945, 1245}, 230, 290);
+  line.InsertBulge({4970, 1075}, 170, 330);
+  LOG(INFO) << line.Describe();
+
+  std::vector<Point> expected = {
+      {4970, 910},
+      {4970, 1160},
+      {4945, 1160},
+      {4945, 1390}
+  };
+  EXPECT_EQ(expected, line.Vertices());
+
+  //    D +
+  //      |
+  //      |
+  //      |
+  //      |
+  //      |  w = 170
+  //    C +--/------+ B = (4970, 1160)
+  //         |      |
+  //      85 |      |
+  //         v    A + start_ = (4970, 1075)
+  //
+  // The width of segment BC overlaps (touches) A, so when the bulge at D is
+  // inserted and a segment needs to be added between A and B, the width of the
+  // entire AB segment is increased (instead of splitting it).
+  std::vector<uint64_t> expected_widths = {180, 170, 230};
+  std::vector<uint64_t> widths;
+  for (const auto &segment : line.segments()) {
+    widths.push_back(segment.width);
+  }
+  EXPECT_EQ(expected_widths, widths);
+}
+
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName12) {
+  PolyLine line = PolyLine(
+      {40350, 9570}, {
+      LineSegment {{40670, 9570}, 260},
+      LineSegment {{41870, 9570}, 140},
+      LineSegment {{41870, 9590}, 140},
+      LineSegment {{41890, 9590}, 140}
+  });
+
+  line.InsertBulge({41890, 9590}, 230, 290);
+  LOG(INFO) << line.Describe();
+}
+
+TEST(PolyLineTest, InsertBulge_TODO_NeedsName13) {
+  PolyLine line = PolyLine(
+      {4970, 4985}, {
+      LineSegment {{4970, 5005}, 230},
+      LineSegment {{5405, 5005}, 230},
+  });
+
+  line.InsertBulge({4970, 4985}, 170, 330);
+  LOG(INFO) << line.Describe();
+  line.InsertBulge({5405, 5005}, 230, 290);
+  LOG(INFO) << line.Describe();
+}
+
 }  // namespace
+
+TEST(PolyLineTest, NotchAroundCorner) {
+  // This line contains a notch around a corner:
+  PolyLine line = PolyLine(
+      {16005, 2000}, {
+      LineSegment {{16005, 2290}, 230},
+      LineSegment {{16005, 2430}, 140},
+      LineSegment {{13810, 2430}, 140},
+      LineSegment {{13490, 2430}, 260},
+  });
+  line.set_min_separation(140);
+
+  // We need to make sure it's removed!
+  line.RemoveNotchesAroundCorners();
+}
+
+TEST(PolyLineTest, NotchAroundCorner2) {
+  // This line contains a notch around a corner:
+  PolyLine line = PolyLine(
+      {31715, 10580}, {
+      LineSegment {{31715, 10870}, 230},
+      LineSegment {{31715, 10950}, 140},
+      LineSegment {{33020, 10950}, 140},
+      LineSegment {{33340, 10950}, 260},
+  });
+  line.set_min_separation(140);
+
+  // We need to make sure it's removed!
+  line.RemoveNotchesAroundCorners();
+}
+
+TEST(PolyLineTest, NotchAroundCorner_Backwards) {
+  PolyLine line = PolyLine(
+      {15840, 899}, {
+      LineSegment {{15840, 5510}, 140},
+      LineSegment {{15500, 5510}, 140},
+      LineSegment {{15500, 5330}, 140},
+      LineSegment {{15500, 5010}, 260}
+  });
+  line.set_min_separation(140);
+  line.RemoveNotchesAroundCorners();
+}
+
 }  // namespace geometry
 }  // namespace bfg
