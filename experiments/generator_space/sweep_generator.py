@@ -5,19 +5,50 @@ import subprocess
 import os
 import sys
 import itertools
+import random
 from PIL import Image, ImageFont, ImageDraw
 
 SKY130_SVG_STYLE = {
     # areaid.standardc
     (81, 4): {
         'fill': None,
-        'stroke': 'red'
+        'stroke': '#ff00ff'
     },
     # npc.drawing
     (95, 20): {
         'fill': None,
         'stroke': 'orange'
+    },
+    # nsdm.drawing
+    (93, 44): {
+        'fill': None,
+        'stroke': '#e61f0d'
+    },
+    # psdm.drawing
+    (94, 20): {
+        'fill': None,
+        'stroke': '#9900e6'
+    },
+    # nwell.drawing
+    (64, 20): {
+        'fill': None,
+        'stroke': '#94bfa7'
     }
+    ## li.drawing (actually met1 colours)
+    #(67, 20): {
+    #    'fill': '#0e2aed',
+    #    'stroke': '#0e2aed'
+    #},
+    ## poly.drawing
+    #(66, 20): {
+    #    'fill': 'red',
+    #    'stroke': 'red'
+    #},
+    ## diff.drawing
+    #(65, 20): {
+    #    'fill': 'green',
+    #    'stroke': 'green'
+    #}
 }
 
 PNG_FONT = ImageFont.truetype("TerminusTTF-4.46.0.ttf", 16)
@@ -209,31 +240,36 @@ def sweep_transmission_gate_stack():
     pngs = []
     all_params = []
 
-    i = 0
-    net_sequence = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
-                    "M", "N", "O"]
-    for vertical_pitch in (None, 340, 400):
-        for j in range(2, int(len(net_sequence) / 2)):
-            sequence = net_sequence[0:2*j + 1]
-            for add in range(0, 351, 50):
-                p_width_nm = 650 + add
-                n_width_nm = 350 + add
-                params = '\n'.join(f'net_sequence: "{net}"'
-                                   for net in sequence)
-                params += f'''
+    def make(sequence, p_width_n, n_width_nm, vertical_pitch):
+        params = '\n'.join(f'net_sequence: "{net}"'
+                           for net in sequence)
+        params += f'''
 p_width_nm: {p_width_nm}
 p_length_nm: 150
 n_width_nm: {n_width_nm}
 n_length_nm: 150
 '''
-                if vertical_pitch:
-                    params += f'''
+        if vertical_pitch:
+            params += f'''
 vertical_pitch_nm: {vertical_pitch}
 horizontal_pitch_nm: {vertical_pitch}
 '''
-                make_for_params('Sky130TransmissionGateStack',
-                                f'{i}', params, svgs, pngs)
-                all_params.append(params)
+        make_for_params('Sky130TransmissionGateStack',
+                        f'{i}', params, svgs, pngs)
+        all_params.append(params)
+
+    i = 0
+    net_sequence = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
+                    "M", "N", "O"]
+    for i in range(2):
+        vertical_pitch = None if i == 0 else random.randrange(300, 401, 20)
+        for j in range(2, int(len(net_sequence) / 2)):
+            sequence = net_sequence[0:2*j + 1]
+            for k in range(10):
+                add = random.randrange(0, 351, 50)
+                p_width_nm = 650 + add
+                n_width_nm = 350 + add
+                make(sequence, p_width_nm, n_width_nm, vertical_pitch)
                 i = i + 1
 
     for svg_path in svgs:
@@ -246,5 +282,5 @@ horizontal_pitch_nm: {vertical_pitch}
 
 
 if __name__ == '__main__':
-    sweep_transmission_gate()
+    #sweep_transmission_gate()
     sweep_transmission_gate_stack()
