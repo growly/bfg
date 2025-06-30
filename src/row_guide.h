@@ -88,6 +88,7 @@ class RowGuide {
   void AddBlankSpaceAndInsertFront(uint64_t span);
   void AddBlankSpaceFront(uint64_t span);
 
+  // FIXME(aryap): These need to account for blank space at left/right.
   uint64_t Width() const;
   uint64_t Height() const;
 
@@ -109,6 +110,9 @@ class RowGuide {
 
   void set_tap_cell(const bfg::Cell &tap_cell) {
     tap_cell_ = tap_cell;
+  }
+  void clear_tap_cell() {
+    tap_cell_.reset();
   }
 
   void set_rotate_instances(bool rotate_instances) {

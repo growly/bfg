@@ -1,5 +1,6 @@
 #include <optional>
 
+#include "geometry/vector.h"
 #include "geometry/instance.h"
 #include "geometry/point.h"
 #include "row_guide.h"
@@ -30,7 +31,7 @@ geometry::Instance *RowGuide::InstantiateAndInsertFront(
 
   geometry::Point starting_lower_left = (instances_.empty() ?
       origin_ : instances_.front()->TilingLowerLeft()) -
-      geometry::Point(blank_space_left_, 0);
+      geometry::Vector(blank_space_left_, 0);
 
   MaybeAddTapLeftFor(installed->TilingWidth());
 
@@ -41,7 +42,7 @@ geometry::Instance *RowGuide::InstantiateAndInsertFront(
 
   geometry::Point ending_lower_left =
       instances_.front()->TilingLowerLeft() -
-      geometry::Point(blank_space_left_, 0);
+      geometry::Vector(blank_space_left_, 0);
 
 
   ShiftAllRight(starting_lower_left.x() - ending_lower_left.x());
@@ -68,28 +69,32 @@ geometry::Instance *RowGuide::InstantiateFront(
 void RowGuide::AddBlankSpaceBack(uint64_t span) {
   MaybeAddTapRightFor(span);
   AccountForPlacement(span, &distance_to_tap_right_);
-  blank_space_right_ = span;
+  blank_space_right_ += span;
 }
 
 void RowGuide::AddBlankSpaceAndInsertFront(uint64_t span) {
-  geometry::Point starting_lower_left = (instances_.empty() ?
-      origin_ : instances_.front()->TilingLowerLeft()) -
-      geometry::Point(blank_space_left_, 0);
+  geometry::Point starting_lower_left =
+      (instances_.empty() ?  origin_ : instances_.front()->TilingLowerLeft()) -
+      geometry::Vector(blank_space_left_, 0);
 
   MaybeAddTapLeftFor(span);
   AccountForPlacement(span, &distance_to_tap_left_);
 
   geometry::Point ending_lower_left =
-      instances_.front()->TilingLowerLeft() -
-      geometry::Point(blank_space_left_ + span, 0);
+      (instances_.empty() ? origin_ : instances_.front()->TilingLowerLeft()) -
+      geometry::Vector(blank_space_left_ + span, 0);
 
-  ShiftAllRight(starting_lower_left.x() - ending_lower_left.x());
+  if (!instances_.empty()) {
+    ShiftAllRight(starting_lower_left.x() - ending_lower_left.x());
+  } else {
+    blank_space_right_ += span;
+  }
 }
 
 void RowGuide::AddBlankSpaceFront(uint64_t span) {
   MaybeAddTapLeftFor(span);
   AccountForPlacement(span, &distance_to_tap_left_);
-  blank_space_left_ = span;
+  blank_space_left_ += span;
 }
 
 // TODO(aryap): Add taps to circuit.
@@ -134,8 +139,9 @@ void RowGuide::MaybeAddTapRightFor(uint64_t additional_span) {
 
 geometry::Point RowGuide::NextPointLeft(const geometry::Instance &to_add)
     const {
+  geometry::Vector blank = geometry::Vector(blank_space_left_, 0);
   if (instances_.empty()) {
-    return origin_;
+    return origin_ - blank;
   }
   const geometry::Instance &existing = *instances_.front();
 
@@ -148,15 +154,15 @@ geometry::Point RowGuide::NextPointLeft(const geometry::Instance &to_add)
   int64_t mid_y = existing_lower_left.y() + existing_tiling_height / 2;
   int64_t new_y = mid_y - to_add.TilingHeight() / 2;
 
-  int64_t new_x = existing_lower_left.x() - to_add.TilingWidth() -
-      blank_space_left_;
+  int64_t new_x = existing_lower_left.x() - to_add.TilingWidth() - blank.x();
   return {new_x, new_y};
 }
 
 geometry::Point RowGuide::NextPointRight(const geometry::Instance &to_add)
     const {
+  geometry::Vector blank = geometry::Vector(blank_space_right_, 0);
   if (instances_.empty()) {
-    return origin_;
+    return origin_ + blank;
   }
   const geometry::Instance &existing = *instances_.back();
 
@@ -169,8 +175,7 @@ geometry::Point RowGuide::NextPointRight(const geometry::Instance &to_add)
   int64_t mid_y = existing_lower_left.y() + existing_tiling_height / 2;
   int64_t new_y = mid_y - to_add.TilingHeight() / 2;
 
-  int64_t new_x = existing_lower_left.x() + existing_tiling_width +
-      blank_space_right_;
+  int64_t new_x = existing_lower_left.x() + existing_tiling_width + blank.x();
   return {new_x, new_y};
 }
 
@@ -277,10 +282,11 @@ bool RowGuide::NeedsTap(const int64_t &current_distance,
 }
 
 uint64_t RowGuide::Width() const {
-  uint64_t width = 0;
+  uint64_t width = blank_space_left_;
   for (geometry::Instance *const instance : instances_) {
     width += instance->TilingWidth();
   }
+  width += blank_space_right_;
   return width;
 }
 
@@ -302,39 +308,51 @@ std::optional<geometry::Rectangle> RowGuide::GetBoundingBox() const {
 }
 
 geometry::Point RowGuide::UpperRight() const {
+  geometry::Vector blank = geometry::Vector(blank_space_right_, 0);
   if (instances_.empty()) {
-    return origin_;
+    return origin_ + blank;
   }
   geometry::Rectangle front_tiling_bounds =
       instances_.back()->GetTilingBounds();
-  return front_tiling_bounds.upper_right();
+  return geometry::Point(
+      std::max(front_tiling_bounds.upper_right().x(), origin_.x()) + blank.x(),
+      front_tiling_bounds.upper_right().y());
 }
 
 geometry::Point RowGuide::LowerRight() const {
+  geometry::Vector blank = geometry::Vector(blank_space_right_, 0);
   if (instances_.empty()) {
-    return origin_;
+    return origin_ + blank;
   }
   geometry::Rectangle front_tiling_bounds =
       instances_.back()->GetTilingBounds();
-  return front_tiling_bounds.LowerRight();
+  return geometry::Point(
+      std::max(front_tiling_bounds.LowerRight().x(), origin_.x()) + blank.x(),
+      front_tiling_bounds.LowerRight().y());
 }
 
 geometry::Point RowGuide::UpperLeft() const {
+  geometry::Vector blank = geometry::Vector(blank_space_left_, 0);
   if (instances_.empty()) {
-    return origin_;
+    return origin_ - blank;
   }
   geometry::Rectangle front_tiling_bounds =
       instances_.front()->GetTilingBounds();
-  return front_tiling_bounds.UpperLeft();
+  return geometry::Point(
+      std::min(front_tiling_bounds.UpperLeft().x(), origin_.x()) - blank.x(),
+      front_tiling_bounds.UpperLeft().y());
 }
 
 geometry::Point RowGuide::LowerLeft() const {
+  geometry::Vector blank = geometry::Vector(blank_space_left_, 0);
   if (instances_.empty()) {
-    return origin_;
+    return origin_ - blank;
   }
   geometry::Rectangle front_tiling_bounds =
       instances_.front()->GetTilingBounds();
-  return front_tiling_bounds.lower_left();
+  return geometry::Point(
+      std::min(front_tiling_bounds.lower_left().x(), origin_.x()) - blank.x(),
+      front_tiling_bounds.lower_left().y());
 }
 
 }   // namespace bfg

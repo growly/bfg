@@ -35,6 +35,9 @@ class MemoryBank {
         rotate_first_row_(rotate_first_row),
         horizontal_alignment_(horizontal_alignment) {}
 
+  // This only moves existing rows. Rows created after this call are not moved.
+  // TODO(aryap): We could fix that behaviour with an "origin_" property that
+  // controls where new Rows are created in Row(size_t index).
   void MoveTo(const geometry::Point &point);
 
   // Translate the Layout such that the given reference point, assumed to be in
