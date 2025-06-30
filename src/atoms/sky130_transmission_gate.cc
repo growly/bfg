@@ -104,6 +104,12 @@ void Sky130TransmissionGate::Parameters::FromProto(
     vertical_tab_offset_nm.reset();
   }
 
+  if (pb.has_poly_pitch_nm()) {
+    poly_pitch_nm = pb.poly_pitch_nm();
+  } else {
+    poly_pitch_nm.reset();
+  }
+
   if (pb.has_draw_nwell()) {
     draw_nwell = pb.draw_nwell();
   }

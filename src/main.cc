@@ -18,6 +18,7 @@
 #include "cell.h"
 #include "layout.h"
 #include "atoms/sky130_switch_complex.h"
+#include "atoms/sky130_interconnect_mux6.h"
 #include "atoms/sky130_transmission_gate.h"
 #include "atoms/sky130_transmission_gate_stack.h"
 #include "atoms/sky130_mux.h"
@@ -25,6 +26,7 @@
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
 
+#include "proto/parameters/sky130_interconnect_mux6.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
 
@@ -105,6 +107,15 @@ int RunGenerator(
     params.FromProto(params_pb);
 
     bfg::atoms::Sky130TransmissionGateStack generator(params, design_db);
+    cell = generator.GenerateIntoDatabase(generator_name);
+  } else if (generator_name == "Sky130InterconnectMux6") {
+    bfg::proto::parameters::Sky130InterconnectMux6 params_pb;
+    ReadTextProtoOrDie(parameter_pb_path, &params_pb);
+
+    bfg::atoms::Sky130InterconnectMux6::Parameters params;
+    params.FromProto(params_pb);
+
+    bfg::atoms::Sky130InterconnectMux6 generator(params, design_db);
     cell = generator.GenerateIntoDatabase(generator_name);
   } else {
     LOG(ERROR) << "Unrecognised generator name: " << generator_name;

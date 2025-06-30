@@ -35,7 +35,9 @@ class RowGuide {
         start_with_tap_(true),
         num_taps_(0),
         distance_to_tap_left_(0),
-        distance_to_tap_right_(0) {
+        distance_to_tap_right_(0),
+        blank_space_left_(0),
+        blank_space_right_(0) {
     max_tap_distance_ = 15000;
   }
 
@@ -81,6 +83,11 @@ class RowGuide {
   geometry::Instance *InstantiateFront(
       const std::string &name, Layout *template_layout);
 
+
+  void AddBlankSpaceBack(uint64_t span);
+  void AddBlankSpaceAndInsertFront(uint64_t span);
+  void AddBlankSpaceFront(uint64_t span);
+
   uint64_t Width() const;
   uint64_t Height() const;
 
@@ -119,14 +126,21 @@ class RowGuide {
  private:
   void Place(const geometry::Point &point,
              geometry::Instance *instance,
-             int64_t *distance_to_tap);
-  void MaybeAddTapLeftFor(const geometry::Instance &added_instance);
-  void MaybeAddTapRightFor(const geometry::Instance &added_instance);
+             int64_t *distance_to_tap,
+             int64_t *blank_counter);
+
+  void AccountForPlacement(uint64_t span,
+                           int64_t *distance_to_tap);
+
+  void MaybeAddTapLeftFor(uint64_t additional_span);
+  void MaybeAddTapRightFor(uint64_t additional_span);
 
   bool NeedsTapLeft(const geometry::Instance &added_instance) const;
+  bool NeedsTapLeft(uint64_t additional_span) const;
   bool NeedsTapRight(const geometry::Instance &added_instance) const;
+  bool NeedsTapRight(uint64_t additional_span) const;
   bool NeedsTap(const int64_t &current_distance,
-                int64_t additional_distance) const;
+                int64_t additional_span) const;
 
   void ShiftAllRight(int64_t x);
 
@@ -162,6 +176,9 @@ class RowGuide {
   int64_t distance_to_tap_left_;
 
   int64_t max_tap_distance_;
+
+  int64_t blank_space_right_;
+  int64_t blank_space_left_;
 };
 
 }  // namespace bfg

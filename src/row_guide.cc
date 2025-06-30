@@ -13,10 +13,10 @@ geometry::Instance *RowGuide::InstantiateBack(
       geometry::Instance(template_layout, {0, 0}));
   installed->set_name(name);
 
-  MaybeAddTapRightFor(*installed);
+  MaybeAddTapRightFor(installed->TilingWidth());
 
   geometry::Point point = NextPointRight(*installed);
-  Place(point, installed, &distance_to_tap_right_);
+  Place(point, installed, &distance_to_tap_right_, &blank_space_right_);
 
   instances_.push_back(installed);
   return installed;
@@ -28,17 +28,21 @@ geometry::Instance *RowGuide::InstantiateAndInsertFront(
       geometry::Instance(template_layout, {0, 0}));
   installed->set_name(name);
 
-  geometry::Point starting_lower_left = instances_.empty() ?
-      origin_ : instances_.front()->TilingLowerLeft();
+  geometry::Point starting_lower_left = (instances_.empty() ?
+      origin_ : instances_.front()->TilingLowerLeft()) -
+      geometry::Point(blank_space_left_, 0);
 
-  MaybeAddTapLeftFor(*installed);
+  MaybeAddTapLeftFor(installed->TilingWidth());
 
   geometry::Point point = NextPointLeft(*installed);
-  Place(point, installed, &distance_to_tap_left_);
+  Place(point, installed, &distance_to_tap_left_, nullptr);
 
   instances_.insert(instances_.begin(), installed);
 
-  geometry::Point ending_lower_left = instances_.front()->TilingLowerLeft();
+  geometry::Point ending_lower_left =
+      instances_.front()->TilingLowerLeft() -
+      geometry::Point(blank_space_left_, 0);
+
 
   ShiftAllRight(starting_lower_left.x() - ending_lower_left.x());
 
@@ -51,14 +55,41 @@ geometry::Instance *RowGuide::InstantiateFront(
       geometry::Instance(template_layout, origin_));
   installed->set_name(name);
 
-  MaybeAddTapLeftFor(*installed);
+  MaybeAddTapLeftFor(installed->TilingWidth());
 
   geometry::Point point = NextPointLeft(*installed);
-  Place(point, installed, &distance_to_tap_left_);
+  Place(point, installed, &distance_to_tap_left_, &blank_space_left_);
 
   instances_.insert(instances_.begin(), installed);
 
   return installed;
+}
+
+void RowGuide::AddBlankSpaceBack(uint64_t span) {
+  MaybeAddTapRightFor(span);
+  AccountForPlacement(span, &distance_to_tap_right_);
+  blank_space_right_ = span;
+}
+
+void RowGuide::AddBlankSpaceAndInsertFront(uint64_t span) {
+  geometry::Point starting_lower_left = (instances_.empty() ?
+      origin_ : instances_.front()->TilingLowerLeft()) -
+      geometry::Point(blank_space_left_, 0);
+
+  MaybeAddTapLeftFor(span);
+  AccountForPlacement(span, &distance_to_tap_left_);
+
+  geometry::Point ending_lower_left =
+      instances_.front()->TilingLowerLeft() -
+      geometry::Point(blank_space_left_ + span, 0);
+
+  ShiftAllRight(starting_lower_left.x() - ending_lower_left.x());
+}
+
+void RowGuide::AddBlankSpaceFront(uint64_t span) {
+  MaybeAddTapLeftFor(span);
+  AccountForPlacement(span, &distance_to_tap_left_);
+  blank_space_left_ = span;
 }
 
 // TODO(aryap): Add taps to circuit.
@@ -67,25 +98,25 @@ geometry::Instance *RowGuide::AddTap() {
       geometry::Instance(tap_cell_.value().get().layout()));
 }
 
-void RowGuide::MaybeAddTapLeftFor(const geometry::Instance &added_instance) {
-  if (!NeedsTapLeft(added_instance)) {
+void RowGuide::MaybeAddTapLeftFor(uint64_t additional_span) {
+  if (!NeedsTapLeft(additional_span)) {
     return;
   }
   geometry::Instance *tap = AddTap();
   geometry::Point point = NextPointLeft(*tap);
-  Place(point, tap, nullptr);
+  Place(point, tap, nullptr, nullptr);
   num_taps_++;
   distance_to_tap_left_ = 0;
   instances_.insert(instances_.begin(), tap);
 }
 
-void RowGuide::MaybeAddTapRightFor(const geometry::Instance &added_instance) {
-  if (!NeedsTapRight(added_instance)) {
+void RowGuide::MaybeAddTapRightFor(uint64_t additional_span) {
+  if (!NeedsTapRight(additional_span)) {
     return;
   }
   geometry::Instance *tap = AddTap();
   geometry::Point point = NextPointRight(*tap);
-  Place(point, tap, nullptr);
+  Place(point, tap, nullptr, nullptr);
   num_taps_++;
   distance_to_tap_right_ = 0;
   instances_.push_back(tap);
@@ -117,7 +148,8 @@ geometry::Point RowGuide::NextPointLeft(const geometry::Instance &to_add)
   int64_t mid_y = existing_lower_left.y() + existing_tiling_height / 2;
   int64_t new_y = mid_y - to_add.TilingHeight() / 2;
 
-  int64_t new_x = existing_lower_left.x() - to_add.TilingWidth();
+  int64_t new_x = existing_lower_left.x() - to_add.TilingWidth() -
+      blank_space_left_;
   return {new_x, new_y};
 }
 
@@ -137,7 +169,8 @@ geometry::Point RowGuide::NextPointRight(const geometry::Instance &to_add)
   int64_t mid_y = existing_lower_left.y() + existing_tiling_height / 2;
   int64_t new_y = mid_y - to_add.TilingHeight() / 2;
 
-  int64_t new_x = existing_lower_left.x() + existing_tiling_width;
+  int64_t new_x = existing_lower_left.x() + existing_tiling_width +
+      blank_space_right_;
   return {new_x, new_y};
 }
 
@@ -174,7 +207,8 @@ void RowGuide::MoveLowerRight(const geometry::Point &new_lower_right) {
 void RowGuide::Place(
     const geometry::Point &point,
     geometry::Instance *instance,
-    int64_t *distance_to_tap) {
+    int64_t *distance_to_tap,
+    int64_t *blank_counter) {
   //instance->MoveTilingLowerLeft(point);
 
   //int64_t tiling_width = instance->TilingWidth();
@@ -193,36 +227,53 @@ void RowGuide::Place(
   }
   instance->MoveTilingLowerLeft(point);
 
+  if (blank_counter) {
+    *blank_counter = 0;
+  }
+
   int64_t tiling_width = instance->TilingWidth();
+  AccountForPlacement(tiling_width, distance_to_tap);
+}
+
+void RowGuide::AccountForPlacement(uint64_t span,
+                                   int64_t *distance_to_tap) {
   if (distance_to_tap) {
     if (num_taps_ == 0) {
-      distance_to_tap_right_ += tiling_width;
-      distance_to_tap_left_ += tiling_width;
+      distance_to_tap_right_ += span;
+      distance_to_tap_left_ += span;
     } else {
-      *distance_to_tap += tiling_width;
+      *distance_to_tap += span;
     }
   }
 }
 
 bool RowGuide::NeedsTapLeft(const geometry::Instance &added_instance) const {
-  if (!tap_cell_) return false;
-  return NeedsTap(distance_to_tap_left_, added_instance.TilingWidth());
+  return NeedsTapLeft(added_instance.TilingWidth());
 }
 
 bool RowGuide::NeedsTapRight(const geometry::Instance &added_instance) const {
+  return NeedsTapRight(added_instance.TilingWidth());
+}
+
+bool RowGuide::NeedsTapLeft(uint64_t additional_span) const {
   if (!tap_cell_) return false;
-  return NeedsTap(distance_to_tap_right_, added_instance.TilingWidth());
+  return NeedsTap(distance_to_tap_left_, additional_span);
+}
+
+bool RowGuide::NeedsTapRight(uint64_t additional_span) const {
+  if (!tap_cell_) return false;
+  return NeedsTap(distance_to_tap_right_, additional_span);
 }
 
 bool RowGuide::NeedsTap(const int64_t &current_distance,
-                        int64_t additional_distance) const {
+                        int64_t additional_span) const {
   if (start_with_tap_ && num_taps_ == 0) {
     return true;
   }
   if (!tap_cell_) {
     return false;
   }
-  return (current_distance + additional_distance) > max_tap_distance_;
+  return (current_distance + additional_span) > max_tap_distance_;
 }
 
 uint64_t RowGuide::Width() const {
