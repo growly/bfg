@@ -85,8 +85,10 @@ sudo ldconfig
 [gflags/gflags](https://github.com/gflags/gflags/blob/master/INSTALL.md)
   ```
   git clone git@github.com:gflags/gflags.git
+  # On case-insensitive (insane) file systems (macOS) "build" conflicts
+  # with the "BUILD" file that comes with the package.
   pushd gflags
-  mkdir build && cd build
+  mkdir _build && cd _build
   cmake .. -DBUILD_SHARED_LIBS=ON
   make -j $(nproc) && sudo make install
   popd
@@ -202,6 +204,22 @@ a `.local` installation for the project instead of the entire system.
   ninja -C out/Static
   ```
 --->
+
+#### macOS
+
+1. Install xcode.
+2. Install xcode command line tools.
+   ```
+   sudo xcode-select --install
+   ```
+3. Install additional packages, e.g. using macports:
+   ```
+   sudo port selfupdate
+   sudo port install cmake autoconf automake libtool curl gmake unzip m4 wget
+   ```
+4. Follow the instructions to install additional dependencies exactly as for
+   Linux, above. (`ldconfig` will fail since it doesn't apply on macOS
+   platforms, but that won't matter.)
 
 ## Building
 
