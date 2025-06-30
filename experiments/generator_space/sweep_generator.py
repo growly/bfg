@@ -22,6 +22,8 @@ SKY130_SVG_STYLE = {
 
 PNG_FONT = ImageFont.truetype("TerminusTTF-4.46.0.ttf", 16)
 
+BFG_BIN = '../../build/bfg'
+PROTO2GDS_BIN = '/home/arya/src/Layout21/target/debug/proto2gds'
 
 def gds2svg(cell_name: str, gds_path: str, image_path: str):
     library = gdspy.GdsLibrary(infile=gds_path)
@@ -119,7 +121,7 @@ def make_for_params(generator_name: str, name: str, params: str, svgs, pngs):
     bfg_stdout = ''
     bfg_result = subprocess.run(
         [
-            '../../build/bfg',
+            BFG_BIN,
             '--technology', '../../sky130.technology.pb',
             '--primitives', '../../sky130.primitives.pb',
             '--external_circuits', '../../sky130hd.pb',
@@ -143,7 +145,7 @@ def make_for_params(generator_name: str, name: str, params: str, svgs, pngs):
 
     subprocess.run(
         [
-            '/home/arya/src/Layout21/target/debug/proto2gds',
+            PROTO2GDS_BIN,
             '--verbose',
             '-i', f'{out_prefix}.library.pb',
             '-t', '../../sky130.technology.pb',
