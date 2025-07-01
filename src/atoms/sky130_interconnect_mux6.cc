@@ -75,22 +75,21 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   //    "interconnect_mux6_tap_template");
   //
   Sky130TransmissionGateStack::Parameters transmission_gate_mux_params = {
-    .net_sequence = {"left", "left_ctrl", "Z", "right_ctrl", "right"},
+    .sequences = {
+      {"X0", "S0", "Z", "S1", "X1"},
+      {"X2", "S2", "Z", "S3", "X3"},
+      {"X4", "S4", "Z", "S5", "X5"}
+    },
     .horizontal_pitch_nm = parameters_.poly_pitch_nm
   };
   Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
       transmission_gate_mux_params, design_db_);
-  std::string template_name = absl::StrFormat(
-      "%s_gate_stack_template", cell->name());
+  std::string instance_name = absl::StrFormat("%s_gate_stack", cell->name());
+  std::string template_name = absl::StrCat(instance_name, "_template");
   Cell *transmission_gate_stack = generator.GenerateIntoDatabase(template_name);
   bank.Row(3).clear_tap_cell();
-  bank.Row(3).AddBlankSpaceAndInsertFront(460);
-  for (size_t i = 0; i < 3; i++) {
-    std::string instance_name = absl::StrFormat(
-        "%s_gate_stack_template_%d", cell->name(), i);
-    bank.InstantiateRight(3, instance_name, transmission_gate_stack->layout());
-    //row.AddBlankSpaceBack(200);
-  }
+  bank.Row(3).AddBlankSpaceAndInsertFront(460);   // Width of a tap, above.
+  bank.InstantiateRight(3, instance_name, transmission_gate_stack->layout());
 
   for (size_t i = 4; i < 7; i++) {
     std::string instance_name = absl::StrFormat("imux6_dfxtp_top_%d", i);

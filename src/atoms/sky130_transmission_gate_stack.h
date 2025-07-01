@@ -7,6 +7,7 @@
 #include "atom.h"
 #include "../circuit.h"
 #include "../layout.h"
+#include "../row_guide.h"
 #include "../geometry/compass.h"
 #include "../geometry/polygon.h"
 #include "../geometry/rectangle.h"
@@ -14,7 +15,6 @@
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
 #include "sky130_simple_transistor.h"
 #include "sky130_transmission_gate.h"
-
 
 namespace bfg {
 
@@ -42,10 +42,12 @@ class Sky130TransmissionGateStack : public Atom {
     //      ---       ---
     //       B         B
     //
-    // TODO(aryap): Right?
-    std::vector<std::string> net_sequence =
+    // This is one sequence. If multiple sequences are provided, they will be
+    // joined according to the horizontal pitch/minimum spacing rules.
+    std::vector<std::vector<std::string>> sequences = {
         {"A", "B", "C", "B", "D", "E", "D", "G", "E", "I", "J", "K", "L", "M",
-         "N", "O", "P", "O"};
+         "N", "O", "P", "O"}
+    };
 
     uint64_t p_width_nm = 450;
     uint64_t p_length_nm = 150;
@@ -67,6 +69,8 @@ class Sky130TransmissionGateStack : public Atom {
     // as well.
     std::optional<uint64_t> horizontal_pitch_nm = 600;
 
+    bool insert_dummy_poly = true;
+
     void ToProto(proto::parameters::Sky130TransmissionGateStack *pb) const;
     void FromProto(const proto::parameters::Sky130TransmissionGateStack &pb);
   };
@@ -78,6 +82,14 @@ class Sky130TransmissionGateStack : public Atom {
   bfg::Cell *Generate() override;
 
  private:
+  void BuildSequence(
+      const std::vector<std::string> &net_sequence,
+      bfg::Cell *cell,
+      RowGuide *row,
+      std::optional<geometry::Rectangle> *pdiff_cover,
+      std::optional<geometry::Rectangle> *ndiff_cover,
+      std::optional<geometry::Rectangle> *p_poly_via_cover,
+      std::optional<geometry::Rectangle> *n_poly_via_cover);
   void ConnectDiffs(const Sky130TransmissionGate &generator,
                     const geometry::Point &top,
                     const geometry::Point &bottom,

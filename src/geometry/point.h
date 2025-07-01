@@ -120,6 +120,7 @@ class Point : public AbstractShape, public Manipulable {
 // Treat the point as a vector from the origin, then add element-wise.
 Point operator*(const Point &lhs, double &rhs);
 Point operator*(double &lhs, const Point &rhs);
+Point operator/(const Point &lhs, int divisor);
 Point operator+(const Point &lhs, const Point &rhs);
 Point operator-(const Point &lhs, const Point &rhs);
 Point operator-(const Point &rhs);

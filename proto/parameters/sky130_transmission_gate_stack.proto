@@ -2,8 +2,12 @@ syntax = "proto3";
 
 package bfg.proto.parameters;
 
+message Sky130TransmissionGateStackSequence {
+  repeated string nets = 1;
+}
+
 message Sky130TransmissionGateStack {
-  repeated string net_sequence = 1;
+  repeated Sky130TransmissionGateStackSequence sequences = 1;
   optional uint64 p_width_nm = 2;
   optional uint64 p_length_nm = 3;
   optional uint64 n_width_nm = 4;

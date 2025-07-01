@@ -127,6 +127,10 @@ class RowGuide {
     return rotate_instances_ ? 180 : 0;
   }
 
+  std::vector<geometry::Instance*> &instances() {
+    return instances_;
+  };
+
  private:
   void Place(const geometry::Point &point,
              geometry::Instance *instance,

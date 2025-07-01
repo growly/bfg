@@ -163,6 +163,9 @@ geometry::Polygon *Sky130TransmissionGate::AddPolyTab(
   geometry::Point poly_ll = fet_generator.PolyLowerLeft();
   geometry::Point poly_ur = fet_generator.PolyUpperRight();
 
+  layout->SavePoint(absl::StrCat(fet_generator.name(), ".", "poly_centre"),
+                    (poly_ll + poly_ur) / 2);
+
   geometry::Point tab_ll;
   geometry::Point tab_ur;
   geometry::Vector tab_diagonal(tab_width, tab_height);

@@ -243,7 +243,8 @@ def sweep_transmission_gate_stack():
     all_params = []
 
     def make(sequence, p_width_n, n_width_nm, vertical_pitch):
-        params = '\n'.join(f'net_sequence: "{net}"'
+        params = 'sequences:\n'
+        params += '\n'.join(f'  nets: "{net}"'
                            for net in sequence)
         params += f'''
 p_width_nm: {p_width_nm}

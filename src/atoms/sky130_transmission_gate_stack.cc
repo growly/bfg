@@ -2,6 +2,7 @@
 
 #include <absl/strings/str_format.h>
 
+#include "../modulo.h"
 #include "../row_guide.h"
 #include "../scoped_layer.h"
 #include "../geometry/point.h"
@@ -14,8 +15,11 @@ namespace atoms {
 
 void Sky130TransmissionGateStack::Parameters::ToProto(
     proto::parameters::Sky130TransmissionGateStack *pb) const {
-  pb->mutable_net_sequence()->Clear();
-  pb->mutable_net_sequence()->Add(net_sequence.begin(), net_sequence.end());
+  pb->mutable_sequences()->Clear();
+  for (const std::vector<std::string> &net_sequence : sequences) { 
+    pb->add_sequences()->mutable_nets()->Add(
+        net_sequence.begin(), net_sequence.end());
+  }
 
   pb->set_p_width_nm(p_width_nm);
   pb->set_p_length_nm(p_length_nm);
@@ -51,8 +55,12 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
 
 void Sky130TransmissionGateStack::Parameters::FromProto(
     const proto::parameters::Sky130TransmissionGateStack &pb) {
-  net_sequence = std::vector<std::string>(
-      pb.net_sequence().begin(), pb.net_sequence().end());
+  sequences.clear();
+  for (const auto &sequence_pb : pb.sequences()) {
+    std::vector<std::string> net_sequence = std::vector<std::string>(
+        sequence_pb.nets().begin(), sequence_pb.nets().end());
+    sequences.push_back(net_sequence);
+  }
 
   if (pb.has_p_width_nm()) {
     p_width_nm = pb.p_width_nm();
@@ -99,26 +107,16 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
   }
 }
 
-bfg::Cell *Sky130TransmissionGateStack::Generate() {
-  std::unique_ptr<bfg::Cell> cell(
-      new bfg::Cell(name_.empty() ? "sky130_transmission_gate_stack": name_));
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  cell->SetLayout(new bfg::Layout(db));
-
-  RowGuide row(geometry::Point(0, 0),
-               cell->layout(),
-               cell->circuit(),
-               design_db_);
-
-  const size_t num_gates = parameters_.net_sequence.empty() ?
-      0 : (parameters_.net_sequence.size() - 1) / 2;
-
-  std::optional<geometry::Rectangle> pdiff_cover;
-  std::optional<geometry::Rectangle> ndiff_cover;
-  std::optional<geometry::Rectangle> p_poly_via_cover;
-  std::optional<geometry::Rectangle> n_poly_via_cover;
-
-  std::optional<uint64_t> height;
+void Sky130TransmissionGateStack::BuildSequence(
+    const std::vector<std::string> &net_sequence,
+    bfg::Cell *cell,
+    RowGuide *row,
+    std::optional<geometry::Rectangle> *pdiff_cover,
+    std::optional<geometry::Rectangle> *ndiff_cover,
+    std::optional<geometry::Rectangle> *p_poly_via_cover,
+    std::optional<geometry::Rectangle> *n_poly_via_cover) {
+  const size_t num_gates = net_sequence.empty() ?
+      0 : (net_sequence.size() - 1) / 2;
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
@@ -144,28 +142,30 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
     Cell *transmission_gate = generator.GenerateIntoDatabase(instance_name);
 
     // TODO(aryap): I spent a lot of effort in the Sky130TransmissionGate
-    // decoupling constructed properties (i.e. positions of elements, widths of
-    // diffs, etc) from the actual layout generation, whereas it would have been
-    // simpler to do it all at the same time, when building the layout. The
-    // point of that was to have access to where e.g. Vias might go without
-    // having to generate the layout. But most of that work is based on the
-    // origin_ set in the Generator, whereas we usually want to manipulate the
-    // origin_ of an Instance, i.e. what the RowGuid does. So most of the
-    // precomputed properties available through the Generator are useless here.
-    geometry::Instance *instance = row.InstantiateBack(
+    // decoupling constructed properties (i.e. positions of elements, widths
+    // of diffs, etc) from the actual layout generation, whereas it would have
+    // been simpler to do it all at the same time, when building the layout.
+    // The point of that was to have access to where e.g. Vias might go
+    // without having to generate the layout. But most of that work is based
+    // on the origin_ set in the Generator, whereas we usually want to
+    // manipulate the origin_ of an Instance, i.e. what the RowGuid does. So
+    // most of the precomputed properties available through the Generator are
+    // useless here.
+    geometry::Instance *instance = row->InstantiateBack(
         instance_name, transmission_gate->layout());
 
     // Connecting P- and NMOS sources and drains:
-    const std::string &left_net = parameters_.net_sequence[2 * i];
-    const std::string &gate_net = parameters_.net_sequence[2 * i + 1];
-    const std::string &right_net = parameters_.net_sequence[2 * i + 2];
+    const std::string &left_net = net_sequence[2 * i];
+    const std::string &gate_net = net_sequence[2 * i + 1];
+    const std::string &right_net = net_sequence[2 * i + 2];
 
     LOG(INFO) << left_net << ", " << gate_net << ", " << right_net;
 
     geometry::Point pmos_ll = instance->GetPointOrDie("pmos.diff_lower_left");
-    geometry::Point pmos_ur = instance->GetPointOrDie("pmos.diff_upper_right");
+    geometry::Point pmos_ur = instance->GetPointOrDie(
+        "pmos.diff_upper_right");
     geometry::Rectangle::ExpandAccumulate(
-        geometry::Rectangle(pmos_ll, pmos_ur), &pdiff_cover);
+        geometry::Rectangle(pmos_ll, pmos_ur), pdiff_cover);
 
     std::optional<geometry::Point> p_via_ll =
         instance->GetPoint("pmos.poly_tab_ll");
@@ -173,13 +173,13 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
         instance->GetPoint("pmos.poly_tab_ur");
     if (p_via_ll && p_via_ur) {
       geometry::Rectangle::ExpandAccumulate(
-          geometry::Rectangle(*p_via_ll, *p_via_ur), &p_poly_via_cover);
+          geometry::Rectangle(*p_via_ll, *p_via_ur), p_poly_via_cover);
     }
 
     geometry::Point nmos_ll = instance->GetPointOrDie("nmos.diff_lower_left");
     geometry::Point nmos_ur = instance->GetPointOrDie("nmos.diff_upper_right");
     geometry::Rectangle::ExpandAccumulate(
-        geometry::Rectangle(nmos_ll, nmos_ur), &ndiff_cover);
+        geometry::Rectangle(nmos_ll, nmos_ur), ndiff_cover);
 
     std::optional<geometry::Point> n_via_ll =
         instance->GetPoint("nmos.poly_tab_ll");
@@ -187,7 +187,7 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
         instance->GetPoint("nmos.poly_tab_ur");
     if (n_via_ll && n_via_ur) {
       geometry::Rectangle::ExpandAccumulate(
-          geometry::Rectangle(*n_via_ll, *n_via_ur), &n_poly_via_cover);
+          geometry::Rectangle(*n_via_ll, *n_via_ur), n_poly_via_cover);
     }
 
     geometry::Point top = instance->GetPointOrDie("pmos.via_left_diff_upper");
@@ -200,6 +200,57 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       top = instance->GetPointOrDie("pmos.via_right_diff_upper");
       bottom = instance->GetPointOrDie("nmos.via_right_diff_lower");
       ConnectDiffs(generator, top, bottom, right_net, cell->layout());
+    }
+  }
+}
+
+
+bfg::Cell *Sky130TransmissionGateStack::Generate() {
+  std::unique_ptr<bfg::Cell> cell(
+      new bfg::Cell(name_.empty() ? "sky130_transmission_gate_stack": name_));
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  cell->SetLayout(new bfg::Layout(db));
+
+  RowGuide row(geometry::Point(0, 0),
+               cell->layout(),
+               cell->circuit(),
+               design_db_);
+
+  std::optional<geometry::Rectangle> pdiff_cover;
+  std::optional<geometry::Rectangle> ndiff_cover;
+  std::optional<geometry::Rectangle> p_poly_via_cover;
+  std::optional<geometry::Rectangle> n_poly_via_cover;
+
+  std::optional<uint64_t> height;
+
+  for (size_t i = 0; i < parameters_.sequences.size(); ++i) {
+    BuildSequence(parameters_.sequences[i],
+                  cell.get(),
+                  &row,
+                  &pdiff_cover,
+                  &ndiff_cover,
+                  &p_poly_via_cover,
+                  &n_poly_via_cover);
+
+    if (i < parameters_.sequences.size() - 1) {
+      if (parameters_.horizontal_pitch_nm) {
+        geometry::Instance *last = row.instances().back();
+        if (!last)
+          continue;
+        int64_t pitch = db.ToInternalUnits(*parameters_.horizontal_pitch_nm);
+        int64_t poly_centre_x = last->GetPointOrDie("pmos.poly_centre").x();
+        int64_t right_edge_x = last->GetPointOrDie("pmos.diff_upper_right").x();
+        int64_t centre_to_edge = right_edge_x - poly_centre_x;
+        int64_t remainder = modulo(pitch - (2 * centre_to_edge), pitch);
+        row.AddBlankSpaceBack(remainder);
+      } else {
+        int64_t min_spacing = db.Rules("diff.drawing").min_separation;
+        row.AddBlankSpaceBack(min_spacing);
+      }
+
+      if (parameters_.insert_dummy_poly) {
+
+      }
     }
   }
 

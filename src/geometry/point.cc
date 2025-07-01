@@ -216,6 +216,10 @@ Point operator*(double &lhs, const Point &rhs) {
   return rhs * lhs;
 }
 
+Point operator/(const Point &lhs, int divisor) {
+  return Point(lhs.x() / divisor, lhs.y() / divisor);
+}
+
 Point operator+(const Point &lhs, const Point &rhs) {
   return Point(lhs.x() + rhs.x(), lhs.y() + rhs.y());
 }
