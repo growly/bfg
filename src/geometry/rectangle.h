@@ -123,9 +123,11 @@ class Rectangle : public Shape {
   ::vlsir::raw::Polygon ToVLSIRPolygon(
       const PhysicalPropertiesDatabase &db) const;
 
+  Point &lower_left() { return lower_left_; }
   const Point &lower_left() const { return lower_left_; }
   void set_lower_left(const Point &lower_left) { lower_left_ = lower_left; }
 
+  Point &upper_right() { return upper_right_; }
   const Point &upper_right() const { return upper_right_; }
   void set_upper_right(const Point &upper_right) { upper_right_ = upper_right; }
 

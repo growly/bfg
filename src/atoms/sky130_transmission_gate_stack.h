@@ -71,6 +71,8 @@ class Sky130TransmissionGateStack : public Atom {
 
     bool insert_dummy_poly = true;
 
+    bool expand_wells_to_vertical_bounds = true;
+
     void ToProto(proto::parameters::Sky130TransmissionGateStack *pb) const;
     void FromProto(const proto::parameters::Sky130TransmissionGateStack &pb);
   };

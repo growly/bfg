@@ -51,6 +51,9 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
   } else {
     pb->clear_horizontal_pitch_nm();
   }
+
+  pb->set_insert_dummy_poly(insert_dummy_poly);
+  pb->set_expand_wells_to_vertical_bounds(expand_wells_to_vertical_bounds);
 }
 
 void Sky130TransmissionGateStack::Parameters::FromProto(
@@ -104,6 +107,13 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
     horizontal_pitch_nm = pb.horizontal_pitch_nm();
   } else {
     horizontal_pitch_nm.reset();
+  }
+
+  if (pb.has_insert_dummy_poly()) {
+    insert_dummy_poly = pb.insert_dummy_poly();
+  }
+  if (pb.has_expand_wells_to_vertical_bounds()) {
+    expand_wells_to_vertical_bounds = pb.expand_wells_to_vertical_bounds();
   }
 }
 
@@ -269,21 +279,35 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
         "psdm.drawing", "pdiff.drawing").min_enclosure;
     {
       ScopedLayer layer(cell->layout(), "psdm.drawing");
-      cell->layout()->AddRectangle(pdiff_cover->WithPadding(psdm_margin));
+      geometry::Rectangle psdm_rectangle =
+          pdiff_cover->WithPadding(psdm_margin);
+      if (parameters_.expand_wells_to_vertical_bounds) {
+        psdm_rectangle.upper_right().set_y(row.UpperRight().y());
+      }
+      cell->layout()->AddRectangle(psdm_rectangle);
     }
     int64_t nwell_margin = db.Rules(
         "nwell.drawing", "pdiff.drawing").min_enclosure;
     {
       ScopedLayer layer(cell->layout(), "nwell.drawing");
-      cell->layout()->AddRectangle(
-          pdiff_cover->WithPadding(nwell_margin));
+      geometry::Rectangle nwell_rectangle =
+          pdiff_cover->WithPadding(nwell_margin);
+      if (parameters_.expand_wells_to_vertical_bounds) {
+        nwell_rectangle.upper_right().set_y(row.UpperRight().y());
+      }
+      cell->layout()->AddRectangle(nwell_rectangle);
     }
   }
   if (ndiff_cover) {
     ScopedLayer layer(cell->layout(), "nsdm.drawing");
     int64_t nsdm_margin = db.Rules(
         "nsdm.drawing", "ndiff.drawing").min_enclosure;
-    cell->layout()->AddRectangle(ndiff_cover->WithPadding(nsdm_margin));
+    geometry::Rectangle nsdm_rectangle =
+        ndiff_cover->WithPadding(nsdm_margin);
+    if (parameters_.expand_wells_to_vertical_bounds) {
+      nsdm_rectangle.lower_left().set_y(row.LowerLeft().y());
+    }
+    cell->layout()->AddRectangle(nsdm_rectangle);
   }
 
   // Draw npc.drawing box around poly contacts.

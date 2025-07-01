@@ -16,4 +16,6 @@ message Sky130TransmissionGateStack {
   optional uint64 min_height_nm = 7;
   optional uint64 vertical_pitch_nm = 8;
   optional uint64 horizontal_pitch_nm = 9;
+  optional bool insert_dummy_poly = 10;
+  optional bool expand_wells_to_vertical_bounds = 11;
 }
