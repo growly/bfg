@@ -31,8 +31,7 @@ class Sky130TransmissionGate : public Atom {
     bool stacks_left = false;
     bool stacks_right = false;
 
-    // TODO(aryap): Not sure how this would work or what it would accomplish.
-    // std::optional<uint64_t> min_cell_height_nm = 2720;
+    std::optional<uint64_t> min_cell_height_nm;
 
     std::optional<uint64_t> vertical_tab_pitch_nm;
     std::optional<uint64_t> vertical_tab_offset_nm;
@@ -195,6 +194,10 @@ class Sky130TransmissionGate : public Atom {
   bool PMOSHasLowerTab() const;
   bool NMOSHasUpperTab() const;
   bool NMOSHasLowerTab() const;
+
+  bool PMOSHasAnyTab() const {
+    return PMOSHasUpperTab() || PMOSHasLowerTab();
+  }
 
   int64_t NextYOnGrid(int64_t current_y) const;
 

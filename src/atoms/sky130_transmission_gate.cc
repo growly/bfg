@@ -338,8 +338,14 @@ int64_t Sky130TransmissionGate::NextYOnGrid(int64_t current_y) const {
   return (quotient + 1) * pitch + offset;
 }
 
-// Only called if the NMOS has an upper tab, which means we need to find the
-// next on-grid position above nmos_poly_top_y where the tab can fit:
+// Building the cell up from y = 0 and assuming the NMOS transistor
+// construction (including the poly) gets up to current_y, find the the
+// necessary cmos_gap so that when the PMOS construction is added (including
+// any tab placement, minimum cell height) all constraints are honoured.
+//
+// TODO(aryap): This assumes that the PMOS to diff separation rule is the same
+// as the PMOS to diff minimum enclosure rule. That's probably not true in all
+// PDKs.
 int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
@@ -348,13 +354,37 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
   int64_t nwell_margin = db.Rules(
       "nwell.drawing", pfet_generator_->DiffLayer()).min_enclosure;
 
+  // This is the 'required' y.
+  //
+  //              |    |  diff
+  //         -----|    |-----
+  //           ^  |    |     ^ poly overhang
+  //     min   |  +----+     V
+  //     diff. |
+  //     sep.  |  +----+     ^ poly overhang
+  //           v  |    |     v
+  //         -----|    |-----
+  //              |    |  diff
+  int64_t min_diff_separation = nwell_ndiff_separation + nwell_margin;
   int64_t min_y = 
       std::max(
           current_y + db.Rules(nfet_generator_->PolyLayer()).min_separation,
           current_y - static_cast<int64_t>(nfet_generator_->PolyOverhang()) +
-              nwell_ndiff_separation + nwell_margin -
+              min_diff_separation -
               static_cast<int64_t>(pfet_generator_->PolyOverhang()));
 
+  // If the cell has a minimum height, the minimum y position must be adjusted
+  // so that, after adding the PMOS transistor and tab (if any), the cell at
+  // least meets that height. We determine the actual min_y when the tab needs
+  // to align to the grid below, but we do not need to consider it here since
+  // all we need is a minimum y value to meet the constraint. (Any adjustment
+  // to align the tab to the grid will have to increase the minimum y.)
+  if (parameters_.min_cell_height_nm) {
+    min_y = std::max(
+        min_y,
+        db.ToInternalUnits(*parameters_.min_cell_height_nm) - (
+            PMOSPolyHeight() + (PMOSHasAnyTab() ? PMOSPolyTabHeight() : 0)));
+  }
 
   // If the PMOS transistor has a lower-side tab, we might need to add a gap
   // here to get it onto the grid:

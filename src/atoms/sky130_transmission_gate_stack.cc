@@ -136,7 +136,7 @@ void Sky130TransmissionGateStack::BuildSequence(
       .n_length_nm = parameters_.n_length_nm,
       .stacks_left = i > 0,
       .stacks_right = i < num_gates - 1,
-      //.min_cell_height_nm = parameters_.min_height_nm,
+      .min_cell_height_nm = parameters_.min_height_nm,
       .vertical_tab_pitch_nm = parameters_.vertical_pitch_nm,
       .vertical_tab_offset_nm = parameters_.vertical_pitch_nm.value_or(0) / 2,
       .poly_pitch_nm = parameters_.horizontal_pitch_nm,

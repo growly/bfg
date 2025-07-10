@@ -41,7 +41,14 @@ Sky130InterconnectMux6::BuildTransmissionGateParams() const {
     .horizontal_pitch_nm = parameters_.poly_pitch_nm
   };
 
-  // Build the sequences of nets that dictate the arrangement of the transmission gate stack, e.g.
+  uint32_t needed_tracks = parameters_.num_inputs;
+  if (parameters_.vertical_pitch_nm) {
+    params.min_height_nm = (needed_tracks + 3) * *parameters_.vertical_pitch_nm;
+  }
+  params.vertical_pitch_nm = parameters_.vertical_pitch_nm;
+
+  // Build the sequences of nets that dictate the arrangement of the
+  // transmission gate stack, e.g.
   // {
   //   {"X0", "S0", "Z", "S1", "X1"},
   //   {"X2", "S2", "Z", "S3", "X3"},
@@ -120,7 +127,6 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   //
   Sky130TransmissionGateStack::Parameters transmission_gate_mux_params =
       BuildTransmissionGateParams();
-
   Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
       transmission_gate_mux_params, design_db_);
   std::string instance_name = absl::StrFormat("%s_gate_stack", cell->name());

@@ -49,10 +49,10 @@ class Sky130TransmissionGateStack : public Atom {
          "N", "O", "P", "O"}
     };
 
-    uint64_t p_width_nm = 450;
+    uint64_t p_width_nm = 1000;
     uint64_t p_length_nm = 150;
 
-    uint64_t n_width_nm = 450;
+    uint64_t n_width_nm = 650;
     uint64_t n_length_nm = 150;
 
     std::optional<uint64_t> li_width_nm;
