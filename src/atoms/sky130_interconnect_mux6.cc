@@ -32,6 +32,46 @@ void Sky130InterconnectMux6::Parameters::FromProto(
   }
 }
 
+Sky130TransmissionGateStack::Parameters
+Sky130InterconnectMux6::BuildTransmissionGateParams() const {
+  static const std::string kOutputName = "Z";
+
+  Sky130TransmissionGateStack::Parameters params = {
+    .sequences = {},
+    .horizontal_pitch_nm = parameters_.poly_pitch_nm
+  };
+
+  // Build the sequences of nets that dictate the arrangement of the transmission gate stack, e.g.
+  // {
+  //   {"X0", "S0", "Z", "S1", "X1"},
+  //   {"X2", "S2", "Z", "S3", "X3"},
+  //   {"X4", "S4", "Z", "S5", "X5"},
+  //   {"X6", "S6", "Z"}                // For the 7th input.
+  // }
+  std::vector<std::string> last_sequence;
+  for (size_t i = 0; i < parameters_.num_inputs; ++i) {
+    std::string input_name = absl::StrFormat("X%u", i);
+    std::string control_name = absl::StrFormat("S%u", i);
+
+    if (last_sequence.size() == 0) {
+      last_sequence.push_back(input_name);
+      last_sequence.push_back(control_name);
+      last_sequence.push_back(kOutputName);
+    } else {
+      last_sequence.push_back(control_name);
+      last_sequence.push_back(input_name);
+      params.sequences.push_back(last_sequence);
+      last_sequence.clear();
+    }
+  }
+  // For odd numbers of inputs we have to push the shorter sequence.
+  if (!last_sequence.empty()) {
+    params.sequences.push_back(last_sequence);
+    last_sequence.clear();
+  }
+  return params;
+}
+
 bfg::Cell *Sky130InterconnectMux6::Generate() {
   std::unique_ptr<bfg::Cell> cell(
       new bfg::Cell(name_.empty() ? "sky130_interconnect_mux6": name_));
@@ -57,7 +97,11 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
                                true,      // Rotate the first row.
                                geometry::Compass::LEFT);
 
-  for (size_t i = 0; i < 3; i++) {
+  uint32_t num_ff = parameters_.num_inputs;
+  uint32_t num_ff_top = num_ff / 2; 
+  uint32_t num_ff_bottom = num_ff - num_ff_top;
+
+  for (size_t i = 0; i < num_ff_bottom; i++) {
     std::string instance_name = absl::StrFormat("imux6_dfxtp_bottom_%d", i);
     std::string cell_name = absl::StrCat(instance_name, "_template");
     atoms::Sky130Dfxtp::Parameters params;
@@ -75,23 +119,20 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   //    "interconnect_mux6_tap_template");
   //
   Sky130TransmissionGateStack::Parameters transmission_gate_mux_params = {
-    .sequences = {
-      {"X0", "S0", "Z", "S1", "X1"},
-      {"X2", "S2", "Z", "S3", "X3"},
-      {"X4", "S4", "Z", "S5", "X5"}
-    },
+    .sequences = {},
     .horizontal_pitch_nm = parameters_.poly_pitch_nm
   };
+
   Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
       transmission_gate_mux_params, design_db_);
   std::string instance_name = absl::StrFormat("%s_gate_stack", cell->name());
   std::string template_name = absl::StrCat(instance_name, "_template");
   Cell *transmission_gate_stack = generator.GenerateIntoDatabase(template_name);
-  bank.Row(3).clear_tap_cell();
-  bank.Row(3).AddBlankSpaceAndInsertFront(460);   // Width of a tap, above.
-  bank.InstantiateRight(3, instance_name, transmission_gate_stack->layout());
+  bank.Row(num_ff_bottom).clear_tap_cell();
+  bank.Row(num_ff_bottom).AddBlankSpaceAndInsertFront(460);   // Width of a tap, above.
+  bank.InstantiateRight(num_ff_bottom, instance_name, transmission_gate_stack->layout());
 
-  for (size_t i = 4; i < 7; i++) {
+  for (size_t i = num_ff_bottom + 1; i < num_ff + 1; i++) {
     std::string instance_name = absl::StrFormat("imux6_dfxtp_top_%d", i);
     std::string cell_name = absl::StrCat(instance_name, "_template");
     atoms::Sky130Dfxtp::Parameters params;
@@ -99,6 +140,11 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
     bank.InstantiateRight(i, instance_name, dfxtp_cell->layout());
   }
+
+  // TODO(aryap): Clock buffer, output buffer, decap fillers.
+
+  // Connect flip-flop outputs to transmission gates. Flip-flops store one bit
+  // and output both the bit and its complement, conveniently. Per description in header, start with left-most gates from the
 
   return cell.release();
 }

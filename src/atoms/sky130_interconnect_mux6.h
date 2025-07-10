@@ -5,6 +5,7 @@
 #include "../circuit.h"
 #include "../layout.h"
 #include "proto/parameters/sky130_interconnect_mux6.pb.h"
+#include "sky130_transmission_gate_stack.h"
 
 namespace bfg {
 
@@ -16,25 +17,52 @@ namespace atoms {
 // it) will look like:
 //
 //           +-+------------------------------+-+----+
-//  Decap    |D|            FF                | | D  |
+//  Decap    |D| (Out)      FF                | | D  |
 //  cells    +-+------------------------------+-+----+
-//  creating |D|            FF                |T| <---- Tap
+//  creating |D|            FF          (Out) |T| <---- Tap
 //  vertical +-+------------------------------+------+
-//  routing  |D|            FF                | Buf  |  Clock Buffer
+//  routing  |D| (Out)      FF                | Buf  |  Clock Buffer
 //  channel  +-+------------------------------+------+
 //      -->  |D|  Transmission gate 6:1 Muxes | Buf  |  Output Buffer
 //           | |                              |      |
 //           +-+------------------------------+------+
-//           |D|            FF                |T|    |
+//           |D| (Out)      FF                |T|    |
 //           +-+------------------------------+-+----+
-//           |D|            FF                |      |
+//           |D|            FF          (Out) |      |
 //           +-+------------------------------+------+
-//           |D|            FF                |  D   |
+//           |D| (Out)      FF                |T|  D |
 //           +-+------------------------------+------+
+//
+// The transmission gates are arranged so that the grow from left to right. The
+// flip flops are split in half and placed in rows emanating vertically from
+// the transmission gates. Following this pattern, we draw connecting wires
+// from the outputs of the flip-flops to the gates of of the transmission
+// gates, alternating between north and south flip-flops, and between left-most
+// and right-most unconnected gates. This aligns the outputs of the flip-flops
+// with the nearest transmission gates and avoids congestion:
+//
+//           +-+------------------------------+-+----+
+//           | | (Out)      FF                | |    |
+//           +-+------------------------------+-+----+
+//           | |            FF          ++    | |    |
+//           +-+------------------------||----+------+
+//           | |  ++        FF      (3) ||    |      |
+//           +-+--||-(1)----------------||----+------+
+//           | |  |+ +-    Transmissi.  |+ +- |      |
+//           | |  -+ +|       gates     -+ +| |      |
+//           +-+-----||-(2)----------------||-+------+
+//           | |  +--++     FF         (4) || | |    |
+//           +-+---------------------------||-+-+----+
+//           | |            FF             ++ |      |
+//           +-+------------------------------+------+
+//           | | (Out)      FF                | |    |
+//           +-+------------------------------+------+
+//    
 
 class Sky130InterconnectMux6 : public Atom {
  public:
   struct Parameters {
+    uint32_t num_inputs = 6;
     std::optional<uint64_t> poly_pitch_nm = 600;
 
     void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
@@ -53,6 +81,8 @@ class Sky130InterconnectMux6 : public Atom {
   bfg::Cell *Generate() override;
 
  private:
+  Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams() const;
+
   Parameters parameters_;
 };
 
