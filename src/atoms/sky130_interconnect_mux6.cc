@@ -118,10 +118,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   //Cell *tap_cell = tap_generator.GenerateIntoDatabase(
   //    "interconnect_mux6_tap_template");
   //
-  Sky130TransmissionGateStack::Parameters transmission_gate_mux_params = {
-    .sequences = {},
-    .horizontal_pitch_nm = parameters_.poly_pitch_nm
-  };
+  Sky130TransmissionGateStack::Parameters transmission_gate_mux_params =
+      BuildTransmissionGateParams();
 
   Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
       transmission_gate_mux_params, design_db_);
