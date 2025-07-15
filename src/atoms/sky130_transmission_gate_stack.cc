@@ -52,6 +52,18 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
     pb->clear_horizontal_pitch_nm();
   }
 
+  if (min_p_tab_diff_separation_nm) {
+    pb->set_min_p_tab_diff_separation_nm(*min_p_tab_diff_separation_nm);
+  } else {
+    pb->clear_min_p_tab_diff_separation_nm();
+  }
+
+  if (min_n_tab_diff_separation_nm) {
+    pb->set_min_n_tab_diff_separation_nm(*min_n_tab_diff_separation_nm);
+  } else {
+    pb->clear_min_n_tab_diff_separation_nm();
+  }
+
   pb->set_insert_dummy_poly(insert_dummy_poly);
   pb->set_expand_wells_to_vertical_bounds(expand_wells_to_vertical_bounds);
 }
@@ -107,6 +119,18 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
     horizontal_pitch_nm = pb.horizontal_pitch_nm();
   } else {
     horizontal_pitch_nm.reset();
+  }
+
+  if (pb.has_min_p_tab_diff_separation_nm()) {
+    min_p_tab_diff_separation_nm = pb.min_p_tab_diff_separation_nm();
+  } else {
+    min_p_tab_diff_separation_nm.reset();
+  }
+
+  if (pb.has_min_n_tab_diff_separation_nm()) {
+    min_n_tab_diff_separation_nm = pb.min_n_tab_diff_separation_nm();
+  } else {
+    min_n_tab_diff_separation_nm.reset();
   }
 
   if (pb.has_insert_dummy_poly()) {
