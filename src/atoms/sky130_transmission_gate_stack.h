@@ -87,6 +87,8 @@ class Sky130TransmissionGateStack : public Atom {
   bfg::Cell *Generate() override;
 
  private:
+  static constexpr char kMetalLayer[] = "li.drawing";
+
   void BuildSequence(
       const std::vector<std::string> &net_sequence,
       bfg::Cell *cell,
@@ -95,11 +97,19 @@ class Sky130TransmissionGateStack : public Atom {
       std::optional<geometry::Rectangle> *ndiff_cover,
       std::optional<geometry::Rectangle> *p_poly_via_cover,
       std::optional<geometry::Rectangle> *n_poly_via_cover);
+
   void ConnectDiffs(const Sky130TransmissionGate &generator,
                     const geometry::Point &top,
                     const geometry::Point &bottom,
                     const std::string &net,
                     Layout *layout);
+
+  // Determine the min_{n,p}_tab_diff_separation_nm values to give child
+  // Sky130SimpleTransistors so that tabs can accomodate an li.drawing via while
+  // ConnectDiffs(...) connects to the outer-most via positions on each
+  // transistor.
+  uint64_t FigurePolyDiffSeparation(
+      const Sky130TransmissionGate &generator) const;
 
   Parameters parameters_;
 };

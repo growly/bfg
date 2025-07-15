@@ -41,6 +41,8 @@ class Sky130TransmissionGate : public Atom {
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;
 
+    std::optional<bool> tabs_should_avoid_nearest_vias;
+
     bool draw_nwell = false;
 
     std::optional<geometry::Compass> p_tab_position;
@@ -101,6 +103,19 @@ class Sky130TransmissionGate : public Atom {
   }
   const geometry::Rectangle NMOSBounds() const {
     return nfet_generator_->DiffBounds();
+  }
+
+  int64_t NMOSPolyTabHeight() const {
+    return PolyTabHeight(*nfet_generator_);
+  }
+  int64_t NMOSPolyTabWidth() const {
+    return PolyTabWidth(*nfet_generator_);
+  }
+  int64_t PMOSPolyTabHeight() const {
+    return PolyTabHeight(*pfet_generator_);
+  }
+  int64_t PMOSPolyTabWidth() const {
+    return PolyTabWidth(*pfet_generator_);
   }
 
   const Sky130SimpleTransistor &pfet_generator() const {
@@ -233,18 +248,6 @@ class Sky130TransmissionGate : public Atom {
   // accommodate a via on the DiffConnectionLayer().
   int64_t PolyTabHeight(const Sky130SimpleTransistor &fet_generator) const;
   int64_t PolyTabWidth(const Sky130SimpleTransistor &fet_generator) const;
-  int64_t NMOSPolyTabHeight() const {
-    return PolyTabHeight(*nfet_generator_);
-  }
-  int64_t NMOSPolyTabWidth() const {
-    return PolyTabWidth(*nfet_generator_);
-  }
-  int64_t PMOSPolyTabHeight() const {
-    return PolyTabHeight(*pfet_generator_);
-  }
-  int64_t PMOSPolyTabWidth() const {
-    return PolyTabWidth(*pfet_generator_);
-  }
 
   Parameters parameters_;
 
