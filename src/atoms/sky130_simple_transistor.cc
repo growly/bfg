@@ -217,7 +217,7 @@ void Sky130SimpleTransistor::ComputeGeometries() {
   poly_y_min_ = -static_cast<int64_t>(PolyHeight()) / 2;
   poly_y_max_ = poly_y_min_ + static_cast<int64_t>(PolyHeight());
 
-  diff_y_min_ = poly_y_min_ + poly_diff_rules.min_enclosure;
+  diff_y_min_ = poly_y_min_ + PolyOverhangBottom();
   diff_y_max_ = diff_y_min_ + TransistorWidth();
 }
 
@@ -237,16 +237,28 @@ const geometry::Rectangle Sky130SimpleTransistor::DiffBounds() const {
   );
 }
 
-uint64_t Sky130SimpleTransistor::PolyOverhang() const {
+uint64_t Sky130SimpleTransistor::PolyOverhangTop() const {
   const auto &poly_diff_rules =
       design_db_->physical_db().Rules("poly.drawing", DiffLayer());
-  return poly_diff_rules.min_enclosure;
+  return std::max(
+      poly_diff_rules.min_enclosure,
+      design_db_->physical_db().ToInternalUnits(
+          parameters_.poly_overhang_top_nm.value_or(0)));
+}
+
+uint64_t Sky130SimpleTransistor::PolyOverhangBottom() const {
+  const auto &poly_diff_rules =
+      design_db_->physical_db().Rules("poly.drawing", DiffLayer());
+  return std::max(
+      poly_diff_rules.min_enclosure,
+      design_db_->physical_db().ToInternalUnits(
+          parameters_.poly_overhang_bottom_nm.value_or(0)));
 }
 
 uint64_t Sky130SimpleTransistor::PolyHeight() const {
   const auto &poly_diff_rules =
       design_db_->physical_db().Rules("poly.drawing", DiffLayer());
-  return TransistorWidth() + 2 * PolyOverhang();
+  return TransistorWidth() + PolyOverhangTop() + PolyOverhangBottom();
 }
 
 

@@ -13,7 +13,7 @@ class DesignDatabase;
 
 namespace atoms {
 
-// he mux6 we will build for interconnect (and the family of components like
+// The mux6 we will build for interconnect (and the family of components like
 // it) will look like:
 //
 //           +-+------------------------------+-+----+

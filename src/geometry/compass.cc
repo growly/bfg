@@ -54,6 +54,34 @@ Compass ProtoCompassDirectionToCompass(
   return Compass::WEST;
 }
 
+bool CompassHasNorth(const Compass &compass) {
+  switch (compass) {
+    case Compass::NORTH_WEST:
+      // Fallthrough intended.
+    case Compass::NORTH:
+      // Fallthrough intended.
+    case Compass::NORTH_EAST:
+      // Fallthrough intended.
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool CompassHasSouth(const Compass &compass) {
+  switch (compass) {
+    case Compass::SOUTH_WEST:
+      // Fallthrough intended.
+    case Compass::SOUTH:
+      // Fallthrough intended.
+    case Compass::SOUTH_EAST:
+      // Fallthrough intended.
+      return true;
+    default:
+      return false;
+  }
+}
+
 }  // namespace geometry
 
 // NOTE(aryap): namespace geometry is not in this file, because nothing in it

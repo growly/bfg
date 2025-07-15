@@ -41,6 +41,9 @@ class Sky130SimpleTransistor : public Atom {
     bool stacks_left = false;
     bool stacks_right = false;
 
+    std::optional<uint64_t> poly_overhang_top_nm;
+    std::optional<uint64_t> poly_overhang_bottom_nm;
+
     // If given, this forces the diff extension on stacking sides of the
     // transistor such that another transistor with the same stacking pitch
     // would have its poly this many nm away.
@@ -138,7 +141,8 @@ class Sky130SimpleTransistor : public Atom {
     return design_db_->physical_db().ToInternalUnits(parameters_.length_nm);
   }
 
-  uint64_t PolyOverhang() const;
+  uint64_t PolyOverhangTop() const;
+  uint64_t PolyOverhangBottom() const;
 
   uint64_t PolyHeight() const;
 

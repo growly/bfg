@@ -38,6 +38,9 @@ class Sky130TransmissionGate : public Atom {
     
     std::optional<uint64_t> poly_pitch_nm;
 
+    std::optional<uint64_t> min_p_tab_diff_separation_nm;
+    std::optional<uint64_t> min_n_tab_diff_separation_nm;
+
     bool draw_nwell = false;
 
     std::optional<geometry::Compass> p_tab_position;
@@ -58,6 +61,14 @@ class Sky130TransmissionGate : public Atom {
       .length_nm = parameters_.n_length_nm,
       .stacks_left = parameters_.stacks_left,
       .stacks_right = parameters_.stacks_right,
+      .poly_overhang_top_nm =
+          (parameters_.n_tab_position &&
+              geometry::CompassHasNorth(*parameters_.n_tab_position)) ?
+              parameters_.min_n_tab_diff_separation_nm : std::nullopt,
+      .poly_overhang_bottom_nm = 
+          (parameters_.n_tab_position &&
+              geometry::CompassHasSouth(*parameters_.n_tab_position)) ?
+              parameters_.min_n_tab_diff_separation_nm : std::nullopt,
       .stacking_pitch_nm = parameters_.poly_pitch_nm
     };
 
@@ -70,6 +81,14 @@ class Sky130TransmissionGate : public Atom {
       .length_nm = parameters_.p_length_nm,
       .stacks_left = parameters_.stacks_left,
       .stacks_right = parameters_.stacks_right,
+      .poly_overhang_top_nm =
+          (parameters_.p_tab_position &&
+              geometry::CompassHasNorth(*parameters_.p_tab_position)) ?
+              parameters_.min_p_tab_diff_separation_nm : std::nullopt,
+      .poly_overhang_bottom_nm = 
+          (parameters_.p_tab_position &&
+              geometry::CompassHasSouth(*parameters_.p_tab_position)) ?
+              parameters_.min_p_tab_diff_separation_nm : std::nullopt,
       .stacking_pitch_nm = parameters_.poly_pitch_nm
     }; 
  
@@ -202,7 +221,7 @@ class Sky130TransmissionGate : public Atom {
   int64_t NextYOnGrid(int64_t current_y) const;
 
   int64_t FigureBottomPadding() const;
-  int64_t FigureNMOSTabConnectorHeight(int64_t nmos_poly_top_y) const;
+  int64_t FigureNMOSUpperTabConnectorHeight(int64_t nmos_poly_top_y) const;
   int64_t FigurePMOSTabConnectorHeight(int64_t pmos_poly_top_y) const;
   int64_t FigureCMOSGap(int64_t current_y) const;
 
