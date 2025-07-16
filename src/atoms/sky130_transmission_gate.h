@@ -41,7 +41,7 @@ class Sky130TransmissionGate : public Atom {
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;
 
-    std::optional<bool> tabs_should_avoid_nearest_vias;
+    bool tabs_should_avoid_nearest_vias = true;
 
     bool draw_nwell = false;
 
@@ -236,14 +236,33 @@ class Sky130TransmissionGate : public Atom {
   int64_t NextYOnGrid(int64_t current_y) const;
 
   int64_t FigureBottomPadding() const;
+  int64_t FigureNMOSLowerTabConnectorHeight() const;
   int64_t FigureNMOSUpperTabConnectorHeight(int64_t nmos_poly_top_y) const;
-  int64_t FigurePMOSTabConnectorHeight(int64_t pmos_poly_top_y) const;
+  int64_t FigurePMOSLowerTabConnectorHeight() const;
+  int64_t FigurePMOSUpperTabConnectorHeight(int64_t pmos_poly_top_y) const;
   int64_t FigureCMOSGap(int64_t current_y) const;
 
   int64_t FigureTopPadding(int64_t pmos_poly_top_y) const;
 
-  int64_t PMOSPolyHeight() const;
-  int64_t NMOSPolyHeight() const;
+  int64_t PMOSPolyHeight() const {
+    return pfet_generator_->PolyHeight();
+  }
+  int64_t PMOSPolyOverhangTop() const {
+    return pfet_generator_->PolyOverhangTop();
+  }
+  int64_t PMOSPolyOverhangBottom() const {
+    return pfet_generator_->PolyOverhangBottom();
+  }
+  int64_t NMOSPolyHeight() const {
+    return nfet_generator_->PolyHeight();
+  }
+  int64_t NMOSPolyOverhangTop() const {
+    return nfet_generator_->PolyOverhangTop();
+  }
+  int64_t NMOSPolyOverhangBottom() const {
+    return nfet_generator_->PolyOverhangBottom();
+  }
+
   // The tab will be a horizontal rectangle, whose height and width must
   // accommodate a via on the DiffConnectionLayer().
   int64_t PolyTabHeight(const Sky130SimpleTransistor &fet_generator) const;

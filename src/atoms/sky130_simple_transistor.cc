@@ -306,6 +306,46 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
   return layout.release();
 }
 
+//     |       | licon   |           |           |
+//     |       | via     |           |           |
+//     | diff  +---------+  ^        |    poly   |
+//     |     ^ | li1 pour|  | A      |           |
+//     |     | |         |  v        |           |
+// y=0 +-----|-|---------|-----------|-----------|----------
+//         B v +---------+           |           |  ^
+//                                 E |           |  | we compute this, E
+//                                   |           |  v
+//                             +-----+           +-----+
+//                           ^ |     +-----------+---------
+//                         C | |     |  li1 via  |     |
+//                           | |   D |           |     |
+//                           v |     |           |     |
+//
+// The calculation is symmetrical in y, so it's ok that we only consider the
+// case where the tab is below the diffusion.
+// 
+// Q: min. separation of first metal layer (li.drawing, typically)
+// C: the additional separation from the figured quantity (E) to the centre of
+//    the via to the first metal layer
+//
+// (A - B) - (-E - C + D) = Q
+// E + A - B + C - D - Q = 0
+// E = Q - A + B - C + D
+//   = Q - (A - B + C - D)
+int64_t Sky130SimpleTransistor::FigurePolyDiffExtension(
+    int64_t separation_to_metal_via_centre) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &metal_rules = db.Rules(FirstMetalLayer());
+  const auto &pcon_rules = db.Rules(PolyConnectionLayer());
+  const auto &diff_dcon_rules = db.Rules(DiffConnectionLayer(), DiffLayer());
+  const auto &metal_dcon_rules = db.Rules(
+      DiffConnectionLayer(), FirstMetalLayer());
+
+  return metal_rules.min_separation - (
+      diff_dcon_rules.min_enclosure - metal_dcon_rules.via_overhang +
+      separation_to_metal_via_centre - pcon_rules.via_height);
+}
+
 std::string Sky130SimpleTransistor::CircuitCellName() const {
   switch (parameters_.fet_type) {
     case Parameters::FetType::PMOS:

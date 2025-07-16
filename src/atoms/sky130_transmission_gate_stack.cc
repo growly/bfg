@@ -141,46 +141,6 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
   }
 }
 
-//     |       | licon   |           |           |
-//     |       | via     |           |           |
-//     | diff  +---------+  ^        |    poly   |
-//     |     ^ | li1 pour|  | A      |           |
-//     |     | |         |  v        |           |
-// y=0 +-----|-|---------|-----------|-----------|----------
-//         B v +---------+           |           |  ^
-//                                 E |           |  | we compute this, E
-//                                   |           |  v
-//                             +-----+           +-----+
-//                           ^ |     +-----------+---------
-//                         C | |     |  li1 via  |     |
-//                           | |   D |           |     |
-//                           v |     |           |     |
-//
-// The calculation is symmetrical in y, so it's ok that we only consider the
-// case where the tab is below the diffusion.
-//
-// (A - B) - (-E - C + D) = min. li separation, Q
-// E + A - B + C - D - Q = 0
-// E = Q - A + B - C + D
-//   = Q - (A - B + C - D)
-//
-// FIXME(aryap): This is really a property of the transmission gates
-// individually, since they are aware of the process-level details, and besides
-// we'll have a circular dependency using a generator instance to compute the
-// parameters for a generator instance
-uint64_t Sky130TransmissionGateStack::FigurePolyDiffSeparation(
-    const Sky130TransmissionGate &generator) const {
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  const auto &metal_rules = db.Rules(kMetalLayer);
-  const auto &pcon_rules = db.Rules("licon.drawing");
-  const auto &diff_dcon_rules = db.Rules("licon.drawing", "diff.drawing");
-  const auto &metal_dcon_rules = db.Rules("licon.drawing", kMetalLayer);
-
-  return metal_rules.min_separation - (
-      diff_dcon_rules.min_enclosure - metal_dcon_rules.via_overhang +
-      generator.NMOSPolyTabHeight() - pcon_rules.via_height);
-}
-
 void Sky130TransmissionGateStack::BuildSequence(
     const std::vector<std::string> &net_sequence,
     bfg::Cell *cell,

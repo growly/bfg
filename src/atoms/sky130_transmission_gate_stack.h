@@ -104,13 +104,6 @@ class Sky130TransmissionGateStack : public Atom {
                     const std::string &net,
                     Layout *layout);
 
-  // Determine the min_{n,p}_tab_diff_separation_nm values to give child
-  // Sky130SimpleTransistors so that tabs can accomodate an li.drawing via while
-  // ConnectDiffs(...) connects to the outer-most via positions on each
-  // transistor.
-  uint64_t FigurePolyDiffSeparation(
-      const Sky130TransmissionGate &generator) const;
-
   Parameters parameters_;
 };
 

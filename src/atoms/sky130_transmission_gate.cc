@@ -305,14 +305,6 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
   return circuit.release();
 }
 
-int64_t Sky130TransmissionGate::PMOSPolyHeight() const {
-  return pfet_generator_->PolyHeight();
-}
-
-int64_t Sky130TransmissionGate::NMOSPolyHeight() const {
-  return nfet_generator_->PolyHeight();
-}
-
 int64_t Sky130TransmissionGate::FigureTopPadding(
     int64_t pmos_poly_top_y) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
@@ -421,24 +413,62 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
   return min_y - current_y;
 }
 
+int64_t Sky130TransmissionGate::FigureNMOSLowerTabConnectorHeight() const {
+  if (parameters_.tabs_should_avoid_nearest_vias) {
+    int64_t extra_necessary =
+        nfet_generator_->FigurePolyDiffExtension(NMOSPolyTabHeight() / 2) -
+        NMOSPolyOverhangBottom();
+    return std::max(extra_necessary - NMOSPolyOverhangBottom(), 0L);
+  }
+  return 0;
+}
+
 // Only called if the NMOS has an upper tab, which means we need to find the
 // next on-grid position above nmos_poly_top_y where the tab can fit:
 int64_t Sky130TransmissionGate::FigureNMOSUpperTabConnectorHeight(
     int64_t nmos_poly_top_y) const {
   int64_t tab_height = NMOSPolyTabHeight();
-  int64_t default_tab_centre = nmos_poly_top_y + tab_height / 2;
+  int64_t tab_centre = nmos_poly_top_y + tab_height / 2;
 
-  int64_t next_on_grid = NextYOnGrid(default_tab_centre);
-  return next_on_grid - default_tab_centre;
+  if (parameters_.tabs_should_avoid_nearest_vias) {
+    int64_t extra_necessary =
+        nfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
+        NMOSPolyOverhangTop();
+    if (extra_necessary > 0) {
+      tab_centre += extra_necessary;
+    }
+  }
+
+  int64_t next_on_grid = NextYOnGrid(tab_centre);
+  return next_on_grid - tab_centre;
 }
 
-int64_t Sky130TransmissionGate::FigurePMOSTabConnectorHeight(
+int64_t Sky130TransmissionGate::FigurePMOSLowerTabConnectorHeight() const {
+  if (parameters_.tabs_should_avoid_nearest_vias) {
+    int64_t extra_necessary =
+        pfet_generator_->FigurePolyDiffExtension(PMOSPolyTabHeight() / 2) -
+        PMOSPolyOverhangBottom();
+    return std::max(extra_necessary - PMOSPolyOverhangBottom(), 0L);
+  }
+  return 0;
+}
+
+int64_t Sky130TransmissionGate::FigurePMOSUpperTabConnectorHeight(
     int64_t pmos_poly_top_y) const {
   int64_t tab_height = PMOSPolyTabHeight();
-  int64_t default_tab_centre = pmos_poly_top_y + tab_height / 2;
+  int64_t tab_centre = pmos_poly_top_y + tab_height / 2;
 
-  int64_t next_on_grid = NextYOnGrid(default_tab_centre);
-  return next_on_grid - default_tab_centre;
+  if (parameters_.tabs_should_avoid_nearest_vias) {
+    int64_t extra_necessary =
+        pfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
+        PMOSPolyOverhangTop();
+    if (extra_necessary > 0) {
+      tab_centre += extra_necessary;
+    }
+  }
+
+  int64_t next_on_grid = NextYOnGrid(tab_centre);
+  return next_on_grid - tab_centre;
 }
 
 bool Sky130TransmissionGate::PMOSHasUpperTab() const {
@@ -514,8 +544,9 @@ Sky130TransmissionGate::FigureSpacings() const {
   int64_t nmos_align_y = y;
   int64_t nmos_tab_connector_height = 0;
   if (NMOSHasLowerTab()) {
-    nmos_align_y += NMOSPolyTabHeight();
-    y += NMOSPolyTabHeight();
+    nmos_tab_connector_height = FigureNMOSLowerTabConnectorHeight();
+    y += NMOSPolyTabHeight() + nmos_tab_connector_height;
+    nmos_align_y = y;
   } else if (NMOSHasUpperTab()) {
     nmos_tab_connector_height =
         FigureNMOSUpperTabConnectorHeight(y + NMOSPolyHeight());
@@ -539,7 +570,7 @@ Sky130TransmissionGate::FigureSpacings() const {
 
   } else if (PMOSHasUpperTab()) {
     pmos_tab_connector_height =
-        FigurePMOSTabConnectorHeight(pmos_align_y + PMOSPolyHeight());
+        FigurePMOSUpperTabConnectorHeight(pmos_align_y + PMOSPolyHeight());
     y += PMOSPolyTabHeight() + pmos_tab_connector_height;
   }
   spacings.pmos_tab_extension = pmos_tab_connector_height;
