@@ -324,9 +324,14 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
 // The calculation is symmetrical in y, so it's ok that we only consider the
 // case where the tab is below the diffusion.
 // 
-// Q: min. separation of first metal layer (li.drawing, typically)
-// C: the additional separation from the figured quantity (E) to the centre of
-//    the via to the first metal layer
+// A: min. enclosure of diff on licon (diffcon) via
+// B: li overhang of licon via
+// C: length of poly beyond extension to midpoint of next li pour
+// D: height of next li pour above its midpoint
+// E: spacing between diff and poly edge we need to figure
+//
+// Q: required min. separation of first metal layer (li, local interconnect,
+//    typically)
 //
 // (A - B) - (-E - C + D) = Q
 // E + A - B + C - D - Q = 0
@@ -343,7 +348,7 @@ int64_t Sky130SimpleTransistor::FigurePolyDiffExtension(
 
   return metal_rules.min_separation - (
       diff_dcon_rules.min_enclosure - metal_dcon_rules.via_overhang +
-      separation_to_metal_via_centre - pcon_rules.via_height);
+      separation_to_metal_via_centre - pcon_rules.via_height / 2);
 }
 
 std::string Sky130SimpleTransistor::CircuitCellName() const {

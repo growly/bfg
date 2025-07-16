@@ -447,8 +447,7 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
 int64_t Sky130TransmissionGate::FigureNMOSLowerTabConnectorHeight() const {
   if (parameters_.tabs_should_avoid_nearest_vias) {
     int64_t extra_necessary =
-        nfet_generator_->FigurePolyDiffExtension(NMOSPolyTabHeight() / 2) -
-        NMOSPolyOverhangBottom();
+        nfet_generator_->FigurePolyDiffExtension(NMOSPolyTabHeight() / 2);
     return std::max(extra_necessary - NMOSPolyOverhangBottom(), 0L);
   }
   return 0;
@@ -474,8 +473,7 @@ int64_t Sky130TransmissionGate::FigureNMOSUpperTabConnectorHeight(
 int64_t Sky130TransmissionGate::FigurePMOSLowerTabConnectorHeight() const {
   if (parameters_.tabs_should_avoid_nearest_vias) {
     int64_t extra_necessary =
-        pfet_generator_->FigurePolyDiffExtension(PMOSPolyTabHeight() / 2) -
-        PMOSPolyOverhangBottom();
+        pfet_generator_->FigurePolyDiffExtension(PMOSPolyTabHeight() / 2);
     return std::max(extra_necessary - PMOSPolyOverhangBottom(), 0L);
   }
   return 0;
