@@ -72,6 +72,8 @@ class Sky130TransmissionGateStack : public Atom {
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;
 
+    std::optional<uint64_t> min_poly_boundary_separation_nm;
+
     bool insert_dummy_poly = true;
 
     bool expand_wells_to_vertical_bounds = true;

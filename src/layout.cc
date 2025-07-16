@@ -166,6 +166,18 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
   return geometry::Rectangle(Point(min_x, min_y), Point(max_x, max_y));
 }
 
+const geometry::Rectangle Layout::GetBoundingBoxOrDie(
+    const geometry::Layer &layer) const {
+  ShapeCollection *layer_shapes = GetShapeCollection(layer);
+  LOG_IF(FATAL, !layer_shapes) << "Layer not found: " << layer;
+  return layer_shapes->GetBoundingBox();
+}
+
+const geometry::Rectangle Layout::GetBoundingBoxByNameOrDie(
+    const std::string &layer_name) const {
+  return GetBoundingBoxOrDie(physical_db_.GetLayer(layer_name));
+}
+
 std::string Layout::Describe() const {
   std::stringstream ss;
 

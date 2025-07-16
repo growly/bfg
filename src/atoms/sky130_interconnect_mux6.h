@@ -83,7 +83,10 @@ class Sky130InterconnectMux6 : public Atom {
   bfg::Cell *Generate() override;
 
  private:
-  Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams() const;
+  Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
+    Cell *vertical_neighbour) const;
+
+  int64_t FigurePolyBoundarySeparationForMux(bfg::Cell *surrounding_cell) const;
 
   Parameters parameters_;
 };

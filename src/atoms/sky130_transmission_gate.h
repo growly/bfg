@@ -41,6 +41,8 @@ class Sky130TransmissionGate : public Atom {
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;
 
+    std::optional<uint64_t> min_poly_boundary_separation_nm;
+
     bool tabs_should_avoid_nearest_vias = true;
 
     bool draw_nwell = false;

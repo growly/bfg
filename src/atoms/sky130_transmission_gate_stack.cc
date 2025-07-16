@@ -64,6 +64,12 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
     pb->clear_min_n_tab_diff_separation_nm();
   }
 
+  if (min_n_tab_diff_separation_nm) {
+    pb->set_min_n_tab_diff_separation_nm(*min_n_tab_diff_separation_nm);
+  } else {
+    pb->clear_min_n_tab_diff_separation_nm();
+  }
+
   pb->set_insert_dummy_poly(insert_dummy_poly);
   pb->set_expand_wells_to_vertical_bounds(expand_wells_to_vertical_bounds);
 }
@@ -133,6 +139,12 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
     min_n_tab_diff_separation_nm.reset();
   }
 
+  if (pb.has_min_poly_boundary_separation_nm()) {
+    min_poly_boundary_separation_nm = pb.min_poly_boundary_separation_nm();
+  } else {
+    min_poly_boundary_separation_nm.reset();
+  }
+
   if (pb.has_insert_dummy_poly()) {
     insert_dummy_poly = pb.insert_dummy_poly();
   }
@@ -164,6 +176,8 @@ void Sky130TransmissionGateStack::BuildSequence(
       .vertical_tab_pitch_nm = parameters_.vertical_pitch_nm,
       .vertical_tab_offset_nm = parameters_.vertical_pitch_nm.value_or(0) / 2,
       .poly_pitch_nm = parameters_.horizontal_pitch_nm,
+      .min_poly_boundary_separation_nm =
+          parameters_.min_poly_boundary_separation_nm,
       .p_tab_position = geometry::Compass::UPPER,
       .n_tab_position = geometry::Compass::LOWER
     };

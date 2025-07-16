@@ -187,6 +187,11 @@ class Layout : public geometry::Manipulable {
     }
   }
 
+  const geometry::Rectangle GetBoundingBoxByNameOrDie(
+      const std::string &layer_name) const;
+  const geometry::Rectangle GetBoundingBoxOrDie(const geometry::Layer &layer)
+      const;
+
   void SetTilingBounds(const geometry::Rectangle &rectangle) {
     tiling_bounds_ = rectangle;
   }
@@ -194,6 +199,9 @@ class Layout : public geometry::Manipulable {
     tiling_bounds_.reset();
   }
 
+  // TODO(aryap): Why did I differentiate the names of functions doing lookups
+  // by name with "ByName"? Function overloading solves this problem. Silly
+  // goose.
   void EraseLayerByName(const std::string &name);
   void EraseLayer(const geometry::Layer &layer);
 

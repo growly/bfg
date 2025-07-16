@@ -73,6 +73,12 @@ void Sky130TransmissionGate::Parameters::ToProto(
     pb->clear_min_n_tab_diff_separation_nm();
   }
 
+  if (min_poly_boundary_separation_nm) {
+    pb->set_min_poly_boundary_separation_nm(*min_poly_boundary_separation_nm);
+  } else {
+    pb->clear_min_poly_boundary_separation_nm();
+  }
+
   pb->set_tabs_should_avoid_nearest_vias(tabs_should_avoid_nearest_vias);
 }
 
@@ -152,6 +158,12 @@ void Sky130TransmissionGate::Parameters::FromProto(
     min_n_tab_diff_separation_nm = pb.min_n_tab_diff_separation_nm();
   } else {
     min_n_tab_diff_separation_nm.reset();
+  }
+
+  if (pb.has_min_poly_boundary_separation_nm()) {
+    min_poly_boundary_separation_nm = pb.min_poly_boundary_separation_nm();
+  } else {
+    min_poly_boundary_separation_nm.reset();
   }
 
   if (pb.has_tabs_should_avoid_nearest_vias()) {
@@ -317,6 +329,12 @@ int64_t Sky130TransmissionGate::FigureTopPadding(
   const auto &poly_rules = db.Rules(pfet_generator_->PolyLayer());
   int64_t minimum = poly_rules.min_separation / 2;
 
+  if (parameters_.min_poly_boundary_separation_nm) {
+    minimum = std::max(
+        minimum,
+        db.ToInternalUnits(*parameters_.min_poly_boundary_separation_nm));
+  }
+
   if (!parameters_.vertical_tab_pitch_nm) {
     return minimum;
   }
@@ -330,6 +348,13 @@ int64_t Sky130TransmissionGate::FigureBottomPadding() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &poly_rules = db.Rules(nfet_generator_->PolyLayer());
   int64_t minimum = poly_rules.min_separation / 2;
+
+  if (parameters_.min_poly_boundary_separation_nm) {
+    minimum = std::max(
+        minimum,
+        db.ToInternalUnits(*parameters_.min_poly_boundary_separation_nm));
+  }
+
   if (!parameters_.vertical_tab_pitch_nm || !NMOSHasLowerTab()) {
     return minimum;
   }
@@ -436,16 +461,13 @@ int64_t Sky130TransmissionGate::FigureNMOSUpperTabConnectorHeight(
   int64_t tab_height = NMOSPolyTabHeight();
   int64_t tab_centre = nmos_poly_top_y + tab_height / 2;
 
+  int64_t extra_extension = 0;
   if (parameters_.tabs_should_avoid_nearest_vias) {
-    int64_t extra_necessary =
-        nfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
+    extra_extension = nfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
         NMOSPolyOverhangTop();
-    if (extra_necessary > 0) {
-      tab_centre += extra_necessary;
-    }
   }
 
-  int64_t next_on_grid = NextYOnGrid(tab_centre);
+  int64_t next_on_grid = NextYOnGrid(tab_centre + extra_extension);
   return next_on_grid - tab_centre;
 }
 
@@ -464,16 +486,13 @@ int64_t Sky130TransmissionGate::FigurePMOSUpperTabConnectorHeight(
   int64_t tab_height = PMOSPolyTabHeight();
   int64_t tab_centre = pmos_poly_top_y + tab_height / 2;
 
+  int64_t extra_extension = 0;
   if (parameters_.tabs_should_avoid_nearest_vias) {
-    int64_t extra_necessary =
-        pfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
+    extra_extension = pfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
         PMOSPolyOverhangTop();
-    if (extra_necessary > 0) {
-      tab_centre += extra_necessary;
-    }
   }
 
-  int64_t next_on_grid = NextYOnGrid(tab_centre);
+  int64_t next_on_grid = NextYOnGrid(tab_centre + extra_extension);
   return next_on_grid - tab_centre;
 }
 
@@ -571,9 +590,9 @@ Sky130TransmissionGate::FigureSpacings() const {
   int64_t pmos_align_y = y;
   int64_t pmos_tab_connector_height = 0;
   if (PMOSHasLowerTab()) {
-    pmos_align_y += PMOSPolyTabHeight();
-    y += PMOSPolyTabHeight();
-
+    pmos_tab_connector_height = FigurePMOSLowerTabConnectorHeight();
+    y += PMOSPolyTabHeight() + pmos_tab_connector_height;
+    pmos_align_y = y;
   } else if (PMOSHasUpperTab()) {
     pmos_tab_connector_height =
         FigurePMOSUpperTabConnectorHeight(pmos_align_y + PMOSPolyHeight());
