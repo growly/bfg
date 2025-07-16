@@ -72,6 +72,8 @@ void Sky130TransmissionGate::Parameters::ToProto(
   } else {
     pb->clear_min_n_tab_diff_separation_nm();
   }
+
+  pb->set_tabs_should_avoid_nearest_vias(tabs_should_avoid_nearest_vias);
 }
 
 void Sky130TransmissionGate::Parameters::FromProto(
@@ -150,6 +152,10 @@ void Sky130TransmissionGate::Parameters::FromProto(
     min_n_tab_diff_separation_nm = pb.min_n_tab_diff_separation_nm();
   } else {
     min_n_tab_diff_separation_nm.reset();
+  }
+
+  if (pb.has_tabs_should_avoid_nearest_vias()) {
+    tabs_should_avoid_nearest_vias = pb.tabs_should_avoid_nearest_vias();
   }
 }
 
