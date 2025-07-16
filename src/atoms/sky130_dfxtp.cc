@@ -16,11 +16,8 @@ using ::bfg::geometry::Point;
 using ::bfg::geometry::Polygon;
 using ::bfg::geometry::Rectangle;
 using ::bfg::geometry::Layer;
-//
 
 bfg::Cell *Sky130Dfxtp::Generate() {
-  // A flip-flop is two back-to-back latches.
-
   std::unique_ptr<bfg::Cell> cell(new bfg::Cell("sky130_dfxtp"));
   cell->SetLayout(GenerateLayout());
   cell->SetCircuit(GenerateCircuit());
@@ -207,31 +204,31 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   // After some transformations (X16, X18, X19, X20 are deleted):
   //
   // .subckt sky130_fd_sc_hd__dfxtp_1 CLK D VGND VNB VPB VPWR Q
-  // X5 VPWR D a VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u          ; pfet0
-  // X4 a CLK b VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u           ; pfet1
-  // X17 a CLKI b VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u             ; nfet1
-  // X21 VGND D a VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u             ; nfet0
+  // X5 VPWR D a VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u    ; pfet0
+  // X4 a CLK b VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u     ; pfet1
+  // X17 a CLKI b VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u       ; nfet1
+  // X21 VGND D a VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u       ; nfet0
   //
-  // X10 j c VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u         ; pfet2
-  // X2 b CLKI j VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u          ; pfet3
-  // X15 b CLK e VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u              ; nfet3
-  // X14 e c VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u             ; nfet2
+  // X10 j c VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u   ; pfet2
+  // X2 b CLKI j VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u    ; pfet3
+  // X15 b CLK e VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u        ; nfet3
+  // X14 e c VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u       ; nfet2
   //
-  // X6 VPWR b c VPB sky130_gd_pr__pfet_01v8_hvt w=750000u l=150000u          ; pfet4
-  // X3 c CLKI f VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u          ; pfet5
-  // X13 c CLK f VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u              ; nfet5
-  // X7 VGND b c VNB sky130_gd_pr__nfet_01v8 w=640000u l=150000u              ; nfet4
+  // X6 VPWR b c VPB sky130_gd_pr__pfet_01v8_hvt w=750000u l=150000u    ; pfet4
+  // X3 c CLKI f VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u    ; pfet5
+  // X13 c CLK f VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u        ; nfet5
+  // X7 VGND b c VNB sky130_gd_pr__nfet_01v8 w=640000u l=150000u        ; nfet4
   //
-  // X22 h Q_B VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u       ; pfet6 
-  // X0 f CLK h VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u           ; pfet7
-  // X12 f CLKI i VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u             ; nfet7
-  // X8 i Q_B VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u            ; nfet6
+  // X22 h Q_B VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u ; pfet6 
+  // X0 f CLK h VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u     ; pfet7
+  // X12 f CLKI i VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u       ; nfet7
+  // X8 i Q_B VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u      ; nfet6
   //
-  // X9 Q_B f VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=1e+06u l=150000u         ; pfet8
-  // X1 Q_B f VGND VNB sky130_gd_pr__nfet_01v8 w=650000u l=150000u            ; nfet8
+  // X9 Q_B f VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=1e+06u l=150000u   ; pfet8
+  // X1 Q_B f VGND VNB sky130_gd_pr__nfet_01v8 w=650000u l=150000u      ; nfet8
   //
-  // X11 VPWR Q_B Q VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u        ; pfet9
-  // X23 VGND Q_B Q VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u           ; pfet8
+  // X11 VPWR Q_B Q VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u  ; pfet9
+  // X23 VGND Q_B Q VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u     ; pfet8
   // .ends
 
   //                    /                    /
@@ -857,9 +854,18 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
       Rectangle(Point(85, 1105), Point(255, 1275)), "D");
   layout->SavePoint("port_D_centre", pin->centre());
 
-  pin = layout->AddRectangleAsPort(
+  geometry::Rectangle *pin_Q = layout->AddRectangleAsPort(
       Rectangle(Point(5590, 425), Point(5760, 595)), "Q");
   layout->SavePoint("port_Q_centre", pin->centre());
+
+  // TODO(aryap): We also have to add a port for Q-bar, QI, complemented Q,
+  // whatever you want to call it. This is scary because it might need to be
+  // buffered. But we can always add a buffer?
+  Point offset_from_Q = {-340, 680};
+  geometry::Rectangle pin_QI_stencil = *pin_Q;
+  pin_QI_stencil.Translate(offset_from_Q);
+  pin = layout->AddRectangleAsPort(pin_QI_stencil, "QI");
+  layout->SavePoint("port_QI_centre", pin->centre());
 
   // nwell.pin [PIN] 64/16
   layout->SetActiveLayerByName("nwell.pin");
