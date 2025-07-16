@@ -194,15 +194,11 @@ int64_t Sky130InterconnectMux6::FigurePolyBoundarySeparationForMux(
         layer_bounds.upper_right().y() - tiling_bounds.upper_right().y();
     int64_t required_separation = overflow + layer_min_separation;
     max_spacing = std::max(max_spacing, required_separation);
-    LOG(INFO) << layer << " min sep. " << layer_min_separation << " now "
-              << max_spacing;
 
     // Then the bottom:
     overflow = tiling_bounds.lower_left().y() - layer_bounds.lower_left().y();
     required_separation = overflow + layer_min_separation;
     max_spacing = std::max(max_spacing, required_separation);
-    LOG(INFO) << layer << " min sep. " << layer_min_separation << " now "
-              << max_spacing;
   }
   return max_spacing;
 }
