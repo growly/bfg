@@ -4,6 +4,7 @@
 #include "atom.h"
 #include "../circuit.h"
 #include "../layout.h"
+#include "../geometry/instance.h"
 #include "proto/parameters/sky130_interconnect_mux6.pb.h"
 #include "sky130_transmission_gate_stack.h"
 
@@ -84,9 +85,15 @@ class Sky130InterconnectMux6 : public Atom {
 
  private:
   Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
-    Cell *vertical_neighbour) const;
+    geometry::Instance *vertical_neighbour) const;
 
-  int64_t FigurePolyBoundarySeparationForMux(bfg::Cell *surrounding_cell) const;
+  int64_t FigurePolyBoundarySeparationForMux(
+      bfg::Layout *neighbour_layout) const;
+
+  void ConnectVertically(const geometry::Point &top,
+                         const geometry::Point &bottom,
+                         int64_t vertical_x,
+                         bfg::Layout *layout) const;
 
   Parameters parameters_;
 };
