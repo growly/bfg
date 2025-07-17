@@ -672,6 +672,8 @@ void Layout::EraseLayer(const geometry::Layer &layer) {
 
 void Layout::SavePoint(const std::string &name, const geometry::Point &point) {
   auto it = named_points_.find(name);
+  LOG_IF(FATAL, name.empty())
+      << "Saved point name cannot be empty (point: " << point << ")";
   LOG_IF(WARNING, it != named_points_.end())
       << "Saving " << name << " overrides an existing point " << it->second;
   named_points_[name] = point;

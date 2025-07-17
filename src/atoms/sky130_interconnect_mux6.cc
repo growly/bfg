@@ -140,12 +140,13 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       transmission_gate_mux_params, design_db_);
   std::string instance_name = absl::StrFormat("%s_gate_stack", cell->name());
   std::string template_name = absl::StrCat(instance_name, "_template");
-  Cell *transmission_gate_stack = generator.GenerateIntoDatabase(template_name);
+  Cell *transmission_gate_stack_cell =
+      generator.GenerateIntoDatabase(template_name);
   bank.Row(num_ff_bottom).clear_tap_cell();
   // Width of a tap, above.
   bank.Row(num_ff_bottom).AddBlankSpaceAndInsertFront(460);
-  bank.InstantiateRight(
-      num_ff_bottom, instance_name, transmission_gate_stack->layout());
+  geometry::Instance *stack = bank.InstantiateRight(
+      num_ff_bottom, instance_name, transmission_gate_stack_cell->layout());
 
   std::vector<geometry::Instance*> top_memories;
   for (size_t i = num_ff_bottom + 1; i < num_ff + 1; i++) {
@@ -165,7 +166,11 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // and output both the bit and its complement, conveniently. Per description
   // in header, start with left-most gates from the
 
-  //ConnectVertically(bottom_memories.back().
+  geometry::Port *memory_out = bottom_memories.back()->GetFirstPortNamed("Q");
+  ConnectVertically(memory_out->centre(),
+                    stack->GetPointOrDie("gate_0_p_tab_centre"),
+                    200,
+                    cell->layout());
 
   return cell.release();
 }
@@ -231,16 +236,31 @@ void Sky130InterconnectMux6::ConnectVertically(
   geometry::Point p2 = {vertical_x, bottom.y()};
 
   {
-    ScopedLayer scoped_layer(layout, "li.drawing");
+    ScopedLayer scoped_layer(layout, "met1.drawing");
     geometry::PolyLine bar = geometry::PolyLine({top, p1});
+    bar.SetWidth(db.Rules("met1.drawing").min_width);
+    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
+    bar.InsertBulge(top, encap_info.width, encap_info.length);
+    bar.InsertBulge(p1, encap_info.width, encap_info.length);
+    layout->AddPolyLine(bar);
   }
   {
     ScopedLayer scoped_layer(layout, "met2.drawing");
     geometry::PolyLine vertical = geometry::PolyLine({p1, p2});
+    vertical.SetWidth(db.Rules("met2.drawing").min_width);
+    auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
+    vertical.InsertBulge(p1, encap_info.width, encap_info.length);
+    vertical.InsertBulge(p2, encap_info.width, encap_info.length);
+    layout->AddPolyLine(vertical);
   }
   {
-    ScopedLayer scoped_layer(layout, "li.drawing");
+    ScopedLayer scoped_layer(layout, "met1.drawing");
     geometry::PolyLine bar = geometry::PolyLine({p2, bottom});
+    bar.SetWidth(db.Rules("met1.drawing").min_width);
+    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
+    bar.InsertBulge(bottom, encap_info.width, encap_info.length);
+    bar.InsertBulge(p2, encap_info.width, encap_info.length);
+    layout->AddPolyLine(bar);
   }
 }
 

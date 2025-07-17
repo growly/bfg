@@ -93,6 +93,7 @@ class Sky130TransmissionGateStack : public Atom {
 
   void BuildSequence(
       const std::vector<std::string> &net_sequence,
+      size_t *gates_so_far,
       bfg::Cell *cell,
       RowGuide *row,
       std::optional<geometry::Rectangle> *pdiff_cover,

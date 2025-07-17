@@ -155,6 +155,7 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
 
 void Sky130TransmissionGateStack::BuildSequence(
     const std::vector<std::string> &net_sequence,
+    size_t *gates_so_far,
     bfg::Cell *cell,
     RowGuide *row,
     std::optional<geometry::Rectangle> *pdiff_cover,
@@ -249,7 +250,16 @@ void Sky130TransmissionGateStack::BuildSequence(
       bottom = instance->GetPointOrDie("nmos.via_right_diff_lower");
       ConnectDiffs(generator, top, bottom, right_net, cell->layout());
     }
+
+    cell->layout()->SavePoint(
+        absl::StrFormat("gate_%u_p_tab_centre", i + *gates_so_far),
+        (*p_via_ll + *p_via_ur) / 2);
+    cell->layout()->SavePoint(
+        absl::StrFormat("gate_%u_n_tab_centre", i + *gates_so_far),
+        (*n_via_ll + *n_via_ur) / 2);
   }
+
+  *gates_so_far += num_gates;
 }
 
 
@@ -271,8 +281,10 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   std::optional<uint64_t> height;
 
+  size_t num_gates = 0;
   for (size_t i = 0; i < parameters_.sequences.size(); ++i) {
     BuildSequence(parameters_.sequences[i],
+                  &num_gates,
                   cell.get(),
                   &row,
                   &pdiff_cover,

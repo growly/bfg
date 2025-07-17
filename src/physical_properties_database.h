@@ -78,6 +78,13 @@ struct InterLayerConstraints {
   std::optional<geometry::Layer> connecting_via_layer;
 };
 
+struct ViaEncapInfo {
+  // Size of the encap in the direction of the wire.
+  int64_t length;
+  // Size of the encap in the direction across the wire.
+  int64_t width;
+};
+
 // TODO(aryap): We have primitive rules, like those above, and we have
 // synthesised rules, that come from some combination of those primitive rules.
 // We need a SynthesisedConstraints class or equivalent to organise and capture
@@ -182,6 +189,12 @@ class PhysicalPropertiesDatabase {
   RoutingViaInfo GetRoutingViaInfoOrDie(
       const geometry::Layer &first_layer,
       const geometry::Layer &second_layer) const;
+
+  // This convenience function returns a rectangle in the shape of a
+  // typically- (or minimally-)sized via-encap for the given layer.
+  ViaEncapInfo TypicalViaEncap(
+      const std::string &encap_layer_name,
+      const std::string &via_layer_name) const;
 
   // TODO(aryap): Port these from RoutingGrid to here.
   // std::optional<double> FindViaStackCost(

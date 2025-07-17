@@ -403,6 +403,25 @@ RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfoOrDie(
   return routing_via_info;
 }
 
+ViaEncapInfo PhysicalPropertiesDatabase::TypicalViaEncap(
+    const std::string &encap_layer_name,
+    const std::string &via_layer_name) const {
+  const geometry::Layer encap_layer = GetLayer(encap_layer_name);
+  const geometry::Layer via_layer = GetLayer(via_layer_name);
+
+  int64_t via_width = Rules(via_layer).via_width;
+  int64_t via_height = Rules(via_layer).via_height;
+
+  int64_t encap_length = std::max(via_width, via_height) +
+      2 * Rules(encap_layer, via_layer).via_overhang;
+  int64_t encap_width = std::max(via_width, via_height) +
+      2 * Rules(encap_layer, via_layer).via_overhang_wide;
+  return ViaEncapInfo {
+    .length = std::max(encap_length, encap_width),
+    .width = std::min(encap_length, encap_width)
+  };
+}
+
 //                    7    --------- some routing layer
 //          accesses /         ^
 //                  /          | connected through some via layer
