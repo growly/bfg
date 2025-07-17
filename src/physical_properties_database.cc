@@ -6,10 +6,12 @@
 #include <ostream>
 #include <sstream>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <optional>
 #include <utility>
 #include <glog/logging.h>
+#include <queue>
 #include <string>
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_join.h>
@@ -377,13 +379,13 @@ RoutingViaInfo PhysicalPropertiesDatabase::GetRoutingViaInfoOrDie(
   LOG_IF(FATAL, !via_layer)
       << "No via layer found connecting " << first_layer << " and "
       << second_layer;
-
   const IntraLayerConstraints &via_rules = Rules(*via_layer);
 
   RoutingViaInfo routing_via_info;
   routing_via_info.set_layer(*via_layer);
   routing_via_info.set_width(via_rules.via_width);
   routing_via_info.set_height(via_rules.via_width);
+  routing_via_info.set_cost(via_rules.via_cost);
 
   const InterLayerConstraints &via_to_first_layer_rules =
       Rules(first_layer, *via_layer);
@@ -422,6 +424,127 @@ ViaEncapInfo PhysicalPropertiesDatabase::TypicalViaEncap(
   };
 }
 
+std::optional<std::vector<RoutingViaInfo>>
+PhysicalPropertiesDatabase::FindViaStack(
+    const geometry::Layer &lhs, const geometry::Layer &rhs) const {
+  return PhysicalPropertiesDatabase::FindViaStackImpl(
+      lhs, rhs,
+      std::bind(
+          &PhysicalPropertiesDatabase::FindCostedLayersReachableThroughOneVia,
+          this,
+          std::placeholders::_1),
+      // This one is overloaded so I have to manually specify the type :/
+      std::bind(
+          static_cast<RoutingViaInfo(PhysicalPropertiesDatabase::*)(
+              const geometry::Layer&, const geometry::Layer&) const>(
+                  &PhysicalPropertiesDatabase::GetRoutingViaInfoOrDie),
+          this,
+          std::placeholders::_1,
+          std::placeholders::_2));
+}
+
+std::optional<std::vector<RoutingViaInfo>>
+PhysicalPropertiesDatabase::FindViaStackImpl(
+    const geometry::Layer &lhs,
+    const geometry::Layer &rhs,
+    const std::function<
+        std::vector<CostedLayer>(const geometry::Layer&)>
+            &reachable_layers_fn,
+    const std::function<
+        RoutingViaInfo(
+            const geometry::Layer&, const geometry::Layer&)>
+                &routing_via_info_fn) {
+  std::vector<RoutingViaInfo> via_stack;
+  if (lhs == rhs) {
+    return via_stack;
+  }
+
+  std::pair<const Layer&, const Layer&> ordered_layers =
+      geometry::OrderFirstAndSecondLayers(lhs, rhs);
+  const geometry::Layer &from = ordered_layers.first;
+  const geometry::Layer &to = ordered_layers.second;
+
+  // Dijkstra's shortest path but over the graph of via connectivity.
+
+  // Best-known cost so far to get to the given layer from `from`.
+  std::map<geometry::Layer, double> cost;
+  std::map<geometry::Layer, geometry::Layer> previous;
+  std::set<geometry::Layer> seen;
+
+  // We can't easily enumerate all known layers from our given structures, so we
+  // make the various bookkeeping sparse:
+  auto get_cost = [&](const geometry::Layer &layer) {
+    auto it = cost.find(layer);
+    return it == cost.end() ? std::numeric_limits<double>::max() : it->second;
+  };
+  auto layer_sort_fn = [&](const geometry::Layer &from,
+                           const geometry::Layer &to) {
+    return get_cost(from) > get_cost(to);
+  };
+  std::priority_queue<geometry::Layer,
+                      std::vector<geometry::Layer>,
+                      decltype(layer_sort_fn)> queue(layer_sort_fn);
+
+  cost[from] = 0.0;
+  queue.push(from);
+
+  while (!queue.empty()) {
+    const geometry::Layer &current = queue.top();
+    queue.pop();
+
+    if (current == to) {
+      break;
+    }
+
+    std::vector<CostedLayer> reachable = reachable_layers_fn(current);
+
+    for (const auto &next : reachable) {
+      const geometry::Layer &next_layer = next.layer;
+      double next_cost = get_cost(current) + next.cost;
+      if (next_cost < get_cost(next_layer)) {
+        cost[next_layer] = next_cost;
+        previous[next_layer] = current;
+
+        if (seen.find(next_layer) == seen.end()) {
+          queue.push(next_layer);
+          seen.insert(next_layer);
+        }
+      }
+    }
+  }
+
+  // Walk backwards to find the 'shortest path'.
+  if (previous.find(to) == previous.end()) {
+    // No path.
+    return std::nullopt;
+  }
+
+  // [to, intermediary, other_intermediary, from]
+  std::vector<geometry::Layer> layer_stack;
+  auto it = previous.find(to);
+  layer_stack.push_back(to);
+  while (it != previous.end()) {
+    geometry::Layer next_previous = it->second;
+    layer_stack.push_back(next_previous);
+    if (next_previous == from) {
+      break;
+    }
+    it = previous.find(next_previous);
+  }
+  if (layer_stack.back() != from) {
+    // No path found.
+    return std::nullopt;
+  }
+  
+  for (size_t i = layer_stack.size() - 1; i > 0; --i) {
+    const geometry::Layer &right = layer_stack.at(i);
+    const geometry::Layer &left = layer_stack.at(i - 1);
+    const RoutingViaInfo &via_info = routing_via_info_fn(left, right);
+    via_stack.push_back(via_info);
+  }
+  return via_stack;
+}
+
 //                    7    --------- some routing layer
 //          accesses /         ^
 //                  /          | connected through some via layer
@@ -442,7 +565,7 @@ PhysicalPropertiesDatabase::FindReachableLayersByPinLayer(
   }
   for (const auto &directly_accessible_layer : *layer_info.accesses) {
     std::set<geometry::Layer> accessible_through_at_most_one_via =
-        FindLayersReachableThroughOneViaFrom(directly_accessible_layer);
+        FindLayersReachableThroughOneVia(directly_accessible_layer);
     accessible_through_at_most_one_via.insert(directly_accessible_layer);
     accessibility_by_access_layer.push_back(
         {directly_accessible_layer, accessible_through_at_most_one_via});
@@ -451,24 +574,52 @@ PhysicalPropertiesDatabase::FindReachableLayersByPinLayer(
 }
 
 const std::set<geometry::Layer>
-PhysicalPropertiesDatabase::FindLayersReachableThroughOneViaFrom(
-    const geometry::Layer &routing_layer) const {
+PhysicalPropertiesDatabase::FindLayersReachableThroughOneVia(
+    const geometry::Layer &source_layer) const {
   // via_layers_ is indexed by two layers. Each entry indicates that the layers
   // in the index pair are connected by a via on the layer contained at that
   // position.
-  std::set<geometry::Layer> accessible;
+  std::set<geometry::Layer> reachable;
+  // Greater (in the std::less sense) layers are found directly:
+  auto it = via_layers_.find(source_layer);
+  if (it != via_layers_.end()) {
+    for (const auto &inner : it->second) {
+      reachable.insert(inner.first);
+    }
+  }
+
+  // Lesser layers are found indirectly:
   for (const auto &outer : via_layers_) {
-    const geometry::Layer &outer_layer = outer.first;
+    const geometry::Layer &maybe_reachable = outer.first;
+    if (maybe_reachable == source_layer)
+      continue;
     for (const auto &inner : outer.second) {
-      const geometry::Layer &inner_layer = inner.first;
-      if (outer_layer == routing_layer) {
-        accessible.insert(inner_layer);
-      } else if (inner_layer == routing_layer) {
-        accessible.insert(outer_layer);
+      if (inner.first == source_layer) {
+        reachable.insert(maybe_reachable);
       }
     }
   }
-  return accessible;
+  return reachable;
+}
+
+const std::vector<CostedLayer>
+PhysicalPropertiesDatabase::FindCostedLayersReachableThroughOneVia(
+    const geometry::Layer &layer) const {
+  std::set<geometry::Layer> reachable = FindLayersReachableThroughOneVia(layer);
+  std::vector<CostedLayer> costed;
+  for (const auto &layer : reachable) {
+    costed.push_back(GetCostedLayer(layer));
+  }
+  return costed;
+}
+
+const CostedLayer PhysicalPropertiesDatabase::GetCostedLayer(
+    const geometry::Layer &via_layer) const {
+  double cost = Rules(via_layer).via_cost;
+  return CostedLayer {
+    .layer = via_layer,
+    .cost = cost
+  };
 }
 
 std::string PhysicalPropertiesDatabase::DescribeLayers() const {

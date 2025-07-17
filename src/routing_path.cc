@@ -850,7 +850,7 @@ void RoutingPath::CheckForViaCrowding(
   }
 }
 
-// When a edge comes in perpedicular to an existing one, and the presence of a
+// When a edge comes in perpedicular to an existing one, the presence of a
 // nearby vias, or even just wide paths, can lead to a notch:
 //             +-----------+
 // +-----------+           |

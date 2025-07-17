@@ -51,6 +51,7 @@ struct IntraLayerConstraints {
 
   int64_t via_width;
   int64_t via_height;
+  double via_cost;
 };
 
 struct InterLayerConstraints {
@@ -111,6 +112,21 @@ struct ViaEncapInfo {
 // InterLayerConstraints.
 class PhysicalPropertiesDatabase {
  public:
+  // lambdas really are much nicer than this std::bind kerfuffle.
+  static std::optional<std::vector<RoutingViaInfo>> FindViaStackImpl(
+      const geometry::Layer &lhs,
+      const geometry::Layer &rhs,
+      // TODO(aryap): If I put the const in these function types to signify a
+      // const member function (i.e. at the end of the signature), these don't
+      // work. Huh?
+      const std::function<
+          std::vector<CostedLayer>(const geometry::Layer&)>
+              &reachable_layers_fn,
+      const std::function<
+          RoutingViaInfo(
+              const geometry::Layer&, const geometry::Layer&)>
+                  &routing_via_info_fn);
+
   PhysicalPropertiesDatabase()
       : internal_units_per_external_(0.001),
         next_internal_layer_(0) {}
@@ -199,14 +215,22 @@ class PhysicalPropertiesDatabase {
   // TODO(aryap): Port these from RoutingGrid to here.
   // std::optional<double> FindViaStackCost(
   //     const geometry::Layer &lhs, const geometry::Layer &rhs) const;
-  // std::optional<std::vector<RoutingViaInfo>> FindViaStack(
-  //     const geometry::Layer &lhs, const geometry::Layer &rhs) const;
-  //
-  // This is the same as "FindLayersReachableThroughOneViaFrom", except that it
-  // returns a set of layers with costs.
-  //  std::vector<CostedLayer> LayersReachableByVia(
-  //      const geometry::Layer &from_layer) const;
   // Then put "BuildViaStack" or something in Layout.
+  //
+  // Since the RoutingGrid keeps its own subset of physical information for
+  // routing these functions must live in duplicate; the RoutingGrid should
+  // simply have its own instance of, and override properties of if necessary,
+  // the PhysicalPropertiesDatabase. Then we can remove the duplicate code.
+  //
+  // This function is identical to RoutingGrid::FindViaStack, except that it
+  // uses FindReachableLayersThroughOneVia instead of
+  // RoutingGrid::LayersReachableByVia, because RoutingGrid has its own copy of
+  // via information :/
+  //
+  // TODO(aryap): You should at least make the costed-reachability function a
+  // parameter and factor the rest out into a reusable static function.
+  std::optional<std::vector<RoutingViaInfo>> FindViaStack(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   // For a given pin layer, find the layers which can access it. The pin layer
   // represents access to a given layer, which is the first entry. For each of
@@ -215,8 +239,13 @@ class PhysicalPropertiesDatabase {
       FindReachableLayersByPinLayer(const geometry::Layer &pin_layer) const;
 
   const std::set<geometry::Layer>
-      FindLayersReachableThroughOneViaFrom(const geometry::Layer &routing_layer)
+      FindLayersReachableThroughOneVia(const geometry::Layer &source_layer)
       const;
+
+  const CostedLayer GetCostedLayer(const geometry::Layer &via_layer) const;
+
+  const std::vector<CostedLayer> FindCostedLayersReachableThroughOneVia(
+      const geometry::Layer &source_layer) const;
 
   std::string DescribeLayers() const;
   std::string DescribeLayer(const geometry::Layer &layer) const;

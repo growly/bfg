@@ -304,11 +304,6 @@ class RoutingGrid {
     RoutingVertex *vertex;
   };
 
-  struct CostedLayer {
-    geometry::Layer layer;
-    double cost;
-  };
-
   struct VertexWithLayer {
     RoutingVertex *vertex;
     geometry::Layer layer;

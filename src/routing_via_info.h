@@ -10,6 +10,11 @@
 
 namespace bfg {
 
+struct CostedLayer {
+  geometry::Layer layer;
+  double cost;
+};
+
 struct RoutingViaEncapInfo {
   // These are the via encapsulations in the axis of the bulge and the
   // transverse axis respectively.

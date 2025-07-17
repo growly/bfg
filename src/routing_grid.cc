@@ -3215,9 +3215,9 @@ void RoutingGrid::TearDownTemporaryBlockages(
   }
 }
 
-std::vector<RoutingGrid::CostedLayer> RoutingGrid::LayersReachableByVia(
+std::vector<CostedLayer> RoutingGrid::LayersReachableByVia(
     const geometry::Layer &from_layer) const {
-  std::vector<RoutingGrid::CostedLayer> reachable;
+  std::vector<CostedLayer> reachable;
 
   // Greater (in the std::less sense) layers are found directly:
   auto it = via_infos_.find(from_layer);
@@ -3259,95 +3259,15 @@ std::optional<double> RoutingGrid::FindViaStackCost(
 
 std::optional<std::vector<RoutingViaInfo>> RoutingGrid::FindViaStack(
     const geometry::Layer &lhs, const geometry::Layer &rhs) const {
-  std::vector<RoutingViaInfo> via_stack;
-  if (lhs == rhs) {
-    return via_stack;
-  }
-
-  std::pair<const Layer&, const Layer&> ordered_layers =
-      geometry::OrderFirstAndSecondLayers(lhs, rhs);
-  const geometry::Layer &from = ordered_layers.first;
-  const geometry::Layer &to = ordered_layers.second;
-
-  // Dijkstra's shortest path but over the graph of via connectivity.
-
-  // Best-known cost so far to get to the given layer from `from`.
-  std::map<geometry::Layer, double> cost;
-  std::map<geometry::Layer, geometry::Layer> previous;
-  std::set<geometry::Layer> seen;
-
-  // We can't easily enumerate all known layers from our given structures, so we
-  // make the various bookkeeping sparse:
-  auto get_cost = [&](const geometry::Layer &layer) {
-    auto it = cost.find(layer);
-    return it == cost.end() ? std::numeric_limits<double>::max() : it->second;
-  };
-  auto layer_sort_fn = [&](const geometry::Layer &from,
-                           const geometry::Layer &to) {
-    return get_cost(from) > get_cost(to);
-  };
-  std::priority_queue<geometry::Layer,
-                      std::vector<geometry::Layer>,
-                      decltype(layer_sort_fn)> queue(layer_sort_fn);
-
-  cost[from] = 0.0;
-  queue.push(from);
-
-  while (!queue.empty()) {
-    const geometry::Layer &current = queue.top();
-    queue.pop();
-
-    if (current == to) {
-      break;
-    }
-
-    std::vector<CostedLayer> reachable = LayersReachableByVia(current);
-
-    for (const auto &next : reachable) {
-      const geometry::Layer &next_layer = next.layer;
-      double next_cost = get_cost(current) + next.cost;
-      if (next_cost < get_cost(next_layer)) {
-        cost[next_layer] = next_cost;
-        previous[next_layer] = current;
-
-        if (seen.find(next_layer) == seen.end()) {
-          queue.push(next_layer);
-          seen.insert(next_layer);
-        }
-      }
-    }
-  }
-
-  // Walk backwards to find the 'shortest path'.
-  if (previous.find(to) == previous.end()) {
-    // No path.
-    return std::nullopt;
-  }
-
-  // [to, intermediary, other_intermediary, from]
-  std::vector<geometry::Layer> layer_stack;
-  auto it = previous.find(to);
-  layer_stack.push_back(to);
-  while (it != previous.end()) {
-    geometry::Layer next_previous = it->second;
-    layer_stack.push_back(next_previous);
-    if (next_previous == from) {
-      break;
-    }
-    it = previous.find(next_previous);
-  }
-  if (layer_stack.back() != from) {
-    // No path found.
-    return std::nullopt;
-  }
-  
-  for (size_t i = layer_stack.size() - 1; i > 0; --i) {
-    const geometry::Layer &rhs = layer_stack.at(i);
-    const geometry::Layer &lhs = layer_stack.at(i - 1);
-    const RoutingViaInfo &via_info = GetRoutingViaInfoOrDie(lhs, rhs);
-    via_stack.push_back(via_info);
-  }
-  return via_stack;
+  return PhysicalPropertiesDatabase::FindViaStackImpl(
+      lhs,
+      rhs,
+      [&](const geometry::Layer &layer) {
+        return LayersReachableByVia(layer);
+      },
+      [&](const geometry::Layer &lhs, const geometry::Layer &rhs) {
+        return GetRoutingViaInfoOrDie(lhs, rhs);
+      });
 }
 
 // This is actually our first sketch of a DRC check.
