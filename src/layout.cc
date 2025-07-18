@@ -497,13 +497,19 @@ geometry::Rectangle *Layout::MakeVia(
     const std::string &layer_name,
     const geometry::Point &centre,
     const std::optional<std::string> &net) {
-  SetActiveLayerByName(layer_name);
-  int64_t via_side = physical_db_.Rules(layer_name).via_width;
+  return MakeVia(physical_db_.GetLayer(layer_name), centre, net);
+}
+
+geometry::Rectangle *Layout::MakeVia(
+    const geometry::Layer &layer,
+    const geometry::Point &centre,
+    const std::optional<std::string> &net) {
+  set_active_layer(layer);
+  int64_t via_side = physical_db_.Rules(layer).via_width;
   geometry::Rectangle *via = AddSquare(centre, via_side);
   if (net) {
     via->set_net(*net);
   }
-
   RestoreLastActiveLayer();
   return via;
 }
@@ -569,6 +575,11 @@ void Layout::MakeAlternatingWire(
     wire.InsertBulge(last, hop.encap_info.width, hop.encap_info.length);
     wire.InsertBulge(next, hop.encap_info.width, hop.encap_info.length);
     AddPolyLine(wire);
+
+    if ((next_it + 1) != points.end()) {
+      // This is not a start or end hop, so we can add the via:
+      MakeVia(via_layer, next);
+    }
   }
 }
 
