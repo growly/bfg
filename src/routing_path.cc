@@ -850,7 +850,7 @@ void RoutingPath::CheckForViaCrowding(
   }
 }
 
-// When a edge comes in perpedicular to an existing one, the presence of a
+// When a new edge comes in perpedicular to an existing edge, the presence of a
 // nearby vias, or even just wide paths, can lead to a notch:
 //             +-----------+
 // +-----------+           |
@@ -890,7 +890,11 @@ void RoutingPath::CheckForNotchesToPerpendicularEdges(
 
   std::map<RoutingVertex*, BulgeDimensions> bulges;
   for (RoutingVertex *vertex : spanned_vertices) {
-    auto layers = vertex->ChangedEdgeAndLayers();
+    auto layers = vertex->ChangedEdgeAndLayers(
+        std::bind(&RoutingGrid::AreLayersConnectableByVia,
+                  routing_grid_,
+                  std::placeholders::_1,
+                  std::placeholders::_2));
     if (!layers)
       continue;
     BulgeDimensions bulge = GetBulgeDimensions(

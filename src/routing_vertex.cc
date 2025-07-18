@@ -2,6 +2,7 @@
 
 #include <map>
 #include <optional>
+#include <functional>
 #include <set>
 #include <variant>
 #include <vector>
@@ -52,7 +53,9 @@ bool RoutingVertex::ChangesEdge() const {
 }
 
 std::optional<std::pair<geometry::Layer, geometry::Layer>>
-RoutingVertex::ChangedEdgeAndLayers() const {
+RoutingVertex::ChangedEdgeAndLayers(
+    const std::function<bool(const geometry::Layer&, const geometry::Layer&)>
+        &connecable_by_via_fn) const {
   for (const auto &pair : in_out_edges_) {
     if (pair.first == pair.second) {
       continue;
@@ -64,9 +67,9 @@ RoutingVertex::ChangedEdgeAndLayers() const {
         pair.second ? pair.second->layer() : std::nullopt;
 
     if (!first_layer && second_layer) {
-      first_layer = ConnectedLayerOtherThan(*second_layer);
+      first_layer = ConnectableLayerTo(connecable_by_via_fn, *second_layer);
     } else if (first_layer && !second_layer) {
-      second_layer = ConnectedLayerOtherThan(*first_layer);
+      second_layer = ConnectableLayerTo(connecable_by_via_fn, *first_layer);
     }
 
     if (!first_layer || !second_layer) {
@@ -250,18 +253,22 @@ bool RoutingVertex::AvailableForNets(const EquivalentNets &nets) const {
          (blocked_by_nearby_net && nets.Contains(*blocked_by_nearby_net));
 }
 
-std::optional<geometry::Layer> RoutingVertex::ConnectedLayerOtherThan(
+std::optional<geometry::Layer> RoutingVertex::ConnectableLayerTo(
+    const std::function<bool(const geometry::Layer&, const geometry::Layer&)>
+        &connectable_by_via_fn,
     const geometry::Layer &layer) const {
   std::set<geometry::Layer> layers = connected_layers_;
   layers.erase(layer);
-  if (layers.empty()) {
-    return std::nullopt;
+  for (const geometry::Layer &other : layers) {
+    if (connectable_by_via_fn(layer, other)) {
+      return other;
+    }
   }
-  return *layers.begin();
+  return std::nullopt;
 }
 
 std::set<geometry::Layer> RoutingVertex::CommonLayers(
-      const RoutingVertex &lhs, const RoutingVertex &rhs) {
+    const RoutingVertex &lhs, const RoutingVertex &rhs) {
   std::set<geometry::Layer> shared_layers;
   std::set_intersection(
       lhs.connected_layers().begin(), lhs.connected_layers().end(),

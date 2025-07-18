@@ -653,6 +653,9 @@ class RoutingGrid {
   std::vector<CostedLayer> LayersReachableByVia(
       const geometry::Layer &from_layer) const;
 
+  bool AreLayersConnectableByVia(
+      const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
   // Stores the connection info between the ith (first index) and jth (second
   // index) layers. The "lesser" layer (std::less) should always be used to
   // index first, so that half of the matrix can be avoided.

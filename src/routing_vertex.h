@@ -2,6 +2,7 @@
 #define ROUTING_VERTEX_H_
 
 #include <optional>
+#include <functional>
 #include <set>
 #include <variant>
 #include <vector>
@@ -19,7 +20,7 @@ namespace bfg {
 namespace geometry {
 class Polygon;
 class Rectangle;
-};
+}
 
 class RoutingEdge;
 class RoutingTrack;
@@ -64,7 +65,9 @@ class RoutingVertex {
   void RemoveConnectedLayer(const geometry::Layer &layer) {
     connected_layers_.erase(layer);
   }
-  std::optional<geometry::Layer> ConnectedLayerOtherThan(
+  std::optional<geometry::Layer> ConnectableLayerTo(
+      const std::function<bool(const geometry::Layer&, const geometry::Layer&)>
+          &connectable_by_via_fn,
       const geometry::Layer &layer) const;
   void set_connected_layers(const std::set<geometry::Layer> &connected_layers) {
     connected_layers_ = connected_layers;
@@ -139,8 +142,24 @@ class RoutingVertex {
 
   bool ChangesEdge() const;
 
+  // Returns the layers switched between by an ingress and egress edge at this
+  // vertex. This can be the result of an (in, out) edge pair switching layers,
+  // or a path starting/ending here.
+  //
+  // TODO(aryap): In the event of the latter, one layer comes from the
+  // ingress/egress edge and the other comes from the layers connected by the
+  // vertex (in connected_layers_). This raises a dilemma. We allow edges to
+  // terminate at vertices that don't connect their layers and rely on a via
+  // stack later on reach them. This presumes that we can connect to one of the
+  // layers in connected_layers_ from the edge layer. To find that layer we need
+  // layer connectivity graph, which is heinous. This is part of the physical
+  // information stored by the RoutingGrid so maybe we just pass that in? In the
+  // meantime we just pass in a functor that will tell us if two layers are
+  // directly connectable by a via.
   std::optional<std::pair<geometry::Layer, geometry::Layer>>
-  ChangedEdgeAndLayers() const;
+  ChangedEdgeAndLayers(
+      const std::function<bool(const geometry::Layer&, const geometry::Layer&)>
+          &connecable_by_via_fn) const;
 
   void ClearAllForcedEncapDirections() {
     forced_encap_directions_.clear();

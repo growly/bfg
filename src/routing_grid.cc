@@ -3244,6 +3244,17 @@ std::vector<CostedLayer> RoutingGrid::LayersReachableByVia(
   return reachable;
 }
 
+bool RoutingGrid::AreLayersConnectableByVia(
+    const geometry::Layer &lhs, const geometry::Layer &rhs) const {
+  auto layers = LayersReachableByVia(lhs);
+  for (const auto &costed_layer : layers) {
+    if (costed_layer.layer == rhs) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::optional<double> RoutingGrid::FindViaStackCost(
     const geometry::Layer &lhs, const geometry::Layer &rhs) const {
   auto maybe_stack = FindViaStack(lhs, rhs);
