@@ -190,6 +190,8 @@ void Sky130TransmissionGateStack::BuildSequence(
         absl::StrFormat("stack_%d_gate_%d_template", 0, i);
     Cell *transmission_gate = generator.GenerateIntoDatabase(instance_name);
 
+    LOG(INFO) << transmission_gate->layout()->GetBoundingBox().Width();
+
     // TODO(aryap): I spent a lot of effort in the Sky130TransmissionGate
     // decoupling constructed properties (i.e. positions of elements, widths
     // of diffs, etc) from the actual layout generation, whereas it would have
