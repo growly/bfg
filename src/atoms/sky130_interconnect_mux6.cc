@@ -261,38 +261,8 @@ void Sky130InterconnectMux6::ConnectVertically(
   // FIXME(aryap): This is basically an "Add wire" function. We can automate
   // that.
   layout->MakeVia("mcon.drawing", top);
-  {
-    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
-    ScopedLayer scoped_layer(layout, "met1.drawing");
-    geometry::PolyLine bar = geometry::PolyLine({top, p1});
-    bar.SetWidth(db.Rules("met1.drawing").min_width);
-    bar.set_min_separation(db.Rules("met1.drawing").min_separation);
-    bar.InsertBulge(top, encap_info.width, encap_info.length);
-    bar.InsertBulge(p1, encap_info.width, encap_info.length);
-    layout->AddPolyLine(bar);
-  }
-  layout->MakeVia("via1.drawing", p1);
-  {
-    auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
-    ScopedLayer scoped_layer(layout, "met2.drawing");
-    geometry::PolyLine vertical = geometry::PolyLine({p1, p2});
-    vertical.SetWidth(db.Rules("met2.drawing").min_width);
-    vertical.set_min_separation(db.Rules("met2.drawing").min_separation);
-    vertical.InsertBulge(p1, encap_info.width, encap_info.length);
-    vertical.InsertBulge(p2, encap_info.width, encap_info.length);
-    layout->AddPolyLine(vertical);
-  }
-  layout->MakeVia("via1.drawing", p2);
-  {
-    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
-    ScopedLayer scoped_layer(layout, "met1.drawing");
-    geometry::PolyLine bar = geometry::PolyLine({p2, bottom});
-    bar.SetWidth(db.Rules("met1.drawing").min_width);
-    bar.set_min_separation(db.Rules("met1.drawing").min_separation);
-    bar.InsertBulge(bottom, encap_info.width, encap_info.length);
-    bar.InsertBulge(p2, encap_info.width, encap_info.length);
-    layout->AddPolyLine(bar);
-  }
+  layout->MakeAlternatingWire(
+      {top, p1, p2, bottom}, "met1.drawing", "met2.drawing");
   layout->MakeVia("mcon.drawing", bottom);
 }
 

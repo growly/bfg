@@ -561,7 +561,7 @@ void Layout::MakeAlternatingWire(
   };
 
   size_t i = 0;
-  for (auto next_it = points.begin(); next_it != points.end(); ++next_it) {
+  for (auto next_it = points.begin() + 1; next_it != points.end(); ++next_it) {
     geometry::Point last = *(next_it - 1);
     geometry::Point next = *next_it;
 
