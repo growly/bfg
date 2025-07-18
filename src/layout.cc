@@ -520,6 +520,58 @@ void Layout::MakePort(
   AddPort(port);
 }
 
+void Layout::MakeAlternatingWire(
+    const std::vector<geometry::Point> &points,
+    const std::string &first_layer_name,
+    const std::string &second_layer_name) {
+  if (points.size() < 2) {
+    return;
+  }
+
+  const geometry::Layer via_layer = physical_db_.GetViaLayerOrDie(
+      first_layer_name, second_layer_name);
+  const geometry::Layer first_layer = physical_db_.GetLayer(first_layer_name);
+  const geometry::Layer second_layer = physical_db_.GetLayer(second_layer_name);
+
+  struct HopInfo {
+    const geometry::Layer &layer;
+    const ViaEncapInfo &encap_info;
+    int64_t min_width;
+    int64_t min_separation;
+  };
+  std::array<HopInfo, 2> hop_infos = {
+    HopInfo {
+      .layer = first_layer,
+      .encap_info = physical_db_.TypicalViaEncap(first_layer, via_layer),
+      .min_width = physical_db_.Rules(first_layer).min_width,
+      .min_separation = physical_db_.Rules(first_layer).min_separation
+    },
+    HopInfo {
+      .layer = second_layer,
+      .encap_info = physical_db_.TypicalViaEncap(second_layer, via_layer),
+      .min_width = physical_db_.Rules(second_layer).min_width,
+      .min_separation = physical_db_.Rules(second_layer).min_separation
+    }
+  };
+
+  size_t i = 0;
+  for (auto next_it = points.begin(); next_it != points.end(); ++next_it) {
+    geometry::Point last = *(next_it - 1);
+    geometry::Point next = *next_it;
+
+    const HopInfo &hop = hop_infos[i % 2];
+    ++i;  // So tempting to put this inline as i++. SO tempting.
+
+    ScopedLayer scoped_layer(this, hop.layer);
+    geometry::PolyLine wire = geometry::PolyLine({last, next});
+    wire.SetWidth(hop.min_width);
+    wire.set_min_separation(hop.min_separation);
+    wire.InsertBulge(last, hop.encap_info.width, hop.encap_info.length);
+    wire.InsertBulge(next, hop.encap_info.width, hop.encap_info.length);
+    AddPolyLine(wire);
+  }
+}
+
 void Layout::Flatten() {
   std::set<geometry::Instance*> instances_weak_copy;
   std::transform(

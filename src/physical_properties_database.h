@@ -164,6 +164,8 @@ class PhysicalPropertiesDatabase {
 
   std::optional<const geometry::Layer> GetViaLayer(
       const std::string &left, const std::string &right) const;
+  const geometry::Layer GetViaLayerOrDie(
+      const std::string &left, const std::string &right) const;
   std::optional<const geometry::Layer> GetViaLayer(
       const geometry::Layer &left, const geometry::Layer &right) const;
   void AddViaLayer(const std::string &one_layer,
@@ -211,6 +213,9 @@ class PhysicalPropertiesDatabase {
   ViaEncapInfo TypicalViaEncap(
       const std::string &encap_layer_name,
       const std::string &via_layer_name) const;
+  ViaEncapInfo TypicalViaEncap(
+      const geometry::Layer &encap_layer,
+      const geometry::Layer &via_layer) const;
 
   // TODO(aryap): Port these from RoutingGrid to here.
   // std::optional<double> FindViaStackCost(

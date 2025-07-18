@@ -251,6 +251,16 @@ std::optional<const Layer> PhysicalPropertiesDatabase::GetViaLayer(
     return std::nullopt;
   return inner_it->second;
 }
+
+const geometry::Layer PhysicalPropertiesDatabase::GetViaLayerOrDie(
+    const std::string &left, const std::string &right) const {
+  auto maybe_via_layer = GetViaLayer(left, right);
+  LOG_IF(FATAL, !maybe_via_layer)
+      << "No known via layer between " << left << " and " << right;
+  return *maybe_via_layer;
+}
+
+
 void PhysicalPropertiesDatabase::AddRules(
     const std::string &first_layer,
     const std::string &second_layer,
@@ -410,7 +420,12 @@ ViaEncapInfo PhysicalPropertiesDatabase::TypicalViaEncap(
     const std::string &via_layer_name) const {
   const geometry::Layer encap_layer = GetLayer(encap_layer_name);
   const geometry::Layer via_layer = GetLayer(via_layer_name);
+  return TypicalViaEncap(encap_layer, via_layer);
+}
 
+ViaEncapInfo PhysicalPropertiesDatabase::TypicalViaEncap(
+    const geometry::Layer &encap_layer,
+    const geometry::Layer &via_layer) const {
   int64_t via_width = Rules(via_layer).via_width;
   int64_t via_height = Rules(via_layer).via_height;
 

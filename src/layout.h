@@ -111,6 +111,12 @@ class Layout : public geometry::Manipulable {
                 const geometry::Point &centre,
                 const std::string &layer_name = "");
 
+  // Draw that alternates between two layers with every subsequent edge.
+  void MakeAlternatingWire(
+      const std::vector<geometry::Point> &points,
+      const std::string &first_layer_name,
+      const std::string &second_layer_name);
+
   // Add the layout of every instance to the this layout directly, removing one
   // layer of hierarchy. To flatten completely, this must be called repeatedly
   // until no more instances_ remain.

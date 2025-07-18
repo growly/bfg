@@ -258,6 +258,9 @@ void Sky130InterconnectMux6::ConnectVertically(
   geometry::Point p1 = {vertical_x, top.y()};
   geometry::Point p2 = {vertical_x, bottom.y()};
 
+  // FIXME(aryap): This is basically an "Add wire" function. We can automate
+  // that.
+  layout->MakeVia("mcon.drawing", top);
   {
     auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
     ScopedLayer scoped_layer(layout, "met1.drawing");
@@ -268,6 +271,7 @@ void Sky130InterconnectMux6::ConnectVertically(
     bar.InsertBulge(p1, encap_info.width, encap_info.length);
     layout->AddPolyLine(bar);
   }
+  layout->MakeVia("via1.drawing", p1);
   {
     auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
     ScopedLayer scoped_layer(layout, "met2.drawing");
@@ -278,6 +282,7 @@ void Sky130InterconnectMux6::ConnectVertically(
     vertical.InsertBulge(p2, encap_info.width, encap_info.length);
     layout->AddPolyLine(vertical);
   }
+  layout->MakeVia("via1.drawing", p2);
   {
     auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
     ScopedLayer scoped_layer(layout, "met1.drawing");
@@ -288,6 +293,7 @@ void Sky130InterconnectMux6::ConnectVertically(
     bar.InsertBulge(p2, encap_info.width, encap_info.length);
     layout->AddPolyLine(bar);
   }
+  layout->MakeVia("mcon.drawing", bottom);
 }
 
 }   // namespace atoms
