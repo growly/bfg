@@ -64,7 +64,7 @@ class Sky130InterconnectMux6 : public Atom {
  public:
   struct Parameters {
     uint32_t num_inputs = 6;
-    std::optional<uint64_t> poly_pitch_nm = 600;
+    std::optional<uint64_t> poly_pitch_nm = 500;
 
     std::optional<uint64_t> vertical_pitch_nm = 400;
 

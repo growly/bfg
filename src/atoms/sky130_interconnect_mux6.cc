@@ -166,6 +166,36 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // and output both the bit and its complement, conveniently. Per description
   // in header, start with left-most gates from the
 
+  //      <------ poly pitch ---->
+  //     v poly 1                 v poly 2
+  //  ---+---->|<--->|<-----|<----+----->
+  //     |  ^    ^       ^        |  ^ met1 via encap
+  //     |  |    |     max offset |
+  //     |  |    |     for next   |
+  //     |  |    |     met1 encap |
+  //     |  |    min met1 sep.    |
+  //     |  met1 via encap
+  //
+  int64_t poly_pitch = db.ToInternalUnits(*parameters_.poly_pitch_nm);
+  int64_t max_offset_from_first_poly_x =
+      poly_pitch - (
+          std::max(
+              db.TypicalViaEncap("met1.drawing", "via1.drawing").length,
+              db.TypicalViaEncap("met1.drawing", "mcon.drawing").length) +
+          db.Rules("met1.drawing").min_separation
+      );
+  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
+
+  // Check met2 spacing. We're putting four vertical lines down, the two outer
+  // pairs are 1 met2 pitch apart, and the middle pair we just figured out:
+  int64_t met2_x_span = met2_pitch  + (
+      poly_pitch - 2 * max_offset_from_first_poly_x) + met2_pitch +
+      db.TypicalViaEncap("met2.drawing", "via1.drawing").width;
+  int64_t horizontal_gap = poly_pitch - (met2_x_span % poly_pitch);
+  LOG_IF(WARNING, horizontal_gap < db.Rules("met2.drawing").min_separation)
+      << "Vertical met2 are probably too close to those in adjacent "
+      << "transmission gates";
+
   size_t c = 0;
   for (geometry::Instance *memory : bottom_memories) {
     size_t gate_number = 2 * c;
@@ -178,8 +208,35 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
-    // TODO(aryap): Parameterise; this is poly_pitch / 2.
-    int64_t vertical_x = p_tab_centre.x() - 340;
+    int64_t vertical_x = p_tab_centre.x() + max_offset_from_first_poly_x;
+
+    // The Q port is always the outer port. We know that from the layout of the
+    // flip-flop, but we could also sort by their x positions if we had to.
+    ConnectVertically(mem_Q->centre(),
+                      p_tab_centre,
+                      vertical_x - met2_pitch,
+                      cell->layout());
+    ConnectVertically(mem_QI->centre(),
+                      n_tab_centre,
+                      vertical_x,
+                      cell->layout());
+
+    ++c;
+  }
+
+  c = 0;
+  for (geometry::Instance *memory : top_memories) {
+    size_t gate_number = 2 * c + 1;
+
+    geometry::Point p_tab_centre = stack->GetPointOrDie(
+        absl::StrFormat("gate_%u_p_tab_centre", gate_number));
+    geometry::Point n_tab_centre = stack->GetPointOrDie(
+        absl::StrFormat("gate_%u_n_tab_centre", gate_number));
+
+    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
+
+    int64_t vertical_x = p_tab_centre.x() - max_offset_from_first_poly_x;
 
     // The Q port is always the outer port. We know that from the layout of the
     // flip-flop, but we could also sort by their x positions if we had to.
@@ -189,7 +246,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
                       cell->layout());
     ConnectVertically(mem_QI->centre(),
                       n_tab_centre,
-                      vertical_x + 680,
+                      vertical_x + met2_pitch,
                       cell->layout());
 
     ++c;
@@ -258,8 +315,6 @@ void Sky130InterconnectMux6::ConnectVertically(
   geometry::Point p1 = {vertical_x, top.y()};
   geometry::Point p2 = {vertical_x, bottom.y()};
 
-  // FIXME(aryap): This is basically an "Add wire" function. We can automate
-  // that.
   layout->MakeVia("mcon.drawing", top);
   layout->MakeAlternatingWire(
       {top, p1, p2, bottom}, "met1.drawing", "met2.drawing");
