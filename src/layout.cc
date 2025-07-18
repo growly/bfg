@@ -399,6 +399,16 @@ void Layout::AddPortByNet(const std::string &name, geometry::Port *port) {
   }
 }
 
+void Layout::DeletePorts(const std::string &name) {
+  // Get the set of ports.
+  geometry::PortSet matching_ports;
+  GetPorts(name, &matching_ports);
+  for (const geometry::Port *port : matching_ports) {
+    delete port;
+  }
+  ports_by_net_.erase(name);
+}
+
 void Layout::GetPorts(
     const std::string &net_name, geometry::PortSet *out) const {
   auto it = ports_by_net_.find(net_name);

@@ -82,6 +82,10 @@ class Layout : public geometry::Manipulable {
   void GetPorts(const std::string &net_name, geometry::PortSet *out)
       const;
 
+  // Deletes all ports on the given net (name). Does NOT delete any other shapes
+  // associated with the port, such as the rectangle on the pin layer.
+  void DeletePorts(const std::string &name);
+
   // Take ownership of all the shapes in the other Layout, deleting them from
   // that Layout as we go. If a name_prefix is given, moved shapes will be
   // renamed with the given prefix at the start.

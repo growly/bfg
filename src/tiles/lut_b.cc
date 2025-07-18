@@ -164,6 +164,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       atoms::Sky130Dfxtp::Parameters params;
       atoms::Sky130Dfxtp generator(params, design_db_);
       Cell *cell = generator.GenerateIntoDatabase(cell_name);
+      cell->layout()->DeletePorts("QI");
 
       geometry::Instance *installed =
           bank.InstantiateRight(assigned_row, instance_name, cell->layout());
