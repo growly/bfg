@@ -36,6 +36,25 @@ bool Point::CompareYThenX(const Point &lhs, const Point &rhs) {
   return lhs.y() < rhs.y();
 }
 
+std::vector<Point*> Point::SortAscendingX(
+    const std::vector<Point*> &input) {
+  std::vector<Point*> sorted = std::vector<Point*>(
+      input.begin(), input.end());
+  std::sort(
+      sorted.begin(), sorted.end(),
+      [&](Point *lhs, Point *rhs) {
+        return CompareX(*lhs, *rhs);
+      });
+  return sorted;
+}
+
+std::vector<Point*> Point::SortDescendingX(
+    const std::vector<Point*> &input) {
+  std::vector<Point*> sorted = SortAscendingX(input);
+  std::reverse(sorted.begin(), sorted.end());
+  return sorted;
+}
+
 bool Point::ShareHorizontalOrVerticalAxis(
     const Point &lhs, const Point &rhs) {
   return lhs.x() == rhs.x() || lhs.y() == rhs.y();

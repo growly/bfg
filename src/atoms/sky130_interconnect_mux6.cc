@@ -166,11 +166,34 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // and output both the bit and its complement, conveniently. Per description
   // in header, start with left-most gates from the
 
-  geometry::Port *memory_out = bottom_memories.back()->GetFirstPortNamed("Q");
-  ConnectVertically(memory_out->centre(),
-                    stack->GetPointOrDie("gate_0_p_tab_centre"),
-                    200,
-                    cell->layout());
+  size_t c = 0;
+  for (geometry::Instance *memory : bottom_memories) {
+    size_t gate_number = 2 * c;
+
+    geometry::Point p_tab_centre = stack->GetPointOrDie(
+        absl::StrFormat("gate_%u_p_tab_centre", gate_number));
+    geometry::Point n_tab_centre = stack->GetPointOrDie(
+        absl::StrFormat("gate_%u_n_tab_centre", gate_number));
+
+    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
+
+    // TODO(aryap): Parameterise; this is poly_pitch / 2.
+    int64_t vertical_x = p_tab_centre.x() - 340;
+
+    // The Q port is always the outer port. We know that from the layout of the
+    // flip-flop, but we could also sort by their x positions if we had to.
+    ConnectVertically(mem_Q->centre(),
+                      p_tab_centre,
+                      vertical_x,
+                      cell->layout());
+    ConnectVertically(mem_QI->centre(),
+                      n_tab_centre,
+                      vertical_x + 680,
+                      cell->layout());
+
+    ++c;
+  }
 
   return cell.release();
 }
@@ -236,28 +259,31 @@ void Sky130InterconnectMux6::ConnectVertically(
   geometry::Point p2 = {vertical_x, bottom.y()};
 
   {
+    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
     ScopedLayer scoped_layer(layout, "met1.drawing");
     geometry::PolyLine bar = geometry::PolyLine({top, p1});
     bar.SetWidth(db.Rules("met1.drawing").min_width);
-    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
+    bar.set_min_separation(db.Rules("met1.drawing").min_separation);
     bar.InsertBulge(top, encap_info.width, encap_info.length);
     bar.InsertBulge(p1, encap_info.width, encap_info.length);
     layout->AddPolyLine(bar);
   }
   {
+    auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
     ScopedLayer scoped_layer(layout, "met2.drawing");
     geometry::PolyLine vertical = geometry::PolyLine({p1, p2});
     vertical.SetWidth(db.Rules("met2.drawing").min_width);
-    auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
+    vertical.set_min_separation(db.Rules("met2.drawing").min_separation);
     vertical.InsertBulge(p1, encap_info.width, encap_info.length);
     vertical.InsertBulge(p2, encap_info.width, encap_info.length);
     layout->AddPolyLine(vertical);
   }
   {
+    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
     ScopedLayer scoped_layer(layout, "met1.drawing");
     geometry::PolyLine bar = geometry::PolyLine({p2, bottom});
     bar.SetWidth(db.Rules("met1.drawing").min_width);
-    auto encap_info = db.TypicalViaEncap("met1.drawing", "via1.drawing");
+    bar.set_min_separation(db.Rules("met1.drawing").min_separation);
     bar.InsertBulge(bottom, encap_info.width, encap_info.length);
     bar.InsertBulge(p2, encap_info.width, encap_info.length);
     layout->AddPolyLine(bar);

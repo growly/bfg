@@ -265,18 +265,14 @@ geometry::Polygon *Sky130TransmissionGate::AddPolyTab(
   // polygon:
   geometry::Vector translator = {0, connector_height};
 
-  layout->SavePoint(
-      absl::StrCat(fet_generator.name(), ".", "poly_tab_ll"),
-      via.lower_left() + translator);
-  layout->SavePoint(
-      absl::StrCat(fet_generator.name(), ".", "poly_tab_ur"),
-      via.upper_right() + translator);
-
+  std::vector<geometry::Point> vertices;
+  geometry::Point final_tab_ll;
+  geometry::Point final_tab_ur;
   switch (position) {
-    case geometry::Compass::UPPER_LEFT:
-    case geometry::Compass::UPPER_RIGHT:
+    case geometry::Compass::UPPER_LEFT:   // Fallthrough intended.
+    case geometry::Compass::UPPER_RIGHT:  // Fallthrough intended.
     case geometry::Compass::UPPER: {
-      std::vector<geometry::Point> vertices = {
+      vertices = {
         geometry::Point(poly_ll.x(), poly_ur.y()),
         geometry::Point(poly_ll.x(), poly_ur.y()) + translator,
         tab_ll + translator,
@@ -286,12 +282,14 @@ geometry::Polygon *Sky130TransmissionGate::AddPolyTab(
         poly_ur + translator,
         poly_ur
       };
-      return layout->AddPolygon(geometry::Polygon(vertices));
+      final_tab_ll = tab_ll + translator;
+      final_tab_ur = tab_ur + translator;
+      break;
     }
-    case geometry::Compass::LOWER_LEFT:
-    case geometry::Compass::LOWER_RIGHT:
+    case geometry::Compass::LOWER_LEFT:   // Fallthrough intended.
+    case geometry::Compass::LOWER_RIGHT:  // Fallthrough intended.
     case geometry::Compass::LOWER: {
-      std::vector<geometry::Point> vertices = {
+       vertices = {
         poly_ll,
         poly_ll - translator,
         geometry::Point(tab_ll.x(), tab_ur.y()) - translator,
@@ -301,12 +299,20 @@ geometry::Polygon *Sky130TransmissionGate::AddPolyTab(
         geometry::Point(poly_ur.x(), poly_ll.y()) - translator,
         geometry::Point(poly_ur.x(), poly_ll.y())
       };
-      return layout->AddPolygon(geometry::Polygon(vertices));
+      final_tab_ll = tab_ll - translator;
+      final_tab_ur = tab_ur - translator;
+      break;
     }
     default:
       LOG(FATAL) << "Unsupported poly tab position: " << position;
   }
-  return nullptr;
+
+  layout->SavePoint(
+      absl::StrCat(fet_generator.name(), ".", "poly_tab_ll"), final_tab_ll);
+  layout->SavePoint(
+      absl::StrCat(fet_generator.name(), ".", "poly_tab_ur"), final_tab_ur);
+
+  return layout->AddPolygon(geometry::Polygon(vertices));
 }
 
 bfg::Cell *Sky130TransmissionGate::Generate() {

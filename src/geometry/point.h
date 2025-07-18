@@ -27,6 +27,11 @@ class Point : public AbstractShape, public Manipulable {
   static bool ShareHorizontalOrVerticalAxis(
       const Point &lhs, const Point &rhs);
 
+  static std::vector<Point*> SortAscendingX(
+      const std::vector<Point*> &input);
+  static std::vector<Point*> SortDescendingX(
+      const std::vector<Point*> &input);
+
   static Point MidpointOf(const Point &lhs, const Point &rhs);
   static Point PickMaxY(const Point &lhs, const Point &rhs);
   static Point PickMinY(const Point &lhs, const Point &rhs);

@@ -48,6 +48,8 @@ TEST(PointTest, Component) {
   EXPECT_EQ(4, test.Component(Radian::kPi / 2));
 }
 
+// TODO(aryap): Test Point::SortAscendingX, Point::SortDescendingY.
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg
