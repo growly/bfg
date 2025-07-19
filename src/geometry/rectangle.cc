@@ -264,19 +264,27 @@ Rectangle Rectangle::BoundingBoxIfRotated(
   return rotated;
 }
 
+void Rectangle::OrderBoundingPoints(Point *lower_left, Point *upper_right) {
+  if (lower_left->x() > upper_right->x()) {
+    lower_left->SwapX(upper_right);
+  }
+  if (lower_left->y() > upper_right->y()) {
+    lower_left->SwapY(upper_right);
+  }
+}
+
 Rectangle Rectangle::WithPadding(int64_t padding) const {
   Point lower_left = lower_left_ - Point {padding, padding};
   Point upper_right = upper_right_ + Point {padding, padding};
-  // Padding can be negative, so check if we've violated the
-  // lower-left/upper-right invariant:
-  if (lower_left.x() > upper_right.x()) {
-    lower_left.set_x((lower_left.x() + upper_right.x()) / 2);
-    upper_right.set_x(lower_left.x());
-  }
-  if (lower_left.y() > upper_right.y()) {
-    lower_left.set_y((lower_left.y() + upper_right.y()) / 2);
-    upper_right.set_y(lower_left.y());
-  }
+  OrderBoundingPoints(&lower_left, &upper_right);
+  return {lower_left, upper_right};
+}
+
+Rectangle Rectangle::WithPadding(
+    int64_t left, int64_t top, int64_t right, int64_t bottom) const {
+  Point lower_left = lower_left_ - Point {left, bottom};
+  Point upper_right = upper_right_ + Point {top, right};
+  OrderBoundingPoints(&lower_left, &upper_right);
   return {lower_left, upper_right};
 }
 

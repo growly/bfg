@@ -88,6 +88,17 @@ class Point : public AbstractShape, public Manipulable {
   void AddComponents(double amount, double angle_rads);
   int64_t Component(double angle_rads) const;
 
+  // This isn't hard to implement with other interface methods, but it sure is
+  // convenient. (Using std::swap hides the irksome inelegance of having a
+  // temporary and doesn't require making the x_ and y_ fields visible to
+  // other classes.)
+  void SwapX(Point *other) {
+    std::swap(x_, other->x_);
+  }
+  void SwapY(Point *other) {
+    std::swap(y_, other->y_);
+  }
+
   // The Length of a point is the length of the Vector from (0, 0) to the Point.
   double Length() const { return L2DistanceTo(Point(0, 0)); }
 

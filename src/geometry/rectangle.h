@@ -98,6 +98,8 @@ class Rectangle : public Shape {
 
   // The rectangle you get if you adding padding to each side of this rectangle.
   Rectangle WithPadding(int64_t padding) const;
+  Rectangle WithPadding(
+      int64_t left, int64_t top, int64_t right, int64_t bottom) const;
 
   // TODO(aryap): To be able to reotate arbitrarily, we have to store the
   // upper_left and lower_right values explicitly OR store the rotation angle so
@@ -141,6 +143,11 @@ class Rectangle : public Shape {
  protected:
   Point lower_left_;
   Point upper_right_;
+
+ private:
+  // Padding can be negative, so check if we've violated the
+  // lower-left/upper-right invariant. Fix points if so.
+  static void OrderBoundingPoints(Point *lower_left, Point *upper_right);
 };
 
 bool operator==(const Rectangle &lhs, const Rectangle &rhs);

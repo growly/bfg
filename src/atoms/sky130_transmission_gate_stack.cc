@@ -179,6 +179,9 @@ void Sky130TransmissionGateStack::BuildSequence(
       .poly_pitch_nm = parameters_.horizontal_pitch_nm,
       .min_poly_boundary_separation_nm =
           parameters_.min_poly_boundary_separation_nm,
+      .pitch_match_to_boundary = false,
+      .tabs_should_avoid_nearest_vias = true,
+      .draw_nwell = false,
       .p_tab_position = geometry::Compass::UPPER,
       .n_tab_position = geometry::Compass::LOWER
     };

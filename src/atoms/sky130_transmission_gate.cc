@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 
+#include "../modulo.h"
 #include "../layout.h"
 #include "../scoped_layer.h"
 #include "../geometry/compass.h"
@@ -647,6 +648,23 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
 
   geometry::Rectangle pre_well_bounds = layout->GetBoundingBox();
 
+  int64_t pad_left = 0;
+  int64_t pad_right = 0;
+  if (parameters_.pitch_match_to_boundary) {
+    int64_t poly_pitch = db.ToInternalUnits(*parameters_.poly_pitch_nm);
+    if (!parameters_.stacks_left) {
+      int64_t left_x = pre_well_bounds.lower_left().x();
+      // left_x is negative:
+      DCHECK(left_x <= 0);
+      pad_left = modulo(left_x, poly_pitch);
+    }
+    if (!parameters_.stacks_right) {
+      int64_t right_x = pre_well_bounds.upper_right().x();
+      DCHECK(right_x >= 0);
+      pad_right = poly_pitch - modulo(right_x, poly_pitch);
+    }
+  }
+
   // TODO(aryap): nwell.drawing has a minimum width that must be considered
   // here. Does it make sense to make the nwell boundary generation a part of
   // the Sky130SimpleTransistor? Otherwise we have to check for min. dimensions
@@ -655,15 +673,20 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
     ScopedLayer layer(layout.get(), "nwell.drawing");
     int64_t nwell_margin = db.Rules(
         "nwell.drawing", "pdiff.drawing").min_enclosure;
-    layout->AddRectangle(PMOSBounds().WithPadding(nwell_margin));
+    geometry::Rectangle nwell = PMOSBounds().WithPadding(
+        pad_left + nwell_margin,   // Left.
+        nwell_margin,              // Top.
+        pad_right + nwell_margin,  // Right.
+        nwell_margin);             // Bottom.
+    layout->AddRectangle(nwell);
   }
 
   // Set tiling bounds.
   {
     int64_t min_y = pre_well_bounds.lower_left().y();
     geometry::Rectangle tiling_bounds = geometry::Rectangle(
-        {pre_well_bounds.lower_left().x(), 0},
-        {pre_well_bounds.upper_right().x(), spacings.cell_height});
+        {pre_well_bounds.lower_left().x() - pad_left, 0},
+        {pre_well_bounds.upper_right().x() + pad_right, spacings.cell_height});
     ScopedLayer layer(layout.get(), "areaid.standardc");
     layout->AddRectangle(tiling_bounds);
     layout->SetTilingBounds(tiling_bounds);

@@ -1,5 +1,6 @@
 #include "sky130_interconnect_mux6.h"
 
+#include "../modulo.h"
 #include "../cell.h"
 #include "../layout.h"
 #include "../memory_bank.h"

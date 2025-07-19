@@ -43,6 +43,8 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> min_poly_boundary_separation_nm;
 
+    bool pitch_match_to_boundary = true;
+
     bool tabs_should_avoid_nearest_vias = true;
 
     bool draw_nwell = false;
