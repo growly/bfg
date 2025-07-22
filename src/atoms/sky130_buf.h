@@ -47,6 +47,12 @@ class Sky130Buf: public Atom {
     uint64_t pfet_1_length_nm = 150;
 
     bool label_pins = true;
+
+    // Add the mcon vias on the VPWR/VGND met1 rails. This can be helpful if
+    // adjacent cells do not conform to being a multiple of a std. cell site
+    // width and so the vias do not line up with those set by cells in adjacent
+    // rows.
+    bool draw_overflowing_vias_and_pins = true;
   };
 
   Sky130Buf(const Parameters &parameters, DesignDatabase *design_db)

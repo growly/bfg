@@ -52,6 +52,12 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
     pb->clear_horizontal_pitch_nm();
   }
 
+  if (poly_pitch_nm) {
+    pb->set_poly_pitch_nm(*poly_pitch_nm);
+  } else {
+    pb->clear_poly_pitch_nm();
+  }
+
   if (min_p_tab_diff_separation_nm) {
     pb->set_min_p_tab_diff_separation_nm(*min_p_tab_diff_separation_nm);
   } else {
@@ -127,6 +133,12 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
     horizontal_pitch_nm.reset();
   }
 
+  if (pb.has_poly_pitch_nm()) {
+    poly_pitch_nm = pb.poly_pitch_nm();
+  } else {
+    poly_pitch_nm.reset();
+  }
+
   if (pb.has_min_p_tab_diff_separation_nm()) {
     min_p_tab_diff_separation_nm = pb.min_p_tab_diff_separation_nm();
   } else {
@@ -176,7 +188,7 @@ void Sky130TransmissionGateStack::BuildSequence(
       .min_cell_height_nm = parameters_.min_height_nm,
       .vertical_tab_pitch_nm = parameters_.vertical_pitch_nm,
       .vertical_tab_offset_nm = parameters_.vertical_pitch_nm.value_or(0) / 2,
-      .poly_pitch_nm = parameters_.horizontal_pitch_nm,
+      .poly_pitch_nm = parameters_.poly_pitch_nm,
       .min_poly_boundary_separation_nm =
           parameters_.min_poly_boundary_separation_nm,
       .pitch_match_to_boundary = false,
@@ -287,6 +299,10 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   std::optional<uint64_t> height;
 
   size_t num_gates = 0;
+
+  int64_t min_spacing = db.Rules("diff.drawing").min_separation;
+
+  row.AddBlankSpaceBack(min_spacing / 2);
   for (size_t i = 0; i < parameters_.sequences.size(); ++i) {
     BuildSequence(parameters_.sequences[i],
                   &num_gates,
@@ -298,18 +314,17 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
                   &n_poly_via_cover);
 
     if (i < parameters_.sequences.size() - 1) {
-      if (parameters_.horizontal_pitch_nm) {
+      if (parameters_.poly_pitch_nm) {
         geometry::Instance *last = row.instances().back();
         if (!last)
           continue;
-        int64_t pitch = db.ToInternalUnits(*parameters_.horizontal_pitch_nm);
+        int64_t pitch = db.ToInternalUnits(*parameters_.poly_pitch_nm);
         int64_t poly_centre_x = last->GetPointOrDie("pmos.poly_centre").x();
         int64_t right_edge_x = last->GetPointOrDie("pmos.diff_upper_right").x();
         int64_t centre_to_edge = right_edge_x - poly_centre_x;
         int64_t remainder = modulo(pitch - (2 * centre_to_edge), pitch);
         row.AddBlankSpaceBack(remainder);
       } else {
-        int64_t min_spacing = db.Rules("diff.drawing").min_separation;
         row.AddBlankSpaceBack(min_spacing);
       }
 
@@ -318,6 +333,21 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       }
     }
   }
+  // Force at least enough space to a nearby cell.
+  row.AddBlankSpaceBack(min_spacing / 2);
+
+  geometry::Rectangle tiling_bounds = cell->layout()->GetTilingBounds();
+
+  if (parameters_.horizontal_pitch_nm) {
+    int64_t pitch = db.ToInternalUnits(*parameters_.horizontal_pitch_nm);
+    // We want std::ceil behaviour:
+    int64_t min_width =
+        (((tiling_bounds.Width() + min_spacing) / pitch) + 1) * pitch;
+    min_spacing = (min_width - tiling_bounds.Width());
+  }
+
+  geometry::Rectangle new_tiling_bounds =
+      tiling_bounds.WithPadding(min_spacing / 2, 0, min_spacing / 2, 0);
 
   // Turn the transmission gates into a single flat layout so that the nsdm/psdm
   // layers can cover their diffusion regions without causing DRC violations.
@@ -325,8 +355,9 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   cell->layout()->EraseLayerByName("areaid.standardc");
   {
     ScopedLayer layer(cell->layout(), "areaid.standardc");
-    cell->layout()->AddRectangle(cell->layout()->GetTilingBounds());
+    cell->layout()->AddRectangle(new_tiling_bounds);
   }
+  cell->layout()->SetTilingBounds(new_tiling_bounds);
 
   // Add nwell.
   if (pdiff_cover) {

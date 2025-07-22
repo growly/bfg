@@ -283,7 +283,7 @@ Rectangle Rectangle::WithPadding(int64_t padding) const {
 Rectangle Rectangle::WithPadding(
     int64_t left, int64_t top, int64_t right, int64_t bottom) const {
   Point lower_left = lower_left_ - Point {left, bottom};
-  Point upper_right = upper_right_ + Point {top, right};
+  Point upper_right = upper_right_ + Point {right, top};
   OrderBoundingPoints(&lower_left, &upper_right);
   return {lower_left, upper_right};
 }

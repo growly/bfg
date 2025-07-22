@@ -8,6 +8,7 @@
 #include "../geometry/compass.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/instance.h"
+#include "sky130_buf.h"
 #include "sky130_tap.h"
 #include "sky130_transmission_gate_stack.h"
 #include "sky130_dfxtp.h"
@@ -43,7 +44,7 @@ Sky130InterconnectMux6::BuildTransmissionGateParams(
 
   Sky130TransmissionGateStack::Parameters params = {
     .sequences = {},
-    .horizontal_pitch_nm = parameters_.poly_pitch_nm,
+    .poly_pitch_nm = parameters_.poly_pitch_nm,
     .min_poly_boundary_separation_nm = FigurePolyBoundarySeparationForMux(
         vertical_neighbour->template_layout())
   };
@@ -97,8 +98,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   cell->SetLayout(new bfg::Layout(db));
 
   atoms::Sky130Tap::Parameters tap_params = {
-    .height_nm = 2720,
-    .width_nm = 460
+    .height_nm = static_cast<uint64_t>(db.ToExternalUnits(2720U)),
+    .width_nm = static_cast<uint64_t>(db.ToExternalUnits(460U))
   };
   atoms::Sky130Tap tap_generator(tap_params, design_db_);
   Cell *tap_cell = tap_generator.GenerateIntoDatabase(
@@ -160,6 +161,26 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         i, instance_name, dfxtp_cell->layout());
     top_memories.push_back(instance);
   }
+
+  // Add spacer for diff separation here instead of in the
+  // TransmissionGateStack. TODO(aryap): Maybe revise this? Is it a problem
+  // that the tiling bounds don't align?
+  //bank.Row(num_ff_bottom).AddBlankSpaceBack(
+  //    db.Rules("diff.drawing").min_separation / 2);
+
+  std::string output_buf_name = "output_buf";
+  int64_t mux_row_height =
+      transmission_gate_stack_cell->layout()->GetTilingBounds().Height();
+  Sky130Buf::Parameters output_buf_params = {
+    .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
+  };
+  Sky130Buf output_buf_generator(output_buf_params, design_db_);
+  Cell *output_buf_cell = output_buf_generator.GenerateIntoDatabase(
+      output_buf_name);
+  geometry::Instance *output_buf_instance = bank.InstantiateRight(
+      num_ff_bottom,
+      absl::StrCat(output_buf_name, "_instance"),
+      output_buf_cell->layout());
 
   // TODO(aryap): Clock buffer, output buffer, decap fillers.
 

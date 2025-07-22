@@ -65,9 +65,13 @@ class Sky130TransmissionGateStack : public Atom {
     // Vertical pitch of ports across the gates, if specified.
     std::optional<uint64_t> vertical_pitch_nm = 400;
 
+    // Horizontal pitch of cell. Usually the width of the smallest site in the
+    // std. cell library.
+    std::optional<uint64_t> horizontal_pitch_nm = 460;
+
     // Horizontal pitch of ports across the gates. Will force transistor spacing
     // as well.
-    std::optional<uint64_t> horizontal_pitch_nm = 600;
+    std::optional<uint64_t> poly_pitch_nm = 600;
 
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;

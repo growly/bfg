@@ -151,9 +151,9 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
 
-  uint64_t width =
+  int64_t width =
       design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
-  uint64_t height =
+  int64_t height =
       design_db_->physical_db().ToInternalUnits(parameters_.height_nm);
 
   // areaid.standardc 81/4
@@ -168,6 +168,33 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   layout->AddRectangle(Rectangle(Point(0, -240), width, 480));
 
   layout->AddRectangle(Rectangle(Point(0, height - 240), width, 480));
+
+  // diff.drawing 65/20
+  // Diffusion. Intersection with gate material layer defines gate size.
+  // nsdm/psdm define N/P-type diffusion.
+  layout->SetActiveLayerByName("diff.drawing");
+  // nfet_0
+  uint64_t x0_width =
+      design_db_->physical_db().ToInternalUnits(parameters_.nfet_0_width_nm);
+  Rectangle *x0_diff = layout->AddRectangle(
+      {Point(135, 235), Point(135 + 410 + 145, 235 + x0_width)});
+  // nfet_1
+  uint64_t x2_width =
+      design_db_->physical_db().ToInternalUnits(parameters_.nfet_1_width_nm);
+  Rectangle *x2_diff = layout->AddRectangle(
+      {Point(135 + 410 + 145, 235), Point(1245, 235 + x2_width)});
+  // pfet_0
+  uint64_t x1_width =
+      design_db_->physical_db().ToInternalUnits(parameters_.pfet_0_width_nm);
+  Rectangle *x1_diff = layout->AddRectangle(
+      {Point(135, height - 235 - x1_width),
+       Point(135 + 410 + 145, height - 235)});
+  // pfet_1
+  uint64_t x3_width =
+      design_db_->physical_db().ToInternalUnits(parameters_.pfet_1_width_nm);
+  Rectangle *x3_diff = layout->AddRectangle(
+      {Point(135 + 410 + 145, height - 235 - x3_width),
+       Point(1245, height - 235)});
 
   // li.drawing 67/20
   // The first "metal" layer.
@@ -186,8 +213,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(670, 805),
                               Point(670, 1535),
                               Point(165, 1535),
-                              Point(165, 2465),
-                              Point(345, 2465),
+                              Point(165, height - 255),
+                              Point(345, height - 255),
                               Point(345, 1705),
                               Point(840, 1705),
                               Point(840, 1390),
@@ -206,30 +233,39 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(1115, 760),
                               Point(1115, 1560),
                               Point(1025, 1560),
-                              Point(1025, 2465),
-                              Point(1295, 2465),
+                              Point(1025, height - (2720 - 2465)),
+                              Point(1295, height - (2720 - 2465)),
                               Point(1295, 255)}));
 
-  layout->AddPolygon(Polygon({Point(525, 1875),
-                              Point(525, 2635),
-                              Point(0, 2635),
-                              Point(0, 2805),
-                              Point(1380, 2805),
-                              Point(1380, 2635),
-                              Point(855, 2635),
-                              Point(855, 1875)}));
+  layout->AddPolygon(Polygon({Point(525, height - (2720 - 1875)),
+                              Point(525, height - (2720 - 2635)),
+                              Point(0, height - (2720 - 2635)),
+                              Point(0, height - (2720 - 2805)),
+                              Point(1380, height - (2720 - 2805)),
+                              Point(1380, height - (2720 - 2635)),
+                              Point(855, height - (2720 - 2635)),
+                              Point(855, height - (2720 - 1875))}));
 
   // mcon.drawing 67/44
-  // Metal to li1.drawing contacts (VPWR side).
-  layout->SetActiveLayerByName("mcon.drawing");
-  layout->AddRectangle(Rectangle(Point(145, 2635), Point(315, 2805)));
-  layout->AddRectangle(Rectangle(Point(605, 2635), Point(775, 2805)));
-  layout->AddRectangle(Rectangle(Point(1065, 2635), Point(1235, 2805)));
+  if (parameters_.draw_overflowing_vias_and_pins) {
+    // Metal to li1.drawing contacts (VPWR side).
+    layout->MakeVia("mcon.drawing", {230,  static_cast<int64_t>(height)});
+    layout->MakeVia("mcon.drawing", {690,  static_cast<int64_t>(height)});
+    layout->MakeVia("mcon.drawing", {1150, static_cast<int64_t>(height)});
 
-  // Metal to li1.drawing contacts (VGND side).
-  layout->AddRectangle(Rectangle(Point(145, -85), Point(315, 85)));
-  layout->AddRectangle(Rectangle(Point(605, -85), Point(775, 85)));
-  layout->AddRectangle(Rectangle(Point(1065, -85), Point(1235, 85)));
+    // Metal to li1.drawing contacts (VGND side).
+    layout->MakeVia("mcon.drawing", {230, 0});
+    layout->MakeVia("mcon.drawing", {690, 0});
+    layout->MakeVia("mcon.drawing", {1150, 0});
+
+    // nwell.pin 64/16
+    layout->SetActiveLayerByName("nwell.pin");
+    layout->AddSquare({230, static_cast<int64_t>(height)}, 170);
+
+    // pwell.pin 122/16
+    layout->SetActiveLayerByName("pwell.pin");
+    layout->AddSquare({240, 0}, 170);
+  }
 
   // licon.drawing 66/44
   // Contacts from li layer to diffusion.
@@ -239,14 +275,18 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   layout->AddRectangle(Rectangle(Point(775, 1140), Point(945, 1310)));
 
   // TODO(aryap): These are a function of transistor width.
-  layout->AddSquare(Point(260, 2300), 170);
-  layout->AddSquare(Point(260, 1960), 170);
+  layout->MakeVia("licon.drawing", {260, x1_diff->upper_right().y() - 185});
+  layout->MakeVia(
+      "licon.drawing", {260, x1_diff->upper_right().y() - 340 - 185});
 
-  layout->AddSquare(Point(690, 2300), 170);
-  layout->AddSquare(Point(690, 1960), 170);
+  // TODO(aryap): Also actually depends on x1 _and_ x3 position!
+  layout->MakeVia("licon.drawing", {690, x1_diff->upper_right().y() - 185});
+  layout->MakeVia(
+      "licon.drawing", {690, x1_diff->upper_right().y() - 340 - 185});
 
-  layout->AddSquare(Point(1120, 2300), 170);
-  layout->AddSquare(Point(1120, 1895), 170);
+  layout->MakeVia("licon.drawing", {1120, x1_diff->upper_right().y() - 185});
+  layout->MakeVia(
+      "licon.drawing", {1120, x1_diff->upper_right().y() - 340 - 185});
 
   // TODO(aryap): So are these!
   layout->AddSquare(Point(260, 445), 170);
@@ -276,8 +316,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(365, 1325),
                               Point(365, 1620),
                               Point(395, 1620),
-                              Point(395, 2615),
-                              Point(545, 2615),
+                              Point(395, height - 105),
+                              Point(545, height - 105),
                               Point(545, 1500),
                               Point(515, 1500),
                               Point(515, 950),
@@ -289,8 +329,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
                               Point(725, 1060),
                               Point(725, 1390),
                               Point(835, 1390),
-                              Point(835, 2615),
-                              Point(985, 2615),
+                              Point(835, height - 105),
+                              Point(985, height - 105),
                               Point(985, 1390),
                               Point(995, 1390),
                               Point(995, 1060),
@@ -299,48 +339,17 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
 
   // nsdm.drawing 93/44
   layout->SetActiveLayerByName("psdm.drawing");
-  layout->AddRectangle({{0, 1420}, {1380, 2910}});
+  layout->AddRectangle(
+      {{0, height - (2720 - 1420)}, {1380, height - (2720 - 2910)}});
 
   // psdm.drawing 94/20
   layout->SetActiveLayerByName("nsdm.drawing");
   layout->AddRectangle({{0, -190}, {1380, 1015}});
 
-  // diff.drawing 65/20
-  // Diffusion. Intersection with gate material layer defines gate size.
-  // nsdm/psdm define N/P-type diffusion.
-  layout->SetActiveLayerByName("diff.drawing");
-  // nfet_0
-  uint64_t x0_width =
-      design_db_->physical_db().ToInternalUnits(parameters_.nfet_0_width_nm);
-  layout->AddRectangle(Rectangle(Point(135, 235),
-                                 Point(135 + 410 + 145, 235 + x0_width)));
-  // nfet_1
-  uint64_t x2_width =
-      design_db_->physical_db().ToInternalUnits(parameters_.nfet_1_width_nm);
-  layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 235),
-                                 Point(1245, 235 + x2_width)));
-  // pfet_0
-  uint64_t x1_width =
-      design_db_->physical_db().ToInternalUnits(parameters_.pfet_0_width_nm);
-  layout->AddRectangle(Rectangle(Point(135, 1695),
-                                 Point(135 + 410 + 145, 1695 + x1_width)));
-  // pfet_1
-  uint64_t x3_width =
-      design_db_->physical_db().ToInternalUnits(parameters_.pfet_1_width_nm);
-  layout->AddRectangle(Rectangle(Point(135 + 410 + 145, 1695),
-                                 Point(1245, 1695 + x3_width)));
-
-  // nwell.pin 64/16
-  layout->SetActiveLayerByName("nwell.pin");
-  layout->AddRectangle({{145, 2635}, {315, 2805}});
-
   // nwell.drawing 64/20
   layout->SetActiveLayerByName("nwell.drawing");
-  layout->AddRectangle({{-190, 1305}, {1570 , 2910}});
-
-  // pwell.pin 122/16
-  layout->SetActiveLayerByName("pwell.pin");
-  layout->AddRectangle({{155, -85}, {325 , 85}});
+  layout->AddRectangle(
+      {{-190, height - (2720 - 1305)}, {1570 , height - (2720 - 2910)}});
 
   // li.pin
   layout->SetActiveLayerByName("li.pin");
@@ -363,12 +372,14 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
     pin->set_net("X");
   }
   pin = layout->AddRectangleAsPort(
-      Rectangle(Point(1055, 1785), Point(1225, 1955)), "X");
+      Rectangle(Point(1055, height - (2720 - 1785)),
+                Point(1225, height - (2720 - 1955))), "X");
   if (parameters_.label_pins) {
     pin->set_net("X");
   }
   pin = layout->AddRectangleAsPort(
-      Rectangle(Point(1055, 2125), Point(1225, 2295)), "X");
+      Rectangle(Point(1055, height - (2720 - 2125)),
+                Point(1225, height - (2720 - 2295))), "X");
   if (parameters_.label_pins) {
     pin->set_net("X");
   }
