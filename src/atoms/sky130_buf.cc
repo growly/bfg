@@ -302,7 +302,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
 
   // hvtp.drawing 78/44
   layout->SetActiveLayerByName("hvtp.drawing");
-  layout->AddRectangle(Rectangle(Point(0, 1250), Point(1380, 2720)));
+  layout->AddRectangle(
+      {Point(0, height - (2720 - 1250)), Point(1380, height)});
 
   // poly.drawing 66/20
   // Polysilicon, more generally gate material.

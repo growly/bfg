@@ -162,12 +162,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     top_memories.push_back(instance);
   }
 
-  // Add spacer for diff separation here instead of in the
-  // TransmissionGateStack. TODO(aryap): Maybe revise this? Is it a problem
-  // that the tiling bounds don't align?
-  //bank.Row(num_ff_bottom).AddBlankSpaceBack(
-  //    db.Rules("diff.drawing").min_separation / 2);
-
+  // The output buffer goes at the end of the transmission gate stack.
   std::string output_buf_name = "output_buf";
   int64_t mux_row_height =
       transmission_gate_stack_cell->layout()->GetTilingBounds().Height();
@@ -182,7 +177,23 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       absl::StrCat(output_buf_name, "_instance"),
       output_buf_cell->layout());
 
-  // TODO(aryap): Clock buffer, output buffer, decap fillers.
+  // The input clock buffers go next to the middle flip flop on the top and
+  // bottom side.
+  std::string clk_buf_name = "clk_buf";
+  Sky130Buf::Parameters clk_buf_params = {};
+  Sky130Buf clk_buf_generator(clk_buf_params, design_db_);
+  Cell *clk_buf_cell = clk_buf_generator.GenerateIntoDatabase(clk_buf_name);
+  geometry::Instance *clk_buf_top = bank.InstantiateRight(
+      num_ff_bottom + 1 + (num_ff_top / 2),   // The middle row on top.
+      absl::StrCat(clk_buf_name, "_top"),
+      clk_buf_cell->layout());
+  geometry::Instance *clk_buf_bottom = bank.InstantiateRight(
+      num_ff_bottom / 2,   // The middle row on the bottom.
+      absl::StrCat(clk_buf_name, "_bottom"),
+      clk_buf_cell->layout());
+
+
+  // TODO(aryap): Clock buffer, decap fillers.
 
   // Connect flip-flop outputs to transmission gates. Flip-flops store one bit
   // and output both the bit and its complement, conveniently. Per description
