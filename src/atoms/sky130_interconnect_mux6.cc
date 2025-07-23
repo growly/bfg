@@ -12,6 +12,7 @@
 #include "sky130_tap.h"
 #include "sky130_transmission_gate_stack.h"
 #include "sky130_dfxtp.h"
+#include "sky130_decap.h"
 
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_cat.h>
@@ -146,7 +147,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       generator.GenerateIntoDatabase(template_name);
   bank.Row(num_ff_bottom).clear_tap_cell();
   // Width of a tap, above.
-  bank.Row(num_ff_bottom).AddBlankSpaceAndInsertFront(460);
+  //bank.Row(num_ff_bottom).AddBlankSpaceAndInsertFront(460);
   geometry::Instance *stack = bank.InstantiateRight(
       num_ff_bottom, instance_name, transmission_gate_stack_cell->layout());
 
@@ -192,8 +193,58 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       absl::StrCat(clk_buf_name, "_bottom"),
       clk_buf_cell->layout());
 
+  // Decaps!
+  std::string right_decap_name = "decap_right";
+  Sky130Decap::Parameters right_decap_params;
+  Sky130Decap right_decap_generator(right_decap_params, design_db_);
+  Cell *right_decap_cell =
+      right_decap_generator.GenerateIntoDatabase(right_decap_name);
+  std::set<size_t> skip_rows = {
+      num_ff_bottom + 1 + (num_ff_top / 2),   // The middle row on top.
+      num_ff_bottom / 2,   // The middle row on the bottom.
+      num_ff_bottom,  // The transmission gate row (~middle).
+  };
+  for (size_t i = 0; i < num_ff + 1; ++i) {
+    // Skip transmission gate row.
+    if (skip_rows.find(i) != skip_rows.end()) {
+      continue;
+    }
+    geometry::Instance *decap = bank.InstantiateRight(
+        i,
+        absl::StrCat(right_decap_name, "_", i),
+        right_decap_cell->layout());
+  }
 
-  // TODO(aryap): Clock buffer, decap fillers.
+  std::string left_decap_name = "decap_left";
+  Sky130Decap::Parameters left_decap_params = {
+    .width_nm = 8 * 460   // TODO(aryap): Parameterise.
+  };
+  Sky130Decap left_decap_generator(left_decap_params, design_db_);
+  Cell *left_decap_cell =
+      left_decap_generator.GenerateIntoDatabase(left_decap_name);
+  for (size_t i = 0; i < num_ff + 1; ++i) {
+    if (i == num_ff_bottom) {
+      // Skip transmission gate row. It needs its own.
+      continue;
+    }
+    geometry::Instance *decap = bank.InstantiateLeft(
+        i,
+        absl::StrCat(left_decap_name, "_", i),
+        left_decap_cell->layout());
+  }
+
+  std::string special_decap_name = "decap_special";
+  Sky130Decap::Parameters special_decap_params = {
+    .width_nm = 9 * 460,   // TODO(aryap): Parameterise.
+    .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
+  };
+  Sky130Decap special_decap_generator(special_decap_params, design_db_);
+  Cell *special_decap_cell =
+      special_decap_generator.GenerateIntoDatabase(special_decap_name);
+  geometry::Instance *decap = bank.InstantiateLeft(
+      num_ff_bottom,
+      absl::StrCat(special_decap_name, "_0"),
+      special_decap_cell->layout());
 
   // Connect flip-flop outputs to transmission gates. Flip-flops store one bit
   // and output both the bit and its complement, conveniently. Per description
