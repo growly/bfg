@@ -285,10 +285,12 @@ const InterLayerConstraints &PhysicalPropertiesDatabase::Rules(
   const auto layers = OrderLayers(left, right);
   const auto first_it = inter_layer_constraints_.find(layers.first);
   LOG_IF(FATAL, first_it == inter_layer_constraints_.end())
-      << "No inter-layer constraints for " << left << "/" << right;
+      << "No inter-layer constraints for " << DescribeLayer(left)
+      << "/" << DescribeLayer(right);
   const auto second_it = first_it->second.find(layers.second);
   LOG_IF(FATAL, second_it == first_it->second.end())
-      << "No inter-layer constraints for " << left << "/" << right;
+      << "No inter-layer constraints for " << DescribeLayer(left)
+      << "/" << DescribeLayer(right);
   return second_it->second;
 }
 

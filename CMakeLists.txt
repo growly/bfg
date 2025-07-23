@@ -82,15 +82,16 @@ set(TILES_SRC
 
 set(SKY130_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_decap.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
-  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_mux.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_hd_mux2_1.cc
-  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_tap.cc
-  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_switch_complex.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_interconnect_mux6.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_mux.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_switch_complex.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_tap.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate_stack.cc
-  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_interconnect_mux6.cc
 )
 
 set(GF180_ATOMS_SRC

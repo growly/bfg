@@ -494,13 +494,6 @@ void Layout::AlignPointTo(const geometry::Point &reference,
 }
 
 geometry::Rectangle *Layout::MakeVia(
-    const std::string &layer_name,
-    const geometry::Point &centre,
-    const std::optional<std::string> &net) {
-  return MakeVia(physical_db_.GetLayer(layer_name), centre, net);
-}
-
-geometry::Rectangle *Layout::MakeVia(
     const geometry::Layer &layer,
     const geometry::Point &centre,
     const std::optional<std::string> &net) {
@@ -512,6 +505,55 @@ geometry::Rectangle *Layout::MakeVia(
   }
   RestoreLastActiveLayer();
   return via;
+}
+
+void Layout::DistributeVias(const geometry::Layer &via_layer,
+                            const geometry::Point &start,
+                            const geometry::Point &end,
+                            const std::optional<std::string> &net) {
+  const PhysicalPropertiesDatabase &db = physical_db_;
+  const auto &rules = db.Rules(via_layer);
+
+  // Assume vias are square, so take max side dimension:
+  int64_t side = std::max(rules.via_width, rules.via_height);
+  int64_t min_separation = rules.min_separation;
+
+  int64_t nominal_pitch = side + min_separation;
+
+  geometry::Line axis(start, end);
+  int64_t length = axis.Length();
+  // Rely on std::floor behaviour (truncating integer division).
+  int64_t num_vias = length / nominal_pitch;
+  int64_t spacing = (length - (num_vias * side)) / num_vias;
+
+  double distance = spacing / 2 + side / 2;
+  for (int i = 0; i < num_vias; ++i) {
+    geometry::Point centre = axis.PointOnLineAtDistance(distance);
+    MakeVia(via_layer, centre, net);
+    distance += side + spacing;
+  }
+}
+
+void Layout::StampVias(const geometry::Layer &layer,
+                       const geometry::Point &start,
+                       const geometry::Point &end,
+                       int64_t pitch,
+                       const std::optional<std::string> &net) {
+  const PhysicalPropertiesDatabase &db = physical_db_;
+  const auto &rules = db.Rules(layer);
+
+  // Assume vias are square, so take max side dimension:
+  int64_t side = std::max(rules.via_width, rules.via_height);
+
+  geometry::Line axis(start, end);
+  double length = axis.Length();
+
+  double distance = (pitch - side) / 2;
+  while (distance + side <= length) {
+    geometry::Point centre = axis.PointOnLineAtDistance(distance + side / 2);
+    MakeVia(layer, centre, net);
+    distance += pitch;
+  }
 }
 
 void Layout::MakePort(

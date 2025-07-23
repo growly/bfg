@@ -96,6 +96,9 @@ class Line {
 
   Point PointOnLineAtDistance(const Point &start, double distance) const;
 
+  // Find a point on the line at the given distance from the start_.
+  Point PointOnLineAtDistance(double distance) const;
+
   Point PointOnInfiniteLineClosestTo(const Point &mark) {
     return PointOnLineClosestTo(mark, true);
   }

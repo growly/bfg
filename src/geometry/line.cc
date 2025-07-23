@@ -425,6 +425,10 @@ double Line::Length() const {
   return start_.L2DistanceTo(end_);
 }
 
+Point Line::PointOnLineAtDistance(double distance) const {
+  return PointOnLineAtDistance(start_, distance);
+}
+
 Point Line::PointOnLineAtDistance(const Point &start, double distance) const {
   LOG_IF(WARNING, !Intersects(start))
       << "Point " << start << " is not on this line";

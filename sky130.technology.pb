@@ -767,9 +767,9 @@ fill_block²Hbª
 nwellZ
 drawing²@ª
 nwellZ
-pin²@ª
+pin²@ª 
 nwellZ	
-label²@ª
+label²@Ê@ª
 nwellZ
 net²Tª
 overlapZ
@@ -828,9 +828,9 @@ prBoundaryZ
 pwdeZ
 drawing²|ª
 pwellZ
-pin²zª
+pin²zª 
 pwellZ	
-label²@;ª
+label²@;Êzª
 pwellZ
 res²@ª
 r1cZ

@@ -22,10 +22,12 @@
 #include "atoms/sky130_transmission_gate.h"
 #include "atoms/sky130_transmission_gate_stack.h"
 #include "atoms/sky130_mux.h"
+#include "atoms/sky130_decap.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
 
+#include "proto/parameters/sky130_decap.pb.h"
 #include "proto/parameters/sky130_interconnect_mux6.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
@@ -84,6 +86,25 @@ bool ReadTextProtoOrDie(
   return google::protobuf::TextFormat::ParseFromString(ss.str(), message_pb);
 }
 
+namespace { 
+
+template<typename ProtoParam, typename GeneratorParam, typename Generator>
+bfg::Cell *ReadParamsAndGenerate(
+    const std::string &generator_name,
+    const std::string &parameter_pb_path,
+    bfg::DesignDatabase *design_db) {
+  ProtoParam params_pb;
+  ReadTextProtoOrDie(parameter_pb_path, &params_pb);
+
+  GeneratorParam params;
+  params.FromProto(params_pb);
+
+  Generator generator(params, design_db);
+  return generator.GenerateIntoDatabase(generator_name);
+}
+
+}  // namespace
+
 int RunGenerator(
     const std::string &generator_name,
     const std::string &parameter_pb_path,
@@ -91,32 +112,25 @@ int RunGenerator(
     bfg::DesignDatabase *design_db) {
   bfg::Cell *cell;
   if (generator_name == "Sky130TransmissionGate") {
-    bfg::proto::parameters::Sky130TransmissionGate params_pb;
-    ReadTextProtoOrDie(parameter_pb_path, &params_pb);
-
-    bfg::atoms::Sky130TransmissionGate::Parameters params;
-    params.FromProto(params_pb);
-
-    bfg::atoms::Sky130TransmissionGate generator(params, design_db);
-    cell = generator.GenerateIntoDatabase(generator_name);
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130TransmissionGate,
+        bfg::atoms::Sky130TransmissionGate::Parameters,
+        bfg::atoms::Sky130TransmissionGate>(generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130TransmissionGateStack") {
-    bfg::proto::parameters::Sky130TransmissionGateStack params_pb;
-    ReadTextProtoOrDie(parameter_pb_path, &params_pb);
-
-    bfg::atoms::Sky130TransmissionGateStack::Parameters params;
-    params.FromProto(params_pb);
-
-    bfg::atoms::Sky130TransmissionGateStack generator(params, design_db);
-    cell = generator.GenerateIntoDatabase(generator_name);
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130TransmissionGateStack,
+        bfg::atoms::Sky130TransmissionGateStack::Parameters,
+        bfg::atoms::Sky130TransmissionGateStack>(generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130InterconnectMux6") {
-    bfg::proto::parameters::Sky130InterconnectMux6 params_pb;
-    ReadTextProtoOrDie(parameter_pb_path, &params_pb);
-
-    bfg::atoms::Sky130InterconnectMux6::Parameters params;
-    params.FromProto(params_pb);
-
-    bfg::atoms::Sky130InterconnectMux6 generator(params, design_db);
-    cell = generator.GenerateIntoDatabase(generator_name);
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130InterconnectMux6,
+        bfg::atoms::Sky130InterconnectMux6::Parameters,
+        bfg::atoms::Sky130InterconnectMux6>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130Decap") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130Decap,
+        bfg::atoms::Sky130Decap::Parameters,
+        bfg::atoms::Sky130Decap>(generator_name, parameter_pb_path, design_db);
   } else {
     LOG(ERROR) << "Unrecognised generator name: " << generator_name;
     return EXIT_FAILURE;

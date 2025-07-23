@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package bfg.proto.parameters;
+
+import "proto/compass_direction.proto";
+
+message Sky130Decap {
+    optional uint64 width_nm = 1;
+    optional uint64 height_nm = 2;
+
+    // 3, 4 reserved for fet_model_{length,width}_parameter.
+
+    optional uint64 nfet_0_width_nm = 5;
+    optional uint64 pfet_0_width_nm = 6;
+    optional uint64 nfet_0_length_nm = 7;
+    optional uint64 pfet_0_length_nm = 8;
+
+    optional bool label_pins = 9;
+    optional bool draw_overflowing_vias_and_pins = 10;
+}

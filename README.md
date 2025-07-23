@@ -235,7 +235,8 @@ a `.local` installation for the project instead of the entire system.
 ## Making tech protos
 
 ```
-protoc --proto_path=vlsir/ --encode vlsir.tech.Technology vlsir/tech.proto < gf180mcu.technology.pb.txt > gf180mcu.technology.pb
+protoc --proto_path=vlsir/protos/ --encode vlsir.tech.Technology vlsir/protos/tech.proto < sky130.technology.pb.txt > sky130.technology.pb
+protoc --proto_path=vlsir/protos/ --encode vlsir.tech.Technology vlsir/protos/tech.proto < gf180mcu.technology.pb.txt > gf180mcu.technology.pb
 ```
 
 ## Testing the router service

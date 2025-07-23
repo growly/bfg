@@ -3690,6 +3690,10 @@ layers {
     major: 64
     minor: 5
   }
+  labels {
+    major: 64
+    minor: 16
+  }
 }
 layers {
   name: "nwell"
@@ -3986,6 +3990,10 @@ layers {
   index {
     major: 64
     minor: 59
+  }
+  labels {
+    major: 122
+    minor: 16
   }
 }
 layers {

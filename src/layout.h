@@ -103,13 +103,52 @@ class Layout : public geometry::Manipulable {
   void AlignPointTo(
       const geometry::Point &reference, const geometry::Point &target);
 
+  // TODO(aryap): Doubling all these functions for both the string and textual
+  // representation of a layer is annoying. Any of these might be better:
+  // 1) Make all API calls exclusively use the human-readable string version.
+  // 2) Make a fancy LayerRef that can contain either a number or a string and
+  // use that to reference layers everywhere.
+  // 3) That could just become the layer class, actually. Except that having a
+  // simple integer representation internally is a worthy thing to keep.
   geometry::Rectangle *MakeVia(
       const std::string &layer_name,
       const geometry::Point &centre,
-      const std::optional<std::string> &net = std::nullopt);
+      const std::optional<std::string> &net = std::nullopt) {
+    return MakeVia(physical_db_.GetLayer(layer_name), centre, net);
+  }
   geometry::Rectangle *MakeVia(
       const geometry::Layer &layer,
       const geometry::Point &centre,
+      const std::optional<std::string> &net = std::nullopt);
+
+  void DistributeVias(
+      const std::string &via_layer,
+      const geometry::Point &start,
+      const geometry::Point &end,
+      const std::optional<std::string> &net = std::nullopt) {
+    return DistributeVias(physical_db_.GetLayer(via_layer), start, end, net);
+  }
+  void DistributeVias(
+      const geometry::Layer &via_layer,
+      const geometry::Point &start,
+      const geometry::Point &end,
+      const std::optional<std::string> &net = std::nullopt);
+
+  // Stamps out vias every given pitch, starting half that pitch in from the
+  // starting point, until the end.
+  void StampVias(
+      const std::string &via_layer,
+      const geometry::Point &start,
+      const geometry::Point &end,
+      int64_t pitch,
+      const std::optional<std::string> &net = std::nullopt) {
+    return StampVias(physical_db_.GetLayer(via_layer), start, end, pitch, net);
+  }
+  void StampVias(
+      const geometry::Layer &layer,
+      const geometry::Point &start,
+      const geometry::Point &end,
+      int64_t pitch,
       const std::optional<std::string> &net = std::nullopt);
 
   void MakePort(const std::string &net_name,
