@@ -66,6 +66,13 @@ struct InterLayerConstraints {
   int64_t min_enclosure;
   int64_t min_extension;
 
+  // Sometimes there are rules that say enclosure "min enclosure on one of two
+  // adjacent sides", meaning that orthogonal directions have different rules,
+  // like for example licon.5a and licon.5c in Skywater 130.  This is also
+  // regularly the case with via overlaps below, but we already made
+  // "via_overhang" and "via_overhang_wide" for those two cases. 
+  int64_t min_enclosure_alt;
+
   // (Another way to express this is as min_enclosure on all sides and an
   // 'overhang' in one axis, obviating the need for one of these.)
   int64_t via_overhang;

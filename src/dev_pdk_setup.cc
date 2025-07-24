@@ -139,8 +139,10 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("li.drawing", "licon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = db->ToInternalUnits(40),
-    // This is minimum enclosure in 1 direction?
+    // licon.5c
     .min_enclosure = db->ToInternalUnits(60),
+    // licon.5a
+    .min_enclosure_alt = db->ToInternalUnits(40),
     .via_overhang = db->ToInternalUnits(40),
   };
   db->AddRules("ndiff.drawing", "pcon.drawing", inter_constraints);

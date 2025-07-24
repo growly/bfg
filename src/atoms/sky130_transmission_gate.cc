@@ -667,7 +667,7 @@ bfg::Layout *Sky130TransmissionGate::GenerateLayout() {
 
   // TODO(aryap): nwell.drawing has a minimum width that must be considered
   // here. Does it make sense to make the nwell boundary generation a part of
-  // the Sky130SimpleTransistor? Otherwise we have to check for min. dimensions
+  // the Sky130SimpleTransistor? If not we have to check for min. dimensions
   // everywhere.
   if (parameters_.draw_nwell) {
     ScopedLayer layer(layout.get(), "nwell.drawing");

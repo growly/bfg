@@ -361,6 +361,8 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   // Add nwell.
   if (pdiff_cover) {
+    // FIXME(aryap): These need an nwell.pin and the nwell.drawing has to cover
+    // it. Same with pwell.pin.
     int64_t psdm_margin = db.Rules(
         "psdm.drawing", "pdiff.drawing").min_enclosure;
     {

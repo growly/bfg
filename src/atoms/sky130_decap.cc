@@ -160,10 +160,19 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
         layout->AddRectangle({{0, height - 240}, {width, height + 240}});
   }
 
+  int64_t ncon_width = std::max(
+      db.Rules("ncon.drawing").via_width,
+      db.Rules("ncon.drawing").via_height);
+
   int64_t poly_separation = db.Rules("poly.drawing").min_separation;
   int64_t poly_to_edge = poly_separation / 2;
-  int64_t diff_to_poly = db.Rules(
-      "poly.drawing", "ndiff.drawing").min_extension;
+
+  const auto &ncon_ndiff_rules = db.Rules("ncon.drawing", "ndiff.drawing");
+  int64_t diff_to_poly = std::max(
+      db.Rules("poly.drawing", "ndiff.drawing").min_extension,
+      ncon_ndiff_rules.min_enclosure + ncon_ndiff_rules.min_enclosure_alt +
+          ncon_width);
+
   int64_t poly_to_diff = db.Rules(
       "poly.drawing", "ndiff.drawing").min_enclosure;
   int64_t diff_to_edge = db.Rules("diff.drawing").min_separation / 2;
@@ -200,22 +209,77 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
   int64_t poly_polycon_overhang = std::max(
       db.Rules("poly.drawing", "polycon.drawing").via_overhang,
       db.Rules("poly.drawing", "polycon.drawing").via_overhang_wide);
-  int64_t ncon_width = std::max(
-      db.Rules("ncon.drawing").via_width,
-      db.Rules("ncon.drawing").via_height);
   int64_t li_rail_width = std::max(
       db.Rules("li.drawing").min_width +
           2 * db.Rules("li.drawing", "ncon.drawing").via_overhang_wide,
       ncon_width);
 
+  int64_t upper_poly_under_diff_x_min = pdiff->lower_left().x() + diff_to_poly;
+  int64_t upper_poly_under_diff_y_min = pdiff->lower_left().y() - poly_to_diff;
+  int64_t upper_poly_under_diff_x_max = pdiff->upper_right().x() - diff_to_poly;
+  int64_t upper_poly_under_diff_y_max = pdiff->upper_right().y() + poly_to_diff;
+
+  int64_t lower_poly_under_diff_x_min = ndiff->lower_left().x() + diff_to_poly;
+  int64_t lower_poly_under_diff_y_min = ndiff->lower_left().y() - poly_to_diff;
+  int64_t lower_poly_under_diff_x_max = ndiff->upper_right().x() - diff_to_poly;
+  int64_t lower_poly_under_diff_y_max = ndiff->upper_right().y() + poly_to_diff;
+
+  int64_t upper_poly_tab_y_min = lower_poly_under_diff_y_max + poly_separation;
+  int64_t lower_poly_tab_y_max = upper_poly_under_diff_y_min - poly_separation;
+
+  int64_t poly_tab_width = (width - 2 * poly_separation) / 2;
+
+  int64_t upper_poly_tab_x_min = poly_to_edge;
+  int64_t upper_poly_tab_x_max = upper_poly_tab_x_min + poly_tab_width;
+
+  int64_t lower_poly_tab_x_max = width - poly_to_edge;
+  int64_t lower_poly_tab_x_min = lower_poly_tab_x_max - poly_tab_width;
+
+  {
+    ScopedLayer scoped_layer(layout.get(), "poly.drawing");
+
+    layout->AddPolygon({{
+        {upper_poly_under_diff_x_min, upper_poly_under_diff_y_max},  // UL
+        {upper_poly_under_diff_x_max, upper_poly_under_diff_y_max},  // UR
+        {upper_poly_under_diff_x_max, upper_poly_under_diff_y_min},  // LR
+        {upper_poly_tab_x_max, upper_poly_under_diff_y_min},
+        {upper_poly_tab_x_max, upper_poly_tab_y_min},
+        {upper_poly_tab_x_min, upper_poly_tab_y_min},
+        {upper_poly_tab_x_min, upper_poly_under_diff_y_min},
+        {upper_poly_under_diff_x_min, upper_poly_under_diff_y_min},
+    }});
+
+    layout->AddPolygon({{
+        {lower_poly_under_diff_x_min, lower_poly_under_diff_y_min},
+        {lower_poly_under_diff_x_min, lower_poly_under_diff_y_max},
+        {lower_poly_tab_x_min, lower_poly_under_diff_y_max},
+        {lower_poly_tab_x_min, lower_poly_tab_y_max},
+        {lower_poly_tab_x_max, lower_poly_tab_y_max},
+        {lower_poly_tab_x_max, lower_poly_under_diff_y_max},
+        {lower_poly_under_diff_x_max, lower_poly_under_diff_y_max},
+        {lower_poly_under_diff_x_max, lower_poly_under_diff_y_min}
+    }});
+  }
+
+  // Add vias to connect poly and li layers.
+  layout->MakeVia("polycon.drawing",
+      {upper_poly_tab_x_min + ncon_width / 2 + poly_polycon_overhang,
+       upper_poly_tab_y_min + ncon_width / 2 + poly_polycon_overhang});
+  layout->MakeVia("polycon.drawing",
+      {lower_poly_tab_x_max - ncon_width / 2 - poly_polycon_overhang,
+       lower_poly_tab_y_max - ncon_width / 2 - poly_polycon_overhang});
+
   int64_t bottom_li_rail_y_high = li_rail_width / 2;
   int64_t top_li_rail_y_low = height - li_rail_width / 2;
-  int64_t bottom_li_pour_y_high =
+  int64_t bottom_li_pour_y_high = std::max(
       ndiff->upper_right().y() + poly_to_diff + poly_polycon_overhang +
-      poly_separation + ncon_width;
-  int64_t top_li_pour_y_low =
+          poly_separation + ncon_width,
+      upper_poly_under_diff_y_min - poly_polycon_overhang);
+
+  int64_t top_li_pour_y_low = std::min(
       pdiff->lower_left().y() - poly_to_diff - poly_polycon_overhang -
-      poly_separation - ncon_width;
+          poly_separation - ncon_width,
+      lower_poly_under_diff_y_max + poly_polycon_overhang);
 
   int64_t li_notch_width = (width - 2 * li_separation) / 2;
 
@@ -255,93 +319,41 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
     }});
   }
 
-  int64_t upper_poly_under_diff_x_min = pdiff->lower_left().x() + diff_to_poly;
-  int64_t upper_poly_under_diff_y_min = pdiff->lower_left().y() - poly_to_diff;
-  int64_t upper_poly_under_diff_x_max = pdiff->upper_right().x() - diff_to_poly;
-  int64_t upper_poly_under_diff_y_max = pdiff->upper_right().y() + poly_to_diff;
-
-  int64_t lower_poly_under_diff_x_min = ndiff->lower_left().x() + diff_to_poly;
-  int64_t lower_poly_under_diff_y_min = ndiff->lower_left().y() - poly_to_diff;
-  int64_t lower_poly_under_diff_x_max = ndiff->upper_right().x() - diff_to_poly;
-  int64_t lower_poly_under_diff_y_max = ndiff->upper_right().y() + poly_to_diff;
-
-  int64_t upper_poly_tab_y_min = lower_poly_under_diff_y_max + poly_separation;
-  int64_t lower_poly_tab_y_max = upper_poly_under_diff_y_min - poly_separation;
-
-  int64_t poly_tab_width = (width - 2 * poly_separation) / 2;
-
-  int64_t upper_poly_tab_x_min = poly_to_edge;
-  int64_t upper_poly_tab_x_max = upper_poly_tab_x_min + poly_tab_width;
-
-  int64_t lower_poly_tab_x_max = width - poly_to_edge;
-  int64_t lower_poly_tab_x_min = lower_poly_tab_x_max - poly_tab_width;
-
-  {
-    ScopedLayer scoped_layer(layout.get(), "poly.drawing");
-
-    layout->AddPolygon({{
-        {upper_poly_under_diff_x_min, upper_poly_under_diff_y_max},   // Upper-left.
-        {upper_poly_under_diff_x_max, upper_poly_under_diff_y_max},   // Upper-right.
-        {upper_poly_under_diff_x_max, upper_poly_under_diff_y_min},   // Lower-right.
-        {upper_poly_tab_x_max, upper_poly_under_diff_y_min},
-        {upper_poly_tab_x_max, upper_poly_tab_y_min},
-        {upper_poly_tab_x_min, upper_poly_tab_y_min},
-        {upper_poly_tab_x_min, upper_poly_under_diff_y_min},
-        {upper_poly_under_diff_x_min, upper_poly_under_diff_y_min},
-    }});
-
-    layout->AddPolygon({{
-        {lower_poly_under_diff_x_min, lower_poly_under_diff_y_min},
-        {lower_poly_under_diff_x_min, lower_poly_under_diff_y_max},
-        {lower_poly_tab_x_min, lower_poly_under_diff_y_max},
-        {lower_poly_tab_x_min, lower_poly_tab_y_max},
-        {lower_poly_tab_x_max, lower_poly_tab_y_max},
-        {lower_poly_tab_x_max, lower_poly_under_diff_y_max},
-        {lower_poly_under_diff_x_max, lower_poly_under_diff_y_max},
-        {lower_poly_under_diff_x_max, lower_poly_under_diff_y_min}
-    }});
-  }
-
-  // Add vias to connect poly and li layers.
-  layout->MakeVia("polycon.drawing",
-      {upper_poly_tab_x_min + ncon_width / 2 + poly_polycon_overhang,
-       upper_poly_tab_y_min + ncon_width / 2 + poly_polycon_overhang});
-  layout->MakeVia("polycon.drawing",
-      {lower_poly_tab_x_max - ncon_width / 2 - poly_polycon_overhang,
-       lower_poly_tab_y_max - ncon_width / 2 - poly_polycon_overhang});
-
-  int64_t ncon_centre_to_diff_edge =
-      db.Rules("ncon.drawing", "ndiff.drawing").min_enclosure +
+  int64_t ncon_centre_to_diff_edge_x =
+      std::min(ncon_ndiff_rules.min_enclosure,
+               ncon_ndiff_rules.min_enclosure_alt) +
       ncon_width / 2;
 
   // FIXME(aryap): I think these are too close to the polys? But my magic is
   // broken :@
   layout->DistributeVias(
       "pcon.drawing",
-      {pdiff->lower_left().x() + ncon_centre_to_diff_edge,
+      {pdiff->lower_left().x() + ncon_centre_to_diff_edge_x,
           pdiff->lower_left().y()},
-      {pdiff->lower_left().x() + ncon_centre_to_diff_edge,
+      {pdiff->lower_left().x() + ncon_centre_to_diff_edge_x,
           pdiff->upper_right().y()});
   layout->DistributeVias(
       "pcon.drawing",
-      {pdiff->upper_right().x() - ncon_centre_to_diff_edge,
+      {pdiff->upper_right().x() - ncon_centre_to_diff_edge_x,
           pdiff->lower_left().y()},
-      {pdiff->upper_right().x() - ncon_centre_to_diff_edge,
+      {pdiff->upper_right().x() - ncon_centre_to_diff_edge_x,
           pdiff->upper_right().y()});
 
   layout->DistributeVias(
       "ncon.drawing",
-      {ndiff->lower_left().x() + ncon_centre_to_diff_edge,
+      {ndiff->lower_left().x() + ncon_centre_to_diff_edge_x,
           ndiff->lower_left().y()},
-      {ndiff->lower_left().x() + ncon_centre_to_diff_edge,
+      {ndiff->lower_left().x() + ncon_centre_to_diff_edge_x,
           ndiff->upper_right().y()});
   layout->DistributeVias(
       "pcon.drawing",
-      {ndiff->upper_right().x() - ncon_centre_to_diff_edge,
+      {ndiff->upper_right().x() - ncon_centre_to_diff_edge_x,
           ndiff->lower_left().y()},
-      {ndiff->upper_right().x() - ncon_centre_to_diff_edge,
+      {ndiff->upper_right().x() - ncon_centre_to_diff_edge_x,
           ndiff->upper_right().y()});
 
+  Rectangle *nwell_pin = nullptr;
+  Rectangle *pwell_pin = nullptr;
   if (parameters_.draw_overflowing_vias_and_pins) {
     layout->StampVias(
         "mcon.drawing",
@@ -359,7 +371,7 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
     int64_t pin_x = parameters_.mcon_via_pitch / 2;
     // nwell.pin 64/16
     layout->SetActiveLayerByName("nwell.pin");
-    Rectangle *nwell_pin =
+    nwell_pin =
         layout->AddSquare({pin_x, vpwr_rectangle->centre().y()}, mcon_side);
     nwell_pin->set_net("VPB");
 
@@ -369,6 +381,35 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
         layout->AddSquare({pin_x, vgnd_rectangle->centre().y()}, mcon_side);
     // FIXME(aryap): This breaks proto2gds?
     //pwell_pin->set_net("VNB");
+  }
+
+  int64_t nwell_y_max = nwell_pin ? nwell_pin->upper_right().y() : height;
+  {
+    ScopedLayer scoped_layer(layout.get(), "nwell.drawing");
+    int64_t nwell_margin = db.Rules(
+        "nwell.drawing", "pdiff.drawing").min_enclosure;
+    Rectangle nwell_rectangle = pdiff->WithPadding(nwell_margin);
+    // Extend the nwell to the top of the cell.
+    nwell_rectangle.upper_right().set_y(nwell_y_max);
+    layout->AddRectangle(nwell_rectangle);
+  }
+  {
+    ScopedLayer layer(layout.get(), "psdm.drawing");
+    int64_t psdm_margin = db.Rules(
+        "psdm.drawing", "pdiff.drawing").min_enclosure;
+    Rectangle psdm_rectangle = pdiff->WithPadding(psdm_margin);
+    psdm_rectangle.upper_right().set_y(nwell_y_max);
+    layout->AddRectangle(psdm_rectangle);
+  }
+
+  int64_t psdm_y_min = pwell_pin ? pwell_pin->lower_left().y() : 0;
+  {
+    ScopedLayer layer(layout.get(), "nsdm.drawing");
+    int64_t nsdm_margin = db.Rules(
+        "nsdm.drawing", "ndiff.drawing").min_enclosure;
+    Rectangle nsdm_rectangle = ndiff->WithPadding(nsdm_margin);
+    nsdm_rectangle.lower_left().set_y(psdm_y_min);
+    layout->AddRectangle(nsdm_rectangle);
   }
 
   return layout.release();
