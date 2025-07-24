@@ -51,6 +51,8 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .min_separation = db->ToInternalUnits(170),
     .min_width = db->ToInternalUnits(170),
     .min_pitch = db->ToInternalUnits(170 + 170 + 80),
+    // 0.0561 um^2 = 56100 nm^2.
+    .min_area = db->ToInternalUnits(56100)
   };
   db->AddRules("li.drawing", intra_constraints);
   intra_constraints = {
@@ -156,6 +158,9 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .min_enclosure = db->ToInternalUnits(130),
     .via_overhang = db->ToInternalUnits(40),
   };
+  // TODO(aryap): What is this? Is it for the tap? ncon, pcon and polycon are
+  // all just licon (see above). Have to find where this is used to determine
+  // what I meant.
   db->AddRules("ndiff.drawing", "polycon.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {

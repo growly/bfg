@@ -305,6 +305,12 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
                       vertical_x,
                       cell->layout());
 
+    // Add a polycon (licon) and an li pad between the poly tab and the mcon via
+    // that connects to the routes we just put down. To avoid the nearest poly
+    // tab, these stick outward.
+    AddPolyconAndLi(p_tab_centre, true, cell->layout());
+    AddPolyconAndLi(n_tab_centre, false, cell->layout());
+
     ++c;
   }
 
@@ -332,6 +338,9 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
                       n_tab_centre,
                       vertical_x + met2_pitch,
                       cell->layout());
+
+    AddPolyconAndLi(p_tab_centre, true, cell->layout());
+    AddPolyconAndLi(n_tab_centre, false, cell->layout());
 
     ++c;
   }
@@ -403,6 +412,35 @@ void Sky130InterconnectMux6::ConnectVertically(
   layout->MakeAlternatingWire(
       {top, p1, p2, bottom}, "met1.drawing", "met2.drawing");
   layout->MakeVia("mcon.drawing", bottom);
+}
+
+void Sky130InterconnectMux6::AddPolyconAndLi(
+    const geometry::Point tab_centre,
+    bool bulges_up,
+    bfg::Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  geometry::Rectangle *via = layout->MakeVia("polycon.drawing", tab_centre);
+
+  int64_t max_overhang = std::max(
+      db.Rules("polycon.drawing", "li.drawing").via_overhang,
+      db.Rules("polycon.drawing", "li.drawing").via_overhang_wide);
+  int64_t min_overhang = std::min(
+      db.Rules("polycon.drawing", "li.drawing").via_overhang,
+      db.Rules("polycon.drawing", "li.drawing").via_overhang_wide);
+
+  int64_t width = 2 * max_overhang + via->Width();
+  int64_t remaining_side = std::ceil(static_cast<double>(
+      db.Rules("li.drawing").min_area) / static_cast<double>(width)) -
+      via->Height();
+
+  geometry::Rectangle li_pour = via->WithPadding(
+      max_overhang,
+      bulges_up ? remaining_side : min_overhang,
+      max_overhang,
+      bulges_up ? min_overhang : remaining_side);
+  ScopedLayer scoped_layer(layout, "li.drawing");
+  layout->AddRectangle(li_pour);
 }
 
 }   // namespace atoms

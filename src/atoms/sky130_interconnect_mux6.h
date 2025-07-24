@@ -94,6 +94,9 @@ class Sky130InterconnectMux6 : public Atom {
                          const geometry::Point &bottom,
                          int64_t vertical_x,
                          bfg::Layout *layout) const;
+  void AddPolyconAndLi(const geometry::Point tab_centre,
+                       bool bulges_up,
+                       bfg::Layout *layout) const;
 
   Parameters parameters_;
 };
