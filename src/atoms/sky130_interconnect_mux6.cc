@@ -217,7 +217,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   std::string left_decap_name = "decap_left";
   Sky130Decap::Parameters left_decap_params = {
-    .width_nm = 8 * 460   // TODO(aryap): Parameterise.
+    .width_nm = parameters_.vertical_routing_channel_width_nm.value_or(1380)
   };
   Sky130Decap left_decap_generator(left_decap_params, design_db_);
   Cell *left_decap_cell =
@@ -234,8 +234,11 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   }
 
   std::string special_decap_name = "decap_special";
+  uint64_t special_decap_width_nm =
+      parameters_.vertical_routing_channel_width_nm.value_or(1380) +
+      tap_params.width_nm;
   Sky130Decap::Parameters special_decap_params = {
-    .width_nm = 9 * 460,   // TODO(aryap): Parameterise.
+    .width_nm = special_decap_width_nm,
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
   };
   Sky130Decap special_decap_generator(special_decap_params, design_db_);

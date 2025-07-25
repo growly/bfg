@@ -401,6 +401,14 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
     psdm_rectangle.upper_right().set_y(nwell_y_max);
     layout->AddRectangle(psdm_rectangle);
   }
+  {
+    ScopedLayer layer(layout.get(), "hvtp.drawing");
+    int64_t hvtp_margin = db.Rules(
+        "hvtp.drawing", "pdiff.drawing").min_enclosure;
+    Rectangle hvtp_rectangle = pdiff->WithPadding(hvtp_margin);
+    hvtp_rectangle.upper_right().set_y(nwell_y_max);
+    layout->AddRectangle(hvtp_rectangle);
+  }
 
   int64_t psdm_y_min = pwell_pin ? pwell_pin->lower_left().y() : 0;
   {

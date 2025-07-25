@@ -52,7 +52,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .min_width = db->ToInternalUnits(170),
     .min_pitch = db->ToInternalUnits(170 + 170 + 80),
     // 0.0561 um^2 = 56100 nm^2.
-    .min_area = db->ToInternalUnits(56100)
+    .min_area = db->ToSquareInternalUnits(56100)
   };
   db->AddRules("li.drawing", intra_constraints);
   intra_constraints = {
@@ -97,6 +97,19 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   // Lazy:
   db->AddRules("met2.drawing", intra_constraints);
   db->AddRules("met3.drawing", intra_constraints);
+
+  intra_constraints = {
+    .min_separation = db->ToInternalUnits(380),
+    .min_width = db->ToInternalUnits(380),
+    // 0.265 um^2 = 265000 nm^2.
+    .min_area = db->ToSquareInternalUnits(265000)
+  };
+  db->AddRules("hvtp.drawing", intra_constraints);
+
+  intra_constraints = {
+    .min_width = db->ToInternalUnits(840)
+  };
+  db->AddRules("nwell.drawing", intra_constraints);
 
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = db->ToInternalUnits(55),
@@ -187,7 +200,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("tap.drawing", "licon.drawing", inter_constraints);
   intra_constraints = {
     // 0.07011 um^2 = 70110 nm^2.
-    .min_area = db->ToInternalUnits(70110)
+    .min_area = db->ToSquareInternalUnits(70110)
   };
   db->AddRules("tap.drawing", intra_constraints);
   // TODO(growly): Need to alias these layer names so that they apply to any
@@ -219,10 +232,12 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
                                                 // value?
   };
   db->AddRules("tap.drawing", "nwell.drawing", inter_constraints);
-  intra_constraints = {
-    .min_width = db->ToInternalUnits(840)
+
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(180),
+    .min_enclosure = db->ToInternalUnits(180)
   };
-  db->AddRules("nwell.drawing", intra_constraints);
+  db->AddRules("hvtp.drawing", "pdiff.drawing", inter_constraints);
 
   db->AddViaLayer("ndiff.drawing", "li.drawing", "licon.drawing");
   db->AddViaLayer("pdiff.drawing", "li.drawing", "licon.drawing");

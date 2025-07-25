@@ -68,6 +68,8 @@ class Sky130InterconnectMux6 : public Atom {
 
     std::optional<uint64_t> vertical_pitch_nm = 400;
 
+    std::optional<uint64_t> vertical_routing_channel_width_nm = 8 * 460;
+
     void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
   };

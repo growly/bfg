@@ -385,6 +385,17 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       }
       cell->layout()->AddRectangle(nwell_rectangle);
     }
+    int64_t hvtp_margin = db.Rules(
+        "hvtp.drawing", "pdiff.drawing").min_enclosure;
+    {
+      ScopedLayer layer(cell->layout(), "hvtp.drawing");
+      geometry::Rectangle hvtp_rectangle =
+          pdiff_cover->WithPadding(hvtp_margin);
+      if (parameters_.expand_wells_to_vertical_bounds) {
+        hvtp_rectangle.upper_right().set_y(row.UpperRight().y());
+      }
+      cell->layout()->AddRectangle(hvtp_rectangle);
+    }
   }
   if (ndiff_cover) {
     ScopedLayer layer(cell->layout(), "nsdm.drawing");
