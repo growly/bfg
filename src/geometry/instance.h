@@ -104,6 +104,9 @@ class Instance : public Manipulable {
   // deleted; we should pass out copies of the Port or shared_ptrs.
   //
   // Find the port named 'name', without the instance name prefix.
+  //
+  // TODO(aryap): Replace or supplement this with
+  // PortSet GetPorts(const std::string &name);
   void GetInstancePorts(const std::string &name, std::vector<Port*> *out) {
     PortSet ports = Port::MakePortSet();
     GetInstancePorts(name, &ports);

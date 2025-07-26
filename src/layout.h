@@ -25,7 +25,9 @@ using geometry::ShapeCollection;
 
 class Cell;
 
-// TODO(growly): Do we want this facility?
+// TODO(growly): Do we want this facility? Ok we do, but it's more convenient
+// to just use one argument per parameter instead of this struct. TODO(aryap):
+// Delete.
 struct LayoutPadding {
   int64_t left;
   int64_t top;
@@ -35,6 +37,10 @@ struct LayoutPadding {
 
 class Layout : public geometry::Manipulable {
  public:
+  struct ViaToSomeLayer {
+    geometry::Point centre;
+    std::string layer_name;
+  };
 
   Layout() = delete;
   Layout(const PhysicalPropertiesDatabase &physical_db)
@@ -160,6 +166,17 @@ class Layout : public geometry::Manipulable {
       const std::vector<geometry::Point> &points,
       const std::string &first_layer_name,
       const std::string &second_layer_name);
+
+  void MakeWire(
+      const std::vector<geometry::Point> &points,
+      const std::string &wire_layer_name,
+      const std::optional<std::string> &start_layer_name = std::nullopt,
+      const std::optional<std::string> &end_layer_name = std::nullopt);
+
+  void MakeWire(
+      const std::vector<geometry::Point> &points,
+      const std::string &wire_layer_name,
+      const std::vector<ViaToSomeLayer> vias);
 
   // Add the layout of every instance to the this layout directly, removing one
   // layer of hierarchy. To flatten completely, this must be called repeatedly

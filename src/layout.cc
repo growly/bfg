@@ -581,20 +581,21 @@ void Layout::MakeAlternatingWire(
   const geometry::Layer first_layer = physical_db_.GetLayer(first_layer_name);
   const geometry::Layer second_layer = physical_db_.GetLayer(second_layer_name);
 
-  struct HopInfo {
+  struct WireHopInfo {
     const geometry::Layer &layer;
     const ViaEncapInfo &encap_info;
     int64_t min_width;
     int64_t min_separation;
   };
-  std::array<HopInfo, 2> hop_infos = {
-    HopInfo {
+
+  std::array<WireHopInfo, 2> hop_infos = {
+    WireHopInfo {
       .layer = first_layer,
       .encap_info = physical_db_.TypicalViaEncap(first_layer, via_layer),
       .min_width = physical_db_.Rules(first_layer).min_width,
       .min_separation = physical_db_.Rules(first_layer).min_separation
     },
-    HopInfo {
+    WireHopInfo {
       .layer = second_layer,
       .encap_info = physical_db_.TypicalViaEncap(second_layer, via_layer),
       .min_width = physical_db_.Rules(second_layer).min_width,
@@ -607,7 +608,7 @@ void Layout::MakeAlternatingWire(
     geometry::Point last = *(next_it - 1);
     geometry::Point next = *next_it;
 
-    const HopInfo &hop = hop_infos[i % 2];
+    const WireHopInfo &hop = hop_infos[i % 2];
     ++i;  // So tempting to put this inline as i++. SO tempting.
 
     ScopedLayer scoped_layer(this, hop.layer);
@@ -623,6 +624,60 @@ void Layout::MakeAlternatingWire(
       MakeVia(via_layer, next);
     }
   }
+}
+
+void Layout::MakeWire(
+    const std::vector<geometry::Point> &points,
+    const std::string &wire_layer_name,
+    const std::optional<std::string> &start_layer_name,
+    const std::optional<std::string> &end_layer_name) {
+  std::vector<ViaToSomeLayer> vias;
+
+  if (start_layer_name) {
+    vias.push_back({
+        .centre = points.front(),
+        .layer_name = *start_layer_name
+    });
+  }
+
+  if (end_layer_name) {
+    vias.push_back({
+        .centre = points.back(),
+        .layer_name = *end_layer_name
+    });
+  }
+
+  MakeWire(points, wire_layer_name, vias);
+}
+
+void Layout::MakeWire(
+    const std::vector<geometry::Point> &points,
+    const std::string &wire_layer_name,
+    const std::vector<ViaToSomeLayer> vias) {
+  LOG_IF(FATAL, points.empty())
+      << "Why you wanna make a empty wire like that?";
+
+  const geometry::Layer wire_layer = physical_db_.GetLayer(wire_layer_name);
+  const auto &wire_rules = physical_db_.Rules(wire_layer);
+
+  geometry::PolyLine wire(points);
+  wire.SetWidth(wire_rules.min_width);
+  wire.set_min_separation(wire_rules.min_separation);
+
+  for (const auto &directive : vias) {
+    const geometry::Layer destination_layer =
+        physical_db_.GetLayer(directive.layer_name);
+    const geometry::Layer via_layer = physical_db_.GetViaLayerOrDie(
+        destination_layer, wire_layer);
+    const ViaEncapInfo encap_info =
+        physical_db_.TypicalViaEncap(wire_layer, via_layer);
+
+    wire.InsertBulge(directive.centre, encap_info.width, encap_info.length);
+    MakeVia(via_layer, directive.centre);
+  }
+
+  ScopedLayer sl(this, wire_layer);
+  AddPolyLine(wire);
 }
 
 void Layout::Flatten() {

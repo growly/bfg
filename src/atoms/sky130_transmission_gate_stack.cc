@@ -1,5 +1,8 @@
 #include "sky130_transmission_gate_stack.h"
 
+#include <cstdint>
+#include <memory>
+#include <map>
 #include <absl/strings/str_format.h>
 
 #include "../modulo.h"
@@ -168,6 +171,7 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
 void Sky130TransmissionGateStack::BuildSequence(
     const std::vector<std::string> &net_sequence,
     size_t *gates_so_far,
+    std::map<std::string, size_t> *net_counts,
     bfg::Cell *cell,
     RowGuide *row,
     std::optional<geometry::Rectangle> *pdiff_cover,
@@ -176,6 +180,12 @@ void Sky130TransmissionGateStack::BuildSequence(
     std::optional<geometry::Rectangle> *n_poly_via_cover) {
   const size_t num_gates = net_sequence.empty() ?
       0 : (net_sequence.size() - 1) / 2;
+
+  std::optional<uint64_t> min_via_distance_nm;
+  if (parameters_.num_horizontal_channels) {
+    min_via_distance_nm = *parameters_.num_horizontal_channels *
+                          parameters_.li_via_pitch.value_or(340);
+  }
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
@@ -191,6 +201,7 @@ void Sky130TransmissionGateStack::BuildSequence(
       .poly_pitch_nm = parameters_.poly_pitch_nm,
       .min_poly_boundary_separation_nm =
           parameters_.min_poly_boundary_separation_nm,
+      .min_furthest_via_distance_nm = min_via_distance_nm,
       .pitch_match_to_boundary = false,
       .tabs_should_avoid_nearest_vias = true,
       .draw_nwell = false,
@@ -216,7 +227,7 @@ void Sky130TransmissionGateStack::BuildSequence(
     // on the origin_ set in the Generator, whereas we usually want to
     // manipulate the origin_ of an Instance, i.e. what the RowGuid does. So
     // most of the precomputed properties available through the Generator are
-    // useless here.
+    // useless here. So, great. Nice work. Whatever.
     geometry::Instance *instance = row->InstantiateBack(
         instance_name, transmission_gate->layout());
 
@@ -224,8 +235,6 @@ void Sky130TransmissionGateStack::BuildSequence(
     const std::string &left_net = net_sequence[2 * i];
     const std::string &gate_net = net_sequence[2 * i + 1];
     const std::string &right_net = net_sequence[2 * i + 2];
-
-    LOG(INFO) << left_net << ", " << gate_net << ", " << right_net;
 
     geometry::Point pmos_ll = instance->GetPointOrDie("pmos.diff_lower_left");
     geometry::Point pmos_ur = instance->GetPointOrDie(
@@ -260,19 +269,21 @@ void Sky130TransmissionGateStack::BuildSequence(
     geometry::Point bottom =
         instance->GetPointOrDie("nmos.via_left_diff_lower");
 
-    ConnectDiffs(generator, top, bottom, left_net, cell->layout());
+    ConnectDiffs(generator, top, bottom, left_net, net_counts, cell->layout());
 
     if (i == num_gates - 1) {
       top = instance->GetPointOrDie("pmos.via_right_diff_upper");
       bottom = instance->GetPointOrDie("nmos.via_right_diff_lower");
-      ConnectDiffs(generator, top, bottom, right_net, cell->layout());
+      ConnectDiffs(
+          generator, top, bottom, right_net, net_counts, cell->layout());
     }
 
+    size_t k = i + *gates_so_far;
     cell->layout()->SavePoint(
-        absl::StrFormat("gate_%u_p_tab_centre", i + *gates_so_far),
+        absl::StrFormat("gate_%u_p_tab_centre", k),
         (*p_via_ll + *p_via_ur) / 2);
     cell->layout()->SavePoint(
-        absl::StrFormat("gate_%u_n_tab_centre", i + *gates_so_far),
+        absl::StrFormat("gate_%u_n_tab_centre", k),
         (*n_via_ll + *n_via_ur) / 2);
   }
 
@@ -302,10 +313,13 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   int64_t min_spacing = db.Rules("diff.drawing").min_separation;
 
+  std::map<std::string, size_t> net_counts;
+
   row.AddBlankSpaceBack(min_spacing / 2);
   for (size_t i = 0; i < parameters_.sequences.size(); ++i) {
     BuildSequence(parameters_.sequences[i],
                   &num_gates,
+                  &net_counts,
                   cell.get(),
                   &row,
                   &pdiff_cover,
@@ -423,9 +437,6 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
     cell->layout()->AddRectangle(n_poly_via_cover->WithPadding(npc_margin));
   }
 
-//  cell->SetLayout(GenerateLayout());
-//  cell->SetCircuit(GenerateCircuit());
-//
   return cell.release();
 }
 
@@ -434,6 +445,7 @@ void Sky130TransmissionGateStack::ConnectDiffs(
     const geometry::Point &top,
     const geometry::Point &bottom,
     const std::string &net,
+    std::map<std::string, size_t> *net_counts,
     Layout *layout) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
@@ -472,6 +484,23 @@ void Sky130TransmissionGateStack::ConnectDiffs(
   line.set_net(net);
 
   layout->AddPolyLine(line);
+
+  if (parameters_.add_ports) {
+    const auto &via_rules = db.Rules(kMetalViaLayer);
+    const auto &metal_via_rules = db.Rules(kMetalLayer, kMetalViaLayer);
+
+    geometry::Rectangle pin = geometry::Rectangle::CentredAt(
+        (top + bottom) / 2, via_rules.via_width, via_rules.via_height);
+    ScopedLayer sl(layout, kMetalPinLayer);
+    layout->AddRectangleAsPort(pin, net);
+  }
+
+  size_t count = (*net_counts)[net];
+  layout->SavePoint(absl::StrFormat("net_%s_via_top_%u", net, count), top);
+  layout->SavePoint(
+      absl::StrFormat("net_%s_via_bottom_%u", net, count),
+      bottom);
+  (*net_counts)[net] = count + 1;
 }
 
 }  // namespace atoms

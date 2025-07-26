@@ -43,6 +43,9 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> min_poly_boundary_separation_nm;
 
+    // The minimum distance between the two furthest-apart vias.
+    std::optional<uint64_t> min_furthest_via_distance_nm;
+
     bool pitch_match_to_boundary = true;
 
     bool tabs_should_avoid_nearest_vias = true;
@@ -244,7 +247,8 @@ class Sky130TransmissionGate : public Atom {
   int64_t FigureNMOSUpperTabConnectorHeight(int64_t nmos_poly_top_y) const;
   int64_t FigurePMOSLowerTabConnectorHeight() const;
   int64_t FigurePMOSUpperTabConnectorHeight(int64_t pmos_poly_top_y) const;
-  int64_t FigureCMOSGap(int64_t current_y) const;
+  int64_t FigureCMOSGap(
+      int64_t nmos_centre_y, int64_t current_y) const;
 
   int64_t FigureTopPadding(int64_t pmos_poly_top_y) const;
 

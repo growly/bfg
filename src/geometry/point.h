@@ -109,6 +109,19 @@ class Point : public AbstractShape, public Manipulable {
   // a point representing a vector from (0, 0).
   Point Project(const Point &other) const;
 
+  bool IsStrictlyLeftOf(const Point &other) const {
+    return x_ < other.x_;
+  }
+  bool IsLeftOf(const Point &other) const {
+    return x_ <= other.x_;
+  }
+  bool IsStrictlyRightOf(const Point &other) const {
+    return x_ > other.x_;
+  }
+  bool IsRightOf(const Point &other) const {
+    return x_ >= other.x_;
+  }
+
   // Treating this point as a vector from (0, 0) to (x_, y_), and likewise
   // treating the other point as a vector from (0, 0) to (x_, y_), return the
   // dot product of the vectors.

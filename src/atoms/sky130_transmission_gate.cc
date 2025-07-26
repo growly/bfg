@@ -400,7 +400,8 @@ int64_t Sky130TransmissionGate::NextYOnGrid(int64_t current_y) const {
 // TODO(aryap): This assumes that the PMOS to diff separation rule is the same
 // as the PMOS to diff minimum enclosure rule. That's probably not true in all
 // PDKs.
-int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
+int64_t Sky130TransmissionGate::FigureCMOSGap(
+    int64_t nmos_centre_y, int64_t current_y) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
   int64_t nwell_ndiff_separation = db.Rules(
@@ -413,8 +414,9 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
   //              |    |  diff
   //         -----|    |-----
   //           ^  |    |     ^ poly overhang
-  //     min   |  +----+     V
-  //     diff. |
+  //           |  +----+     v
+  //     min   |          ^
+  //     diff. | CMOS gap v
   //     sep.  |  +----+     ^ poly overhang
   //           v  |    |     v
   //         -----|    |-----
@@ -426,6 +428,53 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(int64_t current_y) const {
           current_y - static_cast<int64_t>(nfet_generator_->PolyOverhangTop()) +
               min_diff_separation -
               static_cast<int64_t>(pfet_generator_->PolyOverhangBottom()));
+
+  // The user can also specify a minimum separation distance between the two
+  // furthest vias on N- and PMOS diffs.
+  //
+  //              |    |
+  //         +----|    |----+
+  //         | ^  |    |  diff
+  //         | |  |    |    |
+  //         +-|--|    |----+
+  //     min   |  |    |     ^ poly overhang
+  // furthest  |  +----+     v
+  //     via   |
+  //     sep.  |  +----+     ^ poly overhang
+  //           |  |    |     v
+  //         +-|--|    |----+
+  //         | |  |    |    |
+  //         | v  |    |  diff
+  //         +----|    |----+
+  //
+  // We calculate it as follows. Given the current estimate of the gap, figure
+  // where the two vias would end up. The Sky130SimpleTransistor will report
+  // their positions as configured, relative to the origin_, which the centre
+  // of the transistor. The difference between their separation
+  // and the desired separation is added to the minimum gap requirement.
+  //
+  // (Unfortunately we also have to contend with the fact that the PMOS might
+  // need to be offset by a tab below it. We have to do a similar thing for the
+  // NMOS side.)
+  if (parameters_.min_furthest_via_distance_nm) {
+    int64_t max_via_y = min_y + PMOSPolyHeight() / 2 +
+        pfet_generator_->ViaLocation(
+            Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_UPPER).y() +
+        (PMOSHasLowerTab() ?
+            FigurePMOSLowerTabConnectorHeight() + PMOSPolyTabHeight() : 0);
+    // Any tab below the NMOS generator origin will offset the calculated Via
+    // position:
+    int64_t min_via_y = nmos_centre_y +
+        nfet_generator_->ViaLocation(
+            Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_LOWER).y();
+
+    int64_t required = db.ToInternalUnits(
+        *parameters_.min_furthest_via_distance_nm);
+    int64_t diff = required - (max_via_y - min_via_y);
+    if (diff > 0) {
+      min_y += diff;
+    }
+  }
 
   // If the cell has a minimum height, the minimum y position must be adjusted
   // so that, after adding the PMOS transistor and tab (if any), the cell at
@@ -561,6 +610,8 @@ bool Sky130TransmissionGate::NMOSHasLowerTab() const {
   }
 }
 
+// This is the world's shittiest constraint solver. TODO(aryap): Just use an
+// ILP or some shit.
 const Sky130TransmissionGate::VerticalSpacings
 Sky130TransmissionGate::FigureSpacings() const {
   VerticalSpacings spacings;
@@ -573,6 +624,7 @@ Sky130TransmissionGate::FigureSpacings() const {
 
   int64_t nmos_align_y = y;
   int64_t nmos_tab_connector_height = 0;
+
   if (NMOSHasLowerTab()) {
     nmos_tab_connector_height = FigureNMOSLowerTabConnectorHeight();
     y += NMOSPolyTabHeight() + nmos_tab_connector_height;
@@ -582,6 +634,7 @@ Sky130TransmissionGate::FigureSpacings() const {
         FigureNMOSUpperTabConnectorHeight(y + NMOSPolyHeight());
     y += NMOSPolyTabHeight() + nmos_tab_connector_height;
   }
+  int64_t nmos_centre_y = nmos_align_y + NMOSPolyHeight() / 2;
   spacings.nmos_poly_bottom_y = nmos_align_y;
   spacings.nmos_tab_extension = nmos_tab_connector_height;
 
@@ -589,20 +642,19 @@ Sky130TransmissionGate::FigureSpacings() const {
 
   // TODO(aryap): This should also account for the minimum nwell/nsdm/psdm
   // spacing rules!
-  int64_t cmos_gap = FigureCMOSGap(y);
+  int64_t cmos_gap = FigureCMOSGap(nmos_centre_y, y);
   y += cmos_gap;
 
   int64_t pmos_align_y = y;
   int64_t pmos_tab_connector_height = 0;
   if (PMOSHasLowerTab()) {
     pmos_tab_connector_height = FigurePMOSLowerTabConnectorHeight();
-    y += PMOSPolyTabHeight() + pmos_tab_connector_height;
     pmos_align_y = y;
   } else if (PMOSHasUpperTab()) {
     pmos_tab_connector_height =
         FigurePMOSUpperTabConnectorHeight(pmos_align_y + PMOSPolyHeight());
-    y += PMOSPolyTabHeight() + pmos_tab_connector_height;
   }
+  y += PMOSPolyTabHeight() + pmos_tab_connector_height;
   spacings.pmos_tab_extension = pmos_tab_connector_height;
   spacings.pmos_poly_bottom_y = pmos_align_y;
   y += PMOSPolyHeight();

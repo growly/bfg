@@ -86,11 +86,26 @@ class Sky130InterconnectMux6 : public Atom {
   bfg::Cell *Generate() override;
 
  private:
+  static constexpr char kMuxOutputName[] = "Z";
+
   Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
     geometry::Instance *vertical_neighbour) const;
 
   int64_t FigurePolyBoundarySeparationForMux(
       bfg::Layout *neighbour_layout) const;
+
+  void DrawRoutes(
+      const std::vector<geometry::Instance*> &top_memories,
+      const std::vector<geometry::Instance*> &bottom_memories,
+      geometry::Instance *stack,
+      geometry::Instance *output_buffer,
+      bfg::Layout *layout) const;
+
+  void DrawScanChain(
+      const std::vector<geometry::Instance*> &all_memories,
+      int64_t vertical_x_left,
+      int64_t vertical_x_right,
+      bfg::Layout *layout) const;
 
   void ConnectVertically(const geometry::Point &top,
                          const geometry::Point &bottom,

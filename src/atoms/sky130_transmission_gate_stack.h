@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <map>
 
 #include "atom.h"
 #include "../circuit.h"
@@ -37,7 +38,9 @@ class Sky130TransmissionGateStack : public Atom {
     //       B         B
     //      -o-       -o-
     // A   +---+  C  +---+   D
+    //     |   |     |   |
     // ----+   +-----+   +----
+    //     |   |     |   |
     //     +---+     +----
     //      ---       ---
     //       B         B
@@ -57,9 +60,13 @@ class Sky130TransmissionGateStack : public Atom {
 
     std::optional<uint64_t> li_width_nm;
 
+    std::optional<uint64_t> li_via_pitch = 340;
+
+    std::optional<uint64_t> num_horizontal_channels = 7;
+
     // The height of the transmission gate cells. If not specified, transmission
     // gates are sized to fit PMOS and NMOS FETs as close to each other as
-    // possible. TODO(aryap): including room for routing?
+    // possible.
     std::optional<uint64_t> min_height_nm = 2720;
 
     // Vertical pitch of ports across the gates, if specified.
@@ -82,6 +89,8 @@ class Sky130TransmissionGateStack : public Atom {
 
     bool expand_wells_to_vertical_bounds = true;
 
+    bool add_ports = true;
+
     void ToProto(proto::parameters::Sky130TransmissionGateStack *pb) const;
     void FromProto(const proto::parameters::Sky130TransmissionGateStack &pb);
   };
@@ -92,12 +101,23 @@ class Sky130TransmissionGateStack : public Atom {
         parameters_(parameters) {}
   bfg::Cell *Generate() override;
 
+  size_t NumGates() const {
+    size_t num_gates = 0;
+    for (const auto &sequence : parameters_.sequences) {
+      num_gates += (sequence.size() - 1) / 2;
+    }
+    return num_gates;
+  }
+
  private:
   static constexpr char kMetalLayer[] = "li.drawing";
+  static constexpr char kMetalPinLayer[] = "li.pin";
+  static constexpr char kMetalViaLayer[] = "mcon.drawing";
 
   void BuildSequence(
       const std::vector<std::string> &net_sequence,
       size_t *gates_so_far,
+      std::map<std::string, size_t> *net_counts,
       bfg::Cell *cell,
       RowGuide *row,
       std::optional<geometry::Rectangle> *pdiff_cover,
@@ -109,6 +129,7 @@ class Sky130TransmissionGateStack : public Atom {
                     const geometry::Point &top,
                     const geometry::Point &bottom,
                     const std::string &net,
+                    std::map<std::string, size_t> *net_counts,
                     Layout *layout);
 
   Parameters parameters_;

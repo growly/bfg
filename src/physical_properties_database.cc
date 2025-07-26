@@ -260,6 +260,14 @@ const geometry::Layer PhysicalPropertiesDatabase::GetViaLayerOrDie(
   return *maybe_via_layer;
 }
 
+const geometry::Layer PhysicalPropertiesDatabase::GetViaLayerOrDie(
+    const geometry::Layer &left, const geometry::Layer &right) const {
+  auto maybe_via_layer = GetViaLayer(left, right);
+  LOG_IF(FATAL, !maybe_via_layer)
+      << "No known via layer between " << DescribeLayer(left) << " and "
+      << DescribeLayer(right);
+  return *maybe_via_layer;
+}
 
 void PhysicalPropertiesDatabase::AddRules(
     const std::string &first_layer,

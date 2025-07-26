@@ -175,6 +175,9 @@ class PhysicalPropertiesDatabase {
       const std::string &left, const std::string &right) const;
   std::optional<const geometry::Layer> GetViaLayer(
       const geometry::Layer &left, const geometry::Layer &right) const;
+  const geometry::Layer GetViaLayerOrDie(
+      const geometry::Layer &left, const geometry::Layer &right) const;
+
   void AddViaLayer(const std::string &one_layer,
                    const std::string &another_layer,
                    const std::string &via_layer);
