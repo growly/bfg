@@ -40,6 +40,9 @@ class Layout : public geometry::Manipulable {
   struct ViaToSomeLayer {
     geometry::Point centre;
     std::string layer_name;
+    // Indicate that the surrounding metal should be sized for a via here but
+    // the via should not be inserted.
+    bool pad_only;
   };
 
   Layout() = delete;
@@ -157,6 +160,18 @@ class Layout : public geometry::Manipulable {
       int64_t pitch,
       const std::optional<std::string> &net = std::nullopt);
 
+  // TODO(aryap): I am confused. I made "Port" an abstract thing, though it is a
+  // shape sized according to the rules of the via layer you give it. But it
+  // does not appear as a shape. A "Pin" is a real shape that is emited in the
+  // layout description and corresponds to an abstract "Port". "Port"s are used
+  // internally to determine connection points, and "Pin"s are layout features
+  // that communicate this to legacy tools. So until that's cleaned up, have a
+  // second way to do it, which adds a pin shape on a pin layer and also makes
+  // it a port:
+  void MakePin(const std::string &net_name,
+               const geometry::Point &centre,
+               const std::string &pin_layer);
+
   void MakePort(const std::string &net_name,
                 const geometry::Point &centre,
                 const std::string &layer_name = "");
@@ -165,13 +180,16 @@ class Layout : public geometry::Manipulable {
   void MakeAlternatingWire(
       const std::vector<geometry::Point> &points,
       const std::string &first_layer_name,
-      const std::string &second_layer_name);
+      const std::string &second_layer_name,
+      const std::optional<std::string> &net = std::nullopt);
 
   void MakeWire(
       const std::vector<geometry::Point> &points,
       const std::string &wire_layer_name,
       const std::optional<std::string> &start_layer_name = std::nullopt,
-      const std::optional<std::string> &end_layer_name = std::nullopt);
+      const std::optional<std::string> &end_layer_name = std::nullopt,
+      bool start_pad_only = false,
+      bool end_pad_only = false);
 
   void MakeWire(
       const std::vector<geometry::Point> &points,

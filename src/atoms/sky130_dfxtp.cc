@@ -34,6 +34,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Wire CLK = circuit->AddSignal("CLK");
   circuit::Wire CLKI = circuit->AddSignal("CLKI");
   circuit::Wire Q = circuit->AddSignal("Q");
+  circuit::Wire QI = circuit->AddSignal("QI");
 
   circuit::Wire VPWR = circuit->AddSignal("VPWR");
   circuit::Wire VGND = circuit->AddSignal("VGND");
@@ -44,6 +45,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit->AddPort(CLK);
   circuit->AddPort(CLKI);
   circuit->AddPort(Q);
+  circuit->AddPort(QI);
   circuit->AddPort(VPWR);
   circuit->AddPort(VGND);
   circuit->AddPort(VPB);
@@ -854,16 +856,19 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
       Rectangle(Point(85, 1105), Point(255, 1275)), "D");
   layout->SavePoint("port_D_centre", pin->centre());
 
-  geometry::Rectangle *pin_Q = layout->AddRectangleAsPort(
-      Rectangle(Point(5590, 425), Point(5760, 595)), "Q");
+  Rectangle pin_Q_stencil = Rectangle(Point(5590, 425), Point(5760, 595));
+  geometry::Rectangle *pin_Q = layout->AddRectangleAsPort(pin_Q_stencil, "Q");
   layout->SavePoint("port_Q_centre", pin->centre());
 
   // TODO(aryap): We also have to add a port for Q-bar, QI, complemented Q,
   // whatever you want to call it. This is scary because it might need to be
-  // buffered. But we can always add a buffer?
-  Point offset_from_Q = {-340, 680};
+  // buffered. But we can always add a buffer? Also, it would be nice if the
+  // port didn't share a vertical or horizontal metal track with any other
+  // ports to simplify routing later.
+  Point offset_from_oem_Q = {-340, 680};
+  //Point offset_from_oem_Q = {-2 * 340, 5 * 340};
   geometry::Rectangle pin_QI_stencil = *pin_Q;
-  pin_QI_stencil.Translate(offset_from_Q);
+  pin_QI_stencil.Translate(offset_from_oem_Q);
   pin = layout->AddRectangleAsPort(pin_QI_stencil, "QI");
   layout->SavePoint("port_QI_centre", pin->centre());
 

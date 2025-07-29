@@ -556,13 +556,31 @@ void Layout::StampVias(const geometry::Layer &layer,
   }
 }
 
+void Layout::MakePin(
+    const std::string &net_name,
+    const geometry::Point &centre,
+    const std::string &layer_name) {
+  int64_t layer = layer_name == "" ? 0 : physical_db_.GetLayer(layer_name);
+  int64_t via_side = std::max(
+      physical_db_.Rules(layer_name).via_height,
+      physical_db_.Rules(layer_name).via_width);
+  geometry::Port port = geometry::Port(
+      centre, via_side, via_side, layer, net_name);
+  AddPort(port);
+
+  ScopedLayer sl(this, layer);
+  AddRectangle(port);
+}
+
 void Layout::MakePort(
     const std::string &net_name,
     const geometry::Point &centre,
     const std::string &layer_name) {
   int64_t layer = layer_name == "" ? 0 : physical_db_.GetLayer(layer_name);
   int64_t via_side = layer_name == "" ?
-    100 : physical_db_.Rules(layer_name).via_width;
+    100 : std::max(
+        physical_db_.Rules(layer_name).via_height,
+        physical_db_.Rules(layer_name).via_width);
   geometry::Port port = geometry::Port(
       centre, via_side, via_side, layer, net_name);
   AddPort(port);
@@ -571,7 +589,8 @@ void Layout::MakePort(
 void Layout::MakeAlternatingWire(
     const std::vector<geometry::Point> &points,
     const std::string &first_layer_name,
-    const std::string &second_layer_name) {
+    const std::string &second_layer_name,
+    const std::optional<std::string> &net) {
   if (points.size() < 2) {
     return;
   }
@@ -611,17 +630,38 @@ void Layout::MakeAlternatingWire(
     const WireHopInfo &hop = hop_infos[i % 2];
     ++i;  // So tempting to put this inline as i++. SO tempting.
 
-    ScopedLayer scoped_layer(this, hop.layer);
+    if (last == next) {
+      ScopedLayer sl(this, hop.layer);
+      // We have to put a minimum-sized metal pour here. The aspect ratio of
+      // this pour will matter somewhat, but for now we don't know what it
+      // should be (in the RoutingGrid we have assigned layers routing
+      // directions, and that informs the aspect ratio, but here we have not).
+      double min_area = physical_db_.Rules(hop.layer).min_area;
+      int64_t width = std::max(hop.encap_info.width, hop.encap_info.length);
+      int64_t length = std::ceil(min_area / static_cast<double>(width));
+      geometry::Rectangle rectangle = geometry::Rectangle::CentredAt(
+          last, width, length);
+      if (net) {
+        rectangle.set_net(*net);
+      }
+      AddRectangle(rectangle);
+      continue;
+    }
+
+    ScopedLayer sl(this, hop.layer);
     geometry::PolyLine wire = geometry::PolyLine({last, next});
     wire.SetWidth(hop.min_width);
     wire.set_min_separation(hop.min_separation);
     wire.InsertBulge(last, hop.encap_info.width, hop.encap_info.length);
     wire.InsertBulge(next, hop.encap_info.width, hop.encap_info.length);
+    if (net) {
+      wire.set_net(*net);
+    }
     AddPolyLine(wire);
 
     if ((next_it + 1) != points.end()) {
       // This is not a start or end hop, so we can add the via:
-      MakeVia(via_layer, next);
+      MakeVia(via_layer, next, net);
     }
   }
 }
@@ -630,20 +670,24 @@ void Layout::MakeWire(
     const std::vector<geometry::Point> &points,
     const std::string &wire_layer_name,
     const std::optional<std::string> &start_layer_name,
-    const std::optional<std::string> &end_layer_name) {
+    const std::optional<std::string> &end_layer_name,
+    bool start_pad_only,
+    bool end_pad_only) {
   std::vector<ViaToSomeLayer> vias;
 
   if (start_layer_name) {
     vias.push_back({
         .centre = points.front(),
-        .layer_name = *start_layer_name
+        .layer_name = *start_layer_name,
+        .pad_only = start_pad_only
     });
   }
 
   if (end_layer_name) {
     vias.push_back({
         .centre = points.back(),
-        .layer_name = *end_layer_name
+        .layer_name = *end_layer_name,
+        .pad_only = end_pad_only
     });
   }
 
@@ -673,7 +717,9 @@ void Layout::MakeWire(
         physical_db_.TypicalViaEncap(wire_layer, via_layer);
 
     wire.InsertBulge(directive.centre, encap_info.width, encap_info.length);
-    MakeVia(via_layer, directive.centre);
+    if (!directive.pad_only) {
+      MakeVia(via_layer, directive.centre);
+    }
   }
 
   ScopedLayer sl(this, wire_layer);

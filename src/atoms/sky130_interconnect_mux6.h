@@ -59,6 +59,8 @@ namespace atoms {
 //           | | (Out)      FF                | |    |
 //           +-+------------------------------+------+
 //    
+// TODO(aryap): We can also insert buffers into the vertical routing channel on
+// the left in order to buffer long wires travelling through.
 
 class Sky130InterconnectMux6 : public Atom {
  public:
@@ -68,7 +70,8 @@ class Sky130InterconnectMux6 : public Atom {
 
     std::optional<uint64_t> vertical_pitch_nm = 400;
 
-    std::optional<uint64_t> vertical_routing_channel_width_nm = 8 * 460;
+    std::optional<uint64_t> vertical_routing_channel_width_nm =
+        ((8 * 340) / 460 + 1) * 460;
 
     void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
@@ -97,15 +100,28 @@ class Sky130InterconnectMux6 : public Atom {
   void DrawRoutes(
       const std::vector<geometry::Instance*> &top_memories,
       const std::vector<geometry::Instance*> &bottom_memories,
+      int64_t output_port_x,
       geometry::Instance *stack,
       geometry::Instance *output_buffer,
       bfg::Layout *layout) const;
 
   void DrawScanChain(
       const std::vector<geometry::Instance*> &all_memories,
+      int64_t num_ff_bottom,
       int64_t vertical_x_left,
       int64_t vertical_x_right,
       bfg::Layout *layout) const;
+
+  void DrawOutput(geometry::Instance *stack,
+                  geometry::Instance *output_buffer,
+                  int64_t *output_port_y,
+                  int64_t output_port_x,
+                  Layout *layout) const;
+
+  void DrawInputs(geometry::Instance *stack,
+                  int64_t output_port_y,
+                  int64_t vertical_x_left,
+                  Layout *layout) const;
 
   void ConnectVertically(const geometry::Point &top,
                          const geometry::Point &bottom,
