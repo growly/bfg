@@ -77,11 +77,16 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
 
   intra_constraints = {
     .min_width = db->ToInternalUnits(170),
+    .via_width = db->ToInternalUnits(170),
+    .via_height = db->ToInternalUnits(170)
+  };
+  db->AddRules("met1.pin", intra_constraints);
+  intra_constraints = {
+    .min_width = db->ToInternalUnits(170),
     .via_width = db->ToInternalUnits(150),
     .via_height = db->ToInternalUnits(150)
   };
   db->AddRules("via1.drawing", intra_constraints);
-  db->AddRules("met1.pin", intra_constraints);
   db->AddRules("via2.drawing", intra_constraints);
   intra_constraints = {
     .min_separation = db->ToInternalUnits(210),
@@ -102,7 +107,9 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .min_width = db->ToInternalUnits(140),
     .min_pitch = db->ToInternalUnits(340),
     // m2.6: 0.0676 um^2 = 67600 nm^2.
-    .min_area = db->ToSquareInternalUnits(67600)
+    .min_area = db->ToSquareInternalUnits(67600),
+    // m2.11
+    .max_width = db->ToInternalUnits(4000)
   };
   db->AddRules("met2.drawing", intra_constraints);
   intra_constraints = {

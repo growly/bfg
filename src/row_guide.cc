@@ -307,6 +307,17 @@ std::optional<geometry::Rectangle> RowGuide::GetBoundingBox() const {
       instances_.back()->GetBoundingBox().upper_right()}};
 }
 
+std::optional<geometry::Rectangle> RowGuide::GetTilingBounds() const {
+  if (instances_.empty()) {
+    return std::nullopt;
+  }
+  geometry::Rectangle bounding_box = instances_.front()->GetTilingBounds();
+  for (auto it = instances_.begin() + 1; it != instances_.end(); ++it) {
+    bounding_box.ExpandToCover((*it)->GetTilingBounds());
+  }
+  return bounding_box;
+}
+
 geometry::Point RowGuide::UpperRight() const {
   geometry::Vector blank = geometry::Vector(blank_space_right_, 0);
   if (instances_.empty()) {

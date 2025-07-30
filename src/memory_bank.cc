@@ -192,10 +192,13 @@ geometry::Instance *MemoryBank::InstantiateRight(size_t row_index,
   return installed;
 }
 
-std::optional<geometry::Rectangle> MemoryBank::GetBoundingBox() const {
+std::optional<geometry::Rectangle> MemoryBank::CoveringBoxOverAllRows(
+    const std::function<std::optional<geometry::Rectangle>(const RowGuide&)>
+        &box_getter_fn)
+    const {
   std::optional<geometry::Rectangle> bounding_box;
   for (const auto &row : rows_) {
-    auto row_box = row.GetBoundingBox();
+    auto row_box = box_getter_fn(row);
     if (!row_box) {
       continue;
     }
@@ -206,6 +209,18 @@ std::optional<geometry::Rectangle> MemoryBank::GetBoundingBox() const {
     bounding_box->ExpandToCover(*row_box);
   }
   return bounding_box;
+}
+
+std::optional<geometry::Rectangle> MemoryBank::GetBoundingBox() const {
+  return CoveringBoxOverAllRows([](const RowGuide &row) {
+    return row.GetBoundingBox();
+  });
+}
+
+std::optional<geometry::Rectangle> MemoryBank::GetTilingBounds() const {
+  return CoveringBoxOverAllRows([](const RowGuide &row) {
+    return row.GetTilingBounds();
+  });
 }
 
 }  // namespace bfg

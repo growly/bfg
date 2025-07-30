@@ -93,6 +93,7 @@ class RowGuide {
   uint64_t Height() const;
 
   std::optional<geometry::Rectangle> GetBoundingBox() const;
+  std::optional<geometry::Rectangle> GetTilingBounds() const;
 
   geometry::Point UpperRight() const;
   geometry::Point LowerRight() const;
@@ -128,6 +129,9 @@ class RowGuide {
   }
 
   std::vector<geometry::Instance*> &instances() {
+    return instances_;
+  };
+  const std::vector<geometry::Instance*> &instances() const {
     return instances_;
   };
 

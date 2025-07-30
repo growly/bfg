@@ -1,5 +1,6 @@
 #include "sky130_interconnect_mux6.h"
 
+#include "../utility.h"
 #include "../modulo.h"
 #include "../cell.h"
 #include "../layout.h"
@@ -28,6 +29,11 @@ void Sky130InterconnectMux6::Parameters::ToProto(
   } else {
     pb->clear_poly_pitch_nm();
   }
+  if (power_ground_strap_width_nm) {
+    pb->set_power_ground_strap_width_nm(*power_ground_strap_width_nm);
+  } else {
+    pb->clear_power_ground_strap_width_nm();
+  }
 }
 
 void Sky130InterconnectMux6::Parameters::FromProto(
@@ -36,6 +42,11 @@ void Sky130InterconnectMux6::Parameters::FromProto(
     poly_pitch_nm = pb.poly_pitch_nm();
   } else {
     poly_pitch_nm.reset();
+  }
+  if (pb.has_power_ground_strap_width_nm()) {
+    power_ground_strap_width_nm = pb.power_ground_strap_width_nm();
+  } else {
+    power_ground_strap_width_nm.reset();
   }
 }
 
@@ -198,6 +209,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       absl::StrCat(clk_buf_name, "_bottom"),
       clk_buf_cell->layout());
 
+  std::vector<geometry::Instance*> clk_bufs = {clk_buf_top, clk_buf_bottom};
+
   // Decaps!
   std::string right_decap_name = "decap_right";
   Sky130Decap::Parameters right_decap_params;
@@ -281,9 +294,10 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   // Draw all the wires!
   if (parameters_.num_inputs <= 7) {
-    DrawRoutes(top_memories,
+    DrawRoutes(bank,
+               top_memories,
                bottom_memories,
-               tiling_bound_right_x,
+               clk_bufs,
                stack,
                output_buf_instance,
                cell->layout());
@@ -296,9 +310,10 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 }
 
 void Sky130InterconnectMux6::DrawRoutes(
+      const MemoryBank &bank,
       const std::vector<geometry::Instance*> &top_memories,
       const std::vector<geometry::Instance*> &bottom_memories,
-      int64_t output_port_x,
+      const std::vector<geometry::Instance*> &clk_bufs,
       geometry::Instance *stack,
       geometry::Instance *output_buffer,
       bfg::Layout *layout) const {
@@ -361,16 +376,8 @@ void Sky130InterconnectMux6::DrawRoutes(
   std::optional<int64_t> right_most_vertical_x;
 
   auto update_bounds_fn = [&](int64_t x) {
-    if (!left_most_vertical_x) {
-      left_most_vertical_x = x;
-    } else {
-      left_most_vertical_x = std::min(*left_most_vertical_x, x);
-    }
-    if (!right_most_vertical_x) {
-      right_most_vertical_x = x;
-    } else {
-      right_most_vertical_x = std::max(*right_most_vertical_x, x);
-    }
+    UpdateMin(x, &left_most_vertical_x);
+    UpdateMax(x, &right_most_vertical_x);
   };
 
   size_t c = 0;
@@ -458,20 +465,50 @@ void Sky130InterconnectMux6::DrawRoutes(
       << "Expected vertical_x bounds to be set by this point - are there any "
       << "connections?";
 
-  left_most_vertical_x = *left_most_vertical_x - met2_pitch;
+  std::vector<int64_t> columns_right_x;
+  for (int64_t x = *right_most_vertical_x + met2_pitch;
+       x < bank.GetTilingBounds()->upper_right().x();
+       x += met2_pitch) {
+    columns_right_x.push_back(x);
+  }
 
+  std::vector<int64_t> columns_left_x;
+  for (int64_t x = *left_most_vertical_x - met2_pitch;
+       x > bank.GetTilingBounds()->lower_left().x();
+       x -= met2_pitch) {
+    columns_left_x.push_back(x);
+  }
+
+  // Allocate left columns so that they don't interfere with each other (or
+  // cause problems for met1 connections below):
+  constexpr size_t kScanChainLeftIndex = 0;
+  constexpr size_t kInterconnectLeftStartIndex = 1;
+
+  // Allocate right columns:
+  constexpr size_t kScanChainRightIndex = 4;
+  constexpr size_t kClockRightIndex = 1;
+  constexpr size_t kClockIRightIndex = 3;
+  constexpr size_t kInputClockRightIndex = 6;
+  constexpr size_t kVPWRVGNDStartRightIndex = 7;
+
+  // TODO(aryap): We can save a vertical met2 channel by squeezing the scan
+  // chain connections on the right in (index 2), possible if the connection to
+  // the input port does not occur directly across from the flip flop port but
+  // rather through a met1 elbow:
+  //
+  //  met2 spine
+  //     |
+  //     +---+ met1 jog
+  //     |   |
+  //     |   + flip flop D input
+  //     |
   DrawScanChain(all_memories,
                 bottom_memories.size() - 1,
-                *left_most_vertical_x,
-                *right_most_vertical_x + 2 * met2_pitch,
+                columns_left_x[kScanChainLeftIndex],
+                columns_right_x[kScanChainRightIndex],
                 layout);
 
-  // FIXME(aryap): Scan chain needs to be connected to external input/output.
-  // FIXME(aryap): Clock bufs need to drive flip flops.
-  // FIXME(aryap): Clock bufs need clock input.
-  // FIXME(aryap): VDD/VSS need connection. We can use the buf channel on the
-  // right.
-
+  int64_t output_port_x = bank.GetTilingBounds()->upper_right().x();
   int64_t output_port_y = 0;
   DrawOutput(stack,
              output_buffer,
@@ -479,12 +516,210 @@ void Sky130InterconnectMux6::DrawRoutes(
              output_port_x,
              layout);
 
-  left_most_vertical_x = *left_most_vertical_x - met2_pitch;
-
   DrawInputs(stack,
              output_port_y,
-             *left_most_vertical_x,
+             columns_left_x[kInterconnectLeftStartIndex],
              layout);
+
+  DrawClock(bank,
+            top_memories,
+            bottom_memories,
+            clk_bufs,
+            columns_right_x[kInputClockRightIndex],
+            columns_right_x[kClockRightIndex],
+            columns_right_x[kClockIRightIndex],
+            layout);
+
+  DrawPowerAndGround(bank,
+                     columns_right_x[kVPWRVGNDStartRightIndex],
+                     layout);
+}
+
+void Sky130InterconnectMux6::DrawPowerAndGround(
+    const MemoryBank &bank,
+    int64_t start_column_x,
+    Layout *layout) const {
+  //int64_t max_y = bank.GetTilingBounds()->upper_right().y();
+  //int64_t min_y = bank.GetTilingBounds()->lower_left().y();
+
+  // First figure out where the ground/power ports are:
+  std::set<int64_t> power_y;
+  std::set<int64_t> ground_y;
+  for (const RowGuide &row : bank.rows()) {
+    for (geometry::Instance *instance : row.instances()) {
+      std::vector<geometry::Port*> power_ports;
+      instance->GetInstancePorts("VPWR", &power_ports);
+      for (geometry::Port *port : power_ports) {
+        power_y.insert(port->centre().y());
+      }
+      std::vector<geometry::Port*> ground_ports;
+      instance->GetInstancePorts("VGND", &ground_ports);
+      for (geometry::Port *port : ground_ports) {
+        ground_y.insert(port->centre().y());
+      }
+    }
+  }
+ 
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &met2_rules = db.Rules("met2.drawing");
+  auto encap_rules = db.TypicalViaEncap("met2.drawing", "via1.drawing");
+
+  int64_t strap_width = parameters_.power_ground_strap_width_nm ?
+      db.ToInternalUnits(*parameters_.power_ground_strap_width_nm) :
+      met2_rules.min_width;
+
+  int64_t met2_boundary_left = start_column_x - met2_rules.min_width / 2;
+  int64_t vpwr_x = met2_boundary_left + strap_width / 2;
+  // Remember that min_pitch includes the width of via-encap bulges, whereas we
+  // otherwise do not bother with that here.
+  int64_t vgnd_x = vpwr_x + std::max(
+      strap_width + met2_rules.min_separation,
+      met2_rules.min_pitch);
+
+  // Then assume that each power/ground rail extends from the left to the right
+  // limit of the MemoryBank layout, draw rails over the top, and connect:
+  auto draw_strap_fn = [&](const std::set<int64_t> y_values, int64_t x) {
+    std::vector<geometry::Point> points;
+    // power_y should be sorted in y by virtue of being a set; min at front, max
+    // at back.
+    for (int64_t y : y_values) {
+      points.emplace_back(x, y);
+    }
+    // TODO(aryap): This might be a nice general function for Layout too. It's
+    // slightly different to the MakeVerticalSpineWithFingers, but not much:
+    geometry::PolyLine power_line({points.front(), points.back()});
+    power_line.SetWidth(strap_width);
+    power_line.set_min_separation(met2_rules.min_separation);
+    for (const geometry::Point &point : points) {
+      power_line.InsertBulge(point, encap_rules.width, encap_rules.length);
+      layout->MakeVia("via1.drawing", point);
+    }
+    {
+      ScopedLayer sl(layout, "met2.drawing");
+      layout->AddPolyLine(power_line);
+    }
+  };
+
+  draw_strap_fn(power_y, vpwr_x);
+  draw_strap_fn(ground_y, vgnd_x);
+}
+
+void Sky130InterconnectMux6::DrawClock(
+    const MemoryBank &bank,
+    const std::vector<geometry::Instance*> &top_memories,
+    const std::vector<geometry::Instance*> &bottom_memories,
+    const std::vector<geometry::Instance*> &clk_bufs,
+    int64_t input_clk_x,
+    int64_t clk_x,
+    int64_t clk_i_x,
+    Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  // To connect the outputs of the clk bufs to the clk straps we use a met1 wire
+  // that connects on an existing horizontal track. This will avoids vias and
+  // bulges in what is a pretty congested spot.
+
+  size_t b = 0;
+
+  // We expect one buf per group of memories:
+  for (const auto memories : {top_memories, bottom_memories}) {
+    std::vector<geometry::Point> memory_CLK_centres;
+    std::vector<geometry::Point> clk_spine_connections;
+    std::vector<geometry::Point> memory_CLKI_centres;
+    std::vector<geometry::Point> clk_i_spine_connections;
+
+    for (geometry::Instance *memory : memories) {
+      geometry::Port *port = memory->GetNearestPortNamed({clk_x, 0}, "CLK");
+      LOG_IF(FATAL, !port) << "No port named CLK on memory " << memory->name();
+      memory_CLK_centres.push_back(port->centre());
+      clk_spine_connections.push_back({clk_x, port->centre().y()});
+
+      port = memory->GetNearestPortNamed({clk_i_x, 0}, "CLKI");
+      LOG_IF(FATAL, !port) << "No port named CLKI on memory " << memory->name();
+      memory_CLKI_centres.push_back(port->centre());
+      clk_i_spine_connections.push_back({clk_i_x, port->centre().y()});
+    }
+
+    // TODO(aryap): The clk_i connection is made directly on met1 (below)
+    // because it's easy, and the clk connection is made across to the existing
+    // spine, becaues it's easy.  This is bad because it delays clk further
+    // relative to clk_i, and there's also one inverter's delay between them.
+    geometry::Instance *buf = clk_bufs[b];
+    geometry::Port *top_X = buf->GetNearestPortNamed(
+        bank.GetTilingBounds()->upper_right(), "X");
+    memory_CLK_centres.push_back(top_X->centre());
+
+    // Manually create the via and encap from met1 to li.
+    // TODO(aryap): See note in Layout::MakeVerticalSpineWithFingers. This
+    // should be an automatic option of that function.
+    layout->MakeVia("mcon.drawing", top_X->centre());
+    {
+      auto via_encap = db.TypicalViaEncap("met1.drawing", "mcon.drawing");
+      ScopedLayer sl(layout, "met1.drawing");
+      layout->AddRectangle(geometry::Rectangle::CentredAt(
+          top_X->centre(), via_encap.length, via_encap.width));
+    }
+
+    layout->MakeVerticalSpineWithFingers(
+        "met2.drawing",
+        "met1.drawing",
+        "clk_internal",
+        memory_CLK_centres,
+        clk_x,
+        db.Rules("met2.drawing").min_width,
+        layout);
+
+    layout->MakeVerticalSpineWithFingers(
+        "met2.drawing",
+        "met1.drawing",
+        "clk_i_internal",
+        memory_CLKI_centres,
+        clk_i_x,
+        db.Rules("met2.drawing").min_width,
+        layout);
+  
+    // TODO(aryap): This sucks. I want the highest port from a collection. With
+    // the current API this is cumbersome, so instead I'm using a fake point at
+    // the top-right of the layout and ordering by proximity. Eurgh.
+    geometry::Port *top_P = buf->GetNearestPortNamed(
+        bank.GetTilingBounds()->upper_right(), "P");
+
+    // Connect buf output to clk_internal:
+    geometry::Point on_spine = geometry::Point::ClosestTo(
+        clk_i_spine_connections, top_P->centre());
+
+    //          + top P port on clk buf
+    //          |
+    //   +------+
+    //   ^
+    // spine connection
+    layout->MakeWire({top_P->centre(),
+                      {top_P->centre().x(), on_spine.y()},
+                      on_spine},
+                     "met1.drawing",
+                     "li.drawing",
+                     "met2.drawing",
+                     true,
+                     false);
+    layout->MakeVia("mcon.drawing", top_P->centre());
+
+    ++b;
+  }
+
+  std::vector<geometry::Point> buf_A_centres;
+  for (geometry::Instance *buf : clk_bufs) {
+    geometry::Port *port = buf->GetNearestPortNamed({input_clk_x, 0}, "A");
+    LOG_IF(FATAL, !port) << "No port named A on buf " << buf->name();
+    buf_A_centres.push_back(port->centre());
+  }
+  layout->MakeVerticalSpineWithFingers(
+        "met2.drawing",
+        "met1.drawing",
+        "CLK",            // TODO(aryap): Parameterise.
+        buf_A_centres,
+        input_clk_x,
+        db.Rules("met2.drawing").min_width,
+        layout);
 }
 
 void Sky130InterconnectMux6::DrawOutput(
@@ -493,6 +728,8 @@ void Sky130InterconnectMux6::DrawOutput(
     int64_t *output_port_y,
     int64_t output_port_x,
     Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
   // TODO(aryap): This bit sucks. I'm not sure if the
   // Sky130TransmissionGateStack should be in charge of creating and
   // distributing ports (in which case it should know about special ports like
@@ -533,9 +770,13 @@ void Sky130InterconnectMux6::DrawOutput(
   // Connect the buff output to the edge of the design:
   geometry::Port *buf_X = output_buffer->GetFirstPortNamed("X");
 
+  int64_t met1_pitch = db.Rules("met1.drawing").min_pitch;
+  int64_t vertical_x = buf_X->centre().x() + met1_pitch;
+
   std::vector<geometry::Point> output_wire = {
       buf_X->centre(),
-      geometry::Point {buf_X->centre().x(), *output_port_y},
+      {vertical_x, buf_X->centre().y()},
+      {vertical_x, *output_port_y},
       geometry::Point {output_port_x, *output_port_y}
   };
 

@@ -248,7 +248,7 @@ std::optional<Point> Instance::GetPoint(const std::string &name) const {
 }
 
 Port *Instance::GetNearestPortNamed(
-    const Port &to_port, const std::string &name) {
+    const Point &to_point, const std::string &name) {
   std::vector<Port*> matching_ports;
   GetInstancePorts(name, &matching_ports);
   if (matching_ports.empty()) {
@@ -256,12 +256,17 @@ Port *Instance::GetNearestPortNamed(
   }
 
   auto comp = [&](Port *lhs, Port *rhs) {
-    int64_t lhs_distance = lhs->centre().L2SquaredDistanceTo(to_port.centre());
-    int64_t rhs_distance = rhs->centre().L2SquaredDistanceTo(to_port.centre());
+    int64_t lhs_distance = lhs->centre().L2SquaredDistanceTo(to_point);
+    int64_t rhs_distance = rhs->centre().L2SquaredDistanceTo(to_point);
     return lhs_distance < rhs_distance;
   };
   std::sort(matching_ports.begin(), matching_ports.end(), comp);
   return *matching_ports.begin();
+}
+
+Port *Instance::GetNearestPortNamed(
+    const Port &to_port, const std::string &name) {
+  return GetNearestPortNamed(to_port.centre(), name);
 }
 
 Port *Instance::GetFirstPortNamed(const std::string &name) {

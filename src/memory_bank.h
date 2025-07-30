@@ -63,6 +63,7 @@ class MemoryBank {
                                       Layout *template_layout);
 
   std::optional<geometry::Rectangle> GetBoundingBox() const;
+  std::optional<geometry::Rectangle> GetTilingBounds() const;
 
   std::vector<std::vector<std::string>> &instance_names() {
     return instance_names_;
@@ -85,6 +86,10 @@ class MemoryBank {
   void EnsureVerticalAbutment();
   void AlignRight();
   void AlignLeft();
+
+  std::optional<geometry::Rectangle> CoveringBoxOverAllRows(
+      const std::function<std::optional<geometry::Rectangle>(const RowGuide&)>
+          &box_getter_fn) const;
 
   void set_grow_down(bool grow_down) { grow_down_ = grow_down; }
   void set_rotate_alternate_rows(bool rotate_alternate_rows) {

@@ -586,6 +586,106 @@ void Layout::MakePort(
   AddPort(port);
 }
 
+geometry::Group Layout::MakeVerticalSpineWithFingers(
+    const std::string &spine_layer_name,
+    const std::string &finger_layer_name,
+    const std::string &net,
+    const std::vector<geometry::Point> &connections,
+    int64_t spine_x,
+    int64_t spine_width,
+    Layout *layout) {
+  const PhysicalPropertiesDatabase &db = physical_db_;
+
+  const auto &spine_layer = db.GetLayer(spine_layer_name);
+  const auto &finger_layer = db.GetLayer(finger_layer_name);
+  const auto &via_layer = db.GetViaLayerOrDie(spine_layer, finger_layer);
+
+  const auto &spine_rules = db.Rules(spine_layer);
+  const auto &finger_rules = db.Rules(finger_layer);
+
+  const auto &via_rules = db.Rules(via_layer);
+  const auto &spine_via_rules = db.Rules(spine_layer, via_layer);
+  const auto &finger_via_rules = db.Rules(finger_layer, via_layer);
+
+  geometry::Group created_shapes;
+
+  // Sort points by y (the key) and remove duplicates by keeping either the
+  // closest or the furthest point from spine_x.
+  std::map<int64_t, geometry::Point> points;
+  for (const geometry::Point &point : connections) {
+    auto it = points.find(point.y());
+    if (it != points.end()) {
+      geometry::Point on_spine = {spine_x, point.y()};
+      const geometry::Point &existing = it->second;
+      // Keeps closest point:
+      if (point.L1DistanceTo(on_spine) < existing.L1DistanceTo(on_spine)) {
+        points[point.y()] = point;
+      }
+    } else {
+      points[point.y()] = point;
+    }
+  }
+
+  if (points.size() < 2) {
+    return created_shapes;
+  }
+
+  // Draw spine.
+  int64_t y_min = points.begin()->second.y();
+  int64_t y_max = points.rbegin()->second.y();
+
+  geometry::PolyLine spine_line({{spine_x, y_min}, {spine_x, y_max}});
+  spine_line.SetWidth(
+      std::max(spine_rules.min_width, spine_width));
+  spine_line.set_min_separation(spine_rules.min_separation);
+  spine_line.set_net(net);
+
+  uint64_t via_side = std::max(via_rules.via_width, via_rules.via_height);
+  uint64_t spine_bulge_width = 2 * spine_via_rules.via_overhang_wide + via_side;
+  uint64_t spine_bulge_length = 2 * spine_via_rules.via_overhang + via_side;
+  uint64_t finger_bulge_width =
+      2 * finger_via_rules.via_overhang_wide + via_side;
+  uint64_t finger_bulge_length = 2 * finger_via_rules.via_overhang + via_side;
+
+  for (const auto &entry : points) {
+    const geometry::Point &point = entry.second;
+    if (point.x() == spine_x) {
+      spine_line.InsertBulge(point, spine_bulge_width, spine_bulge_length);
+      layout->MakeVia(via_layer, point, net);
+      continue;
+    }
+    geometry::Point spine_via = {spine_x, point.y()};
+    // Have to draw a finger!
+    geometry::PolyLine finger({point, spine_via});
+
+    finger.SetWidth(finger_rules.min_width);
+    finger.set_min_separation(finger_rules.min_separation);
+    finger.InsertBulge(spine_via, finger_bulge_width, finger_bulge_length);
+    finger.set_net(net);
+
+    {
+      ScopedLayer sl(this, finger_layer);
+      geometry::Polygon *finger_polygon = layout->AddPolyLine(finger);
+      created_shapes.Add(finger_polygon);
+    }
+
+    geometry::Rectangle *via = layout->MakeVia(via_layer, spine_via, net);
+    created_shapes.Add(via);
+
+    spine_line.InsertBulge(spine_via, spine_bulge_width, spine_bulge_length);
+
+    // TODO: do we worry about the via from the finger to the connection pin
+    // here?
+    // finger.InsertBulge(point, finger_bulge_width, finger_bulge_length);
+  }
+
+  ScopedLayer sl(this, spine_layer);
+  geometry::Polygon *spine_metal_pour = layout->AddPolyLine(spine_line);
+  created_shapes.Add(spine_metal_pour);
+
+  return created_shapes;
+}
+
 void Layout::MakeAlternatingWire(
     const std::vector<geometry::Point> &points,
     const std::string &first_layer_name,

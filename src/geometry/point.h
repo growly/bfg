@@ -36,6 +36,9 @@ class Point : public AbstractShape, public Manipulable {
   static Point PickMaxY(const Point &lhs, const Point &rhs);
   static Point PickMinY(const Point &lhs, const Point &rhs);
 
+  static Point ClosestTo(const std::vector<Point> &points,
+                         const Point &target);
+
   // NOTE(aryap): It doesn't make sense to use this with angles that aren't
   // multiples of pi/4, since our Point has integer units:
   //

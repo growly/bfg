@@ -49,6 +49,8 @@ struct IntraLayerConstraints {
   int64_t min_pitch;
   int64_t min_area;
 
+  int64_t max_width;
+
   int64_t via_width;
   int64_t via_height;
   double via_cost;

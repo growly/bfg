@@ -253,6 +253,11 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
     layout->MakeVia("mcon.drawing", {690,  static_cast<int64_t>(height)});
     layout->MakeVia("mcon.drawing", {1150, static_cast<int64_t>(height)});
 
+    // met1.pin
+    layout->SetActiveLayerByName("met1.pin");
+    layout->MakePin("VPWR", {230, static_cast<int64_t>(height)}, "met1.pin");
+    layout->MakePin("VGND", {230, 0}, "met1.pin");
+
     // Metal to li1.drawing contacts (VGND side).
     layout->MakeVia("mcon.drawing", {230, 0});
     layout->MakeVia("mcon.drawing", {690, 0});

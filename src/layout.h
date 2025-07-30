@@ -8,6 +8,7 @@
 
 #include "physical_properties_database.h"
 #include "scoped_layer.h"
+#include "geometry/group.h"
 #include "geometry/instance.h"
 #include "geometry/layer.h"
 #include "geometry/manipulable.h"
@@ -129,6 +130,18 @@ class Layout : public geometry::Manipulable {
       const geometry::Layer &layer,
       const geometry::Point &centre,
       const std::optional<std::string> &net = std::nullopt);
+
+  // TODO(aryap): It would be handy to generalise the "connection" from just a
+  // point to a struct that allows the client to specify a via to be inserted
+  // (or just a bulge to be created) at the given point.
+  geometry::Group MakeVerticalSpineWithFingers(
+      const std::string &spine_layer_name,
+      const std::string &finger_layer_name,
+      const std::string &net,
+      const std::vector<geometry::Point> &connections,
+      int64_t spine_x,
+      int64_t spine_width,
+      Layout *layout);
 
   void DistributeVias(
       const std::string &via_layer,

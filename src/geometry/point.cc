@@ -72,6 +72,21 @@ Point Point::PickMaxY(const Point &lhs, const Point &rhs) {
   return lhs.y() >= rhs.y() ? lhs : rhs;
 }
 
+Point Point::ClosestTo(const std::vector<Point> &points,
+                       const Point &target) {
+  Point closest_point = points.front();
+  // NOTE(aryap): Could just use L1 distance to make this faster.
+  int64_t closest_distance = closest_point.L2SquaredDistanceTo(target);
+
+  for (auto it = points.begin() + 1; it != points.end(); it++) {
+    int64_t candidate_distance = it->L2SquaredDistanceTo(target);
+    if (candidate_distance < closest_distance) {
+      closest_distance = candidate_distance;
+      closest_point = *it;
+    }
+  }
+  return closest_point;
+}
 
 Point Point::UnitVector(double angle_to_horizon_radians) {
   return {std::llround(std::cos(angle_to_horizon_radians)),

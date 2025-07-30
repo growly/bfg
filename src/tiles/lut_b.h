@@ -138,6 +138,7 @@ class LutB : public Tile {
       Layout *layout) const;
 
   // TODO(aryap): This feels like a nice general feature of the Layout class.
+  // Ok I did that. It's called MakeVerticalSpineWithFingers. Use it.
   geometry::Group AddVerticalSpineWithFingers(
       const std::string &spine_layer_name,
       const std::string &via_layer_name,
