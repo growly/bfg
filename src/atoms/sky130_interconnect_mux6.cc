@@ -110,7 +110,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   atoms::Sky130Tap::Parameters tap_params = {
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(2720U)),
-    .width_nm = static_cast<uint64_t>(db.ToExternalUnits(460U))
+    .width_nm = Parameters::kHorizontalTilingUnitNm
   };
   atoms::Sky130Tap tap_generator(tap_params, design_db_);
   Cell *tap_cell = tap_generator.GenerateIntoDatabase(
@@ -267,16 +267,11 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       absl::StrCat(special_decap_name, "_0"),
       special_decap_cell->layout());
 
-  // FIXME(aryap): bank.GetBoundingBox() is the _wrong_ method. We want the
-  // overall tiling bounds of the whole MemoryBank, which needs to be
-  // implemented. This is also true for the use in computing output_port_x in
-  // the call to DrawRoutes below.
   int64_t tiling_bound_right_x = bank.Row(num_ff_bottom + 1).UpperRight().x();
   size_t middle_row_available_x =  tiling_bound_right_x -
       bank.Row(num_ff_bottom).UpperRight().x();
-  // TODO(aryap): This is the minimum viable decap cell. Encode that in the
-  // generator's parameters or something.
-  if (middle_row_available_x >= 460) {
+  if (middle_row_available_x >= db.ToInternalUnits(
+        Sky130Decap::Parameters::kMinWidthNm)) {
     std::string optional_decap_name = "decap_optional";
     Sky130Decap::Parameters optional_decap_params = {
       .width_nm = static_cast<uint64_t>(
@@ -292,6 +287,53 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         optional_decap_cell->layout());
   }
 
+  // The last step is to add the horizontal routing channel, which is either an
+  // odd or even number of rows to make the total number of rows in the layout
+  // even. We need an even number of rows to maintain the VPWR/VGND parity,
+  // which in turn enables us to tile these muxes without any extra concern.
+  // (VPWR has to match VPWR on the vertical neighbour, respectively VGND, etc).
+  // There is always a fixed transmission gate mux row (the central one).
+  //
+  // Additionally, we need as many encaps 
+
+  if (parameters_.num_inputs % 2 == 0) {
+    size_t horizontal_channel_row = num_ff + 2;
+    // Let's keep it for now (but have to account for it in the width split
+    // below):
+    //bank.DisableTapInsertionOnRow(horizontal_channel_row);
+    //
+    // Need only one row.
+    int64_t total_decap_width = bank.GetTilingBounds()->Width() -
+        tap_cell->layout()->GetTilingBounds().Width();
+    std::vector<int64_t> decap_widths = SplitIntoUnits(
+        total_decap_width,
+        db.ToInternalUnits(Sky130Decap::Parameters::kMaxWidthNm),
+        db.ToInternalUnits(Parameters::kHorizontalTilingUnitNm));
+
+
+    for (size_t i = 0; i < decap_widths.size(); ++i) {
+      int64_t width = decap_widths[i];
+      std::string name = absl::StrFormat("horizontal_channel_decap_%u", i);
+      Sky130Decap::Parameters decap_params = {
+        .width_nm = static_cast<uint64_t>(db.ToExternalUnits(width)),
+        .height_nm =
+            parameters_.horizontal_routing_channel_height_nm.value_or(2720)
+      };
+      Sky130Decap horizontal_channel_decap_generator(decap_params, design_db_);
+      Cell *horizontal_decap_cell =
+          horizontal_channel_decap_generator.GenerateIntoDatabase(name);
+      geometry::Instance *decap = bank.InstantiateRight(
+          num_ff + 2,
+          absl::StrCat(name, "_0"),
+          horizontal_decap_cell->layout());
+    }
+  }
+
+  // TODO(aryap): Not sure if we need to do this, but we don't want the pin
+  // layers to conflict and I don't know how LVS works yet:
+  // layout->EraseLayerByName("met1.pin");
+  // layout->EraseLayerByName("li.pin");
+
   // Draw all the wires!
   if (parameters_.num_inputs <= 7) {
     DrawRoutes(bank,
@@ -302,8 +344,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
                output_buf_instance,
                cell->layout());
   } else {
-    LOG(FATAL) << "You have to implement this with something more sophisticated"
-               << ", like the RoutingGrid";
+    LOG(FATAL) << "You have to implement routes with something more "
+               << "sophisticated, like the RoutingGrid";
   }
 
   return cell.release();
@@ -498,7 +540,7 @@ void Sky130InterconnectMux6::DrawRoutes(
   //
   //  met2 spine
   //     |
-  //     +---+ met1 jog
+  //     +---+ met1 elbow jog
   //     |   |
   //     |   + flip flop D input
   //     |
@@ -578,7 +620,8 @@ void Sky130InterconnectMux6::DrawPowerAndGround(
 
   // Then assume that each power/ground rail extends from the left to the right
   // limit of the MemoryBank layout, draw rails over the top, and connect:
-  auto draw_strap_fn = [&](const std::set<int64_t> y_values, int64_t x) {
+  auto draw_strap_fn = [&](
+      const std::set<int64_t> y_values, int64_t x) -> geometry::Polygon* {
     std::vector<geometry::Point> points;
     // power_y should be sorted in y by virtue of being a set; min at front, max
     // at back.
@@ -596,12 +639,16 @@ void Sky130InterconnectMux6::DrawPowerAndGround(
     }
     {
       ScopedLayer sl(layout, "met2.drawing");
-      layout->AddPolyLine(power_line);
+      return layout->AddPolyLine(power_line);
     }
   };
 
-  draw_strap_fn(power_y, vpwr_x);
-  draw_strap_fn(ground_y, vgnd_x);
+  geometry::Polygon *vpwr_strap = draw_strap_fn(power_y, vpwr_x);
+  geometry::Polygon *vgnd_strap = draw_strap_fn(ground_y, vgnd_x);
+
+  // FIXME(aryap): These need to be moved somewhere useful!
+  layout->MakePin("VPWR", vpwr_strap->GetBoundingBox().centre(), "met2.pin");
+  layout->MakePin("VGND", vgnd_strap->GetBoundingBox().centre(), "met2.pin");
 }
 
 void Sky130InterconnectMux6::DrawClock(
@@ -712,6 +759,7 @@ void Sky130InterconnectMux6::DrawClock(
     LOG_IF(FATAL, !port) << "No port named A on buf " << buf->name();
     buf_A_centres.push_back(port->centre());
   }
+
   layout->MakeVerticalSpineWithFingers(
         "met2.drawing",
         "met1.drawing",
@@ -720,6 +768,24 @@ void Sky130InterconnectMux6::DrawClock(
         input_clk_x,
         db.Rules("met2.drawing").min_width,
         layout);
+
+  // Lastly, we want a pad around a via for met3 to be the CLK port for this
+  // mux. Put it right in the middle, between the other two connection points.
+  // TODO(aryap): This is where it would again be nice to have a more flexible
+  // "MakeVerticalSpineWithFingers" function.
+  geometry::Point clock_port_centre = {
+      input_clk_x, (buf_A_centres.front().y() + buf_A_centres.back().y()) / 2};
+
+  // Assume met2 is vertical, as we have everywhere. Note that we're after met2
+  // encap of via2, not via1, this time:
+  auto encap_rules = db.TypicalViaEncap("met2.drawing", "via2.drawing");
+  {
+    ScopedLayer sl(layout, "met2.drawing");
+    layout->AddRectangle(
+        geometry::Rectangle::CentredAt(
+            clock_port_centre, encap_rules.width, encap_rules.length));
+  }
+  layout->MakePin("CLK", clock_port_centre, "met2.pin");
 }
 
 void Sky130InterconnectMux6::DrawOutput(
@@ -893,6 +959,13 @@ void Sky130InterconnectMux6::DrawScanChain(
                       layout);
     ++i;
   }
+
+  layout->MakePin("SCAN_IN",
+                  all_memories.front()->GetFirstPortNamed("D")->centre(),
+                  "li.pin");
+  layout->MakePin("SCAN_OUT",
+                  all_memories.back()->GetFirstPortNamed("D")->centre(),
+                  "li.pin");
 }
 
 // We will determine the minimum vertical poly-to-boundary spacing such that any
@@ -988,6 +1061,28 @@ void Sky130InterconnectMux6::AddPolyconAndLi(
       bulges_up ? min_overhang : remaining_side);
   ScopedLayer scoped_layer(layout, "li.drawing");
   layout->AddRectangle(li_pour);
+}
+
+std::vector<int64_t> Sky130InterconnectMux6::SplitIntoUnits(
+    int64_t length, int64_t max, int64_t unit) {
+  // Rely on truncating (floor) behaviour.
+  int64_t real_max = (max / unit) * unit;
+
+  std::vector<int64_t> lengths;
+
+  // Stripmining!
+  int64_t unallocated = length;
+  while (unallocated >= unit) {
+    int64_t remainder = unallocated - real_max;
+    if (remainder >= 0) {
+      lengths.push_back(real_max);
+    } else {
+      // Again we rely on truncating (floor) behaviour:
+      lengths.push_back((unallocated / unit) * unit);
+    }
+    unallocated = remainder;
+  }
+  return lengths;
 }
 
 }   // namespace atoms

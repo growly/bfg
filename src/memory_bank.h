@@ -65,6 +65,9 @@ class MemoryBank {
   std::optional<geometry::Rectangle> GetBoundingBox() const;
   std::optional<geometry::Rectangle> GetTilingBounds() const;
 
+  void DisableTapInsertionOnRow(size_t index);
+  void EnableTapInsertionOnRow(size_t index);
+
   std::vector<std::vector<std::string>> &instance_names() {
     return instance_names_;
   }

@@ -19,10 +19,18 @@ namespace atoms {
 class Sky130Decap: public Atom {
  public:
   struct Parameters {
+    // This is the width of the hd-lib std-cell decap_12. We can probably do
+    // more with more vias and stuff.
+    static constexpr uint64_t kMaxWidthNm = 5520;
+    // This is the width of the std_cell decap_3. Any smaller than this and we
+    // violate DRC rules (look at the poly).
+    static constexpr uint64_t kMinWidthNm = 460;
+
     uint64_t width_nm = 1380;
     uint64_t height_nm = 2720;
 
-    // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses Instance)?
+    // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses
+    // Instance)?
     std::string fet_model_length_parameter = "l";
     std::string fet_model_width_parameter = "w";
 

@@ -34,6 +34,9 @@ namespace atoms {
 //           +-+------------------------------+------+
 //           |D| (Out)      FF                |T|  D |
 //           +-+------------------------------+------+
+//           |       D          |T|          D       |  <- horizontal
+//           +-+------------------------------+------+     routing
+//                                                         channel
 //
 // The transmission gates are arranged so that the grow from left to right. The
 // flip flops are split in half and placed in rows emanating vertically from
@@ -59,6 +62,8 @@ namespace atoms {
 //           +-+------------------------------+------+
 //           | | (Out)      FF                | |    |
 //           +-+------------------------------+------+
+//           |       D          |T|          D       |
+//           +-+------------------------------+------+
 //    
 // TODO(aryap): We can also insert buffers into the vertical routing channel on
 // the left in order to buffer long wires travelling through.
@@ -66,12 +71,17 @@ namespace atoms {
 class Sky130InterconnectMux6 : public Atom {
  public:
   struct Parameters {
+    static constexpr uint64_t kHorizontalTilingUnitNm = 460;
+
     uint32_t num_inputs = 6;
     std::optional<uint64_t> poly_pitch_nm = 500;
 
     std::optional<uint64_t> vertical_pitch_nm = 400;
 
     std::optional<uint64_t> vertical_routing_channel_width_nm =
+        ((8 * 340) / 460 + 1) * 460;
+
+    std::optional<uint64_t> horizontal_routing_channel_height_nm =
         ((8 * 340) / 460 + 1) * 460;
 
     std::optional<uint64_t> power_ground_strap_width_nm;
@@ -93,6 +103,11 @@ class Sky130InterconnectMux6 : public Atom {
 
  private:
   static constexpr char kMuxOutputName[] = "Z";
+
+  // TODO(aryap): This is obviously a general utility function, once it has a
+  // better name.
+  static std::vector<int64_t> SplitIntoUnits(
+      int64_t length, int64_t max, int64_t unit);
 
   Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
     geometry::Instance *vertical_neighbour) const;

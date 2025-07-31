@@ -74,6 +74,17 @@ RowGuide &MemoryBank::Row(size_t index) {
   return rows_[index];
 }
 
+void MemoryBank::DisableTapInsertionOnRow(size_t index) {
+  Row(index).clear_tap_cell();
+}
+
+void MemoryBank::EnableTapInsertionOnRow(size_t index) {
+  LOG_IF(FATAL, !tap_cell_)
+      << "Cannot enable tap cell insertion on row " << index
+      << " without a tap_cell_ set";
+  Row(index).set_tap_cell(*tap_cell_);
+}
+
 // Makes sure the y position of each row's origin sits on top (or below, if
 // grow_down_ is true) the row below (or above). This is necessary because when
 // empty rows are created they have unknown height, but as soon as an instance

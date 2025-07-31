@@ -890,6 +890,9 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   layout->AddRectangleAsPort(
       Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLKI");
 
+  //layout->MakePin("VPWR", {230, static_cast<int64_t>(height)}, "met1.pin");
+  //layout->MakePin("VGND", {230, 0}, "met1.pin");
+
   // VDD/VSS
   int64_t via_width = 170;
   int64_t vpwr_bar_mid_y = vpwr_bar->centre().y();

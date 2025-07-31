@@ -369,6 +369,12 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
     int64_t mcon_side = std::max(db.Rules("mcon.drawing").via_width,
                                  db.Rules("mcon.drawing").via_height);
     int64_t pin_x = parameters_.mcon_via_pitch / 2;
+
+    // met1.pin 68/16
+    layout->SetActiveLayerByName("met1.pin");
+    layout->MakePin("VPWR", {230, static_cast<int64_t>(height)}, "met1.pin");
+    layout->MakePin("VGND", {230, 0}, "met1.pin");
+
     // nwell.pin 64/16
     layout->SetActiveLayerByName("nwell.pin");
     nwell_pin =

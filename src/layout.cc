@@ -360,6 +360,7 @@ geometry::Rectangle *Layout::AddRectangleAsPort(
     const std::string &net,
     const std::string &net_prefix) {
   geometry::Rectangle *installed = AddRectangle(rectangle);
+  installed->set_net(net);
   AddPort({rectangle, net}, net_prefix);
   return installed;
 }
