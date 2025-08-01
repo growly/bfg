@@ -78,11 +78,15 @@ void MemoryBank::DisableTapInsertionOnRow(size_t index) {
   Row(index).clear_tap_cell();
 }
 
-void MemoryBank::EnableTapInsertionOnRow(size_t index) {
-  LOG_IF(FATAL, !tap_cell_)
+void MemoryBank::EnableTapInsertionOnRow(size_t index, Cell *tap_cell) {
+  LOG_IF(FATAL, !tap_cell)
       << "Cannot enable tap cell insertion on row " << index
-      << " without a tap_cell_ set";
-  Row(index).set_tap_cell(*tap_cell_);
+      << " without a tap_cell set";
+  Row(index).set_tap_cell(*tap_cell);
+}
+
+void MemoryBank::EnableTapInsertionOnRow(size_t index) {
+  EnableTapInsertionOnRow(index, tap_cell_);
 }
 
 // Makes sure the y position of each row's origin sits on top (or below, if

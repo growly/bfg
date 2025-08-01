@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package bfg.proto.parameters;
+
+message LutB {
+  optional uint32 lut_size = 1;
+}

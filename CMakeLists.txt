@@ -6,6 +6,10 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
+set(CMAKE_CXX_FLAGS "-save-temps")
+set(CMAKE_CXX_FLAGS_DEBUG "-save-temps")
+set(CMAKE_CXX_FLAGS_RELEASE "-save-temps")
+
 # For googletest on Windows.
 #set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
@@ -78,6 +82,7 @@ set(SRC
 set(TILES_SRC
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut_b.cc
+  ${PROJECT_SOURCE_DIR}/src/tiles/interconnect.cc
 )
 
 set(SKY130_ATOMS_SRC

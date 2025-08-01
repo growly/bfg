@@ -18,6 +18,8 @@
 #include "../memory_bank.h"
 #include "../layout.h"
 
+#include "proto/parameters/lut_b.pb.h"
+
 namespace bfg {
 
 class Cell;
@@ -75,9 +77,16 @@ class LutB : public Tile {
     size_t mux_area_columns;
   };
 
-  LutB(DesignDatabase *design_db, size_t lut_size = 4)
+  struct Parameters {
+    uint32_t lut_size = 4;
+
+    void ToProto(proto::parameters::LutB *pb) const;
+    void FromProto(const proto::parameters::LutB &pb); 
+  };
+
+  LutB(const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
-        lut_size_(lut_size) {}
+        parameters_(parameters) {}
 
   Cell *GenerateIntoDatabase(const std::string &name) override;
 
@@ -152,7 +161,7 @@ class LutB : public Tile {
   // TODO(aryap): Candidate for inclusion in base class.
   void AccumulateAnyErrors(const absl::Status &status);
 
-  size_t lut_size_;
+  Parameters parameters_;
 
   static const LayoutConfig *GetLayoutConfiguration(size_t lut_size);
 

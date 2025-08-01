@@ -30,9 +30,20 @@
 #include "../routing_layer_info.h"
 #include "../routing_via_info.h"
 #include "../row_guide.h"
+#include "proto/parameters/lut_b.pb.h"
 
 namespace bfg {
 namespace tiles {
+
+void LutB::Parameters::ToProto(proto::parameters::LutB *pb) const {
+  pb->set_lut_size(lut_size);
+}
+
+void LutB::Parameters::FromProto(const proto::parameters::LutB &pb) {
+  if (pb.has_lut_size()) {
+    lut_size = pb.lut_size();
+  }
+}
 
 const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
   {4, LutB::LayoutConfig {
@@ -90,7 +101,7 @@ const LutB::LayoutConfig *LutB::GetLayoutConfiguration(size_t lut_size) {
 
 Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<Cell> lut_cell(new Cell("lut"));
+  std::unique_ptr<Cell> lut_cell(new Cell(name));
   std::unique_ptr<Layout> layout(new Layout(db));
   std::unique_ptr<Circuit> circuit(new Circuit());
 
@@ -102,14 +113,14 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   banks_.clear();
 
   const LutB::LayoutConfig layout_config =
-      *LutB::GetLayoutConfiguration(lut_size_);
+      *LutB::GetLayoutConfiguration(parameters_.lut_size);
   constexpr int64_t kMuxSize = 8;
 
   // Circuit setup.
   // ---------------------------------------------------------------------------
 
   // Selector signals S0, S1, S2, ... S(K - 1)
-  for (size_t i = 0; i < lut_size_; ++i) {
+  for (size_t i = 0; i < parameters_.lut_size; ++i) {
     circuit->AddPort(circuit->AddSignal(absl::StrCat("S", i)));
   }
   // Output.
@@ -1056,7 +1067,7 @@ void LutB::AddClockAndPowerStraps(
           finger_rules.min_separation);
 
   const LutB::LayoutConfig layout_config =
-      *LutB::GetLayoutConfiguration(lut_size_);
+      *LutB::GetLayoutConfiguration(parameters_.lut_size);
   std::vector<geometry::Compass> strap_alignment_per_bank = {
       layout_config.left.strap_alignment,
       layout_config.right.strap_alignment};

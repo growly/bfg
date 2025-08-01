@@ -67,6 +67,8 @@ class MemoryBank {
 
   void DisableTapInsertionOnRow(size_t index);
   void EnableTapInsertionOnRow(size_t index);
+  // Uses default tap_cell_.
+  void EnableTapInsertionOnRow(size_t index, Cell *tap_cell);
 
   std::vector<std::vector<std::string>> &instance_names() {
     return instance_names_;

@@ -3,6 +3,7 @@
 
 #include <utility>
 
+#include <absl/strings/str_cat.h>
 #include "../design_database.h"
 #include "../tiles/tile.h"
 
@@ -31,6 +32,10 @@ class Atom : public tiles::Tile {
 
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
+
+  const std::string PrefixCellName(const std::string &value) const {
+    return absl::StrCat(name_, "_", value);
+  }
 
   virtual bfg::Cell *Generate() = 0;
  protected:

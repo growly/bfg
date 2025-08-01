@@ -26,7 +26,10 @@
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
+#include "tiles/interconnect.h"
 
+#include "proto/parameters/interconnect.pb.h"
+#include "proto/parameters/lut_b.pb.h"
 #include "proto/parameters/sky130_decap.pb.h"
 #include "proto/parameters/sky130_interconnect_mux6.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
@@ -131,6 +134,16 @@ int RunGenerator(
         bfg::proto::parameters::Sky130Decap,
         bfg::atoms::Sky130Decap::Parameters,
         bfg::atoms::Sky130Decap>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "LutB") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::LutB,
+        bfg::tiles::LutB::Parameters,
+        bfg::tiles::LutB>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Interconnect") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Interconnect,
+        bfg::tiles::Interconnect::Parameters,
+        bfg::tiles::Interconnect>(generator_name, parameter_pb_path, design_db);
   } else {
     LOG(ERROR) << "Unrecognised generator name: " << generator_name;
     return EXIT_FAILURE;
@@ -238,7 +251,10 @@ int main(int argc, char **argv) {
   //return EXIT_SUCCESS;
 
   std::string top_name = "lut";
-  bfg::tiles::LutB generator(&design_db, FLAGS_k_lut);
+  bfg::tiles::LutB::Parameters lut_b_params = {
+    .lut_size = static_cast<uint32_t>(FLAGS_k_lut)
+  };
+  bfg::tiles::LutB generator(lut_b_params, &design_db);
   bfg::Cell *top = generator.GenerateIntoDatabase(top_name);
 
   // TODO(aryap): This is temporary, to make sense of one possible netlist.

@@ -84,7 +84,7 @@ class Sky130InterconnectMux6 : public Atom {
     std::optional<uint64_t> horizontal_routing_channel_height_nm =
         ((8 * 340) / 460 + 1) * 460;
 
-    std::optional<uint64_t> power_ground_strap_width_nm;
+    std::optional<uint64_t> power_ground_strap_width_nm = 600;
 
     void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);

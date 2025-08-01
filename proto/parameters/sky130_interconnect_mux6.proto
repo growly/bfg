@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package bfg.proto.parameters;
 
-import "proto/compass_direction.proto";
-
 message Sky130InterconnectMux6 {
   optional uint64 poly_pitch_nm = 9;
   optional uint64 vertical_pitch_nm = 10;
