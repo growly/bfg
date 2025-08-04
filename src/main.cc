@@ -62,6 +62,8 @@ DEFINE_string(primitives, "primitives.pb", "Path to binary circuits proto");
 DEFINE_int32(k_lut, 4, "How many LUT inputs");
 DEFINE_bool(s44, false, "Whether to make an S44 LUT (override K selection)");
 
+namespace { 
+
 void Gf180McuMuxExperiment() {
   // GF180MCU 7T MUX experiment
   //
@@ -89,8 +91,6 @@ bool ReadTextProtoOrDie(
   return google::protobuf::TextFormat::ParseFromString(ss.str(), message_pb);
 }
 
-namespace { 
-
 template<typename ProtoParam, typename GeneratorParam, typename Generator>
 bfg::Cell *ReadParamsAndGenerate(
     const std::string &generator_name,
@@ -106,9 +106,7 @@ bfg::Cell *ReadParamsAndGenerate(
   return generator.GenerateIntoDatabase(generator_name);
 }
 
-}  // namespace
-
-int RunGenerator(
+int DispatchGenerator(
     const std::string &generator_name,
     const std::string &parameter_pb_path,
     const std::string &output_prefix,
@@ -118,17 +116,20 @@ int RunGenerator(
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Sky130TransmissionGate,
         bfg::atoms::Sky130TransmissionGate::Parameters,
-        bfg::atoms::Sky130TransmissionGate>(generator_name, parameter_pb_path, design_db);
+        bfg::atoms::Sky130TransmissionGate>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130TransmissionGateStack") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Sky130TransmissionGateStack,
         bfg::atoms::Sky130TransmissionGateStack::Parameters,
-        bfg::atoms::Sky130TransmissionGateStack>(generator_name, parameter_pb_path, design_db);
+        bfg::atoms::Sky130TransmissionGateStack>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130InterconnectMux6") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Sky130InterconnectMux6,
         bfg::atoms::Sky130InterconnectMux6::Parameters,
-        bfg::atoms::Sky130InterconnectMux6>(generator_name, parameter_pb_path, design_db);
+        bfg::atoms::Sky130InterconnectMux6>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130Decap") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Sky130Decap,
@@ -155,6 +156,8 @@ int RunGenerator(
                       FLAGS_write_text_format);
   return EXIT_SUCCESS;
 }
+
+}  // namespace
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -219,7 +222,7 @@ int main(int argc, char **argv) {
   }
 
   if (FLAGS_run_generator != "")  {
-    return RunGenerator(FLAGS_run_generator,
+    return DispatchGenerator(FLAGS_run_generator,
                         FLAGS_params,
                         FLAGS_output_library,
                         &design_db);

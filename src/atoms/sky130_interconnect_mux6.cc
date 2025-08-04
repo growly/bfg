@@ -307,7 +307,13 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     Cell *channel_tap_cell = channel_tap_generator.GenerateIntoDatabase(
         PrefixCellName("channel_tap_template"));
 
-    size_t horizontal_channel_row = num_ff + 2;
+    // This is
+    //     1    for the centre transmission gate mux row
+    //   + 1    for the new, additional row
+    //   - 1    0-based indexing
+    //  ----
+    //     1
+    size_t horizontal_channel_row = num_ff + 1;
     // Let's keep it for now (but have to account for it in the width split
     // below):
     bank.DisableTapInsertionOnRow(horizontal_channel_row);
@@ -336,7 +342,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           horizontal_channel_decap_generator.GenerateIntoDatabase(
               absl::StrCat(name, "_template"));
       geometry::Instance *decap = bank.InstantiateRight(
-          num_ff + 2,
+          horizontal_channel_row,
           name,
           horizontal_decap_cell->layout());
     }

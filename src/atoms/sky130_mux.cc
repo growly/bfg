@@ -1610,10 +1610,10 @@ void ConnectOppositeInputs(
   //
   // here is better strategy.
   //  - columns are spaced so that a large met2 via encap can be accommodated
-  //  even though neighbouring columns have li via encap pours. find lowest
+  //  even though neighbouring columns have li via encap pours; find lowest
   //  point that the cross-bar can go before conflicting with input_1 (at the
   //  top) cross-bar.
-  //  - add pours to column poly-lines directly so taht they take care of
+  //  - add pours to column poly-lines directly so that they take care of
   //  removing notches.
   //  - place via encap/pad for met1 connection to output line
   //  - need met2 separation rules.
