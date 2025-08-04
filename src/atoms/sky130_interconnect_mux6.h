@@ -133,12 +133,12 @@ class Sky130InterconnectMux6 : public Atom {
 
   void DrawOutput(geometry::Instance *stack,
                   geometry::Instance *output_buffer,
-                  int64_t *output_port_y,
+                  int64_t *mux_pre_buffer_y,
                   int64_t output_port_x,
                   Layout *layout) const;
 
   void DrawInputs(geometry::Instance *stack,
-                  int64_t output_port_y,
+                  int64_t mux_pre_buffer_y,
                   int64_t vertical_x_left,
                   Layout *layout) const;
 

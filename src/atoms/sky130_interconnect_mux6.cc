@@ -572,15 +572,15 @@ void Sky130InterconnectMux6::DrawRoutes(
                 layout);
 
   int64_t output_port_x = bank.GetTilingBounds()->upper_right().x();
-  int64_t output_port_y = 0;
+  int64_t mux_pre_buffer_y = 0;
   DrawOutput(stack,
              output_buffer,
-             &output_port_y,
+             &mux_pre_buffer_y,
              output_port_x,
              layout);
 
   DrawInputs(stack,
-             output_port_y,
+             mux_pre_buffer_y,
              columns_left_x[kInterconnectLeftStartIndex],
              layout);
 
@@ -826,7 +826,7 @@ void Sky130InterconnectMux6::DrawClock(
 void Sky130InterconnectMux6::DrawOutput(
     geometry::Instance *stack,
     geometry::Instance *output_buffer,
-    int64_t *output_port_y,
+    int64_t *mux_pre_buffer_y,
     int64_t output_port_x,
     Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
@@ -866,7 +866,12 @@ void Sky130InterconnectMux6::DrawOutput(
   });
   layout->MakeWire(wire_points, "met1.drawing", connection_points);
 
-  *output_port_y = wire_points.front().y();
+  *mux_pre_buffer_y = wire_points.front().y();
+
+  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
+  
+  int64_t final_output_y = stack->GetTilingBounds().upper_right().y() - (
+      3 * met2_pitch / 2);
 
   // Connect the buff output to the edge of the design:
   geometry::Port *buf_X = output_buffer->GetFirstPortNamed("X");
@@ -877,8 +882,8 @@ void Sky130InterconnectMux6::DrawOutput(
   std::vector<geometry::Point> output_wire = {
       buf_X->centre(),
       {vertical_x, buf_X->centre().y()},
-      {vertical_x, *output_port_y},
-      geometry::Point {output_port_x, *output_port_y}
+      {vertical_x, final_output_y},
+      geometry::Point {output_port_x, final_output_y}
   };
 
   layout->MakeWire(output_wire,
@@ -890,7 +895,7 @@ void Sky130InterconnectMux6::DrawOutput(
 
 void Sky130InterconnectMux6::DrawInputs(
     geometry::Instance *stack,
-    int64_t output_port_y,
+    int64_t mux_pre_buffer_y,
     int64_t vertical_x_left,
     Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
@@ -921,7 +926,7 @@ void Sky130InterconnectMux6::DrawInputs(
   size_t j = 1;
   for (size_t i = 0; i < parameters_.num_inputs; ++i) {
     int64_t y_offset = j * met1_pitch;
-    int64_t y = output_port_y + (up ? y_offset : -y_offset);
+    int64_t y = mux_pre_buffer_y + (up ? y_offset : -y_offset);
     if ((i + 1) % 2 == 0) {
       j++;
     }
