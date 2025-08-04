@@ -6,9 +6,11 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-set(CMAKE_CXX_FLAGS "-save-temps")
-set(CMAKE_CXX_FLAGS_DEBUG "-save-temps")
-set(CMAKE_CXX_FLAGS_RELEASE "-save-temps")
+# Do this instead of 
+#   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps")
+#   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -save-temps")
+#   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -save-temps")
+add_compile_options(-save-temps)
 
 # For googletest on Windows.
 #set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
