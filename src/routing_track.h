@@ -91,7 +91,8 @@ class RoutingTrack {
   // track, as long as that edge would not be blocked already.
   bool AddVertex(
       RoutingVertex *vertex,
-      const std::optional<EquivalentNets> &for_nets = std::nullopt);
+      const std::optional<EquivalentNets> &for_nets = std::nullopt,
+      bool connect_immediate_neighbours_only = false);
 
   RoutingEdge *GetEdgeBetween(
       RoutingVertex *lhs, RoutingVertex *rhs) const;

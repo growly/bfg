@@ -1515,6 +1515,10 @@ std::optional<std::pair<geometry::Layer, double>> RoutingGrid::ViaLayerAndCost(
   return std::make_pair(needs_via->get().layer(), needs_via->get().cost());
 }
 
+// FIXME(aryap): The 'linear_cost' option is a stand-in for what is either an
+// entirely separate (from the client point of view) RoutingGrid, where wires
+// are modelled linearly. Obviously there is a lot of code sharing between this
+// function and the original ConnectLayers, which needs to be factored out.
 absl::Status RoutingGrid::ConnectLayers(
     const geometry::Layer &first, const geometry::Layer &second) {
   // One layer has to be horizontal, and one has to be vertical.

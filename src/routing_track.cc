@@ -142,7 +142,8 @@ bool RoutingTrack::MaybeAddEdgeBetween(
 
 bool RoutingTrack::AddVertex(
     RoutingVertex *vertex,
-    const std::optional<EquivalentNets> &for_nets) {
+    const std::optional<EquivalentNets> &for_nets,
+    bool connect_immediate_neighbours_only) {
   LOG_IF(FATAL, !Intersects(vertex))
       << "RoutingTrack " << Describe() << " cannot accommodate new vertex "
       << vertex->centre();
@@ -155,17 +156,22 @@ bool RoutingTrack::AddVertex(
   LOG_IF(FATAL, GetVertexAtOffset(vertex_offset) != nullptr)
       << "There already exists a vertex at offset " << vertex_offset;
 
-  // Generate an edge between the new vertex and every other vertex, unless it
-  // would be blocked. If there are no other vertices to connect to, we are
-  // successful by default.
   bool any_success = vertices_by_offset_.empty();
-  for (const auto &entry : vertices_by_offset_) {
-    RoutingVertex *other = entry.second;
-    // We _don't want_ short-circuiting here. Using the bitwise OR is correct
-    // because bools are defined to be true or false, and it forces evaluation
-    // of both operands every time.
-    any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
+
+  if (connect_immediate_neighbours_only) {
+    // Generate an edge between the new vertex and every other vertex, unless it
+    // would be blocked. If there are no other vertices to connect to, we are
+    // successful by default.
+  } else {
+    for (const auto &entry : vertices_by_offset_) {
+      RoutingVertex *other = entry.second;
+      // We _don't want_ short-circuiting here. Using the bitwise OR is correct
+      // because bools are defined to be true or false, and it forces evaluation
+      // of both operands every time.
+      any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
+    }
   }
+
   if (any_success) {
     // The vertex is not owned by this track but, in order to clean up correcly
     // if it is deleted, we add references back here.
