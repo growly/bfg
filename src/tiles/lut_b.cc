@@ -1087,6 +1087,12 @@ void LutB::AddClockAndPowerStraps(
       std::vector<geometry::Point> connections;
       for (const auto &row : banks_.at(bank).instances()) {
         for (geometry::Instance *instance : row) {
+          // We only care about the memories:
+          if (std::find(memories_.begin(), memories_.end(), instance) ==
+                  memories_.end()) {
+            continue;
+          }
+
           circuit::Instance *circuit_instance = instance->circuit_instance();
 
           std::vector<geometry::Port*> ports;
@@ -1106,9 +1112,8 @@ void LutB::AddClockAndPowerStraps(
 
       // Sort connections so that the left-most (lowest-x) is at the front.
       // Thus pick the left-most port.
-      std::sort(
-          connections.begin(), connections.end(),
-          geometry::Point::CompareX);
+      std::sort(connections.begin(), connections.end(),
+                geometry::Point::CompareX);
 
       int64_t spine_x = 0;
       if (strap_alignment_per_bank[bank] == geometry::Compass::LEFT) {
