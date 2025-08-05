@@ -14,4 +14,10 @@ Slice Slice::FromVLSIRSlice(const Circuit &circuit,
 }
 
 }  // namespace circuit
+
+std::ostream &operator<<(std::ostream &os, const circuit::Slice &slice) {
+  os << slice.signal().name();
+  return os;
+}
+
 }  // namespace bfg

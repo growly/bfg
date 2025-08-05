@@ -54,10 +54,9 @@ vlsir::circuit::ConnectionTarget Connection::ToVLSIRConnection() const {
 std::ostream &operator<<(
     std::ostream &os, const circuit::Connection &connection) {
   os << "[";
-
   switch (connection.connection_type()) {
     case circuit::Connection::ConnectionType::SIGNAL:
-      os << "Signal: " << connection.signal()->name();
+      os << "Signal: " << *connection.signal();
       break;
     case circuit::Connection::ConnectionType::SLICE:
       os << "Slice: " << connection.slice()->signal().name();

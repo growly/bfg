@@ -699,6 +699,7 @@ void LutB::RouteMuxInputs(
 
       std::string target_net;
       absl::StatusOr<RoutingPath*> route_result;
+      circuit::Signal *signal = nullptr;
       auto named_output_it = memory_output_net_names->find(memory);
       if (named_output_it == memory_output_net_names->end()) {
         target_net = net_names.primary();
@@ -708,11 +709,10 @@ void LutB::RouteMuxInputs(
         route_result = routing_grid->AddRouteBetween(
             *mux_port, *memory_output, non_net_connectables, net_names);
 
-        circuit::Signal *signal =
-            circuit->GetOrAddSignal(net_names.primary(), 1);
-        memory->circuit_instance()->Connect("Q", *signal);
-        mux->circuit_instance()->Connect(input_name, *signal);
-        LOG(INFO) << input_name << " <- " << signal->name();
+        signal = circuit->GetOrAddSignal(net_names.primary(), 1);
+        if (route_result.ok()) {
+          memory->circuit_instance()->Connect("Q", *signal);
+        }
       } else {
         // FIXME(aryap): I am stupid. The set of names given to the router to
         // determine which shapes are connectable is different to the target
@@ -726,11 +726,12 @@ void LutB::RouteMuxInputs(
         route_result = routing_grid->AddRouteToNet(
             *mux_port, target_net, net_names, non_net_connectables);
 
-        circuit::Signal *signal = circuit->GetOrAddSignal(target_net, 1);
-        mux->circuit_instance()->Connect(input_name, *signal);
-        LOG(INFO) << input_name << " <- " << signal->name();
+        signal = circuit->GetOrAddSignal(target_net, 1);
       }
       if (route_result.ok()) {
+        mux->circuit_instance()->Connect(input_name, *signal);
+        LOG(INFO) << input_name << " <- " << signal->name();
+
         path_found = true;
         break;
       }

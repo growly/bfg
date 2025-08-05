@@ -28,6 +28,9 @@ class Signal {
 };
 
 }  // namespace circuit
+
+std::ostream &operator<<(std::ostream &os, const circuit::Signal &signal);
+
 }  // namespace bfg
 
 #endif  // CIRCUIT_SIGNAL_H_

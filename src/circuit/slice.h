@@ -57,6 +57,9 @@ class Slice {
 };
 
 }  // namespace circuit
+ 
+std::ostream &operator<<(std::ostream &os, const circuit::Slice &slice);
+
 }  // namespace bfg
 
 #endif  // CIRCUIT_SLICE_H_

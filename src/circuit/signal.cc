@@ -12,4 +12,10 @@ namespace circuit {
 }
 
 }  // namespace circuit
+
+std::ostream &operator<<(std::ostream &os, const circuit::Signal &signal) {
+  os << signal.name();
+  return os;
+}
+
 }  // namespace bfg

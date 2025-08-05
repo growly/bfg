@@ -40,7 +40,8 @@ void Instance::Connect(
       << "Instance \"" << name_ << "\" port \"" << port_name
       << "\" was already connected "
       << *existing
-      << " when trying to Connect.";
+      << " when trying to connect to "
+      << signal;
   Connection connection;
   connection.set_signal(&signal);
   connections_.insert({port_name, connection});
@@ -50,7 +51,8 @@ void Instance::Connect(
     const std::string &port_name, const Slice &slice) {
   LOG_IF(FATAL, Disconnect(port_name))
       << "Instance \"" << name_ << "\" port \"" << port_name
-      << "\" was already connected when trying to Connect.";
+      << "\" was already connected when trying to connect to "
+      << slice;
 
   Connection connection;
 
