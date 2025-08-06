@@ -138,7 +138,9 @@ void Interconnect::ConfigureRoutingGrid(
 void Interconnect::Route(
     const std::vector<std::vector<geometry::Instance*>> muxes,
     Layout *layout) {
-  RoutingGrid routing_grid(design_db_->physical_db());
+  RoutingGrid routing_grid(
+      design_db_->physical_db(),
+      true);    // Use linear-cost model (saves memory).
   ConfigureRoutingGrid(&routing_grid, layout);
 
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);

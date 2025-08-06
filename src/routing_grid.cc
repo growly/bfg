@@ -1515,12 +1515,9 @@ std::optional<std::pair<geometry::Layer, double>> RoutingGrid::ViaLayerAndCost(
   return std::make_pair(needs_via->get().layer(), needs_via->get().cost());
 }
 
-// FIXME(aryap): The 'linear_cost' option is a stand-in for what is either an
-// entirely separate (from the client point of view) RoutingGrid, where wires
-// are modelled linearly. Obviously there is a lot of code sharing between this
-// function and the original ConnectLayers, which needs to be factored out.
 absl::Status RoutingGrid::ConnectLayers(
-    const geometry::Layer &first, const geometry::Layer &second) {
+    const geometry::Layer &first,
+    const geometry::Layer &second) {
   // One layer has to be horizontal, and one has to be vertical.
   auto split_directions = PickHorizontalAndVertical(first, second);
   const RoutingLayerInfo &horizontal_info = split_directions.first;
@@ -1561,7 +1558,8 @@ absl::Status RoutingGrid::ConnectLayers(
         routing_via_info.EncapWidth(vertical_info.layer()),
         routing_via_info.EncapLength(vertical_info.layer()),
         vertical_info.min_separation(),
-        x);
+        x,
+        use_linear_cost_model_);
     vertical_tracks.insert({x, track});
     grid_geometry.vertical_tracks_by_index().push_back(track);
     AddTrackToLayer(track, vertical_info.layer());
@@ -1579,7 +1577,8 @@ absl::Status RoutingGrid::ConnectLayers(
         routing_via_info.EncapWidth(horizontal_info.layer()),
         routing_via_info.EncapLength(horizontal_info.layer()),
         horizontal_info.min_separation(),
-        y);
+        y,
+        use_linear_cost_model_);
     horizontal_tracks.insert({y, track});
     grid_geometry.horizontal_tracks_by_index().push_back(track);
     AddTrackToLayer(track, horizontal_info.layer());

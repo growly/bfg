@@ -36,7 +36,8 @@ TEST(RoutingTrackTest, MergesBlockages) {
       25,                                       // Vertex via width
       25,                                       // Vertex via length
       50,                                       // Minimum separation
-      50);                                      // Offset
+      50,                                       // Offset
+      false);                                   // Neighbours only
 
   // We have a horizontal track at y=50:
   //
@@ -101,7 +102,8 @@ TEST(RoutingTrackTest, DoesNotMergeDifferingNets) {
       25,                                       // Vertex via width
       25,                                       // Vertex via length
       50,                                       // Minimum separation
-      50);                                      // Offset
+      50,                                       // Offset
+      false);                                   // Neighbours only
 
   // We have a horizontal track at y=50:
   //

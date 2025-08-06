@@ -373,13 +373,13 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 }
 
 void Sky130InterconnectMux6::DrawRoutes(
-      const MemoryBank &bank,
-      const std::vector<geometry::Instance*> &top_memories,
-      const std::vector<geometry::Instance*> &bottom_memories,
-      const std::vector<geometry::Instance*> &clk_bufs,
-      geometry::Instance *stack,
-      geometry::Instance *output_buffer,
-      bfg::Layout *layout) const {
+    const MemoryBank &bank,
+    const std::vector<geometry::Instance*> &top_memories,
+    const std::vector<geometry::Instance*> &bottom_memories,
+    const std::vector<geometry::Instance*> &clk_bufs,
+    geometry::Instance *stack,
+    geometry::Instance *output_buffer,
+    bfg::Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   // Connect flip-flop outputs to transmission gates. Flip-flops store one bit
   // and output both the bit and its complement, conveniently. Per description

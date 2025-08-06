@@ -57,7 +57,8 @@ class RoutingTrack {
                int64_t vertex_via_width,
                int64_t vertex_via_length,
                int64_t min_separation,
-               int64_t offset)
+               int64_t offset,
+               int64_t vertices_connect_to_neighbours_only = false)
       : layer_(layer),
         direction_(direction),
         offset_(offset),
@@ -65,7 +66,9 @@ class RoutingTrack {
         width_(width),
         vertex_via_width_(vertex_via_width),
         vertex_via_length_(vertex_via_length),
-        min_separation_(min_separation) {
+        min_separation_(min_separation),
+        vertices_connect_to_neighbours_only_(
+            vertices_connect_to_neighbours_only) {
     min_separation_between_edges_ = vertex_via_length + min_separation;
     min_separation_to_new_blockages_ = vertex_via_length / 2 + min_separation;
     edges_min_transverse_separation_ = width_ / 2 + min_separation;
@@ -91,8 +94,7 @@ class RoutingTrack {
   // track, as long as that edge would not be blocked already.
   bool AddVertex(
       RoutingVertex *vertex,
-      const std::optional<EquivalentNets> &for_nets = std::nullopt,
-      bool connect_immediate_neighbours_only = false);
+      const std::optional<EquivalentNets> &for_nets = std::nullopt);
 
   RoutingEdge *GetEdgeBetween(
       RoutingVertex *lhs, RoutingVertex *rhs) const;
@@ -394,6 +396,8 @@ class RoutingTrack {
   // expect to change. The minimum separation from the end of an existing edge
   // to those is just half 'vertex_via_length_' plus min_separation_.
   int64_t min_separation_to_new_blockages_;
+
+  bool vertices_connect_to_neighbours_only_;
 
   // The minimum distance to shapes measured in the axis perpendicular to the
   // track.

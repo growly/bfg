@@ -71,8 +71,16 @@ class RoutingGridBlockage;
 
 class RoutingGrid {
  public:
-  RoutingGrid(const PhysicalPropertiesDatabase &physical_db)
-      : physical_db_(physical_db) {}
+  // FIXME(aryap): The 'linear_cost_model' option is a stand-in for what is
+  // either an entirely separate (from the client point of view) RoutingGrid,
+  // where wires are modelled linearly. Obviously there is a lot of code
+  // sharing between this function and the original ConnectLayers, which needs
+  // to be factored out.
+  RoutingGrid(
+      const PhysicalPropertiesDatabase &physical_db,
+      bool use_linear_cost_model = false)
+      : physical_db_(physical_db),
+        use_linear_cost_model_(use_linear_cost_model) {}
 
   ~RoutingGrid();
 
@@ -81,7 +89,8 @@ class RoutingGrid {
   // horizontal and vertical routing line cross. (The two described layers must
   // be orthogonal in routing direction.)
   absl::Status ConnectLayers(
-      const geometry::Layer &first, const geometry::Layer &second);
+      const geometry::Layer &first,
+      const geometry::Layer &second);
 
   // Convenient form AddMultiPointRoute which determines all net aliases for
   // the given ports and uses the given Layout to find all off-net ports to
@@ -704,6 +713,9 @@ class RoutingGrid {
   std::set<std::string> global_nets_;
 
   const PhysicalPropertiesDatabase &physical_db_;
+
+  // The default is to use a super-linear model.
+  bool use_linear_cost_model_;
 
   template<typename T>
   friend class RoutingGridBlockage;

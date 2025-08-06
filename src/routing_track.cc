@@ -142,8 +142,7 @@ bool RoutingTrack::MaybeAddEdgeBetween(
 
 bool RoutingTrack::AddVertex(
     RoutingVertex *vertex,
-    const std::optional<EquivalentNets> &for_nets,
-    bool connect_immediate_neighbours_only) {
+    const std::optional<EquivalentNets> &for_nets) {
   LOG_IF(FATAL, !Intersects(vertex))
       << "RoutingTrack " << Describe() << " cannot accommodate new vertex "
       << vertex->centre();
@@ -158,11 +157,23 @@ bool RoutingTrack::AddVertex(
 
   bool any_success = vertices_by_offset_.empty();
 
-  if (connect_immediate_neighbours_only) {
+  if (vertices_connect_to_neighbours_only_) {
+    auto before = vertices_by_offset_.upper_bound(vertex_offset);
+    auto after = vertices_by_offset_.lower_bound(vertex_offset);
+    std::vector<RoutingVertex*> neighbours;
+    if (before != vertices_by_offset_.end()) {
+      neighbours.push_back(before->second);
+    }
+    if (after != vertices_by_offset_.end()) {
+      neighbours.push_back(after->second);
+    }
+    for (RoutingVertex *other : neighbours) {
+      any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
+    }
+  } else {
     // Generate an edge between the new vertex and every other vertex, unless it
     // would be blocked. If there are no other vertices to connect to, we are
     // successful by default.
-  } else {
     for (const auto &entry : vertices_by_offset_) {
       RoutingVertex *other = entry.second;
       // We _don't want_ short-circuiting here. Using the bitwise OR is correct

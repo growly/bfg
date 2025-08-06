@@ -81,8 +81,12 @@ class Sky130InterconnectMux6 : public Atom {
     std::optional<uint64_t> vertical_routing_channel_width_nm =
         ((8 * 340) / 460 + 1) * 460;
 
-    std::optional<uint64_t> horizontal_routing_channel_height_nm =
-        ((8 * 340) / 460 + 1) * 460;
+    // For N tracks we need (N - 1) pitches and additional two half-pitches for
+    // the top and bottom. But given the 235 um met1 VPWR/VGND rail overhang we
+    // need an extra at the top and an extra at the bottom too. So we need
+    //    (N - 1) + 0.5 + 0.5 + 2 = N + 2
+    std::optional<uint64_t> horizontal_routing_channel_height_nm = 
+        (8 + 2) * 340;
 
     std::optional<uint64_t> power_ground_strap_width_nm = 300;
 
