@@ -1,4 +1,4 @@
-#ifndef LAYOUT_H_
+#ifndef LAYOUT_H_dd?alyo
 #define LAYOUT_H_
 
 #include <string>

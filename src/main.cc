@@ -26,10 +26,12 @@
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
+#include "tiles/slice.h"
 #include "tiles/interconnect.h"
 
 #include "proto/parameters/interconnect.pb.h"
 #include "proto/parameters/lut_b.pb.h"
+#include "proto/parameters/slice.pb.h"
 #include "proto/parameters/sky130_decap.pb.h"
 #include "proto/parameters/sky130_interconnect_mux6.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
@@ -145,6 +147,11 @@ int DispatchGenerator(
         bfg::proto::parameters::Interconnect,
         bfg::tiles::Interconnect::Parameters,
         bfg::tiles::Interconnect>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Slice") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Slice,
+        bfg::tiles::Slice::Parameters,
+        bfg::tiles::Slice>(generator_name, parameter_pb_path, design_db);
   } else {
     LOG(ERROR) << "Unrecognised generator name: " << generator_name;
     return EXIT_FAILURE;

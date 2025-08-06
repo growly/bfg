@@ -20,6 +20,7 @@ namespace tiles {
 class Interconnect : public Tile {
  public:
   struct Parameters {
+    // TODO(aryap): Complete.
     void ToProto(proto::parameters::Interconnect *pb) const;
     void FromProto(const proto::parameters::Interconnect &pb); 
   };

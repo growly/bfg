@@ -85,6 +85,7 @@ set(TILES_SRC
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut_b.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/interconnect.cc
+  ${PROJECT_SOURCE_DIR}/src/tiles/slice.cc
 )
 
 set(SKY130_ATOMS_SRC
@@ -194,7 +195,7 @@ function(generate_protos proto_src_root proto_files out_dir)
   set(GENERATED_PROTO_SRCS ${GENERATED_PROTO_SRCS} PARENT_SCOPE)
 endfunction()
 
-# Vlsir
+# VLSIR
 # -----
 #
 # Built as a library so that the proto import/include paths, which are relative

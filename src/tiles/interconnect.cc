@@ -18,10 +18,12 @@ namespace tiles {
 
 void Interconnect::Parameters::ToProto(
     proto::parameters::Interconnect *pb) const {
+  // TODO(aryap): Complete.
 }
 
 void Interconnect::Parameters::FromProto(
     const proto::parameters::Interconnect &pb) {
+  // TODO(aryap): Complete.
 }
 
 Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
@@ -39,7 +41,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   // "Memory" bank. Rename it. "TilingGrid"? idk.
   MemoryBank bank = MemoryBank(cell->layout(),
                                design_db_,
-                               nullptr,   // No tap cells.
+                               nullptr,    // No tap cells.
                                false,      // Rotate alternate rows.
                                false,      // Rotate first row.
                                geometry::Compass::LEFT);
