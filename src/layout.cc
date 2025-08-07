@@ -567,9 +567,9 @@ void Layout::MakePin(
       physical_db_.Rules(layer_name).via_width);
   geometry::Port port = geometry::Port(
       centre, via_side, via_side, layer, net_name);
-  AddPort(port);
 
   ScopedLayer sl(this, layer);
+  AddPort(port);
   AddRectangle(port);
 }
 

@@ -3,6 +3,7 @@
 #include <string>
 
 #include <absl/strings/str_format.h>
+#include "../equivalent_nets.h"
 #include "../atoms/sky130_interconnect_mux6.h"
 #include "../circuit.h"
 #include "../geometry/instance.h"
@@ -35,7 +36,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   size_t num_cols = 16;
   size_t num_rows = 8;
 
-  std::vector<std::vector<geometry::Instance*>> muxes;
+  MuxCollection muxes;
 
   // TODO(aryap): Ok this is clearly a more useful structure than just a
   // "Memory" bank. Rename it. "TilingGrid"? idk.
@@ -62,7 +63,46 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
-  Route(muxes, cell->layout());
+  InputPortCollection mux_inputs;
+  OutputPortCollection mux_outputs;
+  for (size_t i = 0; i < num_rows; ++i) {
+    mux_inputs.emplace_back();
+    mux_outputs.emplace_back();
+    for (size_t j = 0; j < num_cols; ++j) {
+      geometry::Instance *mux = muxes[i][j];
+
+      // FIXME(aryap): The number of output ports is absolutely a parameter here!
+      // Or at least it must be!
+      {
+        geometry::Port *port = mux->GetFirstPortNamed(
+            atoms::Sky130InterconnectMux6::kMuxOutputName);
+        if (!port) {
+          LOG(WARNING) << "No output port on " << mux;
+          continue;
+        }
+        mux_outputs[i].push_back(port);
+      }
+
+      mux_inputs[i].emplace_back();
+      for (size_t k = 0; k < default_mux6_params.num_inputs; ++k) {
+        std::string port_name = absl::StrFormat("X%u", k);
+        geometry::Port *port = mux->GetFirstPortNamed(port_name);
+        if (!port) {
+          LOG(WARNING) << "No such port " << port_name << " on " << mux;
+          continue;
+        }
+        mux_inputs[i][j].push_back(port);
+      }
+    }
+  }
+
+  // TODO(aryap): Maybe it should be a feature of the MemoryBank to merge its
+  // tiling bounds with whatever TilingBounds are in the layout (though then we
+  // will have to distinguish set and unset tiling bounds instead of the
+  // default, which is to return the bounding box).
+  cell->layout()->SetTilingBounds(*bank.GetTilingBounds());
+
+  Route(muxes, mux_inputs, mux_outputs, cell->layout());
 
   return cell.release();
 }
@@ -72,15 +112,38 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
 void Interconnect::ConfigureRoutingGrid(
     RoutingGrid *routing_grid, Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &met1_rules = db.Rules("met1.drawing");
+
+  // Use linear-cost model (saves memory).
+  routing_grid->set_use_linear_cost_model(true);
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
+  geometry::Rectangle tiling_bounds = layout->GetTilingBounds();
+
+  // The muxes are configured to be mutliples of met1 pitch in height, and are
+  // aligned with typical sky130 std cells having met1 pitches offset by a
+  // half-pitch from the bottom boundary:
+  //
+  // ----------------------------------------------------------------------
+  //
+  // -  -  -  -  -  -  -  -  -  -   tiling bounds   -  -  -  -  -  -  -  -  -  -
+  //                ^   VPWR rail
+  // ---------------|------------------------------------------------------
+  //                |
+  //                |  1.5 met1 pitches
+  //                v
+  //                +  <--- centre of met1 pin within cell
+  //
+  int64_t vertical_offset = met1_rules.min_pitch / 2 +
+      (tiling_bounds.lower_left().y() - pre_route_bounds.lower_left().y());
+
   LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
+  LOG(INFO) << "Tiling bounds: " << tiling_bounds;
   RoutingLayerInfo met1_layer_info =
       db.GetRoutingLayerInfoOrDie("met1.drawing");
   met1_layer_info.set_direction(RoutingTrackDirection::kTrackHorizontal);
   met1_layer_info.set_area(pre_route_bounds);
-  // TODO(aryap): Need an easier way of lining this up!
-  // met1_layer_info.offset = 70;
+  met1_layer_info.set_offset(vertical_offset);
 
   RoutingLayerInfo met2_layer_info =
       db.GetRoutingLayerInfoOrDie("met2.drawing");
@@ -138,12 +201,27 @@ void Interconnect::ConfigureRoutingGrid(
 }
 
 void Interconnect::Route(
-    const std::vector<std::vector<geometry::Instance*>> muxes,
+    const MuxCollection &muxes,
+    const InputPortCollection &mux_inputs,
+    const OutputPortCollection &mux_outputs,
     Layout *layout) {
   RoutingGrid routing_grid(
-      design_db_->physical_db(),
-      true);    // Use linear-cost model (saves memory).
+      design_db_->physical_db());
   ConfigureRoutingGrid(&routing_grid, layout);
+
+  // What if just added 20 routes?
+  for (size_t i = 0; i < 20; ++i) {
+    geometry::Instance *source = muxes[i / 4][i % 6];
+    geometry::Port *from = mux_outputs[i / 4][i % 16];
+    geometry::Instance *destination = muxes[i / 4 + 1][(i + 1) % 16];
+    geometry::Port *to = mux_inputs[i / 4 + 1][(i + 1) % 16][0];
+    routing_grid.AddRouteBetween(
+        *from, *to,
+        {},
+        EquivalentNets(
+            {absl::StrCat(source->name(), "/", from->net()),
+             absl::StrCat(destination->name(), "/", to->net())}));
+  }
 
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
   routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);

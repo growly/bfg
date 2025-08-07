@@ -77,10 +77,9 @@ class RoutingGrid {
   // sharing between this function and the original ConnectLayers, which needs
   // to be factored out.
   RoutingGrid(
-      const PhysicalPropertiesDatabase &physical_db,
-      bool use_linear_cost_model = false)
+      const PhysicalPropertiesDatabase &physical_db)
       : physical_db_(physical_db),
-        use_linear_cost_model_(use_linear_cost_model) {}
+        use_linear_cost_model_(false) {}
 
   ~RoutingGrid();
 
@@ -305,6 +304,13 @@ class RoutingGrid {
             std::reference_wrapper<const RoutingLayerInfo>>
       PickHorizontalAndVertical(
           const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
+  void set_use_linear_cost_model(bool use_linear_cost_model) {
+    use_linear_cost_model_ = use_linear_cost_model;
+  }
+  bool use_linear_cost_model() {
+    return use_linear_cost_model_;
+  }
 
  private:
   struct CostedVertex {

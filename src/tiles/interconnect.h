@@ -2,9 +2,11 @@
 #define TILES_INTERCONNECT_H_
 
 #include <string>
+#include <vector>
 
 #include "../circuit.h"
 #include "../geometry/instance.h"
+#include "../geometry/point.h"
 #include "../layout.h"
 #include "../memory_bank.h"
 #include "../routing_grid.h"
@@ -19,6 +21,12 @@ namespace tiles {
 
 class Interconnect : public Tile {
  public:
+  typedef std::vector<std::vector<geometry::Instance*>> MuxCollection;
+  typedef std::vector<std::vector<std::vector<geometry::Port*>>>
+      InputPortCollection;
+  typedef std::vector<std::vector<geometry::Port*>>
+      OutputPortCollection;
+
   struct Parameters {
     // TODO(aryap): Complete.
     void ToProto(proto::parameters::Interconnect *pb) const;
@@ -33,14 +41,16 @@ class Interconnect : public Tile {
 
   Cell *GenerateIntoDatabase(const std::string &name) override;
 
-  // TODO(aryap): Is this const?
-  void Route(
-      const std::vector<std::vector<geometry::Instance*>> muxes,
-      Layout *layout);
-
   void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
 
  private:
+  // TODO(aryap): Is this const?
+  void Route(
+      const MuxCollection &muxes,
+      const InputPortCollection &mux_inputs,
+      const OutputPortCollection &mux_outputs,
+      Layout *layout);
+
   Parameters parameters_;
 };
 

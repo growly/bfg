@@ -94,6 +94,8 @@ class Sky130InterconnectMux6 : public Atom {
     void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
   };
 
+  static constexpr char kMuxOutputName[] = "Z";
+
   Sky130InterconnectMux6(
       const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
@@ -106,8 +108,6 @@ class Sky130InterconnectMux6 : public Atom {
   bfg::Cell *Generate() override;
 
  private:
-  static constexpr char kMuxOutputName[] = "Z";
-
   // TODO(aryap): This is obviously a general utility function, once it has a
   // better name.
   static std::vector<int64_t> SplitIntoUnits(
