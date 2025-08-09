@@ -58,7 +58,7 @@ class RoutingTrack {
                int64_t vertex_via_length,
                int64_t min_separation,
                int64_t offset,
-               int64_t vertices_connect_to_neighbours_only = false)
+               int64_t edges_only_to_neighbours = false)
       : layer_(layer),
         direction_(direction),
         offset_(offset),
@@ -67,8 +67,8 @@ class RoutingTrack {
         vertex_via_width_(vertex_via_width),
         vertex_via_length_(vertex_via_length),
         min_separation_(min_separation),
-        vertices_connect_to_neighbours_only_(
-            vertices_connect_to_neighbours_only) {
+        edges_only_to_neighbours_(
+            edges_only_to_neighbours) {
     min_separation_between_edges_ = vertex_via_length + min_separation;
     min_separation_to_new_blockages_ = vertex_via_length / 2 + min_separation;
     edges_min_transverse_separation_ = width_ / 2 + min_separation;
@@ -193,6 +193,9 @@ class RoutingTrack {
       std::set<RoutingEdge*> *blocked_edges);
 
   bool RemoveTemporaryBlockage(RoutingTrackBlockage *blockage);
+
+  std::vector<RoutingVertex*> ImmediateNeighbours(
+      const RoutingVertex &vertex) const;
 
   geometry::Line AsLine() const;
   std::pair<geometry::Line, geometry::Line> MajorAxisLines(
@@ -397,7 +400,7 @@ class RoutingTrack {
   // to those is just half 'vertex_via_length_' plus min_separation_.
   int64_t min_separation_to_new_blockages_;
 
-  bool vertices_connect_to_neighbours_only_;
+  bool edges_only_to_neighbours_;
 
   // The minimum distance to shapes measured in the axis perpendicular to the
   // track.

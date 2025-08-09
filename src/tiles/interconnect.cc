@@ -71,8 +71,8 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
     for (size_t j = 0; j < num_cols; ++j) {
       geometry::Instance *mux = muxes[i][j];
 
-      // FIXME(aryap): The number of output ports is absolutely a parameter here!
-      // Or at least it must be!
+      // FIXME(aryap): The number of output ports is absolutely a parameter
+      // here!  Or at least it must be!
       {
         geometry::Port *port = mux->GetFirstPortNamed(
             atoms::Sky130InterconnectMux6::kMuxOutputName);
@@ -218,13 +218,13 @@ void Interconnect::Route(
     routing_grid.AddRouteBetween(
         *from, *to,
         {},
-        EquivalentNets(
-            {absl::StrCat(source->name(), "/", from->net()),
-             absl::StrCat(destination->name(), "/", to->net())}));
+        EquivalentNets({from->net(), to->net()}));
   }
 
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
   routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
+
+  routing_grid.ExportToLayout("routing", layout);
 }
 
 }   // namespace tiles

@@ -198,18 +198,20 @@ class Layout : public geometry::Manipulable {
       const std::string &second_layer_name,
       const std::optional<std::string> &net = std::nullopt);
 
-  void MakeWire(
+  geometry::Polygon *MakeWire(
       const std::vector<geometry::Point> &points,
       const std::string &wire_layer_name,
       const std::optional<std::string> &start_layer_name = std::nullopt,
       const std::optional<std::string> &end_layer_name = std::nullopt,
       bool start_pad_only = false,
-      bool end_pad_only = false);
+      bool end_pad_only = false,
+      const std::optional<std::string> &net = std::nullopt);
 
-  void MakeWire(
+  geometry::Polygon *MakeWire(
       const std::vector<geometry::Point> &points,
       const std::string &wire_layer_name,
-      const std::vector<ViaToSomeLayer> vias);
+      const std::vector<ViaToSomeLayer> vias,
+      const std::optional<std::string> &net = std::nullopt);
 
   // Add the layout of every instance to the this layout directly, removing one
   // layer of hierarchy. To flatten completely, this must be called repeatedly

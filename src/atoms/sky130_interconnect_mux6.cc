@@ -886,10 +886,16 @@ void Sky130InterconnectMux6::DrawOutput(
       geometry::Point {output_port_x, final_output_y}
   };
 
+  // It is very important that the output wire be labelled with its net so that
+  // the RoutingGrid can make exceptions for blockages when connecting to it!
   layout->MakeWire(output_wire,
                    "met1.drawing",  // Wire layer.
                    "li.drawing",    // Start layer.
-                   std::nullopt);
+                   std::nullopt,    // End layer.
+                   false,
+                   false,
+                   kMuxOutputName);
+
   layout->MakePin(kMuxOutputName, output_wire.back(), "met1.pin");
 }
 
@@ -944,7 +950,9 @@ void Sky130InterconnectMux6::DrawInputs(
         "met1.drawing",
         "met2.drawing",
         "li.drawing",
-        true);    // Pad only at the start.
+        true,    // Pad-only at the start.
+        false,
+        input_name);
 
     ScopedLayer sl(layout, "met1.pin");
     layout->MakePin(input_name, start, "met1.pin");

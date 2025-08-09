@@ -148,6 +148,10 @@ class RoutingGrid {
   PolyLineCell *CreatePolyLineCell() const;
 
   Layout *GenerateLayout() const;
+  // Generates the layout and adds it to the given layout:
+  void ExportToLayout(
+      const std::optional<std::string> &prefix,
+      Layout *layout) const;
 
   // Add permanent blockages. Ports need special consideration and are not
   // added by default.

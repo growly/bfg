@@ -140,6 +140,33 @@ bool RoutingTrack::MaybeAddEdgeBetween(
   return true;
 }
 
+
+std::vector<RoutingVertex*> RoutingTrack::ImmediateNeighbours(
+    const RoutingVertex &vertex) const {
+  int64_t vertex_offset = ProjectOntoTrack(vertex.centre());
+  if (vertices_by_offset_.empty()) {
+    return {};
+  }
+  if (vertices_by_offset_.size() == 1) {
+    return {vertices_by_offset_.begin()->second};
+  }
+
+  // There are now at least two elements, simplifying checks on whether these
+  // iterators make sense. (Also, obviating the need for me to really figure out
+  // how they behave.)
+  std::vector<RoutingVertex*> neighbours;
+  auto after = vertices_by_offset_.lower_bound(vertex_offset);
+  if (after != vertices_by_offset_.begin()) {
+    // Must exist since map is at least size 2.
+    auto before = std::prev(after, 1);
+    neighbours.push_back(before->second);
+  }
+  if (after != vertices_by_offset_.end()) {
+    neighbours.push_back(after->second);
+  }
+  return neighbours;
+}
+
 bool RoutingTrack::AddVertex(
     RoutingVertex *vertex,
     const std::optional<EquivalentNets> &for_nets) {
@@ -157,16 +184,8 @@ bool RoutingTrack::AddVertex(
 
   bool any_success = vertices_by_offset_.empty();
 
-  if (vertices_connect_to_neighbours_only_) {
-    auto before = vertices_by_offset_.upper_bound(vertex_offset);
-    auto after = vertices_by_offset_.lower_bound(vertex_offset);
-    std::vector<RoutingVertex*> neighbours;
-    if (before != vertices_by_offset_.end()) {
-      neighbours.push_back(before->second);
-    }
-    if (after != vertices_by_offset_.end()) {
-      neighbours.push_back(after->second);
-    }
+  if (edges_only_to_neighbours_) {
+    std::vector<RoutingVertex*> neighbours = ImmediateNeighbours(*vertex);
     for (RoutingVertex *other : neighbours) {
       any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
     }

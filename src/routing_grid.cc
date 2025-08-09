@@ -699,7 +699,7 @@ absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
   }
 
   std::stringstream ss;
-  ss << "Could not connect to grid: "
+  ss << "Could not connect " << port.centre() << " to grid: "
      << "(1) " << try_add_access_vertices.status().message()
      << "; (2) " << try_nearest_available.status().message();
 
@@ -790,6 +790,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
       if (!validity.ok()) {
         track->RemoveVertex(bridging_vertex);
         delete bridging_vertex;
+        errors.push_back(std::string(validity.message()));
         continue;
       }
 
@@ -812,7 +813,8 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     // We do not check ValidAgainstInstalledPaths because that is slow. We hope
     // that by now the other rules have prevented such a possibility. Fingers
     // crossed....
-    if (!ValidAgainstKnownBlockages(*edge, connectable_nets).ok()) {
+    auto validity = ValidAgainstKnownBlockages(*edge, connectable_nets);
+    if (!validity.ok()) {
       VLOG(100) << "Invalid off grid edge between "
                 << bridging_vertex->centre()
                 << " and " << off_grid->centre();
@@ -821,6 +823,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
         RemoveVertex(bridging_vertex, true);  // and delete!
       }
       delete edge;
+      errors.push_back(std::string(validity.message()));
       continue;
     }
 
@@ -1874,8 +1877,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
   //  std::optional<geometry::Rectangle> via_footprint = ViaFootprint(
   //      *vertex,
   //      100);   // FIXME(aryap): This padding value is the max of the
-  //              // min_separations on the top and bottom layers and should just
-  //              // be automatically found.
+  //              // min_separations on the top and bottom layers and should
+  //              // just be automatically found.
   //  if (!via_footprint)
   //    return true;
 
@@ -3434,6 +3437,13 @@ Layout *RoutingGrid::GenerateLayout() const {
     grid_layout->AddGlobalNet(net);
   }
   return grid_layout.release();
+}
+
+void RoutingGrid::ExportToLayout(
+    const std::optional<std::string> &prefix,
+    Layout *layout) const {
+  std::unique_ptr<Layout> generated(GenerateLayout());
+  layout->AddLayout(*generated, prefix.value_or("default_routing_grid"));
 }
 
 absl::Status RoutingGrid::AddRoutingGridGeometry(

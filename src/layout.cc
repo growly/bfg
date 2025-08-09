@@ -767,13 +767,14 @@ void Layout::MakeAlternatingWire(
   }
 }
 
-void Layout::MakeWire(
+geometry::Polygon *Layout::MakeWire(
     const std::vector<geometry::Point> &points,
     const std::string &wire_layer_name,
     const std::optional<std::string> &start_layer_name,
     const std::optional<std::string> &end_layer_name,
     bool start_pad_only,
-    bool end_pad_only) {
+    bool end_pad_only,
+    const std::optional<std::string> &net) {
   std::vector<ViaToSomeLayer> vias;
 
   if (start_layer_name) {
@@ -792,13 +793,14 @@ void Layout::MakeWire(
     });
   }
 
-  MakeWire(points, wire_layer_name, vias);
+  return MakeWire(points, wire_layer_name, vias, net);
 }
 
-void Layout::MakeWire(
+geometry::Polygon *Layout::MakeWire(
     const std::vector<geometry::Point> &points,
     const std::string &wire_layer_name,
-    const std::vector<ViaToSomeLayer> vias) {
+    const std::vector<ViaToSomeLayer> vias,
+    const std::optional<std::string> &net) {
   LOG_IF(FATAL, points.empty())
       << "Why you wanna make a empty wire like that?";
 
@@ -824,7 +826,11 @@ void Layout::MakeWire(
   }
 
   ScopedLayer sl(this, wire_layer);
-  AddPolyLine(wire);
+  geometry::Polygon *polygon = AddPolyLine(wire);
+  if (net) {
+    polygon->set_net(*net);
+  }
+  return polygon;
 }
 
 void Layout::Flatten() {
