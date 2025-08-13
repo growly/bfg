@@ -28,6 +28,10 @@ class Interconnect : public Tile {
       OutputPortCollection;
 
   struct Parameters {
+    //size_t num_rows = 2;
+    size_t num_rows = 8;
+    //size_t num_columns = 4;
+    size_t num_columns = 16;
 
 
     // TODO(aryap): Complete.

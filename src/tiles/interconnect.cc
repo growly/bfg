@@ -33,9 +33,6 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   cell->SetCircuit(new bfg::Circuit());
   cell->SetLayout(new bfg::Layout(db));
 
-  size_t num_cols = 16;
-  size_t num_rows = 8;
-
   MuxCollection muxes;
 
   // TODO(aryap): Ok this is clearly a more useful structure than just a
@@ -49,9 +46,9 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
 
   atoms::Sky130InterconnectMux6::Parameters default_mux6_params;
 
-  for (size_t i = 0; i < num_rows; ++i) {
+  for (size_t i = 0; i < parameters_.num_rows; ++i) {
     auto &mux_row = muxes.emplace_back();
-    for (size_t j = 0; j < num_cols; ++j) {
+    for (size_t j = 0; j < parameters_.num_columns; ++j) {
       std::string name = absl::StrFormat("interconnect_mux6_r%u_c%u", i, j);
       atoms::Sky130InterconnectMux6::Parameters row_params =
           default_mux6_params;
@@ -65,14 +62,14 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
 
   InputPortCollection mux_inputs;
   OutputPortCollection mux_outputs;
-  for (size_t i = 0; i < num_rows; ++i) {
+  for (size_t i = 0; i < parameters_.num_rows; ++i) {
     mux_inputs.emplace_back();
     mux_outputs.emplace_back();
-    for (size_t j = 0; j < num_cols; ++j) {
+    for (size_t j = 0; j < parameters_.num_columns; ++j) {
       geometry::Instance *mux = muxes[i][j];
 
       // FIXME(aryap): The number of output ports is absolutely a parameter
-      // here!  Or at least it must be!
+      // here! Or at least it must be!
       {
         geometry::Port *port = mux->GetFirstPortNamed(
             atoms::Sky130InterconnectMux6::kMuxOutputName);
@@ -209,6 +206,10 @@ void Interconnect::Route(
       design_db_->physical_db());
   ConfigureRoutingGrid(&routing_grid, layout);
 
+  // All of the different port net names attached to the same driver need to be
+  // merged.
+  std::map<geometry::Port*, EquivalentNets> nets;
+
   //// What if just added 20 routes?
   //for (size_t i = 0; i < 20; ++i) {
   //  geometry::Instance *source = muxes[i / 4][i % 6];
@@ -220,18 +221,18 @@ void Interconnect::Route(
   //      {},
   //      EquivalentNets({from->net(), to->net()}));
   //}
-  size_t num_muxes = 16 * 8;
+  size_t num_muxes = parameters_.num_rows * parameters_.num_columns;
   for (size_t i = 0; i < num_muxes; ++i) {
-    size_t source_row = i / 16;  // 16 is num_cols.
-    size_t source_col = i % 8;   // 8 is num_rows.
-                                 //
+    size_t source_row = (i / parameters_.num_columns) % parameters_.num_rows;
+    size_t source_col = i % parameters_.num_columns;
+
     geometry::Instance *source = muxes[source_row][source_col];
     // Only one output per mux right now.
     geometry::Port *from = mux_outputs[source_row][source_col];
 
     for (size_t j = i + 1, count = 0; count < 6; j += 4, ++count) {
-      size_t dest_row = j / 16;
-      size_t dest_col = j % 8;
+      size_t dest_row = (j / parameters_.num_columns) % parameters_.num_rows;
+      size_t dest_col = j % parameters_.num_columns;
 
       if (source_row == dest_row && source_col == dest_col)
         continue;
@@ -241,11 +242,39 @@ void Interconnect::Route(
       // TODO(aryap): Have to find unused inputs:
       geometry::Port *to = mux_inputs[dest_row][dest_col][j % 6];
 
-      routing_grid.AddRouteBetween(
-          *from, *to,
-          {},
-          EquivalentNets({from->net(), to->net()}));
+      if (nets.find(from) != nets.end()) {
+        EquivalentNets targets = nets[from];
+        nets[from].Add(to->net());
+        EquivalentNets &usable = nets[from];
 
+        geometry::ShapeCollection non_net_connectables;
+        layout->CopyConnectableShapesNotOnNets(usable, &non_net_connectables);
+
+        auto status = routing_grid.AddRouteToNet(*to,
+                                                 targets,
+                                                 usable,
+                                                 non_net_connectables);
+        LOG_IF(WARNING, !status.ok())
+            << "Could not connect " << to->Describe() << " to any of "
+            << targets;
+        if (!status.ok()) {
+
+        }
+      } else {
+        EquivalentNets usable({from->net(), to->net()});
+        nets[from] = usable;
+
+        geometry::ShapeCollection non_net_connectables;
+        layout->CopyConnectableShapesNotOnNets(usable, &non_net_connectables);
+
+        auto status = routing_grid.AddRouteBetween(*from,
+                                                   *to,
+                                                    non_net_connectables,
+                                                    usable);
+        LOG_IF(WARNING, !status.ok())
+            << "Could not connect " << from->Describe() << " to "
+            << to->Describe();
+      }
     }
   }
 

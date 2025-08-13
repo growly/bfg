@@ -44,16 +44,22 @@ class EquivalentNets {
     return nets_.empty();
   }
 
+  std::string Describe() const;
+
   const std::string &primary() const { return primary_; }
   void set_primary(const std::string &primary) {
     primary_ = primary;
     Add(primary);
   }
 
+  const std::set<std::string> &nets() const { return nets_; }
+
  private:
   std::set<std::string> nets_;
   std::string primary_;
 };
+
+std::ostream &operator<<(std::ostream &os, const EquivalentNets &nets);
 
 }  // namespace bfg
 
