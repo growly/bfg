@@ -209,16 +209,44 @@ void Interconnect::Route(
       design_db_->physical_db());
   ConfigureRoutingGrid(&routing_grid, layout);
 
-  // What if just added 20 routes?
-  for (size_t i = 0; i < 20; ++i) {
-    geometry::Instance *source = muxes[i / 4][i % 6];
-    geometry::Port *from = mux_outputs[i / 4][i % 16];
-    geometry::Instance *destination = muxes[i / 4 + 1][(i + 1) % 16];
-    geometry::Port *to = mux_inputs[i / 4 + 1][(i + 1) % 16][0];
-    routing_grid.AddRouteBetween(
-        *from, *to,
-        {},
-        EquivalentNets({from->net(), to->net()}));
+  //// What if just added 20 routes?
+  //for (size_t i = 0; i < 20; ++i) {
+  //  geometry::Instance *source = muxes[i / 4][i % 6];
+  //  geometry::Port *from = mux_outputs[i / 4][i % 16];
+  //  geometry::Instance *destination = muxes[i / 4 + 1][(i + 1) % 16];
+  //  geometry::Port *to = mux_inputs[i / 4 + 1][(i + 1) % 16][0];
+  //  routing_grid.AddRouteBetween(
+  //      *from, *to,
+  //      {},
+  //      EquivalentNets({from->net(), to->net()}));
+  //}
+  size_t num_muxes = 16 * 8;
+  for (size_t i = 0; i < num_muxes; ++i) {
+    size_t source_row = i / 16;  // 16 is num_cols.
+    size_t source_col = i % 8;   // 8 is num_rows.
+                                 //
+    geometry::Instance *source = muxes[source_row][source_col];
+    // Only one output per mux right now.
+    geometry::Port *from = mux_outputs[source_row][source_col];
+
+    for (size_t j = i + 1, count = 0; count < 6; j += 4, ++count) {
+      size_t dest_row = j / 16;
+      size_t dest_col = j % 8;
+
+      if (source_row == dest_row && source_col == dest_col)
+        continue;
+
+      geometry::Instance *destination = muxes[dest_row][dest_col];
+
+      // TODO(aryap): Have to find unused inputs:
+      geometry::Port *to = mux_inputs[dest_row][dest_col][j % 6];
+
+      routing_grid.AddRouteBetween(
+          *from, *to,
+          {},
+          EquivalentNets({from->net(), to->net()}));
+
+    }
   }
 
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
