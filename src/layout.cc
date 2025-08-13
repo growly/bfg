@@ -967,6 +967,42 @@ bool Layout::HasPort(const std::string &name) const {
   return ports_by_net_.find(name) != ports_by_net_.end();
 }
 
+bool Layout::ResolveEdgeSpec(
+    const EdgeSpec &spec,
+    geometry::Instance **from,
+    std::vector<geometry::Port*> *from_ports,
+    geometry::Instance **to,
+    std::vector<geometry::Port*> *to_ports) const {
+  auto extract_fn = [&](
+      const EdgeSpec::Endpoint &endpoint,
+      geometry::Instance *test_instance,
+      geometry::Instance **matched_instance,
+      std::vector<geometry::Port*> *matched_ports) -> bool {
+    if (test_instance->name() != endpoint.instance_name) {
+      return false;
+    }
+    *from = test_instance;
+    size_t port_count = 0;
+    for (const std::string &port_name : endpoint.port_names) {
+      std::vector<geometry::Port*> ports;
+      test_instance->GetInstancePorts(port_name, &ports);
+      // C++23 would have append_range(...), which would be juicy.
+      matched_ports->insert(matched_ports->end(), ports.begin(), ports.end());
+      port_count += ports.size();
+    }
+    return port_count > 0;
+  };
+
+  for (auto &uniq : instances_) {
+    bool matched_from = extract_fn(spec.from(), uniq.get(), from, from_ports);
+    bool matched_to = extract_fn(spec.to(), uniq.get(), to, to_ports);
+    if (matched_from && matched_to) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const geometry::PortSet Layout::Ports() const {
   geometry::PortSet all_ports = geometry::Port::MakePortSet();
   for (const auto &entry : shapes_) {

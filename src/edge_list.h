@@ -21,12 +21,16 @@ class EdgeSpec {
   struct Endpoint {
     std::string instance_name;
     std::vector<std::string> port_names;
+
+    std::string Describe() const;
   };
 
   void FromProto(const proto::EdgeSpec &edge_spec_pb);
   proto::EdgeSpec ToProto() const;
 
   EdgeSpec() {}
+
+  std::string Describe() const;
 
   void set_from(
     const std::string &instance_name,
@@ -51,7 +55,7 @@ class EdgeList {
   void FromProto(const proto::EdgeList &pb);
   proto::EdgeList ToProto() const;
 
-  void FromCSV(const std::string &path);
+  void FromCSVOrDie(const std::string &path);
 
   void AddEdge(
       const std::string &from,

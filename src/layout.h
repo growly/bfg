@@ -6,6 +6,7 @@
 #include <stack>
 #include <optional>
 
+#include "edge_list.h"
 #include "physical_properties_database.h"
 #include "scoped_layer.h"
 #include "geometry/group.h"
@@ -345,6 +346,13 @@ class Layout : public geometry::Manipulable {
       const std::string &named) const;
 
   bool HasPort(const std::string &name) const;
+
+  bool ResolveEdgeSpec(
+      const EdgeSpec &spec,
+      geometry::Instance **from,
+      std::vector<geometry::Port*> *from_ports,
+      geometry::Instance **to,
+      std::vector<geometry::Port*> *to_ports) const;
 
   const std::string &NameOrParentName() const;
 

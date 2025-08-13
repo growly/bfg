@@ -1,11 +1,21 @@
 #include "edge_list.h"
 
+#include <fstream>
 #include <string>
 #include <vector>
+#include <absl/strings/str_cat.h>
+#include <absl/strings/str_split.h>
+#include <absl/strings/str_join.h>
+#include <glog/logging.h>
 
 #include "proto/edge_list.pb.h"
 
 namespace bfg {
+
+std::string EdgeSpec::Endpoint::Describe() const {
+  return absl::StrCat(
+      instance_name, " {", absl::StrJoin(port_names, ", "), "}");
+}
 
 void EdgeSpec::FromProto(const proto::EdgeSpec &edge_spec_pb) {
   from_.instance_name = edge_spec_pb.from().instance_name();
@@ -29,6 +39,10 @@ proto::EdgeSpec EdgeSpec::ToProto() const {
     pb.mutable_to()->add_port_names(port_name);
   }
   return pb;
+}
+
+std::string EdgeSpec::Describe() const {
+  return absl::StrCat(from_.Describe(), " -> ", to_.Describe());
 }
 
 void EdgeSpec::set_from(
@@ -62,6 +76,29 @@ proto::EdgeList EdgeList::ToProto() const {
     *pb.add_edges() = spec.ToProto();
   }
   return pb;
+}
+
+void EdgeList::FromCSVOrDie(const std::string &path) {
+  std::ifstream file(path);
+  LOG_IF(FATAL, !file.is_open())
+      << "Could not open CSV file " << path;
+  std::string line;
+  size_t i = 0;
+  while (std::getline(file, line)) {
+    std::vector<std::string> fields = absl::StrSplit(line, ",");
+
+    if (fields.size() != 4) {
+      LOG(WARNING) << "Skipping malformed CSV line " << i << ": "
+                   << line;
+    }
+
+    std::vector<std::string> from_ports = absl::StrSplit(fields[1], "/");
+    std::vector<std::string> to_ports = absl::StrSplit(fields[3], "/");
+
+    AddEdge(fields[0], from_ports, fields[2], to_ports);
+
+    ++i;
+  }
 }
 
 void EdgeList::AddEdge(
