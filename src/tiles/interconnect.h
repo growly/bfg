@@ -28,6 +28,8 @@ class Interconnect : public Tile {
       OutputPortCollection;
 
   struct Parameters {
+
+
     // TODO(aryap): Complete.
     void ToProto(proto::parameters::Interconnect *pb) const;
     void FromProto(const proto::parameters::Interconnect &pb); 

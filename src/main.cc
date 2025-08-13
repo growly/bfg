@@ -28,6 +28,7 @@
 #include "tiles/lut_b.h"
 #include "tiles/slice.h"
 #include "tiles/interconnect.h"
+#include "utility.h"
 
 #include "proto/parameters/interconnect.pb.h"
 #include "proto/parameters/lut_b.pb.h"
@@ -82,24 +83,13 @@ void Gf180McuMuxExperiment() {
   design_db.WriteTop(*top, "gf180_mux.pb", "gf180_mux.package.pb", true);
 }
 
-bool ReadTextProtoOrDie(
-    const std::string &path,
-    google::protobuf::Message *message_pb) {
-  std::ifstream input(path);
-  LOG_IF(FATAL, !input.is_open())
-      << "Could not open text proto: " << path;
-  std::ostringstream ss;
-  ss << input.rdbuf();
-  return google::protobuf::TextFormat::ParseFromString(ss.str(), message_pb);
-}
-
 template<typename ProtoParam, typename GeneratorParam, typename Generator>
 bfg::Cell *ReadParamsAndGenerate(
     const std::string &generator_name,
     const std::string &parameter_pb_path,
     bfg::DesignDatabase *design_db) {
   ProtoParam params_pb;
-  ReadTextProtoOrDie(parameter_pb_path, &params_pb);
+  bfg::ReadTextProtoOrDie(parameter_pb_path, &params_pb);
 
   GeneratorParam params;
   params.FromProto(params_pb);

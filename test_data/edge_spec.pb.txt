@@ -1,0 +1,14 @@
+from {
+  instance_name: "SOME_MUX"
+  port_names: "Z0"
+  port_names: "Z1"
+}
+to {
+  instance_name: "SOME_OTHER_MUX"
+  port_names: "X0"
+  port_names: "X1"
+  port_names: "X2"
+  port_names: "X3"
+  port_names: "X4"
+  port_names: "X5"
+}
