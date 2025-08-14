@@ -236,8 +236,16 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   }
 
   std::string left_decap_name = PrefixCellName("decap_left");
+
+  // Size the routing channel to make the overall mux meet the pitch
+  // requirement:
+  uint64_t horizontal_pitch_nm = parameters_.horizontal_pitch_nm.value_or(460);
+  uint64_t vertical_channel_width_nm = Utility::NextMultiple(
+      parameters_.vertical_routing_channel_width_nm.value_or(1380),
+      horizontal_pitch_nm);
+
   Sky130Decap::Parameters left_decap_params = {
-    .width_nm = parameters_.vertical_routing_channel_width_nm.value_or(1380)
+    .width_nm = vertical_channel_width_nm
   };
   Sky130Decap left_decap_generator(left_decap_params, design_db_);
   Cell *left_decap_cell =
@@ -439,8 +447,8 @@ void Sky130InterconnectMux6::DrawRoutes(
   std::optional<int64_t> right_most_vertical_x;
 
   auto update_bounds_fn = [&](int64_t x) {
-    UpdateMin(x, &left_most_vertical_x);
-    UpdateMax(x, &right_most_vertical_x);
+    Utility::UpdateMin(x, &left_most_vertical_x);
+    Utility::UpdateMax(x, &right_most_vertical_x);
   };
 
   size_t c = 0;
@@ -921,7 +929,13 @@ void Sky130InterconnectMux6::DrawInputs(
       << ") is less that the number of inputs (" << parameters_.num_inputs
       << ")";
 
+  // Compute the x positions of the vertical-channel pins. Align the pins so
+  // that they are multiples of met2_pitch from the left hand side of the cell.
+  vertical_x_left = Utility::NextMultiple(
+      vertical_x_left, met2_pitch) - met2_pitch;
+ 
   std::vector<int64_t> input_channels_x;
+
   for (size_t i = 0; i < parameters_.num_inputs; ++i) {
     int64_t channel_x = vertical_x_left - i * met2_pitch;
     input_channels_x.push_back(channel_x);

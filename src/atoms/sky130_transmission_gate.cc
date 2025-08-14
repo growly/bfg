@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 
+#include "../utility.h"
 #include "../modulo.h"
 #include "../layout.h"
 #include "../scoped_layer.h"
@@ -347,7 +348,7 @@ int64_t Sky130TransmissionGate::FigureTopPadding(
   }
 
   int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
-  int64_t max_y = (((pmos_poly_top_y + minimum) / pitch) + 1) * pitch;
+  int64_t max_y = Utility::NextMultiple(pmos_poly_top_y + minimum, pitch);
   return max_y - pmos_poly_top_y;
 }
 

@@ -78,6 +78,8 @@ class Sky130InterconnectMux6 : public Atom {
 
     std::optional<uint64_t> vertical_pitch_nm = 340;
 
+    std::optional<uint64_t> horizontal_pitch_nm = 460;
+
     std::optional<uint64_t> vertical_routing_channel_width_nm =
         ((8 * 340) / 460 + 1) * 460;
 

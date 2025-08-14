@@ -113,6 +113,7 @@ void Interconnect::ConfigureRoutingGrid(
     RoutingGrid *routing_grid, Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &met1_rules = db.Rules("met1.drawing");
+  const auto &met2_rules = db.Rules("met2.drawing");
 
   // Use linear-cost model (saves memory).
   routing_grid->set_use_linear_cost_model(true);
@@ -149,6 +150,7 @@ void Interconnect::ConfigureRoutingGrid(
       db.GetRoutingLayerInfoOrDie("met2.drawing");
   met2_layer_info.set_direction(RoutingTrackDirection::kTrackVertical);
   met2_layer_info.set_area(pre_route_bounds);
+  met2_layer_info.set_offset(met2_rules.min_pitch / 2);
 
   auto alignment_point = layout->GetPoint("grid_alignment_point");
   if (alignment_point) {

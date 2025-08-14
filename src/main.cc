@@ -177,8 +177,12 @@ int main(int argc, char **argv) {
 
   std::string version =
       "BFG v" xstr(bfg_VERSION_MAJOR) "." xstr(bfg_VERSION_MINOR);
-  std::cout << version << std::endl;
-  LOG(INFO) << version << " start";
+  std::string compiler_info =
+      "built with " xstr(CXX_COMPILER_PATH) " " xstr(CXX_COMPILER_VERSION);
+  std::string title =
+    absl::StrCat(version, " ", compiler_info);
+  std::cout << title << std::endl;
+  LOG(INFO) << title;
 
   // The design database contains our design and all our dependencies.
   bfg::DesignDatabase design_db;
