@@ -296,8 +296,8 @@ std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
   std::vector<RoutingVertexKDNode> nearby;
   off_grid_kd_.find_within_range(ref_node, radius, std::back_inserter(nearby));
 
-  LOG(INFO) << "There are " << nearby.size() << " vertices within " << radius
-            << " of " << ref_node.vertex()->centre();
+  //LOG(INFO) << "There are " << nearby.size() << " vertices within " << radius
+  //          << " of " << ref_node.vertex()->centre();
 
   for (const auto &node : nearby) {
     RoutingVertex *off_grid = node.vertex();
@@ -419,6 +419,7 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       ApplyExistingBlockages(new_vertex, is_temporary);
     }
   }
+  off_grid_kd_.optimise();
 }
 
 absl::Status RoutingGrid::ValidAgainstHazards(
@@ -862,6 +863,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     new_edges.push_back(edge);
     any_success = true || any_success;
   }
+  off_grid_kd_.optimise();
 
   for (RoutingEdge *edge : new_edges) {
     AddOffGridEdge(edge);
@@ -997,6 +999,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     AddOffGridVertex(vertex);
     return {{vertex, target_layer}};
   }
+  off_grid_kd_.optimise();
 
   return absl::NotFoundError("No workable options");
 }
@@ -1745,7 +1748,6 @@ void RoutingGrid::AddOffGridVertex(RoutingVertex *vertex) {
   off_grid_vertices_.insert(vertex);
 
   off_grid_kd_.insert(vertex);
-  off_grid_kd_.optimise();
 }
 
 void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) {
