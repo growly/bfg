@@ -193,6 +193,15 @@ void Interconnect::ConfigureRoutingGrid(
         db.GetLayer("met2.drawing"), &shapes);
     routing_grid->AddBlockages(shapes);
   }
+  {
+    // We will route power and ground manually, so we can add the rails as
+    // permanent blockages.
+    geometry::ShapeCollection shapes;
+    layout->CopyConnectableShapes(&shapes);
+    EquivalentNets rails(std::set<std::string>{"VPWR", "VGND"});
+    shapes.KeepOnlyNets(rails);
+    routing_grid->AddBlockages(shapes);
+  }
 
   routing_grid->AddGlobalNet("CLK");
 }

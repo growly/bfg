@@ -64,6 +64,7 @@ class ShapeCollection : public Manipulable {
                    std::unique_ptr<ShapeCollection>>> *shapes_by_layer_by_net)
       const;
 
+  void KeepOnlyNets(const EquivalentNets &nets);
   void RemoveNets(const EquivalentNets &nets);
   void KeepOnlyLayers(const std::set<geometry::Layer> &layers);
 

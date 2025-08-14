@@ -22,6 +22,9 @@ find_package(Protobuf REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
+# We depend on libkdtree+, but it is header only so don't think we need to do
+# anything here.
+
 find_package(gRPC CONFIG REQUIRED)
 message(STATUS "Using gRPC ${gRPC_VERSION}")
 

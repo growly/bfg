@@ -22,6 +22,8 @@ Libraries
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip
   sudo apt install -y clang ninja-build python3 pkg-config zlib1g-dev
+  # for kdtree++
+  sudo apt install -y libkdtree++-dev
   # for gRPC
   sudo apt install -y libre2-dev libc-ares-dev libssl-dev
 ```
@@ -186,6 +188,20 @@ a `.local` installation for the project instead of the entire system.
   sudo make install
   popd
   ```
+
+[nvmd/libkdtree](https://github.com/nvmd/libkdtree)
+
+This one is easier to install from your system's package manager
+(`libkdtree++-dev` on Debian). If you can't find yours, try installing from
+scratch:
+  ```
+  git clone https://github.com/nvmd/libkdtree.git
+  pushd libkdtree
+  ./configure
+  sudo make install
+  ```
+
+(This is a header-only library.)
 
 <!---
 [skia](https://skia.org/user/build#quick)

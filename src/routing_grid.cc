@@ -19,6 +19,8 @@
 #include <absl/strings/str_join.h>
 #include <glog/logging.h>
 
+#include <kdtree++/kdtree.hpp>
+
 #include "equivalent_nets.h"
 #include "geometry/compass.h"
 #include "geometry/poly_line.h"
@@ -279,7 +281,26 @@ std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
     const T &shape) const {
   int64_t min_separation = physical_db_.Rules(shape.layer()).min_separation;
   std::set<RoutingVertex*> vertices;
-  for (RoutingVertex *off_grid : off_grid_vertices_) {
+
+  // CLUNKY.
+  geometry::Rectangle bounding_box = shape.GetBoundingBox();
+  std::unique_ptr<RoutingVertex> ref_vertex(
+      new RoutingVertex(bounding_box.centre()));
+  RoutingVertexKDNode ref_node(ref_vertex.get());
+  int64_t radius = std::max(
+      bounding_box.Width(), bounding_box.Height());
+  // FIXME(aryap): Pick a real value. This should be at least as big as the
+  // biggest value of min_separation to be considered.
+  radius += 300;
+
+  std::vector<RoutingVertexKDNode> nearby;
+  off_grid_kd_.find_within_range(ref_node, radius, std::back_inserter(nearby));
+
+  LOG(INFO) << "There are " << nearby.size() << " vertices within " << radius
+            << " of " << ref_node.vertex()->centre();
+
+  for (const auto &node : nearby) {
+    RoutingVertex *off_grid = node.vertex();
     if (ViaWouldIntersect(*off_grid,
                           shape,
                           min_separation,
@@ -287,6 +308,15 @@ std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
       vertices.insert(off_grid);
     }
   }
+
+  //for (RoutingVertex *off_grid : off_grid_vertices_) {
+  //  if (ViaWouldIntersect(*off_grid,
+  //                        shape,
+  //                        min_separation,
+  //                        std::nullopt)) {
+  //    vertices.insert(off_grid);
+  //  }
+  //}
   return vertices;
 }
 
@@ -1713,6 +1743,9 @@ void RoutingGrid::AddOffGridVertex(RoutingVertex *vertex) {
   DCHECK(!vertex->horizontal_track() || !vertex->vertical_track());
   AddVertex(vertex);
   off_grid_vertices_.insert(vertex);
+
+  off_grid_kd_.insert(vertex);
+  off_grid_kd_.optimise();
 }
 
 void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) {
@@ -2075,6 +2108,8 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
 
   if (might_be_off_grid) {
     off_grid_vertices_.erase(vertex);
+    off_grid_kd_.erase(vertex);
+    off_grid_kd_.optimise();
   }
 
   // Check for instances of this vertex in off-grid edges:
