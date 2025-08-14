@@ -11,8 +11,6 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 
-#include <kdtree++/kdtree.hpp>
-
 #include "equivalent_nets.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
@@ -28,6 +26,7 @@
 #include "routing_track_blockage.h"
 #include "routing_layer_info.h"
 #include "routing_vertex.h"
+#include "routing_vertex_kd_tree.h"
 #include "routing_via_info.h"
 
 // TODO(aryap): Another version of this RoutingGrid should exist that uses a
@@ -70,31 +69,6 @@ class RoutingPath;
 
 template<typename T>
 class RoutingGridBlockage;
-
-// A key for something like a KD tree.
-class RoutingVertexKDNode {
- public:
-  typedef int64_t value_type;
-
-  RoutingVertexKDNode(RoutingVertex *vertex) : vertex_(vertex) {}
-
-  inline value_type operator[](const size_t n) const {
-    switch (n) {
-      case 0:
-        return vertex_->centre().x();
-      case 1:
-        return vertex_->centre().y();
-      default:
-        // For any higher dimensions, use the pointer itself.
-        return reinterpret_cast<value_type>(vertex_);
-    }
-  }
-
-  RoutingVertex *vertex() const { return vertex_; }
-
- private:
-  RoutingVertex *vertex_;
-};
 
 class RoutingGrid {
  public:
@@ -722,9 +696,7 @@ class RoutingGrid {
 
   // The vertices we know about which are off-grid. This container does not own
   // the pointers.
-  std::set<RoutingVertex*> off_grid_vertices_;
-
-  KDTree::KDTree<2, RoutingVertexKDNode> off_grid_kd_;
+  RoutingVertexKDTree off_grid_vertices_;
 
   // All routing tracks (we own these).
   std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;

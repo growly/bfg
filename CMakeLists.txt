@@ -81,6 +81,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/routing_track_direction.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_vertex_kd_tree.cc
   ${PROJECT_SOURCE_DIR}/src/routing_via_info.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide.cc
 )

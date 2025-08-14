@@ -19,8 +19,6 @@
 #include <absl/strings/str_join.h>
 #include <glog/logging.h>
 
-#include <kdtree++/kdtree.hpp>
-
 #include "equivalent_nets.h"
 #include "geometry/compass.h"
 #include "geometry/poly_line.h"
@@ -284,23 +282,19 @@ std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
 
   // CLUNKY.
   geometry::Rectangle bounding_box = shape.GetBoundingBox();
-  std::unique_ptr<RoutingVertex> ref_vertex(
-      new RoutingVertex(bounding_box.centre()));
-  RoutingVertexKDNode ref_node(ref_vertex.get());
-  int64_t radius = std::max(
-      bounding_box.Width(), bounding_box.Height());
+
   // FIXME(aryap): Pick a real value. This should be at least as big as the
   // biggest value of min_separation to be considered.
-  radius += 300;
+  int64_t radius = std::max(bounding_box.Width(), bounding_box.Height()) + 300;
+  geometry::Point centre = bounding_box.centre();
 
-  std::vector<RoutingVertexKDNode> nearby;
-  off_grid_kd_.find_within_range(ref_node, radius, std::back_inserter(nearby));
+  std::vector<RoutingVertex*> nearby = off_grid_vertices_.FindNearby(
+      centre, radius);
 
-  //LOG(INFO) << "There are " << nearby.size() << " vertices within " << radius
-  //          << " of " << ref_node.vertex()->centre();
+  LOG(INFO) << "There are " << nearby.size() << " vertices within " << radius
+            << " of " << centre;
 
-  for (const auto &node : nearby) {
-    RoutingVertex *off_grid = node.vertex();
+  for (RoutingVertex *off_grid : nearby) {
     if (ViaWouldIntersect(*off_grid,
                           shape,
                           min_separation,
@@ -419,7 +413,6 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       ApplyExistingBlockages(new_vertex, is_temporary);
     }
   }
-  off_grid_kd_.optimise();
 }
 
 absl::Status RoutingGrid::ValidAgainstHazards(
@@ -863,7 +856,6 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     new_edges.push_back(edge);
     any_success = true || any_success;
   }
-  off_grid_kd_.optimise();
 
   for (RoutingEdge *edge : new_edges) {
     AddOffGridEdge(edge);
@@ -999,7 +991,6 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     AddOffGridVertex(vertex);
     return {{vertex, target_layer}};
   }
-  off_grid_kd_.optimise();
 
   return absl::NotFoundError("No workable options");
 }
@@ -1745,9 +1736,7 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
 void RoutingGrid::AddOffGridVertex(RoutingVertex *vertex) {
   DCHECK(!vertex->horizontal_track() || !vertex->vertical_track());
   AddVertex(vertex);
-  off_grid_vertices_.insert(vertex);
-
-  off_grid_kd_.insert(vertex);
+  off_grid_vertices_.Add(vertex);
 }
 
 void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) {
@@ -2109,9 +2098,7 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
   }
 
   if (might_be_off_grid) {
-    off_grid_vertices_.erase(vertex);
-    off_grid_kd_.erase(vertex);
-    off_grid_kd_.optimise();
+    off_grid_vertices_.Erase(vertex);
   }
 
   // Check for instances of this vertex in off-grid edges:
