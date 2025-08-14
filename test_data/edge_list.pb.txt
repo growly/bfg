@@ -1,0 +1,58 @@
+edges {
+  from {
+    instance_name: "MUX_0"
+    port_names: "Z0"
+  }
+  to {
+    instance_name: "MUX_5"
+    port_names: "X0"
+    port_names: "X1"
+    port_names: "X2"
+    port_names: "X3"
+    port_names: "X4"
+  }
+}
+edges {
+  from {
+    instance_name: "MUX_1"
+    port_names: "Z0"
+  }
+  to {
+    instance_name: "MUX_6"
+    port_names: "X0"
+    port_names: "X1"
+    port_names: "X2"
+    port_names: "X3"
+    port_names: "X4"
+    port_names: "X5"
+  }
+}
+edges {
+  from {
+    instance_name: "MUX_2"
+    port_names: "Z0"
+  }
+  to {
+    instance_name: "MUX_7"
+    port_names: "X0"
+    port_names: "X1"
+    port_names: "X2"
+    port_names: "X3"
+    port_names: "X4"
+    port_names: "X5"
+  }
+}
+edges {
+  from {
+    instance_name: "MUX_3"
+    port_names: "Z"
+  }
+  to {
+    instance_name: "MUX_8"
+    port_names: "X1"
+    port_names: "X2"
+    port_names: "X3"
+    port_names: "X4"
+    port_names: "X5"
+  }
+}

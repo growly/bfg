@@ -22,6 +22,9 @@ find_package(Protobuf REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
+# We depend on libkdtree+, but it is header only so don't think we need to do
+# anything here.
+
 find_package(gRPC CONFIG REQUIRED)
 message(STATUS "Using gRPC ${gRPC_VERSION}")
 
@@ -68,6 +71,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
+  ${PROJECT_SOURCE_DIR}/src/edge_list.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry.cc
@@ -77,6 +81,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/routing_track_direction.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_vertex_kd_tree.cc
   ${PROJECT_SOURCE_DIR}/src/routing_via_info.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide.cc
 )
@@ -435,6 +440,7 @@ set(GEOMETRY_TEST_SRC
 set(TEST_SRC
   ${ATOMS_TEST_SRC}
   ${GEOMETRY_TEST_SRC}
+  ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc

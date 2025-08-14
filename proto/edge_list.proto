@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package bfg.proto;
+
+message EdgeSpec {
+  message Endpoint {
+    optional string instance_name = 1;
+    repeated string port_names = 2;
+  }
+  optional Endpoint from = 1;
+  optional Endpoint to = 2;
+}
+
+message EdgeList {
+  repeated EdgeSpec edges = 1;
+}

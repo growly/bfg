@@ -591,7 +591,7 @@ void LutB::RouteScanChain(
     sink->GetInstancePorts("D", &ports);
     geometry::Port *end = *ports.begin();
 
-    EquivalentNets net_names = EquivalentNets({end->net(), start->net()});
+    EquivalentNets net_names({end->net(), start->net()});
     (*memory_output_net_names)[source] = net_names.primary();
 
     circuit::Signal *signal = circuit->GetOrAddSignal(net_names.primary(), 1);

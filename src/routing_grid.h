@@ -26,6 +26,7 @@
 #include "routing_track_blockage.h"
 #include "routing_layer_info.h"
 #include "routing_vertex.h"
+#include "routing_vertex_kd_tree.h"
 #include "routing_via_info.h"
 
 // TODO(aryap): Another version of this RoutingGrid should exist that uses a
@@ -695,7 +696,7 @@ class RoutingGrid {
 
   // The vertices we know about which are off-grid. This container does not own
   // the pointers.
-  std::set<RoutingVertex*> off_grid_vertices_;
+  RoutingVertexKDTree off_grid_vertices_;
 
   // All routing tracks (we own these).
   std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;

@@ -2,6 +2,7 @@
 
 #include <string>
 #include <set>
+#include <absl/strings/str_join.h>
 
 namespace bfg {
 
@@ -44,6 +45,16 @@ bool EquivalentNets::Add(const std::string &name) {
 
 bool EquivalentNets::Delete(const std::string &name) {
   return nets_.erase(name) > 0;
+}
+
+
+std::string EquivalentNets::Describe() const {
+  return absl::StrJoin(nets_, ", ");
+}
+
+std::ostream &operator<<(std::ostream &os, const EquivalentNets &nets) {
+  os << nets.Describe();
+  return os;
 }
 
 }  // namespace bfg
