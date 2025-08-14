@@ -56,7 +56,7 @@ sudo ldconfig
 [google/googletest](https://github.com/google/googletest)
 
   ```
-  git clone git@github.com:google/googletest
+  git clone -b v1.16.0 git@github.com:google/googletest
   pushd googletest
   mkdir build && cd build
   cmake ../
