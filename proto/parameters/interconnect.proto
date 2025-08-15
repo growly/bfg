@@ -3,5 +3,6 @@ syntax = "proto3";
 package bfg.proto.parameters;
 
 message Interconnect {
-    // TODO(aryap): Complete.
+  optional int32 num_rows = 1;
+  optional int32 num_columns = 2;
 }

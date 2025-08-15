@@ -291,8 +291,8 @@ std::set<RoutingVertex*> RoutingGrid::BlockingOffGridVertices(
   std::vector<RoutingVertex*> nearby = off_grid_vertices_.FindNearby(
       centre, radius);
 
-  LOG(INFO) << "There are " << nearby.size() << " vertices within " << radius
-            << " of " << centre;
+  VLOG(20) << "There are " << nearby.size() << " off-grid vertices within "
+           << radius << " of " << centre;
 
   for (RoutingVertex *off_grid : nearby) {
     if (ViaWouldIntersect(*off_grid,
@@ -1359,6 +1359,8 @@ std::optional<geometry::Rectangle> RoutingGrid::VertexFootprint(
     int64_t padding,
     const std::optional<RoutingTrackDirection> &direction) const {
   std::set<geometry::Layer> vertex_layers = vertex.connected_layers();
+  // FIXME(aryap): Taking a copy here is gratuitous. We only need to an O(n)
+  // pass over the set to determine all of these outcomes:
 
   // We expect footprint_layer to appear in the vertex's list of connected
   // layers.
@@ -2689,6 +2691,9 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
     bool is_temporary,
     std::set<RoutingVertex*> *blocked_vertices,
     std::set<RoutingEdge*> *blocked_edges) {
+  // FIXME(aryap): We can speed this up by pre-filtering tracks that definitely
+  // won't collide with the blockage, i.e, that are within the most generous
+  // margin from the track's offset.
   const geometry::Layer &layer = rectangle.layer();
   auto it = tracks_by_layer_.find(layer);
   if (it == tracks_by_layer_.end())

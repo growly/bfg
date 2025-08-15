@@ -329,11 +329,15 @@ class Layout : public geometry::Manipulable {
       const geometry::Layer &layer, ShapeCollection *shapes) const;
 
   void CopyConnectableShapesNotOnNets(
-      const EquivalentNets &nets, ShapeCollection *shapes) const;
+      const EquivalentNets &nets,
+      ShapeCollection *shapes,
+      const std::optional<int64_t> &max_depth = 1) const;
 
   void CopyConnectableShapes(ShapeCollection *shapes) const;
 
-  void CopyAllShapes(ShapeCollection *shapes) const;
+  void CopyAllShapes(
+        ShapeCollection *shapes,
+        const std::optional<int64_t> &max_depth = std::nullopt) const;
 
   void GetInstancesByName(
       std::unordered_map<std::string, geometry::Instance *const> *mapping)

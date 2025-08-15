@@ -34,18 +34,18 @@ class Utility {
   static T NextMultiple(const T &min, const T &multiple) {
     return ((min / multiple) + 1) * multiple;
   }
-};
 
-static bool ReadTextProtoOrDie(
-    const std::string &path,
-    google::protobuf::Message *message_pb) {
-  std::ifstream input(path);
-  LOG_IF(FATAL, !input.is_open())
-      << "Could not open text proto: " << path;
-  std::ostringstream ss;
-  ss << input.rdbuf();
-  return google::protobuf::TextFormat::ParseFromString(ss.str(), message_pb);
-}
+  static bool ReadTextProtoOrDie(
+      const std::string &path,
+      google::protobuf::Message *message_pb) {
+    std::ifstream input(path);
+    LOG_IF(FATAL, !input.is_open())
+        << "Could not open text proto: " << path;
+    std::ostringstream ss;
+    ss << input.rdbuf();
+    return google::protobuf::TextFormat::ParseFromString(ss.str(), message_pb);
+  }
+};
 
 }  // namespace bfg
 

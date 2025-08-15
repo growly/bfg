@@ -382,6 +382,8 @@ void ShapeCollection::KeepOnlyNets(const EquivalentNets &nets) {
   rectangles_.erase(
       std::remove_if(rectangles_.begin(), rectangles_.end(),
                      [&](const std::unique_ptr<Rectangle> &shape) {
+                       // FIXME(aryap): remove
+                       LOG(INFO) << shape->net();
                        return !nets.Contains(shape->net());
                      }),
       rectangles_.end());

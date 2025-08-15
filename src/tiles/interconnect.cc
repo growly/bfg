@@ -19,12 +19,18 @@ namespace tiles {
 
 void Interconnect::Parameters::ToProto(
     proto::parameters::Interconnect *pb) const {
-  // TODO(aryap): Complete.
+  pb->set_num_rows(num_rows);
+  pb->set_num_columns(num_columns);
 }
 
 void Interconnect::Parameters::FromProto(
     const proto::parameters::Interconnect &pb) {
-  // TODO(aryap): Complete.
+  if (pb.has_num_rows()) {
+    num_rows = pb.num_rows();
+  }
+  if (pb.has_num_columns()) {
+    num_columns = pb.num_columns();
+  }
 }
 
 Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
@@ -182,6 +188,12 @@ void Interconnect::ConfigureRoutingGrid(
   routing_grid->ConnectLayers(met1_layer_info.layer(), met2_layer_info.layer())
       .IgnoreError();
 
+  // TODO(aryap): Figure out where to define/manage/collect power/ground nets.
+  // This is important because it prevents prefixes on nets in child instances
+  // with matching names:
+  layout->AddGlobalNet("VPWR");
+  layout->AddGlobalNet("VGND");
+  layout->AddGlobalNet("CLK");
   {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
@@ -258,8 +270,12 @@ void Interconnect::Route(
         nets[from].Add(to->net());
         EquivalentNets &usable = nets[from];
 
+        EquivalentNets ok_nets = nets[from];
+        ok_nets.Add("VPWR");
+        ok_nets.Add("VGND");
         geometry::ShapeCollection non_net_connectables;
-        layout->CopyConnectableShapesNotOnNets(usable, &non_net_connectables);
+        layout->CopyConnectableShapesNotOnNets(
+            ok_nets, &non_net_connectables);
 
         auto status = routing_grid.AddRouteToNet(*to,
                                                  targets,
@@ -275,8 +291,12 @@ void Interconnect::Route(
         EquivalentNets usable({from->net(), to->net()});
         nets[from] = usable;
 
+        EquivalentNets ok_nets = usable;
+        ok_nets.Add("VPWR");
+        ok_nets.Add("VGND");
         geometry::ShapeCollection non_net_connectables;
-        layout->CopyConnectableShapesNotOnNets(usable, &non_net_connectables);
+        layout->CopyConnectableShapesNotOnNets(
+            ok_nets, &non_net_connectables);
 
         auto status = routing_grid.AddRouteBetween(*from,
                                                    *to,

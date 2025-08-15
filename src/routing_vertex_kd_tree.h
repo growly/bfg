@@ -13,6 +13,12 @@ class RoutingVertexKDNode {
  public:
   typedef int64_t value_type;
 
+  // Convert a L2 distance (euclidean distance) to the internal distance
+  // measure.
+  static value_type L2DistanceToInternal(int64_t l2_distance) {
+    return l2_distance * l2_distance;
+  }
+
   RoutingVertexKDNode(RoutingVertex *vertex) : vertex_(vertex) {}
 
   inline value_type operator[](const size_t n) const {
@@ -25,6 +31,14 @@ class RoutingVertexKDNode {
         // For any higher dimensions, use the pointer itself.
         return reinterpret_cast<value_type>(vertex_);
     }
+  }
+
+  // KDTree will use this function to check distance.
+  inline value_type distance(const RoutingVertexKDNode &other) const {
+    // L1 (Manhattan) distance would be even faster.
+    const geometry::Point &lhs = vertex_->centre();
+    const geometry::Point &rhs = other.vertex_->centre();
+    return lhs.L2SquaredDistanceTo(rhs);
   }
 
   RoutingVertex *vertex() const { return vertex_; }
@@ -50,6 +64,10 @@ class RoutingVertexKDTree {
 
   std::vector<RoutingVertex*> FindNearby(
       const geometry::Point &reference, int64_t radius) const;
+
+  size_t Size() const {
+    return tree_.size();
+  }
 
  private:
   inline void Optimise() const;

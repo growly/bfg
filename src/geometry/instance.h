@@ -127,16 +127,26 @@ class Instance : public Manipulable {
   Port *GetFirstPortNamed(const std::string &name);
 
   void CopyShapesOnLayer(
-      const geometry::Layer &layer, ShapeCollection *shapes) const;
+      const geometry::Layer &layer,
+      ShapeCollection *shapes,
+      const std::optional<std::set<std::string>> &prefix_exclusions =
+          std::nullopt) const;
 
   void CopyNonConnectableShapesOnLayer(
       const geometry::Layer &layer, ShapeCollection *shapes) const;
 
   void CopyConnectableShapesNotOnNets(
-      const EquivalentNets &nets, ShapeCollection *shapes) const;
+      const EquivalentNets &nets,
+      ShapeCollection *shapes,
+      const std::optional<int64_t> &max_depth = std::nullopt) const;
+
   void CopyConnectableShapes(ShapeCollection *shapes) const;
 
-  void CopyAllShapes(ShapeCollection *shapes) const;
+  void CopyAllShapes(
+      ShapeCollection *shapes,
+      const std::optional<int64_t> &max_depth = std::nullopt,
+      const std::optional<std::set<std::string>> &prefix_exclusions =
+          std::nullopt) const;
 
   // Get a named point (from the template_layout_) and translate it to where it
   // is in this instance.

@@ -171,7 +171,9 @@ void Instance::AddNamedInstancePort(
 }
 
 void Instance::CopyShapesOnLayer(
-    const geometry::Layer &layer, ShapeCollection *shapes) const {
+    const geometry::Layer &layer,
+    ShapeCollection *shapes,
+    const std::optional<std::set<std::string>> &prefix_exclusions) const {
   ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
   if (!master_shapes)
     return;
@@ -179,13 +181,18 @@ void Instance::CopyShapesOnLayer(
   ShapeCollection instance_shapes;
   instance_shapes.Add(*master_shapes);
   ApplyInstanceTransforms(&instance_shapes);
-  instance_shapes.PrefixNetNames(name_, ".");
+  // FIXME(arypa): Just make PrefixNetNames take an optional too so we can avoid
+  // creating an empty set (I PRESUME std::nullopt is cheaper than an empty
+  // set).
+  instance_shapes.PrefixNetNames(
+      name_, ".", prefix_exclusions.value_or(std::set<std::string>()));
 
   shapes->Add(instance_shapes);
 }
 
 void Instance::CopyNonConnectableShapesOnLayer(
-    const geometry::Layer &layer, ShapeCollection *shapes) const {
+    const geometry::Layer &layer,
+    ShapeCollection *shapes) const {
   ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
   if (!master_shapes)
     return;
@@ -198,11 +205,13 @@ void Instance::CopyNonConnectableShapesOnLayer(
   shapes->AddNonConnectableShapes(instance_shapes);
 }
 
-void Instance::CopyConnectableShapesNotOnNets(const EquivalentNets &nets,
-                                              ShapeCollection *shapes) const {
+void Instance::CopyConnectableShapesNotOnNets(
+    const EquivalentNets &nets,
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &max_depth) const {
   std::unique_ptr<ShapeCollection> instance_shapes =
       std::unique_ptr<ShapeCollection>(new ShapeCollection());
-  CopyAllShapes(instance_shapes.get());
+  CopyAllShapes(instance_shapes.get(), max_depth);
   shapes->AddConnectableShapesNotOnNets(*instance_shapes, nets);
 }
 void Instance::CopyConnectableShapes(ShapeCollection *shapes) const {
@@ -212,13 +221,16 @@ void Instance::CopyConnectableShapes(ShapeCollection *shapes) const {
   shapes->AddConnectableShapes(*instance_shapes);
 }
 
-void Instance::CopyAllShapes(ShapeCollection *shapes) const {
+void Instance::CopyAllShapes(
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &max_depth,
+    const std::optional<std::set<std::string>> &prefix_exclusions) const {
   ShapeCollection instance_shapes;
-  template_layout_->CopyAllShapes(&instance_shapes);
+  template_layout_->CopyAllShapes(
+      &instance_shapes, max_depth, prefix_exclusions);
   if (instance_shapes.Empty()) {
     return;
   }
-
   ApplyInstanceTransforms(&instance_shapes);
   instance_shapes.PrefixNetNames(name_, ".");
   shapes->Add(instance_shapes);

@@ -89,7 +89,7 @@ bfg::Cell *ReadParamsAndGenerate(
     const std::string &parameter_pb_path,
     bfg::DesignDatabase *design_db) {
   ProtoParam params_pb;
-  bfg::ReadTextProtoOrDie(parameter_pb_path, &params_pb);
+  bfg::Utility::ReadTextProtoOrDie(parameter_pb_path, &params_pb);
 
   GeneratorParam params;
   params.FromProto(params_pb);

@@ -3,6 +3,8 @@
 #include "routing_vertex.h"
 #include "geometry/point.h"
 
+// FIXME(aryap): This puppy severely needs a unit test (or many).
+
 namespace bfg {
 
 void RoutingVertexKDTree::Add(RoutingVertex *vertex) {
@@ -23,7 +25,10 @@ std::vector<RoutingVertex*> RoutingVertexKDTree::FindNearby(
   RoutingVertexKDNode ref_node(ref_vertex.get());
 
   std::vector<RoutingVertexKDNode> nearby_nodes;
-  tree_.find_within_range(ref_node, radius, std::back_inserter(nearby_nodes));
+  tree_.find_within_range(
+      ref_node,
+      RoutingVertexKDNode::L2DistanceToInternal(radius),
+      std::back_inserter(nearby_nodes));
 
   std::vector<RoutingVertex*> nearby;
   for (const auto &node : nearby_nodes) {

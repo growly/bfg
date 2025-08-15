@@ -12,7 +12,7 @@ namespace {
 
 TEST(EdgeSpec, FromProto_1) {
   proto::EdgeSpec golden;
-  bfg::ReadTextProtoOrDie("test_data/edge_spec.pb.txt", &golden);
+  bfg::Utility::ReadTextProtoOrDie("test_data/edge_spec.pb.txt", &golden);
 
   EdgeSpec spec;
   spec.FromProto(golden);
@@ -48,7 +48,7 @@ TEST(EdgeSpec, ToProto_1) {
 
 TEST(EdgeList, FromProto_1) {
   proto::EdgeList golden;
-  bfg::ReadTextProtoOrDie("test_data/edge_list.pb.txt", &golden);
+  bfg::Utility::ReadTextProtoOrDie("test_data/edge_list.pb.txt", &golden);
 
   EdgeList list;
   list.FromProto(golden);
@@ -81,7 +81,7 @@ TEST(EdgeList, FromProto_1) {
 TEST(EdgeList, ToProto_1) {
   // Being lazy, we'll just test the round-trip:
   proto::EdgeList golden;
-  bfg::ReadTextProtoOrDie("test_data/edge_list.pb.txt", &golden);
+  bfg::Utility::ReadTextProtoOrDie("test_data/edge_list.pb.txt", &golden);
   EdgeList list;
   list.FromProto(golden);
 

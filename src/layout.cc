@@ -25,8 +25,8 @@ geometry::Polygon *Layout::AddPolyLine(const geometry::PolyLine &line) {
   PolyLineInflator inflator(physical_db_);
   std::optional<geometry::Polygon> polygon = inflator.InflatePolyLine(line);
   if (polygon) {
-    LOG(INFO) << "inflated line: " << line
-              << " to polygon: " << polygon->Describe();
+    VLOG(20) << "Inflated line: " << line
+             << " to polygon: " << polygon->Describe();
     return AddPolygon(*polygon);
   } else {
     return nullptr;
@@ -424,6 +424,8 @@ void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix) {
     ShapeCollection *other_collection = entry.second.get();
     if (name_prefix != "") {
       // Shapes are modified in place.
+      // TODO(aryap): How to handle exclusion of prefixes on e.g. global nets
+      // here? Is it necessary?
       other_collection->PrefixNetNames(name_prefix, ".");
     }
 
@@ -904,13 +906,46 @@ ShapeCollection *Layout::GetShapeCollection(
   return nullptr;
 }
 
+// Generally what we want from this function is to return all of the shapes we
+// would *want* to connect to that aren't on the given nets, because those are
+// the shapes we want to avoid blocking access to. In those cases we only care
+// about connectable shapes in this Layout, and those that act as the interface
+// to any instances herein. When we ask the instance for its ports, we don't
+// want its instances' ports too.
+//
+// To track this through the recursive call loop, we decrement the max_depth
+// counter every call. We define max_depth == 0 as being the shapes in this
+// Layout and none of its instances.
+//
+// Layout::CopyConnectableShapesNotOnNets(max_depth=1)
+//                    |
+//                    V
+// Instance::CopyConnectableShapesNotOnNets(max_depth=0)
+//                    |
+//                    V
+// Instance::CopyAllShapes(max_depth=0)
+//                    |
+//                    V
+// Layout::CopyAllShapes(max_depth=0)
+//                    |
+//                    X
+// FIXME(aryap): Why does Instance::CopyConnectableShapesNotOnNets not just call
+// Layout::CopyConnectableShapesNotOnNets?!
 void Layout::CopyConnectableShapesNotOnNets(
-    const EquivalentNets &nets, ShapeCollection *shapes) const {
+    const EquivalentNets &nets,
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &max_depth) const {
   for (const auto &entry : shapes_) {
     shapes->AddConnectableShapesNotOnNets(*entry.second, nets);
   }
+  if (max_depth && max_depth < 1) {
+    return;
+  }
   for (const auto &instance : instances_) {
-    instance->CopyConnectableShapesNotOnNets(nets, shapes);
+    instance->CopyConnectableShapesNotOnNets(
+        nets, shapes,
+        // C++23 has std::optional::transform for this use case!
+        max_depth ? *max_depth - 1 : max_depth);
   }
 }
 
@@ -923,12 +958,17 @@ void Layout::CopyConnectableShapes(ShapeCollection *shapes) const {
   }
 }
 
-void Layout::CopyAllShapes(ShapeCollection *shapes) const {
+void Layout::CopyAllShapes(
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &max_depth) const {
   for (const auto &entry : shapes_) {
     shapes->Add(*entry.second);
   }
+  if (max_depth && *max_depth < 1) {
+    return;
+  }
   for (const auto &instance : instances_) {
-    instance->CopyAllShapes(shapes);
+    instance->CopyAllShapes(shapes, max_depth ? *max_depth - 1 : max_depth);
   }
 }
 
