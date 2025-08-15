@@ -12,6 +12,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 #   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -save-temps")
 add_compile_options(-save-temps)
 
+# On some systems (like the Debian ones I've developed with), --as-needed seems
+# to be a default option for ld that means the profiler lib, when unused, is
+# silently dropped from the final executable. That means you can't turn on
+# profiling by just setting the CPUPROFILE environment variable as the
+# instructions suggest, and instead have to use
+# LD_PRELOAD=/usr/local/lib/libprofiler.so to get it to work. So anyway, this
+# turns that off and forces it to be linked in. Thanks internet!
+# https://stackoverflow.com/questions/49095153/cmake-failing-to-link-against-google-profiler-gperftools
+add_link_options(-Wl,-no-as-needed)
+
 # For googletest on Windows.
 #set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
@@ -32,8 +42,13 @@ configure_file(src/c_make_header.h.in src/c_make_header.h)
 
 # Comment to disable tcmalloc.
 find_library(tcmalloc_lib NAMES tcmalloc REQUIRED)
+find_library(profiler_lib NAMES profiler REQUIRED)
+
 message(STATUS "Found tcmalloc: " ${tcmalloc_lib})
-message(STATUS "protobuf libraries: " ${Protobuf_LIBRARIES})
+message(STATUS "Found profiler libraries: " ${profiler_lib})
+
+# If cmake is gaslighting you:
+#message(STATUS "Found protobuf libraries: " ${Protobuf_LIBRARIES})
 
 set(ABSL_PROPAGATE_CXX_STD true)
 set(ABSL_CXX_STANDARD 17)
@@ -270,15 +285,16 @@ target_include_directories(bfg PUBLIC
                            ${VLSIR_OUT_DIR})
 
 target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
-                                      gflags
-                                      glog::glog
-                                      absl::base
-                                      absl::strings
-                                      absl::str_format
-                                      absl::status
-                                      absl::statusor
-                                      vlsir_lib
-                                      ${Protobuf_LIBRARIES})
+                                 ${profiler_lib}
+                                 gflags
+                                 glog::glog
+                                 absl::base
+                                 absl::strings
+                                 absl::str_format
+                                 absl::status
+                                 absl::statusor
+                                 vlsir_lib
+                                 ${Protobuf_LIBRARIES})
 
 # bfg executable
 # --------------
@@ -294,6 +310,7 @@ target_include_directories(bfg_bin PUBLIC
 
 target_link_libraries(bfg_bin PUBLIC bfg
                                       ${tcmalloc_lib}
+                                      ${profiler_lib}
                                       gflags
                                       glog::glog
                                       absl::strings
@@ -459,6 +476,7 @@ target_link_libraries(bfg_test
   gtest
   gtest_main
   ${tcmalloc_lib}
+  ${profiler_lib}
   gflags
   glog::glog
   absl::strings

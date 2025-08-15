@@ -28,6 +28,22 @@ Libraries
   sudo apt install -y libre2-dev libc-ares-dev libssl-dev
 ```
 
+##### Profiling and performance optimisation
+If you have an old Debian (12.11 is old as of this writing), you have to
+manually [install an up-to-date version of `go`](https://go.dev/doc/install)
+(the Go programming language) and then use that to install `pprof`, [the
+profiler](https://github.com/google/pprof). You might also appreciate graphviz
+and its tools, like `gv`.
+
+```
+  go install github.com/google/pprof@latest
+  export PATH="${HOME}/go/bin:${PATH}"
+  # pprof should now be available to you.
+
+  sudo apt install -y graphviz gv
+  # pprof -gv should now work.
+```
+
 #### Ubuntu
 ```
   sudo apt install -y build-essential cmake autoconf automake libtool curl \
@@ -60,9 +76,10 @@ sudo ldconfig
   ```
   git clone -b v1.16.0 git@github.com:google/googletest
   pushd googletest
-  mkdir build && cd build
+  mkdir build && pushd build
   cmake ../
   make -j $(nproc) && sudo make install
+  popd
   popd
   ```
 
@@ -90,10 +107,10 @@ sudo ldconfig
   # On case-insensitive (insane) file systems (macOS) "build" conflicts
   # with the "BUILD" file that comes with the package.
   pushd gflags
-  mkdir _build && cd _build
+  mkdir _build && pushd _build
   cmake .. -DBUILD_SHARED_LIBS=ON
   make -j $(nproc) && sudo make install
-  popd
+  popd; popd
   ```
 
 [google/glog](https://github.com/google/glog)
@@ -120,11 +137,11 @@ sudo ldconfig
   git clone git@github.com:abseil/abseil-cpp.git
   pushd abseil-cpp
   git checkout 1a31b81c0a467c1c8e229b9fc172a4eb0db5bd85
-  mkdir build && cd build
+  mkdir build && pushd build
   cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON ../
   make -j $(nproc)
   sudo make install
-  popd
+  popd; popd
   ```
 
 [google/re2](https://github.com/google/re2)
@@ -139,11 +156,11 @@ sudo ldconfig
 ```
 git clone https://github.com/google/re2.git
 pushd re2
-mkdir build && cd build
+mkdir build && pushd build
 cmake ../
 make -j $(nproc)
 sudo make install
-popd
+popd; popd
 ```
 
 [protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src)
@@ -171,7 +188,7 @@ a `.local` installation for the project instead of the entire system.
   ```
   wget https://github.com/grpc/grpc/archive/refs/tags/v1.48.1.tar.gz -O grpc-1.48.1.tar.gz
   tar xf grpc-1.48.1.tar.gz
-  cd grpc-1.48.1
+  pushd grpc-1.48.1
   mkdir -p cmake/build
   pushd cmake/build
   cmake \
@@ -186,7 +203,7 @@ a `.local` installation for the project instead of the entire system.
     ../..
   make -j $(nproc)
   sudo make install
-  popd
+  popd; popd
   ```
 
 [nvmd/libkdtree](https://github.com/nvmd/libkdtree)
