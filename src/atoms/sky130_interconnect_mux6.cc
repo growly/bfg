@@ -29,6 +29,16 @@ void Sky130InterconnectMux6::Parameters::ToProto(
   } else {
     pb->clear_poly_pitch_nm();
   }
+  if (vertical_pitch_nm) {
+    pb->set_vertical_pitch_nm(*vertical_pitch_nm);
+  } else {
+    pb->clear_vertical_pitch_nm();
+  }
+  if (horizontal_pitch_nm) {
+    pb->set_horizontal_pitch_nm(*horizontal_pitch_nm);
+  } else {
+    pb->clear_horizontal_pitch_nm();
+  }
   if (power_ground_strap_width_nm) {
     pb->set_power_ground_strap_width_nm(*power_ground_strap_width_nm);
   } else {
@@ -36,17 +46,24 @@ void Sky130InterconnectMux6::Parameters::ToProto(
   }
 }
 
+// TODO(aryap): Empty fields in the proto should yield default values of fields
+// in the Parameters struct. We can't enforce that here, so we hope that the
+// existing values are the default values and leave them unchanged if they don't
+// appear in the input file. Make this consistent across implementations of
+// Parameters structs.
 void Sky130InterconnectMux6::Parameters::FromProto(
     const proto::parameters::Sky130InterconnectMux6 &pb) {
   if (pb.has_poly_pitch_nm()) {
     poly_pitch_nm = pb.poly_pitch_nm();
-  } else {
-    poly_pitch_nm.reset();
+  }
+  if (pb.has_vertical_pitch_nm()) {
+    vertical_pitch_nm = pb.vertical_pitch_nm();
+  }
+  if (pb.has_horizontal_pitch_nm()) {
+    horizontal_pitch_nm = pb.horizontal_pitch_nm();
   }
   if (pb.has_power_ground_strap_width_nm()) {
     power_ground_strap_width_nm = pb.power_ground_strap_width_nm();
-  } else {
-    power_ground_strap_width_nm.reset();
   }
 }
 
@@ -239,10 +256,13 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   // Size the routing channel to make the overall mux meet the pitch
   // requirement:
-  uint64_t horizontal_pitch_nm = parameters_.horizontal_pitch_nm.value_or(460);
+  uint64_t fixed_row_width = bank.Row(num_ff_bottom - 1).Width();
+  uint64_t horizontal_pitch_nm = parameters_.horizontal_pitch_nm.value_or(
+      Parameters::kHorizontalTilingUnitNm);
   uint64_t vertical_channel_width_nm = Utility::NextMultiple(
-      parameters_.vertical_routing_channel_width_nm.value_or(1380),
-      horizontal_pitch_nm);
+      parameters_.vertical_routing_channel_width_nm.value_or(1380) +
+          fixed_row_width,
+      horizontal_pitch_nm) - fixed_row_width;
 
   Sky130Decap::Parameters left_decap_params = {
     .width_nm = vertical_channel_width_nm
@@ -263,8 +283,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   std::string special_decap_name = PrefixCellName("decap_special");
   uint64_t special_decap_width_nm =
-      parameters_.vertical_routing_channel_width_nm.value_or(1380) +
-      tap_params.width_nm;
+      vertical_channel_width_nm + tap_params.width_nm;
   Sky130Decap::Parameters special_decap_params = {
     .width_nm = special_decap_width_nm,
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
@@ -305,11 +324,15 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // (VPWR has to match VPWR on the vertical neighbour, respectively VGND, etc).
   // There is always a fixed transmission gate mux row (the central one).
   //
+  // This is actually an option: if parity flips, we can tile this module by
+  // rotating the tiles above and below, as we do for standard cells.
   if (parameters_.num_inputs % 2 == 0) {
     atoms::Sky130Tap::Parameters channel_tap_params = {
       .height_nm =
           parameters_.horizontal_routing_channel_height_nm.value_or(2720),
-      .width_nm = Parameters::kHorizontalTilingUnitNm
+      .width_nm = Utility::NextMultiple(
+          Parameters::kHorizontalTilingUnitNm,
+          horizontal_pitch_nm)
     };
     atoms::Sky130Tap channel_tap_generator(channel_tap_params, design_db_);
     Cell *channel_tap_cell = channel_tap_generator.GenerateIntoDatabase(
@@ -336,8 +359,11 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         db.ToInternalUnits(Sky130Decap::Parameters::kMaxWidthNm),
         db.ToInternalUnits(Parameters::kHorizontalTilingUnitNm));
 
+    size_t width_so_far = 0;
     for (size_t i = 0; i < decap_widths.size(); ++i) {
-      int64_t width = decap_widths[i];
+      // Break regular multiples of tiling width unit for the last one:
+      int64_t width = i == decap_widths.size() - 1 ?
+          total_decap_width - width_so_far : decap_widths[i];
       std::string name = PrefixCellName(
           absl::StrFormat("horizontal_channel_decap_%u", i));
       Sky130Decap::Parameters decap_params = {
@@ -353,6 +379,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           horizontal_channel_row,
           name,
           horizontal_decap_cell->layout());
+
+      width_so_far += width;
     }
   }
 

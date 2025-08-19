@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "atom.h"
+#include "sky130_parameters.h"
 #include "../circuit.h"
 #include "../layout.h"
 
@@ -25,13 +26,9 @@ namespace atoms {
 //  - Is an "Atom" any more than a "Generator"?
 class Sky130Buf: public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     uint64_t width_nm = 1380;
     uint64_t height_nm = 2720;
-
-    // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses Instance)?
-    std::string fet_model_length_parameter = "l";
-    std::string fet_model_width_parameter = "w";
 
     // TODO(aryap): These are parameters which the layout should implement
     // dynamically, but currently all the shapes are static from the initial

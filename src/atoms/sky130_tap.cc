@@ -114,6 +114,9 @@ bfg::Layout *Sky130Tap::GenerateLayout() {
       Rectangle({0, -metal_width / 2},
                 cell_width,
                 metal_width));
+  metal_ground_pour->set_net(parameters_.ground_net);
+  // metal_ground_pour->set_is_connectable(true);
+
   layout->SetActiveLayerByName("li.drawing");
   Rectangle *li_ground_pour = layout->AddRectangle(
       Rectangle({0, -li_width / 2},
@@ -123,7 +126,9 @@ bfg::Layout *Sky130Tap::GenerateLayout() {
       Rectangle({li_min_separation / 2, li_ground_pour->upper_right().y()},
                 li_arm_width,
                 li_ground_arm_length));
-  layout->MakeVia("mcon.drawing", li_ground_pour->centre());
+  if (parameters_.draw_vgnd_vias) {
+    layout->MakeVia("mcon.drawing", li_ground_pour->centre());
+  }
   layout->SetActiveLayerByName("nsdm.drawing");
   Rectangle *lower_nsdm = layout->AddRectangle(
       Rectangle({0, -continuity_sdm_height / 2},
@@ -192,6 +197,9 @@ bfg::Layout *Sky130Tap::GenerateLayout() {
       Rectangle({0, cell_height - metal_width / 2},
                 cell_width,
                 metal_width));
+  metal_power_pour->set_net(parameters_.power_net);
+  // metal_power_pour->set_is_connectable(true);
+
   layout->SetActiveLayerByName("li.drawing");
   Rectangle *li_power_pour = layout->AddRectangle(
       Rectangle({0, cell_height - li_width / 2},
@@ -202,7 +210,9 @@ bfg::Layout *Sky130Tap::GenerateLayout() {
                     li_power_pour->lower_left().y() - li_power_arm_length},
                 li_arm_width,
                 li_power_arm_length));
-  layout->MakeVia("mcon.drawing", li_power_pour->centre());
+  if (parameters_.draw_vpwr_vias) {
+    layout->MakeVia("mcon.drawing", li_power_pour->centre());
+  }
   layout->SetActiveLayerByName("psdm.drawing");
   Rectangle *upper_psdm = layout->AddRectangle(
       Rectangle({0, cell_height - continuity_sdm_height / 2},

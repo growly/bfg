@@ -129,7 +129,7 @@ class Instance : public Manipulable {
   void CopyShapesOnLayer(
       const geometry::Layer &layer,
       ShapeCollection *shapes,
-      const std::optional<std::set<std::string>> &prefix_exclusions =
+      const std::optional<std::set<std::string>> &no_prefix =
           std::nullopt) const;
 
   void CopyNonConnectableShapesOnLayer(
@@ -138,14 +138,20 @@ class Instance : public Manipulable {
   void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets,
       ShapeCollection *shapes,
-      const std::optional<int64_t> &max_depth = std::nullopt) const;
+      const std::optional<int64_t> &max_depth = std::nullopt,
+      const std::optional<std::set<std::string>> &no_prefix =
+          std::nullopt) const;
 
-  void CopyConnectableShapes(ShapeCollection *shapes) const;
+  void CopyConnectableShapes(
+      ShapeCollection *shapes,
+      const std::optional<int64_t> &max_depth = std::nullopt,
+      const std::optional<std::set<std::string>> &no_prefix =
+          std::nullopt) const;
 
   void CopyAllShapes(
       ShapeCollection *shapes,
       const std::optional<int64_t> &max_depth = std::nullopt,
-      const std::optional<std::set<std::string>> &prefix_exclusions =
+      const std::optional<std::set<std::string>> &no_prefix =
           std::nullopt) const;
 
   // Get a named point (from the template_layout_) and translate it to where it

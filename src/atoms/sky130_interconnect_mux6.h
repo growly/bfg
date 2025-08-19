@@ -71,6 +71,7 @@ namespace atoms {
 class Sky130InterconnectMux6 : public Atom {
  public:
   struct Parameters {
+    // This is the default for the PDK.
     static constexpr uint64_t kHorizontalTilingUnitNm = 460;
 
     uint32_t num_inputs = 6;

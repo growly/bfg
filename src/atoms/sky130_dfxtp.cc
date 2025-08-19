@@ -36,8 +36,8 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Wire Q = circuit->AddSignal("Q");
   circuit::Wire QI = circuit->AddSignal("QI");
 
-  circuit::Wire VPWR = circuit->AddSignal("VPWR");
-  circuit::Wire VGND = circuit->AddSignal("VGND");
+  circuit::Wire VPWR = circuit->AddSignal(parameters_.power_net);
+  circuit::Wire VGND = circuit->AddSignal(parameters_.ground_net);
   circuit::Wire VPB = circuit->AddSignal("VPB");
   circuit::Wire VNB = circuit->AddSignal("VNB");
 
@@ -370,51 +370,59 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // mcon.drawing [DRAWING] 67/44
   layout->SetActiveLayerByName("mcon.drawing");
-  layout->AddRectangle(Rectangle(Point(1545, -85), Point(1715, 85)));
-  layout->AddRectangle(Rectangle(Point(2465, -85), Point(2635, 85)));
-  layout->AddRectangle(Rectangle(Point(2005, -85), Point(2175, 85)));
-  layout->AddRectangle(Rectangle(Point(2925, 2635), Point(3095, 2805)));
-  layout->AddRectangle(Rectangle(Point(2925, -85), Point(3095, 85)));
+  if (parameters_.draw_vgnd_vias) {
+    layout->AddRectangle(Rectangle(Point(1545, -85), Point(1715, 85)));
+    layout->AddRectangle(Rectangle(Point(2465, -85), Point(2635, 85)));
+    layout->AddRectangle(Rectangle(Point(2005, -85), Point(2175, 85)));
+    layout->AddRectangle(Rectangle(Point(2925, -85), Point(3095, 85)));
+    layout->AddRectangle(Rectangle(Point(3385, -85), Point(3555, 85)));
+    layout->AddRectangle(Rectangle(Point(3845, -85), Point(4015, 85)));
+    layout->AddRectangle(Rectangle(Point(4305, -85), Point(4475, 85)));
+    layout->AddRectangle(Rectangle(Point(4765, -85), Point(4935, 85)));
+    layout->AddRectangle(Rectangle(Point(5225, -85), Point(5395, 85)));
+    layout->AddRectangle(Rectangle(Point(5685, -85), Point(5855, 85)));
+    layout->AddRectangle(Rectangle(Point(625, -85), Point(795, 85)));
+    layout->AddRectangle(Rectangle(Point(165, -85), Point(335, 85)));
+    layout->AddRectangle(Rectangle(Point(1085, -85), Point(1255, 85)));
+    // Additional mcon added to correct for cut in non-unit-widths:
+    layout->AddRectangle(Rectangle(
+          Point(x_min + 145, -85),
+          Point(x_min + 145 + 170, 85)));
+  }
+  if (parameters_.draw_vpwr_vias) {
+    layout->AddRectangle(Rectangle(Point(2925, 2635), Point(3095, 2805)));
+    layout->AddRectangle(Rectangle(Point(3385, 2635), Point(3555, 2805)));
+    layout->AddRectangle(Rectangle(Point(3845, 2635), Point(4015, 2805)));
+    layout->AddRectangle(Rectangle(Point(4305, 2635), Point(4475, 2805)));
+    layout->AddRectangle(Rectangle(Point(4765, 2635), Point(4935, 2805)));
+    layout->AddRectangle(Rectangle(Point(5225, 2635), Point(5395, 2805)));
+    layout->AddRectangle(Rectangle(Point(5685, 2635), Point(5855, 2805)));
+    layout->AddRectangle(Rectangle(Point(165, 2635), Point(335, 2805)));
+    layout->AddRectangle(Rectangle(Point(625, 2635), Point(795, 2805)));
+    layout->AddRectangle(Rectangle(Point(1085, 2635), Point(1255, 2805)));
+    layout->AddRectangle(Rectangle(Point(1545, 2635), Point(1715, 2805)));
+    layout->AddRectangle(Rectangle(Point(2465, 2635), Point(2635, 2805)));
+    layout->AddRectangle(Rectangle(Point(2005, 2635), Point(2175, 2805)));
+    layout->AddRectangle(Rectangle(
+          Point(x_min + 145, 2635),
+          Point(x_min + 145 + 170, 2805)));
+  }
   layout->AddRectangle(Rectangle(Point(2940, 1785), Point(3110, 1955)));
   layout->AddRectangle(Rectangle(Point(3375, 1445), Point(3545, 1615)));
-  layout->AddRectangle(Rectangle(Point(3385, 2635), Point(3555, 2805)));
-  layout->AddRectangle(Rectangle(Point(3385, -85), Point(3555, 85)));
-  layout->AddRectangle(Rectangle(Point(3845, 2635), Point(4015, 2805)));
-  layout->AddRectangle(Rectangle(Point(3845, -85), Point(4015, 85)));
-  layout->AddRectangle(Rectangle(Point(4305, 2635), Point(4475, 2805)));
-  layout->AddRectangle(Rectangle(Point(4305, -85), Point(4475, 85)));
-  layout->AddRectangle(Rectangle(Point(4765, 2635), Point(4935, 2805)));
-  layout->AddRectangle(Rectangle(Point(4765, -85), Point(4935, 85)));
-  layout->AddRectangle(Rectangle(Point(5225, 2635), Point(5395, 2805)));
-  layout->AddRectangle(Rectangle(Point(5225, -85), Point(5395, 85)));
-  layout->AddRectangle(Rectangle(Point(5685, 2635), Point(5855, 2805)));
-  layout->AddRectangle(Rectangle(Point(5685, -85), Point(5855, 85)));
-  layout->AddRectangle(Rectangle(Point(165, 2635), Point(335, 2805)));
-  layout->AddRectangle(Rectangle(Point(625, 2635), Point(795, 2805)));
-  layout->AddRectangle(Rectangle(Point(625, -85), Point(795, 85)));
-  layout->AddRectangle(Rectangle(Point(1085, 2635), Point(1255, 2805)));
   layout->AddRectangle(Rectangle(Point(1370, 1785), Point(1540, 1955)));
-  layout->AddRectangle(Rectangle(Point(165, -85), Point(335, 85)));
   layout->AddRectangle(Rectangle(Point(855, 1445), Point(1025, 1615)));
-  layout->AddRectangle(Rectangle(Point(1085, -85), Point(1255, 85)));
-  layout->AddRectangle(Rectangle(Point(1545, 2635), Point(1715, 2805)));
-  layout->AddRectangle(Rectangle(Point(2465, 2635), Point(2635, 2805)));
-  layout->AddRectangle(Rectangle(Point(2005, 2635), Point(2175, 2805)));
-
-  // Additional mcon added to correct for cut in non-unit-widths:
-  layout->AddRectangle(Rectangle(
-        Point(x_min + 145, 2635),
-        Point(x_min + 145 + 170, 2805)));
-  layout->AddRectangle(Rectangle(
-        Point(x_min + 145, -85),
-        Point(x_min + 145 + 170, 85)));
 
   // met1.drawing [DRAWING] 68/20
   layout->SetActiveLayerByName("met1.drawing");
   Rectangle *vpwr_bar = layout->AddRectangle(
       Rectangle(Point(x_min, 2480), Point(6000, 2960)));
+  vpwr_bar->set_net(parameters_.power_net);
+  // vpwr_bar->set_is_connectable(true);
   Rectangle *vgnd_bar = layout->AddRectangle(
       Rectangle(Point(x_min, -240), Point(6000, 240)));
+  vgnd_bar->set_net(parameters_.ground_net);
+  // vgnd_bar->set_is_connectable(true);
+
   Polygon *clk_i_bar = layout->AddPolygon(
       Polygon({//Point(0, 1800),
                //Point(1310, 1800),

@@ -53,8 +53,8 @@ bfg::Circuit *Sky130Buf::GenerateCircuit() {
   circuit::Wire X = circuit->AddSignal("X");
   circuit::Wire P = circuit->AddSignal("P");
   circuit::Wire A = circuit->AddSignal("A");
-  circuit::Wire VPWR = circuit->AddSignal("VPWR");
-  circuit::Wire VGND = circuit->AddSignal("VGND");
+  circuit::Wire VPWR = circuit->AddSignal(parameters_.power_net);
+  circuit::Wire VGND = circuit->AddSignal(parameters_.ground_net);
   circuit::Wire VPB = circuit->AddSignal("VPB");
   circuit::Wire VNB = circuit->AddSignal("VNB");
 
@@ -165,9 +165,15 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   // met1.drawing 68/20
   // The second "metal" layer.
   layout->SetActiveLayerByName("met1.drawing");
-  layout->AddRectangle(Rectangle(Point(0, -240), width, 480));
+  Rectangle *vgnd_bar = layout->AddRectangle(
+      Rectangle(Point(0, -240), width, 480));
+  vgnd_bar->set_net(parameters_.ground_net);
+  // vgnd_bar->set_is_connectable(true);
 
-  layout->AddRectangle(Rectangle(Point(0, height - 240), width, 480));
+  Rectangle *vpwr_bar =
+      layout->AddRectangle(Rectangle(Point(0, height - 240), width, 480));
+  vpwr_bar->set_net(parameters_.power_net);
+  // vpwr_bar->set_is_connectable(true);
 
   // diff.drawing 65/20
   // Diffusion. Intersection with gate material layer defines gate size.
@@ -248,20 +254,24 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
 
   // mcon.drawing 67/44
   if (parameters_.draw_overflowing_vias_and_pins) {
-    // Metal to li1.drawing contacts (VPWR side).
-    layout->MakeVia("mcon.drawing", {230,  static_cast<int64_t>(height)});
-    layout->MakeVia("mcon.drawing", {690,  static_cast<int64_t>(height)});
-    layout->MakeVia("mcon.drawing", {1150, static_cast<int64_t>(height)});
+    if (parameters_.draw_vpwr_vias) {
+      // Metal to li1.drawing contacts (VPWR side).
+      layout->MakeVia("mcon.drawing", {230,  static_cast<int64_t>(height)});
+      layout->MakeVia("mcon.drawing", {690,  static_cast<int64_t>(height)});
+      layout->MakeVia("mcon.drawing", {1150, static_cast<int64_t>(height)});
+    }
 
     // met1.pin
     layout->SetActiveLayerByName("met1.pin");
     layout->MakePin("VPWR", {230, static_cast<int64_t>(height)}, "met1.pin");
     layout->MakePin("VGND", {230, 0}, "met1.pin");
 
-    // Metal to li1.drawing contacts (VGND side).
-    layout->MakeVia("mcon.drawing", {230, 0});
-    layout->MakeVia("mcon.drawing", {690, 0});
-    layout->MakeVia("mcon.drawing", {1150, 0});
+    if (parameters_.draw_vgnd_vias) {
+      // Metal to li1.drawing contacts (VGND side).
+      layout->MakeVia("mcon.drawing", {230, 0});
+      layout->MakeVia("mcon.drawing", {690, 0});
+      layout->MakeVia("mcon.drawing", {1150, 0});
+    }
 
     // nwell.pin 64/16
     layout->SetActiveLayerByName("nwell.pin");

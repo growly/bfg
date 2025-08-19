@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "atom.h"
+#include "sky130_parameters.h"
 #include "../circuit.h"
 #include "../layout.h"
 #include "../geometry/compass.h"
@@ -22,7 +23,7 @@ namespace atoms {
 
 class Sky130TransmissionGate : public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     uint64_t p_width_nm = 1000;
     uint64_t p_length_nm = 150;
     uint64_t n_width_nm = 650;

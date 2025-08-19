@@ -444,7 +444,6 @@ set(ATOMS_TEST_SRC
 )
 
 set(GEOMETRY_TEST_SRC
-  ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/point_test.cc
@@ -459,10 +458,12 @@ set(TEST_SRC
   ${GEOMETRY_TEST_SRC}
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
+  ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector_test.cc
+  ${PROJECT_SOURCE_DIR}/src/utility_test.cc
 )
 
 enable_testing()

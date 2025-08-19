@@ -29,11 +29,6 @@ class Sky130Decap: public Atom {
     uint64_t width_nm = 1380;
     uint64_t height_nm = 2720;
 
-    // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses
-    // Instance)?
-    std::string fet_model_length_parameter = "l";
-    std::string fet_model_width_parameter = "w";
-
     std::optional<uint64_t> nfet_0_width_nm;
     std::optional<uint64_t> pfet_0_width_nm;
     std::optional<uint64_t> nfet_0_length_nm;
@@ -53,6 +48,14 @@ class Sky130Decap: public Atom {
     // configurable.
     // TODO(aryap): Put this in the params proto.
     uint64_t mcon_via_pitch = 460;
+
+    // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses
+    // Instance)?
+    std::string fet_model_length_parameter = "l";
+    std::string fet_model_width_parameter = "w";
+
+    std::string power_net = "VPWR";
+    std::string ground_net = "VGND";
 
     void ToProto(proto::parameters::Sky130Decap *pb) const;
     void FromProto(const proto::parameters::Sky130Decap &pb);

@@ -1,9 +1,9 @@
+#include "equivalent_nets.h"
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 #include <utility>
-
-#include "equivalent_nets.h"
 
 namespace bfg {
 namespace {

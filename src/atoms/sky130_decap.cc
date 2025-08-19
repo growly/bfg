@@ -156,8 +156,12 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
     ScopedLayer scoped_layer(layout.get(), "met1.drawing");
     vgnd_rectangle =
         layout->AddRectangle({{0, -240}, {width, 240}});
+    vgnd_rectangle->set_net(parameters_.power_net);
+    // vgnd_rectangle->set_is_connectable(true);
     vpwr_rectangle =
         layout->AddRectangle({{0, height - 240}, {width, height + 240}});
+    vpwr_rectangle->set_net(parameters_.ground_net);
+    // vpwr_rectangle->set_is_connectable(true);
   }
 
   int64_t ncon_width = std::max(

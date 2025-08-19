@@ -58,6 +58,11 @@ class Interconnect : public Tile {
       const InputPortCollection &mux_inputs,
       const OutputPortCollection &mux_outputs,
       Layout *layout);
+  void RouteComplete(
+      const MuxCollection &muxes,
+      const InputPortCollection &mux_inputs,
+      const OutputPortCollection &mux_outputs,
+      Layout *layout);
 
   Parameters parameters_;
 };

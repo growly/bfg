@@ -6,6 +6,7 @@
 #include "atom.h"
 #include "../circuit.h"
 #include "../layout.h"
+#include "sky130_parameters.h"
 
 namespace bfg {
 
@@ -19,7 +20,7 @@ namespace atoms {
 // a P+ substrate (i.e. where an N-diffusion would go).
 class Sky130Tap: public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     uint64_t height_nm = 2720;
     uint64_t width_nm = 460;
 

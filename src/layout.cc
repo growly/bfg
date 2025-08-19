@@ -938,29 +938,36 @@ void Layout::CopyConnectableShapesNotOnNets(
   for (const auto &entry : shapes_) {
     shapes->AddConnectableShapesNotOnNets(*entry.second, nets);
   }
-  if (max_depth && max_depth < 1) {
+  if (max_depth && *max_depth < 1) {
     return;
   }
   for (const auto &instance : instances_) {
     instance->CopyConnectableShapesNotOnNets(
-        nets, shapes,
+        nets,
+        shapes,
         // C++23 has std::optional::transform for this use case!
         max_depth ? *max_depth - 1 : max_depth);
   }
 }
 
-void Layout::CopyConnectableShapes(ShapeCollection *shapes) const {
+void Layout::CopyConnectableShapes(
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &max_depth) const {
   for (const auto &entry : shapes_) {
     shapes->AddConnectableShapes(*entry.second);
   }
   for (const auto &instance : instances_) {
-    instance->CopyConnectableShapes(shapes);
+    instance->CopyConnectableShapes(
+        shapes,
+        max_depth ? *max_depth - 1 : max_depth,
+        global_nets_);
   }
 }
 
 void Layout::CopyAllShapes(
     ShapeCollection *shapes,
-    const std::optional<int64_t> &max_depth) const {
+    const std::optional<int64_t> &max_depth,
+    const std::optional<std::set<std::string>> &no_prefix) const {
   for (const auto &entry : shapes_) {
     shapes->Add(*entry.second);
   }
@@ -968,7 +975,10 @@ void Layout::CopyAllShapes(
     return;
   }
   for (const auto &instance : instances_) {
-    instance->CopyAllShapes(shapes, max_depth ? *max_depth - 1 : max_depth);
+    instance->CopyAllShapes(
+        shapes,
+        max_depth ? *max_depth - 1 : max_depth,
+        no_prefix);
   }
 }
 
