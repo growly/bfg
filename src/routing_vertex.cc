@@ -92,6 +92,8 @@ void RoutingVertex::UpdateCachedStatus() {
   // at least one of these tracks will definitely fail to heal around the
   // blockage. And we count on that. Otherwise we're creating an edge to replace
   // one that we will immediately block, or worse, have just blocked.
+  //
+  // Also, does this need to be undone? I don't think so - we just leak edges?
   if (!update_tracks_on_blockage_ || totally_available_) {
     return;
   }
