@@ -129,6 +129,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(2720U)),
     .width_nm = Parameters::kHorizontalTilingUnitNm
   };
+  tap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+  tap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   atoms::Sky130Tap tap_generator(tap_params, design_db_);
   Cell *tap_cell = tap_generator.GenerateIntoDatabase(
       PrefixCellName("interconnect_mux6_tap_template"));
@@ -156,6 +158,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         absl::StrFormat("dfxtp_bottom_%d", i));
     std::string cell_name = absl::StrCat(instance_name, "_template");
     atoms::Sky130Dfxtp::Parameters params;
+    params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
     Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
     geometry::Instance *instance = bank.InstantiateRight(
@@ -191,6 +195,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         absl::StrFormat("dfxtp_top_%d", i));
     std::string cell_name = absl::StrCat(instance_name, "_template");
     atoms::Sky130Dfxtp::Parameters params;
+    params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
     Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
     geometry::Instance *instance = bank.InstantiateRight(
@@ -205,6 +211,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   Sky130Buf::Parameters output_buf_params = {
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
   };
+  output_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+  output_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Buf output_buf_generator(output_buf_params, design_db_);
   Cell *output_buf_cell = output_buf_generator.GenerateIntoDatabase(
       absl::StrCat(output_buf_name, "_template"));
@@ -217,6 +225,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // bottom side.
   std::string clk_buf_name = PrefixCellName("clk_buf");
   Sky130Buf::Parameters clk_buf_params = {};
+  clk_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+  clk_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Buf clk_buf_generator(clk_buf_params, design_db_);
   Cell *clk_buf_cell = clk_buf_generator.GenerateIntoDatabase(clk_buf_name);
   geometry::Instance *clk_buf_top = bank.InstantiateRight(
@@ -233,6 +243,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // Decaps!
   std::string right_decap_name = PrefixCellName("decap_right");
   Sky130Decap::Parameters right_decap_params;
+  right_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+  right_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Decap right_decap_generator(right_decap_params, design_db_);
   Cell *right_decap_cell =
       right_decap_generator.GenerateIntoDatabase(right_decap_name);
@@ -267,6 +279,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   Sky130Decap::Parameters left_decap_params = {
     .width_nm = vertical_channel_width_nm
   };
+  left_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+  left_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Decap left_decap_generator(left_decap_params, design_db_);
   Cell *left_decap_cell =
       left_decap_generator.GenerateIntoDatabase(left_decap_name);
@@ -288,6 +302,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     .width_nm = special_decap_width_nm,
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
   };
+  special_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+  special_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Decap special_decap_generator(special_decap_params, design_db_);
   Cell *special_decap_cell =
       special_decap_generator.GenerateIntoDatabase(special_decap_name);
@@ -307,6 +323,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           db.ToExternalUnits(middle_row_available_x)),
       .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
     };
+    optional_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    optional_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     Sky130Decap optional_decap_generator(optional_decap_params, design_db_);
     Cell *optional_decap_cell =
         optional_decap_generator.GenerateIntoDatabase(
@@ -334,6 +352,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           Parameters::kHorizontalTilingUnitNm,
           horizontal_pitch_nm)
     };
+    channel_tap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    channel_tap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     atoms::Sky130Tap channel_tap_generator(channel_tap_params, design_db_);
     Cell *channel_tap_cell = channel_tap_generator.GenerateIntoDatabase(
         PrefixCellName("channel_tap_template"));
@@ -371,6 +391,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         .height_nm =
             parameters_.horizontal_routing_channel_height_nm.value_or(2720)
       };
+      decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+      decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
       Sky130Decap horizontal_channel_decap_generator(decap_params, design_db_);
       Cell *horizontal_decap_cell =
           horizontal_channel_decap_generator.GenerateIntoDatabase(
@@ -381,6 +403,29 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           horizontal_decap_cell->layout());
 
       width_so_far += width;
+    }
+  }
+
+  geometry::Rectangle tiling_bounds = *bank.GetTilingBounds();
+  if (parameters_.redraw_rail_vias) {
+    const auto &rows = bank.rows();
+    std::vector<int64_t> y_values(rows.size() + 1);
+    for (size_t i = 0; i < rows.size(); ++i) {
+      y_values[i] = rows[i].GetTilingBounds()->lower_left().y();
+    }
+    y_values[y_values.size() - 1] =
+        rows.back().GetTilingBounds()->upper_right().y();
+
+    const int64_t mcon_pitch = db.ToInternalUnits(
+        Parameters::kHorizontalTilingUnitNm);
+
+    int64_t x_min = tiling_bounds.lower_left().x();
+    int64_t x_max = tiling_bounds.upper_right().x();
+    for (int64_t y : y_values) {
+      // Guess that the power rails are centred over the top and bottom edges of
+      // the tiling bounds:
+      cell->layout()->StampVias(
+          "mcon.drawing", {x_min, y}, {x_max, y}, mcon_pitch);
     }
   }
 
@@ -403,7 +448,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
                << "sophisticated, like the RoutingGrid";
   }
 
-  cell->layout()->SetTilingBounds(*bank.GetTilingBounds());
+  cell->layout()->SetTilingBounds(tiling_bounds);
 
   return cell.release();
 }

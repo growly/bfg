@@ -7,6 +7,7 @@
 #include "../circuit.h"
 #include "../layout.h"
 
+#include "sky130_parameters.h"
 #include "proto/parameters/sky130_decap.pb.h"
 
 namespace bfg {
@@ -18,7 +19,7 @@ namespace atoms {
 // Generate a decap cell in the style of sky130.
 class Sky130Decap: public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     // This is the width of the hd-lib std-cell decap_12. We can probably do
     // more with more vias and stuff.
     static constexpr uint64_t kMaxWidthNm = 5520;
@@ -48,14 +49,6 @@ class Sky130Decap: public Atom {
     // configurable.
     // TODO(aryap): Put this in the params proto.
     uint64_t mcon_via_pitch = 460;
-
-    // TODO(aryap): Maybe we do need a "Transistor" class (which subclasses
-    // Instance)?
-    std::string fet_model_length_parameter = "l";
-    std::string fet_model_width_parameter = "w";
-
-    std::string power_net = "VPWR";
-    std::string ground_net = "VGND";
 
     void ToProto(proto::parameters::Sky130Decap *pb) const;
     void FromProto(const proto::parameters::Sky130Decap &pb);

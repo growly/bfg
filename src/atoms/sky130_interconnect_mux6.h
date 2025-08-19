@@ -93,6 +93,8 @@ class Sky130InterconnectMux6 : public Atom {
 
     std::optional<uint64_t> power_ground_strap_width_nm = 300;
 
+    bool redraw_rail_vias = true;
+
     void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
   };

@@ -159,7 +159,8 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   // areaid.standardc 81/4
   layout->SetActiveLayerByName("areaid.standardc");
   // Boundary for tiling; when abutting to others, this cannot be overlapped.
-  Rectangle *tiling_bounds = layout->AddRectangle(Rectangle(Point(0, 0), width, height));
+  Rectangle *tiling_bounds = layout->AddRectangle(
+      Rectangle(Point(0, 0), width, height));
   layout->SetTilingBounds(*tiling_bounds);
 
   // met1.drawing 68/20

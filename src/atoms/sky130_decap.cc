@@ -359,16 +359,20 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
   Rectangle *nwell_pin = nullptr;
   Rectangle *pwell_pin = nullptr;
   if (parameters_.draw_overflowing_vias_and_pins) {
-    layout->StampVias(
-        "mcon.drawing",
-        {vpwr_rectangle->lower_left().x(), vpwr_rectangle->centre().y()},
-        {vpwr_rectangle->upper_right().x(), vpwr_rectangle->centre().y()},
-        parameters_.mcon_via_pitch);
-    layout->StampVias(
-        "mcon.drawing",
-        {vgnd_rectangle->lower_left().x(), vgnd_rectangle->centre().y()},
-        {vgnd_rectangle->upper_right().x(), vgnd_rectangle->centre().y()},
-        parameters_.mcon_via_pitch);
+    if (parameters_.draw_vpwr_vias) {
+      layout->StampVias(
+          "mcon.drawing",
+          {vpwr_rectangle->lower_left().x(), vpwr_rectangle->centre().y()},
+          {vpwr_rectangle->upper_right().x(), vpwr_rectangle->centre().y()},
+          parameters_.mcon_via_pitch);
+    }
+    if (parameters_.draw_vgnd_vias) {
+      layout->StampVias(
+          "mcon.drawing",
+          {vgnd_rectangle->lower_left().x(), vgnd_rectangle->centre().y()},
+          {vgnd_rectangle->upper_right().x(), vgnd_rectangle->centre().y()},
+          parameters_.mcon_via_pitch);
+    }
 
     int64_t mcon_side = std::max(db.Rules("mcon.drawing").via_width,
                                  db.Rules("mcon.drawing").via_height);
