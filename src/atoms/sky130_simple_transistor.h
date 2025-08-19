@@ -71,6 +71,8 @@ class Sky130SimpleTransistor : public Atom {
     POLY_BOTTOM_CENTRE
   };
 
+  static std::string LandmarkName(const Landmark &landmark);
+
   static const std::map<ViaPosition, std::string> kSavedPointNameByViaPosition;
 
   Sky130SimpleTransistor(

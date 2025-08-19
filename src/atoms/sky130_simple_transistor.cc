@@ -13,6 +13,18 @@
 namespace bfg {
 namespace atoms {
 
+std::string Sky130SimpleTransistor::LandmarkName(
+    const Sky130SimpleTransistor::Landmark &landmark) {
+  switch (landmark) {
+    case Landmark::POLY_TOP_CENTRE:
+      return "POLY_TOP_CENTRE";
+    case Landmark::POLY_BOTTOM_CENTRE:
+      return "POLY_BOTTOM_CENTRE";
+    default:
+      return absl::StrFormat("UNKNOWN [%d]", landmark);
+  }
+}
+
 const std::map<Sky130SimpleTransistor::ViaPosition, std::string>
 Sky130SimpleTransistor::kSavedPointNameByViaPosition = {
   {LEFT_DIFF_UPPER, "via_left_diff_upper"},
@@ -48,7 +60,8 @@ void Sky130SimpleTransistor::AlignTransistorPartTo(
     default:
       LOG(FATAL) << "Unsupported alignment: " << landmark;
   }
-  LOG(INFO) << "Origin set so that " << landmark << " is at " << point;
+  LOG(INFO) << "Origin set so that " << LandmarkName(landmark) << " is at "
+            << point;
 }
 
 geometry::Point Sky130SimpleTransistor::LowerLeft() const {
