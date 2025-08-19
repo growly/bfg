@@ -353,11 +353,11 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     //
     // Need only one row.
     int64_t total_decap_width = bank.GetTilingBounds()->Width() -
-        tap_cell->layout()->GetTilingBounds().Width();
+        channel_tap_cell->layout()->GetTilingBounds().Width();
     std::vector<int64_t> decap_widths = SplitIntoUnits(
         total_decap_width,
         db.ToInternalUnits(Sky130Decap::Parameters::kMaxWidthNm),
-        db.ToInternalUnits(Parameters::kHorizontalTilingUnitNm));
+        db.ToInternalUnits(horizontal_pitch_nm));
 
     size_t width_so_far = 0;
     for (size_t i = 0; i < decap_widths.size(); ++i) {
