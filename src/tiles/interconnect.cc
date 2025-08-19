@@ -121,7 +121,7 @@ void Interconnect::ConfigureRoutingGrid(
   const auto &met2_rules = db.Rules("met2.drawing");
 
   // Use linear-cost model (saves memory).
-  routing_grid->set_use_linear_cost_model(true);
+  //routing_grid->set_use_linear_cost_model(true);
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
   geometry::Rectangle tiling_bounds = layout->GetTilingBounds();
@@ -202,15 +202,22 @@ void Interconnect::ConfigureRoutingGrid(
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
     layout->CopyNonConnectableShapesOnLayer(
-        db.GetLayer("met1.drawing"), &shapes);
+        db.GetLayer("met1.drawing"), &shapes, 1);
     routing_grid->AddBlockages(shapes);
   }
   {
     geometry::ShapeCollection shapes;
     layout->CopyNonConnectableShapesOnLayer(
-        db.GetLayer("met2.drawing"), &shapes);
+        db.GetLayer("met2.drawing"), &shapes, 1);
     routing_grid->AddBlockages(shapes);
   }
+  // FIXME(aryap): So we need to add the met1.drawing CLK/CLKI bars in each
+  // flip flop as blockages. These are connectable so are not included above.
+  // They are named so we could select them that way. We could remove their
+  // "connectability" when we're done routing to them, such as when they are
+  // added to the Sky130InterconnectMux6 (currently best option). We could also
+  // add a "search" for shapes matching nets, or at a given depth in the
+  // hierarchy. These seem brittle.
   //{
   //  geometry::ShapeCollection shapes;
   //  layout->CopyConnectableShapes(&shapes, std::nullopt);
@@ -233,17 +240,10 @@ void Interconnect::RouteComplete(
   // merged.
   std::map<geometry::Port*, EquivalentNets> nets;
 
-  //// What if just added 20 routes?
-  //for (size_t i = 0; i < 20; ++i) {
-  //  geometry::Instance *source = muxes[i / 4][i % 6];
-  //  geometry::Port *from = mux_outputs[i / 4][i % 16];
-  //  geometry::Instance *destination = muxes[i / 4 + 1][(i + 1) % 16];
-  //  geometry::Port *to = mux_inputs[i / 4 + 1][(i + 1) % 16][0];
-  //  routing_grid.AddRouteBetween(
-  //      *from, *to,
-  //      {},
-  //      EquivalentNets({from->net(), to->net()}));
-  //}
+  std::vector<std::vector<size_t>> next_free_input =
+      std::vector<std::vector<size_t>>(
+          parameters_.num_rows, std::vector<size_t>(parameters_.num_columns));
+
   size_t num_muxes = parameters_.num_rows * parameters_.num_columns;
   for (size_t i = 0; i < num_muxes; ++i) {
     size_t source_row = (i / parameters_.num_columns) % parameters_.num_rows;
@@ -260,7 +260,13 @@ void Interconnect::RouteComplete(
       geometry::Instance *destination = muxes[dest_row][dest_col];
 
       // TODO(aryap): Have to find unused inputs:
-      geometry::Port *to = mux_inputs[dest_row][dest_col][j % 6];
+      size_t &input_index = next_free_input[dest_row][dest_col];
+      geometry::Port *to = mux_inputs[dest_row][dest_col][input_index];
+      // Only connect up to 6 inputs per destination.
+      input_index = input_index + 1;
+      if (input_index > 5) {
+        continue;
+      }
 
       if (nets.find(from) != nets.end()) {
         EquivalentNets targets = nets[from];

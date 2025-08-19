@@ -887,13 +887,27 @@ void Layout::CopyShapesOnLayer(const geometry::Layer &layer,
 
 void Layout::CopyNonConnectableShapesOnLayer(
     const geometry::Layer &layer,
-    ShapeCollection *shapes) const {
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &force_below_depth) const {
   ShapeCollection *layer_shapes = GetShapeCollection(layer);
   if (layer_shapes) {
     shapes->AddNonConnectableShapes(*layer_shapes);
   }
+
+  if (force_below_depth && *force_below_depth == 0) {
+    for (const auto &instance : instances_) {
+      instance->CopyShapesOnLayer(layer, shapes);
+    }
+    return;
+  }
+
+  std::optional<int64_t> new_depth;
+  if (force_below_depth) {
+    new_depth = *force_below_depth - 1;
+  }
+
   for (const auto &instance : instances_) {
-    instance->CopyNonConnectableShapesOnLayer(layer, shapes);
+    instance->CopyNonConnectableShapesOnLayer(layer, shapes, new_depth);
   }
 }
 

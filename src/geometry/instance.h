@@ -133,7 +133,9 @@ class Instance : public Manipulable {
           std::nullopt) const;
 
   void CopyNonConnectableShapesOnLayer(
-      const geometry::Layer &layer, ShapeCollection *shapes) const;
+      const geometry::Layer &layer,
+      ShapeCollection *shapes,
+      const std::optional<int64_t> &force_below_depth = 1) const;
 
   void CopyConnectableShapesNotOnNets(
       const EquivalentNets &nets,

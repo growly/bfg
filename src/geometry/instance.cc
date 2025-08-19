@@ -189,14 +189,16 @@ void Instance::CopyShapesOnLayer(
 
 void Instance::CopyNonConnectableShapesOnLayer(
     const geometry::Layer &layer,
-    ShapeCollection *shapes) const {
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &force_below_depth) const {
   ShapeCollection instance_shapes;
-  template_layout_->CopyShapesOnLayer(layer, &instance_shapes);
+  template_layout_->CopyNonConnectableShapesOnLayer(
+      layer, &instance_shapes, force_below_depth);
 
   ApplyInstanceTransforms(&instance_shapes);
   instance_shapes.PrefixNetNames(name_, ".");
 
-  shapes->AddNonConnectableShapes(instance_shapes);
+  shapes->Add(instance_shapes);
 }
 
 void Instance::CopyConnectableShapesNotOnNets(
