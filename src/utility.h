@@ -30,8 +30,26 @@ class Utility {
     }
   }
 
+  // Returns the next multiple of `multiple` that is greater than OR EQUAL TO
+  // `min`.
   template<typename T>
   static T NextMultiple(const T &min, const T &multiple) {
+    if (multiple == 0) {
+      return min;
+    }
+    if (min % multiple == 0) {
+      return min;
+    }
+    return ((min / multiple) + 1) * multiple;
+  }
+
+  // Returns the next multiple of `multiple` that is strictly greater than
+  // `min`.
+  template<typename T>
+  static T NextGreaterMultiple(const T &min, const T &multiple) {
+    if (multiple == 0) {
+      return min;
+    }
     return ((min / multiple) + 1) * multiple;
   }
 
