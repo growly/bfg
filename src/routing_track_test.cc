@@ -162,4 +162,99 @@ TEST(RoutingTrackTest, DoesNotMergeDifferingNets) {
   EXPECT_EQ("some_net", vertex_blockages.back()->net());
 }
 
+TEST(RoutingTrackTest, GetImmediateNeighbours) {
+  int64_t y = 50;
+
+  RoutingTrack track = RoutingTrack(
+      0,                                        // Layer
+      RoutingTrackDirection::kTrackHorizontal,  // Direction
+      100,                                      // Pitch
+      50,                                       // Width
+      25,                                       // Vertex via width
+      25,                                       // Vertex via length
+      50,                                       // Minimum separation
+      y,                                        // Offset
+      false);                                   // Neighbours only
+
+  // We have a horizontal track at y=50:
+  //
+  // y=50 -----------------------------------
+  //
+
+  int64_t pitch = 200;
+
+  std::vector<std::unique_ptr<RoutingVertex>> vertices;
+  for (int64_t i = 0; i < 10; ++i) {
+    RoutingVertex *vertex = new RoutingVertex({i * pitch, y});
+    vertices.emplace_back(vertex);
+  }
+
+  // Empty track -> no neighbours:
+  EXPECT_TRUE(track.GetImmediateNeighbours(*vertices[5]).empty());
+
+  for (auto &vertex : vertices) {
+    track.AddVertex(vertex.get());
+  }
+
+  // Do not return the vertex matching the requested offset.
+  std::vector<RoutingVertex*> expected = {
+    vertices[4].get(), vertices[6].get()
+  };
+  EXPECT_THAT(track.GetImmediateNeighbours(*vertices[5]),
+              testing::ContainerEq(expected));
+
+  std::unique_ptr<RoutingVertex> test(new RoutingVertex({pitch / 2, y}));
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, false),
+      testing::ContainerEq(std::vector<RoutingVertex*>{
+          vertices[0].get(), vertices[1].get()}));
+
+  // Return unavailable vertices.
+  vertices[5]->AddBlockingNet("test", false);
+  test.reset(new RoutingVertex({5 * pitch + pitch / 2, y}));
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test),
+      testing::ContainerEq(std::vector<RoutingVertex*>{
+          vertices[5].get(), vertices[6].get()}));
+
+  // Unless requested to only include available ones.
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, true),
+      testing::ContainerEq(std::vector<RoutingVertex*>{
+          vertices[4].get(), vertices[6].get()}));
+
+  vertices[4]->AddBlockingNet("test", false);
+  vertices[6]->AddBlockingNet("test", false);
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, true),
+      testing::ContainerEq(std::vector<RoutingVertex*>{
+          vertices[3].get(), vertices[7].get()}));
+
+  // Block 1, 2, 3, 4, 5, 6:
+  for (size_t i = 1; i < 7; ++i) {
+    vertices[i]->AddBlockingNet("asdf", false);
+  }
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, true),
+      testing::ContainerEq(std::vector<RoutingVertex*>{
+          vertices[0].get(), vertices[7].get()}));
+
+  for (size_t i = 7; i < 9; ++i) {
+    vertices[i]->AddBlockingNet("asdf", false);
+  }
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, true),
+      testing::ContainerEq(std::vector<RoutingVertex*>{
+          vertices[0].get(), vertices[9].get()}));
+
+  vertices.front()->AddBlockingNet("asdf", false);
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, true),
+      testing::ContainerEq(std::vector<RoutingVertex*>{
+          vertices[9].get()}));
+
+  vertices.back()->AddBlockingNet("asdf", false);
+  EXPECT_TRUE(track.GetImmediateNeighbours(*test, true).empty());
+}
+
 }  // namespace bfg

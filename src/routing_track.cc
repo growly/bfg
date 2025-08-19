@@ -140,29 +140,70 @@ bool RoutingTrack::MaybeAddEdgeBetween(
   return true;
 }
 
+void RoutingTrack::HealEdges() {
+  for (RoutingVertex *vertex : vertices_) {
+    if (vertex->Available()) {
+      continue;
+    }
+    std::vector neighbours = GetImmediateNeighbours(*vertex);
+    if (neighbours.size() == 2) {
+      MaybeAddEdgeBetween(neighbours.front(), neighbours.back(), {});
+    }
+  }
+}
 
-std::vector<RoutingVertex*> RoutingTrack::ImmediateNeighbours(
-    const RoutingVertex &vertex) const {
+std::vector<RoutingVertex*> RoutingTrack::GetImmediateNeighbours(
+    const RoutingVertex &vertex,
+    bool available_only) const {
   int64_t vertex_offset = ProjectOntoTrack(vertex.centre());
   if (vertices_by_offset_.empty()) {
     return {};
   }
-  if (vertices_by_offset_.size() == 1) {
-    return {vertices_by_offset_.begin()->second};
+
+  RoutingVertex *higher = nullptr;
+  RoutingVertex *lower = nullptr;
+
+  auto after = vertices_by_offset_.lower_bound(vertex_offset);
+  auto before = after;
+
+  for (;
+       after != vertices_by_offset_.end();
+       after = std::next(after)) {
+    if (after->first == vertex_offset) {
+      continue;
+    }
+
+    RoutingVertex *vertex = after->second;
+    if (available_only && !vertex->Available()) {
+      continue;
+    }
+
+    higher = vertex;
+    break;
   }
 
-  // There are now at least two elements, simplifying checks on whether these
-  // iterators make sense. (Also, obviating the need for me to really figure out
-  // how they behave.)
+  do {
+    before = std::prev(before);
+
+    if (before->first == vertex_offset) {
+      continue;
+    }
+
+    RoutingVertex *vertex = before->second;
+    if (available_only && !vertex->Available()) {
+      continue;
+    }
+
+    lower = vertex;
+    break;
+  } while (before != vertices_by_offset_.begin());
+
   std::vector<RoutingVertex*> neighbours;
-  auto after = vertices_by_offset_.lower_bound(vertex_offset);
-  if (after != vertices_by_offset_.begin()) {
-    // Must exist since map is at least size 2.
-    auto before = std::prev(after, 1);
-    neighbours.push_back(before->second);
+  if (lower) {
+    neighbours.push_back(lower);
   }
-  if (after != vertices_by_offset_.end()) {
-    neighbours.push_back(after->second);
+  if (higher) {
+    neighbours.push_back(higher);
   }
   return neighbours;
 }
@@ -185,7 +226,7 @@ bool RoutingTrack::AddVertex(
   bool any_success = vertices_by_offset_.empty();
 
   if (edges_only_to_neighbours_) {
-    std::vector<RoutingVertex*> neighbours = ImmediateNeighbours(*vertex);
+    std::vector<RoutingVertex*> neighbours = GetImmediateNeighbours(*vertex);
     for (RoutingVertex *other : neighbours) {
       any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
     }
@@ -216,6 +257,17 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
   if (vertices_by_offset_.erase(vertex_offset) == 0) {
     // We didn't know about this vertex.
     return false;
+  }
+
+  // If we are in the regime where only neighbours are connected, deleting this
+  // vertex will disconnect vertices on either side. We must re-establish an
+  // edge between the immediate neighbours, if possible:
+  if (edges_only_to_neighbours_) {
+    std::vector<RoutingVertex*> neighbours = GetImmediateNeighbours(*vertex);
+    if (neighbours.size() == 2) {
+      // TODO(aryap): for_nets is what here?
+      MaybeAddEdgeBetween(neighbours.front(), neighbours.back(), {});
+    }
   }
 
   for (auto it = edges_.begin(); it != edges_.end(); ) {

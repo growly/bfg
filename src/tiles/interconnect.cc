@@ -121,7 +121,7 @@ void Interconnect::ConfigureRoutingGrid(
   const auto &met2_rules = db.Rules("met2.drawing");
 
   // Use linear-cost model (saves memory).
-  //routing_grid->set_use_linear_cost_model(true);
+  routing_grid->set_use_linear_cost_model(true);
 
   geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
   geometry::Rectangle tiling_bounds = layout->GetTilingBounds();

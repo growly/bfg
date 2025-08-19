@@ -96,6 +96,17 @@ class RoutingTrack {
       RoutingVertex *vertex,
       const std::optional<EquivalentNets> &for_nets = std::nullopt);
 
+  // Checks every vertex to see if a new edge needs to be created to span over
+  // it. This is necessary when vertices are blocked on other layers and
+  // therefore inadvertently block edges in this track.
+  //
+  // TODO(aryap): It might be faster, but it will definitely be more
+  // complicated, to only do this for RoutingVertices we're informed are
+  // blocked. Depends on how expensive this ends up being. Could be a callback
+  // in the RoutingVertex itself, when its status changes, since it also knows
+  // which tracks its on.
+  void HealEdges();
+
   RoutingEdge *GetEdgeBetween(
       RoutingVertex *lhs, RoutingVertex *rhs) const;
 
@@ -194,8 +205,12 @@ class RoutingTrack {
 
   bool RemoveTemporaryBlockage(RoutingTrackBlockage *blockage);
 
-  std::vector<RoutingVertex*> ImmediateNeighbours(
-      const RoutingVertex &vertex) const;
+  // Get the neighbours on either side of the given vertex. If an existing
+  // vertex at the given vertex's offset exists, it is NOT included. If
+  // `available_only` is true, the nearest available neighbours are returned.
+  std::vector<RoutingVertex*> GetImmediateNeighbours(
+      const RoutingVertex &vertex,
+      bool available_only = false) const;
 
   geometry::Line AsLine() const;
   std::pair<geometry::Line, geometry::Line> MajorAxisLines(
