@@ -239,21 +239,24 @@ TEST(RoutingTrackTest, GetImmediateNeighbours) {
       testing::ContainerEq(std::vector<RoutingVertex*>{
           vertices[0].get(), vertices[7].get()}));
 
-  for (size_t i = 7; i < 9; ++i) {
-    vertices[i]->AddBlockingNet("asdf", false);
+  // Block 1 - 9:
+  for (size_t i = 1; i < 9; ++i) {
+    vertices[i]->AddBlockingNet("asdf2", false);
   }
   EXPECT_THAT(
       track.GetImmediateNeighbours(*test, true),
       testing::ContainerEq(std::vector<RoutingVertex*>{
           vertices[0].get(), vertices[9].get()}));
 
-  vertices.front()->AddBlockingNet("asdf", false);
+  // Block 0:
+  vertices.front()->AddBlockingNet("asdf3", false);
   EXPECT_THAT(
       track.GetImmediateNeighbours(*test, true),
       testing::ContainerEq(std::vector<RoutingVertex*>{
           vertices[9].get()}));
 
-  vertices.back()->AddBlockingNet("asdf", false);
+  // Block 9. Now they're all blocked:
+  vertices.back()->AddBlockingNet("asdf4", false);
   EXPECT_TRUE(track.GetImmediateNeighbours(*test, true).empty());
 }
 
