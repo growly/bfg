@@ -977,6 +977,7 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(point));
     off_grid->AddConnectedLayer(target_layer);
     off_grid->AddConnectedLayer(access_layer);
+    // No need to set update_tracks_on_blockage for one-off, off-grid vertices.
 
     std::set<RoutingTrackDirection> access_directions =
         ValidAccessDirectionsForVertex(*off_grid, for_nets);
@@ -1058,6 +1059,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
     std::unique_ptr<RoutingVertex> off_grid(new RoutingVertex(target_point));
     off_grid->AddConnectedLayer(target_layer);
+    // No need to set update_tracks_on_blockage for one-off, off-grid vertices.
 
     // Is this layer reachable from the target?
     std::optional<std::pair<geometry::Layer, double>> needs_via;
@@ -1650,6 +1652,8 @@ absl::Status RoutingGrid::ConnectLayers(
       // vertical_tracks of the vertex to the tracks themselves.
       horizontal_track->AddVertex(vertex);
       vertical_track->AddVertex(vertex);
+
+      vertex->set_update_tracks_on_blockage(use_linear_cost_model_);
 
       ++num_vertices;
       vertex->AddConnectedLayer(first);

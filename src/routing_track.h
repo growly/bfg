@@ -67,8 +67,7 @@ class RoutingTrack {
         vertex_via_width_(vertex_via_width),
         vertex_via_length_(vertex_via_length),
         min_separation_(min_separation),
-        edges_only_to_neighbours_(
-            edges_only_to_neighbours) {
+        edges_only_to_neighbours_(edges_only_to_neighbours) {
     min_separation_between_edges_ = vertex_via_length + min_separation;
     min_separation_to_new_blockages_ = vertex_via_length / 2 + min_separation;
     edges_min_transverse_separation_ = width_ / 2 + min_separation;
@@ -99,13 +98,10 @@ class RoutingTrack {
   // Checks every vertex to see if a new edge needs to be created to span over
   // it. This is necessary when vertices are blocked on other layers and
   // therefore inadvertently block edges in this track.
-  //
-  // TODO(aryap): It might be faster, but it will definitely be more
-  // complicated, to only do this for RoutingVertices we're informed are
-  // blocked. Depends on how expensive this ends up being. Could be a callback
-  // in the RoutingVertex itself, when its status changes, since it also knows
-  // which tracks its on.
   void HealEdges();
+
+  // Returns true if an edge was added.
+  bool HealAroundBlockedVertex(const RoutingVertex &vertex);
 
   RoutingEdge *GetEdgeBetween(
       RoutingVertex *lhs, RoutingVertex *rhs) const;

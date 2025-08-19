@@ -152,6 +152,17 @@ void RoutingTrack::HealEdges() {
   }
 }
 
+bool RoutingTrack::HealAroundBlockedVertex(const RoutingVertex &vertex) {
+  if (vertex.Available()) {
+    return false;
+  }
+  std::vector neighbours = GetImmediateNeighbours(vertex);
+  if (neighbours.size() == 2) {
+    return MaybeAddEdgeBetween(neighbours.front(), neighbours.back(), {});
+  }
+  return false;
+}
+
 std::vector<RoutingVertex*> RoutingTrack::GetImmediateNeighbours(
     const RoutingVertex &vertex,
     bool available_only) const {
@@ -173,30 +184,30 @@ std::vector<RoutingVertex*> RoutingTrack::GetImmediateNeighbours(
       continue;
     }
 
-    RoutingVertex *vertex = after->second;
-    if (available_only && !vertex->Available()) {
+    RoutingVertex *current = after->second;
+    if (available_only && !current->Available()) {
       continue;
     }
 
-    higher = vertex;
+    higher = current;
     break;
   }
 
-  do {
+  while (before != vertices_by_offset_.begin()) {
     before = std::prev(before);
 
     if (before->first == vertex_offset) {
       continue;
     }
 
-    RoutingVertex *vertex = before->second;
-    if (available_only && !vertex->Available()) {
+    RoutingVertex *current = before->second;
+    if (available_only && !current->Available()) {
       continue;
     }
 
-    lower = vertex;
+    lower = current;
     break;
-  } while (before != vertices_by_offset_.begin());
+  } 
 
   std::vector<RoutingVertex*> neighbours;
   if (lower) {

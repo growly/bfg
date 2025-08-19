@@ -203,7 +203,20 @@ TEST(RoutingTrackTest, GetImmediateNeighbours) {
   EXPECT_THAT(track.GetImmediateNeighbours(*vertices[5]),
               testing::ContainerEq(expected));
 
-  std::unique_ptr<RoutingVertex> test(new RoutingVertex({pitch / 2, y}));
+  // Off the end at the front:
+  std::unique_ptr<RoutingVertex> test(new RoutingVertex({-5 * pitch, y}));
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, false),
+      testing::ContainerEq(std::vector<RoutingVertex*>{vertices[0].get()}));
+
+  // Off the end at the back:
+  test.reset(new RoutingVertex({(
+      static_cast<int64_t>(vertices.size()) + 5) * pitch, y}));
+  EXPECT_THAT(
+      track.GetImmediateNeighbours(*test, false),
+      testing::ContainerEq(std::vector<RoutingVertex*>{vertices[9].get()}));
+
+  test.reset(new RoutingVertex({pitch / 2, y}));
   EXPECT_THAT(
       track.GetImmediateNeighbours(*test, false),
       testing::ContainerEq(std::vector<RoutingVertex*>{

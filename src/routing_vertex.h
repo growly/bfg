@@ -35,7 +35,8 @@ class RoutingVertex {
       const RoutingVertex &lhs, const RoutingVertex &rhs);
 
   RoutingVertex(const geometry::Point &centre)
-      : forced_blocked_(false),
+      : update_tracks_on_blockage_(false),
+        forced_blocked_(false),
         temporarily_forced_blocked_(false),
         cost_(0.0),
         horizontal_track_(nullptr),
@@ -184,11 +185,15 @@ class RoutingVertex {
       const geometry::Layer &layer) const;
 
   // This is the cost of connecting through this vertex (i.e. a via).
-  double cost() const { return cost_; }
   void set_cost(const double cost) { cost_ = cost; }
+  double cost() const { return cost_; }
 
   void set_contextual_index(size_t index) { contextual_index_ = index; }
   size_t contextual_index() const { return contextual_index_; }
+
+  void set_update_tracks_on_blockage(bool update_tracks_on_blockage) {
+    update_tracks_on_blockage_ = update_tracks_on_blockage;
+  }
 
   const std::set<RoutingEdge*> edges() const { return edges_; }
 
@@ -282,6 +287,8 @@ class RoutingVertex {
   // Updates totally_blocked_ and totally_available_ based on the using and
   // blocking nets, permanent and temporary.
   void UpdateCachedStatus();
+
+  bool update_tracks_on_blockage_;
 
   // FIXME(aryap): I think this can be entirely replaced by installed_in_paths_,
   // since it tracks the path using the vertex and a set of edges. The only

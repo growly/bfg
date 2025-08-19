@@ -87,6 +87,20 @@ void RoutingVertex::UpdateCachedStatus() {
   totally_available_ = !forced_blocked_ && !temporarily_forced_blocked_ &&
                        in_use_by_nets_.empty() &&
                        blocked_by_nearby_nets_.empty();
+
+  // TODO(aryap): This is dumb because if the RoutingVertex was just blocked,
+  // at least one of these tracks will definitely fail to heal around the
+  // blockage. And we count on that. Otherwise we're creating an edge to replace
+  // one that we will immediately block, or worse, have just blocked.
+  if (!update_tracks_on_blockage_ || totally_available_) {
+    return;
+  }
+  for (RoutingTrack *track : Tracks()) {
+    bool healed = track->HealAroundBlockedVertex(*this);
+
+    //LOG_IF(INFO, healed)
+    //    << "Track " << *track << " healed around vertex " << *this;
+  }
 }
 
 void RoutingVertex::AddUsingNet(
