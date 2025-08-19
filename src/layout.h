@@ -217,7 +217,7 @@ class Layout : public geometry::Manipulable {
   // Add the layout of every instance to the this layout directly, removing one
   // layer of hierarchy. To flatten completely, this must be called repeatedly
   // until no more instances_ remain.
-  void Flatten();
+  void Flatten(bool add_prefixes = false);
 
   // TODO(aryap): Every shape electrically (passively) connected to 'point' is
   // given the net 'net'.

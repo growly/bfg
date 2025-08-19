@@ -835,7 +835,7 @@ geometry::Polygon *Layout::MakeWire(
   return polygon;
 }
 
-void Layout::Flatten() {
+void Layout::Flatten(bool add_prefixes) {
   std::set<geometry::Instance*> instances_weak_copy;
   std::transform(
       instances_.begin(), instances_.end(),
@@ -847,7 +847,10 @@ void Layout::Flatten() {
 
   for (geometry::Instance *instance : instances_weak_copy) {
     Layout staging(physical_db_);
-    staging.AddLayout(*instance->template_layout());
+
+    std::string prefix = add_prefixes ? instance->name() : "";
+    staging.AddLayout(*instance->template_layout(), prefix);
+
     instance->ApplyInstanceTransforms(&staging);
 
     // It is convenient to expand our tiling bounds automatically while doing

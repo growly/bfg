@@ -213,8 +213,9 @@ void Sky130TransmissionGateStack::BuildSequence(
         Sky130TransmissionGate(gate_params, design_db_);
 
     std::string instance_name =
-        absl::StrFormat("stack_%d_gate_%d_template", 0, i);
-    Cell *transmission_gate = generator.GenerateIntoDatabase(instance_name);
+        absl::StrFormat("stack_%d_gate_%u", *gates_so_far, i);
+    Cell *transmission_gate = generator.GenerateIntoDatabase(
+        absl::StrCat(instance_name, "_template"));
 
     LOG(INFO) << transmission_gate->layout()->GetBoundingBox().Width();
 
@@ -365,7 +366,7 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   // Turn the transmission gates into a single flat layout so that the nsdm/psdm
   // layers can cover their diffusion regions without causing DRC violations.
-  cell->layout()->Flatten();
+  cell->layout()->Flatten(true);
   cell->layout()->EraseLayerByName("areaid.standardc");
   {
     ScopedLayer layer(cell->layout(), "areaid.standardc");
