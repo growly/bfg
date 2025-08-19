@@ -217,6 +217,15 @@ void RoutingGrid::ApplyBlockage(
       grid_geometries = FindRoutingGridGeometriesUsingLayer(layer);
   // TODO(aryap): Can't we use some version of GetNearbyVertices instead of
   // these loops?
+
+  // The access direction matters a lot for tight spaces. We will use the
+  // default access direction for the blockage layer in our test:
+  auto routing_layer_info = GetRoutingLayerInfo(blockage.shape().layer());
+  std::optional<RoutingTrackDirection> access_direction = std::nullopt;
+  if (routing_layer_info) {
+    access_direction = routing_layer_info->get().direction();
+  }
+
   for (const RoutingGridGeometry &grid_geometry : grid_geometries) {
     std::set<RoutingVertex*> vertices;
     grid_geometry.EnvelopingVertices(blockage.shape(), &vertices);
@@ -231,7 +240,8 @@ void RoutingGrid::ApplyBlockage(
       ApplyBlockageToOneVertex(blockage,
                                is_temporary,
                                vertex,
-                               &any_access);
+                               &any_access,
+                               access_direction);
       if (!any_access && blocked_vertices) {
         blocked_vertices->insert(vertex);
       }
@@ -2852,7 +2862,7 @@ void RoutingGrid::ApplyBlockageToOneVertex(
     std::set<RoutingTrackDirection> available_directions;
 
     const std::string &net = blockage.shape().net();
-    for (const auto &direction : kAllDirections) {
+    for (const auto &direction : test_directions) {
       // We use the RoutingGridBlockage to do a hit test; set
       // exceptional_nets = nullopt so that no exception is made.
       if (blockage.Blocks(*vertex, std::nullopt, direction)) {

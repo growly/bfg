@@ -174,12 +174,9 @@ void Instance::CopyShapesOnLayer(
     const geometry::Layer &layer,
     ShapeCollection *shapes,
     const std::optional<std::set<std::string>> &no_prefix) const {
-  ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
-  if (!master_shapes)
-    return;
-
   ShapeCollection instance_shapes;
-  instance_shapes.Add(*master_shapes);
+  template_layout_->CopyShapesOnLayer(layer, &instance_shapes);
+
   ApplyInstanceTransforms(&instance_shapes);
   // FIXME(aryap): Just make PrefixNetNames take an optional too so we can avoid
   // creating an empty set (I PRESUME std::nullopt is cheaper than an empty
@@ -193,12 +190,9 @@ void Instance::CopyShapesOnLayer(
 void Instance::CopyNonConnectableShapesOnLayer(
     const geometry::Layer &layer,
     ShapeCollection *shapes) const {
-  ShapeCollection *master_shapes = template_layout_->GetShapeCollection(layer);
-  if (!master_shapes)
-    return;
-
   ShapeCollection instance_shapes;
-  instance_shapes.Add(*master_shapes);
+  template_layout_->CopyShapesOnLayer(layer, &instance_shapes);
+
   ApplyInstanceTransforms(&instance_shapes);
   instance_shapes.PrefixNetNames(name_, ".");
 
