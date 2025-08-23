@@ -54,17 +54,17 @@ class Interconnect : public Tile {
  private:
   // TODO(aryap): Is this const?
   void Route(
-      const MuxCollection &muxes,
       const InputPortCollection &mux_inputs,
       const OutputPortCollection &mux_outputs,
       Layout *layout);
   void RouteComplete(
-      const MuxCollection &muxes,
       const InputPortCollection &mux_inputs,
       const OutputPortCollection &mux_outputs,
       Layout *layout);
 
   Parameters parameters_;
+
+  MuxCollection muxes_;
 };
 
 }  // namespace atoms

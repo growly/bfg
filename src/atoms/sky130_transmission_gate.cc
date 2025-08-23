@@ -63,6 +63,14 @@ void Sky130TransmissionGate::Parameters::ToProto(
     pb->clear_n_tab_position();
   }
 
+  if (nmos_ll_vertical_offset_nm) {
+    pb.set_nmos_ll_vertical_offset_nm(nmos_ll_vertical_offset_nm);
+  }
+
+  if (mnos_ll_vertical_pitch_nm) {
+    pb.set_nmos_ll_vertical_pitch_nm(nmos_ll_vertical_pitch_nm);
+  }
+
   if (min_p_tab_diff_separation_nm) {
     pb->set_min_p_tab_diff_separation_nm(*min_p_tab_diff_separation_nm);
   } else {
@@ -116,20 +124,14 @@ void Sky130TransmissionGate::Parameters::FromProto(
 
   if (pb.has_vertical_tab_pitch_nm()) {
     vertical_tab_pitch_nm = pb.vertical_tab_pitch_nm();
-  } else {
-    vertical_tab_pitch_nm.reset();
   }
 
   if (pb.has_vertical_tab_offset_nm()) {
     vertical_tab_offset_nm = pb.vertical_tab_offset_nm();
-  } else {
-    vertical_tab_offset_nm.reset();
   }
 
   if (pb.has_poly_pitch_nm()) {
     poly_pitch_nm = pb.poly_pitch_nm();
-  } else {
-    poly_pitch_nm.reset();
   }
 
   if (pb.has_draw_nwell()) {
@@ -139,33 +141,31 @@ void Sky130TransmissionGate::Parameters::FromProto(
   if (pb.has_p_tab_position()) {
     p_tab_position = geometry::ProtoCompassDirectionToCompass(
         pb.p_tab_position());
-  } else {
-    p_tab_position.reset();
   }
 
   if (pb.has_n_tab_position()) {
     n_tab_position = geometry::ProtoCompassDirectionToCompass(
         pb.n_tab_position());
-  } else {
-    n_tab_position.reset();
+  }
+
+  if (pb.has_nmos_ll_vertical_offset_nm()) {
+    nmos_ll_vertical_offset_nm = pb.nmos_ll_vertical_offset_nm();
+  }
+
+  if (pb.has_nmos_ll_vertical_pitch_nm()) {
+    nmos_ll_vertical_pitch_nm = pb.nmos_ll_vertical_offset_nm();
   }
 
   if (pb.has_min_p_tab_diff_separation_nm()) {
     min_p_tab_diff_separation_nm = pb.min_p_tab_diff_separation_nm();
-  } else {
-    min_p_tab_diff_separation_nm.reset();
   }
 
   if (pb.has_min_n_tab_diff_separation_nm()) {
     min_n_tab_diff_separation_nm = pb.min_n_tab_diff_separation_nm();
-  } else {
-    min_n_tab_diff_separation_nm.reset();
   }
 
   if (pb.has_min_poly_boundary_separation_nm()) {
     min_poly_boundary_separation_nm = pb.min_poly_boundary_separation_nm();
-  } else {
-    min_poly_boundary_separation_nm.reset();
   }
 
   if (pb.has_tabs_should_avoid_nearest_vias()) {
@@ -331,8 +331,8 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
   return circuit.release();
 }
 
-int64_t Sky130TransmissionGate::FigureTopPadding(
-    int64_t pmos_poly_top_y) const {
+int64_t Sky130TransmissionGate::FigureTopPadding(int64_t pmos_poly_top_y)
+    const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &poly_rules = db.Rules(pfet_generator_->PolyLayer());
   int64_t minimum = poly_rules.min_separation / 2;
@@ -358,28 +358,36 @@ int64_t Sky130TransmissionGate::FigureBottomPadding() const {
   int64_t minimum = poly_rules.min_separation / 2;
 
   if (parameters_.min_poly_boundary_separation_nm) {
-    minimum = std::max(
+    minimum = std::max( 
         minimum,
         db.ToInternalUnits(*parameters_.min_poly_boundary_separation_nm));
+  }
+  if (!NMOSHasLowerTab()) {
+    // There is no lower tab, so we adjust the spacing to place the NMOS
+    // lower-left point on the grid, if required:
+    int64_t poly_overhang = NMOSPolyOverhangBottom();
+    // If not rqeuired, this will just return the function argument:
+    int64_t desired_ll_y = NextYOnNMOSLowerLeftGrid(minimum + poly_overhang);
+    minimum = desired_ll_y - poly_overhang;
   }
 
   if (!parameters_.vertical_tab_pitch_nm || !NMOSHasLowerTab()) {
     return minimum;
   }
-  int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
-  int64_t offset = db.ToInternalUnits(
-      parameters_.vertical_tab_offset_nm.value_or(0)) % pitch;
+  int64_t tab_pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+  int64_t tab_offset = db.ToInternalUnits(
+      parameters_.vertical_tab_offset_nm.value_or(0)) % tab_pitch;
 
   int64_t tab_height = NMOSPolyTabHeight();
 
-  int64_t padding = offset - tab_height / 2;
+  int64_t padding = tab_offset - tab_height / 2;
   if (padding < minimum) {
-    padding += pitch;
+    padding += tab_pitch;
   }
   return padding;
 }
 
-int64_t Sky130TransmissionGate::NextYOnGrid(int64_t current_y) const {
+int64_t Sky130TransmissionGate::NextYOnTabGrid(int64_t current_y) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   if (!parameters_.vertical_tab_pitch_nm) {
     return current_y;
@@ -388,9 +396,20 @@ int64_t Sky130TransmissionGate::NextYOnGrid(int64_t current_y) const {
   int64_t offset = db.ToInternalUnits(
       parameters_.vertical_tab_offset_nm.value_or(0)) % pitch;
 
-  // We want floor() behaviour:
-  int64_t quotient = (current_y - offset) / pitch;
-  return (quotient + 1) * pitch + offset;
+  return Utility::NextMultiple(current_y - offset, pitch) + offset;
+}
+
+int64_t Sky130TransmissionGate::NextYOnNMOSLowerLeftGrid(int64_t current_y)
+    const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  if (!parameters_.nmos_ll_vertical_pitch_nm) {
+    return current_y;
+  }
+  int64_t pitch = db.ToInternalUnits(*parameters_.nmos_ll_vertical_pitch_nm);
+  int64_t offset = db.ToInternalUnits(
+      parameters_.nmos_ll_vertical_offset_nm.value_or(0)) % pitch;
+
+  return Utility::NextMultiple(current_y - offset, pitch) + offset;
 }
 
 // Building the cell up from y = 0 and assuming the NMOS transistor
@@ -494,20 +513,32 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(
   // here to get it onto the grid:
   if (PMOSHasLowerTab()) {
     int64_t tab_height = PMOSPolyTabHeight();
-    int64_t next_y = NextYOnGrid(min_y + tab_height / 2);
+    int64_t next_y = NextYOnTabGrid(min_y + tab_height / 2);
     return next_y - tab_height / 2 - current_y;
   }
 
   return min_y - current_y;
 }
 
-int64_t Sky130TransmissionGate::FigureNMOSLowerTabConnectorHeight() const {
+int64_t Sky130TransmissionGate::FigureNMOSLowerTabConnectorHeight(
+    int64_t nmos_bottom_tab_top_y) const {
+  int64_t minimum = 0;
   if (parameters_.tabs_should_avoid_nearest_vias) {
     int64_t extra_necessary =
         nfet_generator_->FigurePolyDiffExtension(NMOSPolyTabHeight() / 2);
-    return std::max(extra_necessary - NMOSPolyOverhangBottom(), 0L);
+    minimum = std::max(extra_necessary - NMOSPolyOverhangBottom(), 0L);
   }
-  return 0;
+  // The poly tab must be on the bottom, so the space to the lower-left diff
+  // point is set by the tab connector height:
+  if (parameters_.parameters_.nmos_ll_vertical_pitch_nm) {
+    int64_t poly_overhang = NMOSPolyOverhangBottom();
+    int64_t desired_ll_y = NextYOnNMOSLowerLeftGrid(
+        nmos_bottom_tab_top_y + poly_overhang);
+    int64_t required = desired_ll_y - (nmos_bottom_tab_top_y + poly_overhang);
+    minimum = std::max(minimum, required);
+  }
+
+  return minimum;
 }
 
 // Only called if the NMOS has an upper tab, which means we need to find the
@@ -523,7 +554,7 @@ int64_t Sky130TransmissionGate::FigureNMOSUpperTabConnectorHeight(
         NMOSPolyOverhangTop();
   }
 
-  int64_t next_on_grid = NextYOnGrid(tab_centre + extra_extension);
+  int64_t next_on_grid = NextYOnTabGrid(tab_centre + extra_extension);
   return next_on_grid - tab_centre;
 }
 
@@ -547,7 +578,7 @@ int64_t Sky130TransmissionGate::FigurePMOSUpperTabConnectorHeight(
         PMOSPolyOverhangTop();
   }
 
-  int64_t next_on_grid = NextYOnGrid(tab_centre + extra_extension);
+  int64_t next_on_grid = NextYOnTabGrid(tab_centre + extra_extension);
   return next_on_grid - tab_centre;
 }
 
@@ -611,8 +642,13 @@ bool Sky130TransmissionGate::NMOSHasLowerTab() const {
   }
 }
 
-// This is the world's shittiest constraint solver. TODO(aryap): Just use an
-// ILP or some shit.
+// This is the world's shittiest constraint solver. We're trying to do
+//    min A + B + C + D
+//    s.t. A < something
+//         B <= something
+//         etc.
+//
+// TODO(aryap): Just use an ILP or some shit.
 const Sky130TransmissionGate::VerticalSpacings
 Sky130TransmissionGate::FigureSpacings() const {
   VerticalSpacings spacings;
@@ -627,8 +663,9 @@ Sky130TransmissionGate::FigureSpacings() const {
   int64_t nmos_tab_connector_height = 0;
 
   if (NMOSHasLowerTab()) {
-    nmos_tab_connector_height = FigureNMOSLowerTabConnectorHeight();
-    y += NMOSPolyTabHeight() + nmos_tab_connector_height;
+    y += NMOSPolyTabHeight();
+    nmos_tab_connector_height = FigureNMOSLowerTabConnectorHeight(y);
+    y += nmos_tab_connector_height;
     nmos_align_y = y;
   } else if (NMOSHasUpperTab()) {
     nmos_tab_connector_height =

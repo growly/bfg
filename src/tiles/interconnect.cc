@@ -40,7 +40,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   cell->SetCircuit(new bfg::Circuit());
   cell->SetLayout(new bfg::Layout(db));
 
-  MuxCollection muxes;
+  muxes_.clear();
 
   // TODO(aryap): Ok this is clearly a more useful structure than just a
   // "Memory" bank. Rename it. "TilingGrid"? idk.
@@ -56,7 +56,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   };
 
   for (size_t i = 0; i < parameters_.num_rows; ++i) {
-    auto &mux_row = muxes.emplace_back();
+    auto &mux_row = muxes_.emplace_back();
     for (size_t j = 0; j < parameters_.num_columns; ++j) {
       std::string name = absl::StrFormat("interconnect_mux6_r%u_c%u", i, j);
       atoms::Sky130InterconnectMux6::Parameters row_params =
@@ -75,7 +75,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
     mux_inputs.emplace_back();
     mux_outputs.emplace_back();
     for (size_t j = 0; j < parameters_.num_columns; ++j) {
-      geometry::Instance *mux = muxes[i][j];
+      geometry::Instance *mux = muxes_[i][j];
 
       // FIXME(aryap): The number of output ports is absolutely a parameter
       // here! Or at least it must be!
@@ -108,7 +108,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   // default, which is to return the bounding box).
   cell->layout()->SetTilingBounds(*bank.GetTilingBounds());
 
-  RouteComplete(muxes, mux_inputs, mux_outputs, cell->layout());
+  RouteComplete(mux_inputs, mux_outputs, cell->layout());
 
   return cell.release();
 }
@@ -143,6 +143,10 @@ void Interconnect::ConfigureRoutingGrid(
   //
   int64_t vertical_offset = met1_rules.min_pitch / 2 +
       (tiling_bounds.lower_left().y() - pre_route_bounds.lower_left().y());
+  // JOKES! How bout we align with the output ports?
+  //int64_t vertical_offset = 11300 % met1_rules.min_pitch +
+  //    (tiling_bounds.lower_left().y() - pre_route_bounds.lower_left().y());
+
   int64_t horizontal_offset = //met2_rules.min_pitch / 2 +
       (tiling_bounds.lower_left().x() - pre_route_bounds.lower_left().x());
 
@@ -229,13 +233,14 @@ void Interconnect::ConfigureRoutingGrid(
 }
 
 void Interconnect::RouteComplete(
-    const MuxCollection &muxes,
     const InputPortCollection &mux_inputs,
     const OutputPortCollection &mux_outputs,
     Layout *layout) {
   RoutingGrid routing_grid(
       design_db_->physical_db());
   ConfigureRoutingGrid(&routing_grid, layout);
+
+  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
 
   // All of the different port net names attached to the same driver need to be
   // merged.
@@ -252,7 +257,7 @@ void Interconnect::RouteComplete(
     size_t source_row = (i / parameters_.num_columns) % parameters_.num_rows;
     size_t source_col = i % parameters_.num_columns;
 
-    geometry::Instance *source = muxes[source_row][source_col];
+    geometry::Instance *source = muxes_[source_row][source_col];
     // Only one output per mux right now.
     geometry::Port *from = mux_outputs[source_row][source_col];
 
@@ -260,7 +265,7 @@ void Interconnect::RouteComplete(
       size_t dest_row = (j / parameters_.num_columns) % parameters_.num_rows;
       size_t dest_col = j % parameters_.num_columns;
 
-      geometry::Instance *destination = muxes[dest_row][dest_col];
+      geometry::Instance *destination = muxes_[dest_row][dest_col];
 
       // TODO(aryap): Have to find unused inputs:
       size_t &input_index = next_free_input[dest_row][dest_col];
@@ -321,14 +326,12 @@ void Interconnect::RouteComplete(
     }
   }
 
-  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
   routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
 
   routing_grid.ExportToLayout("routing", layout);
 }
 
 void Interconnect::Route(
-    const MuxCollection &muxes,
     const InputPortCollection &mux_inputs,
     const OutputPortCollection &mux_outputs,
     Layout *layout) {
@@ -356,7 +359,7 @@ void Interconnect::Route(
     size_t source_row = (i / parameters_.num_columns) % parameters_.num_rows;
     size_t source_col = i % parameters_.num_columns;
 
-    geometry::Instance *source = muxes[source_row][source_col];
+    geometry::Instance *source = muxes_[source_row][source_col];
     // Only one output per mux right now.
     geometry::Port *from = mux_outputs[source_row][source_col];
 
@@ -367,7 +370,7 @@ void Interconnect::Route(
       if (source_row == dest_row && source_col == dest_col)
         continue;
 
-      geometry::Instance *destination = muxes[dest_row][dest_col];
+      geometry::Instance *destination = muxes_[dest_row][dest_col];
 
       // TODO(aryap): Have to find unused inputs:
       geometry::Port *to = mux_inputs[dest_row][dest_col][j % 6];

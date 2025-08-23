@@ -654,6 +654,7 @@ void Sky130InterconnectMux6::DrawRoutes(
 
   int64_t output_port_x = bank.GetTilingBounds()->upper_right().x();
   int64_t mux_pre_buffer_y = 0;
+
   DrawOutput(stack,
              output_buffer,
              &mux_pre_buffer_y,
@@ -951,8 +952,12 @@ void Sky130InterconnectMux6::DrawOutput(
 
   int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
   
-  int64_t final_output_y = stack->GetTilingBounds().upper_right().y() - (
-      3 * met2_pitch / 2);
+  // Because DrawInputs will allocate parameters_.num_inputs-many inputs
+  // vertically starting below the mux_pre_buffer_y line, we halve and round
+  // down to find the number expected above that line, and then align the final
+  // output to the top input:
+  int64_t num_above = parameters_.num_inputs / 2;
+  int64_t final_output_y = *mux_pre_buffer_y + num_above * met2_pitch;
 
   // Connect the buff output to the edge of the design:
   geometry::Port *buf_X = output_buffer->GetFirstPortNamed("X");

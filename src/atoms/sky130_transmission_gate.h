@@ -34,10 +34,15 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> min_cell_height_nm;
 
-    std::optional<uint64_t> vertical_tab_pitch_nm;
-    std::optional<uint64_t> vertical_tab_offset_nm;
+    std::optional<uint64_t> vertical_tab_pitch_nm = 340;
+    std::optional<uint64_t> vertical_tab_offset_nm = 0;
     
-    std::optional<uint64_t> poly_pitch_nm;
+    std::optional<uint64_t> poly_pitch_nm = 500;
+
+    // If set, forces the NMOS diff to be at least this distance from the bottom
+    // tiling edge of the cell.
+    std::optional<uint64_t> nmos_ll_vertical_offset_nm;
+    std::optional<uint64_t> nmos_ll_vertical_pitch_nm;
 
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;
@@ -197,7 +202,7 @@ class Sky130TransmissionGate : public Atom {
     int64_t pmos_tab_extension;
     //int64_t pmos_poly_height;
     int64_t pmos_poly_bottom_y;
-    int64_t top_padding;
+    //int64_t top_padding;
     int64_t cell_height;
   };
 
@@ -241,10 +246,12 @@ class Sky130TransmissionGate : public Atom {
     return PMOSHasUpperTab() || PMOSHasLowerTab();
   }
 
-  int64_t NextYOnGrid(int64_t current_y) const;
+  int64_t NextYOnTabGrid(int64_t current_y) const;
+
+  int64_t NextYOnNMOSLowerLeftGrid(int64_t current_y) const;
 
   int64_t FigureBottomPadding() const;
-  int64_t FigureNMOSLowerTabConnectorHeight() const;
+  int64_t FigureNMOSLowerTabConnectorHeight(int64_t nmos_bottom_tab_top_y) const;
   int64_t FigureNMOSUpperTabConnectorHeight(int64_t nmos_poly_top_y) const;
   int64_t FigurePMOSLowerTabConnectorHeight() const;
   int64_t FigurePMOSUpperTabConnectorHeight(int64_t pmos_poly_top_y) const;

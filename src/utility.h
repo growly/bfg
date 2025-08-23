@@ -40,6 +40,7 @@ class Utility {
     if (min % multiple == 0) {
       return min;
     }
+    // We want 'floor' behaviour.
     return ((min / multiple) + 1) * multiple;
   }
 
