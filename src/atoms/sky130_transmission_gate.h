@@ -251,7 +251,8 @@ class Sky130TransmissionGate : public Atom {
   int64_t NextYOnNMOSLowerLeftGrid(int64_t current_y) const;
 
   int64_t FigureBottomPadding() const;
-  int64_t FigureNMOSLowerTabConnectorHeight(int64_t nmos_bottom_tab_top_y) const;
+  int64_t FigureNMOSLowerTabConnectorHeight(
+      int64_t nmos_bottom_tab_top_y) const;
   int64_t FigureNMOSUpperTabConnectorHeight(int64_t nmos_poly_top_y) const;
   int64_t FigurePMOSLowerTabConnectorHeight() const;
   int64_t FigurePMOSUpperTabConnectorHeight(int64_t pmos_poly_top_y) const;
@@ -280,7 +281,8 @@ class Sky130TransmissionGate : public Atom {
   }
 
   // The tab will be a horizontal rectangle, whose height and width must
-  // accommodate a via on the DiffConnectionLayer().
+  // accommodate a via on the PolyConnectionLayer() (typically polycon.drawing,
+  // which maps to licon.drawing in sky130).
   int64_t PolyTabHeight(const Sky130SimpleTransistor &fet_generator) const;
   int64_t PolyTabWidth(const Sky130SimpleTransistor &fet_generator) const;
 

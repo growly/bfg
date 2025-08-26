@@ -64,11 +64,11 @@ void Sky130TransmissionGate::Parameters::ToProto(
   }
 
   if (nmos_ll_vertical_offset_nm) {
-    pb.set_nmos_ll_vertical_offset_nm(nmos_ll_vertical_offset_nm);
+    pb->set_nmos_ll_vertical_offset_nm(*nmos_ll_vertical_offset_nm);
   }
 
-  if (mnos_ll_vertical_pitch_nm) {
-    pb.set_nmos_ll_vertical_pitch_nm(nmos_ll_vertical_pitch_nm);
+  if (nmos_ll_vertical_pitch_nm) {
+    pb->set_nmos_ll_vertical_pitch_nm(*nmos_ll_vertical_pitch_nm);
   }
 
   if (min_p_tab_diff_separation_nm) {
@@ -153,7 +153,7 @@ void Sky130TransmissionGate::Parameters::FromProto(
   }
 
   if (pb.has_nmos_ll_vertical_pitch_nm()) {
-    nmos_ll_vertical_pitch_nm = pb.nmos_ll_vertical_offset_nm();
+    nmos_ll_vertical_pitch_nm = pb.nmos_ll_vertical_pitch_nm();
   }
 
   if (pb.has_min_p_tab_diff_separation_nm()) {
@@ -173,27 +173,26 @@ void Sky130TransmissionGate::Parameters::FromProto(
   }
 }
 
-
 int64_t Sky130TransmissionGate::PolyTabHeight(
     const Sky130SimpleTransistor &fet_generator) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
-  const auto &dcon_rules = db.Rules(fet_generator.DiffConnectionLayer());
-  const auto &diff_dcon_rules = db.Rules(
-      fet_generator.DiffLayer(), fet_generator.DiffConnectionLayer());
-  int64_t via_height = dcon_rules.via_height;
-  return via_height + 2 * diff_dcon_rules.via_overhang_wide;
+  const auto &polycon_rules = db.Rules(fet_generator.PolyConnectionLayer());
+  const auto &poly_polycon_rules = db.Rules(
+      fet_generator.PolyLayer(), fet_generator.PolyConnectionLayer());
+  int64_t via_height = polycon_rules.via_height;
+  return via_height + 2 * poly_polycon_rules.via_overhang_wide;
 }
 
 int64_t Sky130TransmissionGate::PolyTabWidth(
     const Sky130SimpleTransistor &fet_generator) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  const auto &dcon_rules = db.Rules(fet_generator.DiffConnectionLayer());
+  const auto &polycon_rules = db.Rules(fet_generator.PolyConnectionLayer());
 
-  const auto &diff_dcon_rules = db.Rules(
-      fet_generator.DiffLayer(), fet_generator.DiffConnectionLayer());
-  int64_t via_width = dcon_rules.via_width;
-  return via_width + 2 * diff_dcon_rules.via_overhang;
+  const auto &poly_polycon_rules = db.Rules(
+      fet_generator.PolyLayer(), fet_generator.PolyConnectionLayer());
+  int64_t via_width = polycon_rules.via_width;
+  return via_width + 2 * poly_polycon_rules.via_overhang;
 }
 
 geometry::Polygon *Sky130TransmissionGate::AddPolyTab(
@@ -402,7 +401,8 @@ int64_t Sky130TransmissionGate::NextYOnTabGrid(int64_t current_y) const {
 int64_t Sky130TransmissionGate::NextYOnNMOSLowerLeftGrid(int64_t current_y)
     const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  if (!parameters_.nmos_ll_vertical_pitch_nm) {
+  if (!parameters_.nmos_ll_vertical_pitch_nm ||
+      *parameters_.nmos_ll_vertical_pitch_nm == 0) {
     return current_y;
   }
   int64_t pitch = db.ToInternalUnits(*parameters_.nmos_ll_vertical_pitch_nm);
@@ -530,7 +530,7 @@ int64_t Sky130TransmissionGate::FigureNMOSLowerTabConnectorHeight(
   }
   // The poly tab must be on the bottom, so the space to the lower-left diff
   // point is set by the tab connector height:
-  if (parameters_.parameters_.nmos_ll_vertical_pitch_nm) {
+  if (parameters_.nmos_ll_vertical_pitch_nm) {
     int64_t poly_overhang = NMOSPolyOverhangBottom();
     int64_t desired_ll_y = NextYOnNMOSLowerLeftGrid(
         nmos_bottom_tab_top_y + poly_overhang);
