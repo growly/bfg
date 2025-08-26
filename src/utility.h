@@ -30,6 +30,12 @@ class Utility {
     }
   }
 
+  // FIXME(aryap): These only work as written for integer types because they
+  // rely on truncating divides. For floating point types an explicit std::floor
+  // should be thrown in. Or maybe these should not be for all types!
+  // 
+  // NOTE(aryap): Use integer types only.
+
   // Returns the next multiple of `multiple` that is greater than OR EQUAL TO
   // `min`.
   template<typename T>
@@ -52,6 +58,20 @@ class Utility {
       return min;
     }
     return ((min / multiple) + 1) * multiple;
+  }
+
+  // Returns the greatest multiple of `multiple` that is less than OR EQUAL TO
+  // `max`.
+  template<typename T>
+  static T LastMultiple(const T &max, const T &multiple) {
+    if (multiple == 0) {
+      return max;
+    }
+    if (max % multiple == 0) {
+      return max;
+    }
+    // We want 'floor' behaviour.
+    return (max / multiple) * multiple;
   }
 
   static bool ReadTextProtoOrDie(

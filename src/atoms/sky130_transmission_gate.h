@@ -35,14 +35,14 @@ class Sky130TransmissionGate : public Atom {
     std::optional<uint64_t> min_cell_height_nm;
 
     std::optional<uint64_t> vertical_tab_pitch_nm = 340;
-    std::optional<uint64_t> vertical_tab_offset_nm = 0;
+    std::optional<int64_t> vertical_tab_offset_nm = 0;
     
     std::optional<uint64_t> poly_pitch_nm = 500;
 
     // If set, forces the NMOS diff to be at least this distance from the bottom
     // tiling edge of the cell.
-    std::optional<uint64_t> nmos_ll_vertical_offset_nm;
     std::optional<uint64_t> nmos_ll_vertical_pitch_nm;
+    std::optional<int64_t> nmos_ll_vertical_offset_nm;
 
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;
@@ -57,6 +57,8 @@ class Sky130TransmissionGate : public Atom {
     bool tabs_should_avoid_nearest_vias = true;
 
     bool draw_nwell = false;
+
+    bool swap_tab_orientation = true;
 
     std::optional<geometry::Compass> p_tab_position;
     std::optional<geometry::Compass> n_tab_position;
@@ -283,8 +285,23 @@ class Sky130TransmissionGate : public Atom {
   // The tab will be a horizontal rectangle, whose height and width must
   // accommodate a via on the PolyConnectionLayer() (typically polycon.drawing,
   // which maps to licon.drawing in sky130).
-  int64_t PolyTabHeight(const Sky130SimpleTransistor &fet_generator) const;
-  int64_t PolyTabWidth(const Sky130SimpleTransistor &fet_generator) const;
+  inline int64_t PolyTabHeight(const Sky130SimpleTransistor &fet_generator)
+      const {
+    return parameters_.swap_tab_orientation ?
+        RegularlyOrientedPolyTabWidth(fet_generator) :
+        RegularlyOrientedPolyTabHeight(fet_generator);
+  }
+  inline int64_t PolyTabWidth(const Sky130SimpleTransistor &fet_generator)
+      const {
+    return parameters_.swap_tab_orientation ?
+        RegularlyOrientedPolyTabHeight(fet_generator) :
+        RegularlyOrientedPolyTabWidth(fet_generator);
+  }
+
+  int64_t RegularlyOrientedPolyTabHeight(
+      const Sky130SimpleTransistor &fet_generator) const;
+  int64_t RegularlyOrientedPolyTabWidth(
+      const Sky130SimpleTransistor &fet_generator) const;
 
   Parameters parameters_;
 

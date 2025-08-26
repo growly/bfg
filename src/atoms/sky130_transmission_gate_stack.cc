@@ -5,6 +5,7 @@
 #include <map>
 #include <absl/strings/str_format.h>
 
+#include "../utility.h"
 #include "../modulo.h"
 #include "../row_guide.h"
 #include "../scoped_layer.h"
@@ -43,10 +44,10 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
     pb->clear_min_height_nm();
   }
 
-  if (vertical_pitch_nm) {
-    pb->set_vertical_pitch_nm(*vertical_pitch_nm);
+  if (poly_contact_vertical_pitch_nm) {
+    pb->set_poly_contact_vertical_pitch_nm(*poly_contact_vertical_pitch_nm);
   } else {
-    pb->clear_vertical_pitch_nm();
+    pb->clear_poly_contact_vertical_pitch_nm();
   }
 
   if (horizontal_pitch_nm) {
@@ -85,7 +86,9 @@ void Sky130TransmissionGateStack::Parameters::ToProto(
 
 void Sky130TransmissionGateStack::Parameters::FromProto(
     const proto::parameters::Sky130TransmissionGateStack &pb) {
+  if (pb.sequences_size() > 0) {
   sequences.clear();
+  }
   for (const auto &sequence_pb : pb.sequences()) {
     std::vector<std::string> net_sequence = std::vector<std::string>(
         sequence_pb.nets().begin(), sequence_pb.nets().end());
@@ -114,50 +117,34 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
 
   if (pb.has_li_width_nm()) {
     li_width_nm = pb.li_width_nm();
-  } else {
-    li_width_nm.reset();
   }
 
   if (pb.has_min_height_nm()) {
     min_height_nm = pb.min_height_nm();
-  } else {
-    min_height_nm.reset();
   }
 
-  if (pb.has_vertical_pitch_nm()) {
-    vertical_pitch_nm = pb.vertical_pitch_nm();
-  } else {
-    vertical_pitch_nm.reset();
+  if (pb.has_poly_contact_vertical_pitch_nm()) {
+    poly_contact_vertical_pitch_nm = pb.poly_contact_vertical_pitch_nm();
   }
 
   if (pb.has_horizontal_pitch_nm()) {
     horizontal_pitch_nm = pb.horizontal_pitch_nm();
-  } else {
-    horizontal_pitch_nm.reset();
   }
 
   if (pb.has_poly_pitch_nm()) {
     poly_pitch_nm = pb.poly_pitch_nm();
-  } else {
-    poly_pitch_nm.reset();
   }
 
   if (pb.has_min_p_tab_diff_separation_nm()) {
     min_p_tab_diff_separation_nm = pb.min_p_tab_diff_separation_nm();
-  } else {
-    min_p_tab_diff_separation_nm.reset();
   }
 
   if (pb.has_min_n_tab_diff_separation_nm()) {
     min_n_tab_diff_separation_nm = pb.min_n_tab_diff_separation_nm();
-  } else {
-    min_n_tab_diff_separation_nm.reset();
   }
 
   if (pb.has_min_poly_boundary_separation_nm()) {
     min_poly_boundary_separation_nm = pb.min_poly_boundary_separation_nm();
-  } else {
-    min_poly_boundary_separation_nm.reset();
   }
 
   if (pb.has_insert_dummy_poly()) {
@@ -166,6 +153,28 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
   if (pb.has_expand_wells_to_vertical_bounds()) {
     expand_wells_to_vertical_bounds = pb.expand_wells_to_vertical_bounds();
   }
+}
+
+// TODO(aryap): It would be nice to have the Sky130TransmissionGate tell us this
+// based on its configuration. Or at least it would be nice to use parts of its
+// static configuration to tell us this, like the nfet_generator()
+// (Sky130SimpleTransistor) it has. Then we could update how we configure it
+// based on that. Not sure if needed yet.
+int64_t
+Sky130TransmissionGateStack::GapInYFromNMOSDiffLowerLeftToMconViaCentre()
+    const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &diff_dcon_rules = db.Rules("ncon.drawing", "ndiff.drawing");
+  const auto &li_licon_rules = db.Rules("li.drawing", "licon.drawing");
+  const auto &mcon_rules = db.Rules("mcon.drawing");
+  const auto &li_mcon_rules = db.Rules("li.drawing", "mcon.drawing");
+  int64_t gap_y =
+      std::max(
+          diff_dcon_rules.min_enclosure, diff_dcon_rules.min_enclosure_alt) -
+      std::max(li_licon_rules.via_overhang, li_licon_rules.via_overhang_wide) +
+      std::max(li_mcon_rules.via_overhang, li_mcon_rules.via_overhang_wide) +
+      mcon_rules.via_height / 2;
+  return gap_y;
 }
 
 void Sky130TransmissionGateStack::BuildSequence(
@@ -178,6 +187,8 @@ void Sky130TransmissionGateStack::BuildSequence(
     std::optional<geometry::Rectangle> *ndiff_cover,
     std::optional<geometry::Rectangle> *p_poly_via_cover,
     std::optional<geometry::Rectangle> *n_poly_via_cover) {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
   const size_t num_gates = net_sequence.empty() ?
       0 : (net_sequence.size() - 1) / 2;
 
@@ -186,6 +197,16 @@ void Sky130TransmissionGateStack::BuildSequence(
     min_via_distance_nm = *parameters_.num_horizontal_channels *
                           parameters_.li_via_pitch.value_or(340);
   }
+
+  // In order to line up the connections to the li wires between the P- and NMOS
+  // diffs (the inputs to the gates) with a given vertical pitch, we have to
+  // find the distance between the bottom-most one of those and the lower-left
+  // corner of the NMOS diff, in y. This is so that we can specify to the
+  // Sky130TransmissionGate to move the diffs in such a way that the
+  // pitch-alignmed contacts all fit.
+  int64_t diff_ll_to_bottom_via_centre_y =
+      GapInYFromNMOSDiffLowerLeftToMconViaCentre();
+  LOG(INFO) << diff_ll_to_bottom_via_centre_y;
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
@@ -196,9 +217,14 @@ void Sky130TransmissionGateStack::BuildSequence(
       .stacks_left = i > 0,
       .stacks_right = i < num_gates - 1,
       .min_cell_height_nm = parameters_.min_height_nm,
-      .vertical_tab_pitch_nm = parameters_.vertical_pitch_nm,
-      .vertical_tab_offset_nm = parameters_.vertical_pitch_nm.value_or(0) / 2,
+      .vertical_tab_pitch_nm = parameters_.poly_contact_vertical_pitch_nm,
+      .vertical_tab_offset_nm =
+          parameters_.poly_contact_vertical_pitch_nm.value_or(0) / 2,
       .poly_pitch_nm = parameters_.poly_pitch_nm,
+      .nmos_ll_vertical_pitch_nm = parameters_.input_vertical_pitch_nm,
+      .nmos_ll_vertical_offset_nm = -db.ToExternalUnits(
+          diff_ll_to_bottom_via_centre_y) +
+          parameters_.input_vertical_offset_nm.value_or(0),
       .min_poly_boundary_separation_nm =
           parameters_.min_poly_boundary_separation_nm,
       .min_furthest_via_distance_nm = min_via_distance_nm,
@@ -217,7 +243,7 @@ void Sky130TransmissionGateStack::BuildSequence(
     Cell *transmission_gate = generator.GenerateIntoDatabase(
         absl::StrCat(instance_name, "_template"));
 
-    LOG(INFO) << transmission_gate->layout()->GetBoundingBox().Width();
+    // LOG(INFO) << transmission_gate->layout()->GetBoundingBox().Width();
 
     // TODO(aryap): I spent a lot of effort in the Sky130TransmissionGate
     // decoupling constructed properties (i.e. positions of elements, widths
@@ -484,14 +510,24 @@ void Sky130TransmissionGateStack::ConnectDiffs(
 
   line.set_net(net);
 
-  layout->AddPolyLine(line);
+  geometry::Polygon *wire = layout->AddPolyLine(line);
+
+  // If configured, centre_y has to be a multiple of the pitch from the
+  // bottom-most via position.
+  int64_t centre_y = (top.y() + bottom.y()) / 2;
+  if (parameters_.input_vertical_pitch_nm) {
+    int64_t pitch = db.ToInternalUnits(*parameters_.input_vertical_pitch_nm);
+    int64_t offset = db.ToInternalUnits(
+        parameters_.input_vertical_offset_nm.value_or(0));
+    centre_y = Utility::LastMultiple(centre_y - offset, pitch) + offset;
+  }
 
   if (parameters_.add_ports) {
     const auto &via_rules = db.Rules(kMetalViaLayer);
     const auto &metal_via_rules = db.Rules(kMetalLayer, kMetalViaLayer);
 
     geometry::Rectangle pin = geometry::Rectangle::CentredAt(
-        (top + bottom) / 2, via_rules.via_width, via_rules.via_height);
+        {top.x(), centre_y}, via_rules.via_width, via_rules.via_height);
     ScopedLayer sl(layout, kMetalPinLayer);
     layout->AddRectangleAsPort(pin, net);
   }

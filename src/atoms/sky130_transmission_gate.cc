@@ -173,7 +173,10 @@ void Sky130TransmissionGate::Parameters::FromProto(
   }
 }
 
-int64_t Sky130TransmissionGate::PolyTabHeight(
+// TODO(aryap): Figure out why using DiffLayer and DiffConnectionLayer by
+// accident here didn't trigger DRC errors. Very odd. Can we just use the
+// smaller size encaps?
+int64_t Sky130TransmissionGate::RegularlyOrientedPolyTabHeight(
     const Sky130SimpleTransistor &fet_generator) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
@@ -184,7 +187,7 @@ int64_t Sky130TransmissionGate::PolyTabHeight(
   return via_height + 2 * poly_polycon_rules.via_overhang_wide;
 }
 
-int64_t Sky130TransmissionGate::PolyTabWidth(
+int64_t Sky130TransmissionGate::RegularlyOrientedPolyTabWidth(
     const Sky130SimpleTransistor &fet_generator) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &polycon_rules = db.Rules(fet_generator.PolyConnectionLayer());

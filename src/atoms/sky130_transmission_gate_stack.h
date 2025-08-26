@@ -69,8 +69,12 @@ class Sky130TransmissionGateStack : public Atom {
     // possible.
     std::optional<uint64_t> min_height_nm = 2720;
 
-    // Vertical pitch of ports across the gates, if specified.
-    std::optional<uint64_t> vertical_pitch_nm = 400;
+    // Vertical pitch of poly contacts across the gates, if specified.
+    std::optional<uint64_t> poly_contact_vertical_pitch_nm = 340;
+
+    // Vertical pitch of inputs across the gates, if specified.
+    std::optional<uint64_t> input_vertical_pitch_nm = 340;
+    std::optional<uint64_t> input_vertical_offset_nm = 170;
 
     // Horizontal pitch of cell. Usually the width of the smallest site in the
     // std. cell library.
@@ -131,6 +135,8 @@ class Sky130TransmissionGateStack : public Atom {
                     const std::string &net,
                     std::map<std::string, size_t> *net_counts,
                     Layout *layout);
+
+  int64_t GapInYFromNMOSDiffLowerLeftToMconViaCentre() const;
 
   Parameters parameters_;
 };

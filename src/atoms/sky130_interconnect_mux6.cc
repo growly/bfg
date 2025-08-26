@@ -81,7 +81,9 @@ Sky130InterconnectMux6::BuildTransmissionGateParams(
   if (parameters_.vertical_pitch_nm) {
     params.min_height_nm = (needed_tracks + 3) * *parameters_.vertical_pitch_nm;
   }
-  params.vertical_pitch_nm = parameters_.vertical_pitch_nm;
+  params.poly_contact_vertical_pitch_nm = parameters_.vertical_pitch_nm;
+  params.input_vertical_pitch_nm = parameters_.vertical_pitch_nm;
+  params.input_vertical_offset_nm = parameters_.vertical_offset_nm;
 
   // Build the sequences of nets that dictate the arrangement of the
   // transmission gate stack, e.g.

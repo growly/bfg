@@ -137,7 +137,9 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
 
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = db->ToInternalUnits(55),
+    // licon.8a
     .via_overhang = db->ToInternalUnits(80),
+    // licon.8
     .via_overhang_wide = db->ToInternalUnits(50)
   };
   db->AddRules("poly.drawing", "pcon.drawing", inter_constraints);
@@ -195,9 +197,12 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .min_enclosure = db->ToInternalUnits(130),
     .via_overhang = db->ToInternalUnits(40),
   };
-  // TODO(aryap): What is this? Is it for the tap? ncon, pcon and polycon are
-  // all just licon (see above). Have to find where this is used to determine
-  // what I meant.
+  // TODO(aryap): Ignoring the fact that polycon maps to licon, the virtual
+  // "polycon" doesn't really ever have to interact with the virtual "n/pdiff".
+  // Does it? Is it for the tap? ncon, pcon and polycon are all just licon (see
+  // above).  Have to find where this is used to determine what I meant. I think
+  // I'm just adding these to prevent linting the code for inappropriate use of
+  // virtual layers.
   db->AddRules("ndiff.drawing", "polycon.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "polycon.drawing", inter_constraints);
   inter_constraints = {
