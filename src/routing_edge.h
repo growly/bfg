@@ -5,6 +5,7 @@
 #include <set>
 #include <vector>
 
+#include "equivalent_nets.h"
 #include "geometry/layer.h"
 #include "geometry/rectangle.h"
 #include "physical_properties_database.h"
@@ -65,6 +66,7 @@ class RoutingEdge {
   }
 
   bool Available() const { return !Blocked() && !EffectiveNet(); }
+  bool AvailableForNets(const EquivalentNets &ok_nets) const;
 
   void ResetTemporaryStatus() {
     temporarily_in_use_by_net_ = std::nullopt;

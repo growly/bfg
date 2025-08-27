@@ -1964,7 +1964,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
             << end_vertex->centre();
 
-  auto shortest_path_result = ShortestPath(begin_vertex, end_vertex);
+  auto shortest_path_result = ShortestPath(begin_vertex, end_vertex, nets);
   if (!shortest_path_result.ok()) {
     std::string message = absl::StrCat(
         "No path found: ", shortest_path_result.status().message());
@@ -2404,6 +2404,19 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 }
 
 absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
+    RoutingVertex *begin,
+    RoutingVertex *end,
+    const EquivalentNets &ok_nets) {
+  return ShortestPath(
+      begin,
+      [=](RoutingVertex *v) { return v == end; },   // The target.
+      nullptr,
+      [&](RoutingVertex *v) { return v->AvailableForNets(ok_nets); },
+      [&](RoutingEdge *e) { return e->AvailableForNets(ok_nets); },
+      true);
+}
+
+absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     RoutingVertex *begin, RoutingVertex *end) {
   return ShortestPath(
       begin,
@@ -2448,6 +2461,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       },
       // Usable edges are:
       [&](RoutingEdge *e) {
+        // TODO(aryap): Replace this with just:
+        //  return e->AvailableForNets(to_nets);
         if (e->Available()) return true;
         if (e->Blocked()) {
           VLOG(16) << "edge " << *e << " is blocked";

@@ -22,6 +22,15 @@ class AbstractShape {
         net_(net),
         is_connectable_(false) {}
 
+  inline void SetConnectable() {
+    set_is_connectable(true);
+  }
+
+  inline void SetConnectableNet(const std::string &net) {
+    set_net(net);
+    SetConnectable();
+  }
+
   void set_layer(const Layer &layer) { layer_ = layer; }
   const Layer &layer() const { return layer_; }
 

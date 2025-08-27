@@ -620,6 +620,11 @@ class RoutingGrid {
   absl::StatusOr<RoutingPath*> ShortestPath(
       RoutingVertex *begin, RoutingVertex *end);
 
+  absl::StatusOr<RoutingPath*> ShortestPath(
+      RoutingVertex *begin,
+      RoutingVertex *end,
+      const EquivalentNets &ok_nets);
+
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object. Places the actual target eventually decided on into
   // *discovered_target.

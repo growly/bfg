@@ -2,6 +2,7 @@
 #define ATOMS_SKY130_INTERCONNECT_MUX6_H_
 
 #include "atom.h"
+#include "sky130_parameters.h"
 #include "../memory_bank.h"
 #include "../circuit.h"
 #include "../layout.h"
@@ -70,7 +71,7 @@ namespace atoms {
 
 class Sky130InterconnectMux6 : public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     // This is the default for the PDK.
     static constexpr uint64_t kHorizontalTilingUnitNm = 460;
 
@@ -119,6 +120,11 @@ class Sky130InterconnectMux6 : public Atom {
   // better name.
   static std::vector<int64_t> SplitIntoUnits(
       int64_t length, int64_t max, int64_t unit);
+
+  void ConfigureSky130Parameters(Sky130Parameters *base_params) const {
+    base_params->power_net = parameters_.power_net;
+    base_params->ground_net = parameters_.ground_net;
+  }
 
   Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
     geometry::Instance *vertical_neighbour) const;

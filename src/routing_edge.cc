@@ -8,6 +8,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include "equivalent_nets.h"
 #include "geometry/point.h"
 #include "geometry/rectangle.h"
 #include "physical_properties_database.h"
@@ -187,6 +188,26 @@ bool RoutingEdge::IsRectilinear() const {
   return first_ && second_ && (
       first_->centre().x() == second_->centre().x() ||
       first_->centre().y() == second_->centre().y());
+}
+
+bool RoutingEdge::AvailableForNets(
+    const EquivalentNets &ok_nets) const {
+  if (Available()) {
+    return true;
+  }
+
+  if (Blocked()) {
+    VLOG(16) << "Edge " << *this << " is blocked";
+    return false;
+  }
+
+  if (EffectiveNet() && ok_nets.Contains(*EffectiveNet())) {
+    return true;
+  } else {
+    VLOG(16) << "Cannot use edge " << *this << " for net "
+             << ok_nets.primary();
+  }
+  return false;
 }
 
 std::string RoutingEdge::Describe() const {

@@ -76,6 +76,7 @@ Sky130InterconnectMux6::BuildTransmissionGateParams(
     .min_poly_boundary_separation_nm = FigurePolyBoundarySeparationForMux(
         vertical_neighbour->template_layout())
   };
+  ConfigureSky130Parameters(&params);
 
   uint32_t needed_tracks = parameters_.num_inputs;
   if (parameters_.vertical_pitch_nm) {
@@ -160,6 +161,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         absl::StrFormat("dfxtp_bottom_%d", i));
     std::string cell_name = absl::StrCat(instance_name, "_template");
     atoms::Sky130Dfxtp::Parameters params;
+    ConfigureSky130Parameters(&params);
     params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
     params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
@@ -197,6 +199,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         absl::StrFormat("dfxtp_top_%d", i));
     std::string cell_name = absl::StrCat(instance_name, "_template");
     atoms::Sky130Dfxtp::Parameters params;
+    ConfigureSky130Parameters(&params);
     params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
     params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
@@ -213,6 +216,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   Sky130Buf::Parameters output_buf_params = {
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
   };
+  ConfigureSky130Parameters(&output_buf_params);
   output_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
   output_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Buf output_buf_generator(output_buf_params, design_db_);
@@ -227,6 +231,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // bottom side.
   std::string clk_buf_name = PrefixCellName("clk_buf");
   Sky130Buf::Parameters clk_buf_params = {};
+  ConfigureSky130Parameters(&clk_buf_params);
   clk_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
   clk_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Buf clk_buf_generator(clk_buf_params, design_db_);
@@ -245,6 +250,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // Decaps!
   std::string right_decap_name = PrefixCellName("decap_right");
   Sky130Decap::Parameters right_decap_params;
+  ConfigureSky130Parameters(&right_decap_params);
   right_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
   right_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Decap right_decap_generator(right_decap_params, design_db_);
@@ -304,6 +310,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     .width_nm = special_decap_width_nm,
     .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
   };
+  ConfigureSky130Parameters(&special_decap_params);
   special_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
   special_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
   Sky130Decap special_decap_generator(special_decap_params, design_db_);
@@ -325,6 +332,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           db.ToExternalUnits(middle_row_available_x)),
       .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
     };
+    ConfigureSky130Parameters(&optional_decap_params);
     optional_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
     optional_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     Sky130Decap optional_decap_generator(optional_decap_params, design_db_);
@@ -354,6 +362,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           Parameters::kHorizontalTilingUnitNm,
           horizontal_pitch_nm)
     };
+    ConfigureSky130Parameters(&channel_tap_params);
     channel_tap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
     channel_tap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
     atoms::Sky130Tap channel_tap_generator(channel_tap_params, design_db_);
@@ -393,6 +402,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
         .height_nm =
             parameters_.horizontal_routing_channel_height_nm.value_or(2720)
       };
+      ConfigureSky130Parameters(&decap_params);
       decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
       decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
       Sky130Decap horizontal_channel_decap_generator(decap_params, design_db_);
@@ -695,12 +705,13 @@ void Sky130InterconnectMux6::DrawPowerAndGround(
   for (const RowGuide &row : bank.rows()) {
     for (geometry::Instance *instance : row.instances()) {
       std::vector<geometry::Port*> power_ports;
-      instance->GetInstancePorts("VPWR", &power_ports);
+
+      instance->GetInstancePorts(parameters_.power_net, &power_ports);
       for (geometry::Port *port : power_ports) {
         power_y.insert(port->centre().y());
       }
       std::vector<geometry::Port*> ground_ports;
-      instance->GetInstancePorts("VGND", &ground_ports);
+      instance->GetInstancePorts(parameters_.ground_net, &ground_ports);
       for (geometry::Port *port : ground_ports) {
         ground_y.insert(port->centre().y());
       }
@@ -750,7 +761,10 @@ void Sky130InterconnectMux6::DrawPowerAndGround(
   };
 
   geometry::Polygon *vpwr_strap = draw_strap_fn(power_y, vpwr_x);
+  vpwr_strap->SetConnectableNet(parameters_.power_net);
+
   geometry::Polygon *vgnd_strap = draw_strap_fn(ground_y, vgnd_x);
+  vgnd_strap->SetConnectableNet(parameters_.ground_net);
 
   geometry::PortSet clock_ports;
   layout->GetPorts("CLK", &clock_ports);
@@ -766,8 +780,8 @@ void Sky130InterconnectMux6::DrawPowerAndGround(
   }
 
 
-  layout->MakePin("VPWR", {vpwr_x, vpwr_port_y}, "met2.pin");
-  layout->MakePin("VGND", {vgnd_x, vgnd_port_y}, "met2.pin");
+  layout->MakePin(parameters_.power_net, {vpwr_x, vpwr_port_y}, "met2.pin");
+  layout->MakePin(parameters_.ground_net, {vgnd_x, vgnd_port_y}, "met2.pin");
 }
 
 void Sky130InterconnectMux6::DrawClock(
@@ -976,13 +990,15 @@ void Sky130InterconnectMux6::DrawOutput(
 
   // It is very important that the output wire be labelled with its net so that
   // the RoutingGrid can make exceptions for blockages when connecting to it!
-  layout->MakeWire(output_wire,
-                   "met1.drawing",  // Wire layer.
-                   "li.drawing",    // Start layer.
-                   std::nullopt,    // End layer.
-                   false,
-                   false,
-                   kMuxOutputName);
+  geometry::Polygon *out_wire = layout->MakeWire(
+      output_wire,
+      "met1.drawing",  // Wire layer.
+      "li.drawing",    // Start layer.
+      std::nullopt,    // End layer.
+      false,
+      false,
+      kMuxOutputName);
+  out_wire->set_is_connectable(true);
 
   layout->MakePin(kMuxOutputName, output_wire.back(), "met1.pin");
 }

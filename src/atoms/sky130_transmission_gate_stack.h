@@ -6,6 +6,7 @@
 #include <map>
 
 #include "atom.h"
+#include "sky130_parameters.h"
 #include "../circuit.h"
 #include "../layout.h"
 #include "../row_guide.h"
@@ -25,7 +26,7 @@ namespace atoms {
 
 class Sky130TransmissionGateStack : public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     // Minimal configuration is the list of port names for each diff and poly.
 
     // Sequence of ports, [diff, poly, source, poly, diff, ...] etc. Expect an

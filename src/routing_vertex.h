@@ -105,6 +105,13 @@ class RoutingVertex {
       std::optional<const geometry::Rectangle*>
           blocking_rectangle = std::nullopt,
       std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
+
+  // TODO(aryap): "Forced" blockages should include an optional layer, because
+  // sometimes blocking a vertex on e.g. metal 2 makes it usable on metal 1.
+  // This would necessitate changes to how vertices are assumed to connect
+  // layers. (Or a more elegant routing model altogether, where vertices only
+  // belong to one layer, and vias are edges between vertices on different
+  // layers.)
   void SetForcedBlocked(bool totally_blocked, bool temporary);
 
   void ResetTemporaryStatus();
