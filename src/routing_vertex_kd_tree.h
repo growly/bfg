@@ -13,7 +13,7 @@ class RoutingVertexKDNode {
  public:
   typedef int64_t value_type;
 
-  // Convert a L2 distance (euclidean distance) to the internal distance
+  // Convert an L2 distance (euclidean distance) to the internal distance
   // measure.
   static value_type L2DistanceToInternal(int64_t l2_distance) {
     return l2_distance * l2_distance;
