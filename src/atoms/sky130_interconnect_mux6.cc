@@ -772,8 +772,8 @@ void Sky130InterconnectMux6::DrawPowerAndGround(
   int64_t vgnd_port_y = 0;
   if (clock_ports.size() == 1) {
     int64_t clk_port_y = (*clock_ports.begin())->centre().y();
-    vpwr_port_y = clk_port_y - 2 * met3_rules.min_pitch;
-    vgnd_port_y = clk_port_y + 2 * met3_rules.min_pitch;
+    vpwr_port_y = clk_port_y - 6 * met3_rules.min_pitch;
+    vgnd_port_y = clk_port_y + 6 * met3_rules.min_pitch;
   } else {
     LOG(WARNING) << "Expected to find only one CLK port, but found "
                  << clock_ports.size();

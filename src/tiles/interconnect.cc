@@ -250,7 +250,7 @@ void Interconnect::RouteComplete(
       std::vector<std::vector<size_t>>(
           parameters_.num_rows, std::vector<size_t>(parameters_.num_columns));
 
-  std::map<std::string, std::map<std::string, absl::Status>> statuses;
+  std::map<std::string, std::map<std::string, std::string>> statuses;
 
   size_t num_muxes = parameters_.num_rows * parameters_.num_columns;
   for (size_t i = 0; i < num_muxes; ++i) {
@@ -294,7 +294,8 @@ void Interconnect::RouteComplete(
         //LOG_IF(WARNING, !status.ok())
         //    << "Could not connect " << to->Describe() << " to any of "
         //    << targets;
-        statuses[from->Describe()][to->Describe()] = status.status();
+        statuses[from->Describe()][to->Describe()] = absl::StrCat(
+            status.status().ToString(), " nets: ", usable.Describe());
       } else {
         EquivalentNets usable({from->net(), to->net()});
         nets[from] = usable;
@@ -309,10 +310,12 @@ void Interconnect::RouteComplete(
                                                    *to,
                                                    non_net_connectables,
                                                    usable);
+
         //LOG_IF(WARNING, !status.ok())
         //    << "Could not connect " << from->Describe() << " to "
         //    << to->Describe();
-        statuses[from->Describe()][to->Describe()] = status.status();
+        statuses[from->Describe()][to->Describe()] = absl::StrCat(
+            status.status().ToString(), " nets: ", usable.Describe());
       }
     }
   }
@@ -322,7 +325,7 @@ void Interconnect::RouteComplete(
     for (const auto &inner : outer.second) {
       const auto &status = inner.second;
       LOG(INFO) << outer.first << " -> " << inner.first << ": "
-                << (status.ok() ? "OK" : status.ToString());
+                << status;
     }
   }
 

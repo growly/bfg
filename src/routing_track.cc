@@ -1279,9 +1279,9 @@ void RoutingTrack::ApplyVertexBlockage(
       if (net != "") {
         // TODO(aryap): Put these on temporary mutation plane so that they can
         // be undone.
-        vertex->AddBlockingNet(net, is_temporary);
+        vertex->AddBlockingNet(net, is_temporary, layer_);
       } else {
-        vertex->SetForcedBlocked(true, is_temporary);
+        vertex->SetForcedBlocked(true, is_temporary, layer_);
       }
       if (blocked_vertices)
         blocked_vertices->insert(vertex);

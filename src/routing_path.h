@@ -283,7 +283,7 @@ class RoutingPath {
   // These vertices are NOT OWNED by RoutingPath.
   std::vector<RoutingVertex*> vertices_;
 
-  // The list of edges. Edge i connected vertices_[j] and vertices_[j+1].
+  // The list of edges. Edge i connects vertices_[j] and vertices_[j+1].
   // These edges are NOT OWNED by RoutingPath.
   std::vector<RoutingEdge*> edges_;
 

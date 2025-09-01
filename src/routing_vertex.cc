@@ -84,7 +84,8 @@ RoutingVertex::ChangedEdgeAndLayers(
 }
 
 void RoutingVertex::UpdateCachedStatus() {
-  totally_available_ = !forced_blocked_ && !temporarily_forced_blocked_ &&
+  totally_available_ = forced_blockages_.empty() &&
+                       temporary_forced_blockages_.empty() &&
                        in_use_by_nets_.empty() &&
                        blocked_by_nearby_nets_.empty();
 
@@ -175,10 +176,26 @@ void RoutingVertex::AddBlockingNet(
 
 // This mutates blocking state and should call UpdateCachedStatus() before it
 // exits.
-void RoutingVertex::SetForcedBlocked(bool blocked, bool temporary) {
-  bool &forced_blocked =
-      temporary ? temporarily_forced_blocked_ : forced_blocked_;
-  forced_blocked = blocked;
+void RoutingVertex::SetForcedBlocked(
+    bool blocked,
+    bool temporary,
+    const std::optional<geometry::Layer> &layer) {
+  std::set<geometry::Layer> &container =
+      temporary ? temporary_forced_blockages_ : forced_blockages_;
+
+  // If layer is not specified, it means ALL layers.
+  if (layer) {
+    if (blocked) {
+      container.insert(*layer);
+    } else {
+      container.erase(*layer);
+    }
+  } else if (blocked) {
+    container.insert(connected_layers_.begin(), connected_layers_.end());
+  } else {
+    container.clear();
+  }
+
   UpdateCachedStatus();
 }
 
@@ -204,7 +221,7 @@ void RoutingVertex::RemoveTemporaryHazardsFrom(
 // This mutates blocking state and should call UpdateCachedStatus() before it
 // exits.
 void RoutingVertex::ResetTemporaryStatus() {
-  temporarily_forced_blocked_ = false;
+  temporary_forced_blockages_.clear();
 
   RemoveTemporaryHazardsFrom(&in_use_by_nets_);
   RemoveTemporaryHazardsFrom(&blocked_by_nearby_nets_);
@@ -229,44 +246,117 @@ std::optional<std::set<geometry::Layer>> RoutingVertex::GetNetLayers(
   return layers;
 }
 
-std::optional<std::string> RoutingVertex::InUseBySingleNet() const {
-  if (in_use_by_nets_.size() != 1) {
-    return std::nullopt;
+RoutingVertex::NetToLayersMap RoutingVertex::SummariseNets(
+    const std::map<std::string, std::vector<NetHazardInfo>> &source,
+    const std::optional<geometry::Layer> &layer) const {
+  NetToLayersMap nets;
+  for (auto &entry : source) {
+    for (auto &hazard_info : entry.second) {
+      if (layer && hazard_info.layer && *hazard_info.layer != *layer) {
+        continue;
+      }
+      const std::string &net = entry.first;
+      auto it = nets.find(net);
+      if (it == nets.end()) {
+        auto insertion_result = nets.insert({net, std::set<geometry::Layer>()});
+        LOG_IF(FATAL, !insertion_result.second) << "Failed to insert into map!";
+        it = insertion_result.first;
+      }
+      if (hazard_info.layer) {
+        it->second.insert(*hazard_info.layer);
+      }
+    }
   }
-  return in_use_by_nets_.begin()->first;
+
+  // Replace empty sets with the set of connected layers, since that is what it
+  // implies.
+  for (auto &entry : nets) {
+    if (entry.second.empty()) {
+      entry.second.insert(connected_layers_.begin(), connected_layers_.end());
+    }
+  }
+
+  return nets;
 }
 
-std::optional<std::string> RoutingVertex::BlockedBySingleNearbyNet() const {
-  if (blocked_by_nearby_nets_.size() != 1) {
-    return std::nullopt;
-  }
-  return blocked_by_nearby_nets_.begin()->first;
+std::optional<RoutingVertex::NetWithLayers> RoutingVertex::PickSingleNetOrNone(
+    const NetToLayersMap &source) const {
+  if (source.size() == 1) {
+    return NetWithLayers {
+      .net = source.begin()->first,
+      .layers = source.begin()->second
+    };
+  };
+  return std::nullopt;
 }
 
-bool RoutingVertex::AvailableForNets(const EquivalentNets &nets) const {
-  if (Available()) {
+bool RoutingVertex::ForcedBlocked(const std::optional<geometry::Layer> &layer)
+    const {
+  if (layer) {
+    if (forced_blockages_.find(*layer) != forced_blockages_.end() ||
+        temporary_forced_blockages_.find(*layer) !=
+            temporary_forced_blockages_.end()) {
+      return true;
+    }
+  } else if (
+      !forced_blockages_.empty() || !temporary_forced_blockages_.empty()) {
     return true;
   }
+  return false;
+}
 
-  if (blocked_by_nearby_nets_.size() > 1) {
-    return false;
-  }
-  std::optional<std::string> blocked_by_nearby_net = BlockedBySingleNearbyNet();
+bool RoutingVertex::AvailableForAll(
+    const std::optional<
+        std::reference_wrapper<const EquivalentNets>> &for_nets,
+    const std::optional<geometry::Layer> &on_layer) const {
+  // A vertex is available for a given net on a given layer if:
+  //  - there are no temporary or permanent forced blockages on that layer; AND
+  //  - there are 0 or 1 nets using the vertex on that layer; AND
+  //  - there are 0 or 1 nets blocking the vertex nearby on that layer; AND
+  //  - if there is a blocking and a using net, they are equivalent to the given
+  //  net.
+  //
+  //  Whenever a layer is not given, consider the union of usage and blockages
+  //  across all nets.
 
   // TODO(aryap): We should be tracking the EquivalentNets which use the vertex,
   // for convenience. It's possible that this will fail erroneously if two
   // equivalent nets are added as using nets. A shortcut for this is to reduce
   // the known-using-nets in in_use_by_nets_ according to the equivalence class
   // given by the 'nets' argument in this function.
-  std::optional<std::string> in_use_by_net = InUseBySingleNet();
 
-  if (in_use_by_net && blocked_by_nearby_net &&
-      *in_use_by_net != *blocked_by_nearby_net) {
+  // Check cached status.
+  if (Available()) {
+    return true;
+  }
+
+  if (ForcedBlocked(on_layer)) {
     return false;
   }
 
-  return (in_use_by_net && nets.Contains(*in_use_by_net)) ||
-         (blocked_by_nearby_net && nets.Contains(*blocked_by_nearby_net));
+  auto blocking_nets = BlockingNets(on_layer);
+  auto using_nets = UsingNets(on_layer);
+
+  if (!for_nets) {
+    // No equivalence class of nets defined, so the presence of any nets
+    // blocking or using the vertex means it's unavailable.
+    return blocking_nets.empty() && using_nets.empty();
+  }
+
+  for (const auto &entry : blocking_nets) {
+    const std::string &net = entry.first;
+    if (!for_nets->get().Contains(net)) {
+      return false;
+    }
+  }
+  for (const auto &entry : using_nets) {
+    const std::string &net = entry.first;
+    if (!for_nets->get().Contains(net)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 std::optional<geometry::Layer> RoutingVertex::ConnectableLayerTo(
@@ -403,14 +493,13 @@ std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
   os << vertex.centre();
   os << (vertex.Available() ? " available" : " not_available");
 
-  std::optional<std::string> in_use_by_net = vertex.InUseBySingleNet();
+  auto in_use_by_net = vertex.InUseBySingleNet();
   if (in_use_by_net) {
-    os << " in_use_by_net:\"" << *in_use_by_net << "\"";
+    os << " in_use_by_single_net:\"" << in_use_by_net->net << "\"";
   }
-  std::optional<std::string> blocked_by_nearby_net =
-      vertex.BlockedBySingleNearbyNet();
+  auto blocked_by_nearby_net = vertex.BlockedBySingleNearbyNet();
   if (blocked_by_nearby_net) {
-    os << " blocked_by_nearby_net:\"" << *blocked_by_nearby_net
+    os << " blocked_by_nearby_net:\"" << blocked_by_nearby_net->net
        << "\"";
   }
   return os;

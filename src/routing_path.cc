@@ -392,6 +392,7 @@ void RoutingPath::MergeConsecutiveEdgesOnSameTrack() {
   }
   RoutingEdge *last_edge = edges_[0];
 
+  size_t i = 0;
   for (size_t i = 1; i < edges_.size(); ++i) {
     RoutingEdge *edge = edges_[i];
 
@@ -418,12 +419,18 @@ void RoutingPath::MergeConsecutiveEdgesOnSameTrack() {
               << last_edge->Describe() << ", "
               << edge->Describe();
 
+    // NOTE(aryap): This is buggy. It seems to work but I'm not sure I
+    // understand why, since it doesn't seem to work if I use offsets to the
+    // iterators only. I would've though calling .begin() repeatedly would give
+    // us fresh valid iterator each time, but apparently not.
+
     // Remove edge i, i-1 and remove vertex i
     vertices_.erase(vertices_.begin() + i);
-    edges_.erase(edges_.begin() + i + 1);
     edges_.erase(edges_.begin() + i);
+    auto it = edges_.erase(edges_.begin() + i - 1);
+    --i;
 
-    edges_.insert(edges_.begin() + i, replacement);
+    edges_.insert(it, replacement);
     last_edge = replacement;
   }
 }
@@ -758,9 +765,9 @@ void RoutingPath::CheckForViaCrowding(
     // only has happened when two edges on the same net cross each other but
     // neither terminates on the other.
     //
-    // As a reminder, being 'available' as a vertex means being able to
+    // As a reminder, here being 'available' as a vertex means being able to
     // accomodate a via.
-    if (!vertex->AvailableForNets(nets_)) {
+    if (!vertex->AvailableForAll(nets_, std::nullopt)) {
       continue;
     }
 

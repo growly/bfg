@@ -413,11 +413,6 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       new_vertex->AddUsingNet(blockage.shape().net(),
                               is_temporary,
                               blockage.shape().layer());
-      new_vertex->set_explicit_net_layer(blockage.shape().layer());
-      // TODO(aryap): This actually requires a test on the blockage shape
-      // accommodating the encap rules as-is, which we could do, but which would
-      // require me to be less lazy.
-      new_vertex->set_explicit_net_layer_requires_encap(true);
       AddOffGridVertex(new_vertex);
 
       ApplyExistingBlockages(new_vertex, is_temporary);
@@ -640,7 +635,7 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     int64_t distance = static_cast<int64_t>(
         std::ceil(footprint.ClosestDistanceTo(*other_via_encap)));
     if (distance == 0 && for_nets &&
-        other->AvailableForNets(*for_nets)) {
+        other->AvailableForNetsOnAnyLayer(*for_nets)) {
       // The shapes touch and they're on the same net, so no problem.
       // NOTE(aryap): This is the same as checking
       // via_encap->Overlaps(*other_via_encap).
@@ -734,8 +729,8 @@ absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
 
   std::stringstream ss;
   ss << "Could not connect " << port.centre() << " to grid: "
-     << "(1) " << try_add_access_vertices.status().message()
-     << "; (2) " << try_nearest_available.status().message();
+     << "(1) " << try_add_access_vertices.status().ToString()
+     << "; (2) " << try_nearest_available.status().ToString();
 
   return absl::NotFoundError(ss.str());
 }
@@ -1089,7 +1084,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     for (RoutingVertex *vertex : entry.second) {
       // Do not consider unavailable vertices! Unless they have connectable
       // nets!
-      if (!vertex->AvailableForNets(for_nets)) {
+      if (!vertex->AvailableForNetsOnAnyLayer(for_nets)) {
         continue;
       }
       uint64_t vertex_cost = static_cast<uint64_t>(
@@ -2082,10 +2077,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   shortest_path->end_access_layers().insert(
       end_layers.begin(), end_layers.end());
 
-  if (shortest_path->End()->InUseBySingleNet() &&
-      shortest_path->End()->explicit_net_layer()) {
-    shortest_path->end_access_layers().insert(
-        *shortest_path->End()->explicit_net_layer());
+  auto used_by_single_net = shortest_path->End()->InUseBySingleNet();
+  if (used_by_single_net) {
+    for (const geometry::Layer &layer : used_by_single_net->layers) {
+      shortest_path->end_access_layers().insert(layer);
+    }
   }
 
   LOG(INFO) << "Found path: " << *shortest_path;
@@ -2411,7 +2407,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       begin,
       [=](RoutingVertex *v) { return v == end; },   // The target.
       nullptr,
-      [&](RoutingVertex *v) { return v->AvailableForNets(ok_nets); },
+      [&](RoutingVertex *v) { return v->AvailableForNetsOnAnyLayer(ok_nets); },
       [&](RoutingEdge *e) { return e->AvailableForNets(ok_nets); },
       true);
 }
@@ -2434,6 +2430,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
   auto path = ShortestPath(
       begin,
       [&](RoutingVertex *v) {
+        if (v->ForcedBlocked()) {
+          return false;
+        }
         if (!v->InUseBySingleNet()) {
           return false;
         }
@@ -2445,19 +2444,19 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
         // NOTE: It's not the *same* as a vertex that will become a via, but
         // that isn't decided til RoutingPath has to export geometry :/
         for (RoutingVertex *neighbour : neighbours) {
-          if (!neighbour->AvailableForNets(to_nets) &&
+          if (!neighbour->AvailableForNetsOnAnyLayer(to_nets) &&
               neighbour->ChangesEdge()) {
             VLOG(16) << "(ShortestPath) Vertex " << v->centre()
                      << " not viable because a via wouldn't fit here";
             return false;
           }
         }
-        return to_nets.Contains(*v->InUseBySingleNet());
+        return to_nets.Contains(v->InUseBySingleNet()->net);
       },
       discovered_target,
       // Usable vertices are:
       [&](RoutingVertex *v) {
-        return v->AvailableForNets(to_nets);
+        return v->AvailableForNetsOnAnyLayer(to_nets);
       },
       // Usable edges are:
       [&](RoutingEdge *e) {
@@ -2797,6 +2796,10 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
           *this, polygon, padding + min_separation);
 
   // Find tracks on the blockage layer, if any.
+  //
+  // TODO(aryap): It would be easy and fast to limit the the tracks we iterate
+  // over here to the window of possible conflicts, as we do with the
+  // RoutingVertexKDTree elsewhere.
   auto it = tracks_by_layer_.find(layer);
   if (it != tracks_by_layer_.end()) {
     if (is_temporary) {
@@ -2886,7 +2889,7 @@ void RoutingGrid::ApplyBlockageToOneVertex(
       // exceptional_nets = nullopt so that no exception is made.
       if (blockage.Blocks(*vertex, std::nullopt, direction)) {
         if (net != "") {
-          vertex->AddBlockingNet(net, is_temporary);
+          vertex->AddBlockingNet(net, is_temporary, blockage.shape().layer());
         }
         VLOG(16) << "Blockage: " << blockage.shape()
                  << " blocks " << vertex->centre()
@@ -2906,7 +2909,7 @@ void RoutingGrid::ApplyBlockageToOneVertex(
   }
 
   if (!any_access) {
-    vertex->SetForcedBlocked(true, is_temporary);
+    vertex->SetForcedBlocked(true, is_temporary, layer);
   }
   if (any_access_out) {
     *any_access_out = any_access;
@@ -3434,13 +3437,13 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
     const EquivalentNets &nets = path->nets();
     std::set<RoutingVertex*> spanned_vertices = path->SpannedVertices();
     for (RoutingVertex *vertex : path->SpannedVerticesWithVias()) {
-      auto net = vertex->InUseBySingleNet();
-      if (!net || !nets.Contains(*net)) {
+      auto net_with_layers = vertex->InUseBySingleNet();
+      if (!net_with_layers || !nets.Contains(net_with_layers->net)) {
         // Yikes.
         LOG(WARNING) << "Yikes.";
         continue;
       }
-      auto our_layers = vertex->GetUsingNetLayers(*net);
+      const auto &our_layers = net_with_layers->layers;
       std::set<RoutingVertex*> nearby = GetNearbyVertices(*vertex);
       for (RoutingVertex *other : nearby) {
         if (other == vertex)
@@ -3454,15 +3457,16 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
           continue;
         // Skip vertices that are in use by multiple nets, since they are not
         // going to host vias.
-        auto other_net = other->InUseBySingleNet();
-        if (!other_net)
+        auto other_net_with_layers = other->InUseBySingleNet();
+        if (!other_net_with_layers) {
           continue;
-        auto their_layers = other->GetUsingNetLayers(*net);
-        if (!their_layers || their_layers->empty())
+        }
+        const auto &their_layers = other_net_with_layers->layers;
+        if (their_layers.empty())
           continue;
         // We actually only care that they have two layers in common with
         // vertex, since then we will probably have a problem:
-        if (num_in_common_fn(*our_layers, *their_layers) < 2)
+        if (num_in_common_fn(our_layers, their_layers) < 2)
           continue;
         // EXTRA HACKLICIOUS!
         if (!geometry::Point::ShareHorizontalOrVerticalAxis(

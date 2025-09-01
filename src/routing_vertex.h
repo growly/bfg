@@ -1,8 +1,9 @@
 #ifndef ROUTING_VERTEX_H_
 #define ROUTING_VERTEX_H_
 
-#include <optional>
 #include <functional>
+#include <map>
+#include <optional>
 #include <set>
 #include <variant>
 #include <vector>
@@ -36,8 +37,6 @@ class RoutingVertex {
 
   RoutingVertex(const geometry::Point &centre)
       : update_tracks_on_blockage_(false),
-        forced_blocked_(false),
-        temporarily_forced_blocked_(false),
         cost_(0.0),
         horizontal_track_(nullptr),
         vertical_track_(nullptr),
@@ -47,6 +46,13 @@ class RoutingVertex {
         centre_(centre) {
     UpdateCachedStatus();
   }
+
+  typedef std::map<std::string, std::set<geometry::Layer>> NetToLayersMap;
+
+  struct NetWithLayers {
+    std::string net;
+    std::set<geometry::Layer> layers;
+  };
 
   void AddEdge(RoutingEdge *edge) { edges_.insert(edge); }
   bool RemoveEdge(RoutingEdge *edge);
@@ -106,21 +112,50 @@ class RoutingVertex {
           blocking_rectangle = std::nullopt,
       std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
 
-  // TODO(aryap): "Forced" blockages should include an optional layer, because
-  // sometimes blocking a vertex on e.g. metal 2 makes it usable on metal 1.
-  // This would necessitate changes to how vertices are assumed to connect
-  // layers. (Or a more elegant routing model altogether, where vertices only
-  // belong to one layer, and vias are edges between vertices on different
-  // layers.)
-  void SetForcedBlocked(bool totally_blocked, bool temporary);
+  void SetForcedBlocked(
+      bool totally_blocked,
+      bool temporary,
+      const std::optional<geometry::Layer> &layer = std::nullopt);
+
+  bool ForcedBlocked(
+      const std::optional<geometry::Layer> &layer = std::nullopt) const;
 
   void ResetTemporaryStatus();
 
-  std::optional<std::string> InUseBySingleNet() const;
-  std::optional<std::string> BlockedBySingleNearbyNet() const;
+  std::optional<NetWithLayers> InUseBySingleNet(
+      const std::optional<geometry::Layer> &layer = std::nullopt) const {
+    return PickSingleNetOrNone(UsingNets(layer));
+  }
+
+  std::optional<NetWithLayers> BlockedBySingleNearbyNet(
+      const std::optional<geometry::Layer> &layer = std::nullopt) const {
+    return PickSingleNetOrNone(BlockingNets(layer));
+  }
 
   bool Available() const { return totally_available_; }
-  bool AvailableForNets(const EquivalentNets &nets) const;
+
+  // Check if the vertex is available for a specific net, or ALL nets, on a
+  // specific layer, or ALL layers. Two nullopt arguments tests if the vertex is
+  // completely available for any net on any layer.
+  bool AvailableForAll(
+      const std::optional<
+          std::reference_wrapper<const EquivalentNets>> &for_nets =
+          std::nullopt,
+      const std::optional<geometry::Layer> &on_layer = std::nullopt) const;
+
+  // Returns true if the vertex is available for the given nets on any of its
+  // connected layers.
+  bool AvailableForNetsOnAnyLayer(const EquivalentNets &nets) const {
+    LOG_IF(WARNING, connected_layers_.empty())
+        << "There are no connected layers on this vertex so this call will "
+        << "always fail.";
+    for (const geometry::Layer &layer : connected_layers_) {
+      if (AvailableForAll(nets, layer)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   // TODO(aryap): This is easier to understand:
   //bool TraversableByNets(const EquivalentNets &nets) const;
@@ -212,14 +247,6 @@ class RoutingVertex {
     return installed_in_paths_;
   }
 
-  const std::optional<geometry::Layer> &explicit_net_layer() const {
-    return explicit_net_layer_;
-  }
-  void set_explicit_net_layer(
-      const std::optional<geometry::Layer> &explicit_net_layer) {
-    explicit_net_layer_ = explicit_net_layer;
-  }
-
   bool explicit_net_layer_requires_encap() const {
     return explicit_net_layer_requires_encap_;
   }
@@ -277,16 +304,21 @@ class RoutingVertex {
   // Not sure about this structure.
   struct NetHazardInfo {
     bool is_temporary;
+
+    // An unspecified layer indicates that the hazard applies to ALL layers.
     std::optional<geometry::Layer> layer;
 
     // Almost used a union!
+    //
+    // A std::nullopt Rectangle-type blockage indicates a forced blockage with
+    // no particular shape to blame.
     std::variant<
       std::optional<const geometry::Rectangle*>,
       std::optional<const geometry::Polygon*>> blockage;
   };
 
   void RemoveTemporaryHazardsFrom(
-      std::map<std::string, std::vector<NetHazardInfo>> *conAddOutEdge);
+      std::map<std::string, std::vector<NetHazardInfo>> *container);
   std::optional<std::set<geometry::Layer>> GetNetLayers(
       const std::map<std::string, std::vector<NetHazardInfo>> &container,
       const std::string &net) const;
@@ -294,6 +326,33 @@ class RoutingVertex {
   // Updates totally_blocked_ and totally_available_ based on the using and
   // blocking nets, permanent and temporary.
   void UpdateCachedStatus();
+
+  // Returns all of the nets using this vertex in a map whose index is the net
+  // and whose entry is a set of all the layers on which the usage occurs.
+  //
+  // If the `layer` argument is specified, only the given layer is searched. If
+  // it is std::nullopt all layers are considered.
+  NetToLayersMap UsingNets(
+      const std::optional<geometry::Layer> &layer = std::nullopt) const {
+    return SummariseNets(in_use_by_nets_, layer);
+  }
+
+  // Returns all of the nets blocking this vertex in a map whose index is the
+  // net and whose entry is a set of all the layers on which the usage occurs.
+  //
+  // If the `layer` argument is specified, only the given layer is searched. If
+  // it is std::nullopt all layers are considered.
+  NetToLayersMap BlockingNets(
+      const std::optional<geometry::Layer> &layer = std::nullopt) const {
+    return SummariseNets(blocked_by_nearby_nets_, layer);
+  }
+
+  std::optional<NetWithLayers> PickSingleNetOrNone(
+      const NetToLayersMap &source) const;
+
+  NetToLayersMap SummariseNets(
+      const std::map<std::string, std::vector<NetHazardInfo>> &source,
+      const std::optional<geometry::Layer> &layer = std::nullopt) const;
 
   bool update_tracks_on_blockage_;
 
@@ -324,8 +383,9 @@ class RoutingVertex {
   // We cache availability into totally_available_ since the check is performed
   // by the RoutingGrid very often.
   bool totally_available_;
-  bool forced_blocked_;
-  bool temporarily_forced_blocked_;
+
+  std::set<geometry::Layer> forced_blockages_;
+  std::set<geometry::Layer> temporary_forced_blockages_;
 
   // Map of using/blocking net name to whether NetHazardInfo structure that
   // tracks principally whether the usage is permanent or temporary, but also
