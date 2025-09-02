@@ -163,6 +163,15 @@ bool RoutingEdge::TerminatesAt(const geometry::Point &point) const {
       (second_ && second_->centre() == point);
 }
 
+bool RoutingEdge::IsBetween(
+    const geometry::Point &lhs, const geometry::Point &rhs) const {
+  LOG_IF(FATAL, !first_ || !second_)
+      << "Edge is missing either the first (" << first_
+      << ") or second (" << second_ << ") vertex";
+  return (first_->centre() == lhs && second_->centre() == rhs) ||
+         (first_->centre() == rhs && second_->centre() == lhs);
+}
+
 void RoutingEdge::PrepareForRemoval() {
   if (first_)
     first_->RemoveEdge(this);

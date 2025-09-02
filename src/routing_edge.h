@@ -32,7 +32,10 @@ class RoutingEdge {
   ~RoutingEdge() {}
 
   std::string Describe() const;
+
   bool TerminatesAt(const geometry::Point &point) const;
+
+  bool IsBetween(const geometry::Point &lhs, const geometry::Point &rhs) const;
 
   void PrepareForRemoval();
 

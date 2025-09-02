@@ -230,6 +230,11 @@ class RoutingTrack {
   // positions?
   //static bool EdgeComp(RoutingEdge *lhs, RoutingEdge *rhs);
 
+  // FIXME(aryap): Why do we distinguish temoprary and permanent blockage
+  // groups, when we could just put a "temporary" flag in the
+  // RoutingTrackBlockage itself? That's much more convenient, and leads to
+  // cleaner code in the last few places I've checked. I wonder if I had a good
+  // reason for this. (Probably not.)
   struct BlockageGroup {
     std::vector<RoutingTrackBlockage*> vertex_blockages;
     std::vector<RoutingTrackBlockage*> edge_blockages;
@@ -302,7 +307,7 @@ class RoutingTrack {
                  int64_t margin,
                  const std::optional<EquivalentNets> &for_nets) const {
     return IsVertexBlocked(point, margin, for_nets) ||
-           IsEdgeBlockedBetween(point, point, margin, for_nets);
+           IsEdgeBlockedBetween(point, point, margin, for_nets, nullptr, nullptr);
   }
 
   bool IsVertexBlocked(const geometry::Point &point,
@@ -313,7 +318,9 @@ class RoutingTrack {
       const geometry::Point &one_end,
       const geometry::Point &other_end,
       int64_t margin,
-      const std::optional<EquivalentNets> &for_nets) const;
+      const std::optional<EquivalentNets> &for_nets,
+      std::vector<RoutingTrackBlockage*> *same_net_collisions,
+      std::vector<RoutingTrackBlockage*> *temporary_same_net_collisions) const;
 
   bool EdgeSpansVertex(
       const RoutingEdge &edge, const RoutingVertex &vertex) const;
@@ -353,11 +360,24 @@ class RoutingTrack {
         one_end, other_end, margin, net, &blockages_.vertex_blockages);
   }
 
+  // Return true if the blockage applied to the edge.
+  bool ApplyEdgeBlockageToSingleEdge(
+      const RoutingTrackBlockage &blockage,
+      const std::string &net,
+      bool is_temporary,
+      RoutingEdge *edge);
+
   void ApplyEdgeBlockage(
       const RoutingTrackBlockage &blockage,
       const std::string &net = "",
       bool is_temporary = false,
       std::set<RoutingEdge*> *blocked_edges = nullptr);
+
+  bool ApplyVertexBlockageToSingleVertex(
+      const RoutingTrackBlockage &blockage,
+      const std::string &net,
+      bool is_temporary,
+      RoutingVertex *vertex);
 
   void ApplyVertexBlockage(
       const RoutingTrackBlockage &blockage,

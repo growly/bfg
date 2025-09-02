@@ -126,10 +126,14 @@ bool RoutingTrack::MaybeAddEdgeBetween(
     RoutingVertex *one,
     RoutingVertex *the_other,
     const std::optional<EquivalentNets> &for_nets) {
+  std::vector<RoutingTrackBlockage*> same_net_collisions;
+  std::vector<RoutingTrackBlockage*> temporary_same_net_collisions;
   if (IsEdgeBlockedBetween(one->centre(),
                            the_other->centre(),
                            min_separation_to_new_blockages_,
-                           for_nets))
+                           for_nets,
+                           &same_net_collisions,
+                           &temporary_same_net_collisions))
     return false;
   RoutingEdge *edge = new RoutingEdge(one, the_other);
   edge->set_track(this);
@@ -137,6 +141,21 @@ bool RoutingTrack::MaybeAddEdgeBetween(
   edge->first()->AddEdge(edge);
   edge->second()->AddEdge(edge);
   edges_.insert(edge);
+
+  for (RoutingTrackBlockage *blockage : same_net_collisions) {
+    ApplyEdgeBlockageToSingleEdge(*blockage,
+                                  blockage->net(),
+                                  false,
+                                  edge);
+  }
+
+  for (RoutingTrackBlockage *blockage : temporary_same_net_collisions) {
+    ApplyEdgeBlockageToSingleEdge(*blockage,
+                                  blockage->net(),
+                                  true,  // These ones are temporary.
+                                  edge);
+  }
+
   return true;
 }
 
@@ -848,7 +867,9 @@ bool RoutingTrack::IsEdgeBlockedBetween(
     const geometry::Point &one_end,
     const geometry::Point &other_end,
     int64_t margin,
-    const std::optional<EquivalentNets> &for_nets) const {
+    const std::optional<EquivalentNets> &for_nets,
+    std::vector<RoutingTrackBlockage*> *same_net_collisions,
+    std::vector<RoutingTrackBlockage*> *temporary_same_net_collisions) const {
   int64_t low = ProjectOntoTrack(one_end);
   int64_t high = ProjectOntoTrack(other_end);
 
@@ -859,16 +880,32 @@ bool RoutingTrack::IsEdgeBlockedBetween(
   high += (margin - 1);
 
   for (RoutingTrackBlockage *blockage : blockages_.edge_blockages) {
-    if (blockage->Blocks(low, high) && (
-          !for_nets || !for_nets->Contains(blockage->net()))) {
+    if (!blockage->Blocks(low, high)) {
+      // No problem.
+      continue;
+    }
+    if (!for_nets) {
       return true;
+    } else if (!for_nets->Contains(blockage->net())) {
+      return true;
+    } else if (same_net_collisions) {
+      // The blockage applies to the edge, but since nets are defined and the
+      // nets match, we don't treat it as a block. We have to report the
+      // collisions though.
+      same_net_collisions->push_back(blockage);
     }
   }
 
   for (RoutingTrackBlockage *blockage : temporary_blockages_.edge_blockages) {
-    if (blockage->Blocks(low, high) && (
-          !for_nets || !for_nets->Contains(blockage->net()))) {
+    if (!blockage->Blocks(low, high)) {
+      continue;
+    }
+    if (!for_nets) {
       return true;
+    } else if (!for_nets->Contains(blockage->net())) {
+      return true;
+    } else if (temporary_same_net_collisions) {
+      temporary_same_net_collisions->push_back(blockage);
     }
   }
 
@@ -1261,6 +1298,32 @@ bool RoutingTrack::RemoveTemporaryBlockage(RoutingTrackBlockage *blockage) {
   return true;
 }
 
+bool RoutingTrack::ApplyVertexBlockageToSingleVertex(
+    const RoutingTrackBlockage &blockage,
+    const std::string &net,
+    bool is_temporary,
+    RoutingVertex *vertex) {
+  if (!vertex->Available()) {
+    return false;
+  }
+  // We only disable vertices if they're _completely_ blocked, i.e. with
+  // margin = 0.
+  if (!BlockageBlocks(blockage,
+                      vertex->centre(),
+                      vertex->centre(),
+                      0)) {
+    return false;
+  }
+  if (net != "") {
+    // TODO(aryap): Put these on temporary mutation plane so that they can
+    // be undone.
+    vertex->AddBlockingNet(net, is_temporary, layer_);
+  } else {
+    vertex->SetForcedBlocked(true, is_temporary, layer_);
+  }
+  return true;
+}
+
 void RoutingTrack::ApplyVertexBlockage(
     const RoutingTrackBlockage &blockage,
     const std::string &net,
@@ -1268,25 +1331,34 @@ void RoutingTrack::ApplyVertexBlockage(
     std::set<RoutingVertex*> *blocked_vertices) {
   for (const auto &entry : vertices_by_offset_) {
     RoutingVertex *vertex = entry.second;
-    if (!vertex->Available())
-      continue;
-    // We only disable vertices if they're _completely_ blocked, i.e. with
-    // margin = 0.
-    if (BlockageBlocks(blockage,
-                       vertex->centre(),
-                       vertex->centre(),
-                       0)) {
-      if (net != "") {
-        // TODO(aryap): Put these on temporary mutation plane so that they can
-        // be undone.
-        vertex->AddBlockingNet(net, is_temporary, layer_);
-      } else {
-        vertex->SetForcedBlocked(true, is_temporary, layer_);
-      }
-      if (blocked_vertices)
-        blocked_vertices->insert(vertex);
+    bool applied = ApplyVertexBlockageToSingleVertex(
+        blockage, net, is_temporary, vertex);
+    if (applied && blocked_vertices) {
+      blocked_vertices->insert(vertex);
     }
   }
+}
+
+bool RoutingTrack::ApplyEdgeBlockageToSingleEdge(
+    const RoutingTrackBlockage &blockage,
+    const std::string &net,
+    bool is_temporary,
+    RoutingEdge *edge) {
+  if (edge->Blocked()) {
+    return false;
+  }
+  if (!BlockageBlocks(blockage,
+                      edge->first()->centre(),
+                      edge->second()->centre(),
+                      min_separation_to_new_blockages_)) {
+    return false;
+  }
+  edge->SetBlocked(true, is_temporary);
+  if (net != "" && !(
+        edge->EffectiveNet() && edge->EffectiveNet() != "")) {
+    edge->SetNet(net, is_temporary);
+  }
+  return true;
 }
 
 void RoutingTrack::ApplyEdgeBlockage(
@@ -1295,19 +1367,10 @@ void RoutingTrack::ApplyEdgeBlockage(
     bool is_temporary,
     std::set<RoutingEdge*> *blocked_edges) {
   for (RoutingEdge *edge : edges_) {
-    if (edge->Blocked())
-      continue;
-    if (BlockageBlocks(blockage,
-                       edge->first()->centre(),
-                       edge->second()->centre(),
-                       min_separation_to_new_blockages_)) {
-      edge->SetBlocked(true, is_temporary);
-      if (net != "" && !(
-            edge->EffectiveNet() && edge->EffectiveNet() != "")) {
-        edge->SetNet(net, is_temporary);
-      }
-      if (blocked_edges)
-        blocked_edges->insert(edge);
+    bool applied = ApplyEdgeBlockageToSingleEdge(
+        blockage, net, is_temporary, edge);
+    if (applied && blocked_edges) {
+      blocked_edges->insert(edge);
     }
   }
 }

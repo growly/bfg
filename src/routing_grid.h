@@ -174,9 +174,6 @@ class RoutingGrid {
       AddBlockage(*rectangle, padding, is_temporary, changed_out);
     }
     for (const auto &polygon : shapes.polygons()) {
-      if (polygon->HasVertex({8115, 9205})) {
-        LOG(INFO) << "hello";
-      }
       AddBlockage(*polygon, padding, is_temporary, changed_out);
     }
     for (const auto &port : shapes.ports()) {

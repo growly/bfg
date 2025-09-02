@@ -963,7 +963,6 @@ RoutingGrid::AddAccessVerticesForPoint(const geometry::Point &point,
               << " possible through grid geometry " << &grid_geometry
               << " with via cost " << option.total_via_cost;
 
-    // FIXME: Should check if off_grid position is an existing on-grid vertex!
     RoutingVertex *existing = grid_geometry.VertexAt(point);
     if (existing) {
       return {{existing, target_layer}};
@@ -1745,6 +1744,8 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
 }
 
 void RoutingGrid::AddOffGridVertex(RoutingVertex *vertex) {
+  // Off-grid vertices should be missing one track, otherwise they since they
+  // have two tracks they must be an existing grid vertex.
   DCHECK(!vertex->horizontal_track() || !vertex->vertical_track());
   AddVertex(vertex);
   off_grid_vertices_.Add(vertex);
@@ -2629,9 +2630,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       // We don't know what direction we're using the edge in, and edges are
       // not directional per se, so pick the side that isn't the one we came in
       // on:
-      // TODO(aryap): Maybe bake this into the RoutingEdge.
-      RoutingVertex *next =
-          edge->first() == current ? edge->second() : edge->first();
+      RoutingVertex *next = edge->OtherVertexThan(current);
 
       size_t next_index = next->contextual_index();
 
