@@ -691,23 +691,25 @@ std::string RoutingTrack::Describe() const {
   return ss.str();
 }
 
-std::pair<geometry::Line, geometry::Line> RoutingTrack::MajorAxisLines(
-    int64_t padding) const {
-  geometry::Line low;
-  geometry::Line high;
+// Returns a horizontal or vertical line at the given offset depending on
+// whether the track is horizontal or vertical, respectively.
+geometry::Line RoutingTrack::ParallelLineAtOffset(int64_t offset) const {
   switch (direction_) {
     case RoutingTrackDirection::kTrackHorizontal:
-      low = geometry::Line({0, offset_ - padding}, {1, offset_ - padding});
-      high = geometry::Line({0, offset_ + padding}, {1, offset_ + padding});
-      break;
+      return geometry::Line({0, offset}, {1, offset});
     case RoutingTrackDirection::kTrackVertical:
-      low = geometry::Line({offset_ - padding, 0}, {offset_ - padding, 1});
-      high = geometry::Line({offset_ + padding, 0}, {offset_ + padding, 1});
-      break;
+      // Falthrough intended.
     default:
-      LOG(FATAL) << "RoutingTrack has unknown direction " << direction_;
-      break;
+      return geometry::Line({offset, 0}, {offset, 1});
   }
+}
+
+// TODO(aryap): Do we need this any more? Only used in one place, and that
+// place more generically calls ParallelLineAtOffset already...
+std::pair<geometry::Line, geometry::Line> RoutingTrack::MajorAxisLines(
+    int64_t padding) const {
+  geometry::Line low = ParallelLineAtOffset(offset_ - padding);
+  geometry::Line high = ParallelLineAtOffset(offset_ + padding);
   return {low, high};
 }
 
@@ -1023,24 +1025,75 @@ bool RoutingTrack::Intersects(
     return true;
   }
 
-  std::vector<geometry::PointPair> intersections_low =
-      polygon.IntersectingPoints(major_axis_lines.first);
- 
-  std::vector<geometry::PointPair> intersections_high =
-      polygon.IntersectingPoints(major_axis_lines.second);
+  // Why is this so complicated? Consider:
+  //
+  // --------------------------------------------------------- major axis line -
+  //     +---------------------------+ <- some stupid polygon
+  // - - | - - - - - - - - - - - - - | - - - - - - - - - - - - - - - track ctr.
+  //     +------------------------+  |
+  // -----------------------------|--|------------------------ major axis line -
+  //                              |  |
+  //                              +--+
+  //
+  // We want to know the union of points, on the track centre line, where the
+  // stupid polygon comes too close.
+  //
+  // This is conceptually solved by a general polygon-rectangle intersection
+  // then projected onto the centre line, but at this point using a real
+  // geometry library or investing any more time into usable routines is not an
+  // option. So we need a compromise that is just good enough.
+  //
+  // Since the problem is only those polygons that are larger within the track
+  // bounds than without, we just have to add tests for intersection with the
+  // polygon at each of the y-values of its vertices within the those bounds.
+  //
+  // (A sketch of the proof for why this is correct is that the widest point on
+  // the polygon within the rectangle must be a vertex, because if it is not,
+  // then it is some point on a line leading to a vertex outside the rectangle.
+  // The min/max axis lines would then intersect it and it would be captured.)
 
-  auto comp = [](const geometry::PointPair &lhs,
+  int64_t low_axis_offset = ProjectOntoOffset(major_axis_lines.first.start());
+  int64_t high_axis_offset = ProjectOntoOffset(major_axis_lines.second.start());
+  DCHECK(low_axis_offset <= high_axis_offset)
+      << "These need to be swapped sometimes";
+
+  std::map<int64_t, geometry::Line> test_lines;
+  test_lines.insert({low_axis_offset, major_axis_lines.first});
+  test_lines.insert({high_axis_offset, major_axis_lines.second});
+  for (const geometry::Point &point : polygon.vertices()) {
+    int64_t projection = ProjectOntoOffset(point);
+    if (projection < low_axis_offset ||
+        projection > high_axis_offset) {
+      continue;
+    }
+    if (test_lines.find(projection) != test_lines.end()) {
+      // We're already going to test this line.
+      continue;
+    }
+    geometry::Line line = ParallelLineAtOffset(projection);
+    test_lines.insert({projection, line});
+  }
+
+  static auto comp = [](const geometry::PointPair &lhs,
                  const geometry::PointPair &rhs) {
     if (lhs.first == rhs.first) {
       return lhs.first < rhs.first;
     }
     return lhs.second < rhs.second;
   };
+
+  // Find and de-dupe intersections, then return. Someone else will take care
+  // of merging the intervals.
   auto deduped = std::set<
       std::pair<geometry::Point, geometry::Point>, decltype(comp)>(comp);
-  deduped.insert(intersections_low.begin(), intersections_low.end());
-  deduped.insert(intersections_high.begin(), intersections_high.end());
+  for (const auto &entry : test_lines) {
+    const geometry::Line &test_line = entry.second;
+    std::vector<geometry::PointPair> intersections =
+        polygon.IntersectingPoints(test_line);
+    deduped.insert(intersections.begin(), intersections.end());
+  }
   intersections->insert(intersections->end(), deduped.begin(), deduped.end());
+
   return !deduped.empty();
 }
 
@@ -1202,6 +1255,7 @@ RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
   // merged if:
   //  - they overlap within margin (exclusive); and
   //  - they have the same net label.
+  //  - TODO(aryap): they have the same temporariness (true or false).
   //
   // As a reminder, we treat margin as the minimum separation that is allowed
   // between objects, and since they appear on a discrte unit grid, we subtract

@@ -208,6 +208,8 @@ class RoutingTrack {
       const RoutingVertex &vertex,
       bool available_only = false) const;
 
+  geometry::Line ParallelLineAtOffset(int64_t offset) const;
+
   geometry::Line AsLine() const;
   std::pair<geometry::Line, geometry::Line> MajorAxisLines(
       int64_t padding) const;
@@ -245,7 +247,7 @@ class RoutingTrack {
   bool Intersects(const geometry::Rectangle &rectangle,
                   int64_t padding,
                   int64_t min_transverse_separation) const;
-// TODO(growly): This does not account for the fact that a rectangle might be
+  // TODO(growly): This does not account for the fact that a rectangle might be
   // small enough to fit between the keep-outs around two adjacent vertices.
   bool IntersectsVertices(
       const geometry::Rectangle &rectangle,

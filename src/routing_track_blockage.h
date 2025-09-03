@@ -43,6 +43,9 @@ class RoutingTrackBlockage {
   int64_t start_;
   int64_t end_;
   std::string net_;
+
+  // TODO(aryap): Make "is_temporary_" a field here so that we don't have to
+  // duplicate containers in RoutingTrack.
 };
 
 }  // namespace bfg
