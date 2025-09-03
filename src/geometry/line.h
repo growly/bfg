@@ -32,6 +32,10 @@ class Line {
   // Returns true if the lines defined by lhs and rhs intersect, and if so,
   // fills `point` with the intersection point. Returns false if the lines do
   // not intersect (are parallel).
+  //
+  // If the lines are incident on one another (parallel with total
+  // intersection), *incident will be set true. Otherwise it will be set to
+  // false.
   static bool Intersect(
       const Line &lhs, const Line &rhs, bool *incident, Point *point);
 
@@ -68,6 +72,8 @@ class Line {
     return intersection->does_intersect;
   }
 
+  // If `other` is incident on this line, *incident will be set true. Otherwise
+  // it will be set to false.
   bool Intersects(const Line &other, bool *incident, Point *point) const {
     return Intersect(*this, other, incident, point);
   }
@@ -76,6 +82,13 @@ class Line {
 
   // Tests if *this line intersects the other line within the bounds of this
   // line. The other line is treated as infinitely long.
+  //
+  // If `other` is incident on this line, *incident will be set true. Otherwise
+  // it will be set to false.
+  //
+  // If the intersection is a single point and occurs at the start or end of
+  // this line, *is_start_or_end will be set to true. Otherwise it will be set
+  // to false.
   bool IntersectsInBounds(const Line &other,
                           bool *incident,
                           bool *is_start_or_end,

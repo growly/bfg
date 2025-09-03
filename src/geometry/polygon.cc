@@ -155,11 +155,11 @@ std::vector<PointPair> Polygon::ResolveIntersectingPointsFrom(
       sorted.push_back(next_point);
     }
 
-    choices_copy.erase(it);
-
     if (!already_exists && choice.crosses_boundary()) {
       outside = !outside;
     }
+
+    choices_copy.erase(it);
   }
 
   VLOG(13) << "sorted: ";
@@ -224,6 +224,7 @@ std::vector<PointPair> Polygon::IntersectingPoints(const Line &line) const {
       //  a . b = ||a|| ||b|| cos (theta)
       //  a . b < 0 iff cos (theta) < 0 iff pi/2 <= theta <= 3*pi/2
       int64_t dot_product = last_segment.DotProduct(next_segment);
+
       // Use of last_segment is important because it includes the span of any
       // other line segments that are on the same infinite line as this one
       // and were thus skipped:
@@ -249,6 +250,23 @@ std::vector<PointPair> Polygon::IntersectingPoints(const Line &line) const {
       } else if (dot_product > 0) {
         // Case (a): we crossed a line.
         choice.set_crosses_boundary(true);
+      }
+
+      // Since we treat segments directionally, ignoring start vertices for
+      // intersections but not the ends (to avoid duplicates), it's possible to
+      // end up with a line intersecting the end point of one segment, then
+      // being incident on the entirety of the following segment. Whether or not
+      // the incident segment is considered internal or external depends on the
+      // intersections traced along the line, and having a duplicate point
+      // confuses this. So for consistency we have to delete the previous
+      // intersection when this happens. (Yes this might be considered a hack.)
+      if (!intersections.empty() &&
+          intersections.back().unique()) {
+        const geometry::Point &last_unique = *intersections.back().unique();
+        const std::set<Point> &span_choices = *choice.choose_one();
+        if (span_choices.find(last_unique) != span_choices.end()) {
+          intersections.erase(std::prev(intersections.end(), 1));
+        }
       }
     } else if (at_start) {
       // Since the line intersected with a segment boundary, we have to check

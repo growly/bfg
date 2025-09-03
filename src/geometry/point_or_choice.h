@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <optional>
 #include <set>
+#include <sstream>
 
 #include "point.h"
 
@@ -37,6 +38,8 @@ class PointOrChoice {
   }
 
   bool Contains(const Point &point);
+
+  std::string Describe() const;
 
   const Point ClosestPointTo(const Point &reference) const {
       return MinOrMaxPoint(reference, false);

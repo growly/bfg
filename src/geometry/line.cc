@@ -299,6 +299,9 @@ bool Line::IntersectsInBounds(
     Point *point,
     bool ignore_end,
     bool ignore_start) const {
+  *incident = false;
+  *is_start_or_end = false;
+
   Point intersection;
   if (!Intersects(other, incident, &intersection))
     return false;

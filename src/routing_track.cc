@@ -999,7 +999,7 @@ bool RoutingTrack::Intersects(
   // ----------|-----|-----------
   //         |          | <- undetected
   // ----------|-----|-----------
-  int64_t boundary_from_offset = min_transverse_separation + padding; 
+  int64_t boundary_from_offset = min_transverse_separation + padding - 1; 
   std::pair<geometry::Line, geometry::Line> major_axis_lines =
       MajorAxisLines(boundary_from_offset);
 

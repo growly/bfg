@@ -76,9 +76,9 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("mcon.drawing", intra_constraints);
 
   intra_constraints = {
-    .min_width = db->ToInternalUnits(170),
-    .via_width = db->ToInternalUnits(170),
-    .via_height = db->ToInternalUnits(170)
+    .min_width = db->ToInternalUnits(140),
+    .via_width = db->ToInternalUnits(140),
+    .via_height = db->ToInternalUnits(140)
   };
   db->AddRules("met1.pin", intra_constraints);
   db->AddRules("met2.pin", intra_constraints);

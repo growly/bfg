@@ -176,6 +176,10 @@ class RoutingTrack {
 
   // Rectangle blockages create single RoutingTrackBlockages or none at all, so
   // we can return one or nullptr here:
+  // TODO(aryap): We can be smarter (more efficient) about determining when
+  // blockages _don't_ occur, and this can save a lot of cycles. If a shape's
+  // bounding-box doesn't fall near us on the offset axis we can immediately
+  // nope the blockage.
   void AddBlockage(const geometry::Rectangle &rectangle,
                    int64_t padding,
                    const std::string &net,

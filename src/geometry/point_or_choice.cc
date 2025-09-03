@@ -23,6 +23,31 @@ bool PointOrChoice::Contains(const Point &point) {
   return false;
 }
 
+std::string PointOrChoice::Describe() const {
+  std::stringstream ss;
+  if (unique_) {
+    ss << *unique_;
+  } else if (choose_one_) {
+    std::vector<std::string> point_descriptions;
+    for (const geometry::Point &point : *choose_one_) {
+      std::stringstream ss;
+      ss << point;
+      point_descriptions.push_back(ss.str());
+    }
+    ss << "(" << absl::StrJoin(point_descriptions, ", ") << ")";
+  }
+  if (maybe_internal_) {
+    ss << " maybe_internal";
+  }
+  if (is_corner_) {
+    ss << " is_corner";
+  }
+  if (crosses_boundary_) {
+    ss << " crosses_boundary";
+  }
+  return ss.str();
+}
+
 const Point PointOrChoice::MinOrMaxPoint(const Point &reference, bool use_max)
   const {
   if (unique_) {
@@ -48,26 +73,7 @@ const Point PointOrChoice::MinOrMaxPoint(const Point &reference, bool use_max)
 
 std::ostream &operator<<(std::ostream &os,
                          const geometry::PointOrChoice &choice) {
-  if (choice.unique()) {
-    os << *choice.unique();
-  } else if (choice.choose_one()) {
-    std::vector<std::string> point_descriptions;
-    for (const geometry::Point &point : *choice.choose_one()) {
-      std::stringstream ss;
-      ss << point;
-      point_descriptions.push_back(ss.str());
-    }
-    os << "(" << absl::StrJoin(point_descriptions, ", ") << ")";
-  }
-  if (choice.maybe_internal()) {
-    os << " maybe_internal";
-  }
-  if (choice.is_corner()) {
-    os << " is_corner";
-  }
-  if (choice.crosses_boundary()) {
-    os << " crosses_boundary";
-  }
+  os << choice.Describe();
   return os;
 }
 

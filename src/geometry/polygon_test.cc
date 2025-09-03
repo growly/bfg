@@ -257,7 +257,6 @@ TEST(Polygon, IntersectingPoints_SimpleHorizontalLine) {
   EXPECT_EQ(expected, intersections);
 }
 
-
 // In this example the polygon is an 'H', and the intersecting line is incident
 // on two vertical lines on top of each other in one of the arms.
 //
@@ -298,6 +297,45 @@ TEST(Polygon, IntersectingPoints_YetAnotherVerticalLine) {
 
   std::vector<std::pair<Point, Point>> expected = {
       {{28950, 3695}, {28950, 3925}}
+  };
+  EXPECT_EQ(expected, intersections);
+}
+
+// A similar test, but horizontally:
+//
+//        +----+          +----+
+//        |    +----------+    |
+//        |                    |
+//  >----(|)   +----------+   (|)-------->
+//        +----+          +----+
+//
+// Again since the boundary of the polygon is considered to be interior,
+// this line should 'enter' the polygon on the left and 'exit' on the right,
+// yielding only one pair of intersecting points.
+TEST(Polygon, IntersectingPoints_HorizontalLineThroughBoundary) {
+  std::vector<Point> points = {
+    {8090, 25785},
+    {7800, 25785},
+    {7800, 25740},
+    {6520, 25740},
+    {6520, 25785},
+    {6230, 25785},
+    {6230, 25555},
+    {6520, 25555},
+    {6520, 25600},
+    {7800, 25600},
+    {7800, 25555},
+    {8090, 25555}
+  };
+  Polygon polygon = Polygon(points);
+
+  Line line = Line({0, 25600}, {1, 25600});
+
+  std::vector<std::pair<Point, Point>> intersections =
+      polygon.IntersectingPoints(line);
+
+  std::vector<std::pair<Point, Point>> expected = {
+      {{6230, 25600}, {8090, 25600}}
   };
   EXPECT_EQ(expected, intersections);
 }
