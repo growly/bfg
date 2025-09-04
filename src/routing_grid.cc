@@ -355,7 +355,7 @@ std::set<RoutingVertex*> RoutingGrid::GetNearbyVertices<RoutingVertex>(
         BlockingOffGridVertices(
             vertex,
             layer,
-            vertex.GetEncapDirection(layer));
+            VertexEncapDirection(vertex, layer));
     nearby.insert(blocked_off_grid.begin(), blocked_off_grid.end());
   }
   return nearby;
@@ -1523,6 +1523,25 @@ std::optional<geometry::Rectangle> RoutingGrid::EdgeFootprint(
   return footprint;
 }
 
+std::optional<RoutingTrackDirection> RoutingGrid::VertexEncapDirection(
+    const RoutingVertex &vertex,
+    const geometry::Layer &layer) const {
+  auto direction = vertex.GetEncapDirection(layer);
+  if (direction) {
+    return direction;
+  }
+  // If the vertex doesn't return which direction applies, such as when there
+  // are multiple edges on the same layer terminating there, we have to apply a
+  // default.
+  auto routing_info = GetRoutingLayerInfo(layer);
+  if (!routing_info) {
+    // This shouldn't really happen. ¯\_(ツ)_/¯
+    return std::nullopt;
+  }
+
+  return routing_info->get().direction();
+}
+
 std::vector<RoutingVertex*> &RoutingGrid::GetAvailableVertices(
     const geometry::Layer &layer) {
   auto it = available_vertices_by_layer_.find(layer);
@@ -2273,7 +2292,7 @@ void RoutingGrid::InstallVertexInPath(
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     // If there is an edge on this layer, we use its direction. Otherwise we use
     // the routing grid default direction for the layer.
-    auto direction = vertex->GetEncapDirection(layer);
+    auto direction = VertexEncapDirection(*vertex, layer);
     if (!direction) {
       auto routing_layer_info = GetRoutingLayerInfo(layer);
       if (!routing_layer_info) {

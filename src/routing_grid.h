@@ -529,6 +529,10 @@ class RoutingGrid {
   std::optional<geometry::Rectangle> EdgeWireFootprint(
       const RoutingEdge &edge, int64_t padding = 0) const;
 
+  std::optional<RoutingTrackDirection> VertexEncapDirection(
+      const RoutingVertex &vertex,
+      const geometry::Layer &layer) const;
+
   // Returns the via layer (first entry) and cost (second entry) if a via is
   // necessary/available to connect the given layers.
   std::optional<std::pair<geometry::Layer, double>> ViaLayerAndCost(

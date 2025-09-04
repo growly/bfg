@@ -421,29 +421,39 @@ std::optional<RoutingTrackDirection> RoutingVertex::GetEncapDirection(
   if (forced) {
     return *forced;
   }
-  RoutingEdge *edge = GetFirstEdgeOnLayer(layer);
+  RoutingEdge *edge = GetOnlyEdgeOnLayer(layer);
   if (edge) {
     return edge->Direction();
   }
   return std::nullopt;
 }
 
-RoutingEdge *RoutingVertex::GetFirstEdgeOnLayer(
+RoutingEdge *RoutingVertex::GetOnlyEdgeOnLayer(
+    const geometry::Layer &layer) const {
+  std::vector<RoutingEdge*> edges = GetEdgesOnLayer(layer);
+  if (edges.size() != 1) {
+    return nullptr;
+  }
+  return edges.front();
+}
+
+std::vector<RoutingEdge*> RoutingVertex::GetEdgesOnLayer(
     const geometry::Layer &layer) const {
   // FIXME(aryap): Why do we have in_edge_, out_edge_ and edges_? Since this is
   // added for RoutingGrid::InstallVertexInPath we will use the in_ and
   // out_edge_ fields:
+  std::vector<RoutingEdge*> matching;
   for (const auto &pair : in_out_edges_) {
     for (RoutingEdge *edge : {pair.first, pair.second}) {
       if (!edge) {
         continue;
       }
       if (edge->EffectiveLayer() == layer) {
-        return edge;
+        matching.push_back(edge);
       }
     }
   }
-  return nullptr;
+  return matching;
 }
 
 std::set<RoutingVertex*> RoutingVertex::GetNeighbours() const {

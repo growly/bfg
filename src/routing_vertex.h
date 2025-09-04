@@ -162,7 +162,11 @@ class RoutingVertex {
   //bool LandableByNets(const EquivalentNets &nets) const;
   // We call a vertex Available if it is either of these things.
 
-  RoutingEdge *GetFirstEdgeOnLayer(const geometry::Layer &layer) const;
+  // Returns the edge into or out of this vertex on the given layer, if there is
+  // only one. If there are none or there are more than 1, returns nullptr.
+  RoutingEdge *GetOnlyEdgeOnLayer(const geometry::Layer &layer) const;
+
+  std::vector<RoutingEdge*> GetEdgesOnLayer(const geometry::Layer &layer) const;
 
   bool IsOffGrid() const {
     return !horizontal_track_ || !vertical_track_;

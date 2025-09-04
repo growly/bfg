@@ -796,8 +796,8 @@ void RoutingPath::CheckForViaCrowding(
       std::set<RoutingEdge*> &edges  = entry.second;
       int64_t bulge_width = 0;
       int64_t bulge_length = 0;
-      auto encap_direction = vertex->GetEncapDirection(
-          poly_line->layer());
+      auto encap_direction = routing_grid_->VertexEncapDirection(
+          *vertex, poly_line->layer());
       std::optional<double> angle_rads;
       if (encap_direction) {
         angle_rads = RoutingTrack::DirectionToAngle(*encap_direction);

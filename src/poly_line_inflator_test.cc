@@ -267,5 +267,19 @@ TEST(PolyLineInflatorTest, TODO_ThisShouldNotBreak3) {
   }
 }
 
+TEST(PolyLineInflatorTest, TODO_ThisShouldNotBreak4) {
+  // before bulges:
+  // <0| (23800, 10710) |140| (23800, 11050) |140| (22780, 11050) |140| (22780, 11390) |140| (20060, 11390) |0>
+  // after bulges:
+  //
+  PolyLine line = PolyLine(
+      {23800, 10710}, {
+      LineSegment {{23800, 11050}, 140},
+      LineSegment {{22780, 11050}, 140},
+      LineSegment {{22780, 11390}, 140},
+      LineSegment {{20060, 11390}, 140}
+  });
+}
+
 }  // namespace
 }  // namespace bfg
