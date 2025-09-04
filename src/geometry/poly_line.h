@@ -173,6 +173,11 @@ class PolyLine : public Shape {
           double on_axis_overflow,
           double off_axis_overflow);
 
+  // Turn a segment into a Rectangle if it is rectilinear, otherwise return
+  // std::nullopt. (The Rectangle class cannot represent a non-axis-aligned
+  // Rectangle.)
+  std::optional<Rectangle> SegmentAsRectangle(size_t index) const;
+
   // It often doesn't make sense to create a protrusion from the line which
   // is narrower than the existing line just for a bulge, so we explicitly
   // disable it.

@@ -35,6 +35,9 @@ class Rectangle : public Shape {
   static Rectangle CentredAt(
       const Point &centre, uint64_t width, uint64_t height);
 
+  static std::optional<Rectangle> FromCentralAxis(
+      const Point &a, const Point &b, uint64_t width);
+
   Rectangle() : Shape(0, "") {}
   Rectangle(const Point &lower_left, uint64_t width, uint64_t height)
       : lower_left_(lower_left),

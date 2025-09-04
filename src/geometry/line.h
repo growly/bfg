@@ -23,12 +23,6 @@ class Line {
     Point point;
   };
 
-  Line() = default;
-  Line(const Point &start, const Point &end)
-      : start_(start), end_(end) {}
-  Line(const Point &end)
-      : start_(Point(0, 0)), end_(end) {}
-
   // Returns true if the lines defined by lhs and rhs intersect, and if so,
   // fills `point` with the intersection point. Returns false if the lines do
   // not intersect (are parallel).
@@ -41,12 +35,20 @@ class Line {
 
   static bool AreAntiParallel(const Line &lhs, const Line &rhs);
 
-  std::string Describe() const;
-
   static bool AreSameInfiniteLine(const Line &lhs, const Line &rhs);
 
   static std::optional<std::pair<int64_t, int64_t>> OverlappingProjectionOnAxis(
       const Line &lhs, const Line &rhs, double axis_angle_radians);
+
+  static bool PointsFormRectilinearLine(const Point &a, const Point &b);
+
+  Line() = default;
+  Line(const Point &start, const Point &end)
+      : start_(start), end_(end) {}
+  Line(const Point &end)
+      : start_(Point(0, 0)), end_(end) {}
+
+  std::string Describe() const;
 
   bool Intersects(const Point &point) const;
 

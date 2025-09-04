@@ -39,6 +39,10 @@ class Point : public AbstractShape, public Manipulable {
   static Point ClosestTo(const std::vector<Point> &points,
                          const Point &target);
 
+  // Cross-product (magnitude) of vector from a to b with vector from a to c.
+  static int64_t CrossProduct(
+      const Point &a, const Point &b, const Point &c);
+
   // NOTE(aryap): It doesn't make sense to use this with angles that aren't
   // multiples of pi/4, since our Point has integer units:
   //
@@ -129,6 +133,11 @@ class Point : public AbstractShape, public Manipulable {
   // treating the other point as a vector from (0, 0) to (x_, y_), return the
   // dot product of the vectors.
   int64_t DotProduct(const Point &other) const;
+
+  // Again treating this and `other` as vectors from (0, 0) to (x_, y_),
+  // determine the sign and magnitude of the cross product, which would actually
+  // be a vector in a 3rd dimension that we do not represent.
+  int64_t CrossProduct(const Point &other) const;
 
   std::string Describe() const;
 

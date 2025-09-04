@@ -1,5 +1,6 @@
 #include "poly_line.h"
 
+#include <chrono>
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
@@ -584,7 +585,21 @@ void PolyLine::RemoveNotchesAroundCorners() {
   //    |                  |
   //    |                  |
   //    |                  |
-
+  //
+  // I don't like weed but maybe when I first wrote this I had a contact high.
+  // Because it made like 50% sense. The basica idea is to find the minimum
+  // distance between segments and fatten intermediate segments to avoid
+  // problems.
+  //
+  // My original description was this:
+  //  - find the axis between the end of a starting line and the start of
+  //  another line (at least 2 segments away)
+  //  - find the angles of the starting and subsequent lines to the intervening
+  //  axis
+  //  - project the widths of lines at each end onto the intervening axis,
+  //  these are the quantities by which the space between the lines is reduced
+  //  in the worst case
+  //
   // In the most general case, we have to check all pairs of segments that are
   // not adjacent to see if they violate min_separation_. This can occur if the
   // two segments are in a straight line and the maximum width of any segment
@@ -595,14 +610,16 @@ void PolyLine::RemoveNotchesAroundCorners() {
   // segments. Another way is to generate the boundary lines and find the
   // distance between them, basically pre-empting the inflation process itself.
   //
-  // Ok the principle of this algorithm is as follows:
-  //  - find the axis between the end of a starting line and the start of
-  //  another line (at least 2 segments away)
-  //  - find the angles of the starting and subsequent lines to the intervening
-  //  axis
-  //  - project the widths of lines at each end onto the intervening axis,
-  //  these are the quantities by which the space between the lines is reduced
-  //  in the worst case
+  // But this is either an underestimate or an overestimate depending on whether
+  // the destination segment is wider or narrower (respectively, I think). So
+  // it's like, a shit heuristic. If the widths are the same it works, because
+  // the shortest line between the corners that would be formed (half-width from
+  // the centre line of the segment) is a line parallel to the intervening line.
+  //
+  // A naive, correct approach is to turn ever segment into a rectangle and find
+  // the minimum distance between them. That's correct so we'll just do that and
+  // suffer the consequences. I was worried that it was slow so I measured it.
+  // It's ~2.5x slower. But the whole business is so fast it doesn't matter.
   //
   // TODO(aryap): Currently use std::abs to avoid this problem, but is treatment
   // of various angles around the unit circle (where sin becomes negative)
@@ -624,62 +641,108 @@ void PolyLine::RemoveNotchesAroundCorners() {
     //   continue;
     // }
 
+    auto last_box = SegmentAsRectangle(i);
+    if (!last_box) {
+      continue;
+    }
+
     uint64_t intervening_width = segments_[i + 1].width;
 
     for (size_t j = i + 2; j < segments_.size(); ++j) {
-      LineSegment &last_segment = segments_[j - 1];
-      LineSegment &next_segment = segments_[j];
 
-      intervening_width = last_segment.width;
+      // Old way:
+      auto old_way = [&]() -> bool {
+        LineSegment &last_segment = segments_[j - 1];
+        LineSegment &next_segment = segments_[j];
 
-      Line next_line = Line(segments_[j - 1].end, next_segment.end);
-      Line intervening_line = Line(first_line.end(), next_line.start());
+        intervening_width = last_segment.width;
 
-      double theta_first =
-          intervening_line.AngleToLineCounterClockwise(first_line);
-      double theta_next =
-          next_line.AngleToLineCounterClockwise(intervening_line);
+        Line next_line = Line(segments_[j - 1].end, next_segment.end);
+        Line intervening_line = Line(first_line.end(), next_line.start());
 
-      double intervening_length = intervening_line.Length();
+        double theta_first =
+            intervening_line.AngleToLineCounterClockwise(first_line);
+        double theta_next =
+            next_line.AngleToLineCounterClockwise(intervening_line);
 
-      double first_projection_onto_intervening =
-          std::abs(std::sin(theta_first) *
-              static_cast<double>(first_segment.width) / 2.0);
-      double next_projection_onto_intervening =
-          std::abs(std::sin(theta_next) *
-              static_cast<double>(next_segment.width) / 2.0);
+        double intervening_length = intervening_line.Length();
+        double first_projection_onto_intervening =
+            std::abs(std::sin(theta_first) *
+                static_cast<double>(first_segment.width) / 2.0);
+        double next_projection_onto_intervening =
+            std::abs(std::sin(theta_next) *
+                static_cast<double>(next_segment.width) / 2.0);
 
-      double spacing = intervening_length - (
-          first_projection_onto_intervening + next_projection_onto_intervening);
+        double spacing = intervening_length - (
+            first_projection_onto_intervening +
+            next_projection_onto_intervening);
 
-      VLOG(16) << "i: " << i << ", " << "j: " << j << std::endl
-               << "first_segment: " << first_segment.end << std::endl
-               << "last_segment: " << last_segment.end << std::endl
-               << "next_segment: " << next_segment.end << std::endl
-               << "first_line: " << first_line << std::endl
-               << "intervening_line: " << intervening_line << std::endl
-               << "next_line: " << next_line << std::endl
-               << "theta_first: " << theta_first << std::endl
-               << "theta_next: " << theta_next << std::endl
-               << "intervening_length: " << intervening_length << std::endl
-               << "first_projection_onto_intervening: "
-               << first_projection_onto_intervening << std::endl
-               << "next_projection_onto_intervening: "
-               << next_projection_onto_intervening << std::endl
-               << "spacing: " << spacing;
-      if (spacing >= *min_separation_) {
-        // Nothing to do.
-        continue;
+        VLOG(16) << "i: " << i << ", " << "j: " << j << std::endl
+                 << "first_segment: " << first_segment.end << std::endl
+                 << "last_segment: " << last_segment.end << std::endl
+                 << "next_segment: " << next_segment.end << std::endl
+                 << "first_line: " << first_line << std::endl
+                 << "intervening_line: " << intervening_line << std::endl
+                 << "next_line: " << next_line << std::endl
+                 << "theta_first: " << theta_first << std::endl
+                 << "theta_next: " << theta_next << std::endl
+                 << "intervening_length: " << intervening_length << std::endl
+                 << "first_projection_onto_intervening: "
+                 << first_projection_onto_intervening << std::endl
+                 << "next_projection_onto_intervening: "
+                 << next_projection_onto_intervening << std::endl
+                 << "spacing: " << spacing;
+        if (spacing == 0 || spacing >= *min_separation_) {
+          // Nothing to do.
+          return false;
+        }
+        return true;
+      };
+
+      // New way:
+      auto new_way = [&]() -> bool {
+        auto next_box = SegmentAsRectangle(j);
+        if (next_box) {
+          // Cannot test.
+          return false;
+        }
+
+        double spacing = last_box->ClosestDistanceTo(*next_box);
+        if (spacing == 0 || spacing < *min_separation_) {
+          return true;
+        }
+        return false;
+      };
+
+      auto start = std::chrono::high_resolution_clock::now();
+      bool old_result = false;
+      for (size_t p = 0; p < 10000; p++) {
+        old_result = old_way();
       }
+      auto end = std::chrono::high_resolution_clock::now();
+      auto count = std::chrono::duration_cast<std::chrono::microseconds>(
+          end - start);
+      LOG(INFO) << "old_way " << old_result << " (us) " << count.count();
+
+      start = std::chrono::high_resolution_clock::now();
+      bool new_result = false;
+      for (size_t p = 0; p < 10000; p++) {
+        new_result = new_way();
+      }
+      end = std::chrono::high_resolution_clock::now();
+      count = std::chrono::duration_cast<std::chrono::microseconds>(
+          end - start);
+      LOG(INFO) << "new_way " << new_result << " (us) " << count.count();
 
       // Widen all intervening segments to the width of the max within the span:
       std::vector<uint64_t> span_widths;
       // We measure the maximum width of segments in the span [i, j], i.e.
       // inclusive of i and j.
-      std::transform(segments_.begin() + i,
-                     segments_.begin() + j + 1,
-                     std::back_inserter(span_widths),
-                     [](const LineSegment &segment) { return segment.width; });
+      std::transform(
+          segments_.begin() + i,
+          segments_.begin() + j + 1,
+          std::back_inserter(span_widths),
+          [](const LineSegment &segment) { return segment.width; });
       uint64_t max_width_in_span =
           *std::max_element(span_widths.begin(), span_widths.end());
       // But we overwrite the widths of only the segments interior to the span,
@@ -785,6 +848,15 @@ void PolyLine::EnforceInvariants() {
   RemoveNotchesAroundCorners();
   // TODO(aryap): Remove anti-parallel segments that overlap parallel
   // segments...?
+}
+
+std::optional<Rectangle> PolyLine::SegmentAsRectangle(
+    size_t index) const {
+  const Point &centre_start = index == 0 ? start_ : segments_[index - 1].end;
+  const Point &centre_end = segments_[index].end;
+  const uint64_t &width = segments_[index].width;
+
+  return Rectangle::FromCentralAxis(centre_start, centre_end, width);
 }
 
 }  // namespace geometry

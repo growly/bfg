@@ -13,6 +13,39 @@
 namespace bfg {
 namespace geometry {
 
+std::optional<Rectangle> Rectangle::FromCentralAxis(
+    const Point &a, const Point &b, uint64_t width) {
+  // There is no guaranteed order of a and b, so we have to make sure we have
+  // the lower left and upper right points the right way around. If we put them
+  // in a vector and impose an ordering, we get this conceptually very
+  // simply, but also the code is overcomplicated so we're not doing that
+  // anymore. Instead:
+  geometry::Point lower_left = {std::min(a.x(), b.x()), std::min(a.y(), b.y())};
+  geometry::Point upper_right = {
+      std::max(a.x(), b.x()), std::max(a.y(), b.y())};
+
+  int64_t half_width = width / 2;
+  int64_t remaining_width = width - half_width;
+
+  geometry::Rectangle rectangle;
+  if (lower_left.x() == upper_right.x()) {
+    // Vertical rectangle.
+    rectangle = {
+      {lower_left.x() - half_width, lower_left.y()},
+      {upper_right.x() + remaining_width, upper_right.y()
+    }};
+  } else if (lower_left.y() == upper_right.y()) {
+    // Horizontal rectangle.
+    rectangle = {
+      {lower_left.x(), lower_left.y() - half_width},
+      {upper_right.x(), upper_right.y() + remaining_width}
+    };
+  } else {
+    return std::nullopt;
+  }
+  return rectangle;
+}
+
 double Rectangle::ClosestDistanceBetween(
     const Rectangle &lhs, const Rectangle &rhs) {
   if (lhs.Overlaps(rhs))

@@ -10,6 +10,7 @@
 
 #include "equivalent_nets.h"
 #include "geometry/point.h"
+#include "geometry/line.h"
 #include "geometry/rectangle.h"
 #include "physical_properties_database.h"
 #include "routing_edge.h"
@@ -74,42 +75,15 @@ void RoutingEdge::SetBlocked(bool blocked, bool temporary) {
 
 std::optional<geometry::Rectangle> RoutingEdge::AsRectangle(
     int64_t width) const {
-  // There is no guaranteed order of first_ and second_, so we have to make sure
-  // we have the lower left and upper right points the right way around. If we
-  // put them in a vector and impose an ordering, we get this conceptually very
-  // simply, but also the code is overcomplicated so we're not doing that
-  // anymore. Instead:
-  geometry::Point lower_left = {
-      std::min(first_->centre().x(), second_->centre().x()),
-      std::min(first_->centre().y(), second_->centre().y())};
-  geometry::Point upper_right = {
-      std::max(first_->centre().x(), second_->centre().x()),
-      std::max(first_->centre().y(), second_->centre().y())};
-
-  int64_t half_width = width / 2;
-  int64_t remaining_width = width - half_width;
-
-  geometry::Rectangle rectangle;
-  if (lower_left.x() == upper_right.x()) {
-    // Vertical rectangle.
-    rectangle = {
-      {lower_left.x() - half_width, lower_left.y()},
-      {upper_right.x() + remaining_width, upper_right.y()
-    }};
-  } else if (lower_left.y() == upper_right.y()) {
-    // Horizontal rectangle.
-    rectangle = {
-      {lower_left.x(), lower_left.y() - half_width},
-      {upper_right.x(), upper_right.y() + remaining_width}
-    };
-  } else {
+  auto maybe_rectangle = geometry::Rectangle::FromCentralAxis(
+      first_->centre(), second_->centre(), width);
+  if (!maybe_rectangle) {
     return std::nullopt;
   }
-
   if (layer_) {
-    rectangle.set_layer(*layer_);
+    maybe_rectangle->set_layer(*layer_);
   }
-  return rectangle;
+  return *maybe_rectangle;
 }
 
 std::optional<geometry::Line> RoutingEdge::AsLine() const {
@@ -194,9 +168,8 @@ void RoutingEdge::ApproximateCost() {
 }
 
 bool RoutingEdge::IsRectilinear() const {
-  return first_ && second_ && (
-      first_->centre().x() == second_->centre().x() ||
-      first_->centre().y() == second_->centre().y());
+  return first_ && second_ && geometry::Line::PointsFormRectilinearLine(
+      first_->centre(), second_->centre());
 }
 
 bool RoutingEdge::AvailableForNets(

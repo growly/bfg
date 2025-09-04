@@ -17,6 +17,17 @@ std::string Line::Describe() const {
   return ss.str();
 }
 
+// TODO(aryap): "Rectilinear" is the wrong word. The word I want describes the
+// arrangement of layout geometry where all lines are 1) straight and 2) at
+// pi/2-multiple angles to the horizon (i.e. horizontal or vertical). Find a
+// better word.
+//
+// I asked Claude and it literally said "rectilinear" is the word I'm looking
+// for. But also "axis-aligned"? Hmm.
+bool Line::PointsFormRectilinearLine(const Point &a, const Point &b) {
+  return (a.x() == b.x()) || (a.y() == b.y());
+}
+
 bool Line::AreAntiParallel(const Line &lhs, const Line &rhs) {
   return lhs.AngleToLineCounterClockwise(rhs) == Radian::kPi;
 }

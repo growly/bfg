@@ -208,6 +208,10 @@ std::vector<PointPair> Polygon::IntersectingPoints(const Line &line) const {
       continue;
     }
 
+    // NOTE(aryap): So actually we could probably do this by checking the sign
+    // of the cross product, since we're interested in which points are "convex"
+    // (interior angle < pi) and which are "concave" (interior angle > pi).
+
     PointOrChoice choice;
 
     if (incident) {
@@ -231,6 +235,11 @@ std::vector<PointPair> Polygon::IntersectingPoints(const Line &line) const {
       choice.set_choose_one(
           std::set<Point> { segment.end(), last_segment.end() });
 
+      // TODO(aryap): We could use the cross product at each vertex, and if they
+      // are equal in sign we would know that we have an inward- or outward-
+      // curving corner. We just need to ensure the direction of the points
+      // (clockwire or anti-clockwise) is well-defined (it isn't) or at least
+      // understood. Could that simplify this whole thing?
       if (dot_product < 0) {
         // When the line is incident on a segment, we have to check the previous
         // and following segments to determine if it is an ingress/egress event.
@@ -586,6 +595,9 @@ bool Polygon::Intersects(const Point &point) const {
   return Intersects(point, 0);
 }
 
+// TODO(aryap): It would be more efficient to triangulate the polygon
+// (cacheable) and then test the point with the cross product, instead of this
+// nuts ray-casting. Triangulation w/ ear clipping is something we could do.
 bool Polygon::Intersects(const Point &point, int64_t margin) const {
   if (margin != 0) {
     return Overlaps(Rectangle::CentredAt(point, 2 * margin, 2 * margin));

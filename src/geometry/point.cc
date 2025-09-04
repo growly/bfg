@@ -72,6 +72,11 @@ Point Point::PickMaxY(const Point &lhs, const Point &rhs) {
   return lhs.y() >= rhs.y() ? lhs : rhs;
 }
 
+int64_t Point::CrossProduct(
+    const Point &a, const Point &b, const Point &c) {
+  return (b.x() - a.x()) * (c.y() - a.y()) - (b.y() - a.y()) * (c.x() - a.x());
+}
+
 Point Point::ClosestTo(const std::vector<Point> &points,
                        const Point &target) {
   Point closest_point = points.front();
@@ -218,6 +223,12 @@ Point Point::Project(const Point &other) const {
 
 int64_t Point::DotProduct(const Point &other) const {
   return x_ * other.x() + y_ * other.y();
+}
+
+int64_t Point::CrossProduct(const Point &other) const {
+  // This is the same as:
+  //  return Line::CrossProduct({0, 0}, *this, other);
+  return x_ * other.y_ - y_ - other.x_;
 }
 
 int64_t Point::L2SquaredDistanceTo(const Point &other) const {
