@@ -330,6 +330,9 @@ bfg::Cell *Sky130TransmissionGate::Generate() {
 bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
   // TODO(aryap): This.
+
+  
+
   return circuit.release();
 }
 

@@ -54,6 +54,13 @@ class Sky130SimpleTransistor : public Atom {
     // Sky130.
   };
 
+  enum Terminal {
+    SOURCE,
+    DRAIN,
+    GATE,
+    SUBSTRATE
+  };
+
   enum ViaPosition {
     LEFT_DIFF_UPPER,
     LEFT_DIFF_MIDDLE,
@@ -163,6 +170,8 @@ class Sky130SimpleTransistor : public Atom {
   // tab there, the kMetalLayer via on that tab is at minimum separation from
   // the closest via to the tab on the diff.
   int64_t FigurePolyDiffExtension(int64_t separation_to_metal_via_centre) const;
+
+  std::string TerminalPortName(const Terminal &terminal) const;
 
   std::string CircuitCellName() const;
 

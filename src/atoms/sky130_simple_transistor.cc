@@ -382,11 +382,26 @@ std::string Sky130SimpleTransistor::CircuitCellName() const {
   }
 }
 
+std::string Sky130SimpleTransistor::TerminalPortName(
+    const Sky130SimpleTransistor::Terminal &terminal) const {
+  switch (terminal) {
+    case Terminal::SOURCE:
+      return "s";
+    case Terminal::DRAIN:
+      return "d";
+    case Terminal::GATE:
+      return "g";
+    case Terminal::SUBSTRATE:
+    default:
+      return "b";
+  }
+}
+
 bfg::Circuit *Sky130SimpleTransistor::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new Circuit());
   Circuit *parent_cell =
       design_db_->FindCellOrDie("sky130", CircuitCellName())->circuit();
-  circuit::Instance *nfet_0 = circuit->AddInstance("fet", parent_cell);
+  circuit::Instance *fet = circuit->AddInstance("fet", parent_cell);
   return circuit.release();
 }
 
