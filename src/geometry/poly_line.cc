@@ -615,10 +615,10 @@ void PolyLine::RemoveNotchesAroundCorners() {
   // the shortest line between the corners that would be formed (half-width from
   // the centre line of the segment) is a line parallel to the intervening line.
   //
-  // A naive, correct approach is to turn ever segment into a rectangle and find
-  // the minimum distance between them. That's correct so we'll just do that and
-  // suffer the consequences. In fact, I tested it, and it's 3x slower. That
-  // sucks, but whatever.
+  // A naive, more correct approach is to turn ever segment into a rectangle and
+  // find the minimum distance between them. That's correct so we'll just do
+  // that and suffer the consequences. In fact, I tested it, and it's 3x slower.
+  // That sucks, but whatever.
   //
   // TODO(aryap): Currently use std::abs to avoid this problem, but is treatment
   // of various angles around the unit circle (where sin becomes negative)
@@ -636,13 +636,6 @@ void PolyLine::RemoveNotchesAroundCorners() {
     }
 
     for (size_t j = i + 2; j < segments_.size(); ++j) {
-      // We should be able to stop work if we hit a segment that's wider than
-      // the one we've started from, since we're not going to make any changes
-      // to it anyway. Also, we're trying to remove notches, not _any_ instance
-      // of malformed wires.
-      if (segments_[j].width >= segments_[i].width) {
-        break;
-      }
       auto next_box = SegmentAsRectangle(j);
       if (!next_box) {
         // Cannot test.
