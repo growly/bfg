@@ -7,6 +7,7 @@
 #include "routing_grid.h"
 #include "routing_vertex.h"
 #include "routing_track_direction.h"
+#include "routing_grid_blockage.h"
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 
@@ -20,7 +21,7 @@ namespace bfg {
 //  vertex to accomodate a via, and in what directions.
 template<typename T>
 void RoutingBlockageCache::ApplyBlockageToOneVertex(
-    const RoutingGridBlockage<T> blockage,
+    const RoutingGridBlockage<T> &blockage,
     const RoutingVertex *vertex,
     std::optional<RoutingTrackDirection> access_direction) {
   const geometry::Layer &layer = blockage.shape().layer();
@@ -39,7 +40,8 @@ void RoutingBlockageCache::ApplyBlockageToOneVertex(
       RoutingTrackDirection::kTrackHorizontal,
       RoutingTrackDirection::kTrackVertical};
 
-  // Yikes. This will make a copy of kAllDirections.
+  // TODO(aryap): There's gotta be a more elegant way to either use a set with
+  // one element or a static const set. Maybe a reference_wrapper?
   std::set<RoutingTrackDirection> test_directions = access_direction ?
       std::set<RoutingTrackDirection>{*access_direction} : kAllDirections;
 
@@ -58,6 +60,10 @@ void RoutingBlockageCache::ApplyBlockageToOneVertex(
   }
 }
 
+RoutingBlockageCache::RoutingBlockageCache(const RoutingGrid &grid)
+    : grid_(grid),
+      search_window_margin_(grid.FigureSearchWindowMargin()) {}
+
 void RoutingBlockageCache::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding) {
@@ -67,17 +73,40 @@ void RoutingBlockageCache::AddBlockage(
 
   int64_t min_separation = grid_.GetMinSeparation(rectangle.layer());
 
-  //RoutingGridBlockage<geometry::Rectangle> *blockage =
-  //    new RoutingGridBlockage<geometry::Rectangle>(
-  //        grid_, rectangle, padding + min_separation);
-  //rectangle_blockages_.emplace_back(blockage);
-
+  RoutingGridBlockage<geometry::Rectangle> *blockage =
+      new RoutingGridBlockage<geometry::Rectangle>(
+          grid_, rectangle, padding + min_separation);
   for (const RoutingVertex *vertex : vertices) {
-    //ApplyBlockageToOneVertex(*blockage, vertex, std::nullopt);
+    ApplyBlockageToOneVertex(*blockage, vertex, std::nullopt);
   }
 
   // Find possibly-affected edges.
   // TODO(aryap): We need to ask RoutingTracks to tell us this?
+
+  rectangle_blockages_.emplace_back(blockage);
+}
+
+void RoutingBlockageCache::AddBlockage(
+    const geometry::Polygon &polygon,
+    int64_t padding) {
+  // Find possibly-affected vertices.
+  std::vector<const RoutingVertex*> vertices =
+      DeterminePossiblyAffectedVertices(polygon, padding);
+
+  int64_t min_separation = grid_.GetMinSeparation(polygon.layer());
+
+  RoutingGridBlockage<geometry::Polygon> *blockage =
+      new RoutingGridBlockage<geometry::Polygon>(
+          grid_, polygon, padding + min_separation);
+
+  for (const RoutingVertex *vertex : vertices) {
+    ApplyBlockageToOneVertex(*blockage, vertex, std::nullopt);
+  }
+
+  // Find possibly-affected edges.
+  // TODO(aryap): We need to ask RoutingTracks to tell us this?
+
+  polygon_blockages_.emplace_back(blockage);
 }
 
 std::vector<const RoutingVertex*>
@@ -113,7 +142,8 @@ RoutingBlockageCache::DeterminePossiblyAffectedVertices(
       grid_.off_grid_vertices().FindNearby(rectangle.centre(), radius);
 
   // Yikes cv-fuckery.
-  std::vector<const RoutingVertex*> const_targets(targets.size());
+  std::vector<const RoutingVertex*> const_targets;
+  const_targets.reserve(targets.size() + nearby_off_grid.size());
   for (RoutingVertex *vertex : targets) {
     const_targets.push_back(vertex);
   }

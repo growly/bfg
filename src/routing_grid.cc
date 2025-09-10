@@ -27,6 +27,7 @@
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
 #include "poly_line_inflator.h"
+#include "routing_blockage_cache.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_path.h"
@@ -58,7 +59,6 @@
 using bfg::geometry::Compass;
 
 namespace bfg {
-
 
 template<typename T>
 void RoutingGrid::ApplyBlockage(
@@ -1219,7 +1219,7 @@ std::optional<geometry::Rectangle> RoutingGrid::VertexFootprint(
     int64_t padding,
     const std::optional<RoutingTrackDirection> &direction) const {
   std::set<geometry::Layer> vertex_layers = vertex.connected_layers();
-  // FIXME(aryap): Taking a copy here is gratuitous. We only need to an O(n)
+  // TODO(aryap): Taking a copy here is gratuitous. We only need to an O(n)
   // pass over the set to determine all of these outcomes:
 
   // We expect footprint_layer to appear in the vertex's list of connected
@@ -2711,6 +2711,25 @@ void RoutingGrid::ApplyExistingBlockages(
   }
 };
 
+// FIXME(aryap): There is some duplicate bookkeeping happening. When a new
+// blockage is added, we add it through RoutingTrack::AddBlockage, and then
+// search for nearby vertices in RoutingGrid and call this function on them.
+// RoutingTrack::ApplyVertexBlockageToSingleVertex repeats some of this work: it
+// sets RoutingVertex::AddBlockingNet(...) if a net exists on the blockage or
+// RoutingVertex::SetForcedBlocked(...) if not. The RoutingTrack does not know
+// if the blockage overlaps the vertex since it reduces the blockage its one-
+// dimensional projection onto the track's axis: it cannot know if the vertex is
+// usable for connecting to the blockage. Further, the RoutingGrid contains
+// off-grid vertices which no track knows about, so it has to do this step
+// anyway. But the RoutingTrack needs to track vertex blockages so that it
+// disallows new ones being created if they are blocked. Basically, I think we
+// have to rip out the RoutingTrack::ApplyVertexBlockage method since it just
+// mutates vertices, and make it so that it only tracks vertex blockages
+// instead. I've added the code to bring parity through this function below
+// (basically setting AddBlockingNet or SetForcedBlocked if the vertex
+// intersects), but we need tests to make sure there is no regression on this
+// change. Is it true that all blockages enforced in duplicate like this? Is
+// there something else going on?
 template<typename T>
 void RoutingGrid::ApplyBlockageToOneVertex(
     const RoutingGridBlockage<T> &blockage,
@@ -2736,9 +2755,15 @@ void RoutingGrid::ApplyBlockageToOneVertex(
   bool any_access = false;
   // Check if the blockage overlaps the vertex completely:
   if (blockage.IntersectsPoint(vertex->centre(), 0)) {
-    vertex->AddUsingNet(blockage.shape().net(),
-                        is_temporary,
-                        layer);
+    const std::string &net = blockage.shape().net();
+    if (net != "") {
+      vertex->AddUsingNet(net, is_temporary, layer);
+      // See note above.
+      //vertex->AddBlockingNet(net, is_temporary, layer);
+    } else {
+      // See note above.
+      //vertex->SetForcedBlocked(true, is_temporary, layer);
+    }
     VLOG(16) << "Blockage: " << blockage.shape()
              << " intersects " << vertex->centre()
              << " with margin " << 0;
@@ -2761,7 +2786,7 @@ void RoutingGrid::ApplyBlockageToOneVertex(
       // exceptional_nets = nullopt so that no exception is made.
       if (blockage.Blocks(*vertex, std::nullopt, direction)) {
         if (net != "") {
-          vertex->AddBlockingNet(net, is_temporary, blockage.shape().layer());
+          vertex->AddBlockingNet(net, is_temporary, layer);
         }
         VLOG(16) << "Blockage: " << blockage.shape()
                  << " blocks " << vertex->centre()

@@ -5,13 +5,15 @@
 #include <set>
 #include <optional>
 
-#include "routing_grid.h"
 #include "routing_vertex.h"
 #include "routing_track_direction.h"
+#include "routing_grid_blockage.h"
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 
 namespace bfg {
+
+class RoutingGrid;
 
 // This class provides a way to inspect the impact of blockages on a read-only
 // RoutingGrid. It's goals are:
@@ -76,9 +78,7 @@ class RoutingBlockageCache {
                    int64_t padding);
 
   RoutingBlockageCache(
-      const RoutingGrid &grid)
-      : grid_(grid),
-        search_window_margin_(0) {}
+      const RoutingGrid &grid);
 
   RoutingBlockageCache(
       const RoutingGrid &grid,
@@ -137,17 +137,17 @@ class RoutingBlockageCache {
     // the inhibition.
     std::map<RoutingTrackDirection, std::set<SourceBlockage>> inhibitors_;
 
-    // 
+    // Overlapping blockages and their nets.
     std::map<std::string, std::set<SourceBlockage>> users_;
   };
 
-  struct EdgeConcerns {
+  struct EdgeBlockages {
     std::set<SourceBlockage> sources;
   };
 
   template<typename T>
   void ApplyBlockageToOneVertex(
-      const RoutingGridBlockage<T> blockage,
+      const RoutingGridBlockage<T> &blockage,
       const RoutingVertex *vertex,
       std::optional<RoutingTrackDirection> access_direction = std::nullopt);
 
@@ -164,6 +164,10 @@ class RoutingBlockageCache {
 
   const RoutingGrid &grid_;
 
+  // To speed things up we will limit the vertices we check for blockages to
+  // those within this margin of any blockage + padding:
+  int64_t search_window_margin_;
+
   // If available, queries are forwarded to a parent RoutingBlockageCache.
   std::optional<std::reference_wrapper<const RoutingBlockageCache>> parent_;
 
@@ -171,7 +175,7 @@ class RoutingBlockageCache {
   std::map<const RoutingVertex*, VertexBlockages> blocked_vertices_;
 
   // A regular list of blocked edges.
-  std::map<const RoutingVertex*, EdgeConcerns> blocked_edges_;
+  std::map<const RoutingVertex*, EdgeBlockages> blocked_edges_;
 
   // A master list of all blockages we know about.
   //
@@ -181,10 +185,6 @@ class RoutingBlockageCache {
       polygon_blockages_;
   std::vector<std::unique_ptr<RoutingGridBlockage<geometry::Rectangle>>>
       rectangle_blockages_;
-
-  // To speed things up we will limit the vertices we check for blockages to
-  // those within this margin of any blockage + padding:
-  int64_t search_window_margin_;
 };
 
 }   // namespace bfg

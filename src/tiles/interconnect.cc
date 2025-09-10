@@ -204,19 +204,25 @@ void Interconnect::ConfigureRoutingGrid(
   layout->AddGlobalNet("VPWR");
   layout->AddGlobalNet("VGND");
   layout->AddGlobalNet("CLK");
+
+  RoutingBlockageCache blockage_cache(*routing_grid);
+
   {
     // Add blockages from all existing shapes.
     geometry::ShapeCollection shapes;
     layout->CopyNonConnectableShapesOnLayer(
         db.GetLayer("met1.drawing"), &shapes, 1);
+    blockage_cache.AddBlockages(shapes);
     routing_grid->AddBlockages(shapes);
   }
   {
     geometry::ShapeCollection shapes;
     layout->CopyNonConnectableShapesOnLayer(
         db.GetLayer("met2.drawing"), &shapes, 1);
+    blockage_cache.AddBlockages(shapes);
     routing_grid->AddBlockages(shapes);
   }
+
   // FIXME(aryap): So we need to add the met1.drawing CLK/CLKI bars in each
   // flip flop as blockages. These are connectable so are not included above.
   // They are named so we could select them that way. We could remove their

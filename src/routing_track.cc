@@ -1169,9 +1169,6 @@ void RoutingTrack::AddBlockage(
   }
 }
 
-// FIXME(aryap): You are here. AddTemporaryBlockage also needs to distinguish
-// between vertex and edge blockages.
-//
 // There is no merge process for temporary blockages because they are owned by
 // a RoutingGrid; whatever causes the blockage to be created must be able to
 // remove it independently of other temporary blockages.
@@ -1368,6 +1365,8 @@ bool RoutingTrack::ApplyVertexBlockageToSingleVertex(
                       0)) {
     return false;
   }
+  // See note on RoutingGrid::ApplyBlockageToOneVertex: this looks like it's
+  // usually duplicate work.
   if (net != "") {
     // TODO(aryap): Put these on temporary mutation plane so that they can
     // be undone.
