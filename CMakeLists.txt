@@ -73,22 +73,23 @@ file(GLOB_RECURSE VLSIR_SRC "${VLSIR_SRC_DIR}/*.proto")
 
 set(SRC
   ${PROJECT_SOURCE_DIR}/src/abstract_via.cc
-  ${PROJECT_SOURCE_DIR}/src/checkerboard_guide.cc
   ${PROJECT_SOURCE_DIR}/src/cell.cc
+  ${PROJECT_SOURCE_DIR}/src/checkerboard_guide.cc
   ${PROJECT_SOURCE_DIR}/src/circuit.cc
   ${PROJECT_SOURCE_DIR}/src/circuit_primitives_database.cc
   ${PROJECT_SOURCE_DIR}/src/design_database.cc
+  ${PROJECT_SOURCE_DIR}/src/edge_list.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets.cc
   ${PROJECT_SOURCE_DIR}/src/layout.cc
-  ${PROJECT_SOURCE_DIR}/src/scoped_layer.cc
   ${PROJECT_SOURCE_DIR}/src/memory_bank.cc
   ${PROJECT_SOURCE_DIR}/src/parameter.cc
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
-  ${PROJECT_SOURCE_DIR}/src/edge_list.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_blockage_cache.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_grid_blockage.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry.cc
   ${PROJECT_SOURCE_DIR}/src/routing_path.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track.cc
@@ -99,12 +100,13 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_kd_tree.cc
   ${PROJECT_SOURCE_DIR}/src/routing_via_info.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide.cc
+  ${PROJECT_SOURCE_DIR}/src/scoped_layer.cc
 )
 
 set(TILES_SRC
+  ${PROJECT_SOURCE_DIR}/src/tiles/interconnect.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut_b.cc
-  ${PROJECT_SOURCE_DIR}/src/tiles/interconnect.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/slice.cc
 )
 

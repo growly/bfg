@@ -12,19 +12,21 @@
 #include <absl/status/statusor.h>
 
 #include "equivalent_nets.h"
+#include "geometry/group.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
 #include "geometry/poly_line.h"
 #include "geometry/port.h"
 #include "geometry/rectangle.h"
-#include "geometry/group.h"
 #include "layout.h"
 #include "physical_properties_database.h"
 #include "poly_line_cell.h"
 #include "routing_edge.h"
 #include "routing_grid_geometry.h"
-#include "routing_track_blockage.h"
+#include "routing_grid_blockage.h"
 #include "routing_layer_info.h"
+#include "routing_track.h"
+#include "routing_track_blockage.h"
 #include "routing_vertex.h"
 #include "routing_vertex_kd_tree.h"
 #include "routing_via_info.h"
@@ -66,9 +68,6 @@ using geometry::PolyLine;
 class PossessiveRoutingPath;
 class RoutingTrack;
 class RoutingPath;
-
-template<typename T>
-class RoutingGridBlockage;
 
 class RoutingGrid {
  public:
@@ -154,8 +153,7 @@ class RoutingGrid {
       const std::optional<std::string> &prefix,
       Layout *layout) const;
 
-  // Add permanent blockages. Ports need special consideration and are not
-  // added by default.
+  // Add permanent blockages.
   //
   // This also works for T = geometry::Group, since the code needed to use the
   // interface looks the same. The interface is not type-compatible because
@@ -297,6 +295,19 @@ class RoutingGrid {
   std::optional<std::reference_wrapper<const RoutingLayerInfo>>
       GetRoutingLayerInfo(const geometry::Layer &layer) const;
 
+  // The search window margin is the maximum distance from a given blockage to
+  // look for possibly-conflicting vertices. It should be only as big as half
+  // the diameter of the largest thing a vertex could accomodate that would
+  // interfere with a blockage.
+  //
+  // If this is too small, vertices which do conflict with a blockage will not
+  // be detected. If it is too large, we will waste cycles.
+  int64_t FigureSearchWindowMargin() const;
+
+  int64_t GetMinSeparation(const geometry::Layer &layer) const {
+    return physical_db_.Rules(layer).min_separation;
+  }
+
   const std::vector<RoutingPath*> &paths() const { return paths_; }
   const std::set<RoutingEdge*> &off_grid_edges() const {
     return off_grid_edges_;
@@ -315,6 +326,16 @@ class RoutingGrid {
   }
   bool use_linear_cost_model() {
     return use_linear_cost_model_;
+  }
+
+  const std::map<
+      geometry::Layer, std::map<geometry::Layer, RoutingGridGeometry>>
+      &grid_geometry_by_layers() const {
+    return grid_geometry_by_layers_;
+  }
+
+  const RoutingVertexKDTree &off_grid_vertices() const {
+    return off_grid_vertices_;
   }
 
  private:
@@ -743,94 +764,6 @@ class RoutingGrid {
   friend class RoutingPath;
 };
 
-template<typename T>
-class RoutingGridBlockage {
- public:
-  RoutingGridBlockage(
-      const RoutingGrid &routing_grid, const T& shape, int64_t padding)
-      : routing_grid_(routing_grid),
-        shape_(shape),
-        padding_(padding) {}
-
-  ~RoutingGridBlockage();
-
-  // Tests intersection of the blockage with a given point. This differs from
-  // the RoutingVertex and the RoutingEdge tests because no footprint is
-  // assumed: the point is either in the shape or not. (Margin is applied to the
-  // shape before testing and can be negative, if the point needs to be "more
-  // inside" to be considered a hit.)
-  bool IntersectsPoint(const geometry::Point &point, int64_t margin) const;
-
-  bool BlocksWithoutPadding(
-      const RoutingVertex &vertex,
-      const std::optional<EquivalentNets> &exceptional_nets =
-          std::nullopt,
-      const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt)
-      const {
-    return Blocks(vertex, 0, exceptional_nets, access_direction);
-  }
-  bool BlocksWithoutPadding(
-      const RoutingEdge &edge,
-      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const {
-    return Blocks(edge, 0, exceptional_nets);
-  }
-
-  bool Blocks(
-      const RoutingVertex &vertex,
-      const std::optional<EquivalentNets> &exceptional_nets =
-          std::nullopt,
-      const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt)
-      const {
-    return Blocks(vertex, padding_, exceptional_nets, access_direction);
-  }
-  bool Blocks(
-      const RoutingEdge &edge,
-      const std::optional<EquivalentNets> &exceptional_nets) const {
-    return Blocks(edge, padding_, exceptional_nets);
-  }
-  bool Blocks(
-      const geometry::Rectangle &footprint,
-      const std::optional<EquivalentNets> &exceptional_nets) const {
-    return Blocks(footprint, padding_, exceptional_nets);
-  }
-
-  // Takes ownership of the given RoutingTrackBlockage. Store the RoutingTrack
-  // so that we can remove the blockage from the track if we need do.
-  void AddChildTrackBlockage(
-      RoutingTrack *track, RoutingTrackBlockage *blockage);
-
-  void ClearChildTrackBlockages();
-
-  const T& shape() const { return shape_; }
-  const int64_t &padding() const { return padding_; }
-
- private:
-  bool Blocks(
-      const RoutingVertex &vertex,
-      int64_t padding,
-      const std::optional<EquivalentNets> &exceptional_nets,
-      const std::optional<RoutingTrackDirection> &access_direction) const;
-  bool Blocks(
-      const RoutingEdge &edge,
-      int64_t padding,
-      const std::optional<EquivalentNets> &exceptional_nets) const;
-  bool Blocks(
-      const geometry::Rectangle &footprint,
-      int64_t padding,
-      const std::optional<EquivalentNets> &exceptional_nets) const;
-
-  const RoutingGrid &routing_grid_;
-  // We store a copy of the shape. We can't store a reference because callers
-  // can do cowboy shit.
-  const T shape_;
-  int64_t padding_;
-
-  std::vector<std::pair<RoutingTrack*, std::unique_ptr<RoutingTrackBlockage>>>
-      child_track_blockages_;
-};
 
 }  // namespace bfg
 
