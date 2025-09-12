@@ -137,14 +137,15 @@ class RoutingVertex {
   // Check if the vertex is available for a specific net, or ALL nets, on a
   // specific layer, or ALL layers. Two nullopt arguments tests if the vertex is
   // completely available for any net on any layer.
+  // TODO(aryap): Not entirely sure how much sense that makes.
   bool AvailableForAll(
       const std::optional<
           std::reference_wrapper<const EquivalentNets>> &for_nets =
           std::nullopt,
       const std::optional<geometry::Layer> &on_layer = std::nullopt) const;
 
-  // Returns true if the vertex is available for the given nets on any of its
-  // connected layers.
+  // Returns true if the vertex is available for the given nets on any (at least
+  // 1) of its connected layers.
   bool AvailableForNetsOnAnyLayer(const EquivalentNets &nets) const {
     LOG_IF(WARNING, connected_layers_.empty())
         << "There are no connected layers on this vertex so this call will "

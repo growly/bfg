@@ -205,6 +205,12 @@ class RoutingTrack {
 
   bool RemoveTemporaryBlockage(RoutingTrackBlockage *blockage);
 
+  // Returning an optional here in case it's faster than returning an empty
+  // vector. I wonder?
+  template<typename T>
+  std::optional<std::vector<RoutingEdge*>> EdgesBlockedByShape(
+      const T &shape, int64_t padding) const;
+
   // Get the neighbours on either side of the given vertex. If an existing
   // vertex at the given vertex's offset exists, it is NOT included. If
   // `available_only` is true, the nearest available neighbours are returned.
@@ -245,6 +251,9 @@ class RoutingTrack {
     std::vector<RoutingTrackBlockage*> vertex_blockages;
     std::vector<RoutingTrackBlockage*> edge_blockages;
   };
+
+  std::vector<RoutingEdge*> EdgesBlockedByBlockage(
+      const RoutingTrackBlockage &blockage, int64_t padding) const;
 
   bool Intersects(RoutingVertex *vertex) const;
 

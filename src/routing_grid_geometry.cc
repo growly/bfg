@@ -17,6 +17,46 @@
 
 namespace bfg {
 
+template<typename T>
+void RoutingGridGeometry::NearestTracks(
+    const T &shape,
+    std::set<RoutingTrack*> *horizontal,
+    std::set<RoutingTrack*> *vertical,
+    int64_t num_concentric_layers) const {
+  std::set<size_t> horizontal_indices;
+  std::set<size_t> vertical_indices;
+  NearestTrackIndices(
+      shape, &horizontal_indices, &vertical_indices, num_concentric_layers);
+  MapIndicesToTracks(
+      horizontal_tracks_by_index_, horizontal_indices, horizontal);
+  MapIndicesToTracks(
+      vertical_tracks_by_index_, vertical_indices, vertical);
+}
+
+// More explicit template instantiation.
+template void RoutingGridGeometry::NearestTracks(
+    const geometry::Point &shape,
+    std::set<RoutingTrack*> *horizontal,
+    std::set<RoutingTrack*> *vertical,
+    int64_t num_concentric_layers) const;
+
+template void RoutingGridGeometry::NearestTracks(
+    const geometry::Rectangle &shape,
+    std::set<RoutingTrack*> *horizontal,
+    std::set<RoutingTrack*> *vertical,
+    int64_t num_concentric_layers) const;
+
+template<>
+void RoutingGridGeometry::NearestTracks(
+    const geometry::Polygon &polygon,
+    std::set<RoutingTrack*> *horizontal,
+    std::set<RoutingTrack*> *vertical,
+    int64_t num_concentric_layers) const {
+  geometry::Rectangle bounding_box = polygon.GetBoundingBox();
+  return NearestTracks(
+      bounding_box, horizontal, vertical, num_concentric_layers);
+}
+
 void RoutingGridGeometry::AlignRoutingLayerInfos(
     const geometry::Point &point,
     RoutingLayerInfo *horizontal,
@@ -108,25 +148,14 @@ void RoutingGridGeometry::BoundGridIndices(int64_t num_concentric_layers,
       (*row_upper + num_concentric_layers), max_row_index_), 0L);
 }
 
-void RoutingGridGeometry::NearestTracks(
-    const geometry::Point &point,
-    std::set<RoutingTrack*> *horizontal,
-    std::set<RoutingTrack*> *vertical,
-    int64_t num_concentric_layers) const {
-  std::set<size_t> horizontal_indices;
-  std::set<size_t> vertical_indices;
-  NearestTrackIndices(
-      point, &horizontal_indices, &vertical_indices, num_concentric_layers);
-
-  for (size_t index : horizontal_indices) {
-    if (index >= horizontal_tracks_by_index_.size())
+void RoutingGridGeometry::MapIndicesToTracks(
+    const std::vector<RoutingTrack*> &track_container,
+    const std::set<size_t> &indices,
+    std::set<RoutingTrack*> *tracks) const {
+  for (size_t index : indices) {
+    if (index >= track_container.size())
       continue;
-    horizontal->insert(horizontal_tracks_by_index_[index]);
-  }
-  for (size_t index : vertical_indices) {
-    if (index >= vertical_tracks_by_index_.size())
-      continue;
-    vertical->insert(vertical_tracks_by_index_[index]);
+    tracks->insert(track_container[index]);
   }
 }
 
@@ -140,6 +169,30 @@ void RoutingGridGeometry::NearestTrackIndices(
   auto [column_lower, column_upper, row_lower, row_upper] = 
       MapToBoundingGridIndices(point);
   // (I think I like the sauce.)
+
+  BoundGridIndices(num_concentric_layers,
+                   &column_lower,
+                   &column_upper,
+                   &row_lower,
+                   &row_upper);
+
+  // Columns (vertical tracks):
+  for (size_t column = column_lower; column <= column_upper; ++column) {
+    vertical->insert(column);
+  }
+  // Rows (horizontal tracks):
+  for (size_t row = row_lower; row <= row_upper; ++row) {
+    horizontal->insert(row);
+  }
+}
+
+void RoutingGridGeometry::NearestTrackIndices(
+    const geometry::Rectangle &rectangle,
+    std::set<size_t> *horizontal,
+    std::set<size_t> *vertical,
+    int64_t num_concentric_layers) const {
+  auto [column_lower, column_upper, row_lower, row_upper] = 
+      MapToBoundingGridIndices(rectangle);
 
   BoundGridIndices(num_concentric_layers,
                    &column_lower,

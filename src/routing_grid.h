@@ -295,66 +295,10 @@ class RoutingGrid {
   std::optional<std::reference_wrapper<const RoutingLayerInfo>>
       GetRoutingLayerInfo(const geometry::Layer &layer) const;
 
-  // The search window margin is the maximum distance from a given blockage to
-  // look for possibly-conflicting vertices. It should be only as big as half
-  // the diameter of the largest thing a vertex could accomodate that would
-  // interfere with a blockage.
-  //
-  // If this is too small, vertices which do conflict with a blockage will not
-  // be detected. If it is too large, we will waste cycles.
-  int64_t FigureSearchWindowMargin() const;
-
-  int64_t GetMinSeparation(const geometry::Layer &layer) const {
-    return physical_db_.Rules(layer).min_separation;
-  }
-
-  const std::vector<RoutingPath*> &paths() const { return paths_; }
-  const std::set<RoutingEdge*> &off_grid_edges() const {
-    return off_grid_edges_;
-  }
-  const std::vector<RoutingVertex*> &vertices() const { return vertices_; }
-
-  const PhysicalPropertiesDatabase &physical_db() const { return physical_db_; }
-
-  std::pair<std::reference_wrapper<const RoutingLayerInfo>,
-            std::reference_wrapper<const RoutingLayerInfo>>
-      PickHorizontalAndVertical(
-          const geometry::Layer &lhs, const geometry::Layer &rhs) const;
-
-  void set_use_linear_cost_model(bool use_linear_cost_model) {
-    use_linear_cost_model_ = use_linear_cost_model;
-  }
-  bool use_linear_cost_model() {
-    return use_linear_cost_model_;
-  }
-
-  const std::map<
-      geometry::Layer, std::map<geometry::Layer, RoutingGridGeometry>>
-      &grid_geometry_by_layers() const {
-    return grid_geometry_by_layers_;
-  }
-
-  const RoutingVertexKDTree &off_grid_vertices() const {
-    return off_grid_vertices_;
-  }
-
- private:
-  struct CostedVertex {
-    uint64_t cost;
-    geometry::Layer layer;
-    RoutingVertex *vertex;
-  };
-
-  struct VertexWithLayer {
-    RoutingVertex *vertex;
-    geometry::Layer layer;
-  };
-
-  struct TemporaryBlockageInfo {
-    std::vector<RoutingGridBlockage<geometry::Rectangle>*> pin_blockages;
-    std::set<RoutingVertex*> blocked_vertices;
-    std::set<RoutingEdge*> blocked_edges;
-  };
+  // Hands out pointers to RoutingGridGeometries that have tracks in either the
+  // horizontal or vertical direction on the given layer.
+  std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+      FindRoutingGridGeometriesUsingLayer(const geometry::Layer &layer) const;
 
   // FIXME(aryap): We take a via's footprint to the max of the metal overlap on
   // either side, in either direction. The test for whether we can access a via
@@ -460,6 +404,67 @@ class RoutingGrid {
     }
     return obstruction.Overlaps(keep_out.value());
   }
+
+  // The search window margin is the maximum distance from a given blockage to
+  // look for possibly-conflicting vertices. It should be only as big as half
+  // the diameter of the largest thing a vertex could accomodate that would
+  // interfere with a blockage.
+  //
+  // If this is too small, vertices which do conflict with a blockage will not
+  // be detected. If it is too large, we will waste cycles.
+  int64_t FigureSearchWindowMargin() const;
+
+  int64_t GetMinSeparation(const geometry::Layer &layer) const {
+    return physical_db_.Rules(layer).min_separation;
+  }
+
+  const std::vector<RoutingPath*> &paths() const { return paths_; }
+  const std::set<RoutingEdge*> &off_grid_edges() const {
+    return off_grid_edges_;
+  }
+  const std::vector<RoutingVertex*> &vertices() const { return vertices_; }
+
+  const PhysicalPropertiesDatabase &physical_db() const { return physical_db_; }
+
+  std::pair<std::reference_wrapper<const RoutingLayerInfo>,
+            std::reference_wrapper<const RoutingLayerInfo>>
+      PickHorizontalAndVertical(
+          const geometry::Layer &lhs, const geometry::Layer &rhs) const;
+
+  void set_use_linear_cost_model(bool use_linear_cost_model) {
+    use_linear_cost_model_ = use_linear_cost_model;
+  }
+  bool use_linear_cost_model() {
+    return use_linear_cost_model_;
+  }
+
+  const std::map<
+      geometry::Layer, std::map<geometry::Layer, RoutingGridGeometry>>
+      &grid_geometry_by_layers() const {
+    return grid_geometry_by_layers_;
+  }
+
+  const RoutingVertexKDTree &off_grid_vertices() const {
+    return off_grid_vertices_;
+  }
+
+ private:
+  struct CostedVertex {
+    uint64_t cost;
+    geometry::Layer layer;
+    RoutingVertex *vertex;
+  };
+
+  struct VertexWithLayer {
+    RoutingVertex *vertex;
+    geometry::Layer layer;
+  };
+
+  struct TemporaryBlockageInfo {
+    std::vector<RoutingGridBlockage<geometry::Rectangle>*> pin_blockages;
+    std::set<RoutingVertex*> blocked_vertices;
+    std::set<RoutingEdge*> blocked_edges;
+  };
 
   template<typename T>
   void ApplyBlockageToOneVertex(
@@ -634,11 +639,6 @@ class RoutingGrid {
       PolyLineCell *cell) const;
 
   void ApplyDumbHackToPutAPortInTheMiddleOfSomePaths(PolyLineCell *cell) const;
-
-  // Hands out pointers to RoutingGridGeometries that have tracks in either the
-  // horizontal or vertical direction on the given layer.
-  std::vector<std::reference_wrapper<const RoutingGridGeometry>>
-      FindRoutingGridGeometriesUsingLayer(const geometry::Layer &layer) const;
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.

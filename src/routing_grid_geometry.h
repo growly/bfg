@@ -45,14 +45,21 @@ class RoutingGridGeometry {
     VerticesAt(indices, vertices);
   }
 
+  template<typename T>
   void NearestTracks(
-      const geometry::Point &point,
+      const T &shape,
       std::set<RoutingTrack*> *horizontal,
       std::set<RoutingTrack*> *vertical,
       int64_t num_concentric_layers = 1) const;
 
   void NearestTrackIndices(
       const geometry::Point &point,
+      std::set<size_t> *horizontal,
+      std::set<size_t> *vertical,
+      int64_t num_concentric_layers = 1) const;
+
+  void NearestTrackIndices(
+      const geometry::Rectangle &rectangle,
       std::set<size_t> *horizontal,
       std::set<size_t> *vertical,
       int64_t num_concentric_layers = 1) const;
@@ -243,6 +250,11 @@ class RoutingGridGeometry {
   void VerticesAt(
       const std::set<std::pair<size_t, size_t>> &indices,
       std::set<RoutingVertex*> *vertices) const; 
+
+  void MapIndicesToTracks(
+      const std::vector<RoutingTrack*> &track_container,
+      const std::set<size_t> &indices,
+      std::set<RoutingTrack*> *tracks) const;
 
   int64_t x_offset_;
   int64_t x_pitch_;

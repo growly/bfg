@@ -94,7 +94,8 @@ class RoutingBlockageCache {
   bool IsVertexBlocked(
       const RoutingVertex &vertex,
       const EquivalentNets &for_nets,
-      const std::optional<geometry::Layer> &on_layer) const;
+      const std::optional<RoutingTrackDirection> &direction_or_any,
+      const std::optional<geometry::Layer> &layer_or_any) const;
 
   void set_search_window_margin(int64_t search_window_margin) {
     search_window_margin_ = search_window_margin;
@@ -122,28 +123,65 @@ class RoutingBlockageCache {
     void AddUser(const T& blockage) {
       const std::string &net = blockage.shape().net();
       SourceBlockage container = &blockage;
-      users_[net].insert(container);
+      const geometry::Layer &layer = blockage.shape().layer();
+      users_[net][layer].insert(container);
     }
 
     template<typename T>
     void AddInhibitor(const RoutingTrackDirection &blocked_direction,
                       const T &blockage) {
       SourceBlockage container = &blockage;
-      inhibitors_[blocked_direction].insert(container);
+      const geometry::Layer &layer = blockage.shape().layer();
+      inhibitors_[blocked_direction][layer].insert(container);
+    }
+
+    bool IsBlockedByUsers(
+        const EquivalentNets &exceptional_nets,
+        const std::optional<geometry::Layer> &layer_or_any) const;
+
+    bool IsInhibitedInDirection(
+        const std::optional<RoutingTrackDirection> &direction_or_any,
+        const std::optional<geometry::Layer> &layer_or_any) const;
+
+    // An "inhibitor" entry indicates the direction and layer in which a vertex
+    // cannot accomodate a via, and set of blockages which cause this.
+    const std::map<RoutingTrackDirection,
+        std::map<geometry::Layer, std::set<SourceBlockage>>> &inhibitors()
+        const {
+      return inhibitors_;
+    }
+
+    // A "user" entry tracks sets of blockages that intersect with a vertex on a
+    // given (net, layer) pair.
+    const std::map<std::string,
+        std::map<geometry::Layer, std::set<SourceBlockage>>> &users() const {
+      return users_;
     }
 
    private:
     // Maps the direction which is disallowed to the set of blockages causing
     // the inhibition.
-    std::map<RoutingTrackDirection, std::set<SourceBlockage>> inhibitors_;
+    std::map<RoutingTrackDirection,
+        std::map<geometry::Layer, std::set<SourceBlockage>>> inhibitors_;
 
     // Overlapping blockages and their nets.
-    std::map<std::string, std::set<SourceBlockage>> users_;
+    std::map<std::string,
+        std::map<geometry::Layer, std::set<SourceBlockage>>> users_;
   };
 
   struct EdgeBlockages {
-    std::set<SourceBlockage> sources;
+    // If a single blockage with a blocks the edge, the edge can act as a
+    // connector to that blockage and inherits the net itself. Otherwise, it is
+    // not usable. All the blockages without a net ("") will end up under the
+    // same entry.
+    std::map<std::string, std::set<SourceBlockage>> sources;
   };
+
+  bool IsEdgeBlocked(
+      const RoutingEdge &edge,
+      const EquivalentNets &for_nets,
+      const std::optional<std::vector<SourceBlockage>>
+          &more_cancelled_blockages_) const;
 
   template<typename T>
   void ApplyBlockageToOneVertex(
@@ -162,6 +200,15 @@ class RoutingBlockageCache {
     return DeterminePossiblyAffectedVertices(bounding_box, padding);
   }
 
+  template<typename T>
+  std::vector<const RoutingEdge*> DetermineAffectedOnGridEdges(
+      const T &shape, int64_t padding) const;
+
+  template<typename T>
+  std::vector<const RoutingEdge*> DetermineAffectedEdges(
+      const T &rectangle,
+      int64_t padding) const;
+
   const RoutingGrid &grid_;
 
   // To speed things up we will limit the vertices we check for blockages to
@@ -175,7 +222,11 @@ class RoutingBlockageCache {
   std::map<const RoutingVertex*, VertexBlockages> blocked_vertices_;
 
   // A regular list of blocked edges.
-  std::map<const RoutingVertex*, EdgeBlockages> blocked_edges_;
+  std::map<const RoutingEdge*, EdgeBlockages> blocked_edges_;
+
+  // Cancelled blockages should be treated as non-existent.
+  // FIXME(aryap): How to identify shapes?
+  std::vector<SourceBlockage> cancelled_blockages_;
 
   // A master list of all blockages we know about.
   //

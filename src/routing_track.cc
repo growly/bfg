@@ -22,6 +22,57 @@
 
 namespace bfg {
 
+template<>
+std::optional<std::vector<RoutingEdge*>> RoutingTrack::EdgesBlockedByShape(
+    const geometry::Rectangle &rectangle, int64_t padding) const {
+  if (!IntersectsEdges(rectangle, padding)) {
+    return std::nullopt;
+  }
+  std::pair<int64_t, int64_t> low_high = ProjectOntoTrack(
+      rectangle.lower_left(), rectangle.upper_right());
+  RoutingTrackBlockage blockage(low_high.first,
+                                low_high.second,
+                                rectangle.net());
+  return EdgesBlockedByBlockage(blockage, padding);
+}
+
+template<>
+std::optional<std::vector<RoutingEdge*>> RoutingTrack::EdgesBlockedByShape(
+    const geometry::Polygon &polygon, int64_t padding) const {
+  std::vector<geometry::PointPair> intersections;
+  IntersectsEdges(polygon, &intersections, padding);
+  if (intersections.empty()) {
+    return std::nullopt;
+  }
+
+  std::set<RoutingEdge*> blocked;
+  for (const auto &pair : intersections) {
+    std::pair<int64_t, int64_t> low_high =
+        ProjectOntoTrack(pair.first, pair.second);
+    RoutingTrackBlockage blockage(low_high.first,
+                                  low_high.second,
+                                  polygon.net());
+    std::vector<RoutingEdge*> more_blocked =
+        EdgesBlockedByBlockage(blockage, padding);
+    blocked.insert(more_blocked.begin(), more_blocked.end());
+  }
+  return std::vector<RoutingEdge*>(blocked.begin(), blocked.end());
+}
+
+std::vector<RoutingEdge*> RoutingTrack::EdgesBlockedByBlockage(
+    const RoutingTrackBlockage &blockage, int64_t padding) const {
+  std::vector<RoutingEdge*> edges;
+  for (RoutingEdge *edge : edges_) {
+    if (BlockageBlocks(blockage,
+                       edge->first()->centre(),
+                       edge->second()->centre(),
+                       min_separation_to_new_blockages_ + padding)) {
+      edges.push_back(edge);
+    }
+  }
+  return edges;
+}
+
 int64_t RoutingTrack::ProjectOntoAxis(
     const geometry::Point &point, const RoutingTrackDirection &direction) {
   switch (direction) {
@@ -1229,7 +1280,7 @@ RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
     return blockage;
   }
 
-  // FIXME(aryap): Generalising this to also account for net names effectively
+  // NOTE(aryap): Generalising this to also account for net names effectively
   // means that blockages can exist on top of each other. So, for a given net,
   // we maintain the idea that overlapping blockages are merged, but we do not
   // merge blockages on dissimilar nets. So the list of blockages is no longer a
@@ -1239,10 +1290,10 @@ RoutingTrackBlockage *RoutingTrack::MergeNewBlockage(
   // RoutingTrackBlockages should already be sorted in ascending order of
   // position.
   //
-  // We will merge the given obstruction into an existing blockage if we falling
+  // We will merge the given obstruction into an existing blockage if we fall
   // within `margin` of one.
   //
-  // TODO(aryap): I'm trying to find a range of consecutive values for which
+  // NOTE(aryap): I'm trying to find a range of consecutive values for which
   // some predicate is true. I can't find a helpful standard library
   // implementation that isn't just storing a bunch of iterators returned by
   // subsequent calls to std::find_if. But since we need an iterator to remove
@@ -1400,12 +1451,6 @@ bool RoutingTrack::ApplyEdgeBlockageToSingleEdge(
   if (edge->Blocked()) {
     return false;
   }
-  if (!BlockageBlocks(blockage,
-                      edge->first()->centre(),
-                      edge->second()->centre(),
-                      min_separation_to_new_blockages_)) {
-    return false;
-  }
   edge->SetBlocked(true, is_temporary);
   if (net != "" && !(
         edge->EffectiveNet() && edge->EffectiveNet() != "")) {
@@ -1419,7 +1464,8 @@ void RoutingTrack::ApplyEdgeBlockage(
     const std::string &net,
     bool is_temporary,
     std::set<RoutingEdge*> *blocked_edges) {
-  for (RoutingEdge *edge : edges_) {
+  std::vector<RoutingEdge*> affected = EdgesBlockedByBlockage(blockage, 0);
+  for (RoutingEdge *edge : affected) {
     bool applied = ApplyEdgeBlockageToSingleEdge(
         blockage, net, is_temporary, edge);
     if (applied && blocked_edges) {
