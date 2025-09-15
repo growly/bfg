@@ -57,7 +57,8 @@ class RoutingBlockageCacheTest : public testing::Test {
         met1_layer_info.layer(), db.GetLayer("li.drawing"), routing_via_info)
         .IgnoreError();
 
-    routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
+    routing_via_info = db.GetRoutingViaInfoOrDie(
+        "met2.drawing", "met3.drawing");
     routing_via_info.set_cost(0.5);
     routing_grid_->AddRoutingViaInfo(
         db.GetLayer("met3.drawing"), met2_layer_info.layer(), routing_via_info)
@@ -66,8 +67,8 @@ class RoutingBlockageCacheTest : public testing::Test {
     routing_grid_->AddRoutingLayerInfo(met1_layer_info).IgnoreError();
     routing_grid_->AddRoutingLayerInfo(met2_layer_info).IgnoreError();
 
-    routing_grid_->ConnectLayers(met1_layer_info.layer(), met2_layer_info.layer())
-        .IgnoreError();
+    routing_grid_->ConnectLayers(
+        met1_layer_info.layer(), met2_layer_info.layer()).IgnoreError();
   }
 
   std::unique_ptr<RoutingBlockageCache> cache_;
@@ -122,7 +123,7 @@ TEST_F(RoutingBlockageCacheTest, RectangleBlockageParityWithRoutingGrid_2) {
         !vertex->Available(),
         cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
     EXPECT_EQ(
-        false,
+        true,
         cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
   }
   for (const RoutingVertex *vertex : expected_free) {
@@ -130,7 +131,7 @@ TEST_F(RoutingBlockageCacheTest, RectangleBlockageParityWithRoutingGrid_2) {
         !vertex->Available(),
         cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
     EXPECT_EQ(
-        true,
+        false,
         cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
   }
 

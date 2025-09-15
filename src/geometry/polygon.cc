@@ -709,6 +709,45 @@ const std::string Polygon::Describe() const {
   return ss.str();
 }
 
+bool operator==(const Polygon &lhs, const Polygon &rhs) {
+  // Polygons are equal if their list of points is the same under some rotation.
+  // i.e. {p1, p2, p3, p4, p5} and {p3, p4, p5, p1, p2} are the same.
+  //
+  // I think a fast way to do this is to do an O(n) search for a single matching
+  // point, then check if points match in order thereafter. There might be
+  // multiple instances of a single point, so you always have to check the
+  // entire point list for additional occurrences.
+  if (lhs.layer() != rhs.layer())
+    return false;
+  const auto &lhs_vertices = lhs.vertices();
+  const auto &rhs_vertices = rhs.vertices();
+  size_t num_vertices = lhs_vertices.size();
+  if (num_vertices != rhs_vertices.size())
+    return false;
+  for (size_t i = 0; i < num_vertices; ++i) {
+    // j always counts lhs vertices from 0 to the end.
+    size_t j = 0;
+    // This first check is an attempt to make the common path more efficient.
+    // Otherwise the loop can be expanded to cover this case.
+    if (lhs_vertices[j] == rhs_vertices[i]) {
+      // p counts from (i + 1) to i (inclusive), wrapping at the end.
+      size_t p = (i + 1) % num_vertices;
+      ++j;
+      bool all_equal = true;
+      for (; j < num_vertices; ++j, p = (p + 1) % num_vertices) {
+        if (lhs_vertices[j] != rhs_vertices[p]) {
+          all_equal = false;
+          break;
+        }
+      }
+      if (all_equal) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace geometry
 
 std::ostream &operator<<(std::ostream &os, const geometry::Polygon &polygon) {

@@ -361,8 +361,9 @@ const std::string Rectangle::Describe() const {
 }
 
 bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
-  return lhs.lower_left() == rhs.lower_left()
-      && lhs.upper_right() == rhs.upper_right();
+  return lhs.layer() == rhs.layer() &&
+         lhs.lower_left() == rhs.lower_left() &&
+         lhs.upper_right() == rhs.upper_right();
 }
 
 }  // namespace geometry

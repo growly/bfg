@@ -27,7 +27,9 @@ class Cell {
   void set_name(const std::string &name) { name_ = name; }
   const std::string &name() const { return name_; }
 
-  void set_description(const std::string &description) { description_ = description; }
+  void set_description(const std::string &description) {
+    description_ = description;
+  }
   const std::string &description() const { return description_; }
 
   std::set<Cell*> DirectAncestors(bool layout_only = false) const;

@@ -213,21 +213,12 @@ void Interconnect::ConfigureRoutingGrid(
     layout->CopyNonConnectableShapesOnLayer(
         db.GetLayer("met1.drawing"), &shapes, 1);
     routing_grid->AddBlockages(shapes);
-    blockage_cache.AddBlockages(shapes);
   }
   {
     geometry::ShapeCollection shapes;
     layout->CopyNonConnectableShapesOnLayer(
         db.GetLayer("met2.drawing"), &shapes, 1);
     routing_grid->AddBlockages(shapes);
-    blockage_cache.AddBlockages(shapes);
-  }
-
-  for (const auto *vertex : routing_grid->vertices()) {
-    std::cout << *vertex << ": " << (
-        blockage_cache.IsVertexBlocked(
-            *vertex, {}, std::nullopt, std::nullopt) ?
-        "BLOCKED" : "OK") << std::endl;
   }
 
   // FIXME(aryap): So we need to add the met1.drawing CLK/CLKI bars in each

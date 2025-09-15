@@ -29,6 +29,7 @@ class Port : public Rectangle {
   }
 
   Port() {}
+  ~Port() {}
 
   std::string Describe() const;
   static std::string DescribePorts(const std::vector<geometry::Port*> &ports);

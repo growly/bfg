@@ -384,6 +384,7 @@ void Layout::AddPort(const geometry::Port &port,
   copy->set_layer(active_layer_);
   copy->set_net(net_name);
   ShapeCollection *shape_collection = GetOrInsertLayerShapes(active_layer_);
+  // The shape collection will now own the copy.
   shape_collection->ports().emplace_back(copy);
   AddPortByNet(net_name, copy);
 }
@@ -405,7 +406,28 @@ void Layout::DeletePorts(const std::string &name) {
   geometry::PortSet matching_ports;
   GetPorts(name, &matching_ports);
   for (const geometry::Port *port : matching_ports) {
-    delete port;
+    ShapeCollection *collection = GetShapeCollection(port->layer());
+    if (!collection) {
+      delete port;
+      LOG(WARNING) << "No ShapeCollection for Port layer; deleting!";
+      continue;
+    }
+    bool found = false;
+    for (auto uniq_it = collection->ports().begin();
+         uniq_it != collection->ports().end();) {
+      if (uniq_it->get() == port) {
+        // Erasing the unique_ptr will free our memory!
+        uniq_it = collection->ports().erase(uniq_it);
+        found = true;
+      } else {
+        ++uniq_it;
+      }
+    }
+    if (!found) {
+      LOG(WARNING) << "Could not find port " << port << " in ShapeCollection:"
+                   << "deleting";
+      delete port;
+    }
   }
   ports_by_net_.erase(name);
 }

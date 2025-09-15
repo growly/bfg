@@ -71,6 +71,8 @@ class Polygon : public Shape {
   std::vector<Point> vertices_;
 };
 
+bool operator==(const Polygon &lhs, const Polygon &rhs);
+
 }  // namespace geometry
 
 std::ostream &operator<<(std::ostream &os, const geometry::Polygon &polygon);

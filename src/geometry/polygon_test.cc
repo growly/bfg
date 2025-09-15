@@ -657,6 +657,74 @@ TEST(Polygon, OverlapsRectangle_InBoundingBoxButOutside) {
   EXPECT_FALSE(big_l_shape.Overlaps(top_left));
 }
 
+TEST(Polygon, Equal) {
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+  Polygon other = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+
+  EXPECT_TRUE(big_l_shape == other);
+
+  big_l_shape.set_layer(0);
+  other.set_layer(2);
+  EXPECT_FALSE(big_l_shape == other);
+
+  Polygon broken_l = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4}
+  });
+  EXPECT_FALSE(broken_l == big_l_shape);
+}
+
+TEST(Polygon, EqualUnderRotation) {
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+  Polygon big_l_rotated = Polygon({
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4},
+      {0, 0},
+      {10, 0}
+  });
+  EXPECT_TRUE(big_l_shape == big_l_rotated);
+
+  Polygon another_big_l_rotated = Polygon({
+      {6, 4},
+      {0, 4},
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10}
+  });
+  EXPECT_TRUE(big_l_shape == another_big_l_rotated);
+
+  big_l_shape.set_layer(0);
+  big_l_rotated.set_layer(1);
+  EXPECT_FALSE(big_l_shape == big_l_rotated);
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg
