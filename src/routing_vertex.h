@@ -451,6 +451,9 @@ class RoutingVertex {
   // If set to a string, a port is expected to be placed at the top of the
   // vertex connecting to the host_port_;
   std::optional<std::string> hosts_port_;
+
+  friend std::ostream &operator<<(
+      std::ostream &os, const RoutingVertex &vertex);
 };
 
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex);

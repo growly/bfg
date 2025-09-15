@@ -135,10 +135,16 @@ class RoutingBlockageCache {
       inhibitors_[blocked_direction][layer].insert(container);
     }
 
+    // Any specified parameters narrow the space for checked blockages, so if
+    // exceptional_nets is empty and no layer is specified, ANY blockage counts
+    // return true.
     bool IsBlockedByUsers(
         const EquivalentNets &exceptional_nets,
         const std::optional<geometry::Layer> &layer_or_any) const;
 
+    // Similarly, if a parameter is std::nullopt, any direction (respectively
+    // layer) is checked for a blockage, and any of those will cause this to
+    // return true.
     bool IsInhibitedInDirection(
         const std::optional<RoutingTrackDirection> &direction_or_any,
         const std::optional<geometry::Layer> &layer_or_any) const;

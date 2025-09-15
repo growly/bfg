@@ -223,6 +223,13 @@ void Interconnect::ConfigureRoutingGrid(
     routing_grid->AddBlockages(shapes);
   }
 
+  for (const auto *vertex : routing_grid->vertices()) {
+    std::cout << *vertex << ": " << (
+        blockage_cache.IsVertexBlocked(
+            *vertex, {}, std::nullopt, std::nullopt) ?
+        "BLOCKED" : "OK") << std::endl;
+  }
+
   // FIXME(aryap): So we need to add the met1.drawing CLK/CLKI bars in each
   // flip flop as blockages. These are connectable so are not included above.
   // They are named so we could select them that way. We could remove their

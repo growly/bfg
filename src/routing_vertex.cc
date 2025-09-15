@@ -507,10 +507,19 @@ std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
   if (in_use_by_net) {
     os << " in_use_by_single_net:\"" << in_use_by_net->net << "\"";
   }
+  auto users = vertex.UsingNets();
+  if (!users.empty()) {
+    os << " users: " << users.size();
+  }
+
   auto blocked_by_nearby_net = vertex.BlockedBySingleNearbyNet();
   if (blocked_by_nearby_net) {
     os << " blocked_by_nearby_net:\"" << blocked_by_nearby_net->net
        << "\"";
+  }
+  auto blockers = vertex.BlockingNets();
+  if (!blockers.empty()) {
+    os << " blockers: " << blockers.size();
   }
   return os;
 }

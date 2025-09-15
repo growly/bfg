@@ -17,7 +17,7 @@ namespace bfg {
 // all the stuff that needs to be checked to determine:
 //  - if the blockage overlaps a vertex (so the vertex can be used to
 //  connect to it directly)
-//  - if the blokkage inhibits a vertex, meaning it comes too close for the
+//  - if the blockage inhibits a vertex, meaning it comes too close for the
 //  vertex to accomodate a via, and in what directions.
 template<typename T>
 void RoutingBlockageCache::ApplyBlockageToOneVertex(
@@ -223,10 +223,6 @@ bool RoutingBlockageCache::VertexBlockages::IsInhibitedInDirection(
 //   AvailableForAll
 //   AvailableForNetsOnAnyLayer
 // The first and third more than the second.
-//
-// TODO(aryap): Since this really asks, is the vertex _really_ blocked, any
-// omission of the optional parameters increases the space in which it might
-// _not_ be blocked.  Right? No...
 //
 // OK we're just going to copy the behaviour in - sorry, we're going to match
 // the behaviour in - RoutingGrid/Blockage. If no direction is specified, the
