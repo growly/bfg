@@ -212,15 +212,15 @@ void Interconnect::ConfigureRoutingGrid(
     geometry::ShapeCollection shapes;
     layout->CopyNonConnectableShapesOnLayer(
         db.GetLayer("met1.drawing"), &shapes, 1);
-    blockage_cache.AddBlockages(shapes);
     routing_grid->AddBlockages(shapes);
+    blockage_cache.AddBlockages(shapes);
   }
   {
     geometry::ShapeCollection shapes;
     layout->CopyNonConnectableShapesOnLayer(
         db.GetLayer("met2.drawing"), &shapes, 1);
-    blockage_cache.AddBlockages(shapes);
     routing_grid->AddBlockages(shapes);
+    blockage_cache.AddBlockages(shapes);
   }
 
   for (const auto *vertex : routing_grid->vertices()) {

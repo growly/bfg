@@ -113,7 +113,7 @@ class RoutingVertex {
       std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
 
   void SetForcedBlocked(
-      bool totally_blocked,
+      bool blocked,
       bool temporary,
       const std::optional<geometry::Layer> &layer = std::nullopt);
 

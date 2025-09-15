@@ -77,12 +77,10 @@ class RoutingBlockageCache {
   void AddBlockage(const geometry::Polygon &polygon,
                    int64_t padding);
 
-  RoutingBlockageCache(
-      const RoutingGrid &grid);
+  RoutingBlockageCache(const RoutingGrid &grid);
 
-  RoutingBlockageCache(
-      const RoutingGrid &grid,
-      const RoutingBlockageCache &parent)
+  RoutingBlockageCache(const RoutingGrid &grid,
+                       const RoutingBlockageCache &parent)
       : grid_(grid),
         parent_(parent),
         search_window_margin_(0) {}

@@ -19,6 +19,16 @@ namespace bfg {
 //  connect to it directly)
 //  - if the blockage inhibits a vertex, meaning it comes too close for the
 //  vertex to accomodate a via, and in what directions.
+//
+// Limitations:
+//  - Since this is designed for temporary blockages, there is no presently no
+//  callback path for registering blockages on vertices created after they are
+//  applied in this cache. If a new vertex is created in RoutingGrid,
+//  RoutingGrid::ApplyExistingBlockages is called to retroactively apply
+//  pre-exsiting blockages to it. But the new vertex's blockage state would
+//  need to be passed to an RoutingBlockageCache explicitly to track that. New
+//  vertices are typically created for (permanent) blockages and for connection
+//  to ports.
 template<typename T>
 void RoutingBlockageCache::ApplyBlockageToOneVertex(
     const RoutingGridBlockage<T> &blockage,

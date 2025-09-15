@@ -69,8 +69,6 @@ void RoutingGrid::ApplyBlockage(
   // Find any possibly-blocked vertices and make them unavailable:
   std::vector<std::reference_wrapper<const RoutingGridGeometry>>
       grid_geometries = FindRoutingGridGeometriesUsingLayer(layer);
-  // TODO(aryap): Can't we use some version of GetNearbyVertices instead of
-  // these loops?
 
   // The access direction matters a lot for tight spaces. We will use the
   // default access direction for the blockage layer in our test:
