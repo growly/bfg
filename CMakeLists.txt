@@ -86,6 +86,7 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
+  ${PROJECT_SOURCE_DIR}/src/route_manager.cc
   ${PROJECT_SOURCE_DIR}/src/routing_blockage_cache.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid.cc

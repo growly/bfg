@@ -6,6 +6,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <shared_mutex>
 #include <vector>
 
 #include <absl/status/status.h>
@@ -775,6 +776,8 @@ class RoutingGrid {
 
   // The default is to use a super-linear model.
   bool use_linear_cost_model_;
+
+  std::shared_mutex lock_;
 
   template<typename T>
   friend class RoutingGridBlockage;

@@ -2160,6 +2160,8 @@ void RoutingGrid::InstallVertexInPath(
 }
 
 absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
+  //std::unique_lock mu(lock_);
+
   if (path->Empty()) {
     return absl::InvalidArgumentError("Cannot install an empty path.");
   }
@@ -2168,9 +2170,13 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 
   LOG(INFO) << "Installing path " << *path << " with net " << net;
 
-  // Legalise the path. TODO(aryap): This might modify the edges the path
-  // contains, which smells funny.
+  // Legalise the path. This might modify the edges the path contains, which
+  // smells funny, but what are you gonna do?
   path->Legalise();
+
+  // FIXME(aryap): When multithreading, we need to re-check the validity of
+  // every vertex and edge in the path before installation, under lock, in case
+  // things have changed since we started the search.
 
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
@@ -2275,8 +2281,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
                    *v, {}, std::nullopt, std::nullopt);
       },
       [&](RoutingEdge *e) {
-        return e->Available() &&
-               !blockage_cache.IsEdgeBlocked(*e, {});
+        return e->Available() && !blockage_cache.IsEdgeBlocked(*e, {});
       },
       true);
 }
@@ -2350,8 +2355,10 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     std::function<bool(RoutingVertex*)> usable_vertex,
     std::function<bool(RoutingEdge*)> usable_edge,
     bool target_must_be_usable) {
-  // FIXME(aryap): This is very bad.
+  // std::shared_lock mu(lock_);
+
   if (!usable_vertex(begin)) {
+    // NOTE(aryap): This happening is usually very bad.
     return absl::NotFoundError("Start vertex for path is not available");
   }
 

@@ -14,6 +14,7 @@
 #include "geometry/port.h"
 #include "router_session.h"
 #include "routing_path.h"
+#include "routing_blockage_cache.h"
 
 #include "services/router_service.grpc.pb.h"
 
@@ -114,9 +115,11 @@ absl::Status RouterSession::PerformNetRouteOrder(
     return next.status();
   }
 
+  RoutingBlockageCache blockage_cache(*routing_grid_);
+
   LOG(INFO) << "Routing " << *start << " to " << *next;
   absl::StatusOr<RoutingPath*> initial = routing_grid_->AddRouteBetween(
-      *start, *next, {}, request.net());
+      *start, *next, blockage_cache, request.net());
   if (!initial.ok()) {
     return initial.status();
   }
@@ -131,7 +134,7 @@ absl::Status RouterSession::PerformNetRouteOrder(
               << std::quoted(request.net());
     EquivalentNets nets = EquivalentNets({request.net()});
     absl::StatusOr<RoutingPath*> subsequent = routing_grid_->AddRouteToNet(
-        *next, request.net(), nets, {});
+        *next, request.net(), nets, blockage_cache);
     if (!subsequent.ok()) {
       // TODO(aryap): Should probably assemble these into a single status like
       // we do above.
