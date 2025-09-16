@@ -241,8 +241,7 @@ void Interconnect::RouteComplete(
     const InputPortCollection &mux_inputs,
     const OutputPortCollection &mux_outputs,
     Layout *layout) {
-  RoutingGrid routing_grid(
-      design_db_->physical_db());
+  RoutingGrid routing_grid(design_db_->physical_db());
   ConfigureRoutingGrid(&routing_grid, layout);
 
   routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
@@ -256,6 +255,11 @@ void Interconnect::RouteComplete(
           parameters_.num_rows, std::vector<size_t>(parameters_.num_columns));
 
   std::map<std::string, std::map<std::string, std::string>> statuses;
+
+  RoutingBlockageCache blockage_cache(routing_grid);
+  geometry::ShapeCollection connectables;
+  layout->CopyConnectableShapes(&connectables);
+  blockage_cache.AddBlockages(connectables);
 
   size_t num_muxes = parameters_.num_rows * parameters_.num_columns;
   for (size_t i = 0; i < num_muxes; ++i) {
@@ -288,14 +292,17 @@ void Interconnect::RouteComplete(
 
         EquivalentNets ok_nets = nets[from];
         ok_nets.Add(layout->global_nets());
-        geometry::ShapeCollection non_net_connectables;
-        layout->CopyConnectableShapesNotOnNets(
-            ok_nets, &non_net_connectables);
+
+        RoutingBlockageCache child(routing_grid, blockage_cache);
+
+        geometry::ShapeCollection ok_shapes;
+        layout->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
+        child.CancelBlockages(ok_shapes);
 
         auto status = routing_grid.AddRouteToNet(*to,
                                                  targets,
                                                  usable,
-                                                 non_net_connectables);
+                                                 child);
         //LOG_IF(WARNING, !status.ok())
         //    << "Could not connect " << to->Describe() << " to any of "
         //    << targets;
@@ -307,13 +314,16 @@ void Interconnect::RouteComplete(
 
         EquivalentNets ok_nets = usable;
         ok_nets.Add(layout->global_nets());
-        geometry::ShapeCollection non_net_connectables;
-        layout->CopyConnectableShapesNotOnNets(
-            ok_nets, &non_net_connectables);
+
+        RoutingBlockageCache child(routing_grid, blockage_cache);
+
+        geometry::ShapeCollection ok_shapes;
+        layout->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
+        child.CancelBlockages(ok_shapes);
 
         auto status = routing_grid.AddRouteBetween(*from,
                                                    *to,
-                                                   non_net_connectables,
+                                                   child,
                                                    usable);
 
         //LOG_IF(WARNING, !status.ok())

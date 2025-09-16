@@ -13,6 +13,30 @@
 
 namespace bfg {
 
+size_t RoutingBlockageCache::CountCancellations(
+    const std::set<SourceBlockage> blockage_set,
+    const std::set<const CancellationList*> cancellations_list) {
+  size_t count = 0;
+  for (const CancellationList *cancellations : cancellations_list) {
+    for (const SourceBlockage &cancelled : *cancellations) {
+      // A SourceBlockage is a pointer to either a Rectangle or a Polygon
+      // RoutingGridBlockage.
+      if (blockage_set.find(cancelled) != blockage_set.end()) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
+
+size_t RoutingBlockageCache::CountUncancelledBlockages(
+    const std::set<SourceBlockage> blockage_set,
+    const std::set<const CancellationList*> cancellations_list) {
+  size_t num_blockages = blockage_set.size();
+  size_t num_cancelled = CountCancellations(blockage_set, cancellations_list);
+  return num_blockages - num_cancelled;
+}
+
 // TODO(aryap): We have to factor out of the ApplyBlockage et. al. functions
 // all the stuff that needs to be checked to determine:
 //  - if the blockage overlaps a vertex (so the vertex can be used to
@@ -126,6 +150,28 @@ void RoutingBlockageCache::AddBlockage(
   polygon_blockages_.emplace_back(blockage);
 }
 
+RoutingGridBlockage<geometry::Rectangle>*
+RoutingBlockageCache::FindBlockageByShape(
+    const geometry::Rectangle &rectangle) const {
+  for (const auto &blockage : rectangle_blockages_) {
+    if (blockage->shape() == rectangle) {
+      return blockage.get();
+    }
+  }
+  return nullptr;
+}
+
+RoutingGridBlockage<geometry::Polygon>*
+RoutingBlockageCache::FindBlockageByShape(
+    const geometry::Polygon &polygon) const {
+  for (const auto &blockage : polygon_blockages_) {
+    if (blockage->shape() == polygon) {
+      return blockage.get();
+    }
+  }
+  return nullptr;
+}
+
 // An edge is blocked if it has ANY blockages, UNLESS all of the blockages
 // belong to nets which are contained in the "for_nets" set. An empty "for_nets"
 // equivalence class indicates that no nets are acceptable excpetions, therefore
@@ -133,16 +179,25 @@ void RoutingBlockageCache::AddBlockage(
 bool RoutingBlockageCache::IsEdgeBlocked(
     const RoutingEdge &edge,
     const EquivalentNets &for_nets) const {
-  return IsEdgeBlocked(edge, for_nets, cancelled_blockages_);
+  return IsEdgeBlocked(edge, for_nets, {});
 }
 
 bool RoutingBlockageCache::IsEdgeBlocked(
     const RoutingEdge &edge,
     const EquivalentNets &for_nets,
-    const std::optional<std::vector<SourceBlockage>>
-        &more_cancelled_blockages_) const {
+    const std::set<const CancellationList*> &more_cancellations) const {
+  // If more_cancellations is given, we have to consider both it and
+  // cancelled_blockages_ when making exceptions.
+  //
+  // In C++26 you can use ranges to concat these things under views, but we are
+  // plebs and must do a heinous other thing. We will pass a container of
+  // pointers to containers of cancellations. How bout that?!
+  std::set<const CancellationList*> all_cancellations(
+      more_cancellations.begin(), more_cancellations.end());
+  all_cancellations.insert(&cancelled_blockages_);
+
   if (parent_ &&
-      parent_->get().IsEdgeBlocked(edge, for_nets, cancelled_blockages_)) {
+      parent_->get().IsEdgeBlocked(edge, for_nets, all_cancellations)) {
     return true;
   }
   auto entry = blocked_edges_.find(&edge);
@@ -156,6 +211,11 @@ bool RoutingBlockageCache::IsEdgeBlocked(
     // TODO(aryap): Exception checking (cancelled blockages) goes here. This
     // entry should only be considered if the blockages set is non-empty (after
     // removing cancellations).
+    size_t num_applicable = CountUncancelledBlockages(
+        entry.second, all_cancellations);
+    if (num_applicable == 0) {
+      continue;
+    }
 
     if (net == "" || !for_nets.Contains(net)) {
       // There exists a blockage which isn't excluded, or there are blockages
@@ -168,7 +228,8 @@ bool RoutingBlockageCache::IsEdgeBlocked(
 
 bool RoutingBlockageCache::VertexBlockages::IsBlockedByUsers(
     const EquivalentNets &exceptional_nets,
-    const std::optional<geometry::Layer> &on_layer) const {
+    const std::optional<geometry::Layer> &on_layer,
+    const std::set<const CancellationList*> &cancellations) const {
   for (const auto &by_net_entry : users_) {
     const std::string &net = by_net_entry.first;
 
@@ -179,8 +240,10 @@ bool RoutingBlockageCache::VertexBlockages::IsBlockedByUsers(
       if (on_layer && layer != *on_layer) {
         continue;
       }
-      if (by_layer_entry.second.empty()) {
-        // TODO(aryap): Or if they are all excluded...
+
+      size_t num_applicable = CountUncancelledBlockages(
+          by_layer_entry.second, cancellations);
+      if (num_applicable == 0) {
         continue;
       }
 
@@ -206,7 +269,8 @@ bool RoutingBlockageCache::VertexBlockages::IsBlockedByUsers(
 
 bool RoutingBlockageCache::VertexBlockages::IsInhibitedInDirection(
     const std::optional<RoutingTrackDirection> &direction_or_any,
-    const std::optional<geometry::Layer> &layer_or_any) const {
+    const std::optional<geometry::Layer> &layer_or_any,
+    const std::set<const CancellationList*> &cancellations) const {
   for (const auto &[direction, by_layer] : inhibitors_) {
     if (direction_or_any && direction != *direction_or_any) {
       continue;
@@ -217,8 +281,9 @@ bool RoutingBlockageCache::VertexBlockages::IsInhibitedInDirection(
         continue;
       }
 
-      if (blockages.empty()) {
-        // TODO(aryap): Or if they are all excluded...
+      size_t num_applicable = CountUncancelledBlockages(
+          blockages, cancellations);
+      if (num_applicable == 0) {
         continue;
       }
 
@@ -244,17 +309,41 @@ bool RoutingBlockageCache::IsVertexBlocked(
     const EquivalentNets &for_nets,
     const std::optional<RoutingTrackDirection> &direction_or_any,
     const std::optional<geometry::Layer> &layer_or_any) const {
+  return IsVertexBlocked(
+      vertex, for_nets, direction_or_any, layer_or_any, {});
+}
+
+bool RoutingBlockageCache::IsVertexBlocked(
+    const RoutingVertex &vertex,
+    const EquivalentNets &for_nets,
+    const std::optional<RoutingTrackDirection> &direction_or_any,
+    const std::optional<geometry::Layer> &layer_or_any,
+    const std::set<const CancellationList*> &more_cancellations) const {
+  std::set<const CancellationList*> all_cancellations(
+      more_cancellations.begin(), more_cancellations.end());
+  all_cancellations.insert(&cancelled_blockages_);
+
+  if (parent_ &&
+      parent_->get().IsVertexBlocked(vertex,
+                                     for_nets,
+                                     direction_or_any,
+                                     layer_or_any, 
+                                     all_cancellations)) {
+    return true;
+  }
+
   auto entry = blocked_vertices_.find(&vertex);
   if (entry == blocked_vertices_.end()) {
     return false;
   }
   
   const VertexBlockages &blockages = entry->second;
-  if (blockages.IsBlockedByUsers(for_nets, layer_or_any)) {
+  if (blockages.IsBlockedByUsers(for_nets, layer_or_any, all_cancellations)) {
     return true;
   }
   
-  if (blockages.IsInhibitedInDirection(direction_or_any, layer_or_any)) {
+  if (blockages.IsInhibitedInDirection(
+          direction_or_any, layer_or_any, all_cancellations)) {
     return true;
   }
 

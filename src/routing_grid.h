@@ -65,6 +65,7 @@ namespace bfg {
 using geometry::Layer;
 using geometry::PolyLine;
 
+class RoutingBlockageCache;
 class PossessiveRoutingPath;
 class RoutingTrack;
 class RoutingPath;
@@ -120,6 +121,11 @@ class RoutingGrid {
       const geometry::Port &end,
       const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
+  absl::StatusOr<RoutingPath*> AddRouteBetween(
+      const geometry::Port &begin,
+      const geometry::Port &end,
+      const RoutingBlockageCache &blockage_cache,
+      const EquivalentNets &nets);
 
   // target_nets: the nets we're trying to reach with the path.
   // usable_nets: the nets whose objects we can use to form the path. This
@@ -129,6 +135,11 @@ class RoutingGrid {
       const EquivalentNets &target_nets,
       const EquivalentNets &usable_nets,
       const geometry::ShapeCollection &avoid);
+  absl::StatusOr<RoutingPath*> AddRouteToNet(
+      const geometry::Port &begin,
+      const EquivalentNets &target_nets,
+      const EquivalentNets &usable_nets,
+      const RoutingBlockageCache &blockage_cache);
 
   void AddVertex(RoutingVertex *vertex);
 
@@ -501,14 +512,14 @@ class RoutingGrid {
   absl::StatusOr<RoutingPath*> FindRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
-      const geometry::ShapeCollection &avoid,
+      const RoutingBlockageCache &blockage_cache,
       const EquivalentNets &nets);
 
   absl::StatusOr<RoutingPath*> FindRouteToNet(
       const geometry::Port &begin,
       const EquivalentNets &target_nets,
       const EquivalentNets &usable_nets,
-      const geometry::ShapeCollection &avoid);
+      const RoutingBlockageCache &blockage_cache);
 
   absl::Status ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,
@@ -646,12 +657,15 @@ class RoutingGrid {
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object.
   absl::StatusOr<RoutingPath*> ShortestPath(
-      RoutingVertex *begin, RoutingVertex *end);
+      RoutingVertex *begin,
+      RoutingVertex *end,
+      const RoutingBlockageCache &blockage_cache);
 
   absl::StatusOr<RoutingPath*> ShortestPath(
       RoutingVertex *begin,
       RoutingVertex *end,
-      const EquivalentNets &ok_nets);
+      const EquivalentNets &ok_nets,
+      const RoutingBlockageCache &blockage_cache);
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller
   // now owns the object. Places the actual target eventually decided on into
@@ -659,6 +673,7 @@ class RoutingGrid {
   absl::StatusOr<RoutingPath*> ShortestPath(
       RoutingVertex *from,
       const EquivalentNets &to_nets,
+      const RoutingBlockageCache &blockage_cache,
       RoutingVertex **discovered_target);
 
   // Returns nullptr if no path found. If a RoutingPath is found, the caller

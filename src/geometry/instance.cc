@@ -211,6 +211,18 @@ void Instance::CopyConnectableShapesNotOnNets(
   CopyAllShapes(instance_shapes.get(), max_depth, no_prefix);
   shapes->AddConnectableShapesNotOnNets(*instance_shapes, nets);
 }
+
+void Instance::CopyConnectableShapesOnNets(
+    const EquivalentNets &nets,
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &max_depth,
+    const std::optional<std::set<std::string>> &no_prefix) const {
+  std::unique_ptr<ShapeCollection> instance_shapes =
+      std::unique_ptr<ShapeCollection>(new ShapeCollection());
+  CopyAllShapes(instance_shapes.get(), max_depth, no_prefix);
+  shapes->AddConnectableShapesOnNets(*instance_shapes, nets);
+}
+
 void Instance::CopyConnectableShapes(
     ShapeCollection *shapes,
     const std::optional<int64_t> &max_depth,

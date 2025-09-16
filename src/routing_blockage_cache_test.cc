@@ -173,5 +173,75 @@ TEST_F(RoutingBlockageCacheTest, PolygonBlockageParityWithRoutingGrid_1) {
   }
 }
 
+TEST_F(RoutingBlockageCacheTest, RectangleBlockageCancelled_1) {
+  // This rectangle mimicks a met1 horizontal rail (for power or ground), and
+  // is positioned such that it blocks vertices at y = 0, and restricts
+  // vertices at y = 340 to only be horizontal.
+  geometry::Rectangle hazard({0, -240}, {1500, 240});
+  geometry::Layer met1 = design_db_.physical_db().GetLayer("met1.drawing");
+  hazard.set_layer(met1);
+
+  cache_->AddBlockage(hazard, 0);
+
+  std::vector<RoutingVertex*> expected_blocked;
+  std::vector<RoutingVertex*> expected_restricted;
+  std::vector<RoutingVertex*> expected_free;
+
+  for (RoutingVertex *vertex : routing_grid_->vertices()) {
+    if (vertex->centre().y() == 170) {
+      expected_blocked.push_back(vertex);
+    } else if (vertex->centre().y() == 510) {
+      expected_restricted.push_back(vertex);
+    } else {
+      expected_free.push_back(vertex);
+    }
+  }
+
+  for (const RoutingVertex *vertex : expected_blocked) {
+    EXPECT_EQ(
+        true,
+        cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
+  }
+  for (const RoutingVertex *vertex : expected_free) {
+    EXPECT_EQ(
+        false,
+        cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
+  }
+
+  for (const RoutingVertex *vertex : expected_restricted) {
+    EXPECT_EQ(
+        true,
+        cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
+    EXPECT_EQ(
+        false, 
+        cache_->IsVertexBlocked(
+            *vertex, {}, RoutingTrackDirection::kTrackHorizontal, met1));
+  }
+
+  // Now we cancel:
+  cache_->CancelBlockage(hazard);
+
+  for (const RoutingVertex *vertex : expected_blocked) {
+    EXPECT_EQ(
+        false,
+        cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
+  }
+  for (const RoutingVertex *vertex : expected_free) {
+    EXPECT_EQ(
+        false,
+        cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
+  }
+
+  for (const RoutingVertex *vertex : expected_restricted) {
+    EXPECT_EQ(
+        false,
+        cache_->IsVertexBlocked(*vertex, {}, std::nullopt, std::nullopt));
+    EXPECT_EQ(
+        false, 
+        cache_->IsVertexBlocked(
+            *vertex, {}, RoutingTrackDirection::kTrackHorizontal, met1));
+  }
+}
+
 }   // namespace
 }   // namespace bfg

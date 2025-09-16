@@ -1705,10 +1705,13 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
     const geometry::PortSet &end_ports,
     const geometry::ShapeCollection &avoid,
     const EquivalentNets &nets) {
+  RoutingBlockageCache blockage_cache(*this);
+  blockage_cache.AddBlockages(avoid);
+
   std::vector<RoutingPath*> options;
   for (const geometry::Port *begin : begin_ports) {
     for (const geometry::Port *end : end_ports) {
-      auto maybe_path = FindRouteBetween(*begin, *end, avoid, nets);
+      auto maybe_path = FindRouteBetween(*begin, *end, blockage_cache, nets);
       if (!maybe_path.ok()) {
         continue;
       }
@@ -1749,8 +1752,18 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
     const geometry::Port &end,
     const geometry::ShapeCollection &avoid,
     const EquivalentNets &nets) {
+  RoutingBlockageCache blockage_cache(*this);
+  blockage_cache.AddBlockages(avoid);
+  return AddRouteBetween(begin, end, blockage_cache, nets);
+}
+
+absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
+    const geometry::Port &begin,
+    const geometry::Port &end,
+    const RoutingBlockageCache &blockage_cache,
+    const EquivalentNets &nets) {
   absl::StatusOr<RoutingPath*> find_path =
-      FindRouteBetween(begin, end, avoid, nets);
+      FindRouteBetween(begin, end, blockage_cache, nets);
 
   if (!find_path.ok()) {
     return find_path.status();
@@ -1763,50 +1776,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
 absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
     const geometry::Port &begin,
     const geometry::Port &end,
-    const geometry::ShapeCollection &avoid,
+    const RoutingBlockageCache &blockage_cache,
     const EquivalentNets &nets) {
-  // Override the vertex availability check for this search to avoid
-  // obstructions in the given avoid set. Useful since it doesn't mutate the
-  // global starting state for the purpose of the search, but we have to
-  // serialise searches to ensure determinism anyway, making it kind of
-  // a pointless feature. It's also noticeably slower, since now a boolean check
-  // per graph entity is replaced by a container lookup.
-  //
-  // Instead, we could temporarily mark the effected vertices unavailable and
-  // reset them after.
-  // TODO(aryap): That doesn't work today because RoutingTrack has a very
-  // complicated way of managing, sorting and merging blockages, and temporary
-  // blockages would need to be freshly supported. Probably not worth the
-  // complexity just to avoid temporarily blockages like pins.
-  //auto usable_vertex = [&](RoutingVertex *vertex) {
-  //  if (!vertex->available()) return false;
-
-  //  std::optional<geometry::Rectangle> via_footprint = ViaFootprint(
-  //      *vertex,
-  //      100);   // FIXME(aryap): This padding value is the max of the
-  //              // min_separations on the top and bottom layers and should
-  //              // just be automatically found.
-  //  if (!via_footprint)
-  //    return true;
-
-  //  for (geometry::Port *port : avoid) {
-  //    if (port->Overlaps(via_footprint.value()))
-  //      return false;
-  //  }
-  //  return true;
-  //};
-  TemporaryBlockageInfo temporary_blockages;
-
-  // FIXME: short term: copy how RoutingEdge manages temporary OR permanent
-  // blockages
-  // FIXME: medium+ term: implement secondary structure to track temporary
-  // blockages (this will enable multithreading too)
-  SetUpTemporaryBlockages(avoid, &temporary_blockages);
-
-  absl::Cleanup tear_down_temporary_blockages = [&]() {
-    TearDownTemporaryBlockages(temporary_blockages);
-  };
-
   auto begin_connection = ConnectToGrid(begin, nets);
   if (!begin_connection.ok()) {
     std::stringstream ss;
@@ -1831,7 +1802,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
             << end_vertex->centre();
 
-  auto shortest_path_result = ShortestPath(begin_vertex, end_vertex, nets);
+  auto shortest_path_result = ShortestPath(
+      begin_vertex, end_vertex, nets, blockage_cache);
   if (!shortest_path_result.ok()) {
     std::string message = absl::StrCat(
         "No path found: ", shortest_path_result.status().message());
@@ -1884,8 +1856,18 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteToNet(
     const EquivalentNets &target_nets,
     const EquivalentNets &usable_nets,
     const geometry::ShapeCollection &avoid) {
+  RoutingBlockageCache blockage_cache(*this);
+  blockage_cache.AddBlockages(avoid);
+  return AddRouteToNet(begin, target_nets, usable_nets, blockage_cache);
+}
+
+absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteToNet(
+    const geometry::Port &begin,
+    const EquivalentNets &target_nets,
+    const EquivalentNets &usable_nets,
+    const RoutingBlockageCache &blockage_cache) {
   absl::StatusOr<RoutingPath*> find_path =
-      FindRouteToNet(begin, target_nets, usable_nets, avoid);
+      FindRouteToNet(begin, target_nets, usable_nets, blockage_cache);
   if (!find_path.ok()) {
     return find_path;
   }
@@ -1897,17 +1879,13 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
     const geometry::Port &begin,
     const EquivalentNets &target_nets,
     const EquivalentNets &usable_nets,
-    const geometry::ShapeCollection &avoid) {
-  TemporaryBlockageInfo temporary_blockages;
-  SetUpTemporaryBlockages(avoid, &temporary_blockages);
-
+    const RoutingBlockageCache &blockage_cache) {
   auto begin_connection = ConnectToGrid(begin, usable_nets);
   if (!begin_connection.ok()) {
     std::stringstream ss;
     ss << "Could not find available vertex for begin port: "
        << begin_connection.status().message();
     LOG(ERROR) << ss.str();
-    TearDownTemporaryBlockages(temporary_blockages);
     return absl::NotFoundError(ss.str());
   }
   RoutingVertex *begin_vertex = begin_connection->vertex;
@@ -1917,12 +1895,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   RoutingVertex *end_vertex;
 
   auto shortest_path_result = ShortestPath(
-      begin_vertex, target_nets, &end_vertex);
+      begin_vertex, target_nets, blockage_cache, &end_vertex);
   if (!shortest_path_result.ok()) {
     std::string message = absl::StrCat(
         "No path found to net ", target_nets.primary(), ".");
     LOG(WARNING) << message;
-    TearDownTemporaryBlockages(temporary_blockages);
     return absl::NotFoundError(message);
   }
 
@@ -1963,7 +1940,6 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   all_nets.Add(usable_nets);
   shortest_path->set_nets(all_nets);
 
-  TearDownTemporaryBlockages(temporary_blockages);
 
   return shortest_path.release();
 }
@@ -2274,7 +2250,8 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     RoutingVertex *begin,
     RoutingVertex *end,
-    const EquivalentNets &ok_nets) {
+    const EquivalentNets &ok_nets,
+    const RoutingBlockageCache &blockage_cache) {
   return ShortestPath(
       begin,
       [=](RoutingVertex *v) { return v == end; },   // The target.
@@ -2285,19 +2262,29 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
 }
 
 absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
-    RoutingVertex *begin, RoutingVertex *end) {
+    RoutingVertex *begin,
+    RoutingVertex *end,
+    const RoutingBlockageCache &blockage_cache) {
   return ShortestPath(
       begin,
       [=](RoutingVertex *v) { return v == end; },   // The target.
       nullptr,
-      [](RoutingVertex *v) { return v->Available(); },
-      [](RoutingEdge *e) { return e->Available(); },
+      [&](RoutingVertex *v) { 
+        return v->Available() &&
+               !blockage_cache.IsVertexBlocked(
+                   *v, {}, std::nullopt, std::nullopt);
+      },
+      [&](RoutingEdge *e) {
+        return e->Available() &&
+               !blockage_cache.IsEdgeBlocked(*e, {});
+      },
       true);
 }
 
 absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     RoutingVertex *begin,
     const EquivalentNets &to_nets,
+    const RoutingBlockageCache &blockage_cache,
     RoutingVertex **discovered_target) {
   auto path = ShortestPath(
       begin,
@@ -3182,7 +3169,6 @@ void RoutingGrid::SetUpTemporaryBlockages(
            << blockage_info->blocked_vertices.size() << " vertices and "
            << blockage_info->blocked_edges.size() << " edges";
 }
-
 
 void RoutingGrid::TearDownTemporaryBlockages(
     const TemporaryBlockageInfo &blockage_info) {

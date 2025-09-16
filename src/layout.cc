@@ -989,6 +989,25 @@ void Layout::CopyConnectableShapesNotOnNets(
   }
 }
 
+void Layout::CopyConnectableShapesOnNets(
+    const EquivalentNets &nets,
+    ShapeCollection *shapes,
+    const std::optional<int64_t> &max_depth) const {
+  for (const auto &entry : shapes_) {
+    shapes->AddConnectableShapesOnNets(*entry.second, nets);
+  }
+  if (max_depth && *max_depth < 1) {
+    return;
+  }
+  for (const auto &instance : instances_) {
+    instance->CopyConnectableShapesOnNets(
+        nets,
+        shapes,
+        // C++23 has std::optional::transform for this use case!
+        max_depth ? *max_depth - 1 : max_depth);
+  }
+}
+
 void Layout::CopyConnectableShapes(
     ShapeCollection *shapes,
     const std::optional<int64_t> &max_depth) const {

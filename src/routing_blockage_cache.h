@@ -46,6 +46,18 @@ class RoutingGrid;
 // owned externally, typically by the caller of all RoutingGrid methods.
 //
 // The principal question this class shall answer is: is this thing blocked?
+//
+// Ok how bout this. Since RoutingGridBlockages store copies of the blocking
+// shape (for reasons?), we have to do shape-equality checks to resolve which
+// blockages are exceptions. This is kind of expensive. It's much cheaper to
+// figure out which blockages are cancelled by matching the shapes up front,
+// then store a list of cancelled blockages. But we also have to do this for the
+// parent. We have to pass cancellations to the parent and figure out which
+// blockages are affected. Which means the parent has to be set before
+// CancelBlockages() is called and to make things simpler it is then immutable.
+// It also means that the parent must outlive the child, since the child has
+// pointers to the parent's data. It also means that child Caches operate in a
+// significant different mode to parent Caches.
 class RoutingBlockageCache {
  public:
   // This is similar to the identically-named function in RoutingGrid.
@@ -71,11 +83,18 @@ class RoutingBlockageCache {
     }
   }
 
-  void AddBlockage(const geometry::Rectangle &rectangle,
-                   int64_t padding);
-
-  void AddBlockage(const geometry::Polygon &polygon,
-                   int64_t padding);
+  template<typename T>
+  void CancelBlockages(const T &shapes) {
+    for (const auto &rectangle : shapes.rectangles()) {
+      CancelBlockage(*rectangle);
+    }
+    for (const auto &polygon : shapes.polygons()) {
+      CancelBlockage(*polygon);
+    }
+    for (const auto &port : shapes.ports()) {
+      CancelBlockage<geometry::Rectangle>(*port);
+    }
+  }
 
   RoutingBlockageCache(const RoutingGrid &grid);
 
@@ -84,6 +103,26 @@ class RoutingBlockageCache {
       : grid_(grid),
         parent_(parent),
         search_window_margin_(0) {}
+
+  void AddBlockage(const geometry::Rectangle &rectangle,
+                   int64_t padding);
+
+  void AddBlockage(const geometry::Polygon &polygon,
+                   int64_t padding);
+
+  template<typename T>
+  void CancelBlockage(const T &shape) {
+    // Find matching rectangle in blockages list. Extract a pointer to the
+    // blockage. Store that in the list of cancelled blockages. This way we only
+    // pay the rectangle-matching cost up front.
+    RoutingGridBlockage<T> *blockage;
+    if (parent_) {
+      blockage = parent_->get().FindBlockageByShape(shape);
+      cancelled_blockages_.emplace_back(blockage);
+    }
+    blockage = FindBlockageByShape(shape);
+    cancelled_blockages_.emplace_back(blockage);
+  }
 
   bool IsEdgeBlocked(
       const RoutingEdge &edge,
@@ -107,6 +146,14 @@ class RoutingBlockageCache {
   typedef std::variant<
       const RoutingGridBlockage<geometry::Rectangle>*,
       const RoutingGridBlockage<geometry::Polygon>*> SourceBlockage;
+  typedef std::vector<SourceBlockage> CancellationList;
+
+  static size_t CountCancellations(
+      const std::set<SourceBlockage> blockage_set,
+      const std::set<const CancellationList*> cancellations_list);
+  static size_t CountUncancelledBlockages(
+      const std::set<SourceBlockage> blockage_set,
+      const std::set<const CancellationList*> cancellations_list);
 
   // Vertices are blocked in the following interesting ways:
   //   - blockages on nets that are near enough to prevent a via being placed at
@@ -138,14 +185,16 @@ class RoutingBlockageCache {
     // return true.
     bool IsBlockedByUsers(
         const EquivalentNets &exceptional_nets,
-        const std::optional<geometry::Layer> &layer_or_any) const;
+        const std::optional<geometry::Layer> &layer_or_any,
+        const std::set<const CancellationList*> &cancellations) const;
 
     // Similarly, if a parameter is std::nullopt, any direction (respectively
     // layer) is checked for a blockage, and any of those will cause this to
     // return true.
     bool IsInhibitedInDirection(
         const std::optional<RoutingTrackDirection> &direction_or_any,
-        const std::optional<geometry::Layer> &layer_or_any) const;
+        const std::optional<geometry::Layer> &layer_or_any,
+        const std::set<const CancellationList*> &cancellations) const;
 
     // An "inhibitor" entry indicates the direction and layer in which a vertex
     // cannot accomodate a via, and set of blockages which cause this.
@@ -181,11 +230,17 @@ class RoutingBlockageCache {
     std::map<std::string, std::set<SourceBlockage>> sources;
   };
 
+  bool IsVertexBlocked(
+      const RoutingVertex &vertex,
+      const EquivalentNets &for_nets,
+      const std::optional<RoutingTrackDirection> &direction_or_any,
+      const std::optional<geometry::Layer> &layer_or_any,
+      const std::set<const CancellationList*> &more_cancellations) const;
+
   bool IsEdgeBlocked(
       const RoutingEdge &edge,
       const EquivalentNets &for_nets,
-      const std::optional<std::vector<SourceBlockage>>
-          &more_cancelled_blockages_) const;
+      const std::set<const CancellationList*> &more_cancellations) const;
 
   template<typename T>
   void ApplyBlockageToOneVertex(
@@ -213,6 +268,11 @@ class RoutingBlockageCache {
       const T &rectangle,
       int64_t padding) const;
 
+  RoutingGridBlockage<geometry::Rectangle> *FindBlockageByShape(
+      const geometry::Rectangle &rectangle) const;
+  RoutingGridBlockage<geometry::Polygon> *FindBlockageByShape(
+      const geometry::Polygon &polygon) const;
+
   const RoutingGrid &grid_;
 
   // To speed things up we will limit the vertices we check for blockages to
@@ -229,8 +289,7 @@ class RoutingBlockageCache {
   std::map<const RoutingEdge*, EdgeBlockages> blocked_edges_;
 
   // Cancelled blockages should be treated as non-existent.
-  // FIXME(aryap): How to identify shapes?
-  std::vector<SourceBlockage> cancelled_blockages_;
+  CancellationList cancelled_blockages_;
 
   // A master list of all blockages we know about.
   //

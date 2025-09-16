@@ -144,6 +144,13 @@ class Instance : public Manipulable {
       const std::optional<std::set<std::string>> &no_prefix =
           std::nullopt) const;
 
+  void CopyConnectableShapesOnNets(
+      const EquivalentNets &nets,
+      ShapeCollection *shapes,
+      const std::optional<int64_t> &max_depth = std::nullopt,
+      const std::optional<std::set<std::string>> &no_prefix =
+          std::nullopt) const;
+
   void CopyConnectableShapes(
       ShapeCollection *shapes,
       const std::optional<int64_t> &max_depth = std::nullopt,

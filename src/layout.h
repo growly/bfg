@@ -325,6 +325,10 @@ class Layout : public geometry::Manipulable {
       const geometry::Layer &layer, ShapeCollection *shapes) const;
   ShapeCollection *GetShapeCollection(const geometry::Layer &layer) const;
 
+  // We use a ShapeCollection, and not a Group, because we have to generate new
+  // transformed shapes for every child Instance, and the ShapeCollection is
+  // needed to own those.
+  //
   // If `force_below_depth` is given, connectable shapes at that depth in the
   // hierarchy are considered not-connectable. `this` Layout is considered 0, so
   // a value of 1 corresponds to all instances in this layout, a value of 2
@@ -335,6 +339,11 @@ class Layout : public geometry::Manipulable {
       const std::optional<int64_t> &force_below_depth = std::nullopt) const;
 
   void CopyConnectableShapesNotOnNets(
+      const EquivalentNets &nets,
+      ShapeCollection *shapes,
+      const std::optional<int64_t> &max_depth = 1) const;
+
+  void CopyConnectableShapesOnNets(
       const EquivalentNets &nets,
       ShapeCollection *shapes,
       const std::optional<int64_t> &max_depth = 1) const;
