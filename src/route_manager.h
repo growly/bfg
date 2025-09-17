@@ -61,39 +61,66 @@ struct NetRouteOrder {
 
 class RouteManager {
  public:
+  RouteManager(Layout *layout,
+               RoutingGrid *routing_grid)
+      : layout_(layout),
+        routing_grid_(routing_grid),
+        parent_blockage_cache_(*routing_grid) {}
 
+  // Stage required routes:
   absl::StatusOr<int64_t> ConnectMultiplePorts(
       const std::vector<geometry::Port*> &ports,
       const EquivalentNets &nets,
       const std::optional<int64_t> priority = std::nullopt);
 
-  absl::StatusOr<int64_t> ConnectMultiplePorts(
-      const std::vector<std::pair<std::string, std::string>> port_names,
-      const EquivalentNets &nets,
-      const std::optional<int64_t> priority = std::nullopt);
+  //absl::StatusOr<int64_t> ConnectMultiplePorts(
+  //    const std::vector<std::pair<std::string, std::string>> port_names,
+  //    const EquivalentNets &nets,
+  //    const std::optional<int64_t> priority = std::nullopt);
 
-  absl::StatusOr<int64_t> ConnectPair(
+  //absl::StatusOr<int64_t> ConnectPair(
+  //    const geometry::Port &from,
+  //    const geometry::Port &to,
+  //    const EquivalentNets &nets,
+  //    const std::optional<int64_t> priority = std::nullopt);
+
+  //absl::StatusOr<int64_t> ConnectPair(
+  //    const std::pair<std::string, std::string> &from,
+  //    const std::pair<std::string, std::string> &to,
+  //    const EquivalentNets &nets,
+  //    const std::optional<int64_t> priority = std::nullopt);
+
+  //absl::StatusOr<int64_t> ConnectToNet(
+  //    const std::vector<std::set<geometry::Port*>> &ports,
+  //    const EquivalentNets &net);
+
+  absl::StatusOr<int64_t> Connect(
       const geometry::Port &from,
       const geometry::Port &to,
-      const EquivalentNets &nets,
-      const std::optional<int64_t> priority = std::nullopt);
+      const EquivalentNets &as_nets);
 
-  absl::StatusOr<int64_t> ConnectPair(
-      const std::pair<std::string, std::string> &from,
-      const std::pair<std::string, std::string> &to,
-      const EquivalentNets &nets,
-      const std::optional<int64_t> priority = std::nullopt);
 
-  absl::StatusOr<int64_t> ConnectToNet(
-      const std::vector<std::set<geometry::Port*>> &ports,
-      const EquivalentNets &net);
+  // Solve for required routes:
+  absl::Status Solve();
+
+  // Inspect:
 
  private:
+  // TODO(aryap): This was wishfully written:
+  absl::Status RunOrder(const NetRouteOrder &order);
+
   Layout *layout_;
   RoutingGrid *routing_grid_;
+  RoutingBlockageCache parent_blockage_cache_;
 
-  std::unique_ptr<RoutingBlockageCache> blockage_cache_;
+  // Tracks which ports belong to which routed nets. The EquivalentNets are
+  // owned in routed_nets_.
+  std::map<const geometry::Port*, EquivalentNets*> routed_nets_by_port_;
 
+  // Tracks which nets have been routed.
+  std::vector<std::unique_ptr<EquivalentNets>> routed_nets_;
+
+  std::vector<NetRouteOrder> orders_;
 };
 
 }  // namespace bfg
