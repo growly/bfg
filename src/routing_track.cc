@@ -5,6 +5,7 @@
 #include <set>
 #include <vector>
 
+#include <absl/strings/str_join.h>
 #include <absl/cleanup/cleanup.h>
 
 #include "equivalent_nets.h"
@@ -996,6 +997,10 @@ bool RoutingTrack::Intersects(
     const geometry::Rectangle &rectangle,
     int64_t padding,
     int64_t min_transverse_separation) const {
+  DCHECK(rectangle.layer() == layer_)
+      << "Caller must ensure that blockage/intersection-tested shapes are on "
+      << "the same layer as this RoutingTrack, viz. "
+      << rectangle.layer() << " vs. " << layer_;
   // First check that the minor direction falls on this offset:
   int64_t offset_axis_low = ProjectOntoOffset(rectangle.lower_left());
   int64_t offset_axis_high = ProjectOntoOffset(rectangle.upper_right());
@@ -1040,6 +1045,11 @@ bool RoutingTrack::Intersects(
     std::vector<geometry::PointPair> *intersections,
     int64_t padding,
     int64_t min_transverse_separation) const {
+  DCHECK(polygon.layer() == layer_)
+      << "Caller must ensure that blockage/intersection-tested shapes are on "
+      << "the same layer as this RoutingTrack, viz. "
+      << polygon.layer() << " vs. " << layer_;
+
   // FIXME(aryap): This should be width_ / 2, or at least consider the actual
   // maximum thickness (still divided by 2) at vertices, wherever they are.
   //

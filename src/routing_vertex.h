@@ -112,6 +112,18 @@ class RoutingVertex {
           blocking_rectangle = std::nullopt,
       std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
 
+  // Returns true iff the vertex is blocked given the equivalent nets `for_nets`
+  // and on layer `layer_or_any`. If `layer_or_any` is std::nullopt, a blockage
+  // on _any_ given `for_nets` will return true. This is inverse of checking
+  // that the vertex is available for all layers on the given nets. Since we the
+  // vertex itself doesn't track blockages, we cannot reason about directions
+  // here. (A quick note to self because I have been staring at this too long:
+  // checking if ALL things are true should bethe same as negating whether ANY
+  // are false.)
+  bool IsBlocked(
+      const EquivalentNets &for_nets,
+      const std::optional<geometry::Layer> &layer_or_any) const;
+
   void SetForcedBlocked(
       bool blocked,
       bool temporary,
@@ -134,10 +146,14 @@ class RoutingVertex {
 
   bool Available() const { return totally_available_; }
 
-  // Check if the vertex is available for a specific net, or ALL nets, on a
-  // specific layer, or ALL layers. Two nullopt arguments tests if the vertex is
-  // completely available for any net on any layer.
-  // TODO(aryap): Not entirely sure how much sense that makes.
+  // Check if the vertex is available for a specific net, or ALL given nets, on
+  // a specific layer, or ALL layers. If no nets are given, we check that vertex
+  // is free of any nets using or blocking it. Two nullopt arguments tests if
+  // the vertex is completely available for any net on EVERY layer.
+  //
+  // The `on_layer` argument is passed to UsingNets(...) and BlockingNets(...),
+  // where std::nullopt as the layer argument returns the union of all nets on
+  // all layers.
   bool AvailableForAll(
       const std::optional<
           std::reference_wrapper<const EquivalentNets>> &for_nets =

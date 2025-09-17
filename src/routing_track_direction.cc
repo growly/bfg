@@ -1,6 +1,14 @@
 #include "routing_track_direction.h"
 
+#include <set>
+
 namespace bfg {
+
+const std::set<RoutingTrackDirection>
+RoutingTrackDirectionUtility::kAllDirections = {
+    RoutingTrackDirection::kTrackHorizontal,
+    RoutingTrackDirection::kTrackVertical
+};
 
 std::ostream &operator<<(
     std::ostream &os, const RoutingTrackDirection &direction) {

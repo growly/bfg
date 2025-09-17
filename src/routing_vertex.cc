@@ -305,6 +305,12 @@ bool RoutingVertex::ForcedBlocked(const std::optional<geometry::Layer> &layer)
   return false;
 }
 
+bool RoutingVertex::IsBlocked(
+    const EquivalentNets &for_nets,
+    const std::optional<geometry::Layer> &layer_or_any) const {
+  return !AvailableForAll(for_nets, layer_or_any);
+}
+
 bool RoutingVertex::AvailableForAll(
     const std::optional<
         std::reference_wrapper<const EquivalentNets>> &for_nets,

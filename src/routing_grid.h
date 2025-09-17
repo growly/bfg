@@ -686,6 +686,7 @@ class RoutingGrid {
       std::function<bool(RoutingVertex*)> is_target,
       RoutingVertex **discovered_target,
       std::function<bool(RoutingVertex*)> usable_vertex,
+      std::function<bool(RoutingVertex*)> usable_vertex_for_via,
       std::function<bool(RoutingEdge*)> usable_edge,
       bool target_must_be_usable);
 

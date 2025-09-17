@@ -928,7 +928,6 @@ void Sky130InterconnectMux6::DrawOutput(
     int64_t output_port_x,
     Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-
   // TODO(aryap): This bit sucks. I'm not sure if the
   // Sky130TransmissionGateStack should be in charge of creating and
   // distributing ports (in which case it should know about special ports like
@@ -972,8 +971,8 @@ void Sky130InterconnectMux6::DrawOutput(
   // vertically starting below the mux_pre_buffer_y line, we halve and round
   // down to find the number expected above that line, and then align the final
   // output to the top input:
-  int64_t num_above = parameters_.num_inputs / 2;
-  int64_t final_output_y = *mux_pre_buffer_y + num_above * met2_pitch;
+  int64_t num_below = parameters_.num_inputs / 2;
+  int64_t final_output_y = *mux_pre_buffer_y - num_below * met2_pitch;
 
   // Connect the buff output to the edge of the design:
   geometry::Port *buf_X = output_buffer->GetFirstPortNamed("X");

@@ -172,8 +172,7 @@ bool RoutingEdge::IsRectilinear() const {
       first_->centre(), second_->centre());
 }
 
-bool RoutingEdge::AvailableForNets(
-    const EquivalentNets &ok_nets) const {
+bool RoutingEdge::AvailableForNets(const EquivalentNets &ok_nets) const {
   if (Available()) {
     return true;
   }
@@ -183,6 +182,7 @@ bool RoutingEdge::AvailableForNets(
     return false;
   }
 
+  // If there is an effective net and ok_nets is empty, the edge is blocked.
   if (EffectiveNet() && ok_nets.Contains(*EffectiveNet())) {
     return true;
   } else {

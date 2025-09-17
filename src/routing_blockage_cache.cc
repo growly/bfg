@@ -70,14 +70,12 @@ void RoutingBlockageCache::ApplyBlockageToOneVertex(
 
   // If it doesn't, check if there are viable directions the vertex can
   // still be used in:
-  static const std::set<RoutingTrackDirection> kAllDirections = {
-      RoutingTrackDirection::kTrackHorizontal,
-      RoutingTrackDirection::kTrackVertical};
-
+  //
   // TODO(aryap): There's gotta be a more elegant way to either use a set with
   // one element or a static const set. Maybe a reference_wrapper?
   std::set<RoutingTrackDirection> test_directions = access_direction ?
-      std::set<RoutingTrackDirection>{*access_direction} : kAllDirections;
+      std::set<RoutingTrackDirection>{*access_direction} :
+      RoutingTrackDirectionUtility::kAllDirections;
 
   const std::string &net = blockage.shape().net();
   for (const auto &direction : test_directions) {
@@ -172,6 +170,12 @@ RoutingBlockageCache::FindBlockageByShape(
   return nullptr;
 }
 
+bool RoutingBlockageCache::AvailableForAll(
+    const RoutingEdge &edge,
+    const EquivalentNets &nets) const {
+  return !IsEdgeBlocked(edge, nets);
+}
+
 // An edge is blocked if it has ANY blockages, UNLESS all of the blockages
 // belong to nets which are contained in the "for_nets" set. An empty "for_nets"
 // equivalence class indicates that no nets are acceptable excpetions, therefore
@@ -186,6 +190,10 @@ bool RoutingBlockageCache::IsEdgeBlocked(
     const RoutingEdge &edge,
     const EquivalentNets &for_nets,
     const std::set<const CancellationList*> &more_cancellations) const {
+  if (!edge.AvailableForNets(for_nets)) {
+    return true;
+  }
+
   // If more_cancellations is given, we have to consider both it and
   // cancelled_blockages_ when making exceptions.
   //
@@ -294,9 +302,7 @@ bool RoutingBlockageCache::VertexBlockages::IsInhibitedInDirection(
 }
 
 // We need to accommodate the RoutingVertex availability checks
-//   Available
 //   AvailableForAll
-//   AvailableForNetsOnAnyLayer
 // The first and third more than the second.
 //
 // OK we're just going to copy the behaviour in - sorry, we're going to match
@@ -313,12 +319,30 @@ bool RoutingBlockageCache::IsVertexBlocked(
       vertex, for_nets, direction_or_any, layer_or_any, {});
 }
 
+bool RoutingBlockageCache::AvailableForNetsOnAnyLayer(
+    const RoutingVertex &vertex,
+    const EquivalentNets &for_nets) const {
+  for (const geometry::Layer &layer : vertex.connected_layers()) {
+    for (const RoutingTrackDirection &direction :
+         RoutingTrackDirectionUtility::kAllDirections) {
+      if (!IsVertexBlocked(vertex, for_nets, direction, layer)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool RoutingBlockageCache::IsVertexBlocked(
     const RoutingVertex &vertex,
     const EquivalentNets &for_nets,
     const std::optional<RoutingTrackDirection> &direction_or_any,
     const std::optional<geometry::Layer> &layer_or_any,
     const std::set<const CancellationList*> &more_cancellations) const {
+  if (!vertex.AvailableForAll(for_nets, layer_or_any)) {
+    return true;
+  }
+
   std::set<const CancellationList*> all_cancellations(
       more_cancellations.begin(), more_cancellations.end());
   all_cancellations.insert(&cancelled_blockages_);
@@ -410,6 +434,9 @@ RoutingBlockageCache::DetermineAffectedOnGridEdges(
                                 &tracks,
                                 1);   // Nearest edges to the boundary, no more.
     for (RoutingTrack *track : tracks) {
+      if (track->layer() != shape.layer()) {
+        continue;
+      }
       auto edges = track->EdgesBlockedByShape(shape, padding);
       if (!edges) {
         continue;
@@ -436,6 +463,9 @@ RoutingBlockageCache::DetermineAffectedEdges(
   // TODO(aryap): We just check all of these? Hello?
   std::vector<RoutingEdge*> off_grid_collisions;
   for (RoutingEdge *edge : off_grid_edges) {
+    if (edge->layer() != shape.layer()) {
+      continue;
+    }
     bool hazard = grid_.WireWouldIntersect(*edge, shape, padding);
     if (!hazard) {
       continue;

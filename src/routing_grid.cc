@@ -2160,7 +2160,7 @@ void RoutingGrid::InstallVertexInPath(
 }
 
 absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
-  //std::unique_lock mu(lock_);
+  std::unique_lock mu(lock_);
 
   if (path->Empty()) {
     return absl::InvalidArgumentError("Cannot install an empty path.");
@@ -2262,8 +2262,20 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       begin,
       [=](RoutingVertex *v) { return v == end; },   // The target.
       nullptr,
-      [&](RoutingVertex *v) { return v->AvailableForNetsOnAnyLayer(ok_nets); },
-      [&](RoutingEdge *e) { return e->AvailableForNets(ok_nets); },
+      [&](RoutingVertex *v) {
+        // To be able to land at the vertex there must be at least one layer on
+        // which the net can connect.
+        return blockage_cache.AvailableForNetsOnAnyLayer(*v, ok_nets);
+      },
+      [&](RoutingVertex *v) { 
+        // To fit a via, the vertex must be free of blockages on all layers for
+        // the given nets. (If no nets given, then it must be free for all
+        // nets.)
+        return blockage_cache.AvailableForAll(*v, ok_nets);
+      },
+      [&](RoutingEdge *e) {
+        return blockage_cache.AvailableForAll(*e, ok_nets);
+      },
       true);
 }
 
@@ -2276,12 +2288,15 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       [=](RoutingVertex *v) { return v == end; },   // The target.
       nullptr,
       [&](RoutingVertex *v) { 
-        return v->Available() &&
-               !blockage_cache.IsVertexBlocked(
-                   *v, {}, std::nullopt, std::nullopt);
+        // This is the same as checking if it is completely available.
+        return blockage_cache.AvailableForAll(*v);
+      },
+      [&](RoutingVertex *v) { 
+        return blockage_cache.AvailableForAll(*v);
       },
       [&](RoutingEdge *e) {
-        return e->Available() && !blockage_cache.IsEdgeBlocked(*e, {});
+        // This is the same as checking if it is completely available.
+        return blockage_cache.AvailableForAll(*e);
       },
       true);
 }
@@ -2300,6 +2315,14 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
         if (!v->InUseBySingleNet()) {
           return false;
         }
+
+        // A vertex is "forced blocked" if it is not accessible in any
+        // direction. If it is accessible in at least one direction on some
+        // layer, it is not forced blocked.
+        if (!blockage_cache.AvailableForNetsOnAnyLayer(*v, to_nets)) {
+          return false;
+        }
+
         // Check that putting a via at this position doesn't conflict with vias
         // for other nets (since the encapsulating metal layers would
         // conflict):
@@ -2308,8 +2331,10 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
         // NOTE: It's not the *same* as a vertex that will become a via, but
         // that isn't decided til RoutingPath has to export geometry :/
         for (RoutingVertex *neighbour : neighbours) {
-          if (!neighbour->AvailableForNetsOnAnyLayer(to_nets) &&
-              neighbour->ChangesEdge()) {
+          if (!neighbour->ChangesEdge()) {
+            continue;
+          }
+          if (!blockage_cache.AvailableForNetsOnAnyLayer(*neighbour, to_nets)) {
             VLOG(16) << "(ShortestPath) Vertex " << v->centre()
                      << " not viable because a via wouldn't fit here";
             return false;
@@ -2320,7 +2345,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       discovered_target,
       // Usable vertices are:
       [&](RoutingVertex *v) {
-        return v->AvailableForNetsOnAnyLayer(to_nets);
+        return blockage_cache.AvailableForNetsOnAnyLayer(*v, to_nets);
+      },
+      // Usable vertices for vias are:
+      [&](RoutingVertex *v) {
+        return blockage_cache.AvailableForAll(*v, to_nets);
       },
       // Usable edges are:
       [&](RoutingEdge *e) {
@@ -2353,9 +2382,10 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     std::function<bool(RoutingVertex*)> is_target,
     RoutingVertex **discovered_target,
     std::function<bool(RoutingVertex*)> usable_vertex,
+    std::function<bool(RoutingVertex*)> usable_vertex_for_via,
     std::function<bool(RoutingEdge*)> usable_edge,
     bool target_must_be_usable) {
-  // std::shared_lock mu(lock_);
+  std::shared_lock mu(lock_);
 
   if (!usable_vertex(begin)) {
     // NOTE(aryap): This happening is usually very bad.
@@ -2489,6 +2519,22 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
 #ifndef NDEBUG
         VLOG(15) << *edge << " unusable_edge";
 #endif  // NDEBUG
+        continue;
+      }
+
+      // Not all vertices are used for vias, which is not the invariant under
+      // which the algorithm was designed. We can't rely on "usable_vertex" to
+      // filter out vertices that can't accommodate vias, since in a linear-mode
+      // regime multiple short edges will connect at vertices that never need a
+      // via.
+      //
+      // Instead, if the edge requires a layer change here, we check if we can
+      // accommodate a via at this vertex.
+      const auto &[prev_idx, last_edge] = prev[current_index];
+      if (last_edge &&
+          last_edge->layer() != edge->layer() &&
+          !usable_vertex_for_via(current)) {
+        // Skip the edge that would cause an unacceptable via.
         continue;
       }
 
@@ -2762,13 +2808,11 @@ void RoutingGrid::ApplyBlockageToOneVertex(
   } else {
     // If it doesn't, check if there are viable directions the vertex can
     // still be used in:
-    static const std::set<RoutingTrackDirection> kAllDirections = {
-        RoutingTrackDirection::kTrackHorizontal,
-        RoutingTrackDirection::kTrackVertical};
-
-    // Yikes. This will make a copy of kAllDirections.
+    //
+    // NOTE(aryap): Yikes. This will make a copy of kAllDirections.
     std::set<RoutingTrackDirection> test_directions = access_direction ?
-        std::set<RoutingTrackDirection>{*access_direction} : kAllDirections;
+        std::set<RoutingTrackDirection>{*access_direction} :
+        RoutingTrackDirectionUtility::kAllDirections;
 
     std::set<RoutingTrackDirection> available_directions;
 

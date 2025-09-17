@@ -124,9 +124,29 @@ class RoutingBlockageCache {
     cancelled_blockages_.emplace_back(blockage);
   }
 
+  // If for_nets is empty, no exceptions are made for blocking nets, and so this
+  // will effectively ask, is the edge completely unblocked?
+  bool AvailableForAll(const RoutingEdge &edge,
+                       const EquivalentNets &nets = {}) const;
+
   bool IsEdgeBlocked(
       const RoutingEdge &edge,
       const EquivalentNets &for_nets) const;
+
+  // This is the equivalent of RoutingVertex::AvailableForNetsOnAnyLayer in
+  // terms of contract, but it includes blockages in this cache _as well as_
+  // blockages on the vertex itself. It will true iff there exists a connected
+  // layer on the vertex which is unblocked under the exceptions of the given
+  // nets. It could have been named "UnblockedForNetsOnAtLeastOneLayer".
+  bool AvailableForNetsOnAnyLayer(const RoutingVertex &vertex,
+                                  const EquivalentNets &for_nets) const;
+
+  // True iff the vertex is totally unblocked, available for all nets and
+  // layers.
+  bool AvailableForAll(const RoutingVertex &vertex,
+                       const EquivalentNets &for_nets = {}) const {
+    return !IsVertexBlocked(vertex, for_nets, std::nullopt, std::nullopt);
+  }
 
   bool IsVertexBlocked(
       const RoutingVertex &vertex,

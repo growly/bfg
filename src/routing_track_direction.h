@@ -2,12 +2,18 @@
 #define ROUTING_TRACK_DIRECTION_H_
 
 #include <ostream>
+#include <set>
 
 namespace bfg {
 
 enum class RoutingTrackDirection {
   kTrackHorizontal,
   kTrackVertical
+};
+
+class RoutingTrackDirectionUtility {
+ public:
+  static const std::set<RoutingTrackDirection> kAllDirections;
 };
 
 std::ostream &operator<<(

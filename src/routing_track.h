@@ -255,6 +255,11 @@ class RoutingTrack {
   std::vector<RoutingEdge*> EdgesBlockedByBlockage(
       const RoutingTrackBlockage &blockage, int64_t padding) const;
 
+  // RoutingTrack does not check if any of the layers of these objects match its
+  // layer when checking for intersection. It is more efficient for the caller
+  // to avoid intersecting shapes with a routing track that is on a separate
+  // layer to them, than it is to check every single RoutingTrack.
+
   bool Intersects(RoutingVertex *vertex) const;
 
   bool Intersects(const geometry::Rectangle &rectangle,
