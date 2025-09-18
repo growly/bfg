@@ -110,7 +110,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   // default, which is to return the bounding box).
   cell->layout()->SetTilingBounds(*bank.GetTilingBounds());
 
-  RouteComplete2(mux_inputs, mux_outputs, cell->layout());
+  RouteComplete(mux_inputs, mux_outputs, cell->layout());
 
   return cell.release();
 }
@@ -256,123 +256,6 @@ void Interconnect::RouteComplete(
           parameters_.num_rows, std::vector<size_t>(parameters_.num_columns));
 
   std::map<std::string, std::map<std::string, std::string>> statuses;
-
-  RoutingBlockageCache blockage_cache(routing_grid);
-  geometry::ShapeCollection connectables;
-  layout->CopyConnectableShapes(&connectables);
-  blockage_cache.AddBlockages(connectables);
-
-  size_t num_muxes = parameters_.num_rows * parameters_.num_columns;
-  for (size_t i = 0; i < num_muxes; ++i) {
-    size_t source_row = (i / parameters_.num_columns) % parameters_.num_rows;
-    size_t source_col = i % parameters_.num_columns;
-
-    geometry::Instance *source = muxes_[source_row][source_col];
-    // Only one output per mux right now.
-    geometry::Port *from = mux_outputs[source_row][source_col];
-
-    for (size_t j = 0; j < num_muxes; ++j) {
-      size_t dest_row = (j / parameters_.num_columns) % parameters_.num_rows;
-      size_t dest_col = j % parameters_.num_columns;
-
-      geometry::Instance *destination = muxes_[dest_row][dest_col];
-
-      // TODO(aryap): Have to find unused inputs:
-      size_t &input_index = next_free_input[dest_row][dest_col];
-      geometry::Port *to = mux_inputs[dest_row][dest_col][input_index];
-      // Only connect up to 6 inputs per destination.
-      input_index = input_index + 1;
-      if (input_index > 5) {
-        continue;
-      }
-
-      if (nets.find(from) != nets.end()) {
-        EquivalentNets targets = nets[from];
-        nets[from].Add(to->net());
-        EquivalentNets &usable = nets[from];
-
-        EquivalentNets ok_nets = nets[from];
-        ok_nets.Add(layout->global_nets());
-
-        RoutingBlockageCache child(routing_grid, blockage_cache);
-
-        geometry::ShapeCollection ok_shapes;
-        layout->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
-        child.CancelBlockages(ok_shapes);
-
-        auto status = routing_grid.AddRouteToNet(*to,
-                                                 targets,
-                                                 usable,
-                                                 child);
-        //LOG_IF(WARNING, !status.ok())
-        //    << "Could not connect " << to->Describe() << " to any of "
-        //    << targets;
-        statuses[from->Describe()][to->Describe()] = absl::StrCat(
-            status.status().ToString(), " nets: ", usable.Describe());
-      } else {
-        EquivalentNets usable({from->net(), to->net()});
-        nets[from] = usable;
-
-        EquivalentNets ok_nets = usable;
-        ok_nets.Add(layout->global_nets());
-
-        RoutingBlockageCache child(routing_grid, blockage_cache);
-
-        geometry::ShapeCollection ok_shapes;
-        layout->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
-        child.CancelBlockages(ok_shapes);
-
-        auto status = routing_grid.AddRouteBetween(*from,
-                                                   *to,
-                                                   child,
-                                                   usable);
-
-        //LOG_IF(WARNING, !status.ok())
-        //    << "Could not connect " << from->Describe() << " to "
-        //    << to->Describe();
-        statuses[from->Describe()][to->Describe()] = absl::StrCat(
-            status.status().ToString(), " nets: ", usable.Describe());
-      }
-    }
-  }
-
-  LOG(INFO) << "Route summary:";
-  for (const auto &outer : statuses) {
-    for (const auto &inner : outer.second) {
-      const auto &status = inner.second;
-      LOG(INFO) << outer.first << " -> " << inner.first << ": "
-                << status;
-    }
-  }
-
-  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
-
-  routing_grid.ExportToLayout("routing", layout);
-}
-
-void Interconnect::RouteComplete2(
-    const InputPortCollection &mux_inputs,
-    const OutputPortCollection &mux_outputs,
-    Layout *layout) {
-  RoutingGrid routing_grid(design_db_->physical_db());
-  ConfigureRoutingGrid(&routing_grid, layout);
-
-  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
-
-  // All of the different port net names attached to the same driver need to be
-  // merged.
-  std::map<geometry::Port*, EquivalentNets> nets;
-
-  std::vector<std::vector<size_t>> next_free_input =
-      std::vector<std::vector<size_t>>(
-          parameters_.num_rows, std::vector<size_t>(parameters_.num_columns));
-
-  std::map<std::string, std::map<std::string, std::string>> statuses;
-
-  RoutingBlockageCache blockage_cache(routing_grid);
-  geometry::ShapeCollection connectables;
-  layout->CopyConnectableShapes(&connectables);
-  blockage_cache.AddBlockages(connectables);
 
   RouteManager route_manager(layout, &routing_grid);
 

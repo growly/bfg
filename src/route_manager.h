@@ -86,7 +86,9 @@ class RouteManager {
                RoutingGrid *routing_grid)
       : layout_(layout),
         routing_grid_(routing_grid),
-        parent_blockage_cache_(*routing_grid) {}
+        root_blockage_cache_(*routing_grid) {
+    ConfigureRoutingBlockageCache();
+  }
 
   // Stage required routes:
   absl::StatusOr<int64_t> ConnectMultiplePorts(
@@ -128,6 +130,8 @@ class RouteManager {
   std::string DescribeOrders() const;
 
  private:
+  void ConfigureRoutingBlockageCache();
+
   EquivalentNets *GetRoutedNetsByPort(const geometry::Port *port) const;
   void MergeAndReplaceEquivalentNets(
       const std::set<EquivalentNets*> to_replace,
@@ -139,9 +143,11 @@ class RouteManager {
   // TODO(aryap): This was wishfully written:
   absl::Status RunOrder(const NetRouteOrder &order);
 
+  absl::Status RunOrdersSequential();
+
   Layout *layout_;
   RoutingGrid *routing_grid_;
-  RoutingBlockageCache parent_blockage_cache_;
+  RoutingBlockageCache root_blockage_cache_;
 
   // Tracks which ports belong to which routed nets. The EquivalentNets are
   // owned in routed_nets_.

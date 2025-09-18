@@ -4,6 +4,7 @@
 #include <glog/logging.h>
 
 #include "layout.h"
+#include "geometry/shape_collection.h"
 
 namespace bfg {
 
@@ -54,6 +55,13 @@ absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
   return position;
 }
 
+absl::Status RouteManager::RunOrdersSequential() {
+  for (const NetRouteOrder &order : orders_) {
+    RunOrder(order).IgnoreError();
+  }
+  return absl::OkStatus();
+}
+
 // Ok this is nice and is exactly what RouterSession does, but what I think I
 // wanted in Interconnect::RouteComplete was to be able specify ports by
 // instance/name and for something to automatically figure out whether those had
@@ -84,7 +92,7 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   }
 
   RoutingBlockageCache child_blockage_cache(*routing_grid_,
-                                            parent_blockage_cache_);
+                                            root_blockage_cache_);
 
   // Another copy, so we can extract the shapes that aren't blocked.
   EquivalentNets ok_nets = usable_nets;
@@ -131,6 +139,15 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   return absl::OkStatus();
 }
 
+// The default configuration of the RoutingBlockageCache is to stage all
+// connectable shapes as blockages, so that each NetRouteOrder can operate under
+// a child RoutingBlockageCache with its net objects as exceptions.
+void RouteManager::ConfigureRoutingBlockageCache() {
+  geometry::ShapeCollection connectables;
+  layout_->CopyConnectableShapes(&connectables);
+  root_blockage_cache_.AddBlockages(connectables);
+}
+
 EquivalentNets *RouteManager::GetRoutedNetsByPort(
     const geometry::Port *port) const {
   auto it = routed_nets_by_port_.find(port);
@@ -169,6 +186,8 @@ void RouteManager::MergeAndReplaceEquivalentNets(
 
 absl::Status RouteManager::Solve() {
   ConsolidateOrders().IgnoreError();
+
+  RunOrdersSequential();
 
   return absl::OkStatus();
 }
@@ -241,7 +260,8 @@ absl::Status RouteManager::CollectConnectedNets() {
       for (const geometry::Port *port : node) {
         nets->Add(port->net());
 
-        // If the port is found to take part in some nets already, mark them for merger:
+        // If the port is found to take part in some nets already, mark them for
+        // merger:
         EquivalentNets *existing = GetRoutedNetsByPort(port);
         if (existing) {
           to_merge.insert(existing);
