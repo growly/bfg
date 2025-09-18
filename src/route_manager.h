@@ -5,6 +5,8 @@
 #include <optional>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <absl/status/statusor.h>
 
 #include "equivalent_nets.h"
@@ -50,15 +52,34 @@ namespace bfg {
 // annealing, an ILP, etc.
 
 struct NetRouteOrder {
+ public:
+  NetRouteOrder() = default;
+  NetRouteOrder(const EquivalentNets &net)
+      : net_(net) {}
+
+  std::string Describe() const;
+
+  void set_net(const EquivalentNets &net) { net_ = net; }
+
+  EquivalentNets &net() { return net_; }
+  const EquivalentNets &net() const { return net_; }
+
+  std::vector<std::set<const geometry::Port*>> &nodes() { return nodes_; }
+  const std::vector<std::set<const geometry::Port*>> &nodes() const {
+    return nodes_;
+  }
+
+ private:
   // All of the equivalent nets on this route. The net.primary() string is used
   // as a canonical ID.
-  EquivalentNets net;
+  EquivalentNets net_;
 
   // Each node is a set of equivalent ports. In principle any node from a set
   // can be used to connect, but in practice it should only be one.
-  std::vector<std::set<const geometry::Port*>> nodes;
+  std::vector<std::set<const geometry::Port*>> nodes_;
 };
 
+// Maybe "RouteGovernor"?
 class RouteManager {
  public:
   RouteManager(Layout *layout,
@@ -97,15 +118,24 @@ class RouteManager {
   absl::StatusOr<int64_t> Connect(
       const geometry::Port &from,
       const geometry::Port &to,
-      const EquivalentNets &as_nets);
+      const EquivalentNets &as_nets = {});
 
 
   // Solve for required routes:
   absl::Status Solve();
 
   // Inspect:
+  std::string DescribeOrders() const;
 
  private:
+  EquivalentNets *GetRoutedNetsByPort(const geometry::Port *port) const;
+  void MergeAndReplaceEquivalentNets(
+      const std::set<EquivalentNets*> to_replace,
+      EquivalentNets *replacement);
+
+  absl::Status ConsolidateOrders();
+  absl::Status CollectConnectedNets();
+
   // TODO(aryap): This was wishfully written:
   absl::Status RunOrder(const NetRouteOrder &order);
 
@@ -121,6 +151,9 @@ class RouteManager {
   std::vector<std::unique_ptr<EquivalentNets>> routed_nets_;
 
   std::vector<NetRouteOrder> orders_;
+
+  FRIEND_TEST(RouteManagerTest, ConsolidateOrders);
+  FRIEND_TEST(RouteManagerTest, MergeAndReplaceEquivalentNets);
 };
 
 }  // namespace bfg

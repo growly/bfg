@@ -110,7 +110,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   // default, which is to return the bounding box).
   cell->layout()->SetTilingBounds(*bank.GetTilingBounds());
 
-  RouteComplete(mux_inputs, mux_outputs, cell->layout());
+  RouteComplete2(mux_inputs, mux_outputs, cell->layout());
 
   return cell.release();
 }
@@ -400,57 +400,12 @@ void Interconnect::RouteComplete2(
         continue;
       }
 
-      //route_manager.Connect(from, to);
-
-      if (nets.find(from) != nets.end()) {
-        EquivalentNets targets = nets[from];
-        nets[from].Add(to->net());
-        EquivalentNets &usable = nets[from];
-
-        EquivalentNets ok_nets = nets[from];
-        ok_nets.Add(layout->global_nets());
-
-        RoutingBlockageCache child(routing_grid, blockage_cache);
-
-        geometry::ShapeCollection ok_shapes;
-        layout->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
-        child.CancelBlockages(ok_shapes);
-
-        auto status = routing_grid.AddRouteToNet(*to,
-                                                 targets,
-                                                 usable,
-                                                 child);
-        //LOG_IF(WARNING, !status.ok())
-        //    << "Could not connect " << to->Describe() << " to any of "
-        //    << targets;
-        statuses[from->Describe()][to->Describe()] = absl::StrCat(
-            status.status().ToString(), " nets: ", usable.Describe());
-      } else {
-        EquivalentNets usable({from->net(), to->net()});
-        nets[from] = usable;
-
-        EquivalentNets ok_nets = usable;
-        ok_nets.Add(layout->global_nets());
-
-        RoutingBlockageCache child(routing_grid, blockage_cache);
-
-        geometry::ShapeCollection ok_shapes;
-        layout->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
-        child.CancelBlockages(ok_shapes);
-
-        auto status = routing_grid.AddRouteBetween(*from,
-                                                   *to,
-                                                   child,
-                                                   usable);
-
-        //LOG_IF(WARNING, !status.ok())
-        //    << "Could not connect " << from->Describe() << " to "
-        //    << to->Describe();
-        statuses[from->Describe()][to->Describe()] = absl::StrCat(
-            status.status().ToString(), " nets: ", usable.Describe());
-      }
+      route_manager.Connect(*from, *to);
     }
   }
+
+  route_manager.Solve().IgnoreError();
+  LOG(INFO) << route_manager.DescribeOrders();
 
   LOG(INFO) << "Route summary:";
   for (const auto &outer : statuses) {

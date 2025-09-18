@@ -462,6 +462,7 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
+  ${PROJECT_SOURCE_DIR}/src/route_manager_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_blockage_cache_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc
