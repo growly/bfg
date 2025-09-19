@@ -65,6 +65,8 @@ DEFINE_string(primitives, "primitives.pb", "Path to binary circuits proto");
 DEFINE_int32(k_lut, 4, "How many LUT inputs");
 DEFINE_bool(s44, false, "Whether to make an S44 LUT (override K selection)");
 
+DECLARE_int32(jobs);
+
 namespace { 
 
 void Gf180McuMuxExperiment() {

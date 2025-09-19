@@ -567,7 +567,9 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
 absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
     const geometry::Port &port,
     const EquivalentNets &connectable_nets) {
+  LOG(INFO) << "In ConnectToGrid waiting for lock";
   std::unique_lock mu(lock_);
+  LOG(INFO) << "In ConnectToGrid lock ok";
 
   auto try_add_access_vertices = AddAccessVerticesForPoint(
       port.centre(), port.layer(), connectable_nets);
@@ -1818,7 +1820,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
   std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
 
   // For the remainder of the function, we need a reader lock:
+  LOG(INFO) << "In FindRouteBetween waiting for lock";
   std::shared_lock mu(lock_);
+  LOG(INFO) << "In FindRouteBetween lock ok";
 
   // Remember the ports to which the path should connect.
   //
@@ -1915,7 +1919,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   }
 
   // For the remainder of the function, we need a reader lock:
+  LOG(INFO) << "In FindRouteToNet waiting for lock";
   std::shared_lock mu(lock_);
+  LOG(INFO) << "In FindRouteToNet lock ok";
 
   // Claim the pointer.
   std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
@@ -2173,7 +2179,9 @@ void RoutingGrid::InstallVertexInPath(
 }
 
 absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
+  LOG(INFO) << "In InstallPath waiting for lock";
   std::unique_lock mu(lock_);
+  LOG(INFO) << "In InstallPath lock ok";
 
   if (path->Empty()) {
     return absl::InvalidArgumentError("Cannot install an empty path.");
@@ -2404,7 +2412,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     std::function<bool(RoutingVertex*)> usable_vertex_for_via,
     std::function<bool(RoutingEdge*)> usable_edge,
     bool target_must_be_usable) {
+  LOG(INFO) << "In ShortestPath waiting for lock";
   std::shared_lock mu(lock_);
+  LOG(INFO) << "In ShortestPath lock ok";
 
   if (!usable_vertex(begin)) {
     // NOTE(aryap): This happening is usually very bad.

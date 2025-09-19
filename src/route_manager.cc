@@ -5,9 +5,15 @@
 
 #include <sstream>
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 
 #include "layout.h"
 #include "geometry/shape_collection.h"
+
+// Parallelism, multithreading, etc.
+DEFINE_int32(jobs, 1,
+    "Max. number of parallel threads to use, when possible. If less than "
+    " equal to 0, the number of hardware threads available will be used.");
 
 namespace bfg {
 
@@ -58,7 +64,7 @@ absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
   return position;
 }
 
-absl::Status RouteManager::RunOrdersSequential() {
+absl::Status RouteManager::RunAllSerial() {
   for (const NetRouteOrder &order : orders_) {
     RunOrder(order).IgnoreError();
   }
@@ -66,14 +72,14 @@ absl::Status RouteManager::RunOrdersSequential() {
 }
 
 // TODO(aryap): This is a work in progress...
-absl::Status RouteManager::RunOrdersParallel() {
-  static const size_t kBatchSize = std::thread::hardware_concurrency();
+absl::Status RouteManager::RunAllParallel() {
+  int32_t batch_size = GetConcurrency();
   std::vector<std::thread> threads;
-  threads.reserve(kBatchSize);
+  threads.reserve(batch_size);
 
   size_t i = 0;
   while (i < orders_.size()) {
-    for (size_t j = 0; j < kBatchSize && i < orders_.size(); ++j) {
+    for (size_t j = 0; j < batch_size && i < orders_.size(); ++j) {
       threads.emplace_back([&, i]() {
         const NetRouteOrder &order = orders_[i];
         LOG(INFO) << "Thread " << j << " dispatch for order " << i << std::endl
@@ -189,6 +195,10 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   return absl::OkStatus();
 }
 
+int32_t RouteManager::GetConcurrency() const {
+  return FLAGS_jobs <= 0 ? std::thread::hardware_concurrency() : FLAGS_jobs;
+}
+
 // The default configuration of the RoutingBlockageCache is to stage all
 // connectable shapes as blockages, so that each NetRouteOrder can operate under
 // a child RoutingBlockageCache with its net objects as exceptions.
@@ -237,8 +247,11 @@ void RouteManager::MergeAndReplaceEquivalentNets(
 absl::Status RouteManager::Solve() {
   ConsolidateOrders().IgnoreError();
 
-  //RunOrdersSequential().IgnoreError();
-  RunOrdersParallel().IgnoreError();
+  if (GetConcurrency() == 1) {
+    RunAllSerial().IgnoreError();
+  } else {
+    RunAllParallel().IgnoreError();
+  }
 
   return absl::OkStatus();
 }

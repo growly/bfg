@@ -130,6 +130,8 @@ class RouteManager {
   std::string DescribeOrders() const;
 
  private:
+  int32_t GetConcurrency() const;
+
   void ConfigureRoutingBlockageCache();
 
   EquivalentNets *GetRoutedNetsByPort(const geometry::Port *port) const;
@@ -143,8 +145,8 @@ class RouteManager {
   // TODO(aryap): This was wishfully written:
   absl::Status RunOrder(const NetRouteOrder &order);
 
-  absl::Status RunOrdersSequential();
-  absl::Status RunOrdersParallel();
+  absl::Status RunAllSerial();
+  absl::Status RunAllParallel();
 
   Layout *layout_;
   RoutingGrid *routing_grid_;
