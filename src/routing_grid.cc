@@ -567,6 +567,8 @@ std::pair<std::reference_wrapper<const RoutingLayerInfo>,
 absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
     const geometry::Port &port,
     const EquivalentNets &connectable_nets) {
+  std::unique_lock mu(lock_);
+
   auto try_add_access_vertices = AddAccessVerticesForPoint(
       port.centre(), port.layer(), connectable_nets);
   if (try_add_access_vertices.ok()) {
@@ -1770,6 +1772,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
   }
 
   absl::Status install = InstallPath(*find_path);
+  if (!install.ok()) {
+    return install;
+  }
   return *find_path;
 }
 
@@ -1811,6 +1816,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
     return absl::NotFoundError(message);
   }
   std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
+
+  // For the remainder of the function, we need a reader lock:
+  std::shared_lock mu(lock_);
 
   // Remember the ports to which the path should connect.
   //
@@ -1872,6 +1880,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteToNet(
     return find_path;
   }
   absl::Status install = InstallPath(*find_path);
+  if (!install.ok()) {
+    return install;
+  }
   return *find_path;
 }
 
@@ -1902,6 +1913,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
     LOG(WARNING) << message;
     return absl::NotFoundError(message);
   }
+
+  // For the remainder of the function, we need a reader lock:
+  std::shared_lock mu(lock_);
 
   // Claim the pointer.
   std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
@@ -1939,7 +1953,6 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   EquivalentNets all_nets(target_nets);
   all_nets.Add(usable_nets);
   shortest_path->set_nets(all_nets);
-
 
   return shortest_path.release();
 }
@@ -2164,6 +2177,12 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 
   if (path->Empty()) {
     return absl::InvalidArgumentError("Cannot install an empty path.");
+  }
+
+  // Before proceeding, check if the path is still legal under the lock.
+  auto still_good = path->CheckStillAvailable();
+  if (!still_good.ok()) {
+    return still_good;
   }
 
   const std::string &net = path->nets().primary();

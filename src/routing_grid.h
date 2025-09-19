@@ -71,6 +71,7 @@ class PossessiveRoutingPath;
 class RoutingTrack;
 class RoutingPath;
 
+// Thread-compatible, and I'm trying to make it thread-safe.
 class RoutingGrid {
  public:
   // FIXME(aryap): The 'linear_cost_model' option is a stand-in for what is
@@ -478,8 +479,8 @@ class RoutingGrid {
     std::set<RoutingEdge*> blocked_edges;
   };
 
-  // `access_direction` specifies the required access direction at the vertex: if
-  // none is specified, the vertex is checked for support in ALL directions,
+  // `access_direction` specifies the required access direction at the vertex:
+  // if none is specified, the vertex is checked for support in ALL directions,
   // meaning it is more likely to be blocked.
   template<typename T>
   void ApplyBlockageToOneVertex(

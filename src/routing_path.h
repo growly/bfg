@@ -38,7 +38,11 @@ class RoutingPath {
 
   double Cost() const;
 
+  // TODO(aryap): Rename to "TryToLegalise" or something that isn't confused
+  // next to "IsLegal".
   void Legalise();
+
+  absl::Status CheckStillAvailable() const;
 
   std::optional<geometry::Layer> StartAccessLayer() const {
     if (!picked_start_layers_) {

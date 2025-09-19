@@ -672,6 +672,32 @@ void RoutingPath::Legalise() {
   legalised_ = true;
 }
 
+// Check every edge and vertex for use by other nets. This is a paranoid check
+// that only makes sense in multithreading environments where the path was
+// formed from elements that could have changed stated in the meantime.
+//
+// This isn't the same as a full legality (DRC) check, and is only intended to
+// detect collisions when multiple paths are set to use the same elements:
+absl::Status RoutingPath::CheckStillAvailable() const {
+  for (RoutingVertex *vertex : vertices_) {
+    auto using_net = vertex->InUseBySingleNet();
+    if (using_net && !nets_.Contains(using_net->net)) {
+      return absl::UnavailableError(absl::StrCat(
+            "Vertex ", vertex->centre().Describe(), " already assigned to ",
+            using_net->net));
+    }
+  }
+  for (RoutingEdge *edge : edges_) {
+    auto using_net = edge->PermanentNet();
+    if (using_net && !nets_.Contains(*using_net)) {
+      return absl::UnavailableError(absl::StrCat(
+            "Edge ", edge->Describe(), " already assigned to ",
+            *using_net));
+    }
+  }
+  return absl::OkStatus();
+}
+
 // This can happen:
 //
 //            | L1|

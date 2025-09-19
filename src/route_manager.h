@@ -144,6 +144,7 @@ class RouteManager {
   absl::Status RunOrder(const NetRouteOrder &order);
 
   absl::Status RunOrdersSequential();
+  absl::Status RunOrdersParallel();
 
   Layout *layout_;
   RoutingGrid *routing_grid_;
@@ -157,6 +158,8 @@ class RouteManager {
   std::vector<std::unique_ptr<EquivalentNets>> routed_nets_;
 
   std::vector<NetRouteOrder> orders_;
+
+  static constexpr size_t kNumRetries = 3;
 
   FRIEND_TEST(RouteManagerTest, ConsolidateOrders);
   FRIEND_TEST(RouteManagerTest, MergeAndReplaceEquivalentNets);

@@ -59,14 +59,14 @@ TEST_F(RouteManagerTest, ConsolidateOrders) {
   //      v         v     |
   //   p5 x         x <---+
   //                p6
-  route_manager_->Connect(*p1, *p2);
-  route_manager_->Connect(*p3, *p5);
-  route_manager_->Connect(*p4, *p6);
-  route_manager_->Connect(*p2, *p6);
+  route_manager_->Connect(*p1, *p2).IgnoreError();
+  route_manager_->Connect(*p3, *p5).IgnoreError();
+  route_manager_->Connect(*p4, *p6).IgnoreError();
+  route_manager_->Connect(*p2, *p6).IgnoreError();
 
   EXPECT_EQ(4, route_manager_->orders_.size());
 
-  route_manager_->ConsolidateOrders();
+  route_manager_->ConsolidateOrders().IgnoreError();
 
   EXPECT_EQ(2, route_manager_->orders_.size());
 

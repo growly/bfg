@@ -1,5 +1,8 @@
 #include "route_manager.h"
 
+#include <thread>
+#include <functional>
+
 #include <sstream>
 #include <glog/logging.h>
 
@@ -62,6 +65,31 @@ absl::Status RouteManager::RunOrdersSequential() {
   return absl::OkStatus();
 }
 
+// TODO(aryap): This is a work in progress...
+absl::Status RouteManager::RunOrdersParallel() {
+  static const size_t kBatchSize = std::thread::hardware_concurrency();
+  std::vector<std::thread> threads;
+  threads.reserve(kBatchSize);
+
+  size_t i = 0;
+  while (i < orders_.size()) {
+    for (size_t j = 0; j < kBatchSize && i < orders_.size(); ++j) {
+      threads.emplace_back([&, i]() {
+        const NetRouteOrder &order = orders_[i];
+        LOG(INFO) << "Thread " << j << " dispatch for order " << i << std::endl
+                  << order.Describe();
+        RunOrder(order).IgnoreError();
+      });
+      ++i;
+    }
+    for (size_t j = 0; j < threads.size(); ++j) {
+      threads[j].join();
+    }
+    threads.clear();
+  }
+  return absl::OkStatus();
+}
+
 // Ok this is nice and is exactly what RouterSession does, but what I think I
 // wanted in Interconnect::RouteComplete was to be able specify ports by
 // instance/name and for something to automatically figure out whether those had
@@ -106,15 +134,35 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   // usable nets, which are the set of all the nets that will *be* routed.
   EquivalentNets target_nets;
 
+  auto try_fn = [&](
+      const std::function<absl::StatusOr<RoutingPath*>()> &route_fn)
+          -> absl::Status {
+    size_t attempts = 0;
+    absl::Status last_result;
+    while (attempts < kNumRetries) {
+      auto last_result = route_fn();
+      if (last_result.ok()) {
+        return last_result.status();
+      }
+      attempts++;
+      LOG(INFO) << "Oops! Error on attempt #" << attempts  << "/"
+                << kNumRetries << "... "
+                << (attempts < kNumRetries ? "retrying." : "quitting");
+    }
+    return last_result;
+  };
+
   bool first_pair_routed = false;
   for (size_t i = 0; i < order.nodes().size() - 1; ++i) {
     const geometry::Port *from = *order.nodes()[i + 1].begin();
     if (!first_pair_routed) {
       const geometry::Port *to = *order.nodes()[i].begin();
-      auto result = routing_grid_->AddRouteBetween(*from,
-                                                   *to,
-                                                   child_blockage_cache,
-                                                   usable_nets);
+      auto result = try_fn([&]() {
+        return routing_grid_->AddRouteBetween(*from,
+                                              *to,
+                                              child_blockage_cache,
+                                              usable_nets);
+      });
       if (result.ok()) {
         first_pair_routed = true;
         target_nets.Add(from->net());
@@ -124,10 +172,12 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
         // Save for later? Come back and attempt at the end?
       }
     } else {
-      auto result = routing_grid_->AddRouteToNet(*from,
-                                                 target_nets,
-                                                 usable_nets,
-                                                 child_blockage_cache);
+      auto result = try_fn([&]() {
+          return routing_grid_->AddRouteToNet(*from,
+                                              target_nets,
+                                              usable_nets,
+                                              child_blockage_cache);
+      });
       if (result.ok()) {
         target_nets.Add(from->net());
       } else {
@@ -187,7 +237,8 @@ void RouteManager::MergeAndReplaceEquivalentNets(
 absl::Status RouteManager::Solve() {
   ConsolidateOrders().IgnoreError();
 
-  RunOrdersSequential();
+  //RunOrdersSequential().IgnoreError();
+  RunOrdersParallel().IgnoreError();
 
   return absl::OkStatus();
 }

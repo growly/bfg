@@ -283,12 +283,11 @@ void Interconnect::RouteComplete(
         continue;
       }
 
-      route_manager.Connect(*from, *to);
+      route_manager.Connect(*from, *to).IgnoreError();
     }
   }
 
   route_manager.Solve().IgnoreError();
-  LOG(INFO) << route_manager.DescribeOrders();
 
   LOG(INFO) << "Route summary:";
   for (const auto &outer : statuses) {
