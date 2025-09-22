@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <set>
+#include <shared_mutex>
 #include <utility>
 #include <vector>
 
@@ -107,6 +108,7 @@ class RoutingTrack {
       RoutingVertex *lhs, RoutingVertex *rhs) const;
 
   // Remove the vertex from this track, and remove any edge that uses it.
+  // Thread-safe.
   bool RemoveVertex(RoutingVertex *vertex);
 
   bool ContainsVertex(RoutingVertex *vertex) const;
@@ -146,6 +148,8 @@ class RoutingTrack {
   //  existing (B) vertex;
   //  - *target_already_exists, in case the target landed on an existing vertex
   //  and is invalid (D).
+  //
+  // This is a thread-safe function.
   bool CreateNearestVertexAndConnect(
       const RoutingGrid &grid,
       RoutingVertex *target,
@@ -480,6 +484,8 @@ class RoutingTrack {
   // These can be cleared by pointer or all at once. The caller takes ownership
   // of the object, we DO NOT OWN temporary blockages.
   BlockageGroup temporary_blockages_;
+
+  std::shared_mutex lock_;
 
   FRIEND_TEST(RoutingTrackTest, MergesBlockages);
   FRIEND_TEST(RoutingTrackTest, DoesNotMergeDifferingNets);

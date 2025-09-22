@@ -91,6 +91,49 @@ RoutingGridGeometry::RoutingGridGeometry()
       horizontal_layer_(0),
       vertical_layer_(0) {}
 
+RoutingGridGeometry::RoutingGridGeometry(const RoutingGridGeometry& other)
+    : x_offset_(other.x_offset_),
+      x_pitch_(other.x_pitch_),
+      x_min_(other.x_min_),
+      x_max_(other.x_max_),
+      x_start_(other.x_start_),
+      max_column_index_(other.max_column_index_),
+      y_offset_(other.y_offset_),
+      y_pitch_(other.y_pitch_),
+      y_min_(other.y_min_),
+      y_max_(other.y_max_),
+      y_start_(other.y_start_),
+      max_row_index_(other.max_row_index_),
+      horizontal_layer_(other.horizontal_layer_),
+      vertical_layer_(other.vertical_layer_),
+      vertices_by_grid_position_(other.vertices_by_grid_position_),
+      horizontal_tracks_by_index_(other.horizontal_tracks_by_index_),
+      vertical_tracks_by_index_(other.vertical_tracks_by_index_) {}
+
+RoutingGridGeometry &RoutingGridGeometry::operator=(
+    const RoutingGridGeometry &other) {
+  if (this != &other) {
+    x_offset_ = other.x_offset_;
+    x_pitch_ = other.x_pitch_;
+    x_min_ = other.x_min_;
+    x_max_ = other.x_max_;
+    x_start_ = other.x_start_;
+    max_column_index_ = other.max_column_index_;
+    y_offset_ = other.y_offset_;
+    y_pitch_ = other.y_pitch_;
+    y_min_ = other.y_min_;
+    y_max_ = other.y_max_;
+    y_start_ = other.y_start_;
+    max_row_index_ = other.max_row_index_;
+    horizontal_layer_ = other.horizontal_layer_;
+    vertical_layer_ = other.vertical_layer_;
+    vertices_by_grid_position_ = other.vertices_by_grid_position_;
+    horizontal_tracks_by_index_ = other.horizontal_tracks_by_index_;
+    vertical_tracks_by_index_ = other.vertical_tracks_by_index_;
+  }
+  return *this;
+}
+
 std::tuple<int64_t, int64_t, int64_t, int64_t>
 RoutingGridGeometry::MapToBoundingGridIndices(const geometry::Point &point)
     const {

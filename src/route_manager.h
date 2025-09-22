@@ -161,7 +161,7 @@ class RouteManager {
 
   std::vector<NetRouteOrder> orders_;
 
-  static constexpr size_t kNumRetries = 3;
+  static constexpr size_t kNumRetries = 1;
 
   FRIEND_TEST(RouteManagerTest, ConsolidateOrders);
   FRIEND_TEST(RouteManagerTest, MergeAndReplaceEquivalentNets);

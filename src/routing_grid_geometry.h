@@ -2,6 +2,7 @@
 #define ROUTING_GRID_GEOMETRY_H_
 
 #include <cstdint>
+#include <shared_mutex>
 #include <utility>
 #include <set>
 
@@ -26,6 +27,8 @@ class RoutingGridGeometry {
       RoutingLayerInfo *vertical);
 
   RoutingGridGeometry();
+  RoutingGridGeometry(const RoutingGridGeometry &other);
+  RoutingGridGeometry &operator=(const RoutingGridGeometry &other);
 
   void ComputeForLayers(
       const RoutingLayerInfo &horizontal_info,
@@ -282,6 +285,8 @@ class RoutingGridGeometry {
 
   std::vector<RoutingTrack*> horizontal_tracks_by_index_;
   std::vector<RoutingTrack*> vertical_tracks_by_index_;
+
+  std::shared_mutex lock_;
 };
 
 template <typename T>

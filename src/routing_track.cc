@@ -293,6 +293,7 @@ std::vector<RoutingVertex*> RoutingTrack::GetImmediateNeighbours(
 bool RoutingTrack::AddVertex(
     RoutingVertex *vertex,
     const std::optional<EquivalentNets> &for_nets) {
+  std::unique_lock mu(lock_);
   LOG_IF(FATAL, !Intersects(vertex))
       << "RoutingTrack " << Describe() << " cannot accommodate new vertex "
       << vertex->centre();
@@ -335,6 +336,8 @@ bool RoutingTrack::AddVertex(
 }
 
 bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
+  std::unique_lock mu(lock_);
+
   int64_t vertex_offset = ProjectOntoTrack(vertex->centre());
   if (vertices_by_offset_.erase(vertex_offset) == 0) {
     // We didn't know about this vertex.
@@ -547,6 +550,8 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
     RoutingVertex **connecting_vertex,
     bool *bridging_vertex_is_new,
     bool *target_already_exists) {
+  std::unique_lock mu(lock_);
+
   *connecting_vertex = nullptr;
   *bridging_vertex_is_new = false;
   *target_already_exists = false;
@@ -616,6 +621,7 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
     }
   }
 
+  mu.unlock();
   if (!AddVertex(bridging_vertex, for_nets)) {
     RemoveVertex(bridging_vertex);
     return false;
@@ -630,6 +636,7 @@ RoutingVertex *RoutingTrack::CreateNewVertexAndConnect(
     const geometry::Point &candidate_centre,
     const geometry::Layer &target_layer,
     const EquivalentNets &for_nets) {
+  std::unique_lock mu(lock_);
   if (!IsPointOnTrack(candidate_centre)) {
     return nullptr;
   }
@@ -645,6 +652,7 @@ RoutingVertex *RoutingTrack::CreateNewVertexAndConnect(
     return nullptr;
   }
 
+  mu.unlock();
   if (!AddVertex(validated_vertex, for_nets)) {
     RemoveVertex(validated_vertex);
     return nullptr;

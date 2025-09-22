@@ -147,10 +147,15 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
     absl::Status last_result;
     while (attempts < kNumRetries) {
       auto last_result = route_fn();
-      if (last_result.ok()) {
-        return last_result.status();
+      switch (last_result.status().code()) {
+        case absl::StatusCode::kOk:
+          return last_result.status();
+        case absl::StatusCode::kUnavailable:
+          // Transient error, always re-attempt.
+          break;
+        default:
+          attempts++;
       }
-      attempts++;
       LOG(INFO) << "Oops! Error on attempt #" << attempts  << "/"
                 << kNumRetries << "... "
                 << (attempts < kNumRetries ? "retrying." : "quitting");

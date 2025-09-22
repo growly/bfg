@@ -779,7 +779,7 @@ class RoutingGrid {
   // The default is to use a super-linear model.
   bool use_linear_cost_model_;
 
-  std::shared_mutex lock_;
+  mutable std::shared_mutex lock_;
 
   template<typename T>
   friend class RoutingGridBlockage;
