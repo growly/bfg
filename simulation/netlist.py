@@ -38,7 +38,7 @@ def main():
     #    rundir="./scratch"
     #)
 
-    in_file_name = '../build/package.pb'
+    in_file_name = sys.argv[1] if len(sys.argv) > 1 else '../build/package.pb'
     out_file_name = 'package.sp'
 
     package_pb = circuit_pb.Package()
