@@ -41,8 +41,14 @@ class Circuit {
   // string. If any elements in the other circuit conflicts (by name) with an
   // existing one, this will fail.
   //
-  // Note that this is fundamentally different to the schematicaly
-  void AddCircuit(const Circuit &other, const std::string &prefix = "");
+  // If given, `internal_references` constitutes a set of signal names which
+  // will not be prefixed or treated as global when adding the given circuit.
+  // These signals are considered references to existing signals in *this
+  // object.
+  void AddCircuit(
+      const Circuit &other, 
+      const std::string &prefix = "",
+      const std::set<std::string> &internal_references = {});
 
   // Convenient: Add a width=1 signal and return a wire indexing it. Wires are
   // designed to be ephemeral.
@@ -60,18 +66,32 @@ class Circuit {
   circuit::Port *AddPort(
       const circuit::Wire &wire,
       const circuit::Port::PortDirection &direction = circuit::Port::NONE);
+  void RemovePort(const std::string &name) {
+    for (auto it = ports_.begin(); it != ports_.end();) {
+      if ((*it)->signal().name() == name) {
+        it = ports_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
 
   void AddGlobal(const circuit::Wire &wire);
   void AddGlobal(circuit::Signal *signal);
   void SetParameter(const std::string &name, const Parameter &value);
 
-  const circuit::Signal *GetSignal(const std::string &name) const {
+  circuit::Signal *GetSignal(const std::string &name) const {
     auto signals_it = signals_by_name_.find(name);
     if (signals_it == signals_by_name_.end()) {
       return nullptr;
     }
     return signals_it->second;
   }
+
+  // Add the circuit of every instance to the this circuit directly, removing
+  // one layer of hierarchy. To flatten completely, this must be called
+  // repeatedly until no more instances_ remain.
+  void Flatten(bool add_prefixes = true);
 
   void set_parent_cell(bfg::Cell *cell) { parent_cell_ = cell; }
   bfg::Cell *parent_cell() const { return parent_cell_; }

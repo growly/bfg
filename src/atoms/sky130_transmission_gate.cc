@@ -327,11 +327,77 @@ bfg::Cell *Sky130TransmissionGate::Generate() {
   return cell.release();
 }
 
+// In higher-level tiles, the bfg::Cell for child elements is generated and then
+// the layout() and circuit() separately used in instantiating the circuit.
+// Here, the child components are mostly pre-configured, so we can independently
+// generate a circuit and layout that are concordant with one another.
 bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
-  // TODO(aryap): This.
 
-  
+  // The transmission gate has 6 ports:
+  //
+  //           S_B
+  //            |
+  //           _o_
+  //           ---
+  //          |   |
+  //     IN --+   +-- OUT
+  //          |   |
+  //   source  ---  drain
+  //           --- gate
+  //            |
+  //            S
+  //
+  // There is 1 substrate connection per fet (not shown).
+
+ 
+  circuit::Wire s = circuit->AddSignal("S");
+  circuit::Wire s_b = circuit->AddSignal("S_B");
+  circuit::Wire in = circuit->AddSignal("IN");
+  circuit::Wire out = circuit->AddSignal("OUT");
+  // p-substrate.
+  circuit::Wire vpb = circuit->AddSignal("VPB");
+  // n-substrate.
+  circuit::Wire vnb = circuit->AddSignal("VNB");
+
+  circuit->AddPort(s);
+  circuit->AddPort(s_b);
+  circuit->AddPort(in);
+  circuit->AddPort(out);
+  circuit->AddPort(vpb);
+  circuit->AddPort(vnb);
+
+  std::unique_ptr<bfg::Circuit> pfet_circuit(
+      pfet_generator_->GenerateCircuit());
+  std::unique_ptr<bfg::Circuit> nfet_circuit(
+      nfet_generator_->GenerateCircuit());
+
+  circuit::Instance *pfet = circuit->AddInstance("pfet", pfet_circuit.get());
+
+  pfet->Connect({
+      {pfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::SOURCE), in},
+      {pfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::DRAIN), out},
+      {pfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::GATE), s_b},
+      {pfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::SUBSTRATE), vpb}});
+
+  circuit::Instance *nfet = circuit->AddInstance("nfet", nfet_circuit.get());
+  nfet->Connect({
+      {nfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::SOURCE), in},
+      {nfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::DRAIN), out},
+      {nfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::GATE), s},
+      {nfet_generator_->TerminalPortName(
+          Sky130SimpleTransistor::Terminal::SUBSTRATE), vnb}});
+ 
+  // Flatten the circuit so we don't need to keep the pfet_circuit and
+  // nfet_circuit objects around anymore.
+  circuit->Flatten();
 
   return circuit.release();
 }

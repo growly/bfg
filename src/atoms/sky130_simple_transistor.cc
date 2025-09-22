@@ -401,7 +401,32 @@ bfg::Circuit *Sky130SimpleTransistor::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new Circuit());
   Circuit *parent_cell =
       design_db_->FindCellOrDie("sky130", CircuitCellName())->circuit();
+
+  // Sky130SimpleTransistor has 1 port every port on its contained model.
+  // Typically this will be a four-terminal transistor model, so we have a
+  // port for the source, drain, gate and substrate connections.
+  bfg::circuit::Wire source = circuit->AddSignal(
+      TerminalPortName(Terminal::SOURCE));
+  bfg::circuit::Wire drain = circuit->AddSignal(
+      TerminalPortName(Terminal::DRAIN));
+  bfg::circuit::Wire gate = circuit->AddSignal(
+      TerminalPortName(Terminal::GATE));
+  bfg::circuit::Wire substrate = circuit->AddSignal(
+      TerminalPortName(Terminal::SUBSTRATE));
+
+  circuit->AddPort(source);
+  circuit->AddPort(drain);
+  circuit->AddPort(gate);
+  circuit->AddPort(substrate);
+
+  // Connect the outward-facing ports to the encapsulated model's ports.
   circuit::Instance *fet = circuit->AddInstance("fet", parent_cell);
+  fet->Connect({
+      {TerminalPortName(Terminal::SOURCE), source},
+      {TerminalPortName(Terminal::DRAIN), drain},
+      {TerminalPortName(Terminal::GATE), gate},
+      {TerminalPortName(Terminal::SUBSTRATE), substrate}});
+
   return circuit.release();
 }
 

@@ -90,8 +90,10 @@ namespace {
 // equivalents in the circuit that have been added, etc, for recreating
 // connectivity?
 std::string MapSignalNameForAdd(
-    const std::string &name_prefix, const std::string &name) {
-  if (name_prefix == "") {
+    const std::string &name_prefix,
+    const std::string &name,
+    const std::set<std::string> &skip_prefixes = {}) {
+  if (name_prefix == "" || skip_prefixes.find(name) != skip_prefixes.end()) {
     return name;
   }
   return absl::StrCat(name_prefix, "__", name);
@@ -99,12 +101,17 @@ std::string MapSignalNameForAdd(
 
 }   // namespace
 
-void Circuit::AddCircuit(const Circuit &other, const std::string &prefix) {
+void Circuit::AddCircuit(
+    const Circuit &other,
+    const std::string &prefix,
+    const std::set<std::string> &internal_references) {
   // Global signals do not have any prefixes added.
   for (const circuit::Signal *other_signal : other.global_signals_) {
     circuit::Signal *signal = GetOrAddSignal(
         other_signal->name(), other_signal->width());
-    global_signals_.insert(signal);
+    if (internal_references.find(signal->name()) == internal_references.end()) {
+      global_signals_.insert(signal);
+    }
   }
 
   for (const auto &other_signal : other.signals_) {
@@ -112,15 +119,17 @@ void Circuit::AddCircuit(const Circuit &other, const std::string &prefix) {
           other_signal.get()) != other.global_signals_.end()) {
       continue;
     }
-    circuit::Signal *signal = AddSignal(
-        MapSignalNameForAdd(prefix, other_signal->name()),
+    circuit::Signal *signal = GetOrAddSignal(
+        MapSignalNameForAdd(prefix, other_signal->name(), internal_references),
         other_signal->width());
   }
 
   for (const auto &other_port : other.ports_) {
     std::string signal_name = other.IsGlobal(other_port->signal()) ?
         other_port->signal().name() :
-        MapSignalNameForAdd(prefix, other_port->signal().name());
+        MapSignalNameForAdd(prefix,
+                            other_port->signal().name(),
+                            internal_references);
     circuit::Signal *signal = GetSignal(signal_name);
     LOG_IF(FATAL, signal == nullptr)
       << "Should be able to find signal " << signal_name << "for other port; "
@@ -147,7 +156,9 @@ void Circuit::AddCircuit(const Circuit &other, const std::string &prefix) {
           const circuit::Signal &other_signal = *other_connection.signal();
           std::string merged_name = other.IsGlobal(other_signal) ?
               other_signal.name() :
-              MapSignalNameForAdd(prefix, other_signal.name());
+              MapSignalNameForAdd(prefix,
+                                  other_signal.name(),
+                                  internal_references);
           std::string port_name = entry.first;
           circuit::Signal *signal = GetSignal(merged_name);
           LOG_IF(FATAL, !signal) << "Signal " << merged_name << " not found.";
@@ -159,7 +170,9 @@ void Circuit::AddCircuit(const Circuit &other, const std::string &prefix) {
           const circuit::Signal &other_signal = other_slice.signal();
           std::string merged_name = other.IsGlobal(other_signal) ?
               other_signal.name() :
-              MapSignalNameForAdd(prefix, other_signal.name());
+              MapSignalNameForAdd(prefix,
+                                  other_signal.name(),
+                                  internal_references);
           std::string port_name = entry.first;
           circuit::Signal *signal = GetSignal(merged_name);
           LOG_IF(FATAL, !signal) << "Signal " << merged_name << " not found.";
@@ -267,6 +280,71 @@ circuit::Port *Circuit::AddPort(
   circuit::Port *port = new circuit::Port(signal, direction);
   ports_.emplace_back(port);
   return port;
+}
+
+void Circuit::Flatten(bool add_prefixes) {
+  std::set<circuit::Instance*> instances_weak_copy;
+  std::transform(
+      instances_.begin(), instances_.end(),
+      std::inserter(instances_weak_copy, instances_weak_copy.begin()),
+      [](const std::unique_ptr<circuit::Instance> &uniq)
+          -> circuit::Instance* {
+        return uniq.get();
+      });
+
+  for (circuit::Instance *instance : instances_weak_copy) {
+    // Copy the instance's master cell for modification:
+    Circuit staging;
+
+    std::string prefix = add_prefixes ? instance->name() : "";
+
+    staging.AddCircuit(*instance->module(), "");
+
+    std::set<std::string> signal_rewrites;
+    // For each port, we have to rewrite every connected signal to reflect the
+    // signal that was connected to the instance from the outside.
+    //
+    // TODO(aryap): This is tricky because we have to connect outside
+    // concatenations and slices too. Slices are simpler: every connection to
+    // the port on the child instance can be replaced by a connection to the
+    // same slice.  Concatenations are similar, but trickier. So I'm leaving
+    // them unfinished.
+    for (const auto &[port_name, connection] : instance->connections()) {
+      //LOG(INFO) << port_name << " is connected to by " << connection
+      //          << " and must be rewritten";
+      switch (connection.connection_type()) {
+        case circuit::Connection::ConnectionType::SLICE:
+          LOG(FATAL) << "Cannot flatten through slices yet.";
+        case circuit::Connection::ConnectionType::SIGNAL: {
+          circuit::Signal *to_replace = staging.GetSignal(port_name);
+          staging.RemovePort(port_name);
+          signal_rewrites.insert(connection.signal()->name());
+          to_replace->set_name(connection.signal()->name());
+          break;
+        }
+        case circuit::Connection::ConnectionType::CONCATENATION:
+          LOG(FATAL) << "Cannot flatten through concatenations yet.";
+        default:
+          LOG(FATAL) << "what";
+      }
+    }
+ 
+    // TODO(aryap): Parameters on the instance must also be applied everywhere
+    // they would have been applied?
+
+    AddCircuit(staging, prefix, signal_rewrites);
+  }
+
+  // Remove old instances, noting that new instances could have been added as
+  // part of the flattening.
+  instances_.erase(
+      std::remove_if(
+          instances_.begin(), instances_.end(),
+          [&](const std::unique_ptr<circuit::Instance> &uniq) {
+            return instances_weak_copy.find(
+                uniq.get()) != instances_weak_copy.end();
+          }),
+      instances_.end());
 }
 
 std::string Circuit::Describe() const {

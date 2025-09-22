@@ -2437,10 +2437,6 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     std::function<bool(RoutingVertex*)> usable_vertex_for_via,
     std::function<bool(RoutingEdge*)> usable_edge,
     bool target_must_be_usable) {
-  LOG(INFO) << "In ShortestPath waiting for lock";
-  std::shared_lock mu(lock_);
-  LOG(INFO) << "In ShortestPath lock ok";
-
   if (!usable_vertex(begin)) {
     // NOTE(aryap): This happening is usually very bad.
     return absl::NotFoundError("Start vertex for path is not available");

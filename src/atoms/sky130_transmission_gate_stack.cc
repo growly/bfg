@@ -189,6 +189,9 @@ void Sky130TransmissionGateStack::BuildSequence(
     std::optional<geometry::Rectangle> *n_poly_via_cover) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
+  // Get a handle to the circuit so we can output the circuit simultaneously.
+  bfg::Circuit *circuit = cell->circuit();
+
   const size_t num_gates = net_sequence.empty() ?
       0 : (net_sequence.size() - 1) / 2;
 
@@ -243,6 +246,9 @@ void Sky130TransmissionGateStack::BuildSequence(
     Cell *transmission_gate = generator.GenerateIntoDatabase(
         absl::StrCat(instance_name, "_template"));
 
+    circuit::Instance *gate = circuit->AddInstance(
+        instance_name, transmission_gate->circuit());
+
     // LOG(INFO) << transmission_gate->layout()->GetBoundingBox().Width();
 
     // TODO(aryap): I spent a lot of effort in the Sky130TransmissionGate
@@ -262,6 +268,14 @@ void Sky130TransmissionGateStack::BuildSequence(
     const std::string &left_net = net_sequence[2 * i];
     const std::string &gate_net = net_sequence[2 * i + 1];
     const std::string &right_net = net_sequence[2 * i + 2];
+
+    gate->Connect("IN", *circuit->GetOrAddSignal(left_net, 1));
+    gate->Connect("OUT", *circuit->GetOrAddSignal(right_net, 1));
+    gate->Connect("S", *circuit->GetOrAddSignal(gate_net, 1));
+    gate->Connect(
+        "S_B", *circuit->GetOrAddSignal(absl::StrCat(gate_net, "_B"), 1));
+    gate->Connect("VPB", *circuit->GetOrAddSignal(parameters_.power_net, 1));
+    gate->Connect("VNB", *circuit->GetOrAddSignal(parameters_.ground_net, 1));
 
     geometry::Point pmos_ll = instance->GetPointOrDie("pmos.diff_lower_left");
     geometry::Point pmos_ur = instance->GetPointOrDie(
@@ -323,6 +337,7 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       new bfg::Cell(name_.empty() ? "sky130_transmission_gate_stack": name_));
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   cell->SetLayout(new bfg::Layout(db));
+  cell->SetCircuit(new bfg::Circuit());
 
   RowGuide row(geometry::Point(0, 0),
                cell->layout(),
@@ -463,6 +478,9 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
         "npc.drawing", "polycon.drawing").min_enclosure;
     cell->layout()->AddRectangle(n_poly_via_cover->WithPadding(npc_margin));
   }
+
+  // Not necessary, but way more readable.
+  cell->circuit()->Flatten();
 
   return cell.release();
 }
