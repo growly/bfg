@@ -16,6 +16,7 @@
 namespace bfg {
 
 class DesignDatabase;
+class RouteManager;
 
 namespace tiles {
 
@@ -57,10 +58,19 @@ class Interconnect : public Tile {
       const InputPortCollection &mux_inputs,
       const OutputPortCollection &mux_outputs,
       Layout *layout);
+
   void RouteComplete(
       const InputPortCollection &mux_inputs,
       const OutputPortCollection &mux_outputs,
-      Layout *layout);
+      RouteManager *routing_grid,
+      Layout *layout,
+      Circuit *circuit);
+
+  void RouteScanChain(
+      const MemoryBank &bank,
+      RouteManager *routing_grid,
+      Layout *layout,
+      Circuit *circuit);
 
   Parameters parameters_;
 

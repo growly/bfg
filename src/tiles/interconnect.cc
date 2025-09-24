@@ -111,8 +111,40 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   // default, which is to return the bounding box).
   cell->layout()->SetTilingBounds(*bank.GetTilingBounds());
 
-  // TODO(aryap): Route scan chain.
-  RouteComplete(mux_inputs, mux_outputs, cell->layout());
+  RoutingGrid routing_grid(design_db_->physical_db());
+  ConfigureRoutingGrid(&routing_grid, cell->layout());
+
+  // TODO(aryap): Shouldn't RouteManager just emit nets to the bfg::Circuit too?
+  RouteManager route_manager(cell->layout(), &routing_grid);
+
+  routing_grid.ExportVerticesAsSquares("areaid.frame", false, cell->layout());
+
+  RouteScanChain(bank,
+                 &route_manager,
+                 cell->layout(),
+                 cell->circuit());
+
+  //RouteComplete(mux_inputs,
+  //              mux_outputs,
+  //              &route_manager,
+  //              cell->layout(),
+  //              cell->circuit());
+
+  // TODO(aryap): Something like this.
+  //LOG(INFO) << "Route summary:";
+  //for (const auto &outer : statuses) {
+  //  for (const auto &inner : outer.second) {
+  //    const auto &status = inner.second;
+  //    LOG(INFO) << outer.first << " -> " << inner.first << ": "
+  //              << status;
+  //  }
+  //}
+
+  route_manager.Solve().IgnoreError();
+
+  routing_grid.ExportVerticesAsSquares(
+      "areaid.frameRect", true, cell->layout());
+  routing_grid.ExportToLayout("routing", cell->layout());
 
   return cell.release();
 }
@@ -243,11 +275,9 @@ void Interconnect::ConfigureRoutingGrid(
 void Interconnect::RouteComplete(
     const InputPortCollection &mux_inputs,
     const OutputPortCollection &mux_outputs,
-    Layout *layout) {
-  RoutingGrid routing_grid(design_db_->physical_db());
-  ConfigureRoutingGrid(&routing_grid, layout);
-
-  routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout);
+    RouteManager *route_manager,
+    Layout *layout,
+    Circuit *circuit) {
 
   // All of the different port net names attached to the same driver need to be
   // merged.
@@ -256,10 +286,6 @@ void Interconnect::RouteComplete(
   std::vector<std::vector<size_t>> next_free_input =
       std::vector<std::vector<size_t>>(
           parameters_.num_rows, std::vector<size_t>(parameters_.num_columns));
-
-  std::map<std::string, std::map<std::string, std::string>> statuses;
-
-  RouteManager route_manager(layout, &routing_grid);
 
   size_t num_muxes = parameters_.num_rows * parameters_.num_columns;
   for (size_t i = 0; i < num_muxes; ++i) {
@@ -285,32 +311,16 @@ void Interconnect::RouteComplete(
         continue;
       }
 
-      route_manager.Connect(*from, *to).IgnoreError();
+      route_manager->Connect(*from, *to).IgnoreError();
     }
   }
-
-  route_manager.Solve().IgnoreError();
-
-  LOG(INFO) << "Route summary:";
-  for (const auto &outer : statuses) {
-    for (const auto &inner : outer.second) {
-      const auto &status = inner.second;
-      LOG(INFO) << outer.first << " -> " << inner.first << ": "
-                << status;
-    }
-  }
-
-  routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
-
-  routing_grid.ExportToLayout("routing", layout);
 }
 
 void Interconnect::Route(
     const InputPortCollection &mux_inputs,
     const OutputPortCollection &mux_outputs,
     Layout *layout) {
-  RoutingGrid routing_grid(
-      design_db_->physical_db());
+  RoutingGrid routing_grid(design_db_->physical_db());
   ConfigureRoutingGrid(&routing_grid, layout);
 
   // All of the different port net names attached to the same driver need to be
@@ -395,6 +405,75 @@ void Interconnect::Route(
   routing_grid.ExportVerticesAsSquares("areaid.frameRect", true, layout);
 
   routing_grid.ExportToLayout("routing", layout);
+}
+
+void Interconnect::RouteScanChain(
+    const MemoryBank &bank,
+    RouteManager *route_manager,
+    Layout *layout,
+    Circuit *circuit) {
+  // Given that the scan input of each MUX6 block is at the bottom and the scan
+  // output is at the top, if we route the scan chain vertically we will have
+  // very long vertical wires, or very cumbersome ones. I intuit that we can
+  // minimise the worst case by routing vertically, strafing one way and then
+  // back the other.
+
+  circuit::Wire scan_in = circuit->AddSignal("SCAN_IN");
+  circuit::Wire scan_out = circuit->AddSignal("SCAN_OUT");
+
+  auto connect_scan_fn = [&](
+      geometry::Instance *out, geometry::Instance *in) {
+
+    // Draw wires.
+    geometry::Port *out_port = out->GetFirstPortNamed("SCAN_OUT");
+    geometry::Port *in_port = in->GetFirstPortNamed("SCAN_IN");
+    route_manager->Connect(*out_port, *in_port).IgnoreError();
+
+    // Add to circuit model.
+    std::string name = absl::StrCat(out->name(), "_to_", in->name());
+    LOG(INFO) << name;
+    circuit::Wire wire = circuit->AddSignal(name);
+    out->circuit_instance()->Connect("SCAN_OUT", wire);
+    in->circuit_instance()->Connect("SCAN_IN", wire);
+  };
+
+  geometry::Instance *first = nullptr;
+  geometry::Instance *last = nullptr;
+  for (int i = 0; i < bank.rows().size(); ++i) {
+    const RowGuide &row = bank.rows().at(i);
+
+    geometry::Instance *current = nullptr;
+    if (i % 2 == 0) {
+      current = row.instances().at(0);
+      if (last) {
+        connect_scan_fn(last, current);
+      } else {
+        // Don't need to do this for i odd since i starts even.
+        first = current;
+      }
+      for (int j = 1; j < row.instances().size(); ++j) {
+        geometry::Instance *next = row.instances().at(j);
+        connect_scan_fn(current, next);
+        current = next;
+      }
+      last = current;
+    } else {
+      current = row.instances().at(row.instances().size() - 1);
+      if (last) {
+        connect_scan_fn(last, current);
+      }
+      for (int j = row.instances().size() - 2; j >= 0; --j) {
+        geometry::Instance *next = row.instances().at(j);
+        connect_scan_fn(current, next);
+        current = next;
+      }
+      last = current;
+    }
+  }
+
+  // Connect the very first and the very last:
+  first->circuit_instance()->Connect("SCAN_IN", scan_in);
+  last->circuit_instance()->Connect("SCAN_OUT", scan_out);
 }
 
 }   // namespace tiles
