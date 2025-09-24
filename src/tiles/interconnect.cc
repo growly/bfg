@@ -47,6 +47,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   // TODO(aryap): Ok this is clearly a more useful structure than just a
   // "Memory" bank. Rename it. "TilingGrid"? idk.
   MemoryBank bank = MemoryBank(cell->layout(),
+                               cell->circuit(),
                                design_db_,
                                nullptr,    // No tap cells.
                                false,      // Rotate alternate rows.
@@ -66,7 +67,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
       atoms::Sky130InterconnectMux6 mux_gen(row_params, design_db_);
       Cell *mux6_template = mux_gen.GenerateIntoDatabase(name);
       geometry::Instance *instance = bank.InstantiateRight(
-          i, absl::StrCat(name, "_i"), mux6_template->layout());
+          i, absl::StrCat(name, "_i"), mux6_template);
       mux_row.push_back(instance);
     }
   }
@@ -110,6 +111,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
   // default, which is to return the bounding box).
   cell->layout()->SetTilingBounds(*bank.GetTilingBounds());
 
+  // TODO(aryap): Route scan chain.
   RouteComplete(mux_inputs, mux_outputs, cell->layout());
 
   return cell.release();

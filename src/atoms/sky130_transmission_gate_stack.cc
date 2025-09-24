@@ -246,9 +246,6 @@ void Sky130TransmissionGateStack::BuildSequence(
     Cell *transmission_gate = generator.GenerateIntoDatabase(
         absl::StrCat(instance_name, "_template"));
 
-    circuit::Instance *gate = circuit->AddInstance(
-        instance_name, transmission_gate->circuit());
-
     // LOG(INFO) << transmission_gate->layout()->GetBoundingBox().Width();
 
     // TODO(aryap): I spent a lot of effort in the Sky130TransmissionGate
@@ -261,60 +258,70 @@ void Sky130TransmissionGateStack::BuildSequence(
     // manipulate the origin_ of an Instance, i.e. what the RowGuid does. So
     // most of the precomputed properties available through the Generator are
     // useless here. So, great. Nice work. Whatever.
-    geometry::Instance *instance = row->InstantiateBack(
+    geometry::Instance *layout_instance = row->InstantiateBack(
         instance_name, transmission_gate->layout());
+
+    circuit::Instance *circuit_instance = circuit->AddInstance(
+        instance_name, transmission_gate->circuit());
+    bfg::Cell::TieInstances(circuit_instance, layout_instance);
 
     // Connecting P- and NMOS sources and drains:
     const std::string &left_net = net_sequence[2 * i];
     const std::string &gate_net = net_sequence[2 * i + 1];
     const std::string &right_net = net_sequence[2 * i + 2];
 
-    gate->Connect("IN", *circuit->GetOrAddSignal(left_net, 1));
-    gate->Connect("OUT", *circuit->GetOrAddSignal(right_net, 1));
-    gate->Connect("S", *circuit->GetOrAddSignal(gate_net, 1));
-    gate->Connect(
+    circuit_instance->Connect("IN", *circuit->GetOrAddSignal(left_net, 1));
+    circuit_instance->Connect("OUT", *circuit->GetOrAddSignal(right_net, 1));
+    circuit_instance->Connect("S", *circuit->GetOrAddSignal(gate_net, 1));
+    circuit_instance->Connect(
         "S_B", *circuit->GetOrAddSignal(absl::StrCat(gate_net, "_B"), 1));
-    gate->Connect("VPB", *circuit->GetOrAddSignal(parameters_.power_net, 1));
-    gate->Connect("VNB", *circuit->GetOrAddSignal(parameters_.ground_net, 1));
+    circuit_instance->Connect(
+        "VPB", *circuit->GetOrAddSignal(parameters_.power_net, 1));
+    circuit_instance->Connect(
+        "VNB", *circuit->GetOrAddSignal(parameters_.ground_net, 1));
 
-    geometry::Point pmos_ll = instance->GetPointOrDie("pmos.diff_lower_left");
-    geometry::Point pmos_ur = instance->GetPointOrDie(
+    geometry::Point pmos_ll = layout_instance->GetPointOrDie(
+        "pmos.diff_lower_left");
+    geometry::Point pmos_ur = layout_instance->GetPointOrDie(
         "pmos.diff_upper_right");
     geometry::Rectangle::ExpandAccumulate(
         geometry::Rectangle(pmos_ll, pmos_ur), pdiff_cover);
 
     std::optional<geometry::Point> p_via_ll =
-        instance->GetPoint("pmos.poly_tab_ll");
+        layout_instance->GetPoint("pmos.poly_tab_ll");
     std::optional<geometry::Point> p_via_ur =
-        instance->GetPoint("pmos.poly_tab_ur");
+        layout_instance->GetPoint("pmos.poly_tab_ur");
     if (p_via_ll && p_via_ur) {
       geometry::Rectangle::ExpandAccumulate(
           geometry::Rectangle(*p_via_ll, *p_via_ur), p_poly_via_cover);
     }
 
-    geometry::Point nmos_ll = instance->GetPointOrDie("nmos.diff_lower_left");
-    geometry::Point nmos_ur = instance->GetPointOrDie("nmos.diff_upper_right");
+    geometry::Point nmos_ll = layout_instance->GetPointOrDie(
+        "nmos.diff_lower_left");
+    geometry::Point nmos_ur = layout_instance->GetPointOrDie(
+        "nmos.diff_upper_right");
     geometry::Rectangle::ExpandAccumulate(
         geometry::Rectangle(nmos_ll, nmos_ur), ndiff_cover);
 
     std::optional<geometry::Point> n_via_ll =
-        instance->GetPoint("nmos.poly_tab_ll");
+        layout_instance->GetPoint("nmos.poly_tab_ll");
     std::optional<geometry::Point> n_via_ur =
-        instance->GetPoint("nmos.poly_tab_ur");
+        layout_instance->GetPoint("nmos.poly_tab_ur");
     if (n_via_ll && n_via_ur) {
       geometry::Rectangle::ExpandAccumulate(
           geometry::Rectangle(*n_via_ll, *n_via_ur), n_poly_via_cover);
     }
 
-    geometry::Point top = instance->GetPointOrDie("pmos.via_left_diff_upper");
-    geometry::Point bottom =
-        instance->GetPointOrDie("nmos.via_left_diff_lower");
+    geometry::Point top = layout_instance->GetPointOrDie(
+        "pmos.via_left_diff_upper");
+    geometry::Point bottom = layout_instance->GetPointOrDie(
+        "nmos.via_left_diff_lower");
 
     ConnectDiffs(generator, top, bottom, left_net, net_counts, cell->layout());
 
     if (i == num_gates - 1) {
-      top = instance->GetPointOrDie("pmos.via_right_diff_upper");
-      bottom = instance->GetPointOrDie("nmos.via_right_diff_lower");
+      top = layout_instance->GetPointOrDie("pmos.via_right_diff_upper");
+      bottom = layout_instance->GetPointOrDie("nmos.via_right_diff_lower");
       ConnectDiffs(
           generator, top, bottom, right_net, net_counts, cell->layout());
     }
@@ -479,7 +486,8 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
     cell->layout()->AddRectangle(n_poly_via_cover->WithPadding(npc_margin));
   }
 
-  // Not necessary, but way more readable.
+  // Not strictly necessary to do this, but way more readable. And we do it for
+  // the layout so it keeps the hierarchies 1:1.
   cell->circuit()->Flatten();
 
   return cell.release();

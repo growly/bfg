@@ -139,29 +139,35 @@ class Sky130InterconnectMux6 : public Atom {
       const std::vector<geometry::Instance*> &clk_bufs,
       geometry::Instance *stack,
       geometry::Instance *output_buffer,
-      bfg::Layout *layout) const;
+      Layout *layout,
+      Circuit *circuit) const;
 
   void DrawScanChain(
       const std::vector<geometry::Instance*> &all_memories,
+      const std::map<geometry::Instance*, std::string> &memory_output_nets,
       int64_t num_ff_bottom,
       int64_t vertical_x_left,
       int64_t vertical_x_right,
-      bfg::Layout *layout) const;
+      Layout *layout,
+      Circuit *circuit) const;
 
   void DrawOutput(geometry::Instance *stack,
                   geometry::Instance *output_buffer,
                   int64_t *mux_pre_buffer_y,
                   int64_t output_port_x,
-                  Layout *layout) const;
+                  Layout *layout,
+                  Circuit *circuit) const;
 
   void DrawInputs(geometry::Instance *stack,
                   int64_t mux_pre_buffer_y,
                   int64_t vertical_x_left,
-                  Layout *layout) const;
+                  Layout *layout,
+                  Circuit *circuit) const;
 
   void DrawPowerAndGround(const MemoryBank &bank,
                           int64_t start_column_x,
-                          Layout *layout) const;
+                          Layout *layout,
+                          Circuit *circuit) const;
 
   void DrawClock(const MemoryBank &bank,
                  const std::vector<geometry::Instance*> &top_memories,
@@ -170,7 +176,8 @@ class Sky130InterconnectMux6 : public Atom {
                  int64_t input_clk_x,
                  int64_t clk_x,
                  int64_t clk_i_x,
-                 Layout *layout) const;
+                 Layout *layout,
+                 Circuit *circuit) const;
 
   void ConnectVertically(const geometry::Point &top,
                          const geometry::Point &bottom,

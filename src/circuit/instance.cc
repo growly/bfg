@@ -33,6 +33,7 @@ bool Instance::Disconnect(const std::string &port_name) {
   return connections_.erase(port_name) == 1;
 }
 
+// TODO(aryap): Make re-connections to the same signal a non-issue.
 void Instance::Connect(
     const std::string &port_name, const Signal &signal) {
   auto existing = GetConnection(port_name);

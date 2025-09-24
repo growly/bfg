@@ -19,15 +19,18 @@ namespace bfg {
 class MemoryBank {
  public:
   MemoryBank()
-      : MemoryBank(nullptr, nullptr, nullptr, true, false, std::nullopt) {}
+      : MemoryBank(
+            nullptr, nullptr, nullptr, nullptr, true, false, std::nullopt) {}
 
   MemoryBank(Layout *layout,
+             Circuit *circuit,
              DesignDatabase *design_db,
              Cell *tap_cell,
              bool rotate_alternate_rows,
              bool rotate_first_row,
              std::optional<geometry::Compass> horizontal_alignment)
       : layout_(layout),
+        circuit_(circuit),
         design_db_(design_db),
         tap_cell_(tap_cell),
         grow_down_(false),
@@ -54,13 +57,13 @@ class MemoryBank {
   // Instantiates on the opposite side to which the bank is aligned:
   geometry::Instance *InstantiateInside(size_t row_index,
                                         const std::string &name,
-                                        Layout *template_layout);
+                                        Cell *cell);
   geometry::Instance *InstantiateRight(size_t row_index,
                                        const std::string &name,
-                                       Layout *template_layout);
+                                       Cell *cell);
   geometry::Instance *InstantiateLeft(size_t row_index,
                                       const std::string &name,
-                                      Layout *template_layout);
+                                      Cell *cell);
 
   std::optional<geometry::Rectangle> GetBoundingBox() const;
   std::optional<geometry::Rectangle> GetTilingBounds() const;
@@ -107,6 +110,10 @@ class MemoryBank {
   // It turns out it is awfully convenient to be able to use this structure as a
   // grouping for objects that belong to some external layout.
   bfg::Layout *layout_;
+
+  // It turns out is is awfully convenient to generate circuit instances at the
+  // same time as layout instances.
+  bfg::Circuit *circuit_;
 
   // Memory instance names by row and column. Major index is row, minor index
   // is column.

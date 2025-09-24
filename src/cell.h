@@ -34,16 +34,18 @@ class Cell {
 
   std::set<Cell*> DirectAncestors(bool layout_only = false) const;
 
-  void SetLayout(Layout *layout) {
+  Layout *SetLayout(Layout *layout) {
     layout_.reset(layout);
     layout->set_parent_cell(this);
+    return layout;
   }
   Layout *layout() { return layout_.get(); }
   Layout *const layout() const { return layout_.get(); }
 
-  void SetCircuit(Circuit *circuit) {
+  Circuit *SetCircuit(Circuit *circuit) {
     circuit_.reset(circuit);
     circuit->set_parent_cell(this);
+    return circuit;
   }
   Circuit *circuit() { return circuit_.get(); }
   Circuit *const circuit() const { return circuit_.get(); }

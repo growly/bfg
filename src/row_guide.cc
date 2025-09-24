@@ -1,5 +1,8 @@
 #include <optional>
 
+#include <absl/strings/str_cat.h>
+
+#include "cell.h"
 #include "geometry/vector.h"
 #include "geometry/instance.h"
 #include "geometry/point.h"
@@ -7,6 +10,8 @@
 #include "design_database.h"
 
 namespace bfg {
+
+size_t RowGuide::tap_count_ = 0;
 
 geometry::Instance *RowGuide::InstantiateBack(
     const std::string &name, Layout *template_layout) {
@@ -66,6 +71,28 @@ geometry::Instance *RowGuide::InstantiateFront(
   return installed;
 }
 
+geometry::Instance *RowGuide::InstantiateBack(const std::string &name,
+                                              Cell *master) {
+  geometry::Instance *layout_instance =
+      InstantiateBack(name, master->layout());
+  MakeCircuitInstance(name, layout_instance, master->circuit());
+  return layout_instance;
+}
+geometry::Instance *RowGuide::InstantiateAndInsertFront(const std::string &name,
+                                                        Cell *master) {
+  geometry::Instance *layout_instance =
+      InstantiateAndInsertFront(name, master->layout());
+  MakeCircuitInstance(name, layout_instance, master->circuit());
+  return layout_instance;
+}
+geometry::Instance *RowGuide::InstantiateFront(const std::string &name,
+                                               Cell *master) {
+  geometry::Instance *layout_instance =
+      InstantiateFront(name, master->layout());
+  MakeCircuitInstance(name, layout_instance, master->circuit());
+  return layout_instance;
+}
+
 void RowGuide::AddBlankSpaceBack(uint64_t span) {
   MaybeAddTapRightFor(span);
   AccountForPlacement(span, &distance_to_tap_right_);
@@ -99,8 +126,14 @@ void RowGuide::AddBlankSpaceFront(uint64_t span) {
 
 // TODO(aryap): Add taps to circuit.
 geometry::Instance *RowGuide::AddTap() {
-  return layout_->AddInstance(
+  geometry::Instance *layout_instance = layout_->AddInstance(
       geometry::Instance(tap_cell_.value().get().layout()));
+  layout_instance->set_name(absl::StrCat("RowGuide_auto_tap_", tap_count_));
+  tap_count_++;
+  
+  MakeCircuitInstance(
+      layout_instance->name(), layout_instance, tap_cell_->get().circuit());
+  return layout_instance;
 }
 
 void RowGuide::MaybeAddTapLeftFor(uint64_t additional_span) {
@@ -364,6 +397,18 @@ geometry::Point RowGuide::LowerLeft() const {
   return geometry::Point(
       std::min(front_tiling_bounds.lower_left().x(), origin_.x()) - blank.x(),
       front_tiling_bounds.lower_left().y());
+}
+
+circuit::Instance *RowGuide::MakeCircuitInstance(
+    const std::string &name,
+    geometry::Instance *layout_instance,
+    Circuit *circuit) {
+  if (!circuit_) {
+    return nullptr;
+  }
+  circuit::Instance *circuit_instance = circuit_->AddInstance(name, circuit);
+  Cell::TieInstances(circuit_instance, layout_instance);
+  return circuit_instance;
 }
 
 }   // namespace bfg

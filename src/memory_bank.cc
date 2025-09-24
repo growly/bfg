@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 
+#include "cell.h"
 #include "geometry/rectangle.h"
 #include "geometry/point.h"
 #include "layout.h"
@@ -57,7 +58,7 @@ RowGuide &MemoryBank::Row(size_t index) {
     RowGuide &row = rows_.emplace_back(
         geometry::Point {0, y_pos},   // Row lower-left point.
         layout_,
-        nullptr,                      // FIXME
+        circuit_,
         design_db_);
 
     // There is also a corresponding vector of instances for each row.
@@ -159,16 +160,16 @@ void MemoryBank::FixAlignments() {
 
 geometry::Instance *MemoryBank::InstantiateInside(size_t row_index,
                                                   const std::string &name,
-                                                  Layout *template_layout) {
+                                                  Cell *cell) {
   if (!horizontal_alignment_) {
-    return InstantiateRight(row_index, name, template_layout);
+    return InstantiateRight(row_index, name, cell);
   }
   switch (*horizontal_alignment_) {
     case geometry::Compass::LEFT:
-      return InstantiateRight(row_index, name, template_layout);
+      return InstantiateRight(row_index, name, cell);
       break;
     case geometry::Compass::RIGHT:
-      return InstantiateLeft(row_index, name, template_layout);
+      return InstantiateLeft(row_index, name, cell);
       break;
     default:
       LOG(FATAL) << "Unsupported horizontal_alignment in MemoryBank: "
@@ -179,13 +180,13 @@ geometry::Instance *MemoryBank::InstantiateInside(size_t row_index,
 
 geometry::Instance *MemoryBank::InstantiateLeft(size_t row_index,
                                                 const std::string &name,
-                                                Layout *template_layout) {
+                                                Cell *cell) {
   RowGuide &row = Row(row_index);
   std::vector<geometry::Instance*> &instances = instances_[row_index];
   std::vector<std::string> &instance_names = instance_names_[row_index];
 
   geometry::Instance *installed = nullptr;
-  installed = row.InstantiateAndInsertFront(name, template_layout);
+  installed = row.InstantiateAndInsertFront(name, cell);
   instances.push_back(installed);
   instance_names.push_back(name);
   FixAlignments();
@@ -194,13 +195,13 @@ geometry::Instance *MemoryBank::InstantiateLeft(size_t row_index,
 
 geometry::Instance *MemoryBank::InstantiateRight(size_t row_index,
                                                  const std::string &name,
-                                                 Layout *template_layout) {
+                                                 Cell *cell) {
   RowGuide &row = Row(row_index);
   std::vector<geometry::Instance*> &instances = instances_[row_index];
   std::vector<std::string> &instance_names = instance_names_[row_index];
 
   geometry::Instance *installed = nullptr;
-  installed = row.InstantiateBack(name, template_layout);
+  installed = row.InstantiateBack(name, cell);
   instances.push_back(installed);
   instance_names.push_back(name);
   FixAlignments();

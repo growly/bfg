@@ -30,6 +30,12 @@ bfg::Cell *Sky130Tap::Generate() {
 
 bfg::Circuit *Sky130Tap::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
+
+  circuit::Wire power_wire = circuit->AddSignal(parameters_.power_net);
+  circuit::Wire ground_wire = circuit->AddSignal(parameters_.ground_net);
+  circuit->AddPort(power_wire);
+  circuit->AddPort(ground_wire);
+
   return circuit.release();
 }
 

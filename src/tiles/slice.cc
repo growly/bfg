@@ -34,6 +34,7 @@ Cell *Slice::GenerateIntoDatabase(const std::string &name) {
 
   std::unique_ptr<bfg::Layout> left_layout(new bfg::Layout(db));
   MemoryBank left_luts = MemoryBank(left_layout.get(),
+                                    cell->circuit(),
                                     design_db_,
                                     nullptr,    // No tap cells.
                                     false,      // Rotate alternate rows.
@@ -49,13 +50,14 @@ Cell *Slice::GenerateIntoDatabase(const std::string &name) {
 
   for (size_t i = 0; i < parameters_.num_luts_left; ++i) {
     geometry::Instance *instance = left_luts.InstantiateRight(
-        i / 2, absl::StrCat(lut_name, "_i"), default_lut_cell->layout());
+        i / 2, absl::StrCat(lut_name, "_i"), default_lut_cell);
   }
 
   std::unique_ptr<bfg::Layout> middle_layout(new bfg::Layout(db));
   Interconnect::Parameters interconnect_params;
   Interconnect interconnect_gen(interconnect_params, design_db_);
-  Cell *interconnect_cell = interconnect_gen.GenerateIntoDatabase("interconnect");
+  Cell *interconnect_cell =
+      interconnect_gen.GenerateIntoDatabase("interconnect");
   geometry::Instance interconnect_instance(
       interconnect_cell->layout(), {0, 0});
   middle_layout->AddInstance(interconnect_instance);

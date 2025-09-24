@@ -155,6 +155,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   for (size_t p = 0; p < arrangements.size(); ++p) {
     const BankArrangement &bank_arrangement = arrangements[p].get();
     banks_.push_back(MemoryBank(layout.get(),
+                                circuit.get(),
                                 design_db_,
                                 tap_cell,
                                 true,      // Rotate alternate rows.
@@ -178,11 +179,11 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       cell->layout()->DeletePorts("QI");
 
       geometry::Instance *installed =
-          bank.InstantiateRight(assigned_row, instance_name, cell->layout());
+          bank.InstantiateRight(assigned_row, instance_name, cell);
 
-      circuit::Instance *circuit_instance =
-          circuit->AddInstance(instance_name, cell->circuit());
-      Cell::TieInstances(circuit_instance, installed);
+      //circuit::Instance *circuit_instance =
+      //    circuit->AddInstance(instance_name, cell->circuit());
+      //Cell::TieInstances(circuit_instance, installed);
 
       memories_.push_back(installed);
       ++num_memories;
@@ -278,12 +279,12 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
       geometry::Instance *installed = bank.InstantiateInside(
-          assigned_row, instance_name, buf_cell->layout());
+          assigned_row, instance_name, buf_cell);
       buf_order_.push_back(installed);
 
-      circuit::Instance *circuit_instance = circuit->AddInstance(
-          instance_name, buf_cell->circuit());
-      Cell::TieInstances(circuit_instance, installed);
+      //circuit::Instance *circuit_instance = circuit->AddInstance(
+      //    instance_name, buf_cell->circuit());
+      //Cell::TieInstances(circuit_instance, installed);
     }
 
     for (size_t i = 0; i < bank_arrangement.clk_buf_rows.size(); ++i) {
@@ -297,12 +298,12 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
       buf_cell->layout()->ResetY();
       geometry::Instance *installed = bank.InstantiateInside(
-          assigned_row, instance_name, buf_cell->layout());
+          assigned_row, instance_name, buf_cell);
       clk_buf_order_.push_back(installed);
 
-      circuit::Instance *circuit_instance = circuit->AddInstance(
-          instance_name, buf_cell->circuit());
-      Cell::TieInstances(circuit_instance, installed);
+      //circuit::Instance *circuit_instance = circuit->AddInstance(
+      //    instance_name, buf_cell->circuit());
+      //Cell::TieInstances(circuit_instance, installed);
     }
 
     for (size_t i = 0; i < bank_arrangement.active_mux2_rows.size(); ++i) {
@@ -315,12 +316,12 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
           cell_name);
       active_mux2_cell->layout()->ResetY();
       geometry::Instance *instance = bank.InstantiateInside(
-          assigned_row, instance_name, active_mux2_cell->layout());
+          assigned_row, instance_name, active_mux2_cell);
       active_mux2s_.push_back(instance);
 
-      circuit::Instance *circuit_instance = circuit->AddInstance(
-          instance_name, active_mux2_cell->circuit());
-      Cell::TieInstances(circuit_instance, instance);
+      //circuit::Instance *circuit_instance = circuit->AddInstance(
+      //    instance_name, active_mux2_cell->circuit());
+      //Cell::TieInstances(circuit_instance, instance);
     }
   }
 

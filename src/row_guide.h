@@ -83,6 +83,10 @@ class RowGuide {
   geometry::Instance *InstantiateFront(
       const std::string &name, Layout *template_layout);
 
+  geometry::Instance *InstantiateBack(const std::string &name, Cell *master);
+  geometry::Instance *InstantiateAndInsertFront(const std::string &name,
+                                                Cell *master);
+  geometry::Instance *InstantiateFront(const std::string &name, Cell *master);
 
   void AddBlankSpaceBack(uint64_t span);
   void AddBlankSpaceAndInsertFront(uint64_t span);
@@ -136,6 +140,8 @@ class RowGuide {
   };
 
  private:
+  static size_t tap_count_;
+
   void Place(const geometry::Point &point,
              geometry::Instance *instance,
              int64_t *distance_to_tap,
@@ -160,6 +166,10 @@ class RowGuide {
   geometry::Point NextPointRight(const geometry::Instance &to_add) const;
 
   geometry::Instance *AddTap();
+
+  circuit::Instance *MakeCircuitInstance(const std::string &name,
+                                         geometry::Instance *layout_instance,
+                                         Circuit *circuit);
 
   // If set, automatically insert taps according to the rules of the physical
   // database.
