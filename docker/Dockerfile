@@ -12,6 +12,7 @@ RUN apt install -y libc-ares-dev
 FROM base as builder
 RUN apt install -y build-essential cmake autoconf automake libtool curl make g++ unzip clang
 RUN apt install -y ninja-build python3 libre2-dev libssl-dev git wget zlib1g-dev
+RUN apt install -y libkdtree++-dev
 
 WORKDIR /src
 
