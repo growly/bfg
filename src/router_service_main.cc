@@ -1,5 +1,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <grpcpp/grpcpp.h>
 
 #include <fstream>
 
