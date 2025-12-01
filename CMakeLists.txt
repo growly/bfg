@@ -179,12 +179,12 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
 # protoc will generate an output tree of files depending on the include path
-# given, which should be the root of the proto files as reference in their
+# given, which should be the root of the proto files as referenced in their
 # respect `import`s.
 #   https://github.com/protocolbuffers/protobuf/issues/723#issuecomment-132845240
 #
-# So we generate each proto tree (vlsir, proto) into its own subtree, not just
-# the ${PROJECT_BINARY_DIR} root.
+# We need this function to generate each proto tree (vlsir, proto) into its own
+# subtree, not just the ${PROJECT_BINARY_DIR} root.
 set(GENERATED_PROTO_SRCS)
 set(GENERATED_PROTO_HDRS)
 function(generate_protos proto_src_root proto_files out_dir)
