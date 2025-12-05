@@ -4,6 +4,7 @@
 #include <memory>
 #include <map>
 #include <absl/strings/str_format.h>
+#include <absl/strings/str_join.h>
 
 #include "../utility.h"
 #include "../modulo.h"
@@ -155,6 +156,14 @@ void Sky130TransmissionGateStack::Parameters::FromProto(
   }
 }
 
+std::string Sky130TransmissionGateStack::Parameters::DebugSequences() const {
+  std::vector<std::string> strings;
+  for (const auto &sequence : sequences) {
+    strings.push_back(absl::StrFormat("{%s}", absl::StrJoin(sequence, ", ")));
+  }
+  return absl::StrJoin(strings, ", ");
+}
+
 // TODO(aryap): It would be nice to have the Sky130TransmissionGate tell us this
 // based on its configuration. Or at least it would be nice to use parts of its
 // static configuration to tell us this, like the nfet_generator()
@@ -209,7 +218,6 @@ void Sky130TransmissionGateStack::BuildSequence(
   // pitch-alignmed contacts all fit.
   int64_t diff_ll_to_bottom_via_centre_y =
       GapInYFromNMOSDiffLowerLeftToMconViaCentre();
-  LOG(INFO) << diff_ll_to_bottom_via_centre_y;
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
@@ -346,6 +354,8 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   cell->SetLayout(new bfg::Layout(db));
   cell->SetCircuit(new bfg::Circuit());
 
+  LOG(INFO) << "Building net sequences: " << parameters_.DebugSequences();
+
   RowGuide row(geometry::Point(0, 0),
                cell->layout(),
                cell->circuit(),
@@ -433,7 +443,10 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       geometry::Rectangle psdm_rectangle =
           pdiff_cover->WithPadding(psdm_margin);
       if (parameters_.expand_wells_to_vertical_bounds) {
-        psdm_rectangle.upper_right().set_y(row.UpperRight().y());
+        psdm_rectangle.ExpandUpToCover(new_tiling_bounds);
+      }
+      if (parameters_.expand_wells_to_horizontal_bounds) {
+        psdm_rectangle.ExpandHorizontallyToCover(new_tiling_bounds);
       }
       cell->layout()->AddRectangle(psdm_rectangle);
     }
@@ -444,7 +457,10 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       geometry::Rectangle nwell_rectangle =
           pdiff_cover->WithPadding(nwell_margin);
       if (parameters_.expand_wells_to_vertical_bounds) {
-        nwell_rectangle.upper_right().set_y(row.UpperRight().y());
+        nwell_rectangle.ExpandUpToCover(new_tiling_bounds);
+      }
+      if (parameters_.expand_wells_to_horizontal_bounds) {
+        nwell_rectangle.ExpandHorizontallyToCover(new_tiling_bounds);
       }
       cell->layout()->AddRectangle(nwell_rectangle);
     }
@@ -455,7 +471,10 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       geometry::Rectangle hvtp_rectangle =
           pdiff_cover->WithPadding(hvtp_margin);
       if (parameters_.expand_wells_to_vertical_bounds) {
-        hvtp_rectangle.upper_right().set_y(row.UpperRight().y());
+        hvtp_rectangle.ExpandUpToCover(new_tiling_bounds);
+      }
+      if (parameters_.expand_wells_to_horizontal_bounds) {
+        hvtp_rectangle.ExpandHorizontallyToCover(new_tiling_bounds);
       }
       cell->layout()->AddRectangle(hvtp_rectangle);
     }

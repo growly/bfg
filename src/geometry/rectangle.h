@@ -89,6 +89,14 @@ class Rectangle : public Shape {
   void ExpandToCover(const Rectangle &subsume) {
     ExpandBounds(subsume, this);
   }
+  // Expands the left, right edges to at least the left/right edges of the given
+  // bounds Rectangle.
+  void ExpandHorizontallyToCover(const Rectangle &bounds);
+
+  // Expands the top or bottom edge respectively to cover the top edge of the
+  // given bounds rectangle.
+  void ExpandUpToCover(const Rectangle &bounds);
+  void ExpandDownToDocver(const Rectangle &bounds);
 
   double ClosestDistanceTo(const Rectangle &other) const {
     return ClosestDistanceBetween(*this, other);

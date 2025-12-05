@@ -17,33 +17,33 @@ RUN apt install -y libkdtree++-dev
 WORKDIR /src
 
 RUN git clone -b v1.16.0 --depth 1 https://github.com/google/googletest.git
-WORKDIR googletest/build
+WORKDIR /src/googletest/build
 RUN cmake ../
 RUN make -j $(nproc) && make install
 
 WORKDIR /src
 RUN git clone -b gperftools-2.16.90 --depth 1 https://github.com/gperftools/gperftools.git
-WORKDIR gperftools
+WORKDIR /src/gperftools
 RUN ./autogen.sh
 RUN ./configure
 RUN make -j $(nproc) && make install
 
 WORKDIR /src
 RUN git clone -b v2.2.2 --depth 1 https://github.com/gflags/gflags.git
-WORKDIR gflags/build
+WORKDIR /src/gflags/build
 RUN cmake .. -DBUILD_SHARED_LIBS=ON
 RUN make -j $(nproc) && make install
 
 WORKDIR /src
 RUN git clone -b v0.7.1 --depth 1 https://github.com/google/glog.git
-WORKDIR glog
+WORKDIR /src/glog
 RUN cmake -S . -B build -G "Unix Makefiles"
 RUN cmake --build build
 RUN cmake --build build --target install
 
 WORKDIR /src
 RUN git clone https://github.com/abseil/abseil-cpp.git
-WORKDIR abseil-cpp
+WORKDIR /src/abseil-cpp
 RUN git checkout 1a31b81c0a467c1c8e229b9fc172a4eb0db5bd85
 WORKDIR build
 RUN cmake -DABSL_RUN_TESTS=ON -DABSL_USE_GOOGLETEST_HEAD=ON -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON ../
@@ -52,14 +52,14 @@ RUN make install
 
 WORKDIR /src
 RUN git clone -b 2024-07-02 --depth 1 https://github.com/google/re2.git
-WORKDIR re2/build
+WORKDIR /src/re2/build
 RUN cmake ../
 RUN make -j $(nproc)
 RUN make install
 
 WORKDIR /src
 RUN wget -O - https://github.com/protocolbuffers/protobuf/releases/download/v21.5/protobuf-all-21.5.tar.gz | tar xfz -
-WORKDIR protobuf-21.5
+WORKDIR /src/protobuf-21.5
 RUN ./autogen.sh
 RUN ./configure
 RUN make -j $(nproc)
@@ -69,7 +69,7 @@ RUN ldconfig
 
 WORKDIR /src
 RUN wget -O - https://github.com/grpc/grpc/archive/refs/tags/v1.48.1.tar.gz | tar xfz -
-WORKDIR grpc-1.48.1/cmake/build
+WORKDIR /src/grpc-1.48.1/cmake/build
 RUN cmake \
   -DgRPC_INSTALL=ON \
   -DgRPC_BUILD_TESTS=OFF \
@@ -86,7 +86,8 @@ RUN make install
 WORKDIR /src/bfg
 COPY . .
 RUN git submodule update --init --recursive
-WORKDIR build
+RUN rm -rf /src/bfg/build
+WORKDIR /src/bfg/build
 RUN cmake ../
 RUN make -j $(nproc)
 

@@ -1,5 +1,7 @@
 #include "sky130_interconnect_mux6.h"
 
+#include <cmath>
+
 #include "../utility.h"
 #include "../modulo.h"
 #include "../cell.h"
@@ -24,6 +26,8 @@ namespace atoms {
 
 void Sky130InterconnectMux6::Parameters::ToProto(
     proto::parameters::Sky130InterconnectMux6 *pb) const {
+  pb->set_num_inputs(num_inputs);
+  pb->set_num_outputs(num_outputs);
   if (poly_pitch_nm) {
     pb->set_poly_pitch_nm(*poly_pitch_nm);
   } else {
@@ -65,35 +69,17 @@ void Sky130InterconnectMux6::Parameters::FromProto(
   if (pb.has_power_ground_strap_width_nm()) {
     power_ground_strap_width_nm = pb.power_ground_strap_width_nm();
   }
+  if (pb.has_num_inputs()) {
+    num_inputs = pb.num_inputs();
+  }
+  if (pb.has_num_outputs()) {
+    num_outputs = pb.num_outputs();
+  }
 }
 
-Sky130TransmissionGateStack::Parameters
-Sky130InterconnectMux6::BuildTransmissionGateParams(
-    geometry::Instance *vertical_neighbour) const {
-  Sky130TransmissionGateStack::Parameters params = {
-    .sequences = {},
-    .poly_pitch_nm = parameters_.poly_pitch_nm,
-    .min_poly_boundary_separation_nm = FigurePolyBoundarySeparationForMux(
-        vertical_neighbour->template_layout())
-  };
-  ConfigureSky130Parameters(&params);
-
-  uint32_t needed_tracks = parameters_.num_inputs;
-  if (parameters_.vertical_pitch_nm) {
-    params.min_height_nm = (needed_tracks + 3) * *parameters_.vertical_pitch_nm;
-  }
-  params.poly_contact_vertical_pitch_nm = parameters_.vertical_pitch_nm;
-  params.input_vertical_pitch_nm = parameters_.vertical_pitch_nm;
-  params.input_vertical_offset_nm = parameters_.vertical_offset_nm;
-
-  // Build the sequences of nets that dictate the arrangement of the
-  // transmission gate stack, e.g.
-  // {
-  //   {"X0", "S0", "Z", "S1", "X1"},
-  //   {"X2", "S2", "Z", "S3", "X3"},
-  //   {"X4", "S4", "Z", "S5", "X5"},
-  //   {"X6", "S6", "Z"}                // For the 7th input.
-  // }
+std::vector<std::vector<std::string>>
+Sky130InterconnectMux6::BuildSingleOutputNetSequences() const {
+  std::vector<std::vector<std::string>> sequences;
   std::vector<std::string> last_sequence;
   for (size_t i = 0; i < parameters_.num_inputs; ++i) {
     std::string input_name = absl::StrFormat("X%u", i);
@@ -106,34 +92,147 @@ Sky130InterconnectMux6::BuildTransmissionGateParams(
     } else {
       last_sequence.push_back(control_name);
       last_sequence.push_back(input_name);
-      params.sequences.push_back(last_sequence);
+      sequences.push_back(last_sequence);
       last_sequence.clear();
     }
   }
   // For odd numbers of inputs we have to push the shorter sequence.
   if (!last_sequence.empty()) {
-    params.sequences.push_back(last_sequence);
+    sequences.push_back(last_sequence);
     last_sequence.clear();
+  }
+  return sequences;
+}
+
+std::vector<std::vector<std::string>>
+Sky130InterconnectMux6::BuildDualOutputNetSequences() const {
+  // There's only one sequence.
+  std::vector<std::string> sequence;
+
+  size_t input_num = 0;
+  size_t control_num = 0;
+  size_t output_num = 0;
+
+  size_t i = 0;
+  while (input_num < parameters_.num_inputs) {
+    // The odd entries are always control signals.
+    if (i % 2 == 1) {
+      // Simple output naming:
+      //std::string control_name = absl::StrCat("S", control_num);
+      // Descriptive output naming tells us which input is being connected to
+      // which output:
+      std::string control_name = absl::StrFormat(
+          "S%d_%d",
+          (control_num + 1) / 2,  // Expect integer truncation here and below.
+          (control_num / 2) % 2 + (control_num % 2) / 2);
+      sequence.push_back(control_name);
+      control_num++;
+    } else if (i % 4 == 0) {
+      // Every 4-th entry starting from 0 is an input.
+      std::string input_name = absl::StrCat("X", input_num);
+      sequence.push_back(input_name);
+      input_num++;
+    } else {
+      std::string output_name = absl::StrCat(kMuxOutputName, output_num);
+      sequence.push_back(output_name);
+      output_num = (output_num + 1) % 2;
+    }
+    i++;
+  }
+
+  return {sequence};
+}
+
+Sky130TransmissionGateStack::Parameters
+Sky130InterconnectMux6::BuildTransmissionGateParams(
+    geometry::Instance *vertical_neighbour) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  Sky130TransmissionGateStack::Parameters params = {
+    .sequences = {},
+    .min_poly_boundary_separation_nm = FigurePolyBoundarySeparationForMux(
+        vertical_neighbour->template_layout())
+  };
+  ConfigureSky130Parameters(&params);
+
+  uint32_t needed_tracks = parameters_.num_inputs;
+  if (parameters_.vertical_pitch_nm) {
+    params.min_height_nm = (needed_tracks + 3) * *parameters_.vertical_pitch_nm;
+  }
+  params.poly_contact_vertical_pitch_nm = parameters_.vertical_pitch_nm;
+  params.input_vertical_pitch_nm = parameters_.vertical_pitch_nm;
+  params.input_vertical_offset_nm = parameters_.vertical_offset_nm;
+  params.expand_wells_to_vertical_bounds = true;
+  params.expand_wells_to_horizontal_bounds = true;
+
+  // Build the sequences of nets that dictate the arrangement of the
+  // transmission gate stack, e.g. for 1 output:
+  // {
+  //   {"X0", "S0", "Z", "S1", "X1"},
+  //   {"X2", "S2", "Z", "S3", "X3"},
+  //   {"X4", "S4", "Z", "S5", "X5"},
+  //   {"X6", "S6", "Z"}                // For the 7th input.
+  // }
+  //
+  // and for 5 inputs, 2 outputs (with simple control names):
+  // {
+  //   {"X0", "S0", "Z0", "S1", "X1", "S2", "Z1",
+  //        "S3", "X2", "S4", "Z0", "S5", "X3", "S6", "Z1", "S7", "X4"}
+  // }
+  // ... where X0, X4 are unique inputs, and X1, X2, X3 are shared.
+  //
+  // With more useful control names, indicating which input is being connected
+  // to which output:
+  // {
+  //   {"X0", "S0_0", "Z0", "S1_0", "X1", "S1_1", "Z1", "S2_1",
+  //        "X2", "S2_0", "Z0", "S3_0", "X3", "S3_1", "Z1", "S4_1", "X4"}
+  // }
+  // Control i connect input
+  //    int((i + 1) / 2)
+  // to output
+  //    (int((i / 2) % 2) + int((i % 2) / 2)
+  // (Trust me bro.)
+  switch (parameters_.num_outputs) {
+    default:
+      LOG(ERROR) << "This generator can only build muxes with 1 or 2 outputs.";
+    case 1:
+      params.sequences = BuildSingleOutputNetSequences();
+      params.poly_pitch_nm = parameters_.poly_pitch_nm;
+      break;
+    case 2:
+      params.sequences = BuildDualOutputNetSequences();
+      params.poly_pitch_nm = std::max(
+          *parameters_.poly_pitch_nm,
+          static_cast<uint64_t>(
+              2 * db.ToExternalUnits(db.Rules("met2.drawing").min_pitch))
+          );
+      break;
   }
   return params;
 }
 
 std::vector<geometry::Instance*> Sky130InterconnectMux6::AddMemoriesVertically(
-    size_t first_row, uint32_t count, MemoryBank *bank) {
+    size_t first_row, uint32_t count, uint32_t columns, MemoryBank *bank) {
   std::vector<geometry::Instance*> memories;
-  for (size_t i = first_row; i < first_row + count; i++) {
-    std::string cell_name = PrefixCellName(
-        absl::StrFormat("dfxtp_%d", i));
-    std::string instance_name = absl::StrCat(cell_name, "_i");
-    atoms::Sky130Dfxtp::Parameters params;
-    ConfigureSky130Parameters(&params);
-    params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-    params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-    atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
-    Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
-    geometry::Instance *layout_instance = bank->InstantiateRight(
-        i, instance_name, dfxtp_cell);
-    memories.push_back(layout_instance);
+  for (size_t i = first_row; i < first_row + count; ++i) {
+    for (size_t j = 0; j < columns; ++j) {
+      std::string cell_name = PrefixCellName(
+          absl::StrFormat("dfxtp_%d", i * columns + j));
+      std::string instance_name = absl::StrCat(cell_name, "_i");
+      atoms::Sky130Dfxtp::Parameters params;
+      ConfigureSky130Parameters(&params);
+      params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+      params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
+      atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
+      Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
+      geometry::Instance *layout_instance = bank->InstantiateRight(
+          i, instance_name, dfxtp_cell);
+      // Append in scan order.
+      if (i % 2 == 0) {
+        memories.push_back(layout_instance);
+      } else {
+        memories.insert(memories.begin(), layout_instance);
+      }
+    }
   }
   return memories;
 }
@@ -238,16 +337,33 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   Cell *tap_cell = tap_generator.GenerateIntoDatabase(
       PrefixCellName("interconnect_mux6_tap_template"));
 
-  uint32_t num_ff = parameters_.num_inputs;
-  uint32_t num_ff_top = num_ff / 2; 
-  uint32_t num_ff_bottom = num_ff - num_ff_top;
+  size_t num_ff_columns = 0;
+  uint32_t num_ff = 0;
+  switch (parameters_.num_outputs) {
+    default:
+      LOG(ERROR) << "This generator can only build muxes with 1 or 2 outputs.";
+      // Fallthrough intended.
+    case 1:
+      num_ff = parameters_.num_inputs;
+      num_ff_columns = 1;
+      break;
+    case 2:
+      num_ff = (parameters_.num_inputs - 1) * 2;
+      num_ff_columns = 2;
+      break;
+  }
+
+  uint32_t num_ff_rows = std::ceil(
+      static_cast<double>(num_ff) / static_cast<double>(num_ff_columns));
+  uint32_t num_ff_rows_top = num_ff_rows / 2; 
+  uint32_t num_ff_rows_bottom = num_ff_rows - num_ff_rows_top;
 
   // We want the rows immediately below and above the centre row, where the
   // transmission gate mux is, to be rotated. Working backwards, whether or not
   // the first row is rotated or not is determined by whether the number of
   // memories below the centre row is even or odd. If it's odd, we must start
   // rotated, if not don't.
-  bool rotate_first_row = num_ff_bottom % 2 != 0;
+  bool rotate_first_row = num_ff_rows_bottom % 2 != 0;
   MemoryBank bank = MemoryBank(cell->layout(),
                                cell->circuit(),
                                design_db_,
@@ -258,7 +374,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   // Add bottom memories:
   std::vector<geometry::Instance*> bottom_memories = AddMemoriesVertically(
-      0, num_ff_bottom, &bank);
+      0, num_ff_rows_bottom, num_ff_columns, &bank);
 
   //atoms::Sky130Tap::Parameters tap_params = {
   //  .height_nm = 2720,
@@ -269,14 +385,14 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   //    "interconnect_mux6_tap_template");
   //
   // Width of a tap, above.
-  //bank.Row(num_ff_bottom).AddBlankSpaceAndInsertFront(460);
+  //bank.Row(num_ff_rows_bottom).AddBlankSpaceAndInsertFront(460);
   // Disable the tap cell on this row.
-  bank.Row(num_ff_bottom).clear_tap_cell();
+  bank.Row(num_ff_rows_bottom).clear_tap_cell();
   geometry::Instance *stack_layout = AddTransmissionGateStackRight(
-      bottom_memories.back(), num_ff_bottom, &bank);
+      bottom_memories.back(), num_ff_rows_bottom, &bank);
 
   std::vector<geometry::Instance*> top_memories = AddMemoriesVertically(
-      num_ff_bottom + 1, num_ff_top, &bank);
+      num_ff_rows_bottom + 1, num_ff_rows_top, num_ff_columns, &bank);
 
   // FIXME(aryap): You were here.
   // 1. Refactor these large functions to remember how they work, AND
@@ -293,23 +409,44 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // n-mos more, we could probably also alternative the poly tab position, which
   // would mean we could do it? the limiting factor might be the number of
   // memories anyway, so don't bother if it doesn't make sense.
+  //
+  // so a 6:1 mux needs 6 memories, one for each input -> output path.
+  // a 7:2 mux needs 7 * 2 - 2 = (7 - 1) * 2 = 12 memories, one for each
+  // input->output path, considering that two inputs have 1 path instead of 2.
+  // when I looked at the win for decoding, it didn't kick in until when? [VERY
+  // IMPORTANT FIND THAT ANALYSIS i think in remarkable?]
+  // does it matter now? no it's the same problem, just twice, right? so how is
+  // this a win? routing congestion?
+  //
+  // right i remember now. to decode an address up to 6 needs 3 bits, so you pay
+  // the same price decoding 5-8; takes fewer memories (= rows) for 6 than 8.
+  // possibly a win at 8 inputs (= 3 memories + decoder for each). decoder is a
+  // NAND3+inverter for each control line?
+  //
+  // also i think this layout is going to be sufficiently different that we need
+  // a new class. perhaps a derived class so we can reuse the decap, buffer, etc
+  // insertion. but the routing will need to be vastly different.
 
   int64_t mux_row_height =
       stack_layout->template_layout()->GetTilingBounds().Height();
 
   // The output buffer goes at the end of the transmission gate stack.
-  geometry::Instance *output_buf_layout_instance = AddOutputBufferRight(
-      "", mux_row_height, num_ff_bottom, &bank);
+  std::vector<geometry::Instance*> output_bufs;
+  for (size_t i = 0; i < parameters_.num_outputs; ++i) {
+    output_bufs.push_back(AddOutputBufferRight(
+        absl::StrFormat("%d", i), mux_row_height, num_ff_rows_bottom, &bank));
+  }
 
   // The input clock buffers go next to the middle flip flop on the top and
   // bottom side.
   geometry::Instance *clk_buf_top_layout = AddClockBufferRight(
       "top",
-      num_ff_bottom + 1 + (num_ff_top / 2),   // The middle row on top.
+      // The middle row on top.
+      num_ff_rows_bottom + 1 + (num_ff_rows_top / 2),
       &bank);
   geometry::Instance *clk_buf_bottom_layout = AddClockBufferRight(
       "bottom",
-      num_ff_bottom / 2,   // The middle row on the bottom.
+      num_ff_rows_bottom / 2,   // The middle row on the bottom.
       &bank);
 
   std::vector<geometry::Instance*> clk_bufs = {
@@ -319,11 +456,12 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // Decaps!
   Cell *right_decap_cell = MakeDecapCell(1380U, 2720U);
   std::set<size_t> skip_rows = {
-      num_ff_bottom + 1 + (num_ff_top / 2),   // The middle row on top.
-      num_ff_bottom / 2,   // The middle row on the bottom.
-      num_ff_bottom,  // The transmission gate row (~middle).
+      // The middle row on top.
+      num_ff_rows_bottom + 1 + (num_ff_rows_top / 2),
+      num_ff_rows_bottom / 2,   // The middle row on the bottom.
+      num_ff_rows_bottom,  // The transmission gate row (~middle).
   };
-  for (size_t i = 0; i < num_ff + 1; ++i) {
+  for (size_t i = 0; i < num_ff_rows + 1; ++i) {
     // Skip transmission gate row.
     if (skip_rows.find(i) != skip_rows.end()) {
       continue;
@@ -338,7 +476,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   // Size the routing channel to make the overall mux meet the pitch
   // requirement:
-  uint64_t fixed_row_width = bank.Row(num_ff_bottom - 1).Width();
+  uint64_t fixed_row_width = bank.Row(num_ff_rows_bottom - 1).Width();
   uint64_t horizontal_pitch_nm = parameters_.horizontal_pitch_nm.value_or(
       Parameters::kHorizontalTilingUnitNm);
   uint64_t vertical_channel_width_nm = Utility::NextMultiple(
@@ -348,8 +486,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   Cell *left_decap_cell =
       MakeDecapCell(vertical_channel_width_nm, 2720U);
-  for (size_t i = 0; i < num_ff + 1; ++i) {
-    if (i == num_ff_bottom) {
+  for (size_t i = 0; i < num_ff_rows + 1; ++i) {
+    if (i == num_ff_rows_bottom) {
       // Skip transmission gate row. It needs its own.
       continue;
     }
@@ -365,13 +503,14 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       special_decap_width_nm, 
       static_cast<uint64_t>(db.ToExternalUnits(mux_row_height)));
   geometry::Instance *decap = bank.InstantiateLeft(
-      num_ff_bottom,
+      num_ff_rows_bottom,
       absl::StrCat(cell->name(), "_i0"),
       special_decap_cell);
 
-  int64_t tiling_bound_right_x = bank.Row(num_ff_bottom + 1).UpperRight().x();
-  size_t middle_row_available_x =  tiling_bound_right_x -
-      bank.Row(num_ff_bottom).UpperRight().x();
+  int64_t tiling_bound_right_x =
+      bank.Row(num_ff_rows_bottom + 1).UpperRight().x();
+  int64_t middle_row_available_x =  tiling_bound_right_x -
+      bank.Row(num_ff_rows_bottom).UpperRight().x();
   if (middle_row_available_x >= db.ToInternalUnits(
         Sky130Decap::Parameters::kMinWidthNm)) {
     Cell *optional_decap_cell = MakeDecapCell(
@@ -379,7 +518,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
             db.ToExternalUnits(middle_row_available_x)),
         static_cast<uint64_t>(db.ToExternalUnits(mux_row_height)));
     geometry::Instance *decap = bank.InstantiateRight(
-        num_ff_bottom,
+        num_ff_rows_bottom,
         absl::StrCat(optional_decap_cell->name(), "_i0"),
         optional_decap_cell);
   }
@@ -393,7 +532,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   //
   // This is actually an option: if parity flips, we can tile this module by
   // rotating the tiles above and below, as we do for standard cells.
-  if (parameters_.num_inputs % 2 == 0) {
+  if ((parameters_.num_inputs * parameters_.num_outputs) % 2 == 0) {
     atoms::Sky130Tap::Parameters channel_tap_params = {
       .height_nm =
           parameters_.horizontal_routing_channel_height_nm.value_or(2720),
@@ -414,7 +553,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     //   - 1    0-based indexing
     //  ----
     //     1
-    size_t horizontal_channel_row = num_ff + 1;
+    size_t horizontal_channel_row = num_ff_rows + 1;
     // Let's keep it for now (but have to account for it in the width split
     // below):
     bank.DisableTapInsertionOnRow(horizontal_channel_row);
@@ -476,26 +615,32 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   // layout->EraseLayerByName("li.pin");
 
   // Draw all the wires!
-  if (parameters_.num_inputs <= 7) {
-    DrawRoutes(bank,
-               top_memories,
-               bottom_memories,
-               clk_bufs,
-               stack_layout,
-               output_buf_layout_instance,
-               cell->layout(),
-               cell->circuit());
-  } else {
-    LOG(FATAL) << "You have to implement routes with something more "
-               << "sophisticated, like the RoutingGrid";
-  }
+  switch (parameters_.num_outputs) {
+    default:
+      // Fallthrough intended. Also, an error should already have been emitted.
+    case 1:
+      LOG_IF(WARNING, parameters_.num_inputs > 7)
+          << "More than 7 inputs is known to not generate correctly. "
+          << "Try using RoutingGrid.";
+      DrawRoutesForSingleOutput(bank,
+                                top_memories,
+                                bottom_memories,
+                                clk_bufs,
+                                stack_layout,
+                                output_bufs[0],
+                                cell->layout(),
+                                cell->circuit());
+      break;
+    case 2:
 
+      break;
+  }
   cell->layout()->SetTilingBounds(tiling_bounds);
 
   return cell.release();
 }
 
-void Sky130InterconnectMux6::DrawRoutes(
+void Sky130InterconnectMux6::DrawRoutesForSingleOutput(
     const MemoryBank &bank,
     const std::vector<geometry::Instance*> &top_memories,
     const std::vector<geometry::Instance*> &bottom_memories,
@@ -738,7 +883,6 @@ void Sky130InterconnectMux6::DrawRoutes(
              output_port_x,
              layout,
              circuit);
-
   DrawInputs(stack,
              mux_pre_buffer_y,
              columns_left_x[kInterconnectLeftStartIndex],
@@ -1193,7 +1337,7 @@ void Sky130InterconnectMux6::DrawInputs(
 void Sky130InterconnectMux6::DrawScanChain(
     const std::vector<geometry::Instance*> &all_memories,
     const std::map<geometry::Instance*, std::string> &memory_output_nets,
-    int64_t num_ff_bottom,
+    int64_t num_ff_rows_bottom,
     int64_t vertical_x_left,
     int64_t vertical_x_right,
     Layout *layout,
@@ -1227,8 +1371,8 @@ void Sky130InterconnectMux6::DrawScanChain(
     // Ok no problem we just have to push the right-most vertical out more to
     // avoid using met1 too close to other met1!
     int64_t  vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
-        i != num_ff_bottom ?  vertical_x_left : vertical_x_right;
-    //if (i != num_ff_bottom) {
+        i != num_ff_rows_bottom ?  vertical_x_left : vertical_x_right;
+    //if (i != num_ff_rows_bottom) {
     //  vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) ?
     //      vertical_x_left : std::max(vertical_x_right, mem_Q->centre().x());
     //} else {

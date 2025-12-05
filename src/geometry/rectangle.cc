@@ -116,6 +116,21 @@ void Rectangle::ExpandAccumulate(const Rectangle &subsume,
   (*target)->ExpandToCover(subsume);
 }
 
+void Rectangle::ExpandHorizontallyToCover(const Rectangle &bounds) {
+  lower_left_.set_x(
+      std::min(lower_left_.x(), bounds.lower_left().x()));
+  upper_right_.set_x(
+      std::max(upper_right_.x(), bounds.upper_right().x()));
+}
+void Rectangle::ExpandUpToCover(const Rectangle &bounds) {
+  upper_right_.set_y(
+      std::max(upper_right_.y(), bounds.upper_right().y()));
+}
+void Rectangle::ExpandDownToDocver(const Rectangle &bounds) {
+  lower_left_.set_y(
+      std::min(lower_left_.y(), bounds.lower_left().y()));
+}
+
 Rectangle Rectangle::CentredAt(
     const Point &centre, uint64_t width, uint64_t height) {
   Point lower_left = centre - Point{

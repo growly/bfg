@@ -98,6 +98,11 @@ class Sky130InterconnectMux6 : public Atom {
 
     bool redraw_rail_vias = true;
 
+    // Either 1 or 2.
+    //
+    // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
+    uint16_t num_outputs = 1;
+
     void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
   };
@@ -126,6 +131,8 @@ class Sky130InterconnectMux6 : public Atom {
     base_params->ground_net = parameters_.ground_net;
   }
 
+  std::vector<std::vector<std::string>> BuildSingleOutputNetSequences() const;
+  std::vector<std::vector<std::string>> BuildDualOutputNetSequences() const;
   Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
     geometry::Instance *vertical_neighbour) const;
 
@@ -133,7 +140,7 @@ class Sky130InterconnectMux6 : public Atom {
       bfg::Layout *neighbour_layout) const;
 
   std::vector<geometry::Instance*> AddMemoriesVertically(
-      size_t first_row, uint32_t count, MemoryBank *bank);
+      size_t first_row, uint32_t count, uint32_t columns, MemoryBank *bank);
   geometry::Instance *AddClockBufferRight(
       const std::string &suffix, size_t row, MemoryBank *bank);
   geometry::Instance *AddTransmissionGateStackRight(
@@ -143,7 +150,7 @@ class Sky130InterconnectMux6 : public Atom {
 
   Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
 
-  void DrawRoutes(
+  void DrawRoutesForSingleOutput(
       const MemoryBank &bank,
       const std::vector<geometry::Instance*> &top_memories,
       const std::vector<geometry::Instance*> &bottom_memories,
