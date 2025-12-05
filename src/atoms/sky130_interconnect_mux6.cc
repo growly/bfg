@@ -118,13 +118,114 @@ Sky130InterconnectMux6::BuildTransmissionGateParams(
   return params;
 }
 
+std::vector<geometry::Instance*> Sky130InterconnectMux6::AddMemoriesVertically(
+    size_t first_row, uint32_t count, MemoryBank *bank) {
+  std::vector<geometry::Instance*> memories;
+  for (size_t i = first_row; i < first_row + count; i++) {
+    std::string cell_name = PrefixCellName(
+        absl::StrFormat("dfxtp_%d", i));
+    std::string instance_name = absl::StrCat(cell_name, "_i");
+    atoms::Sky130Dfxtp::Parameters params;
+    ConfigureSky130Parameters(&params);
+    params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
+    atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
+    Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
+    geometry::Instance *layout_instance = bank->InstantiateRight(
+        i, instance_name, dfxtp_cell);
+    memories.push_back(layout_instance);
+  }
+  return memories;
+}
+
+geometry::Instance *Sky130InterconnectMux6::AddClockBufferRight(
+    const std::string &suffix, size_t row, MemoryBank *bank) {
+  // The input clock buffers go next to the middle flip flop on the top and
+  // bottom side.
+  std::string clk_buf_name = PrefixCellName("clk_buf");
+  Cell *clk_buf_cell = design_db_->FindCell("", clk_buf_name);
+  if (clk_buf_cell == nullptr) {
+    Sky130Buf::Parameters clk_buf_params = {};
+    ConfigureSky130Parameters(&clk_buf_params);
+    clk_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    clk_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
+    Sky130Buf clk_buf_generator(clk_buf_params, design_db_);
+    clk_buf_cell = clk_buf_generator.GenerateIntoDatabase(clk_buf_name);
+  }
+  geometry::Instance *instance = bank->InstantiateRight(
+      row, absl::StrCat(clk_buf_name, "_", suffix), clk_buf_cell);
+  return instance;
+}
+
+Cell *Sky130InterconnectMux6::MakeDecapCell(
+    uint32_t width_nm, uint32_t height_nm) {
+  // TODO(aryap): This is a cheap way of hashing based on parameters so that we
+  // don't re-generate the same cell many times. It would be nice if the
+  // database did this for us! Perhaps silently as part of the contract for
+  // GenerateIntoDatabase()?
+  // TODO(aryap): It would also be nice if we could ask the design database for
+  // a new instance of any cell that would be automatically, uniquely named.
+  std::string name = PrefixCellName(
+      absl::StrCat("decap_", width_nm, "x", height_nm));
+  Cell *cell = design_db_->FindCell("", name);
+  if (cell == nullptr) {
+    Sky130Decap::Parameters params = {
+      .width_nm = width_nm,
+      .height_nm = height_nm,
+    };
+    ConfigureSky130Parameters(&params);
+    params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
+    Sky130Decap decap_generator(params, design_db_);
+    cell = decap_generator.GenerateIntoDatabase(name);
+  }
+  return cell;
+}
+
+geometry::Instance *Sky130InterconnectMux6::AddOutputBufferRight(
+    const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank) {
+  std::string output_buf_name = PrefixCellName("output_buf");
+  std::string cell_name = absl::StrCat(output_buf_name, "_template");
+  Cell *output_buf_cell = design_db_->FindCell("", cell_name);
+  if (output_buf_cell == nullptr) {
+    Sky130Buf::Parameters output_buf_params = {
+      .height_nm = static_cast<uint64_t>(
+          design_db_->physical_db().ToExternalUnits(height))
+    };
+    ConfigureSky130Parameters(&output_buf_params);
+    output_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
+    output_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
+    Sky130Buf output_buf_generator(output_buf_params, design_db_);
+    output_buf_cell = output_buf_generator.GenerateIntoDatabase(cell_name);
+  }
+  return bank->InstantiateRight(
+      row,
+      suffix == "" ?
+          output_buf_name : absl::StrCat(output_buf_name, "_", suffix),
+      output_buf_cell);
+}
+
+geometry::Instance *Sky130InterconnectMux6::AddTransmissionGateStackRight(
+    geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank) {
+  Sky130TransmissionGateStack::Parameters transmission_gate_mux_params =
+      BuildTransmissionGateParams(vertical_neighbour);
+  Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
+      transmission_gate_mux_params, design_db_);
+  std::string instance_name = PrefixCellName("gate_stack");
+  std::string template_name = absl::StrCat(instance_name, "_template");
+  Cell *transmission_gate_stack_cell =
+      generator.GenerateIntoDatabase(template_name);
+  return bank->InstantiateRight(
+      row, instance_name, transmission_gate_stack_cell);
+}
+
 bfg::Cell *Sky130InterconnectMux6::Generate() {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
   std::unique_ptr<bfg::Cell> cell(
       new bfg::Cell(name_.empty() ? "sky130_interconnect_mux6": name_));
 
   cell->SetCircuit(new bfg::Circuit());
-
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   cell->SetLayout(new bfg::Layout(db));
 
   atoms::Sky130Tap::Parameters tap_params = {
@@ -155,21 +256,9 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
                                rotate_first_row,
                                geometry::Compass::LEFT);
 
-  std::vector<geometry::Instance*> bottom_memories;
-  for (size_t i = 0; i < num_ff_bottom; i++) {
-    std::string instance_name = PrefixCellName(
-        absl::StrFormat("dfxtp_bottom_%d", i));
-    std::string cell_name = absl::StrCat(instance_name, "_template");
-    atoms::Sky130Dfxtp::Parameters params;
-    ConfigureSky130Parameters(&params);
-    params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-    params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-    atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
-    Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
-    geometry::Instance *layout_instance = bank.InstantiateRight(
-        i, instance_name, dfxtp_cell);
-    bottom_memories.push_back(layout_instance);
-  }
+  // Add bottom memories:
+  std::vector<geometry::Instance*> bottom_memories = AddMemoriesVertically(
+      0, num_ff_bottom, &bank);
 
   //atoms::Sky130Tap::Parameters tap_params = {
   //  .height_nm = 2720,
@@ -179,85 +268,56 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   //Cell *tap_cell = tap_generator.GenerateIntoDatabase(
   //    "interconnect_mux6_tap_template");
   //
-  Sky130TransmissionGateStack::Parameters transmission_gate_mux_params =
-      BuildTransmissionGateParams(bottom_memories.back());
-  Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
-      transmission_gate_mux_params, design_db_);
-  std::string instance_name = PrefixCellName("gate_stack");
-  std::string template_name = absl::StrCat(instance_name, "_template");
-  Cell *transmission_gate_stack_cell =
-      generator.GenerateIntoDatabase(template_name);
-  bank.Row(num_ff_bottom).clear_tap_cell();
   // Width of a tap, above.
   //bank.Row(num_ff_bottom).AddBlankSpaceAndInsertFront(460);
-  geometry::Instance *stack_layout = bank.InstantiateRight(
-      num_ff_bottom, instance_name, transmission_gate_stack_cell);
+  // Disable the tap cell on this row.
+  bank.Row(num_ff_bottom).clear_tap_cell();
+  geometry::Instance *stack_layout = AddTransmissionGateStackRight(
+      bottom_memories.back(), num_ff_bottom, &bank);
 
-  std::vector<geometry::Instance*> top_memories;
-  for (size_t i = num_ff_bottom + 1; i < num_ff + 1; i++) {
-    std::string instance_name = PrefixCellName(
-        absl::StrFormat("dfxtp_top_%d", i));
-    std::string cell_name = absl::StrCat(instance_name, "_template");
-    atoms::Sky130Dfxtp::Parameters params;
-    ConfigureSky130Parameters(&params);
-    params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-    params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-    atoms::Sky130Dfxtp dfxtp_generator(params, design_db_);
-    Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
-    geometry::Instance *layout_instance = bank.InstantiateRight(
-        i, instance_name, dfxtp_cell);
-    top_memories.push_back(layout_instance);
-  }
+  std::vector<geometry::Instance*> top_memories = AddMemoriesVertically(
+      num_ff_bottom + 1, num_ff_top, &bank);
+
+  // FIXME(aryap): You were here.
+  // 1. Refactor these large functions to remember how they work, AND
+  // 2. figure out whether this class can also serve as a generator for
+  // shared-input muxes, or maybe we need a derived class? Either way the name
+  // needs to be reconsidered.
+  //
+  // if we just match the pitch of the transmission gates to 2x the pitch of the
+  // metal 2 control wires, we should be able to remove the control wire
+  // limitation.
+  //
+  // why didn't it work when we matched 2x polypitch = 3x met2 pitch?
+  // oh because the poly contact point is fixed? if we separated the p- and
+  // n-mos more, we could probably also alternative the poly tab position, which
+  // would mean we could do it? the limiting factor might be the number of
+  // memories anyway, so don't bother if it doesn't make sense.
+
+  int64_t mux_row_height =
+      stack_layout->template_layout()->GetTilingBounds().Height();
 
   // The output buffer goes at the end of the transmission gate stack.
-  std::string output_buf_name = PrefixCellName("output_buf");
-  int64_t mux_row_height =
-      transmission_gate_stack_cell->layout()->GetTilingBounds().Height();
-  Sky130Buf::Parameters output_buf_params = {
-    .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
-  };
-  ConfigureSky130Parameters(&output_buf_params);
-  output_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-  output_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-  Sky130Buf output_buf_generator(output_buf_params, design_db_);
-  Cell *output_buf_cell = output_buf_generator.GenerateIntoDatabase(
-      absl::StrCat(output_buf_name, "_template"));
-  geometry::Instance *output_buf_layout_instance = bank.InstantiateRight(
-      num_ff_bottom,
-      output_buf_name,
-      output_buf_cell);
+  geometry::Instance *output_buf_layout_instance = AddOutputBufferRight(
+      "", mux_row_height, num_ff_bottom, &bank);
 
   // The input clock buffers go next to the middle flip flop on the top and
   // bottom side.
-  std::string clk_buf_name = PrefixCellName("clk_buf");
-  Sky130Buf::Parameters clk_buf_params = {};
-  ConfigureSky130Parameters(&clk_buf_params);
-  clk_buf_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-  clk_buf_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-  Sky130Buf clk_buf_generator(clk_buf_params, design_db_);
-  Cell *clk_buf_cell = clk_buf_generator.GenerateIntoDatabase(clk_buf_name);
-  geometry::Instance *clk_buf_top_layout = bank.InstantiateRight(
+  geometry::Instance *clk_buf_top_layout = AddClockBufferRight(
+      "top",
       num_ff_bottom + 1 + (num_ff_top / 2),   // The middle row on top.
-      absl::StrCat(clk_buf_name, "_top"),
-      clk_buf_cell);
-  geometry::Instance *clk_buf_bottom_layout = bank.InstantiateRight(
+      &bank);
+  geometry::Instance *clk_buf_bottom_layout = AddClockBufferRight(
+      "bottom",
       num_ff_bottom / 2,   // The middle row on the bottom.
-      absl::StrCat(clk_buf_name, "_bottom"),
-      clk_buf_cell);
+      &bank);
 
   std::vector<geometry::Instance*> clk_bufs = {
       clk_buf_top_layout, clk_buf_bottom_layout
   };
 
   // Decaps!
-  std::string right_decap_name = PrefixCellName("decap_right");
-  Sky130Decap::Parameters right_decap_params;
-  ConfigureSky130Parameters(&right_decap_params);
-  right_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-  right_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-  Sky130Decap right_decap_generator(right_decap_params, design_db_);
-  Cell *right_decap_cell =
-      right_decap_generator.GenerateIntoDatabase(right_decap_name);
+  Cell *right_decap_cell = MakeDecapCell(1380U, 2720U);
   std::set<size_t> skip_rows = {
       num_ff_bottom + 1 + (num_ff_top / 2),   // The middle row on top.
       num_ff_bottom / 2,   // The middle row on the bottom.
@@ -270,7 +330,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     }
     geometry::Instance *decap_layout = bank.InstantiateRight(
         i,
-        absl::StrCat(right_decap_name, "_", i),
+        absl::StrCat(right_decap_cell->name(), "_i", i),
         right_decap_cell);
   }
 
@@ -286,14 +346,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
           fixed_row_width,
       horizontal_pitch_nm) - fixed_row_width;
 
-  Sky130Decap::Parameters left_decap_params = {
-    .width_nm = vertical_channel_width_nm
-  };
-  left_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-  left_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-  Sky130Decap left_decap_generator(left_decap_params, design_db_);
   Cell *left_decap_cell =
-      left_decap_generator.GenerateIntoDatabase(left_decap_name);
+      MakeDecapCell(vertical_channel_width_nm, 2720U);
   for (size_t i = 0; i < num_ff + 1; ++i) {
     if (i == num_ff_bottom) {
       // Skip transmission gate row. It needs its own.
@@ -301,26 +355,18 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
     }
     geometry::Instance *decap = bank.InstantiateLeft(
         i,
-        absl::StrCat(left_decap_name, "_", i),
+        absl::StrCat(left_decap_cell->name(), "_i", i),
         left_decap_cell);
   }
 
-  std::string special_decap_name = PrefixCellName("decap_special");
   uint64_t special_decap_width_nm =
       vertical_channel_width_nm + tap_params.width_nm;
-  Sky130Decap::Parameters special_decap_params = {
-    .width_nm = special_decap_width_nm,
-    .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
-  };
-  ConfigureSky130Parameters(&special_decap_params);
-  special_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-  special_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-  Sky130Decap special_decap_generator(special_decap_params, design_db_);
-  Cell *special_decap_cell =
-      special_decap_generator.GenerateIntoDatabase(special_decap_name);
+  Cell *special_decap_cell = MakeDecapCell(
+      special_decap_width_nm, 
+      static_cast<uint64_t>(db.ToExternalUnits(mux_row_height)));
   geometry::Instance *decap = bank.InstantiateLeft(
       num_ff_bottom,
-      absl::StrCat(special_decap_name, "_0"),
+      absl::StrCat(cell->name(), "_i0"),
       special_decap_cell);
 
   int64_t tiling_bound_right_x = bank.Row(num_ff_bottom + 1).UpperRight().x();
@@ -328,22 +374,13 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       bank.Row(num_ff_bottom).UpperRight().x();
   if (middle_row_available_x >= db.ToInternalUnits(
         Sky130Decap::Parameters::kMinWidthNm)) {
-    std::string optional_decap_name = PrefixCellName("decap_optional");
-    Sky130Decap::Parameters optional_decap_params = {
-      .width_nm = static_cast<uint64_t>(
-          db.ToExternalUnits(middle_row_available_x)),
-      .height_nm = static_cast<uint64_t>(db.ToExternalUnits(mux_row_height))
-    };
-    ConfigureSky130Parameters(&optional_decap_params);
-    optional_decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-    optional_decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-    Sky130Decap optional_decap_generator(optional_decap_params, design_db_);
-    Cell *optional_decap_cell =
-        optional_decap_generator.GenerateIntoDatabase(
-            absl::StrCat(optional_decap_name, "_template"));
+    Cell *optional_decap_cell = MakeDecapCell(
+        static_cast<uint64_t>(
+            db.ToExternalUnits(middle_row_available_x)),
+        static_cast<uint64_t>(db.ToExternalUnits(mux_row_height)));
     geometry::Instance *decap = bank.InstantiateRight(
         num_ff_bottom,
-        optional_decap_name,
+        absl::StrCat(optional_decap_cell->name(), "_i0"),
         optional_decap_cell);
   }
 
@@ -397,23 +434,13 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       // Break regular multiples of tiling width unit for the last one:
       int64_t width = i == decap_widths.size() - 1 ?
           total_decap_width - width_so_far : decap_widths[i];
-      std::string name = PrefixCellName(
-          absl::StrFormat("horizontal_channel_decap_%u", i));
-      Sky130Decap::Parameters decap_params = {
-        .width_nm = static_cast<uint64_t>(db.ToExternalUnits(width)),
-        .height_nm =
-            parameters_.horizontal_routing_channel_height_nm.value_or(2720)
-      };
-      ConfigureSky130Parameters(&decap_params);
-      decap_params.draw_vpwr_vias = !parameters_.redraw_rail_vias;
-      decap_params.draw_vgnd_vias = !parameters_.redraw_rail_vias;
-      Sky130Decap horizontal_channel_decap_generator(decap_params, design_db_);
       Cell *horizontal_decap_cell =
-          horizontal_channel_decap_generator.GenerateIntoDatabase(
-              absl::StrCat(name, "_template"));
+          MakeDecapCell(
+              static_cast<uint64_t>(db.ToExternalUnits(width)),
+              parameters_.horizontal_routing_channel_height_nm.value_or(2720));
       geometry::Instance *decap = bank.InstantiateRight(
           horizontal_channel_row,
-          name,
+          absl::StrCat(horizontal_decap_cell->name(), "_i", i),
           horizontal_decap_cell);
 
       width_so_far += width;

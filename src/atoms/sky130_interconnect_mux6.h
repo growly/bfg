@@ -132,6 +132,17 @@ class Sky130InterconnectMux6 : public Atom {
   int64_t FigurePolyBoundarySeparationForMux(
       bfg::Layout *neighbour_layout) const;
 
+  std::vector<geometry::Instance*> AddMemoriesVertically(
+      size_t first_row, uint32_t count, MemoryBank *bank);
+  geometry::Instance *AddClockBufferRight(
+      const std::string &suffix, size_t row, MemoryBank *bank);
+  geometry::Instance *AddTransmissionGateStackRight(
+      geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank);
+  geometry::Instance *AddOutputBufferRight(
+      const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank);
+
+  Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
+
   void DrawRoutes(
       const MemoryBank &bank,
       const std::vector<geometry::Instance*> &top_memories,
