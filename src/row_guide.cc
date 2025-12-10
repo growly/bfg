@@ -136,6 +136,20 @@ geometry::Instance *RowGuide::AddTap() {
   return layout_instance;
 }
 
+int64_t RowGuide::AvailableRightSpanUpTo(uint64_t max) const {
+  int64_t current_span = static_cast<int64_t>(Width());
+  int64_t to_cover = static_cast<int64_t>(max) - current_span;
+  if (to_cover < 0) {
+    return to_cover;
+  }
+  int64_t tap_width = tap_cell_->get().layout()->GetTilingBounds().Width();
+  int64_t distance_from_taps = distance_to_tap_right_ + to_cover;
+  // Expecting floor():
+  int64_t num_taps = distance_from_taps / max_tap_distance_;
+  to_cover -= num_taps * tap_width;
+  return to_cover;
+}
+
 void RowGuide::MaybeAddTapLeftFor(uint64_t additional_span) {
   if (!NeedsTapLeft(additional_span)) {
     return;

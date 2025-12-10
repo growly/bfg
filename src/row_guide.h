@@ -88,11 +88,15 @@ class RowGuide {
                                                 Cell *master);
   geometry::Instance *InstantiateFront(const std::string &name, Cell *master);
 
+  // h/t Taylor Swift
   void AddBlankSpaceBack(uint64_t span);
   void AddBlankSpaceAndInsertFront(uint64_t span);
   void AddBlankSpaceFront(uint64_t span);
 
-  // FIXME(aryap): These need to account for blank space at left/right.
+  // Return the amount of space available up to the given value. Accounts for
+  // any taps that needs to be insert. If negative, there is no room.
+  int64_t AvailableRightSpanUpTo(uint64_t max) const;
+
   uint64_t Width() const;
   uint64_t Height() const;
 

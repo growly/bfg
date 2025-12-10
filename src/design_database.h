@@ -29,6 +29,8 @@ class DesignDatabase {
 
   Cell *FindCellOrDie(const std::string &domain, const std::string &name) const;
   Cell *FindCellOrDie(const std::string &name) const;
+  Cell *FindCell(const std::string &domain, const std::string &name) const;
+
   const std::unordered_map<std::string,
       std::unordered_map<std::string, std::unique_ptr<Cell>>> &cells() const {
       return cells_;
@@ -78,7 +80,6 @@ class DesignDatabase {
   void LoadModule(const vlsir::circuit::Module &module_pb);
   void LoadExternalModule(const vlsir::circuit::ExternalModule &module_pb);
 
-  Cell *FindCell(const std::string &domain, const std::string &name) const;
   Cell *FindOrCreateCell(const std::string &domain, const std::string &name);
 
   PhysicalPropertiesDatabase physical_db_;

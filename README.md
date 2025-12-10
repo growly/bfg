@@ -9,10 +9,17 @@ An Open-Source Silicon Compiler for Reduced-Complexity Reconfigurable Fabrics
 The easiest and safest way to build and run ```bfg``` is via Docker:
 
 ```
-docker build bfg/router:latest -f docker/Dockerfile .
+docker build -t bfg/router:latest -f docker/Dockerfile .
 
 docker compose -f docker/docker-compose.yml up -d
 ```
+
+> [!CAUTION]
+> This docker command assumes you are running it from the root of the repo. The
+> final argument is a path ("`.`") so that this directory gets copied into the
+> container. It's used in an `ADD . .` command in the Dockerfile. Have a look.
+> Anyway, don't run the command from another directory unless you know what
+> you're doing.
 
 ### Prerequisites
 

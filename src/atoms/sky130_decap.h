@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include <glog/logging.h>
+
 #include "atom.h"
 #include "../circuit.h"
 #include "../layout.h"
@@ -56,7 +58,15 @@ class Sky130Decap: public Atom {
 
   Sky130Decap(const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
-        parameters_(parameters) {}
+        parameters_(parameters) {
+    // Check limits.
+    LOG_IF(FATAL, parameters.width_nm > Parameters::kMaxWidthNm)
+        << "Requested width (" << parameters.width_nm << " nm) exceeds the "
+        << "maximum possible (" << Parameters::kMaxWidthNm << " nm)";
+    LOG_IF(FATAL, parameters.width_nm < Parameters::kMinWidthNm)
+        << "Requested width (" << parameters.width_nm << " nm) is less than "
+        << "the minimum needed (" << Parameters::kMaxWidthNm << " nm)";
+  }
 
   // Caller takes ownership!
   bfg::Cell *Generate() override;

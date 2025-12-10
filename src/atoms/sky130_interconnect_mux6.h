@@ -98,6 +98,11 @@ class Sky130InterconnectMux6 : public Atom {
 
     bool redraw_rail_vias = true;
 
+    // Either 1 or 2.
+    //
+    // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
+    uint16_t num_outputs = 1;
+
     void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
   };
@@ -108,6 +113,24 @@ class Sky130InterconnectMux6 : public Atom {
       const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters) {
+    const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+    // Correct any input parameters as needed:
+    if (parameters_.num_outputs == 2) {
+      int64_t min_poly_pitch = std::max({
+          // Closest pitch from rulebook.
+          db.Rules("poly.drawing").min_pitch,
+          // Closest they can to accommodate two horizontal met1 via encaps.
+          db.Rules("met1.drawing").min_separation +
+              db.Rules("met2.drawing").min_pitch / 2 +
+              std::max(
+                  db.TypicalViaEncap("met1.drawing", "via1.drawing").length,
+                  db.TypicalViaEncap("met1.drawing", "mcon.drawing").length)
+      });
+      uint64_t min_poly_pitch_nm = static_cast<uint64_t>(
+          db.ToExternalUnits(min_poly_pitch));
+      parameters_.poly_pitch_nm = std::max(
+          parameters_.poly_pitch_nm.value_or(0), min_poly_pitch_nm);
+    }
   }
 
   // This will return the transistor as a single Cell, which is usually
@@ -116,29 +139,46 @@ class Sky130InterconnectMux6 : public Atom {
   bfg::Cell *Generate() override;
 
  private:
-  // TODO(aryap): This is obviously a general utility function, once it has a
-  // better name.
-  static std::vector<int64_t> SplitIntoUnits(
-      int64_t length, int64_t max, int64_t unit);
-
   void ConfigureSky130Parameters(Sky130Parameters *base_params) const {
     base_params->power_net = parameters_.power_net;
     base_params->ground_net = parameters_.ground_net;
   }
 
+  std::vector<std::vector<std::string>> BuildSingleOutputNetSequences() const;
+  std::vector<std::vector<std::string>> BuildDualOutputNetSequences() const;
   Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
     geometry::Instance *vertical_neighbour) const;
 
   int64_t FigurePolyBoundarySeparationForMux(
       bfg::Layout *neighbour_layout) const;
 
-  void DrawRoutes(
+  std::vector<geometry::Instance*> AddMemoriesVertically(
+      size_t first_row, uint32_t count, uint32_t columns, MemoryBank *bank);
+  geometry::Instance *AddClockBufferRight(
+      const std::string &suffix, size_t row, MemoryBank *bank);
+  geometry::Instance *AddTransmissionGateStackRight(
+      geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank);
+  geometry::Instance *AddOutputBufferRight(
+      const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank);
+
+  Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
+
+  void DrawRoutesForSingleOutput(
       const MemoryBank &bank,
       const std::vector<geometry::Instance*> &top_memories,
       const std::vector<geometry::Instance*> &bottom_memories,
       const std::vector<geometry::Instance*> &clk_bufs,
       geometry::Instance *stack,
       geometry::Instance *output_buffer,
+      Layout *layout,
+      Circuit *circuit) const;
+  void DrawRoutesForDualOutputs(
+      const MemoryBank &bank,
+      const std::vector<geometry::Instance*> &top_memories,
+      const std::vector<geometry::Instance*> &bottom_memories,
+      const std::vector<geometry::Instance*> &clk_bufs,
+      const std::vector<geometry::Instance*> &output_buffers,
+      geometry::Instance *stack,
       Layout *layout,
       Circuit *circuit) const;
 

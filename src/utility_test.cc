@@ -60,5 +60,19 @@ TEST(Utility, NextGreaterMultiple) {
   EXPECT_EQ(6, Utility::NextGreaterMultiple(min, multiple));
 }
 
+TEST(Utility, StripInUnits) {
+  std::vector<int64_t> expected = {9, 9, 9, 3};
+  EXPECT_THAT(
+      Utility::StripInUnits(32, 9, 3), testing::ContainerEq(expected));
+
+  expected = {9, 9, 9, 6};
+  EXPECT_THAT(
+      Utility::StripInUnits(33, 9, 3), testing::ContainerEq(expected));
+
+  expected = {6, 6, 6, 6, 6};
+  EXPECT_THAT(
+      Utility::StripInUnits(32, 8, 3), testing::ContainerEq(expected));
+}
+
 }   // namespace
 }   // namespace bfg

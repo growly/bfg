@@ -84,6 +84,37 @@ class Utility {
     ss << input.rdbuf();
     return google::protobuf::TextFormat::ParseFromString(ss.str(), message_pb);
   }
+
+  // Does a kind of apriori stripmining, splitting 'length' into as many
+  // sub-lengths of 'max' size as can fit, and any remaining length, where all
+  // returned length are multiples of the given 'unit'. (The 'max' value is also
+  // rounded down to the nearest multiple of 'unit'.)
+  // 
+  // e.g. StripInUnits(32, 9, 3) will result in [9, 9, 9, 3], with 2 leftover
+  // of the original quantity not fitting a multiple of 3.
+  // StripInUnits(33, 9, 3) will result in [9, 9, 9, 6].
+  // StripInUnits(32, 8, 3) will result in [6, 6, 6, 6, 6].
+  static std::vector<int64_t> StripInUnits(
+      int64_t length, int64_t max, int64_t unit) {
+    // Rely on truncating (floor) behaviour.
+    int64_t real_max = (max / unit) * unit;
+
+    std::vector<int64_t> lengths;
+
+    // Stripmining!
+    int64_t unallocated = length;
+    while (unallocated >= unit) {
+      int64_t remainder = unallocated - real_max;
+      if (remainder >= 0) {
+        lengths.push_back(real_max);
+      } else {
+        // Again we rely on truncating (floor) behaviour:
+        lengths.push_back((unallocated / unit) * unit);
+      }
+      unallocated = remainder;
+    }
+    return lengths;
+  }
 };
 
 }  // namespace bfg
