@@ -113,6 +113,24 @@ class Sky130InterconnectMux6 : public Atom {
       const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters) {
+    const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+    // Correct any input parameters as needed:
+    if (parameters_.num_outputs == 2) {
+      int64_t min_poly_pitch = std::max({
+          // Closest pitch from rulebook.
+          db.Rules("poly.drawing").min_pitch,
+          // Closest they can to accommodate two horizontal met1 via encaps.
+          db.Rules("met1.drawing").min_separation +
+              db.Rules("met2.drawing").min_pitch / 2 +
+              std::max(
+                  db.TypicalViaEncap("met1.drawing", "via1.drawing").length,
+                  db.TypicalViaEncap("met1.drawing", "mcon.drawing").length)
+      });
+      uint64_t min_poly_pitch_nm = static_cast<uint64_t>(
+          db.ToExternalUnits(min_poly_pitch));
+      parameters_.poly_pitch_nm = std::max(
+          parameters_.poly_pitch_nm.value_or(0), min_poly_pitch_nm);
+    }
   }
 
   // This will return the transistor as a single Cell, which is usually
@@ -121,11 +139,6 @@ class Sky130InterconnectMux6 : public Atom {
   bfg::Cell *Generate() override;
 
  private:
-  // TODO(aryap): This is obviously a general utility function, once it has a
-  // better name.
-  static std::vector<int64_t> SplitIntoUnits(
-      int64_t length, int64_t max, int64_t unit);
-
   void ConfigureSky130Parameters(Sky130Parameters *base_params) const {
     base_params->power_net = parameters_.power_net;
     base_params->ground_net = parameters_.ground_net;
@@ -157,6 +170,15 @@ class Sky130InterconnectMux6 : public Atom {
       const std::vector<geometry::Instance*> &clk_bufs,
       geometry::Instance *stack,
       geometry::Instance *output_buffer,
+      Layout *layout,
+      Circuit *circuit) const;
+  void DrawRoutesForDualOutputs(
+      const MemoryBank &bank,
+      const std::vector<geometry::Instance*> &top_memories,
+      const std::vector<geometry::Instance*> &bottom_memories,
+      const std::vector<geometry::Instance*> &clk_bufs,
+      const std::vector<geometry::Instance*> &output_buffers,
+      geometry::Instance *stack,
       Layout *layout,
       Circuit *circuit) const;
 

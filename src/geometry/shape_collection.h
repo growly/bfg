@@ -58,6 +58,8 @@ class ShapeCollection : public Manipulable {
 
   bool Overlaps(const Rectangle &rectangle) const;
 
+  bool Intersects(const Point &point, int64_t margin) const;
+
   void CopyConnectables(
       const std::optional<Layer> expected_layer,
       std::unordered_map<

@@ -156,11 +156,11 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
     ScopedLayer scoped_layer(layout.get(), "met1.drawing");
     vgnd_rectangle =
         layout->AddRectangle({{0, -240}, {width, 240}});
-    vgnd_rectangle->set_net(parameters_.power_net);
+    vgnd_rectangle->set_net(parameters_.ground_net);
     // vgnd_rectangle->set_is_connectable(true);
     vpwr_rectangle =
         layout->AddRectangle({{0, height - 240}, {width, height + 240}});
-    vpwr_rectangle->set_net(parameters_.ground_net);
+    vpwr_rectangle->set_net(parameters_.power_net);
     // vpwr_rectangle->set_is_connectable(true);
   }
 
@@ -380,8 +380,11 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
 
     // met1.pin 68/16
     layout->SetActiveLayerByName("met1.pin");
-    layout->MakePin("VPWR", {230, static_cast<int64_t>(height)}, "met1.pin");
-    layout->MakePin("VGND", {230, 0}, "met1.pin");
+    // Apply VPWR or VGND label with pin:
+    layout->MakePin(
+        parameters_.power_net, {230, static_cast<int64_t>(height)}, "met1.pin");
+    layout->MakePin(
+        parameters_.ground_net, {230, 0}, "met1.pin");
 
     // nwell.pin 64/16
     layout->SetActiveLayerByName("nwell.pin");

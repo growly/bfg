@@ -29,6 +29,9 @@ std::string ShapeCollection::Describe() const {
        << rectangle->lower_left().y() << " "
        << rectangle->upper_right().x() << " "
        << rectangle->upper_right().y();
+    if (rectangle->is_connectable()) {
+      ss << " connectable";
+    }
     if (rectangle->net() != "") {
       ss << " net: " << rectangle->net();
     }
@@ -38,6 +41,9 @@ std::string ShapeCollection::Describe() const {
     ss << "    polygon ";
     for (const geometry::Point &point : poly->vertices()) {
       ss << "(" << point.x() << ", " << point.y() << ") ";
+    }
+    if (poly->is_connectable()) {
+      ss << " connectable";
     }
     if (poly->net() != "") {
       ss << " net: " << poly->net();
@@ -49,6 +55,9 @@ std::string ShapeCollection::Describe() const {
        << port->lower_left().y() << " "
        << port->upper_right().x() << " "
        << port->upper_right().y();
+    if (port->is_connectable()) {
+      ss << " connectable";
+    }
     if (port->net() != "") {
       ss << " net: " << port->net();
     }
@@ -275,6 +284,24 @@ bool ShapeCollection::Overlaps(const Rectangle &rectangle) const {
   }
   LOG_IF(WARNING, !poly_lines_.empty())
       << "Will not test if poly lines overlap rectangle";
+  return false;
+}
+
+bool ShapeCollection::Intersects(const Point &point, int64_t margin) const {
+  for (const auto &our_rectangle : rectangles_) {
+    if (our_rectangle->Intersects(point, margin))
+      return true;
+  }
+  for (const auto &polygon : polygons_) {
+    if (polygon->Intersects(point, margin))
+      return true;
+  }
+  for (const auto &port : ports_) {
+    if (port->Intersects(point, margin))
+      return true;
+  }
+  LOG_IF(WARNING, !poly_lines_.empty())
+      << "Will not test if poly lines intersect point";
   return false;
 }
 
