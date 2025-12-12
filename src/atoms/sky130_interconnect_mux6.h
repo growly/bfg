@@ -114,17 +114,37 @@ class Sky130InterconnectMux6 : public Atom {
       : Atom(design_db),
         parameters_(parameters) {
     const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+    // met2 control lines dictate the poly pitch:
+    //
+    //              met2      met2
+    //                |        |
+    //   +----+       | +----+ |
+    // +<---  |       +<---  | |
+    // | ++  ++         ++  ++ |
+    // |  |  | poly      |  |  |
+    // |  |  |           |  |  |
+    // |  |  |           |  |  |
+    // |  |  |      poly |  |  |
+    // | ++  ++         ++  ++ |
+    // | |  --->+       |  --->+
+    // | +----+ |       +----+ 
+    // |        |         met1 encap at end
+    // met2     met2
+    //   <------------------------------->
+    //           2x poly pitch
+    //
     // Correct any input parameters as needed:
     if (parameters_.num_outputs == 2) {
       int64_t min_poly_pitch = std::max({
           // Closest pitch from rulebook.
           db.Rules("poly.drawing").min_pitch,
-          // Closest they can to accommodate two horizontal met1 via encaps.
+          // Closest they be can to accommodate two horizontal met1 via encaps.
           db.Rules("met1.drawing").min_separation +
               db.Rules("met2.drawing").min_pitch / 2 +
               std::max(
                   db.TypicalViaEncap("met1.drawing", "via1.drawing").length,
-                  db.TypicalViaEncap("met1.drawing", "mcon.drawing").length)
+                  db.TypicalViaEncap("met1.drawing", "mcon.drawing").length),
+          2 * db.Rules("met2.drawing").min_pitch
       });
       uint64_t min_poly_pitch_nm = static_cast<uint64_t>(
           db.ToExternalUnits(min_poly_pitch));
@@ -139,6 +159,23 @@ class Sky130InterconnectMux6 : public Atom {
   bfg::Cell *Generate() override;
 
  private:
+  struct GateContacts {
+    size_t number;
+    geometry::Point p_contact;
+    geometry::Point n_contact;
+  };
+  struct GateAssignment {
+    GateContacts gate;
+    int64_t p_vertical_x;
+    int64_t p_gate_x;
+    int64_t n_vertical_x;
+    int64_t n_gate_x;
+  };
+
+  static bool CompareInstancesByQPortX(
+      geometry::Instance *const lhs,
+      geometry::Instance *const rhs);
+
   void ConfigureSky130Parameters(Sky130Parameters *base_params) const {
     base_params->power_net = parameters_.power_net;
     base_params->ground_net = parameters_.ground_net;
@@ -153,7 +190,11 @@ class Sky130InterconnectMux6 : public Atom {
       bfg::Layout *neighbour_layout) const;
 
   std::vector<geometry::Instance*> AddMemoriesVertically(
-      size_t first_row, uint32_t count, uint32_t columns, MemoryBank *bank);
+    size_t first_row,
+    uint32_t num_rows,
+    uint32_t columns,
+    MemoryBank *bank,
+    bool alternate_scan = false);
   geometry::Instance *AddClockBufferRight(
       const std::string &suffix, size_t row, MemoryBank *bank);
   geometry::Instance *AddTransmissionGateStackRight(
@@ -162,6 +203,44 @@ class Sky130InterconnectMux6 : public Atom {
       const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank);
 
   Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
+
+  std::vector<GateAssignment> AssignRow(
+      const std::vector<geometry::Instance*> &row_memories,
+      int64_t max_offset_from_first_poly_x,
+      std::vector<GateContacts> *gates) const;
+
+  std::optional<std::vector<std::vector<GateAssignment>>>
+  FindGateAssignment(
+      const std::vector<geometry::Instance*> scan_order,
+      size_t num_rows,
+      size_t num_columns,
+      int64_t max_offset_from_first_poly_x,
+      std::vector<std::vector<geometry::Instance*>> *sorted_memories_per_row,
+      std::vector<GateContacts> *gates) const;
+
+  bool ConnectMemoryRowToStack(
+      const std::vector<geometry::Instance*> &sorted_memories,
+      const std::vector<GateAssignment> &gate_assignments,
+      int64_t max_offset_from_first_poly_x,
+      std::vector<GateContacts> *gates,
+      geometry::Instance *stack,
+      std::optional<int64_t> *left_most_vertical_x,
+      std::optional<int64_t> *right_most_vertical_x,
+      std::map<geometry::Instance*, std::string> *memory_output_nets,
+      Layout *layout,
+      Circuit *circuit) const;
+  void ConnectControlWiresWithEffort(
+      const std::vector<geometry::Instance*> scan_order,
+      size_t num_rows,
+      size_t num_columns,
+      int64_t max_offset_from_first_poly_x,
+      geometry::Instance *stack,
+      std::vector<GateContacts> *gates,
+      std::optional<int64_t> *left_most_vertical_x,
+      std::optional<int64_t> *right_most_vertical_x,
+      std::map<geometry::Instance*, std::string> *memory_output_nets,
+      Layout *layout,
+      Circuit *circuit) const;
 
   void DrawRoutesForSingleOutput(
       const MemoryBank &bank,
@@ -219,10 +298,10 @@ class Sky130InterconnectMux6 : public Atom {
                  Layout *layout,
                  Circuit *circuit) const;
 
-  void ConnectVertically(const geometry::Point &top,
-                         const geometry::Point &bottom,
-                         int64_t vertical_x,
-                         bfg::Layout *layout) const;
+  std::vector<geometry::Point> ConnectVertically(const geometry::Point &top,
+                                                 const geometry::Point &bottom,
+                                                 int64_t vertical_x,
+                                                 bfg::Layout *layout) const;
   void AddPolyconAndLi(const geometry::Point tab_centre,
                        bool bulges_up,
                        bfg::Layout *layout) const;

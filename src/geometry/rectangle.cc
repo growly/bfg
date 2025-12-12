@@ -336,6 +336,22 @@ Rectangle Rectangle::WithPadding(
   return {lower_left, upper_right};
 }
 
+geometry::Rectangle Rectangle::WithKeepout(
+    const PhysicalPropertiesDatabase &db,
+    const std::optional<std::string> &layer) const {
+  int64_t min_separation = 0;
+  if (layer) {
+    min_separation = db.Rules(*layer).min_separation;
+  } else {
+    min_separation = db.Rules(layer_).min_separation;
+  }
+  // We subtract 1 because shapes at the edge of the min. separation boundary
+  // are ok. The 'min_separation' rule defines the closest another shape can be,
+  // inclusively. Any shape intersecting this one is not ok (it is strictly
+  // closer to the protected rectangle than permissible).
+  return WithPadding(min_separation - 1);
+}
+
 ::vlsir::raw::Rectangle Rectangle::ToVLSIRRectangle(
     const PhysicalPropertiesDatabase &db) const {
   ::vlsir::raw::Rectangle rect_pb;

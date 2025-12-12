@@ -112,6 +112,21 @@ class Rectangle : public Shape {
   Rectangle WithPadding(
       int64_t left, int64_t top, int64_t right, int64_t bottom) const;
 
+  // Returns this rectangle inflated to the point that any other shape
+  // intersecting it would violate the minimum separation rule for the given
+  // layer. (If layer is not given, the layer in layer_ is used.)
+  //
+  // TODO(aryap): The organisation is backwards. Rectangle, and other geometry
+  // types, know about PhysicalPropertiesDatabase to enable these sorts of
+  // functions. But geometry types should be pretty dumb - it makes more sense
+  // for these classes to have no knowledge of anything but other shapes. It
+  // makes more sense for PhysicalPropertiesDatabase to know how to make
+  // appropriate shapes for the rules it contains instead. But these all need to
+  // be refactored at once (by AI)?
+  geometry::Rectangle WithKeepout(
+      const PhysicalPropertiesDatabase &db,
+      const std::optional<std::string> &layer) const;
+
   // TODO(aryap): To be able to reotate arbitrarily, we have to store the
   // upper_left and lower_right values explicitly OR store the rotation angle so
   // that we can compute these when asked.

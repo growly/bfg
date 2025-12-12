@@ -1,5 +1,6 @@
 #include "sky130_interconnect_mux6.h"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -21,6 +22,7 @@
 
 #include <absl/strings/str_format.h>
 #include <absl/strings/str_cat.h>
+#include <absl/strings/str_join.h>
 
 namespace bfg {
 namespace atoms {
@@ -76,6 +78,14 @@ void Sky130InterconnectMux6::Parameters::FromProto(
   if (pb.has_num_outputs()) {
     num_outputs = pb.num_outputs();
   }
+}
+
+bool Sky130InterconnectMux6::CompareInstancesByQPortX(
+    geometry::Instance *const lhs,
+    geometry::Instance *const rhs) {
+  geometry::Port *lhs_port = lhs->GetFirstPortNamed("Q");
+  geometry::Port *rhs_port = rhs->GetFirstPortNamed("Q");
+  return lhs_port->centre().x() < rhs_port->centre().x();
 }
 
 std::vector<std::vector<std::string>>
@@ -207,9 +217,13 @@ Sky130InterconnectMux6::BuildTransmissionGateParams(
 }
 
 std::vector<geometry::Instance*> Sky130InterconnectMux6::AddMemoriesVertically(
-    size_t first_row, uint32_t count, uint32_t columns, MemoryBank *bank) {
-  std::vector<geometry::Instance*> memories;
-  for (size_t i = first_row; i < first_row + count; ++i) {
+    size_t first_row,
+    uint32_t num_rows,
+    uint32_t columns,
+    MemoryBank *bank,
+    bool alternate_scan) {
+  std::vector<geometry::Instance*> memories(num_rows * columns, nullptr);
+  for (size_t i = first_row; i < first_row + num_rows; ++i) {
     for (size_t j = 0; j < columns; ++j) {
       std::string cell_name = PrefixCellName(
           absl::StrFormat("dfxtp_%d", i * columns + j));
@@ -223,11 +237,10 @@ std::vector<geometry::Instance*> Sky130InterconnectMux6::AddMemoriesVertically(
       geometry::Instance *layout_instance = bank->InstantiateRight(
           i, instance_name, dfxtp_cell);
       // Append in scan order.
-      if (i % 2 == 0) {
-        memories.push_back(layout_instance);
-      } else {
-        memories.insert(memories.begin(), layout_instance);
-      }
+      size_t k = i % 2 == (alternate_scan ? 1 : 0) ?
+          (i - first_row + 1)  * columns - (j + 1) :
+          (i - first_row) * columns + j;
+      memories[k] = layout_instance;
     }
   }
   return memories;
@@ -370,7 +383,12 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
 
   // Add bottom memories:
   std::vector<geometry::Instance*> bottom_memories = AddMemoriesVertically(
-      0, num_ff_rows_bottom, num_ff_columns, &bank);
+      0,
+      num_ff_rows_bottom,
+      num_ff_columns,
+      &bank,
+      true);  // Alternate scan order for rows in the other half, so that the
+              // two memories halves line up.
 
   //atoms::Sky130Tap::Parameters tap_params = {
   //  .height_nm = 2720,
@@ -655,6 +673,378 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   return cell.release();
 }
 
+bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
+    const std::vector<geometry::Instance*> &sorted_memories,
+    const std::vector<GateAssignment> &gate_assignments,
+    int64_t max_offset_from_first_poly_x,
+    std::vector<GateContacts> *gates,
+    geometry::Instance *stack,
+    std::optional<int64_t> *left_most_vertical_x,
+    std::optional<int64_t> *right_most_vertical_x,
+    std::map<geometry::Instance*, std::string> *memory_output_nets,
+    Layout *layout,
+    Circuit *circuit) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
+
+  auto connect_memory_to_control_fn = [&](
+      geometry::Instance *memory, size_t gate_number, bool complement) {
+    // To associate these points with the control signals they require, consider
+    // that for gate n, the positive control signal connects to the NMOS FET
+    // and the inverted control signal connects to the PMOS FET. Then follow the
+    // naming convention in Sky130TransmissionGateStack.
+    //
+    // TODO(aryap): We could probably make this easier by making the port
+    // association an explicit feature of the (TransmissionGateStack) Cell?
+    std::string control_name = absl::StrCat(
+        "S", gate_number, complement ? "_B" : "");
+    std::string memory_port = complement ? "QI" : "Q";
+    std::string wire_name = absl::StrCat(
+        memory->name(), "_", memory_port, "_to_gate_", gate_number);
+    // For the scan chain, later:
+    if (!complement) {
+      memory_output_nets->insert({memory, wire_name});
+    }
+    circuit::Wire control_wire = circuit->AddSignal(wire_name);
+    stack->circuit_instance()->Connect(control_name, control_wire);
+    memory->circuit_instance()->Connect(memory_port, control_wire);
+  };
+
+  auto update_bounds_fn = [&](int64_t x) {
+    Utility::UpdateMin(x, left_most_vertical_x);
+    Utility::UpdateMax(x, right_most_vertical_x);
+  };
+
+  for (auto memory : sorted_memories) {
+    LOG(INFO) << memory->name() <<  " at " << memory->lower_left().x();
+  }
+
+  for (size_t i = 0; i < sorted_memories.size(); ++i) {
+    const GateAssignment &assignment = gate_assignments[i];
+    geometry::Instance *memory = sorted_memories[i];
+    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
+
+    const GateContacts &gate = assignment.gate;
+
+    geometry::Point p_tab_centre = gate.p_contact;
+    geometry::Point n_tab_centre = gate.n_contact;
+
+    int64_t vertical_x = assignment.p_vertical_x;
+
+    auto points = ConnectVertically(mem_Q->centre(),
+                                    p_tab_centre,
+                                    vertical_x - met2_pitch,
+                                    layout);
+
+    update_bounds_fn(vertical_x - met2_pitch);
+
+    // There should always be 4 points out of this function.
+    geometry::Line p_tab_vertical_line(points[1], points[2]);
+
+    auto encap = db.TypicalViaEncap(
+        "mcon.drawing", "met1.drawing", "via1.drawing");
+
+    // It's possible that the QI line come too close to the CLK line,
+    // since they are only one track apart, and the CLK line has a couple
+    // of via encaps. So because I refuse to resort to the RoutingGrid for
+    // this problem, we do a leetle tiny search for a jig of appropriate
+    // length to avoid the known obstacles:
+    geometry::ShapeCollection clk_shapes;
+    memory->CopyConnectableShapesOnNets(
+        {absl::StrCat(memory->name(), ".CLK")}, &clk_shapes);
+
+    geometry::Point target_centre = mem_QI->centre();
+
+    auto via_with_margin_fn = [&](const geometry::Point &centre) {
+      return geometry::Rectangle::CentredAt(
+          centre, encap.length, encap.width).WithKeepout(
+              db, "met1.drawing");
+    };
+
+    auto find_jig_fn = [&](
+        const geometry::Line &test_line,
+        bool port_is_left_of_x,
+        int64_t start_x,
+        int64_t y) {
+      int64_t direction_coefficient = port_is_left_of_x ? -1 : 1;
+      int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
+      int64_t jig = 0;
+
+      geometry::Rectangle test_shape = via_with_margin_fn(
+          {start_x + jig, y});
+      size_t attempts = 0;
+      while (clk_shapes.Overlaps(test_shape)) {
+        if (attempts > 3) {
+          LOG(ERROR) << "Could not jig enough to avoid obstacle";
+          // Give up.
+          break;
+        }
+        jig += direction_coefficient * met2_pitch;
+
+        geometry::Line jig_line({start_x, y}, {start_x + jig, y});
+        bool incident = false;
+        geometry::Point intersection;
+        if (jig_line.IntersectsInMutualBounds(
+              test_line, &incident, &intersection)) {
+          direction_coefficient *= -1;
+          jig = 0;
+          attempts = 0;
+        }
+
+        test_shape = via_with_margin_fn({start_x + jig, y});
+        attempts++;
+      }
+      return jig;
+    };
+
+    int64_t jig_x = find_jig_fn(p_tab_vertical_line,
+                                target_centre.x() < vertical_x,
+                                vertical_x,
+                                target_centre.y());
+
+    if (jig_x != 0) {
+      geometry::Point p0 = target_centre;
+      geometry::Point p1 = {vertical_x + jig_x, target_centre.y()};
+      geometry::Point p2 = {vertical_x, target_centre.y()};
+      geometry::Point p3 = {vertical_x, n_tab_centre.y()};
+      geometry::Point p4 = n_tab_centre;
+
+      layout->MakeVia("mcon.drawing", p0);
+      layout->MakeWire({p0, p1},
+                       "met1.drawing",
+                       "li.drawing",
+                       "met2.drawing",
+                       false,
+                       false,
+                       std::nullopt);
+      layout->MakeWire({p1, p2, p3},
+                       "met2.drawing",
+                       "met1.drawing",
+                       "met1.drawing",
+                       true,
+                       false,
+                       std::nullopt);
+      layout->MakeWire({p3, p4},
+                       "met1.drawing",
+                       "met2.drawing",
+                       "li.drawing",
+                       true,
+                       false,
+                       std::nullopt);
+      layout->MakeVia("mcon.drawing", p4);
+    } else {
+      ConnectVertically(target_centre,
+                        n_tab_centre,
+                        vertical_x,
+                        layout);
+    }
+
+    update_bounds_fn(vertical_x);
+
+    AddPolyconAndLi(p_tab_centre, true, layout);
+    AddPolyconAndLi(n_tab_centre, false, layout);
+
+    connect_memory_to_control_fn(memory, gate.number, true);
+    connect_memory_to_control_fn(memory, gate.number, false);
+  }
+  return true;
+}
+
+std::vector<Sky130InterconnectMux6::GateAssignment>
+Sky130InterconnectMux6::AssignRow(
+    const std::vector<geometry::Instance*> &sorted_memories,
+    int64_t max_offset_from_first_poly_x,
+    std::vector<GateContacts> *gates) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
+
+  // Assign gates to memories in the row and test for conflict.
+  std::vector<GateAssignment> gate_assignments;
+
+  for (size_t i = 0; i < sorted_memories.size(); ++i) {
+    geometry::Instance *memory = sorted_memories[i];
+    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
+
+    int64_t port_average_x = (mem_Q->centre().x() + mem_QI->centre().x()) / 2;
+
+    const GateContacts &gate = *std::min_element(
+        gates->begin(), gates->end(),
+        [&](const GateContacts &lhs, const GateContacts &rhs) {
+          int64_t lhs_distance = std::abs(lhs.p_contact.x() - port_average_x);
+          int64_t rhs_distance = std::abs(rhs.p_contact.x() - port_average_x);
+          return lhs_distance < rhs_distance;
+        });
+
+    LOG(INFO) << "gate " << gate.number << " is closest to memory ports x="
+              << port_average_x;
+    int64_t vertical_x = gate.p_contact.x() + max_offset_from_first_poly_x;
+
+    GateAssignment assignment {
+      .gate = gate,
+      .p_vertical_x = vertical_x,
+      .p_gate_x = mem_QI->centre().x(),
+      .n_vertical_x = vertical_x - met2_pitch,
+      .n_gate_x = mem_Q->centre().x()
+    };
+    gate_assignments.push_back(assignment);
+
+    gates->erase(std::remove_if(gates->begin(), gates->end(),
+                                    [&](const GateContacts &entry) {
+                                      return entry.number == gate.number;
+                                    }),
+                     gates->end());
+  }
+  return gate_assignments;
+}
+
+std::optional<std::vector<std::vector<Sky130InterconnectMux6::GateAssignment>>>
+Sky130InterconnectMux6::FindGateAssignment(
+    const std::vector<geometry::Instance*> scan_order,
+    size_t num_rows,
+    size_t num_columns,
+    int64_t max_offset_from_first_poly_x,
+    std::vector<std::vector<geometry::Instance*>> *sorted_memories_per_row,
+    std::vector<GateContacts> *gates) const {
+  auto row_has_conflict_fn = [](
+      const std::vector<GateAssignment> &assignments) -> bool {
+    std::vector<geometry::Line> p_tests;
+    std::vector<geometry::Line> n_tests;
+    for (const auto &assignment : assignments) {
+      p_tests.emplace_back(
+          geometry::Point{assignment.p_gate_x, 0},
+          geometry::Point{assignment.p_vertical_x, 0});
+      n_tests.emplace_back(
+          geometry::Point{assignment.n_gate_x, 0},
+          geometry::Point{assignment.n_vertical_x, 0});
+    }
+    for (size_t i = 0; i < p_tests.size(); ++i) {
+      for (size_t j = 0; j < p_tests.size(); ++j) {
+        if (i <= j) {
+          continue;
+        }
+        geometry::Line &a_p = p_tests[i];
+        geometry::Line &b_p = p_tests[j];
+        bool incident;
+        geometry::Point point;
+        if (a_p.IntersectsInMutualBounds(b_p, &incident, &point)) {
+          return true;
+        }
+
+        geometry::Line &a_n = n_tests[i];
+        geometry::Line &b_n = n_tests[j];
+        if (a_n.IntersectsInMutualBounds(b_n, &incident, &point)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  // We need to permute the order in which we allocate the rows, because
+  // sometimes there are conflicts!
+  std::vector<int> row_order;
+  for (int r = 0; r < num_rows; r++)
+    row_order.push_back(r);
+
+  std::vector<std::vector<geometry::Instance*>> memories_per_row;
+  // The initial row order is the natural one: 0, 1, 2
+  for (int r : row_order) {
+    std::vector<geometry::Instance*> row_memories;
+    for (int i = 0; i < num_columns; ++i) {
+      size_t c = num_columns * r + i;
+      if (c >= scan_order.size()) {
+        break;
+      }
+      geometry::Instance *memory = scan_order[c];
+      row_memories.push_back(memory);
+    }
+    // Sort memories in the row by increasing x position. Earlier entries are
+    // now further to the left for sure.
+    std::sort(row_memories.begin(),
+              row_memories.end(),
+              CompareInstancesByQPortX);
+    memories_per_row.push_back(row_memories);
+  }
+
+  auto check_permutation_fn = [&](
+      const std::vector<int> &row_order,
+      std::vector<std::vector<GateAssignment>> *assignments_out) -> bool {
+    std::vector<GateContacts> gates_copy(gates->begin(), gates->end());
+    std::vector<std::vector<GateAssignment>> all_assignments(
+        row_order.size(), std::vector<GateAssignment>());
+    for (int r : row_order) {
+      std::vector<GateAssignment> assignments = AssignRow(
+          memories_per_row[r], max_offset_from_first_poly_x, &gates_copy);
+      if (row_has_conflict_fn(assignments)) {
+        return false;
+      }
+      all_assignments[r] = assignments;
+    }
+    *gates = gates_copy;
+    *assignments_out = all_assignments;
+    return true;
+  };
+
+  do {
+    std::vector<std::vector<GateAssignment>> assignments;
+    bool success = check_permutation_fn(row_order, &assignments);
+    if (!success) {
+      LOG(INFO) << "Failed: Assignment in row order: "
+                << absl::StrJoin(row_order, ", ");
+      continue;
+    }
+    LOG(INFO) << "OK: Assignment in row order: "
+              << absl::StrJoin(row_order, ", ");
+    // On success:
+    *sorted_memories_per_row = memories_per_row;
+    return assignments;
+  } while (std::next_permutation(row_order.begin(), row_order.end()));
+  return std::nullopt;
+}
+
+void Sky130InterconnectMux6::ConnectControlWiresWithEffort(
+    const std::vector<geometry::Instance*> scan_order,
+    size_t num_rows,
+    size_t num_columns,
+    int64_t max_offset_from_first_poly_x,
+    geometry::Instance *stack,
+    std::vector<GateContacts> *gates,
+    std::optional<int64_t> *left_most_vertical_x,
+    std::optional<int64_t> *right_most_vertical_x,
+    std::map<geometry::Instance*, std::string> *memory_output_nets,
+    Layout *layout,
+    Circuit *circuit) const {
+
+  std::vector<std::vector<geometry::Instance*>> sorted_memories_per_row;
+  auto assignment = FindGateAssignment(
+      scan_order,
+      num_rows,
+      num_columns,
+      max_offset_from_first_poly_x,
+      &sorted_memories_per_row,
+      gates);
+  if (!assignment) {
+    LOG(ERROR) << "Could not find gate assignment";
+    return;
+  }
+
+  for (size_t r = 0; r < num_rows; ++r) {
+    ConnectMemoryRowToStack(
+        sorted_memories_per_row[r],
+        (*assignment)[r],
+        max_offset_from_first_poly_x,
+        gates,
+        stack,
+        left_most_vertical_x,
+        right_most_vertical_x,
+        memory_output_nets,
+        layout,
+        circuit);
+  }
+}
+
 void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
     const MemoryBank &bank,
     const std::vector<geometry::Instance*> &top_memories,
@@ -702,18 +1092,18 @@ void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
   // Scan chain connections on the left side can be connected on metal 2, and
   // this should effectively only take up one channel width over the tap cells
   // and not detract from the routing channels in the left-most block.
-  std::vector<geometry::Instance*> all_memories;
-  all_memories.insert(
-      all_memories.begin(), top_memories.begin(), top_memories.end());
-  all_memories.insert(
-      all_memories.begin(), bottom_memories.begin(), bottom_memories.end());
+  std::vector<geometry::Instance*> scan_order;
+  scan_order.insert(
+      scan_order.begin(), top_memories.begin(), top_memories.end());
+  scan_order.insert(
+      scan_order.begin(), bottom_memories.begin(), bottom_memories.end());
 
   // TODO(aryap): If the layout gets _any_ more complicated than this we will
   // need more sophisticated ways to reuse the control lines for the scan chain.
   // In fact they might already be too big (too much R & C)!
   //std::set<std::pair<geometry::Instance*, geometry::Instance*>>
   //    scan_chain_pairs;
-  //for (auto it = all_memories.begin(); it != all_memories.end(); ++it) {
+  //for (auto it = scan_order.begin(); it != scan_order.end(); ++it) {
   //  geometry::Instance *current = *it;
   //  geometry::Instance *next = *(it + 1);
   //  scan_chain_pairs.insert({current, next});
@@ -722,37 +1112,9 @@ void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
   std::optional<int64_t> left_most_vertical_x;
   std::optional<int64_t> right_most_vertical_x;
 
-  auto update_bounds_fn = [&](int64_t x) {
-    Utility::UpdateMin(x, &left_most_vertical_x);
-    Utility::UpdateMax(x, &right_most_vertical_x);
-  };
-
   // Track the names used for wires connecting the memories to each other (in
   // the scan chain) and the mux control inputs.
   std::map<geometry::Instance*, std::string> memory_output_nets;
-
-  auto connect_memory_to_control_fn = [&](
-      geometry::Instance *memory, size_t gate_number, bool complement) {
-    // To associate these points with the control signals they require, consider
-    // that for gate n, the positive control signal connects to the NMOS FET
-    // and the inverted control signal connects to the PMOS FET. Then follow the
-    // naming convention in Sky130TransmissionGateStack.
-    //
-    // TODO(aryap): We could probably make this easier by making the port
-    // association an explicit feature of the (TransmissionGateStack) Cell?
-    std::string control_name = absl::StrCat(
-        "S", gate_number, complement ? "_B" : "");
-    std::string memory_port = complement ? "QI" : "Q";
-    std::string wire_name = absl::StrCat(
-        memory->name(), "_", memory_port, "_to_gate_", gate_number);
-    // For the scan chain, later:
-    if (!complement) {
-      memory_output_nets.insert({memory, wire_name});
-    }
-    circuit::Wire control_wire = circuit->AddSignal(wire_name);
-    stack->circuit_instance()->Connect(control_name, control_wire);
-    memory->circuit_instance()->Connect(memory_port, control_wire);
-  };
 
   // We want to separate the paths taken by wires from memories now on the same
   // rows, since for multiple outputs the are 2 columns of memories. We also
@@ -779,20 +1141,6 @@ void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
         static_cast<double>(bottom_memories.size()) /
         static_cast<double>(num_columns)));
 
-  auto mem_output_x_sort_fn = [](
-      geometry::Instance *const lhs,
-      geometry::Instance *const rhs) {
-    geometry::Port *lhs_port = lhs->GetFirstPortNamed("Q");
-    geometry::Port *rhs_port = rhs->GetFirstPortNamed("Q");
-    return lhs_port->centre().x() < rhs_port->centre().x();
-  };
-
-  struct GateContacts {
-    size_t number;
-    geometry::Point p_contact;
-    geometry::Point n_contact;
-  };
-
   std::vector<GateContacts> top_gates;
   std::vector<GateContacts> bottom_gates;
   // Allocate even gates to the bottom memories. We expect there to be as many
@@ -813,148 +1161,29 @@ void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
     }
   }
 
-  auto connect_memories_fn  = [&](
-      const std::vector<geometry::Instance*> memories,
-      std::vector<GateContacts> *gates) {
-    for (int r = 0; r < rows; r++) {
-      // Sort memories in the row by increasing x position:
-      std::vector<geometry::Instance*> sorted_memories;
 
-      for (int i = 0; i < num_columns; ++i) {
-        size_t c = num_columns * r + i;
-        if (c >= memories.size()) {
-          break;
-        }
-        geometry::Instance *memory = memories[c];
-        sorted_memories.push_back(memory);
-      }
-
-      std::sort(sorted_memories.begin(),
-                sorted_memories.end(),
-                mem_output_x_sort_fn);
-
-      for (size_t i = 0; i < sorted_memories.size(); ++i) {
-        geometry::Instance *memory = sorted_memories[i];
-        geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
-        geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
-
-        int64_t port_average_x = (
-            mem_Q->centre().x() + mem_QI->centre().x()) / 2;
-
-        std::vector<GateContacts> sorted_gates(gates->begin(), gates->end());
-        std::sort(sorted_gates.begin(), sorted_gates.end(),
-                  [&](const GateContacts &lhs, const GateContacts &rhs) {
-                    int64_t lhs_distance = std::abs(
-                        lhs.p_contact.x() - port_average_x);
-                    int64_t rhs_distance = std::abs(
-                        rhs.p_contact.x() - port_average_x);
-                    return lhs_distance < rhs_distance;
-                  });
-        const GateContacts &gate = sorted_gates.front();
-        LOG(INFO) << "gate " << gate.number << " is closest to memory ports x="
-                  << port_average_x;
-        gates->erase(
-            std::remove_if(
-                gates->begin(), gates->end(),
-                [&](const GateContacts &entry) {
-                  return entry.number == gate.number;
-                }),
-            gates->end());
-
-        geometry::Point p_tab_centre = gate.p_contact;
-        geometry::Point n_tab_centre = gate.n_contact;
-
-        int64_t vertical_x = p_tab_centre.x() + max_offset_from_first_poly_x;
-
-        ConnectVertically(mem_Q->centre(),
-                          p_tab_centre,
-                          vertical_x - met2_pitch,
-                          layout);
-
-        update_bounds_fn(vertical_x - met2_pitch);
-
-
-        // It's possible that the QI line come too close to the CLK line, since
-        // they are only one track apart, and the CLK line has a couple of via
-        // encaps. So because I refuse to resort to the RoutingGrid, we just
-        // check:
-        geometry::Point port_centre = mem_QI->centre();
-        geometry::ShapeCollection clk_shapes;
-        memory->CopyConnectableShapesOnNets(
-            {absl::StrCat(memory->name(), ".CLK")}, &clk_shapes);
-        geometry::Rectangle via_shape = geometry::Rectangle::CentredAt(
-            {vertical_x, port_centre.y()},
-            std::max(db.TypicalViaEncap("met1.drawing", "via1.drawing").length,
-                     db.TypicalViaEncap("met1.drawing", "mcon.drawing").length),
-            std::max(db.TypicalViaEncap("met1.drawing", "via1.drawing").width,
-                     db.TypicalViaEncap("met1.drawing", "mcon.drawing").width));
-        geometry::Rectangle test_shape = via_shape.WithPadding(
-            db.Rules("met1.drawing").min_separation - 1);
-        bool needs_jig = clk_shapes.Overlaps(test_shape);
-        if (needs_jig) {
-          LOG(INFO) << "need jig for " << via_shape.centre();
-
-          // TODO(aryap): Among the many travesties of this hack, the multiple
-          // of pitch to move away from the current vertical_x is particularly
-          // crude. Either:
-          //  1. Equip a method for computing the distance to the violating
-          //  polygon, and then calculate exactly how far we need to move away,
-          //  or at least
-          //  2. Try increasing the jig by a little at a time until the
-          //  violation is cleared.
-          int64_t jig_x = (
-              port_centre.x() < vertical_x ?  -1 : 1) * (
-              2 * db.Rules("met2.drawing").min_pitch);
-          
-          geometry::Point p0 = port_centre;
-          geometry::Point p1 = {vertical_x + jig_x, port_centre.y()};
-          geometry::Point p2 = {vertical_x, port_centre.y()};
-          geometry::Point p3 = {vertical_x, n_tab_centre.y()};
-          geometry::Point p4 = n_tab_centre;
-
-          layout->MakeVia("mcon.drawing", p0);
-          layout->MakeWire({p0, p1},
-                           "met1.drawing",
-                           "li.drawing",
-                           "met2.drawing",
-                           false,
-                           false,
-                           std::nullopt);
-          layout->MakeWire({p1, p2, p3},
-                           "met2.drawing",
-                           "met1.drawing",
-                           "met1.drawing",
-                           true,
-                           false,
-                           std::nullopt);
-          layout->MakeWire({p3, p4},
-                           "met1.drawing",
-                           "met2.drawing",
-                           "li.drawing",
-                           true,
-                           false,
-                           std::nullopt);
-          layout->MakeVia("mcon.drawing", p4);
-        } else {
-          ConnectVertically(mem_QI->centre(),
-                            n_tab_centre,
-                            vertical_x,
-                            layout);
-        }
-
-        update_bounds_fn(vertical_x);
-
-        AddPolyconAndLi(p_tab_centre, true, layout);
-        AddPolyconAndLi(n_tab_centre, false, layout);
-
-        connect_memory_to_control_fn(memory, gate.number, true);
-        connect_memory_to_control_fn(memory, gate.number, false);
-      }
-    }
-  };
-
-  connect_memories_fn(bottom_memories, &bottom_gates);
-  connect_memories_fn(top_memories, &top_gates);
+  ConnectControlWiresWithEffort(bottom_memories, 
+                                rows,
+                                num_columns,
+                                max_offset_from_first_poly_x,
+                                stack,
+                                &bottom_gates,
+                                &left_most_vertical_x,
+                                &right_most_vertical_x,
+                                &memory_output_nets,
+                                layout,
+                                circuit);
+  ConnectControlWiresWithEffort(top_memories,
+                                rows,
+                                num_columns,
+                                max_offset_from_first_poly_x,
+                                stack,
+                                &top_gates,
+                                &left_most_vertical_x,
+                                &right_most_vertical_x,
+                                &memory_output_nets,
+                                layout,
+                                circuit);
 
   LOG_IF(FATAL, !left_most_vertical_x || !right_most_vertical_x)
       << "Expected vertical_x bounds to be set by this point - are there any "
@@ -986,18 +1215,18 @@ void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
   constexpr size_t kInputClockRightIndex = 6;
   constexpr size_t kVPWRVGNDStartRightIndex = 7;
 
-  //// TODO(aryap): We can save a vertical met2 channel by squeezing the scan
-  //// chain connections on the right in (index 2), possible if the connection to
-  //// the input port does not occur directly across from the flip flop port but
-  //// rather through a met1 elbow:
-  ////
-  ////  met2 spine
-  ////     |
-  ////     +---+ met1 elbow jog
-  ////     |   |
-  ////     |   + flip flop D input
-  ////     |
-  //DrawScanChain(all_memories,
+  // TODO(aryap): We can save a vertical met2 channel by squeezing the scan
+  // chain connections on the right in (index 2), possible if the connection to
+  // the input port does not occur directly across from the flip flop port but
+  // rather through a met1 elbow:
+  //
+  //  met2 spine
+  //     |
+  //     +---+ met1 elbow jog
+  //     |   |
+  //     |   + flip flop D input
+  //     |
+  //DrawScanChain(scan_order,
   //              memory_output_nets,
   //              bottom_memories.size() - 1,
   //              columns_left_x[kScanChainLeftIndex],
@@ -1005,8 +1234,8 @@ void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
   //              layout,
   //              circuit);
 
-  //int64_t output_port_x = bank.GetTilingBounds()->upper_right().x();
-  //int64_t mux_pre_buffer_y = 0;
+  int64_t output_port_x = bank.GetTilingBounds()->upper_right().x();
+  int64_t mux_pre_buffer_y = 0;
 
   //DrawOutput(stack,
   //           output_buffers[0],
@@ -1070,31 +1299,21 @@ void Sky130InterconnectMux6::DrawRoutesForSingleOutput(
       );
   int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
 
-  // Check met2 spacing. We're putting four vertical lines down, the two outer
-  // pairs are 1 met2 pitch apart, and the middle pair we just figured out:
-  int64_t met2_x_span = met2_pitch  + (
-      poly_pitch - 2 * max_offset_from_first_poly_x) + met2_pitch +
-      db.TypicalViaEncap("met2.drawing", "via1.drawing").width;
-  int64_t horizontal_gap = poly_pitch - (met2_x_span % poly_pitch);
-  LOG_IF(WARNING, horizontal_gap < db.Rules("met2.drawing").min_separation)
-      << "Vertical met2 are probably too close to those in adjacent "
-      << "transmission gates";
-
   // Scan chain connections on the left side can be connected on metal 2, and
   // this should effectively only take up one channel width over the tap cells
   // and not detract from the routing channels in the left-most block.
-  std::vector<geometry::Instance*> all_memories;
-  all_memories.insert(
-      all_memories.begin(), top_memories.begin(), top_memories.end());
-  all_memories.insert(
-      all_memories.begin(), bottom_memories.begin(), bottom_memories.end());
+  std::vector<geometry::Instance*> scan_order;
+  scan_order.insert(
+      scan_order.begin(), top_memories.begin(), top_memories.end());
+  scan_order.insert(
+      scan_order.begin(), bottom_memories.begin(), bottom_memories.end());
 
   // TODO(aryap): If the layout gets _any_ more complicated than this we will
   // need more sophisticated ways to reuse the control lines for the scan chain.
   // In fact they might already be too big (too much R & C)!
   //std::set<std::pair<geometry::Instance*, geometry::Instance*>>
   //    scan_chain_pairs;
-  //for (auto it = all_memories.begin(); it != all_memories.end(); ++it) {
+  //for (auto it = scan_order.begin(); it != scan_order.end(); ++it) {
   //  geometry::Instance *current = *it;
   //  geometry::Instance *next = *(it + 1);
   //  scan_chain_pairs.insert({current, next});
@@ -1262,7 +1481,7 @@ void Sky130InterconnectMux6::DrawRoutesForSingleOutput(
   //     |   |
   //     |   + flip flop D input
   //     |
-  DrawScanChain(all_memories,
+  DrawScanChain(scan_order,
                 memory_output_nets,
                 bottom_memories.size() - 1,
                 columns_left_x[kScanChainLeftIndex],
@@ -1669,10 +1888,8 @@ void Sky130InterconnectMux6::DrawInputs(
   int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
 
   // Compute the horizontal channels we have:
-  int64_t horizontal_y_max = stack->GetPointOrDie(
-      absl::StrFormat("net_%s_via_top_0", kMuxOutputName)).y();
-  int64_t horizontal_y_min = stack->GetPointOrDie(
-      absl::StrFormat("net_%s_via_bottom_0", kMuxOutputName)).y();
+  int64_t horizontal_y_max = stack->GetPointOrDie("net_X0_via_top_0").y();
+  int64_t horizontal_y_min = stack->GetPointOrDie("net_X0_via_bottom_0").y();
 
   int64_t num_tracks = (horizontal_y_max - horizontal_y_min) / met1_pitch;
 
@@ -1731,7 +1948,7 @@ void Sky130InterconnectMux6::DrawInputs(
 }
 
 void Sky130InterconnectMux6::DrawScanChain(
-    const std::vector<geometry::Instance*> &all_memories,
+    const std::vector<geometry::Instance*> &scan_order,
     const std::map<geometry::Instance*, std::string> &memory_output_nets,
     int64_t num_ff_rows_bottom,
     int64_t vertical_x_left,
@@ -1739,7 +1956,7 @@ void Sky130InterconnectMux6::DrawScanChain(
     Layout *layout,
     Circuit *circuit) const {
   size_t i = 0;
-  for (auto it = all_memories.begin(); it < all_memories.end() - 1; ++it) {
+  for (auto it = scan_order.begin(); it < scan_order.end() - 1; ++it) {
     // As a reminder, the flip flop latched the value at input D on a clock
     // edge, and then it appears at output Q.
  
@@ -1766,8 +1983,17 @@ void Sky130InterconnectMux6::DrawScanChain(
     //
     // Ok no problem we just have to push the right-most vertical out more to
     // avoid using met1 too close to other met1!
-    int64_t  vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
-        i != num_ff_rows_bottom ?  vertical_x_left : vertical_x_right;
+    //
+    LOG(INFO) << memory->name() << " " << memory->lower_left();
+    LOG(INFO) << next->name() << " " << next->lower_left();
+  
+    int64_t vertical_x = 0;
+    if (memory->lower_left().x() == next->lower_left().x()) {
+      vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
+          i != num_ff_rows_bottom ?  vertical_x_left : vertical_x_right;
+    } else {
+      vertical_x = (mem_Q->centre().x() + next_D->centre().x()) / 2;
+    }
     //if (i != num_ff_rows_bottom) {
     //  vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) ?
     //      vertical_x_left : std::max(vertical_x_right, mem_Q->centre().x());
@@ -1781,6 +2007,9 @@ void Sky130InterconnectMux6::DrawScanChain(
                       next_D->centre(),
                       vertical_x,
                       layout);
+
+    LOG(INFO) << memory->name() << " -> " << next->name() << " "
+              << mem_Q->centre() << " -> " << next_D->centre();
     ++i;
 
     // This better exist!
@@ -1793,18 +2022,18 @@ void Sky130InterconnectMux6::DrawScanChain(
   }
 
   layout->MakePin("SCAN_IN",
-                  all_memories.front()->GetFirstPortNamed("D")->centre(),
+                  scan_order.front()->GetFirstPortNamed("D")->centre(),
                   "li.pin");
   layout->MakePin("SCAN_OUT",
-                  all_memories.back()->GetFirstPortNamed("D")->centre(),
+                  scan_order.back()->GetFirstPortNamed("D")->centre(),
                   "li.pin");
 
   circuit::Wire scan_in = circuit->AddSignal("SCAN_IN");
   circuit::Wire scan_out = circuit->AddSignal("SCAN_OUT");
 
-  all_memories.front()->circuit_instance()->Connect("D", scan_in);
+  scan_order.front()->circuit_instance()->Connect("D", scan_in);
 
-  DCHECK(all_memories.back()->circuit_instance()->GetConnection("Q"));
+  DCHECK(scan_order.back()->circuit_instance()->GetConnection("Q"));
 
   circuit->AddPort(scan_in);
   circuit->AddPort(scan_out);
@@ -1860,7 +2089,7 @@ int64_t Sky130InterconnectMux6::FigurePolyBoundarySeparationForMux(
 //       ^
 //       vertical_x
 //
-void Sky130InterconnectMux6::ConnectVertically(
+std::vector<geometry::Point> Sky130InterconnectMux6::ConnectVertically(
     const geometry::Point &top,
     const geometry::Point &bottom,
     int64_t vertical_x,
@@ -1870,10 +2099,13 @@ void Sky130InterconnectMux6::ConnectVertically(
   geometry::Point p1 = {vertical_x, top.y()};
   geometry::Point p2 = {vertical_x, bottom.y()};
 
+  std::vector<geometry::Point> points = {top, p1, p2, bottom};
+
   layout->MakeVia("mcon.drawing", top);
-  layout->MakeAlternatingWire(
-      {top, p1, p2, bottom}, "met1.drawing", "met2.drawing");
+  layout->MakeAlternatingWire(points, "met1.drawing", "met2.drawing");
   layout->MakeVia("mcon.drawing", bottom);
+
+  return points;
 }
 
 void Sky130InterconnectMux6::AddPolyconAndLi(
