@@ -387,7 +387,8 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       num_ff_rows_bottom,
       num_ff_columns,
       &bank,
-      false);
+      true);  // Alternate scan order for rows in the other half, so that the
+              // two memories halves line up.
 
   //atoms::Sky130Tap::Parameters tap_params = {
   //  .height_nm = 2720,
@@ -405,12 +406,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
       bottom_memories.back(), num_ff_rows_bottom, &bank);
 
   std::vector<geometry::Instance*> top_memories = AddMemoriesVertically(
-      num_ff_rows_bottom + 1,
-      num_ff_rows_top,
-      num_ff_columns,
-      &bank,
-      true);  // Alternate scan order for rows in the other half, so that the
-              // two memories halves line up.
+      num_ff_rows_bottom + 1, num_ff_rows_top, num_ff_columns, &bank);
 
   // FIXME(aryap): You were here.
   // 1. Refactor these large functions to remember how they work, AND
@@ -719,18 +715,9 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
     Utility::UpdateMax(x, right_most_vertical_x);
   };
 
-  // It's possible that the Q or QI line come too close to the CLK line, since
-  // it's in the middle (vertically). since they are only one track apart, and
-  // the CLK line has a couple of via encaps. So because I refuse to resort to
-  // the RoutingGrid for this problem, we do a leetle tiny search for a jig of
-  // appropriate length to avoid the known obstacles:
-  geometry::ShapeCollection clk_net_shapes;
-  for (geometry::Instance *memory : sorted_memories) {
-    memory->CopyConnectableShapesOnNets(
-        {absl::StrCat(memory->name(), ".CLK")}, &clk_net_shapes);
+  for (auto memory : sorted_memories) {
     LOG(INFO) << memory->name() <<  " at " << memory->lower_left().x();
   }
-
 
   for (size_t i = 0; i < sorted_memories.size(); ++i) {
     const GateAssignment &assignment = gate_assignments[i];
@@ -758,6 +745,15 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
     auto encap = db.TypicalViaEncap(
         "mcon.drawing", "met1.drawing", "via1.drawing");
 
+    // It's possible that the QI line come too close to the CLK line,
+    // since they are only one track apart, and the CLK line has a couple
+    // of via encaps. So because I refuse to resort to the RoutingGrid for
+    // this problem, we do a leetle tiny search for a jig of appropriate
+    // length to avoid the known obstacles:
+    geometry::ShapeCollection clk_shapes;
+    memory->CopyConnectableShapesOnNets(
+        {absl::StrCat(memory->name(), ".CLK")}, &clk_shapes);
+
     geometry::Point target_centre = mem_QI->centre();
 
     auto via_with_margin_fn = [&](const geometry::Point &centre) {
@@ -778,7 +774,7 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
       geometry::Rectangle test_shape = via_with_margin_fn(
           {start_x + jig, y});
       size_t attempts = 0;
-      while (clk_net_shapes.Overlaps(test_shape)) {
+      while (clk_shapes.Overlaps(test_shape)) {
         if (attempts > 3) {
           LOG(ERROR) << "Could not jig enough to avoid obstacle";
           // Give up.
@@ -1956,7 +1952,7 @@ void Sky130InterconnectMux6::DrawScanChain(
     int64_t vertical_x_right,
     Layout *layout,
     Circuit *circuit) const {
-  size_t row = 0;
+  size_t i = 0;
   for (auto it = scan_order.begin(); it < scan_order.end() - 1; ++it) {
     // As a reminder, the flip flop latched the value at input D on a clock
     // edge, and then it appears at output Q.
@@ -1970,8 +1966,7 @@ void Sky130InterconnectMux6::DrawScanChain(
     geometry::Port *next_D = next->GetFirstPortNamed("D");
   
     int64_t vertical_x = 0;
-    if (memory->ApplyInstanceTransforms(memory->lower_left()).x() ==
-        next->ApplyInstanceTransforms(next->lower_left()).x()) {
+    if (memory->lower_left().x() == next->lower_left().x()) {
       // This and the next memory are vertically aligned, so we're changing row.
       //
       // We check to see which way around the FF is. If input is left of output,
@@ -1989,11 +1984,8 @@ void Sky130InterconnectMux6::DrawScanChain(
       // Ok no problem we just have to push the right-most vertical out more to
       // avoid using met1 too close to other met1!
       vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
-          row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
-      ++row;
+          i != num_ff_rows_bottom ?  vertical_x_left : vertical_x_right;
     } else {
-      // We have to connect with local interconnect.
-      continue;
       vertical_x = (mem_Q->centre().x() + next_D->centre().x()) / 2;
     }
     //if (i != num_ff_rows_bottom) {
@@ -2012,6 +2004,7 @@ void Sky130InterconnectMux6::DrawScanChain(
 
     LOG(INFO) << memory->name() << " -> " << next->name() << " "
               << mem_Q->centre() << " -> " << next_D->centre();
+    ++i;
 
     // This better exist!
     auto out_name_it = memory_output_nets.find(memory);

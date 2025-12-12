@@ -72,6 +72,12 @@ class Instance : public Manipulable {
     point->Translate(lower_left_);
   }
 
+  Point ApplyInstanceTransforms(const Point &point) const {
+    Point mutated = point;
+    ApplyInstanceTransforms(&mutated);
+    return mutated;
+  }
+
   // Apply rotation in a way that keeps the lower_left_ point the same as it
   // currently is.
   void RotatePreservingLowerLeft(int32_t rotation_degrees_ccw);
