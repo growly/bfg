@@ -715,7 +715,8 @@ void Layout::MakeAlternatingWire(
     const std::vector<geometry::Point> &points,
     const std::string &first_layer_name,
     const std::string &second_layer_name,
-    const std::optional<std::string> &net) {
+    const std::optional<std::string> &net,
+    bool is_connectable) {
   if (points.size() < 2) {
     return;
   }
@@ -769,6 +770,7 @@ void Layout::MakeAlternatingWire(
       if (net) {
         rectangle.set_net(*net);
       }
+      rectangle.set_is_connectable(is_connectable);
       AddRectangle(rectangle);
       continue;
     }
@@ -782,6 +784,7 @@ void Layout::MakeAlternatingWire(
     if (net) {
       wire.set_net(*net);
     }
+    wire.set_is_connectable(is_connectable);
     AddPolyLine(wire);
 
     if ((next_it + 1) != points.end()) {
@@ -798,7 +801,8 @@ geometry::Polygon *Layout::MakeWire(
     const std::optional<std::string> &end_layer_name,
     bool start_pad_only,
     bool end_pad_only,
-    const std::optional<std::string> &net) {
+    const std::optional<std::string> &net,
+    bool is_connectable) {
   std::vector<ViaToSomeLayer> vias;
 
   if (start_layer_name) {
@@ -817,14 +821,15 @@ geometry::Polygon *Layout::MakeWire(
     });
   }
 
-  return MakeWire(points, wire_layer_name, vias, net);
+  return MakeWire(points, wire_layer_name, vias, net, is_connectable);
 }
 
 geometry::Polygon *Layout::MakeWire(
     const std::vector<geometry::Point> &points,
     const std::string &wire_layer_name,
     const std::vector<ViaToSomeLayer> vias,
-    const std::optional<std::string> &net) {
+    const std::optional<std::string> &net,
+    bool is_connectable) {
   LOG_IF(FATAL, points.empty())
       << "Why you wanna make a empty wire like that?";
 
@@ -854,6 +859,7 @@ geometry::Polygon *Layout::MakeWire(
   if (net) {
     polygon->set_net(*net);
   }
+  polygon->set_is_connectable(is_connectable);
   return polygon;
 }
 
@@ -1154,7 +1160,17 @@ void Layout::SavePoints(std::map<const std::string, const Point> named_points) {
 
 geometry::Point Layout::GetPointOrDie(const std::string &name) const {
   auto point = GetPoint(name);
-  LOG_IF(FATAL, !point) << "Point " << name << " not found";
+  if (!point) {
+    if (named_points_.empty()) {
+      LOG(INFO) << "There are no saved points!";
+    } else {
+      LOG(INFO) << "Available saved points:";
+      for (const auto &entry : named_points_) {
+        LOG(INFO) << entry.first << ": " << entry.second;
+      }
+    }
+    LOG(FATAL) << "Point " << name << " not found";
+  }
   return *point;
 }
 

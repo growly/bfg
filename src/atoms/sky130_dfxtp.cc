@@ -536,7 +536,32 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // li.drawing [DRAWING] 67/20
   layout->SetActiveLayerByName("li.drawing");
-  layout->AddRectangle(Rectangle(Point(10, 715), Point(290, 1665)));
+
+  // This is the input, D.
+  Rectangle *li_D = layout->AddRectangle(
+      Rectangle(Point(10, 715), Point(290, 1665)));
+  layout->SavePoint(
+      "li_D_abutment", {li_D->lower_left().x(), li_D->centre().y()});
+
+  // This is the output, Q.
+  layout->AddPolygon(Polygon({Point(5525, 1495),
+                              Point(5700, 1495),
+                              Point(5700, 1445),
+                              Point(5745, 1445),
+                              Point(5745, 865),
+                              Point(5690, 865),
+                              Point(5690, 825),
+                              Point(5535, 825),
+                              Point(5535, 305),
+                              Point(5865, 305),
+                              Point(5865, 740),
+                              Point(5915, 740),
+                              Point(5915, 1575),
+                              Point(5855, 1575),
+                              Point(5855, 2420),
+                              Point(5525, 2420)}));
+  layout->SavePoint("li_Q_abutment", {5915, (1575 + 740) / 2});
+
   layout->AddRectangle(Rectangle(Point(800, 1125), Point(1040, 1720)));
   layout->AddRectangle(Rectangle(Point(2930, 1245), Point(3120, 1965)));
   layout->AddPolygon(Polygon({Point(3165, 365),
@@ -565,22 +590,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(4825, 1530),
                               Point(4825, 825),
                               Point(4695, 825)}));
-  layout->AddPolygon(Polygon({Point(5525, 1495),
-                              Point(5700, 1495),
-                              Point(5700, 1445),
-                              Point(5745, 1445),
-                              Point(5745, 865),
-                              Point(5690, 865),
-                              Point(5690, 825),
-                              Point(5535, 825),
-                              Point(5535, 305),
-                              Point(5865, 305),
-                              Point(5865, 740),
-                              Point(5915, 740),
-                              Point(5915, 1575),
-                              Point(5855, 1575),
-                              Point(5855, 2420),
-                              Point(5525, 2420)}));
+
   layout->AddPolygon(Polygon({Point(3145, 705),
                               Point(3610, 705),
                               Point(3610, 1995),

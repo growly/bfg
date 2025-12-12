@@ -735,8 +735,6 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
     geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
-    std::string net = absl::StrCat(memory->name(), ".Q");
-
     const GateContacts &gate = assignment.gate;
 
     geometry::Point p_tab_centre = gate.p_contact;
@@ -747,8 +745,7 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
     auto points = ConnectVertically(mem_Q->centre(),
                                     p_tab_centre,
                                     vertical_x - met2_pitch,
-                                    layout,
-                                    net);
+                                    layout);
 
     update_bounds_fn(vertical_x - met2_pitch);
 
@@ -821,31 +818,27 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
                        "met2.drawing",
                        false,
                        false,
-                       net,
-                       true);
+                       std::nullopt);
       layout->MakeWire({p1, p2, p3},
                        "met2.drawing",
                        "met1.drawing",
                        "met1.drawing",
                        true,
                        false,
-                       net,
-                       true);
+                       std::nullopt);
       layout->MakeWire({p3, p4},
                        "met1.drawing",
                        "met2.drawing",
                        "li.drawing",
                        true,
                        false,
-                       net,
-                       true);
+                       std::nullopt);
       layout->MakeVia("mcon.drawing", p4);
     } else {
       ConnectVertically(target_centre,
                         n_tab_centre,
                         vertical_x,
-                        layout,
-                        net);
+                        layout);
     }
 
     update_bounds_fn(vertical_x);
@@ -1379,16 +1372,14 @@ void Sky130InterconnectMux6::DrawRoutesForSingleOutput(
     ConnectVertically(mem_Q->centre(),
                       p_tab_centre,
                       vertical_x - met2_pitch,
-                      layout,
-                      absl::StrCat(memory->name(), ".Q"));
+                      layout);
 
     update_bounds_fn(vertical_x - met2_pitch);
 
     ConnectVertically(mem_QI->centre(),
                       n_tab_centre,
                       vertical_x,
-                      layout,
-                      absl::StrCat(memory->name(), ".QI"));
+                      layout);
 
     update_bounds_fn(vertical_x);
 
@@ -1427,16 +1418,14 @@ void Sky130InterconnectMux6::DrawRoutesForSingleOutput(
     ConnectVertically(mem_Q->centre(),
                       p_tab_centre,
                       vertical_x,
-                      layout,
-                      absl::StrCat(memory->name(), ".Q"));
+                      layout);
     
     update_bounds_fn(vertical_x);
 
     ConnectVertically(mem_QI->centre(),
                       n_tab_centre,
                       vertical_x + met2_pitch,
-                      layout,
-                      absl::StrCat(memory->name(), ".QI"));
+                      layout);
 
     update_bounds_fn(vertical_x + met2_pitch);
 
@@ -1972,8 +1961,6 @@ void Sky130InterconnectMux6::DrawScanChain(
     geometry::Instance *memory = *it;
     geometry::Instance *next = *(it + 1);
 
-    std::string net = absl::StrCat(memory->name(), ".Q");
-
     geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
     geometry::Port *mem_D = memory->GetFirstPortNamed("D");
 
@@ -2011,8 +1998,7 @@ void Sky130InterconnectMux6::DrawScanChain(
     ConnectVertically(mem_Q->centre(),
                       next_D->centre(),
                       vertical_x,
-                      layout,
-                      net);
+                      layout);
 
     LOG(INFO) << memory->name() << " -> " << next->name() << " "
               << mem_Q->centre() << " -> " << next_D->centre();
@@ -2069,8 +2055,6 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
 
     layout->MakePin(memory->name() + "/Q", mem_Q->centre(), "li.pin");
     layout->MakePin(memory->name() + "/D", mem_D->centre(), "li.pin");
-
-    std::string net = absl::StrCat(memory->name(), ".Q");
     
     // TODO(aryap):
     // 1. apply one of three cases to each scan chain link
@@ -2107,22 +2091,21 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
       }
    
       layout->MakeWire(points, "li.drawing", std::nullopt, std::nullopt,
-                       false, false, net, true);
+                       false, false, std::nullopt);
 
     } else if (y_diff == row_height) {
       vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
           row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
 
       geometry::ShapeCollection same_net_shapes;
-      layout->CopyConnectableShapesOnNets(
-          {absl::StrCat(memory->name(), ".Q")}, &same_net_shapes);
+      layout->CopyConnectableShapesOnNet(
+          absl::StrCat(memory->name(), ".Q"), &same_net_shapes);
       LOG(INFO) << "same net shapes: " << same_net_shapes.Describe();
       
       ConnectVertically(mem_Q->centre(),
                         next_D->centre(),
                         vertical_x,
-                        layout,
-                        net);
+                        layout);
     } else {
       vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
           row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
@@ -2138,17 +2121,15 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
 
       std::vector<geometry::Point> points = {source, p1, p2, p3, dest};
       layout->MakeVia("mcon.drawing", source);
-      layout->MakeAlternatingWire(points, "met1.drawing", "met2.drawing", net);
+      layout->MakeAlternatingWire(points, "met1.drawing", "met2.drawing");
       // We expect the final wire to be vertical, and thus on met2.
       layout->MakeVia("via1.drawing", dest);
       auto encap_info = db.TypicalViaEncap(
           "mcon.drawing", "met1.drawing", "via1.drawing");
       {
         ScopedLayer sl(layout, "met1.drawing");
-        geometry::Rectangle *via_encap = layout->AddRectangle(
-            geometry::Rectangle::CentredAt(
-                dest, encap_info.length, encap_info.width));
-        via_encap->set_net(net);
+        layout->AddRectangle(geometry::Rectangle::CentredAt(
+              dest, encap_info.length, encap_info.width));
       }
       layout->MakeVia("mcon.drawing", dest);
       ++row;
@@ -2239,8 +2220,7 @@ std::vector<geometry::Point> Sky130InterconnectMux6::ConnectVertically(
     const geometry::Point &top,
     const geometry::Point &bottom,
     int64_t vertical_x,
-    bfg::Layout *layout,
-    const std::string &net) const {
+    bfg::Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
   geometry::Point p1 = {vertical_x, top.y()};
@@ -2249,8 +2229,7 @@ std::vector<geometry::Point> Sky130InterconnectMux6::ConnectVertically(
   std::vector<geometry::Point> points = {top, p1, p2, bottom};
 
   layout->MakeVia("mcon.drawing", top);
-  layout->MakeAlternatingWire(
-      points, "met1.drawing", "met2.drawing", net, true);
+  layout->MakeAlternatingWire(points, "met1.drawing", "met2.drawing");
   layout->MakeVia("mcon.drawing", bottom);
 
   return points;

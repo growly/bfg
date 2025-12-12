@@ -270,6 +270,15 @@ class Sky130InterconnectMux6 : public Atom {
       Layout *layout,
       Circuit *circuit) const;
 
+  void DrawScanChainForMultipleColumns(
+      const std::vector<geometry::Instance*> &all_memories,
+      const std::map<geometry::Instance*, std::string> &memory_output_nets,
+      int64_t num_ff_bottom,
+      int64_t vertical_x_left,
+      int64_t vertical_x_right,
+      Layout *layout,
+      Circuit *circuit) const;
+
   void DrawOutput(geometry::Instance *stack,
                   geometry::Instance *output_buffer,
                   int64_t *mux_pre_buffer_y,
@@ -301,7 +310,8 @@ class Sky130InterconnectMux6 : public Atom {
   std::vector<geometry::Point> ConnectVertically(const geometry::Point &top,
                                                  const geometry::Point &bottom,
                                                  int64_t vertical_x,
-                                                 bfg::Layout *layout) const;
+                                                 bfg::Layout *layout,
+                                                 const std::string &net) const;
   void AddPolyconAndLi(const geometry::Point tab_centre,
                        bool bulges_up,
                        bfg::Layout *layout) const;
