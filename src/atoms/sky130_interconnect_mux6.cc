@@ -4,16 +4,17 @@
 #include <cmath>
 #include <vector>
 
-#include "../utility.h"
-#include "../modulo.h"
 #include "../cell.h"
-#include "../layout.h"
-#include "../memory_bank.h"
-#include "../row_guide.h"
 #include "../geometry/compass.h"
-#include "../geometry/rectangle.h"
 #include "../geometry/instance.h"
 #include "../geometry/port.h"
+#include "../geometry/rectangle.h"
+#include "../layout.h"
+#include "../memory_bank.h"
+#include "../modulo.h"
+#include "../poly_line_inflator.h"
+#include "../row_guide.h"
+#include "../utility.h"
 #include "sky130_buf.h"
 #include "sky130_tap.h"
 #include "sky130_transmission_gate_stack.h"
@@ -735,7 +736,8 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
     geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
-    std::string net = absl::StrCat(memory->name(), ".Q");
+    std::string net_Q = absl::StrCat(memory->name(), ".Q");
+    std::string net_QI = absl::StrCat(memory->name(), ".QI");
 
     const GateContacts &gate = assignment.gate;
 
@@ -748,7 +750,7 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
                                     p_tab_centre,
                                     vertical_x - met2_pitch,
                                     layout,
-                                    net);
+                                    net_Q);
 
     update_bounds_fn(vertical_x - met2_pitch);
 
@@ -821,7 +823,7 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
                        "met2.drawing",
                        false,
                        false,
-                       net,
+                       net_QI,
                        true);
       layout->MakeWire({p1, p2, p3},
                        "met2.drawing",
@@ -829,7 +831,7 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
                        "met1.drawing",
                        true,
                        false,
-                       net,
+                       net_QI,
                        true);
       layout->MakeWire({p3, p4},
                        "met1.drawing",
@@ -837,7 +839,7 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
                        "li.drawing",
                        true,
                        false,
-                       net,
+                       net_QI,
                        true);
       layout->MakeVia("mcon.drawing", p4);
     } else {
@@ -845,7 +847,7 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
                         n_tab_centre,
                         vertical_x,
                         layout,
-                        net);
+                        net_QI);
     }
 
     update_bounds_fn(vertical_x);
@@ -1057,9 +1059,13 @@ bool Sky130InterconnectMux6::VerticalWireWouldCollideWithOthers(
     int64_t second_y,
     Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &met2_rules = db.Rules("met2.drawing");
 
   geometry::ShapeCollection same_net_shapes;
   layout->CopyConnectableShapesOnNets({net}, &same_net_shapes);
+  same_net_shapes.KeepOnlyLayers({db.GetLayer("met2.drawing")});
+
+  LOG(INFO) << same_net_shapes.Describe();
 
   auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
   geometry::Rectangle bottom_encap = geometry::Rectangle::CentredAt(
@@ -1071,28 +1077,22 @@ bool Sky130InterconnectMux6::VerticalWireWouldCollideWithOthers(
       encap_info.width,
       encap_info.length);
 
-  bottom_encap.ExpandToCover(top_encap);
-  geometry::Rectangle test_shape = bottom_encap.WithKeepout(db, "met2.drawing");
+  geometry::Point first = {vertical_x, first_y};
+  geometry::Point second = {vertical_x, second_y};
 
-  // Until we have a more sophisticated, polygon-polygon test (instead of the
-  // rectangle-polygon one), we can assume that vertical wires we're colliding
-  // with only have two encaps, one at each end. We can also assume that all
-  // wires are polygons.
+  geometry::PolyLine wire = geometry::PolyLine({first, second});
+  wire.SetWidth(met2_rules.min_width);
+  wire.set_min_separation(met2_rules.min_separation);
+  wire.InsertBulge(first, encap_info.width, encap_info.length);
+  wire.InsertBulge(second, encap_info.width, encap_info.length);
 
-  LOG(INFO) << "same net shapes: " << same_net_shapes.Describe();
-  for (const auto &polygon : same_net_shapes.polygons()) {
-    geometry::Rectangle bb = polygon->GetBoundingBox();
-    
-    int64_t min_distance = std::min({
-        std::abs(bb.lower_left().y() - first_y),
-        std::abs(bb.lower_left().y() - second_y),
-        std::abs(bb.upper_right().y() - first_y),
-        std::abs(bb.upper_right().y() - second_y)});
-    LOG(INFO) << "min distance: " << min_distance;
-    if (min_distance <= db.Rules("met2.drawing").min_separation &&
-        polygon->Overlaps(test_shape)) {
-      LOG(INFO) << test_shape;
-      LOG(INFO) << "COLLISION!";
+  PolyLineInflator inflator(db);
+  std::optional<geometry::Polygon> polygon = inflator.InflatePolyLine(wire);
+  polygon->Fatten(met2_rules.min_separation - 1);
+
+  for (const auto &other : same_net_shapes.polygons()) {
+    if (polygon->Overlaps(*other)) {
+      LOG(INFO) << "Collision! " << *polygon << " intersects " << *other;
       return true;
     }
   }
@@ -2154,13 +2154,16 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
                        false, false, net, true);
 
     } else if (y_diff == row_height) {
+      LOG(INFO) << "y_diff " << y_diff << " " << net << " ";
       vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
           row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
 
-      std::string net = absl::StrCat(memory->name(), ".Q");
-
       bool problem = VerticalWireWouldCollideWithOthers(
           net, vertical_x, mem_Q->centre().y(), next_D->centre().y(), layout);
+      if (problem) {
+        vertical_x += (row != num_ff_rows_bottom ? -1 : 1) * db.Rules(
+            "met2.drawing").min_separation;
+      }
 
       // TODO(aryap): Test if any connectable on-net shape is within ~2 pitches
       // of the destination, as a heuristic for whether we need another wire. I

@@ -168,11 +168,18 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
     int64_t half_side = static_cast<int64_t>(
         std::max(polyline.overhang_start(), polyline.overhang_end()));
     LOG(WARNING) << "Inflating empty PolyLine as Point";
-    return InflatePoint(polyline.start(), half_side, half_side);
+    auto point_to_polygon = InflatePoint(
+        polyline.start(), half_side, half_side);
+    if (point_to_polygon) {
+      point_to_polygon->set_net(polyline.net());
+      point_to_polygon->set_is_connectable(polyline.is_connectable());
+    }
+    return point_to_polygon;
   }
   Polygon polygon;
   // Carry over the net label.
   polygon.set_net(polyline.net());
+  polygon.set_is_connectable(polyline.is_connectable());
 
   std::vector<Line> line_stack;
   std::vector<Line> forward_lines;
