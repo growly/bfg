@@ -123,7 +123,7 @@ class Rectangle : public Shape {
   // makes more sense for PhysicalPropertiesDatabase to know how to make
   // appropriate shapes for the rules it contains instead. But these all need to
   // be refactored at once (by AI)?
-  geometry::Rectangle WithKeepout(
+  Rectangle WithKeepout(
       const PhysicalPropertiesDatabase &db,
       const std::optional<std::string> &layer) const;
 

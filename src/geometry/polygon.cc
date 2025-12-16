@@ -617,6 +617,12 @@ bool Polygon::Overlaps(const Polygon &other) const {
   return false;
 }
 
+geometry::Polygon Polygon::WithPadding(int64_t padding) const {
+  Polygon copy(*this);
+  copy.Fatten(padding);
+  return copy;
+}
+
 bool Polygon::HasVertex(const Point &point) const {
   return std::find(
       vertices_.begin(), vertices_.end(), point) != vertices_.end();

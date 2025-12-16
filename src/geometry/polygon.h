@@ -66,9 +66,15 @@ class Polygon : public Shape {
   void ResetOrigin() override;
   void Rotate(int32_t degrees_ccw) override;
 
-  // Assumes that vertices are in clockwise order. If they are in anti-clockwise
-  // order, give a negative margin to achieve same effect.
+  // NOTE(aryap): ASSUMES that vertices are in clockwise order. If they are in
+  // anti-clockwise order, give a negative margin to achieve same effect.
   void Fatten(int64_t margin);
+
+  // This uses Fatten, which assumesa a clockwise vertex order!
+  Polygon WithPadding(int64_t margin) const;
+  Polygon WithKeepout(
+      const PhysicalPropertiesDatabase &db,
+      const std::optional<std::string> &layer) const;
 
   const Rectangle GetBoundingBox() const override;
 
