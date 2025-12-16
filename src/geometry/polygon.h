@@ -41,6 +41,13 @@ class Polygon : public Shape {
     vertices_.pop_back();
   }
 
+  // TODO(aryap): It would also be useful to have an Overlaps(...) method to
+  // test for collision with another polygon. It shouldn't be That Hard (TM):
+  // - Do the bounding boxes collide? If not, stop. If so,
+  // - Do any of the lines of the first polygon cross any of the lines of the
+  // second polygon?
+  // - Are any of the points of the first polygon interior to the second
+  // polygon?
   bool Overlaps(const Rectangle &rectangle) const;
   bool HasVertex(const Point &point) const;
 
@@ -56,6 +63,11 @@ class Polygon : public Shape {
   void Translate(const Point &offset) override;
   void ResetOrigin() override;
   void Rotate(int32_t degrees_ccw) override;
+
+  // TODO(aryap): It would be very useful to have a "Widen" or "Inflate" method
+  // that will add some width to the polygon in every direction. This is useful
+  // for hit-testing collisions within some margin. We can employ basically the
+  // same algorithm as for poly-line inflation.
 
   const Rectangle GetBoundingBox() const override;
 

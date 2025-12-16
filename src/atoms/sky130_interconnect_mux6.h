@@ -242,6 +242,13 @@ class Sky130InterconnectMux6 : public Atom {
       Layout *layout,
       Circuit *circuit) const;
 
+  bool VerticalWireWouldCollideWithOthers(
+      const std::string &net,
+      int64_t vertical_x,
+      int64_t first_y,
+      int64_t second_y,
+      Layout *layout) const;
+
   void DrawRoutesForSingleOutput(
       const MemoryBank &bank,
       const std::vector<geometry::Instance*> &top_memories,

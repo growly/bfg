@@ -1050,6 +1050,55 @@ void Sky130InterconnectMux6::ConnectControlWiresWithEffort(
   }
 }
 
+bool Sky130InterconnectMux6::VerticalWireWouldCollideWithOthers(
+    const std::string &net,
+    int64_t vertical_x,
+    int64_t first_y,
+    int64_t second_y,
+    Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  geometry::ShapeCollection same_net_shapes;
+  layout->CopyConnectableShapesOnNets({net}, &same_net_shapes);
+
+  auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
+  geometry::Rectangle bottom_encap = geometry::Rectangle::CentredAt(
+      {vertical_x, first_y},
+      encap_info.width,
+      encap_info.length);
+  geometry::Rectangle top_encap = geometry::Rectangle::CentredAt(
+      {vertical_x, second_y},
+      encap_info.width,
+      encap_info.length);
+
+  bottom_encap.ExpandToCover(top_encap);
+  geometry::Rectangle test_shape = bottom_encap.WithKeepout(db, "met2.drawing");
+
+  // Until we have a more sophisticated, polygon-polygon test (instead of the
+  // rectangle-polygon one), we can assume that vertical wires we're colliding
+  // with only have two encaps, one at each end. We can also assume that all
+  // wires are polygons.
+
+  LOG(INFO) << "same net shapes: " << same_net_shapes.Describe();
+  for (const auto &polygon : same_net_shapes.polygons()) {
+    geometry::Rectangle bb = polygon->GetBoundingBox();
+    
+    int64_t min_distance = std::min({
+        std::abs(bb.lower_left().y() - first_y),
+        std::abs(bb.lower_left().y() - second_y),
+        std::abs(bb.upper_right().y() - first_y),
+        std::abs(bb.upper_right().y() - second_y)});
+    LOG(INFO) << "min distance: " << min_distance;
+    if (min_distance <= db.Rules("met2.drawing").min_separation &&
+        polygon->Overlaps(test_shape)) {
+      LOG(INFO) << test_shape;
+      LOG(INFO) << "COLLISION!";
+      return true;
+    }
+  }
+  return false;
+}
+
 void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
     const MemoryBank &bank,
     const std::vector<geometry::Instance*> &top_memories,
@@ -2071,11 +2120,6 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
     layout->MakePin(memory->name() + "/D", mem_D->centre(), "li.pin");
 
     std::string net = absl::StrCat(memory->name(), ".Q");
-    
-    // TODO(aryap):
-    // 1. apply one of three cases to each scan chain link
-    // 2. store existing shapes on nets by memory output so we can merge
-    // with/avoid them.
   
     int64_t vertical_x = 0;
     // There are three cases for scan chain links:
@@ -2113,10 +2157,17 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
       vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
           row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
 
-      geometry::ShapeCollection same_net_shapes;
-      layout->CopyConnectableShapesOnNets(
-          {absl::StrCat(memory->name(), ".Q")}, &same_net_shapes);
-      LOG(INFO) << "same net shapes: " << same_net_shapes.Describe();
+      std::string net = absl::StrCat(memory->name(), ".Q");
+
+      bool problem = VerticalWireWouldCollideWithOthers(
+          net, vertical_x, mem_Q->centre().y(), next_D->centre().y(), layout);
+
+      // TODO(aryap): Test if any connectable on-net shape is within ~2 pitches
+      // of the destination, as a heuristic for whether we need another wire. I
+      // guess in reality we want to know if drawing another wire would be worse
+      // than drawing a wire directly from the existing net. That doesn't
+      // directly solve the problem of adjacent vias for two wires being too
+      // close together, but it might just obviate the problem altogether.
       
       ConnectVertically(mem_Q->centre(),
                         next_D->centre(),
