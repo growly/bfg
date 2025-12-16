@@ -172,6 +172,9 @@ class Sky130InterconnectMux1 : public Atom {
   int64_t FigurePolyBoundarySeparationForMux(
       bfg::Layout *neighbour_layout) const;
 
+  virtual uint32_t NumOutputs() {
+    return kNumOutputs;
+  }
   virtual uint32_t NumMemories() {
     // For the single-output case, there is one control line per input.
     return parameters_.num_inputs;
@@ -259,8 +262,6 @@ class Sky130InterconnectMux1 : public Atom {
   void AddPolyconAndLi(const geometry::Point tab_centre,
                        bool bulges_up,
                        bfg::Layout *layout) const;
-
-  virtual int NumOutputs() { return kNumOutputs; }
 
   Parameters parameters_;
 

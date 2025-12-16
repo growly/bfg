@@ -63,6 +63,9 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
       geometry::Instance *const lhs,
       geometry::Instance *const rhs);
 
+  uint32_t NumOutputs() override {
+    return kNumOutputs;
+  }
   uint32_t NumMemories() override {
     // For the dual-output mux, there is one control line per input-output path,
     // and since all but two inputs are shared, that makes:
@@ -167,8 +170,6 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
                  int64_t clk_i_x,
                  Layout *layout,
                  Circuit *circuit) const override;
-
-  int NumOutputs() override { return kNumOutputs; }
 
  private:
   // This is fixed for this implementation.

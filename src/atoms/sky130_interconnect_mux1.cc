@@ -164,8 +164,8 @@ void Sky130InterconnectMux1::AddOutputBuffers(
     int64_t row_height,
     MemoryBank *bank,
     std::vector<geometry::Instance*> *output_bufs) {
-  int num_outputs = NumOutputs();
-  for (int i = 0; i < num_outputs; ++i) {
+  uint32_t num_outputs = NumOutputs();
+  for (uint32_t i = 0; i < num_outputs; ++i) {
     output_bufs->push_back(
         AddOutputBufferRight(
             absl::StrFormat("%d", i), row_height, row, bank));
