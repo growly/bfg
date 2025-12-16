@@ -1,5 +1,5 @@
-#ifndef ATOMS_SKY130_INTERCONNECT_MUX6_H_
-#define ATOMS_SKY130_INTERCONNECT_MUX6_H_
+#ifndef ATOMS_SKY130_INTERCONNECT_MUX1_H_
+#define ATOMS_SKY130_INTERCONNECT_MUX1_H_
 
 #include "atom.h"
 #include "sky130_parameters.h"
@@ -7,7 +7,7 @@
 #include "../circuit.h"
 #include "../layout.h"
 #include "../geometry/instance.h"
-#include "proto/parameters/sky130_interconnect_mux6.pb.h"
+#include "proto/parameters/sky130_interconnect_mux1.pb.h"
 #include "sky130_transmission_gate_stack.h"
 
 namespace bfg {
@@ -69,7 +69,7 @@ namespace atoms {
 // TODO(aryap): We can also insert buffers into the vertical routing channel on
 // the left in order to buffer long wires travelling through.
 
-class Sky130InterconnectMux6 : public Atom {
+class Sky130InterconnectMux1 : public Atom {
  public:
   struct Parameters : public Sky130Parameters {
     // This is the default for the PDK.
@@ -103,13 +103,13 @@ class Sky130InterconnectMux6 : public Atom {
     // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
     uint16_t num_outputs = 1;
 
-    void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
-    void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
+    void ToProto(proto::parameters::Sky130InterconnectMux1 *pb) const;
+    void FromProto(const proto::parameters::Sky130InterconnectMux1 &pb);
   };
 
   static constexpr char kMuxOutputName[] = "Z";
 
-  Sky130InterconnectMux6(
+  Sky130InterconnectMux1(
       const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters) {
@@ -329,4 +329,4 @@ class Sky130InterconnectMux6 : public Atom {
 }  // namespace atoms
 }  // namespace bfg
 
-#endif  // ATOMS_SKY130_INTERCONNECT_MUX6_H_
+#endif  // ATOMS_SKY130_INTERCONNECT_MUX1_H_

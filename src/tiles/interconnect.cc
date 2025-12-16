@@ -5,7 +5,7 @@
 
 #include <absl/strings/str_format.h>
 #include "../equivalent_nets.h"
-#include "../atoms/sky130_interconnect_mux6.h"
+#include "../atoms/sky130_interconnect_mux1.h"
 #include "../circuit.h"
 #include "../geometry/instance.h"
 #include "../layout.h"
@@ -54,7 +54,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
                                false,      // Rotate first row.
                                geometry::Compass::LEFT);
 
-  atoms::Sky130InterconnectMux6::Parameters default_mux6_params {
+  atoms::Sky130InterconnectMux1::Parameters default_mux6_params {
     .horizontal_pitch_nm = 340
   };
 
@@ -62,9 +62,9 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
     auto &mux_row = muxes_.emplace_back();
     for (size_t j = 0; j < parameters_.num_columns; ++j) {
       std::string name = absl::StrFormat("interconnect_mux6_r%u_c%u", i, j);
-      atoms::Sky130InterconnectMux6::Parameters row_params =
+      atoms::Sky130InterconnectMux1::Parameters row_params =
           default_mux6_params;
-      atoms::Sky130InterconnectMux6 mux_gen(row_params, design_db_);
+      atoms::Sky130InterconnectMux1 mux_gen(row_params, design_db_);
       Cell *mux6_template = mux_gen.GenerateIntoDatabase(name);
       geometry::Instance *instance = bank.InstantiateRight(
           i, absl::StrCat(name, "_i"), mux6_template);
@@ -84,7 +84,7 @@ Cell *Interconnect::GenerateIntoDatabase(const std::string &name) {
       // here! Or at least it must be!
       {
         geometry::Port *port = mux->GetFirstPortNamed(
-            atoms::Sky130InterconnectMux6::kMuxOutputName);
+            atoms::Sky130InterconnectMux1::kMuxOutputName);
         if (!port) {
           LOG(WARNING) << "No output port on " << mux;
           continue;
@@ -260,7 +260,7 @@ void Interconnect::ConfigureRoutingGrid(
   // flip flop as blockages. These are connectable so are not included above.
   // They are named so we could select them that way. We could remove their
   // "connectability" when we're done routing to them, such as when they are
-  // added to the Sky130InterconnectMux6 (currently best option). We could also
+  // added to the Sky130InterconnectMux1 (currently best option). We could also
   // add a "search" for shapes matching nets, or at a given depth in the
   // hierarchy. These seem brittle.
   //{

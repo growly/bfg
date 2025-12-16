@@ -1,4 +1,4 @@
-#include "sky130_interconnect_mux6.h"
+#include "sky130_interconnect_mux1.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,8 +28,8 @@
 namespace bfg {
 namespace atoms {
 
-void Sky130InterconnectMux6::Parameters::ToProto(
-    proto::parameters::Sky130InterconnectMux6 *pb) const {
+void Sky130InterconnectMux1::Parameters::ToProto(
+    proto::parameters::Sky130InterconnectMux1 *pb) const {
   pb->set_num_inputs(num_inputs);
   pb->set_num_outputs(num_outputs);
   if (poly_pitch_nm) {
@@ -59,8 +59,8 @@ void Sky130InterconnectMux6::Parameters::ToProto(
 // existing values are the default values and leave them unchanged if they don't
 // appear in the input file. Make this consistent across implementations of
 // Parameters structs.
-void Sky130InterconnectMux6::Parameters::FromProto(
-    const proto::parameters::Sky130InterconnectMux6 &pb) {
+void Sky130InterconnectMux1::Parameters::FromProto(
+    const proto::parameters::Sky130InterconnectMux1 &pb) {
   if (pb.has_poly_pitch_nm()) {
     poly_pitch_nm = pb.poly_pitch_nm();
   }
@@ -81,7 +81,7 @@ void Sky130InterconnectMux6::Parameters::FromProto(
   }
 }
 
-bool Sky130InterconnectMux6::CompareInstancesByQPortX(
+bool Sky130InterconnectMux1::CompareInstancesByQPortX(
     geometry::Instance *const lhs,
     geometry::Instance *const rhs) {
   geometry::Port *lhs_port = lhs->GetFirstPortNamed("Q");
@@ -90,7 +90,7 @@ bool Sky130InterconnectMux6::CompareInstancesByQPortX(
 }
 
 std::vector<std::vector<std::string>>
-Sky130InterconnectMux6::BuildSingleOutputNetSequences() const {
+Sky130InterconnectMux1::BuildSingleOutputNetSequences() const {
   std::vector<std::vector<std::string>> sequences;
   std::vector<std::string> last_sequence;
   for (size_t i = 0; i < parameters_.num_inputs; ++i) {
@@ -117,7 +117,7 @@ Sky130InterconnectMux6::BuildSingleOutputNetSequences() const {
 }
 
 std::vector<std::vector<std::string>>
-Sky130InterconnectMux6::BuildDualOutputNetSequences() const {
+Sky130InterconnectMux1::BuildDualOutputNetSequences() const {
   // There's only one sequence.
   std::vector<std::string> sequence;
 
@@ -156,7 +156,7 @@ Sky130InterconnectMux6::BuildDualOutputNetSequences() const {
 }
 
 Sky130TransmissionGateStack::Parameters
-Sky130InterconnectMux6::BuildTransmissionGateParams(
+Sky130InterconnectMux1::BuildTransmissionGateParams(
     geometry::Instance *vertical_neighbour) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   Sky130TransmissionGateStack::Parameters params = {
@@ -217,7 +217,7 @@ Sky130InterconnectMux6::BuildTransmissionGateParams(
   return params;
 }
 
-std::vector<geometry::Instance*> Sky130InterconnectMux6::AddMemoriesVertically(
+std::vector<geometry::Instance*> Sky130InterconnectMux1::AddMemoriesVertically(
     size_t first_row,
     uint32_t num_rows,
     uint32_t columns,
@@ -247,7 +247,7 @@ std::vector<geometry::Instance*> Sky130InterconnectMux6::AddMemoriesVertically(
   return memories;
 }
 
-geometry::Instance *Sky130InterconnectMux6::AddClockBufferRight(
+geometry::Instance *Sky130InterconnectMux1::AddClockBufferRight(
     const std::string &suffix, size_t row, MemoryBank *bank) {
   // The input clock buffers go next to the middle flip flop on the top and
   // bottom side.
@@ -266,7 +266,7 @@ geometry::Instance *Sky130InterconnectMux6::AddClockBufferRight(
   return instance;
 }
 
-Cell *Sky130InterconnectMux6::MakeDecapCell(
+Cell *Sky130InterconnectMux1::MakeDecapCell(
     uint32_t width_nm, uint32_t height_nm) {
   // TODO(aryap): This is a cheap way of hashing based on parameters so that we
   // don't re-generate the same cell many times. It would be nice if the
@@ -291,7 +291,7 @@ Cell *Sky130InterconnectMux6::MakeDecapCell(
   return cell;
 }
 
-geometry::Instance *Sky130InterconnectMux6::AddOutputBufferRight(
+geometry::Instance *Sky130InterconnectMux1::AddOutputBufferRight(
     const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank) {
   std::string output_buf_name = PrefixCellName("output_buf");
   std::string cell_name = absl::StrCat(output_buf_name, "_template");
@@ -314,7 +314,7 @@ geometry::Instance *Sky130InterconnectMux6::AddOutputBufferRight(
       output_buf_cell);
 }
 
-geometry::Instance *Sky130InterconnectMux6::AddTransmissionGateStackRight(
+geometry::Instance *Sky130InterconnectMux1::AddTransmissionGateStackRight(
     geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank) {
   Sky130TransmissionGateStack::Parameters transmission_gate_mux_params =
       BuildTransmissionGateParams(vertical_neighbour);
@@ -328,7 +328,7 @@ geometry::Instance *Sky130InterconnectMux6::AddTransmissionGateStackRight(
       row, instance_name, transmission_gate_stack_cell);
 }
 
-bfg::Cell *Sky130InterconnectMux6::Generate() {
+bfg::Cell *Sky130InterconnectMux1::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
   std::unique_ptr<bfg::Cell> cell(
@@ -675,7 +675,7 @@ bfg::Cell *Sky130InterconnectMux6::Generate() {
   return cell.release();
 }
 
-bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
+bool Sky130InterconnectMux1::ConnectMemoryRowToStack(
     const std::vector<geometry::Instance*> &sorted_memories,
     const std::vector<GateAssignment> &gate_assignments,
     int64_t max_offset_from_first_poly_x,
@@ -861,8 +861,8 @@ bool Sky130InterconnectMux6::ConnectMemoryRowToStack(
   return true;
 }
 
-std::vector<Sky130InterconnectMux6::GateAssignment>
-Sky130InterconnectMux6::AssignRow(
+std::vector<Sky130InterconnectMux1::GateAssignment>
+Sky130InterconnectMux1::AssignRow(
     const std::vector<geometry::Instance*> &sorted_memories,
     int64_t max_offset_from_first_poly_x,
     std::vector<GateContacts> *gates) const {
@@ -909,8 +909,8 @@ Sky130InterconnectMux6::AssignRow(
   return gate_assignments;
 }
 
-std::optional<std::vector<std::vector<Sky130InterconnectMux6::GateAssignment>>>
-Sky130InterconnectMux6::FindGateAssignment(
+std::optional<std::vector<std::vector<Sky130InterconnectMux1::GateAssignment>>>
+Sky130InterconnectMux1::FindGateAssignment(
     const std::vector<geometry::Instance*> scan_order,
     size_t num_rows,
     size_t num_columns,
@@ -1013,7 +1013,7 @@ Sky130InterconnectMux6::FindGateAssignment(
   return std::nullopt;
 }
 
-void Sky130InterconnectMux6::ConnectControlWiresWithEffort(
+void Sky130InterconnectMux1::ConnectControlWiresWithEffort(
     const std::vector<geometry::Instance*> scan_order,
     size_t num_rows,
     size_t num_columns,
@@ -1052,7 +1052,7 @@ void Sky130InterconnectMux6::ConnectControlWiresWithEffort(
   }
 }
 
-bool Sky130InterconnectMux6::VerticalWireWouldCollideWithOthers(
+bool Sky130InterconnectMux1::VerticalWireWouldCollideWithOthers(
     const std::string &net,
     int64_t vertical_x,
     int64_t first_y,
@@ -1099,7 +1099,7 @@ bool Sky130InterconnectMux6::VerticalWireWouldCollideWithOthers(
   return false;
 }
 
-void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
+void Sky130InterconnectMux1::DrawRoutesForDualOutputs(
     const MemoryBank &bank,
     const std::vector<geometry::Instance*> &top_memories,
     const std::vector<geometry::Instance*> &bottom_memories,
@@ -1319,7 +1319,7 @@ void Sky130InterconnectMux6::DrawRoutesForDualOutputs(
   //                   circuit);
 }
 
-void Sky130InterconnectMux6::DrawRoutesForSingleOutput(
+void Sky130InterconnectMux1::DrawRoutesForSingleOutput(
     const MemoryBank &bank,
     const std::vector<geometry::Instance*> &top_memories,
     const std::vector<geometry::Instance*> &bottom_memories,
@@ -1578,7 +1578,7 @@ void Sky130InterconnectMux6::DrawRoutesForSingleOutput(
                      circuit);
 }
 
-void Sky130InterconnectMux6::DrawPowerAndGround(
+void Sky130InterconnectMux1::DrawPowerAndGround(
     const MemoryBank &bank,
     int64_t start_column_x,
     Layout *layout,
@@ -1684,7 +1684,7 @@ void Sky130InterconnectMux6::DrawPowerAndGround(
 
 }
 
-void Sky130InterconnectMux6::DrawClock(
+void Sky130InterconnectMux1::DrawClock(
     const MemoryBank &bank,
     const std::vector<geometry::Instance*> &top_memories,
     const std::vector<geometry::Instance*> &bottom_memories,
@@ -1839,7 +1839,7 @@ void Sky130InterconnectMux6::DrawClock(
   layout->MakePin("CLK", clock_port_centre, "met2.pin");
 }
 
-void Sky130InterconnectMux6::DrawOutput(
+void Sky130InterconnectMux1::DrawOutput(
     geometry::Instance *stack,
     geometry::Instance *output_buffer,
     int64_t *mux_pre_buffer_y,
@@ -1935,7 +1935,7 @@ void Sky130InterconnectMux6::DrawOutput(
   output_buffer->circuit_instance()->Connect("P", disconnected_P);
 }
 
-void Sky130InterconnectMux6::DrawInputs(
+void Sky130InterconnectMux1::DrawInputs(
     geometry::Instance *stack,
     int64_t mux_pre_buffer_y,
     int64_t vertical_x_left,
@@ -2005,7 +2005,7 @@ void Sky130InterconnectMux6::DrawInputs(
   }
 }
 
-void Sky130InterconnectMux6::DrawScanChain(
+void Sky130InterconnectMux1::DrawScanChain(
     const std::vector<geometry::Instance*> &scan_order,
     const std::map<geometry::Instance*, std::string> &memory_output_nets,
     int64_t num_ff_rows_bottom,
@@ -2093,7 +2093,7 @@ void Sky130InterconnectMux6::DrawScanChain(
   circuit->AddPort(scan_out);
 }
 
-void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
+void Sky130InterconnectMux1::DrawScanChainForMultipleColumns(
     const std::vector<geometry::Instance*> &scan_order,
     const std::map<geometry::Instance*, std::string> &memory_output_nets,
     int64_t num_ff_rows_bottom,
@@ -2115,9 +2115,6 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
     geometry::Port *mem_D = memory->GetFirstPortNamed("D");
 
     geometry::Port *next_D = next->GetFirstPortNamed("D");
-
-    layout->MakePin(memory->name() + "/Q", mem_Q->centre(), "li.pin");
-    layout->MakePin(memory->name() + "/D", mem_D->centre(), "li.pin");
 
     std::string net = absl::StrCat(memory->name(), ".Q");
   
@@ -2245,7 +2242,7 @@ void Sky130InterconnectMux6::DrawScanChainForMultipleColumns(
 // the same layers. We only care how far shapes in the surrounding cell overflow
 // its tiling bounds, since that is the incursion into what will be the mux
 // cell. We also assume uniformity across the width of the cell.
-int64_t Sky130InterconnectMux6::FigurePolyBoundarySeparationForMux(
+int64_t Sky130InterconnectMux1::FigurePolyBoundarySeparationForMux(
     bfg::Layout *neighbour_layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
@@ -2289,7 +2286,7 @@ int64_t Sky130InterconnectMux6::FigurePolyBoundarySeparationForMux(
 //       ^
 //       vertical_x
 //
-std::vector<geometry::Point> Sky130InterconnectMux6::ConnectVertically(
+std::vector<geometry::Point> Sky130InterconnectMux1::ConnectVertically(
     const geometry::Point &top,
     const geometry::Point &bottom,
     int64_t vertical_x,
@@ -2310,7 +2307,7 @@ std::vector<geometry::Point> Sky130InterconnectMux6::ConnectVertically(
   return points;
 }
 
-void Sky130InterconnectMux6::AddPolyconAndLi(
+void Sky130InterconnectMux1::AddPolyconAndLi(
     const geometry::Point tab_centre,
     bool bulges_up,
     bfg::Layout *layout) const {

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package bfg.proto.parameters;
 
-message Sky130InterconnectMux6 {
+message Sky130InterconnectMux1 {
   optional uint64 num_inputs = 1;
   optional uint64 num_outputs = 2;
   optional uint64 poly_pitch_nm = 9;

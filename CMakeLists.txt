@@ -116,7 +116,7 @@ set(SKY130_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_decap.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_hd_mux2_1.cc
-  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_interconnect_mux6.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_interconnect_mux1.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_mux.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_switch_complex.cc
