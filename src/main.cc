@@ -19,6 +19,7 @@
 #include "layout.h"
 #include "atoms/sky130_switch_complex.h"
 #include "atoms/sky130_interconnect_mux1.h"
+#include "atoms/sky130_interconnect_mux2.h"
 #include "atoms/sky130_transmission_gate.h"
 #include "atoms/sky130_transmission_gate_stack.h"
 #include "atoms/sky130_mux.h"
@@ -123,6 +124,12 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130InterconnectMux1,
         bfg::atoms::Sky130InterconnectMux1::Parameters,
         bfg::atoms::Sky130InterconnectMux1>(
+            generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130InterconnectMux2") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130InterconnectMux1,
+        bfg::atoms::Sky130InterconnectMux1::Parameters,
+        bfg::atoms::Sky130InterconnectMux2>(
             generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130Decap") {
     cell = ReadParamsAndGenerate<

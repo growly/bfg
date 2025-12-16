@@ -16,7 +16,7 @@ class DesignDatabase;
 
 namespace atoms {
 
-// The mux6 we will build for interconnect (and the family of components like
+// The mux1 we will build for interconnect (and the family of components like
 // it) will look like:
 //
 //           +-+------------------------------+-+----+
@@ -158,36 +158,27 @@ class Sky130InterconnectMux1 : public Atom {
   // merge outputs directly into parent cell.
   bfg::Cell *Generate() override;
 
- private:
-  struct GateContacts {
-    size_t number;
-    geometry::Point p_contact;
-    geometry::Point n_contact;
-  };
-  struct GateAssignment {
-    GateContacts gate;
-    int64_t p_vertical_x;
-    int64_t p_gate_x;
-    int64_t n_vertical_x;
-    int64_t n_gate_x;
-  };
-
-  static bool CompareInstancesByQPortX(
-      geometry::Instance *const lhs,
-      geometry::Instance *const rhs);
-
+ protected:
   void ConfigureSky130Parameters(Sky130Parameters *base_params) const {
     base_params->power_net = parameters_.power_net;
     base_params->ground_net = parameters_.ground_net;
   }
 
-  std::vector<std::vector<std::string>> BuildSingleOutputNetSequences() const;
-  std::vector<std::vector<std::string>> BuildDualOutputNetSequences() const;
-  Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
-    geometry::Instance *vertical_neighbour) const;
+  virtual std::vector<std::vector<std::string>> BuildNetSequences() const;
+
+  virtual Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
+      geometry::Instance *vertical_neighbour) const;
 
   int64_t FigurePolyBoundarySeparationForMux(
       bfg::Layout *neighbour_layout) const;
+
+  virtual uint32_t NumMemories() {
+    // For the single-output case, there is one control line per input.
+    return parameters_.num_inputs;
+  }
+  virtual uint32_t NumMemoryColumns() {
+    return 1;
+  }
 
   std::vector<geometry::Instance*> AddMemoriesVertically(
     size_t first_row,
@@ -199,66 +190,19 @@ class Sky130InterconnectMux1 : public Atom {
       const std::string &suffix, size_t row, MemoryBank *bank);
   geometry::Instance *AddTransmissionGateStackRight(
       geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank);
+
+  void AddOutputBuffers(
+      size_t row,
+      int64_t row_height,
+      MemoryBank *bank,
+      std::vector<geometry::Instance*> *output_bufs);
+
   geometry::Instance *AddOutputBufferRight(
       const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank);
 
   Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
 
-  std::vector<GateAssignment> AssignRow(
-      const std::vector<geometry::Instance*> &row_memories,
-      int64_t max_offset_from_first_poly_x,
-      std::vector<GateContacts> *gates) const;
-
-  std::optional<std::vector<std::vector<GateAssignment>>>
-  FindGateAssignment(
-      const std::vector<geometry::Instance*> scan_order,
-      size_t num_rows,
-      size_t num_columns,
-      int64_t max_offset_from_first_poly_x,
-      std::vector<std::vector<geometry::Instance*>> *sorted_memories_per_row,
-      std::vector<GateContacts> *gates) const;
-
-  bool ConnectMemoryRowToStack(
-      const std::vector<geometry::Instance*> &sorted_memories,
-      const std::vector<GateAssignment> &gate_assignments,
-      int64_t max_offset_from_first_poly_x,
-      std::vector<GateContacts> *gates,
-      geometry::Instance *stack,
-      std::optional<int64_t> *left_most_vertical_x,
-      std::optional<int64_t> *right_most_vertical_x,
-      std::map<geometry::Instance*, std::string> *memory_output_nets,
-      Layout *layout,
-      Circuit *circuit) const;
-  void ConnectControlWiresWithEffort(
-      const std::vector<geometry::Instance*> scan_order,
-      size_t num_rows,
-      size_t num_columns,
-      int64_t max_offset_from_first_poly_x,
-      geometry::Instance *stack,
-      std::vector<GateContacts> *gates,
-      std::optional<int64_t> *left_most_vertical_x,
-      std::optional<int64_t> *right_most_vertical_x,
-      std::map<geometry::Instance*, std::string> *memory_output_nets,
-      Layout *layout,
-      Circuit *circuit) const;
-
-  bool VerticalWireWouldCollideWithOthers(
-      const std::string &net,
-      int64_t vertical_x,
-      int64_t first_y,
-      int64_t second_y,
-      Layout *layout) const;
-
-  void DrawRoutesForSingleOutput(
-      const MemoryBank &bank,
-      const std::vector<geometry::Instance*> &top_memories,
-      const std::vector<geometry::Instance*> &bottom_memories,
-      const std::vector<geometry::Instance*> &clk_bufs,
-      geometry::Instance *stack,
-      geometry::Instance *output_buffer,
-      Layout *layout,
-      Circuit *circuit) const;
-  void DrawRoutesForDualOutputs(
+  virtual void DrawRoutes(
       const MemoryBank &bank,
       const std::vector<geometry::Instance*> &top_memories,
       const std::vector<geometry::Instance*> &bottom_memories,
@@ -268,7 +212,7 @@ class Sky130InterconnectMux1 : public Atom {
       Layout *layout,
       Circuit *circuit) const;
 
-  void DrawScanChain(
+  virtual void DrawScanChain(
       const std::vector<geometry::Instance*> &all_memories,
       const std::map<geometry::Instance*, std::string> &memory_output_nets,
       int64_t num_ff_bottom,
@@ -277,42 +221,35 @@ class Sky130InterconnectMux1 : public Atom {
       Layout *layout,
       Circuit *circuit) const;
 
-  void DrawScanChainForMultipleColumns(
-      const std::vector<geometry::Instance*> &all_memories,
-      const std::map<geometry::Instance*, std::string> &memory_output_nets,
-      int64_t num_ff_bottom,
-      int64_t vertical_x_left,
-      int64_t vertical_x_right,
+  virtual void DrawOutput(
+      const std::vector<geometry::Instance*> &output_buffers,
+      geometry::Instance *stack,
+      int64_t *mux_pre_buffer_y,
+      int64_t output_port_x,
       Layout *layout,
       Circuit *circuit) const;
 
-  void DrawOutput(geometry::Instance *stack,
-                  geometry::Instance *output_buffer,
-                  int64_t *mux_pre_buffer_y,
-                  int64_t output_port_x,
-                  Layout *layout,
-                  Circuit *circuit) const;
-
-  void DrawInputs(geometry::Instance *stack,
-                  int64_t mux_pre_buffer_y,
-                  int64_t vertical_x_left,
-                  Layout *layout,
-                  Circuit *circuit) const;
-
-  void DrawPowerAndGround(const MemoryBank &bank,
-                          int64_t start_column_x,
+  virtual void DrawInputs(geometry::Instance *stack,
+                          int64_t mux_pre_buffer_y,
+                          int64_t vertical_x_left,
                           Layout *layout,
                           Circuit *circuit) const;
 
-  void DrawClock(const MemoryBank &bank,
-                 const std::vector<geometry::Instance*> &top_memories,
-                 const std::vector<geometry::Instance*> &bottom_memories,
-                 const std::vector<geometry::Instance*> &clk_bufs,
-                 int64_t input_clk_x,
-                 int64_t clk_x,
-                 int64_t clk_i_x,
-                 Layout *layout,
-                 Circuit *circuit) const;
+  virtual void DrawPowerAndGround(const MemoryBank &bank,
+                                  int64_t start_column_x,
+                                  Layout *layout,
+                                  Circuit *circuit) const;
+
+  virtual void DrawClock(
+      const MemoryBank &bank,
+      const std::vector<geometry::Instance*> &top_memories,
+      const std::vector<geometry::Instance*> &bottom_memories,
+      const std::vector<geometry::Instance*> &clk_bufs,
+      int64_t input_clk_x,
+      int64_t clk_x,
+      int64_t clk_i_x,
+      Layout *layout,
+      Circuit *circuit) const;
 
   std::vector<geometry::Point> ConnectVertically(const geometry::Point &top,
                                                  const geometry::Point &bottom,
@@ -323,7 +260,13 @@ class Sky130InterconnectMux1 : public Atom {
                        bool bulges_up,
                        bfg::Layout *layout) const;
 
+  virtual int NumOutputs() { return kNumOutputs; }
+
   Parameters parameters_;
+
+ private:
+  // This is fixed for this implementation.
+  static constexpr int kNumOutputs = 1;
 };
 
 }  // namespace atoms
