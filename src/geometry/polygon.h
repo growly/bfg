@@ -48,6 +48,8 @@ class Polygon : public Shape {
   // second polygon?
   // - Are any of the points of the first polygon interior to the second
   // polygon?
+  bool Overlaps(const Polygon &other) const;
+  
   bool Overlaps(const Rectangle &rectangle) const;
   bool HasVertex(const Point &point) const;
 
@@ -64,12 +66,13 @@ class Polygon : public Shape {
   void ResetOrigin() override;
   void Rotate(int32_t degrees_ccw) override;
 
-  // TODO(aryap): It would be very useful to have a "Widen" or "Inflate" method
-  // that will add some width to the polygon in every direction. This is useful
-  // for hit-testing collisions within some margin. We can employ basically the
-  // same algorithm as for poly-line inflation.
+  // Assumes that vertices are in clockwise order. If they are in anti-clockwise
+  // order, give a negative margin to achieve same effect.
+  void Fatten(int64_t margin);
 
   const Rectangle GetBoundingBox() const override;
+
+  std::vector<Line> Edges() const;
 
   const std::string Describe() const;
 
@@ -80,6 +83,15 @@ class Polygon : public Shape {
       const std::vector<PointOrChoice> &choices,
       const Point &reference_point);
 
+  // We should assume that vertices_ are stored in clockwise order. We've
+  // mostly gotten away with not making that assumption, but methods like
+  // Fatten(...) and any future triangulation will benefit.
+  //
+  // TODO(aryap): I think that seems reasonable, I've seen it done elsewhere?
+  // Can I do that? Should we test and re-arrange at construction?
+  //
+  // I think we can use the cross-product and/or use the sum of interior angles
+  // or something?
   std::vector<Point> vertices_;
 };
 

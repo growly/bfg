@@ -95,6 +95,145 @@ bool Line::Intersect(
   return true;
 }
 
+bool Line::IntersectsInBoundsAnyInRange(
+    const Line &candidate,
+    std::vector<Line>::const_reverse_iterator end,
+    std::vector<Line>::const_reverse_iterator start) {
+  for (std::vector<Line>::const_reverse_iterator it = end;
+       it != start;
+       it++) {
+    bool incident = false;
+    bool is_start_or_end = false;
+    Point intersection;
+    if (candidate.IntersectsInBounds(*it,
+                                     &incident,
+                                     &is_start_or_end,
+                                     &intersection)) {
+      return false;
+    }
+  }
+  return false;
+}
+
+Line Line::Shifted(
+    const Line &source, double width,
+    double extension_source, double extension_end) {
+  // TODO(aryap): Integer division can lead to precision loss here,
+  // so we *should* make sure we recover it.
+  double theta = source.AngleToHorizon();
+
+  int64_t shift_x = static_cast<int64_t>(std::sin(theta) * width);
+  int64_t shift_y = static_cast<int64_t>(std::cos(theta) * width);
+
+  Line shifted_line(source);
+  shifted_line.Shift(-shift_x, shift_y);
+
+  if (extension_source > 0.0) {
+    int64_t extension_x =
+        static_cast<int64_t>(std::cos(theta) * extension_source);
+    int64_t extension_y =
+        static_cast<int64_t>(std::sin(theta) * extension_source);
+    shifted_line.ShiftStart(extension_x, extension_y);
+  }
+
+  if (extension_end > 0.0) {
+    int64_t extension_x =
+        static_cast<int64_t>(std::cos(theta) * extension_end);
+    int64_t extension_y =
+        static_cast<int64_t>(std::sin(theta) * extension_end);
+    shifted_line.ShiftEnd(extension_x, extension_y);
+  }
+
+  return shifted_line;
+}
+ 
+void Line::AppendIntersections(
+    const std::vector<Line> &lines,
+    std::vector<Point> *intersections,
+    bool wraparound) {
+  for (int i = wraparound ? 0 : 1; i < lines.size(); ++i) {
+    const Line &current_line = lines.at(i);
+    const Line &last_line = lines.at((i - 1) % lines.size());
+
+    if (Line::AreAntiParallel(current_line, last_line)) {
+      // Line turns 180 degrees to about-face. If this happens in the middle of
+      // a line in one direction then the line has a kink in it and we have to
+      //  - check for intersections of the current line with the line before
+      //  last; 
+      //  - check for inter
+      //  - check for intersections of the _next line_ with the one before last
+      //  (also in bounds).
+      //
+      // We have to assume that there are no back-to-back parallel or
+      // anti-parallel lines to simplify this considerably. This invariant must
+      // be enforced by the Line itself.
+      if (i < lines.size() - 1) {
+        const Line &next_line = lines.at(i + 1);
+
+        bool incident = false;
+        bool ignored = false;
+        Point intersection;
+        if (next_line.IntersectsInBounds(last_line,
+                                         &incident,
+                                         &ignored,
+                                         &intersection)) {
+          intersections->push_back(intersection);
+          // Also skip the next line, since we've already effectively found the
+          // intersection point it would yield.
+          ++i;
+          continue;
+        }
+      }
+
+      if (i >= 2) {
+        const Line &before_last_line = lines.at(i - 2);
+
+        bool incident = false;
+        Point intersection;
+        if (before_last_line.IntersectsInMutualBounds(current_line,
+                                                      &incident,
+                                                      &intersection)) {
+          // Have to replace the last intersection with this intersection
+          // instead:
+          intersections->pop_back();
+          intersections->push_back(intersection);
+          continue;
+        }
+      }
+    }
+
+    Point intersection;
+    bool incident;
+    if (Line::Intersect(last_line,
+                        current_line,
+                        &incident,
+                        &intersection)) {
+      if (!incident) {
+        intersections->push_back(intersection);
+      }
+    } else {
+      // The lines never intersect, which means they're parallel or
+      // anti-parallel.  That also means that we can simply insert the end of
+      // the last line and the start of the next line as additional vertices to
+      // join the widths of the two:
+      //
+      //          v start
+      //          +-----------+
+      //            next ^
+      // ---------+           +----------
+      // last ^   ^ end
+      //
+      //
+      //      last ---------+ < end
+      //
+      //      next ---------+ <start
+      //
+      intersections->push_back(last_line.end());
+      intersections->push_back(current_line.start());
+    }
+  }
+}
+
 bool Line::Intersects(const Point &point) const {
   if (IsVertical()) {
     return point.x() == start_.x();
