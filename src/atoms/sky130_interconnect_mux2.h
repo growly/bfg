@@ -71,8 +71,15 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
     // and since all but two inputs are shared, that makes:
     return  (parameters_.num_inputs - 1) * 2;
   }
-  uint32_t NumMemoryColumns() override {
+  // TODO(aryap): What's the name of that optimisation where the return values
+  // of virtual functions which are constant get stored directly in the vtable
+  // to avoid a call? Virtual constant propagation? "Constant propagation with
+  // devirtualization" (that's what Claude said)?
+  uint32_t NumMemoryColumns() const override {
     return 2;
+  }
+  bool StackHasLiChannel() const override {
+    return true;
   }
 
   std::vector<std::vector<std::string>> BuildNetSequences() const override;

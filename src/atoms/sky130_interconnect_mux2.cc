@@ -268,8 +268,8 @@ void Sky130InterconnectMux2::DrawRoutes(
   int64_t output_port_x = bank.GetTilingBounds()->upper_right().x();
   int64_t mux_pre_buffer_y = 0;
 
-  //DrawOutput(stack,
-  //           output_buffers[0],
+  //DrawOutput(output_buffers,
+  //           stack,
   //           &mux_pre_buffer_y,
   //           output_port_x,
   //           layout,
@@ -871,9 +871,93 @@ void Sky130InterconnectMux2::DrawOutput(
     int64_t output_port_x,
     Layout *layout,
     Circuit *circuit) const {
-  // TODO: Implement dual-output specific drawing
-  Sky130InterconnectMux1::DrawOutput(
-      output_buffers, stack, mux_pre_buffer_y, output_port_x, layout, circuit);
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  // TODO(aryap): This bit sucks. I'm not sure if the
+  // Sky130TransmissionGateStack should be in charge of creating and
+  // distributing ports (in which case it should know about special ports like
+  // "Z", which we want to go through the middle or something), or if it's up
+  // to this client class to distribute the wires over the ports. Having the
+  // ports does at very least associate the x coordinates needed with their
+  // nets. Likely we need to generate the input nets and output net in advance
+  // of what we currently are doing.
+  //
+  // Connect the transmission gate mux outputs to the buf. Use the default
+  // position of the ports created by the transmission gate mux.
+  std::vector<geometry::Port*> outputs;
+  stack->GetInstancePorts(kMuxOutputName, &outputs);
+
+  std::vector<geometry::Point> wire_points;
+  std::vector<Layout::ViaToSomeLayer> connection_points;
+  for (geometry::Port *port : outputs) {
+    connection_points.push_back({
+        .centre = port->centre(),
+        .layer_name = "li.drawing"
+    });
+    wire_points.push_back(port->centre());
+  }
+
+  geometry::Port *buf_A = output_buffers[0]->GetFirstPortNamed("A");
+
+  wire_points.push_back({buf_A->centre().x(), wire_points.back().y()});
+
+  wire_points.push_back(buf_A->centre());
+  connection_points.push_back({
+      .centre = buf_A->centre(),
+      .layer_name = "li.drawing"
+  });
+  layout->MakeWire(wire_points, "met1.drawing", connection_points);
+
+  circuit::Wire stack_to_buf = circuit->AddSignal("stack_to_buf");
+  stack->circuit_instance()->Connect(kMuxOutputName, stack_to_buf);
+  output_buffers[0]->circuit_instance()->Connect("A", stack_to_buf);
+
+  *mux_pre_buffer_y = wire_points.front().y();
+
+  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
+  
+  // Because DrawInputs will allocate parameters_.num_inputs-many inputs
+  // vertically starting below the mux_pre_buffer_y line, we halve and round
+  // down to find the number expected above that line, and then align the final
+  // output to the top input:
+  int64_t num_below = parameters_.num_inputs / 2;
+  int64_t final_output_y = *mux_pre_buffer_y - num_below * met2_pitch;
+
+  // Connect the buff output to the edge of the design:
+  geometry::Port *buf_X = output_buffers[0]->GetFirstPortNamed("X");
+
+  int64_t met1_pitch = db.Rules("met1.drawing").min_pitch;
+  int64_t vertical_x = buf_X->centre().x() + met1_pitch;
+
+  std::vector<geometry::Point> output_wire = {
+      buf_X->centre(),
+      {vertical_x, buf_X->centre().y()},
+      {vertical_x, final_output_y},
+      geometry::Point {output_port_x, final_output_y}
+  };
+
+  // It is very important that the output wire be labelled with its net so that
+  // the RoutingGrid can make exceptions for blockages when connecting to it!
+  geometry::Polygon *out_wire = layout->MakeWire(
+      output_wire,
+      "met1.drawing",  // Wire layer.
+      "li.drawing",    // Start layer.
+      std::nullopt,    // End layer.
+      false,
+      false,
+      kMuxOutputName);
+  out_wire->set_is_connectable(true);
+
+  layout->MakePin(kMuxOutputName, output_wire.back(), "met1.pin");
+
+  circuit::Wire output_signal = circuit->AddSignal(kMuxOutputName);
+  circuit->AddPort(output_signal);
+  output_buffers[0]->circuit_instance()->Connect("X", output_signal);
+
+  // To keep VLSIR happy, connect port P to a floating net (it is disconnected).
+  // TODO(aryap): This should be automatically emitted by our circuit model for
+  // explicitly disconnected ports!
+  circuit::Wire disconnected_P = circuit->AddSignal("disconnected_P");
+  output_buffers[0]->circuit_instance()->Connect("P", disconnected_P);
 }
 
 void Sky130InterconnectMux2::DrawInputs(

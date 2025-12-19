@@ -447,7 +447,7 @@ int64_t Sky130TransmissionGate::FigureBottomPadding() const {
   }
   int64_t tab_pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
   int64_t tab_offset = db.ToInternalUnits(
-      parameters_.vertical_tab_offset_nm.value_or(0)) % tab_pitch;
+      parameters_.vertical_tab_offset_nm.value_or(0));
 
   int64_t tab_height = NMOSPolyTabHeight();
 
@@ -463,11 +463,11 @@ int64_t Sky130TransmissionGate::NextYOnTabGrid(int64_t current_y) const {
   if (!parameters_.vertical_tab_pitch_nm) {
     return current_y;
   }
-  int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+  int64_t tab_pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
   int64_t offset = db.ToInternalUnits(
-      parameters_.vertical_tab_offset_nm.value_or(0)) % pitch;
+      parameters_.vertical_tab_offset_nm.value_or(0));
 
-  return Utility::NextMultiple(current_y - offset, pitch) + offset;
+  return Utility::NextMultiple(current_y - offset, tab_pitch) + offset;
 }
 
 int64_t Sky130TransmissionGate::NextYOnNMOSLowerLeftGrid(int64_t current_y)
@@ -477,11 +477,12 @@ int64_t Sky130TransmissionGate::NextYOnNMOSLowerLeftGrid(int64_t current_y)
       *parameters_.nmos_ll_vertical_pitch_nm == 0) {
     return current_y;
   }
-  int64_t pitch = db.ToInternalUnits(*parameters_.nmos_ll_vertical_pitch_nm);
+  int64_t tab_pitch = db.ToInternalUnits(
+      *parameters_.nmos_ll_vertical_pitch_nm);
   int64_t offset = db.ToInternalUnits(
-      parameters_.nmos_ll_vertical_offset_nm.value_or(0)) % pitch;
+      parameters_.nmos_ll_vertical_offset_nm.value_or(0));
 
-  return Utility::NextMultiple(current_y - offset, pitch) + offset;
+  return Utility::NextMultiple(current_y - offset, tab_pitch) + offset;
 }
 
 // Building the cell up from y = 0 and assuming the NMOS transistor
@@ -595,11 +596,14 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(
 int64_t Sky130TransmissionGate::FigureNMOSLowerTabConnectorHeight(
     int64_t nmos_bottom_tab_top_y) const {
   int64_t minimum = 0;
-  if (parameters_.tabs_should_avoid_nearest_vias) {
+  if (parameters_.tabs_should_avoid_nearest_vias ||
+      parameters_.allow_metal_channel_bottom) {
     int64_t extra_necessary =
-        nfet_generator_->FigurePolyDiffExtension(NMOSPolyTabHeight() / 2);
+        nfet_generator_->FigurePolyDiffExtension(
+            NMOSPolyTabHeight() / 2, parameters_.allow_metal_channel_bottom);
     minimum = std::max(extra_necessary - NMOSPolyOverhangBottom(), 0L);
   }
+
   // The poly tab must be on the bottom, so the space to the lower-left diff
   // point is set by the tab connector height:
   if (parameters_.nmos_ll_vertical_pitch_nm) {
@@ -622,7 +626,8 @@ int64_t Sky130TransmissionGate::FigureNMOSUpperTabConnectorHeight(
 
   int64_t extra_extension = 0;
   if (parameters_.tabs_should_avoid_nearest_vias) {
-    extra_extension = nfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
+    extra_extension =
+        nfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
         NMOSPolyOverhangTop();
   }
 
@@ -645,8 +650,11 @@ int64_t Sky130TransmissionGate::FigurePMOSUpperTabConnectorHeight(
   int64_t tab_centre = pmos_poly_top_y + tab_height / 2;
 
   int64_t extra_extension = 0;
-  if (parameters_.tabs_should_avoid_nearest_vias) {
-    extra_extension = pfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
+  if (parameters_.tabs_should_avoid_nearest_vias ||
+      parameters_.allow_metal_channel_top) {
+    extra_extension =
+        pfet_generator_->FigurePolyDiffExtension(
+            tab_height / 2, parameters_.allow_metal_channel_top) -
         PMOSPolyOverhangTop();
   }
 

@@ -230,12 +230,16 @@ void Sky130TransmissionGateStack::BuildSequence(
       .min_cell_height_nm = parameters_.min_height_nm,
       .vertical_tab_pitch_nm = parameters_.poly_contact_vertical_pitch_nm,
       .vertical_tab_offset_nm =
-          parameters_.poly_contact_vertical_pitch_nm.value_or(0) / 2,
+          parameters_.poly_contact_vertical_offset_nm.value_or(0),
       .poly_pitch_nm = parameters_.poly_pitch_nm,
       .nmos_ll_vertical_pitch_nm = parameters_.input_vertical_pitch_nm,
       .nmos_ll_vertical_offset_nm = -db.ToExternalUnits(
           diff_ll_to_bottom_via_centre_y) +
           parameters_.input_vertical_offset_nm.value_or(0),
+      .min_p_tab_diff_separation_nm = parameters_.min_p_tab_diff_separation_nm,
+      .min_n_tab_diff_separation_nm = parameters_.min_n_tab_diff_separation_nm,
+      .allow_metal_channel_top = parameters_.allow_metal_channel_top,
+      .allow_metal_channel_bottom = parameters_.allow_metal_channel_bottom,
       .min_poly_boundary_separation_nm =
           parameters_.min_poly_boundary_separation_nm,
       .min_furthest_via_distance_nm = min_via_distance_nm,

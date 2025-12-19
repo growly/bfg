@@ -40,6 +40,11 @@ void Sky130InterconnectMux1::Parameters::ToProto(
   } else {
     pb->clear_vertical_pitch_nm();
   }
+  if (vertical_offset_nm) {
+    pb->set_vertical_offset_nm(*vertical_offset_nm);
+  } else {
+    pb->clear_vertical_offset_nm();
+  }
   if (horizontal_pitch_nm) {
     pb->set_horizontal_pitch_nm(*horizontal_pitch_nm);
   } else {
@@ -64,6 +69,9 @@ void Sky130InterconnectMux1::Parameters::FromProto(
   }
   if (pb.has_vertical_pitch_nm()) {
     vertical_pitch_nm = pb.vertical_pitch_nm();
+  }
+  if (pb.has_vertical_offset_nm()) {
+    vertical_offset_nm = pb.vertical_offset_nm();
   }
   if (pb.has_horizontal_pitch_nm()) {
     horizontal_pitch_nm = pb.horizontal_pitch_nm();
@@ -122,11 +130,14 @@ Sky130InterconnectMux1::BuildTransmissionGateParams(
     params.min_height_nm = (needed_tracks + 3) * *parameters_.vertical_pitch_nm;
   }
   params.poly_contact_vertical_pitch_nm = parameters_.vertical_pitch_nm;
+  params.poly_contact_vertical_offset_nm = parameters_.vertical_offset_nm;
   params.input_vertical_pitch_nm = parameters_.vertical_pitch_nm;
   params.input_vertical_offset_nm = parameters_.vertical_offset_nm;
   params.expand_wells_to_vertical_bounds = true;
   params.expand_wells_to_horizontal_bounds = true;
   params.poly_pitch_nm = parameters_.poly_pitch_nm;
+  params.allow_metal_channel_top = StackHasLiChannel();
+  params.allow_metal_channel_bottom = StackHasLiChannel();
 
   // Build the sequences of nets that dictate the arrangement of the
   // transmission gate stack, e.g. for 1 output:
@@ -1386,9 +1397,41 @@ int64_t Sky130InterconnectMux1::FigurePolyBoundarySeparationForMux(
 
   bfg::geometry::Rectangle tiling_bounds = neighbour_layout->GetTilingBounds();
 
+  // TODO(aryap):
+  // 1) We should be able to turn off the vertical poly pitch being used for
+  // cell height spacing calculation - in this case we are not stacking another
+  // one of these transmission gate stacks on top. Or maybe it should be
+  // explicit. The height should actually be a multiple of the standard-cell
+  // height unit, i.e. an 8-track cell is 8*340 (met1 pitch) = 2720 um.
   static const std::vector kCheckedLayers = {
     "poly.drawing", "met1.drawing", "li.drawing"
   };
+
+  // Since the quantity we return will be used as a spacing from the top-most
+  // poly edge, we correct our spacings with an amount we call "underflow",
+  // which measures how much extra room there is between the poly edge and each
+  // of the other metal edges we're checking spacings on.
+  //
+  // TODO(aryap): It is annoying that this class has to worry about this. But we
+  // can't get the details of poly tab heights and such from the child
+  // generators until they are generated. This is a more general problem to
+  // tackle but, it is annoying here. Maybe we just give the generate the layout
+  // of the neighbour to avoid?
+  //
+  // OR MAYBE the min-spacing is specified for each layer, and the generator has
+  // to apply it according to its construction.
+  //
+  // Anyway. This could be a lot smoother.
+  std::map<std::string, int64_t> underflow_by_layer;
+  
+  // li.drawing is:
+  underflow_by_layer["poly.drawing"] = 0;
+  underflow_by_layer["li.drawing"] = (
+      db.TypicalViaEncap("li.drawing", "licon.drawing").width -
+      db.TypicalViaEncap("poly.drawing", "pcon.drawing").length) / 2;
+  underflow_by_layer["met1.drawing"] = (
+      db.TypicalViaEncap("met1.drawing", "mcon.drawing").width -
+      db.TypicalViaEncap("poly.drawing", "pcon.drawing").length) / 2;
 
   int64_t max_spacing = 0;
 
@@ -1399,15 +1442,19 @@ int64_t Sky130InterconnectMux1::FigurePolyBoundarySeparationForMux(
     // Minimum separation on this layer.
     int64_t layer_min_separation = db.Rules(layer).min_separation;
 
-    // First check the top:
+    // First check the top. We'll call the gap between the layer and the edge of
+    // the adjacent cell the "overflow".
     int64_t overflow =
         layer_bounds.upper_right().y() - tiling_bounds.upper_right().y();
-    int64_t required_separation = overflow + layer_min_separation;
+
+    int64_t underflow = underflow_by_layer[layer];
+
+    int64_t required_separation = overflow + layer_min_separation + underflow;
     max_spacing = std::max(max_spacing, required_separation);
 
     // Then the bottom:
     overflow = tiling_bounds.lower_left().y() - layer_bounds.lower_left().y();
-    required_separation = overflow + layer_min_separation;
+    required_separation = overflow + layer_min_separation + underflow;
     max_spacing = std::max(max_spacing, required_separation);
   }
   return max_spacing;

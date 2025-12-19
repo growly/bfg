@@ -179,8 +179,11 @@ class Sky130InterconnectMux1 : public Atom {
     // For the single-output case, there is one control line per input.
     return parameters_.num_inputs;
   }
-  virtual uint32_t NumMemoryColumns() {
+  virtual uint32_t NumMemoryColumns() const {
     return 1;
+  }
+  virtual bool StackHasLiChannel() const {
+    return false;
   }
 
   std::vector<geometry::Instance*> AddMemoriesVertically(

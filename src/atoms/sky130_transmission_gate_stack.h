@@ -71,7 +71,8 @@ class Sky130TransmissionGateStack : public Atom {
     std::optional<uint64_t> min_height_nm = 2720;
 
     // Vertical pitch of poly contacts across the gates, if specified.
-    std::optional<uint64_t> poly_contact_vertical_pitch_nm = 340;
+    std::optional<uint64_t> poly_contact_vertical_pitch_nm = 170;
+    std::optional<uint64_t> poly_contact_vertical_offset_nm = 340;
 
     // Vertical pitch of inputs across the gates, if specified.
     std::optional<uint64_t> input_vertical_pitch_nm = 340;
@@ -96,6 +97,9 @@ class Sky130TransmissionGateStack : public Atom {
     bool expand_wells_to_horizontal_bounds = false;
 
     bool add_ports = true;
+
+    bool allow_metal_channel_top = false;
+    bool allow_metal_channel_bottom = false;
 
     void ToProto(proto::parameters::Sky130TransmissionGateStack *pb) const;
     void FromProto(const proto::parameters::Sky130TransmissionGateStack &pb);

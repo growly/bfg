@@ -7,7 +7,8 @@ message Sky130InterconnectMux1 {
   optional uint64 num_outputs = 2;
   optional uint64 poly_pitch_nm = 9;
   optional uint64 vertical_pitch_nm = 10;
-  optional uint64 horizontal_pitch_nm = 11;
-  optional uint64 vertical_routing_channel_width_nm = 12;
-  optional uint64 power_ground_strap_width_nm = 13;
+  optional uint64 vertical_offset_nm = 11;
+  optional uint64 horizontal_pitch_nm = 12;
+  optional uint64 vertical_routing_channel_width_nm = 13;
+  optional uint64 power_ground_strap_width_nm = 14;
 }

@@ -167,9 +167,11 @@ class Sky130SimpleTransistor : public Atom {
   geometry::Rectangle PolyContactingVia(const geometry::Point &centre) const;
 
   // Determine the minimum extension of poly required such that, after placing a
-  // tab there, the kMetalLayer via on that tab is at minimum separation from
-  // the closest via to the tab on the diff.
-  int64_t FigurePolyDiffExtension(int64_t separation_to_metal_via_centre) const;
+  // tab at the end, the kMetalLayer via on that tab is at minimum separation
+  // from the closest via to the tab on the diff.
+  int64_t FigurePolyDiffExtension(
+      int64_t separation_to_metal_via_centre,
+      bool allow_horizontal_metal_channel = false) const;
 
   std::string TerminalPortName(const Terminal &terminal) const;
 

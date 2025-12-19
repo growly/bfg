@@ -350,8 +350,37 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
 // E + A - B + C - D - Q = 0
 // E = Q - A + B - C + D
 //   = Q - (A - B + C - D)
+//
+// If we have to make space for a horizontal li wire in between:
+//     |       | licon   |           |           |
+//     |       | via     |           |           |
+//     | diff  +---------+  ^        |    poly   |
+//     |     ^ | li1 pour|  | A      |           |
+//     |     | |         |  v        |           |
+// y=0 +-----|-|---------|-----------|-----------|----------
+//         B v +---------+           |           |  ^
+//                                 E |           |  | we compute this, E
+//                                   |           |  |
+//  ------------------------------------------------|-------
+//           horizontal li wire                     |
+//                                                  |
+//  ------------------------------------------------|-------
+//                                   |           |  |
+//                                   |           |  v
+//                             +-----+           +-----+
+//                           ^ |     +-----------+---------
+//                         C | |     |  li1 via  |     |
+//                           | |   D |           |     |
+//                           v |     |           |     |
+//
+// E must be big enough that (A - B) - (-E -C + D) = Q >= li min width + 2x li
+// min separation.
+//
+// In both cases, Q is the required metal spacing. (Also, in sky130, the first
+// metal layer is li.drawing, so don't be confused by that.)
 int64_t Sky130SimpleTransistor::FigurePolyDiffExtension(
-    int64_t separation_to_metal_via_centre) const {
+    int64_t separation_to_metal_via_centre,
+    bool allow_horizontal_metal_channel) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &metal_rules = db.Rules(FirstMetalLayer());
   const auto &pcon_rules = db.Rules(PolyConnectionLayer());
@@ -359,7 +388,11 @@ int64_t Sky130SimpleTransistor::FigurePolyDiffExtension(
   const auto &metal_dcon_rules = db.Rules(
       DiffConnectionLayer(), FirstMetalLayer());
 
-  return metal_rules.min_separation - (
+  int64_t required_metal_spacing = allow_horizontal_metal_channel ?
+      2 * metal_rules.min_separation + metal_rules.min_width :
+      metal_rules.min_separation;
+
+  return required_metal_spacing - (
       diff_dcon_rules.min_enclosure - metal_dcon_rules.via_overhang +
       separation_to_metal_via_centre - pcon_rules.via_height / 2);
 }
