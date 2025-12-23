@@ -63,10 +63,10 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
       geometry::Instance *const lhs,
       geometry::Instance *const rhs);
 
-  uint32_t NumOutputs() override {
+  uint32_t NumOutputs() const override {
     return kNumOutputs;
   }
-  uint32_t NumMemories() override {
+  uint32_t NumMemories() const override {
     // For the dual-output mux, there is one control line per input-output path,
     // and since all but two inputs are shared, that makes:
     return  (parameters_.num_inputs - 1) * 2;
@@ -78,8 +78,13 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
   uint32_t NumMemoryColumns() const override {
     return 2;
   }
-  bool StackHasLiChannel() const override {
-    return true;
+  // These should match what BuildNetSequences() does. It would be better to
+  // combine the two concerns somehow.
+  std::optional<std::string> StackTopLiChannelNet() const override {
+    return absl::StrCat(kMuxOutputName, 0);
+  }
+  std::optional<std::string> StackBottomLiChannelNet() const override {
+    return absl::StrCat(kMuxOutputName, 1);
   }
 
   std::vector<std::vector<std::string>> BuildNetSequences() const override;
@@ -156,12 +161,6 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
       int64_t output_port_x,
       Layout *layout,
       Circuit *circuit) const override;
-
-  void DrawInputs(geometry::Instance *stack,
-                  int64_t mux_pre_buffer_y,
-                  int64_t vertical_x_left,
-                  Layout *layout,
-                  Circuit *circuit) const override;
 
   void DrawPowerAndGround(const MemoryBank &bank,
                           int64_t start_column_x,

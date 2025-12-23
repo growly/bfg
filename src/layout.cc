@@ -3,6 +3,7 @@
 #include <optional>
 #include <sstream>
 #include <absl/strings/str_cat.h>
+#include <absl/cleanup/cleanup.h>
 #include <glog/logging.h>
 
 #include "cell.h"
@@ -532,6 +533,38 @@ geometry::Rectangle *Layout::MakeVia(
   return via;
 }
 
+// TODO(aryap): Things this can make more convenient:
+// - Lookup which layers are the given via layer could connect to, and use
+//   those as defaults for 'via_layer' and 'other_via_layer'.
+// - Use the default direction of the given layer to determine the dimensions
+//   of the encap.
+geometry::Rectangle *Layout::MakeViaEncap(
+    const std::string &encap_layer,
+    const std::string &via_layer,
+    const std::optional<std::string> &other_via_layer,
+    const geometry::Point &centre,
+    const std::optional<int64_t> &width,
+    const std::optional<int64_t> &height) {
+  const PhysicalPropertiesDatabase &db = physical_db_;
+  SetActiveLayerByName(encap_layer);
+  absl::Cleanup unset_layer = [&]() { RestoreLastActiveLayer(); };
+
+  if (width && height) {
+    return AddRectangle(
+        geometry::Rectangle::CentredAt(centre, *width, *height));
+  }
+
+  const auto &typical_encap = other_via_layer ?
+      db.TypicalViaEncap(*other_via_layer, encap_layer, via_layer) :
+      db.TypicalViaEncap(encap_layer, via_layer);
+
+  int64_t resolved_width = width.value_or(typical_encap.length);
+  int64_t resolved_height = height.value_or(typical_encap.width);
+
+  return AddRectangle(
+      geometry::Rectangle::CentredAt(centre, resolved_width, resolved_height));
+}
+
 void Layout::DistributeVias(const geometry::Layer &via_layer,
                             const geometry::Point &start,
                             const geometry::Point &end,
@@ -716,7 +749,9 @@ void Layout::MakeAlternatingWire(
     const std::string &first_layer_name,
     const std::string &second_layer_name,
     const std::optional<std::string> &net,
-    bool is_connectable) {
+    bool is_connectable,
+    bool add_start_encap,
+    bool add_end_encap) {
   if (points.size() < 2) {
     return;
   }
@@ -779,8 +814,12 @@ void Layout::MakeAlternatingWire(
     geometry::PolyLine wire = geometry::PolyLine({last, next});
     wire.SetWidth(hop.min_width);
     wire.set_min_separation(hop.min_separation);
-    wire.InsertBulge(last, hop.encap_info.width, hop.encap_info.length);
-    wire.InsertBulge(next, hop.encap_info.width, hop.encap_info.length);
+    if ((next_it - 1) != points.begin() || add_start_encap) {
+      wire.InsertBulge(last, hop.encap_info.width, hop.encap_info.length);
+    }
+    if ((next_it + 1) != points.end() || add_end_encap) {
+      wire.InsertBulge(next, hop.encap_info.width, hop.encap_info.length);
+    }
     if (net) {
       wire.set_net(*net);
     }

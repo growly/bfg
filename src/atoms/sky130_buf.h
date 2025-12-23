@@ -45,6 +45,10 @@ class Sky130Buf: public Atom {
 
     bool label_pins = true;
 
+    // Shift everything in the buf bounding box. WARNING: This will shift
+    // ports, and they might no longer line up!
+    int64_t x_shift_nm = 0;
+
     // Add the mcon vias on the VPWR/VGND met1 rails. This can be helpful if
     // adjacent cells do not conform to being a multiple of a std. cell site
     // width and so the vias do not line up with those set by cells in adjacent

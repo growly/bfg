@@ -134,6 +134,14 @@ class Layout : public geometry::Manipulable {
       const geometry::Point &centre,
       const std::optional<std::string> &net = std::nullopt);
 
+  geometry::Rectangle *MakeViaEncap(
+      const std::string &encap_layer,
+      const std::string &via_layer,
+      const std::optional<std::string> &other_via_layer,
+      const geometry::Point &centre,
+      const std::optional<int64_t> &width = std::nullopt,
+      const std::optional<int64_t> &height = std::nullopt);
+
   // TODO(aryap): It would be handy to generalise the "connection" from just a
   // point to a struct that allows the client to specify a via to be inserted
   // (or just a bulge to be created) at the given point.
@@ -176,6 +184,10 @@ class Layout : public geometry::Manipulable {
       int64_t pitch,
       const std::optional<std::string> &net = std::nullopt);
 
+  // TODO(aryap): MakeViaStack would sure be a nice convenient function to
+  // connect two layers - we have the via connectivity search feature in the
+  // RoutingGrid, it should be moved out of there.
+
   // TODO(aryap): I am confused. I made "Port" an abstract thing, though it is a
   // shape sized according to the rules of the via layer you give it. But it
   // does not appear as a shape. A "Pin" is a real shape that is emited in the
@@ -198,7 +210,9 @@ class Layout : public geometry::Manipulable {
       const std::string &first_layer_name,
       const std::string &second_layer_name,
       const std::optional<std::string> &net = std::nullopt,
-      bool is_connectable = false);
+      bool is_connectable = false,
+      bool add_start_encap = true,
+      bool add_end_encap = true);
 
   geometry::Polygon *MakeWire(
       const std::vector<geometry::Point> &points,

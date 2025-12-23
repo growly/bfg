@@ -151,17 +151,12 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
 
+  // TODO(arya): Might be useful to set this to a multiple of some unit value
+  // (per usual std. cells).
   int64_t width =
       design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
   int64_t height =
       design_db_->physical_db().ToInternalUnits(parameters_.height_nm);
-
-  // areaid.standardc 81/4
-  layout->SetActiveLayerByName("areaid.standardc");
-  // Boundary for tiling; when abutting to others, this cannot be overlapped.
-  Rectangle *tiling_bounds = layout->AddRectangle(
-      Rectangle(Point(0, 0), width, height));
-  layout->SetTilingBounds(*tiling_bounds);
 
   // met1.drawing 68/20
   // The second "metal" layer.
@@ -400,6 +395,17 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
   if (parameters_.label_pins) {
     pin->set_net("X");
   }
+
+  // Apply any translation of shapes before the tile's bounding box.
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  layout->Translate({db.ToInternalUnits(parameters_.x_shift_nm), 0});
+
+  // areaid.standardc 81/4
+  layout->SetActiveLayerByName("areaid.standardc");
+  // Boundary for tiling; when abutting to others, this cannot be overlapped.
+  Rectangle *tiling_bounds = layout->AddRectangle(
+      Rectangle(Point(0, 0), width, height));
+  layout->SetTilingBounds(*tiling_bounds);
 
   return layout.release();
 }

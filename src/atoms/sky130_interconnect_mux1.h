@@ -107,7 +107,8 @@ class Sky130InterconnectMux1 : public Atom {
     void FromProto(const proto::parameters::Sky130InterconnectMux1 &pb);
   };
 
-  static constexpr char kMuxOutputName[] = "Z";
+  static constexpr char kStackOutputName[] = "Z";
+  static constexpr char kMuxOutputName[] = "OUT";
 
   Sky130InterconnectMux1(
       const Parameters &parameters, DesignDatabase *design_db)
@@ -172,18 +173,21 @@ class Sky130InterconnectMux1 : public Atom {
   int64_t FigurePolyBoundarySeparationForMux(
       bfg::Layout *neighbour_layout) const;
 
-  virtual uint32_t NumOutputs() {
+  virtual uint32_t NumOutputs() const {
     return kNumOutputs;
   }
-  virtual uint32_t NumMemories() {
+  virtual uint32_t NumMemories() const {
     // For the single-output case, there is one control line per input.
     return parameters_.num_inputs;
   }
   virtual uint32_t NumMemoryColumns() const {
     return 1;
   }
-  virtual bool StackHasLiChannel() const {
-    return false;
+  virtual std::optional<std::string> StackTopLiChannelNet() const {
+    return std::nullopt;
+  }
+  virtual std::optional<std::string> StackBottomLiChannelNet() const {
+    return std::nullopt;
   }
 
   std::vector<geometry::Instance*> AddMemoriesVertically(
@@ -238,6 +242,7 @@ class Sky130InterconnectMux1 : public Atom {
   virtual void DrawInputs(geometry::Instance *stack,
                           int64_t mux_pre_buffer_y,
                           int64_t vertical_x_left,
+                          bool allow_mux_pre_buffer_y_use,
                           Layout *layout,
                           Circuit *circuit) const;
 

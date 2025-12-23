@@ -98,7 +98,7 @@ Sky130InterconnectMux1::BuildNetSequences() const {
     if (last_sequence.size() == 0) {
       last_sequence.push_back(input_name);
       last_sequence.push_back(control_name);
-      last_sequence.push_back(kMuxOutputName);
+      last_sequence.push_back(kStackOutputName);
     } else {
       last_sequence.push_back(control_name);
       last_sequence.push_back(input_name);
@@ -136,8 +136,6 @@ Sky130InterconnectMux1::BuildTransmissionGateParams(
   params.expand_wells_to_vertical_bounds = true;
   params.expand_wells_to_horizontal_bounds = true;
   params.poly_pitch_nm = parameters_.poly_pitch_nm;
-  params.allow_metal_channel_top = StackHasLiChannel();
-  params.allow_metal_channel_bottom = StackHasLiChannel();
 
   // Build the sequences of nets that dictate the arrangement of the
   // transmission gate stack, e.g. for 1 output:
@@ -167,6 +165,8 @@ Sky130InterconnectMux1::BuildTransmissionGateParams(
   //    (int((i / 2) % 2) + int((i % 2) / 2)
   // (Trust me bro.)
   params.sequences = BuildNetSequences();
+  params.top_metal_channel_net = StackTopLiChannelNet();
+  params.bottom_metal_channel_net = StackBottomLiChannelNet();
   return params;
 }
 
@@ -363,30 +363,7 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
       num_ff_columns,
       &bank);
 
-  // FIXME(aryap): You were here.
-  // 1. Refactor these large functions to remember how they work, AND
-  // 2. figure out whether this class can also serve as a generator for
-  // shared-input muxes, or maybe we need a derived class? Either way the name
-  // needs to be reconsidered.
-  //
-  // if we just match the pitch of the transmission gates to 2x the pitch of the
-  // metal 2 control wires, we should be able to remove the control wire
-  // limitation.
-  //
-  // why didn't it work when we matched 2x polypitch = 3x met2 pitch?
-  // oh because the poly contact point is fixed? if we separated the p- and
-  // n-mos more, we could probably also alternative the poly tab position, which
-  // would mean we could do it? the limiting factor might be the number of
-  // memories anyway, so don't bother if it doesn't make sense.
-  //
-  // so a 6:1 mux needs 6 memories, one for each input -> output path.
-  // a 7:2 mux needs 7 * 2 - 2 = (7 - 1) * 2 = 12 memories, one for each
-  // input->output path, considering that two inputs have 1 path instead of 2.
-  // when I looked at the win for decoding, it didn't kick in until when? [VERY
-  // IMPORTANT FIND THAT ANALYSIS i think in remarkable?]
-  // does it matter now? no it's the same problem, just twice, right? so how is
-  // this a win? routing congestion?
-  //
+  // TODO(aryap): Document elsewhere:
   // right i remember now. to decode an address up to 6 needs 3 bits, so you pay
   // the same price decoding 5-8; takes fewer memories (= rows) for 6 than 8.
   // possibly a win at 8 inputs (= 3 memories + decoder for each). decoder is a
@@ -850,6 +827,7 @@ void Sky130InterconnectMux1::DrawRoutes(
   DrawInputs(stack,
              mux_pre_buffer_y,
              columns_left_x[kInterconnectLeftStartIndex],
+             false,
              layout,
              circuit);
 
@@ -1150,7 +1128,7 @@ void Sky130InterconnectMux1::DrawOutput(
   // Connect the transmission gate mux outputs to the buf. Use the default
   // position of the ports created by the transmission gate mux.
   std::vector<geometry::Port*> outputs;
-  stack->GetInstancePorts(kMuxOutputName, &outputs);
+  stack->GetInstancePorts(kStackOutputName, &outputs);
 
   std::vector<geometry::Point> wire_points;
   std::vector<Layout::ViaToSomeLayer> connection_points;
@@ -1174,7 +1152,7 @@ void Sky130InterconnectMux1::DrawOutput(
   layout->MakeWire(wire_points, "met1.drawing", connection_points);
 
   circuit::Wire stack_to_buf = circuit->AddSignal("stack_to_buf");
-  stack->circuit_instance()->Connect(kMuxOutputName, stack_to_buf);
+  stack->circuit_instance()->Connect(kStackOutputName, stack_to_buf);
   output_buffers[0]->circuit_instance()->Connect("A", stack_to_buf);
 
   *mux_pre_buffer_y = wire_points.front().y();
@@ -1230,6 +1208,7 @@ void Sky130InterconnectMux1::DrawInputs(
     geometry::Instance *stack,
     int64_t mux_pre_buffer_y,
     int64_t vertical_x_left,
+    bool allow_mux_pre_buffer_y_use,
     Layout *layout,
     Circuit *circuit) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
@@ -1256,6 +1235,9 @@ void Sky130InterconnectMux1::DrawInputs(
 
   for (size_t i = 0; i < parameters_.num_inputs; ++i) {
     int64_t channel_x = vertical_x_left - i * met2_pitch;
+    if (i == parameters_.num_inputs - 1 && allow_mux_pre_buffer_y_use) {
+      channel_x -= met2_pitch;
+    }
     input_channels_x.push_back(channel_x);
   }
 
@@ -1263,7 +1245,8 @@ void Sky130InterconnectMux1::DrawInputs(
   bool up = false;
   size_t j = 1;
   for (size_t i = 0; i < parameters_.num_inputs; ++i) {
-    int64_t y_offset = j * met1_pitch;
+    int64_t k = allow_mux_pre_buffer_y_use && !up ? j - 1: j;
+    int64_t y_offset = k * met1_pitch;
     int64_t y = mux_pre_buffer_y + (up ? y_offset : -y_offset);
     if ((i + 1) % 2 == 0) {
       j++;

@@ -98,8 +98,8 @@ class Sky130TransmissionGateStack : public Atom {
 
     bool add_ports = true;
 
-    bool allow_metal_channel_top = false;
-    bool allow_metal_channel_bottom = false;
+    std::optional<std::string> top_metal_channel_net;
+    std::optional<std::string> bottom_metal_channel_net;
 
     void ToProto(proto::parameters::Sky130TransmissionGateStack *pb) const;
     void FromProto(const proto::parameters::Sky130TransmissionGateStack &pb);
@@ -143,6 +143,12 @@ class Sky130TransmissionGateStack : public Atom {
                     const std::string &net,
                     std::map<std::string, size_t> *net_counts,
                     Layout *layout);
+
+  void AddHorizontalMetalChannel(
+      const std::map<std::string, size_t> &net_counts,
+      const geometry::Compass &side,
+      const std::string &net,
+      Layout *layout) const;
 
   int64_t GapInYFromNMOSDiffLowerLeftToMconViaCentre() const;
 

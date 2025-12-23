@@ -65,7 +65,7 @@ Sky130InterconnectMux2::BuildNetSequences() const {
       sequence.push_back(input_name);
       input_num++;
     } else {
-      std::string output_name = absl::StrCat(kMuxOutputName, output_num);
+      std::string output_name = absl::StrCat(kStackOutputName, output_num);
       sequence.push_back(output_name);
       output_num = (output_num + 1) % 2;
     }
@@ -240,11 +240,11 @@ void Sky130InterconnectMux2::DrawRoutes(
   constexpr size_t kInterconnectLeftStartIndex = 1;
 
   // Allocate right columns:
-  constexpr size_t kScanChainRightIndex = 4;
-  constexpr size_t kClockRightIndex = 1;
-  constexpr size_t kClockIRightIndex = 3;
-  constexpr size_t kInputClockRightIndex = 6;
-  constexpr size_t kVPWRVGNDStartRightIndex = 7;
+  constexpr size_t kScanChainRightIndex = 11;
+  constexpr size_t kClockRightIndex = 5;
+  constexpr size_t kClockIRightIndex = 7;
+  constexpr size_t kInputClockRightIndex = 12;
+  constexpr size_t kVPWRVGNDStartRightIndex = 13;
 
   // TODO(aryap): We can save a vertical met2 channel by squeezing the scan
   // chain connections on the right in (index 2), possible if the connection to
@@ -268,32 +268,33 @@ void Sky130InterconnectMux2::DrawRoutes(
   int64_t output_port_x = bank.GetTilingBounds()->upper_right().x();
   int64_t mux_pre_buffer_y = 0;
 
-  //DrawOutput(output_buffers,
-  //           stack,
-  //           &mux_pre_buffer_y,
-  //           output_port_x,
-  //           layout,
-  //           circuit);
-  //DrawInputs(stack,
-  //           mux_pre_buffer_y,
-  //           columns_left_x[kInterconnectLeftStartIndex],
-  //           layout,
-  //           circuit);
+  DrawOutput(output_buffers,
+             stack,
+             &mux_pre_buffer_y,
+             output_port_x,
+             layout,
+             circuit);
+  DrawInputs(stack,
+             mux_pre_buffer_y,
+             columns_left_x[kInterconnectLeftStartIndex],
+             true,
+             layout,
+             circuit);
 
-  //DrawClock(bank,
-  //          top_memories,
-  //          bottom_memories,
-  //          clk_bufs,
-  //          columns_right_x[kInputClockRightIndex],
-  //          columns_right_x[kClockRightIndex],
-  //          columns_right_x[kClockIRightIndex],
-  //          layout,
-  //          circuit);
+  DrawClock(bank,
+            top_memories,
+            bottom_memories,
+            clk_bufs,
+            columns_right_x[kInputClockRightIndex],
+            columns_right_x[kClockRightIndex],
+            columns_right_x[kClockIRightIndex],
+            layout,
+            circuit);
 
-  //DrawPowerAndGround(bank,
-  //                   columns_right_x[kVPWRVGNDStartRightIndex],
-  //                   layout,
-  //                   circuit);
+  DrawPowerAndGround(bank,
+                     columns_right_x[kVPWRVGNDStartRightIndex],
+                     layout,
+                     circuit);
 }
 
 void Sky130InterconnectMux2::DrawScanChain(
@@ -864,6 +865,13 @@ bool Sky130InterconnectMux2::VerticalWireWouldCollideWithOthers(
   return false;
 }
 
+// IT SURE WOULD BE NICE to connect the transmission gate outputs to the output
+// buffers on the bottom-most connection layer, li.drawing. This requires a
+// slight shift to the contents of either the transmission gate stack cell, or
+// the adjacent buffer cell, to squeeze another li.drawing wire in between.
+// However, one of the output buffers will still have to be connected my
+// met1/met2, so it doesn't seem like that much of a win. (It might make the
+// single-output version nicer.)
 void Sky130InterconnectMux2::DrawOutput(
     const std::vector<geometry::Instance*> &output_buffers,
     geometry::Instance *stack,
@@ -872,103 +880,88 @@ void Sky130InterconnectMux2::DrawOutput(
     Layout *layout,
     Circuit *circuit) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  // TODO(aryap): This bit sucks. I'm not sure if the
-  // Sky130TransmissionGateStack should be in charge of creating and
-  // distributing ports (in which case it should know about special ports like
-  // "Z", which we want to go through the middle or something), or if it's up
-  // to this client class to distribute the wires over the ports. Having the
-  // ports does at very least associate the x coordinates needed with their
-  // nets. Likely we need to generate the input nets and output net in advance
-  // of what we currently are doing.
-  //
-  // Connect the transmission gate mux outputs to the buf. Use the default
-  // position of the ports created by the transmission gate mux.
-  std::vector<geometry::Port*> outputs;
-  stack->GetInstancePorts(kMuxOutputName, &outputs);
 
-  std::vector<geometry::Point> wire_points;
-  std::vector<Layout::ViaToSomeLayer> connection_points;
-  for (geometry::Port *port : outputs) {
-    connection_points.push_back({
-        .centre = port->centre(),
-        .layer_name = "li.drawing"
-    });
-    wire_points.push_back(port->centre());
+  const auto &met2_rules = db.Rules("met2.drawing");
+
+  LOG_IF(FATAL, NumOutputs() != output_buffers.size())
+      << "We expect as many output buffers are there are output ports.";
+
+  // Assign left-most mux output to left-most output buffer, and right-most
+  // output to right-most output buffer.
+  for (int i = 0; i < NumOutputs(); ++i) {
+    // First connect the mux output to its respective buffer.
+    geometry::Instance *buf = output_buffers[i];
+    geometry::Port *buf_A = buf->GetFirstPortNamed("A");
+
+    std::string stack_output_name = absl::StrCat(kStackOutputName, i);
+    geometry::Port *ff_out = stack->GetNearestPortNamed(
+        *buf_A, stack_output_name);
+
+    std::string mid_net_name = absl::StrFormat(
+        "%s_to_%s.%s", stack_output_name, buf->name(), "A");
+
+    int64_t mid_y_level = ff_out->centre().y() + i * met2_rules.min_pitch;
+
+    *mux_pre_buffer_y = mid_y_level;
+
+    geometry::Point p0 = {ff_out->centre().x(), mid_y_level};
+    geometry::Point p2 = buf_A->centre();
+    geometry::Point p1 = {p2.x(), mid_y_level};
+
+    layout->MakeAlternatingWire(
+        {p0, p1, p2}, "met1.drawing", "met2.drawing", mid_net_name, true);
+
+    layout->MakeVia("mcon.drawing", p0);
+
+    LOG(INFO) << "Connecting " << ff_out << " to " << *buf_A;
+    layout->MakeVia("mcon.drawing", p2, mid_net_name);
+    const auto &encap = db.TypicalViaEncap(
+        "via1.drawing", "met1.drawing", "mcon.drawing");
+    layout->MakeVia("via1.drawing", p2, mid_net_name);
+    layout->MakeViaEncap("met1.drawing", "mcon.drawing", "via1.drawing", p2);
+
+    // Update circuit.
+    circuit::Wire stack_to_buf = circuit->AddSignal(mid_net_name);
+    stack->circuit_instance()->Connect(stack_output_name, stack_to_buf);
+    buf->circuit_instance()->Connect("A", stack_to_buf);
+
+    // Now connect buffer to output pin.
+    geometry::Port *buf_X = buf->GetFirstPortNamed("X");
+
+    std::string out_net_name = absl::StrCat("OUT", i);
+
+    // ¯\_(ツ)_/¯
+    int64_t out_y_level = mid_y_level +
+        (i % 2 == 0 ? -1 : 1) * (i + 1) * met2_rules.min_pitch;
+
+    p0 = buf_X->centre();
+    p1 = {buf_X->centre().x(), out_y_level};
+    p2 = {output_port_x, out_y_level};
+
+    // TODO(another micro-optimisation to this layout would be to only use
+    // met1: either by specialising the output path for each buffer, or by
+    // alternating the buffer geometry.
+    layout->MakeAlternatingWire({p0, p1, p2},
+                                "met2.drawing",
+                                "met1.drawing",
+                                out_net_name,
+                                true,     // Yes connectable.
+                                true,     // Yes start encap.
+                                false);   // No end encap.
+
+    layout->MakePin(out_net_name, p2, "met1.pin");
+
+    circuit::Wire output_signal = circuit->AddSignal(out_net_name);
+    circuit->AddPort(output_signal);
+    buf->circuit_instance()->Connect("X", output_signal);
+
+    // To keep VLSIR happy, connect port P to a floating net (it is disconnected).
+    // TODO(aryap): This should be automatically emitted by our circuit model for
+    // explicitly disconnected ports!
+    circuit::Wire disconnected_P = circuit->AddSignal(
+        absl::StrCat("disconnected_P", i));
+    buf->circuit_instance()->Connect("P", disconnected_P);
   }
-
-  geometry::Port *buf_A = output_buffers[0]->GetFirstPortNamed("A");
-
-  wire_points.push_back({buf_A->centre().x(), wire_points.back().y()});
-
-  wire_points.push_back(buf_A->centre());
-  connection_points.push_back({
-      .centre = buf_A->centre(),
-      .layer_name = "li.drawing"
-  });
-  layout->MakeWire(wire_points, "met1.drawing", connection_points);
-
-  circuit::Wire stack_to_buf = circuit->AddSignal("stack_to_buf");
-  stack->circuit_instance()->Connect(kMuxOutputName, stack_to_buf);
-  output_buffers[0]->circuit_instance()->Connect("A", stack_to_buf);
-
-  *mux_pre_buffer_y = wire_points.front().y();
-
-  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
-  
-  // Because DrawInputs will allocate parameters_.num_inputs-many inputs
-  // vertically starting below the mux_pre_buffer_y line, we halve and round
-  // down to find the number expected above that line, and then align the final
-  // output to the top input:
-  int64_t num_below = parameters_.num_inputs / 2;
-  int64_t final_output_y = *mux_pre_buffer_y - num_below * met2_pitch;
-
-  // Connect the buff output to the edge of the design:
-  geometry::Port *buf_X = output_buffers[0]->GetFirstPortNamed("X");
-
-  int64_t met1_pitch = db.Rules("met1.drawing").min_pitch;
-  int64_t vertical_x = buf_X->centre().x() + met1_pitch;
-
-  std::vector<geometry::Point> output_wire = {
-      buf_X->centre(),
-      {vertical_x, buf_X->centre().y()},
-      {vertical_x, final_output_y},
-      geometry::Point {output_port_x, final_output_y}
-  };
-
-  // It is very important that the output wire be labelled with its net so that
-  // the RoutingGrid can make exceptions for blockages when connecting to it!
-  geometry::Polygon *out_wire = layout->MakeWire(
-      output_wire,
-      "met1.drawing",  // Wire layer.
-      "li.drawing",    // Start layer.
-      std::nullopt,    // End layer.
-      false,
-      false,
-      kMuxOutputName);
-  out_wire->set_is_connectable(true);
-
-  layout->MakePin(kMuxOutputName, output_wire.back(), "met1.pin");
-
-  circuit::Wire output_signal = circuit->AddSignal(kMuxOutputName);
-  circuit->AddPort(output_signal);
-  output_buffers[0]->circuit_instance()->Connect("X", output_signal);
-
-  // To keep VLSIR happy, connect port P to a floating net (it is disconnected).
-  // TODO(aryap): This should be automatically emitted by our circuit model for
-  // explicitly disconnected ports!
-  circuit::Wire disconnected_P = circuit->AddSignal("disconnected_P");
-  output_buffers[0]->circuit_instance()->Connect("P", disconnected_P);
-}
-
-void Sky130InterconnectMux2::DrawInputs(
-    geometry::Instance *stack,
-    int64_t mux_pre_buffer_y,
-    int64_t vertical_x_left,
-    Layout *layout,
-    Circuit *circuit) const {
-  // TODO: Implement dual-output specific input drawing
-  Sky130InterconnectMux1::DrawInputs(
-      stack, mux_pre_buffer_y, vertical_x_left, layout, circuit);
 }
 
 void Sky130InterconnectMux2::DrawPowerAndGround(

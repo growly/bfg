@@ -383,13 +383,16 @@ int64_t Sky130SimpleTransistor::FigurePolyDiffExtension(
     bool allow_horizontal_metal_channel) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &metal_rules = db.Rules(FirstMetalLayer());
+  const auto &metal_encap_rules = db.Rules(
+      FirstMetalLayer(), FirstMetalViaLayer());
   const auto &pcon_rules = db.Rules(PolyConnectionLayer());
   const auto &diff_dcon_rules = db.Rules(DiffConnectionLayer(), DiffLayer());
   const auto &metal_dcon_rules = db.Rules(
       DiffConnectionLayer(), FirstMetalLayer());
 
   int64_t required_metal_spacing = allow_horizontal_metal_channel ?
-      2 * metal_rules.min_separation + metal_rules.min_width :
+      2 * metal_rules.min_separation + metal_rules.min_width +
+          metal_encap_rules.via_overhang_wide :
       metal_rules.min_separation;
 
   return required_metal_spacing - (

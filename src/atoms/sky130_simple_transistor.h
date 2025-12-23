@@ -143,6 +143,7 @@ class Sky130SimpleTransistor : public Atom {
   std::string PolyConnectionLayer() const { return "polycon.drawing"; }
 
   std::string FirstMetalLayer() const { return "li.drawing"; }
+  std::string FirstMetalViaLayer() const { return "mcon.drawing"; }
 
   int64_t TransistorWidth() const {
     return design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
