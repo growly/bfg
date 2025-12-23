@@ -984,10 +984,42 @@ void Sky130InterconnectMux2::DrawClock(
     int64_t clk_i_x,
     Layout *layout,
     Circuit *circuit) const {
-  // TODO: Implement dual-output specific clock routing
   Sky130InterconnectMux1::DrawClock(
       bank, top_memories, bottom_memories, clk_bufs,
       input_clk_x, clk_x, clk_i_x, layout, circuit);
+
+  // For the mux2 case we also need to connect the clock inputs for the
+  // flip-flops on each row.
+  std::map<int64_t, std::vector<geometry::Instance*>> memories_by_y;
+  for (geometry::Instance *memory : top_memories) {
+    memories_by_y[memory->GetTilingBounds().lower_left().y()].push_back(memory);
+  }
+  for (geometry::Instance *memory : bottom_memories) {
+    memories_by_y[memory->GetTilingBounds().lower_left().y()].push_back(memory);
+  }
+
+  static const std::vector<std::string> kPortNames = { "CLK", "CLKI" };
+
+  for (const auto &entry : memories_by_y) {
+    const std::vector<geometry::Instance*> &memories = entry.second;
+    for (auto port_name : kPortNames) {
+      std::vector<geometry::Point> points;
+      for (geometry::Instance *memory : memories) {
+        points.push_back(memory->GetFirstPortNamed(port_name)->centre());
+      }
+
+      std::sort(points.begin(), points.end(), geometry::Point::CompareXThenY);
+
+      layout->MakeWire({points.front(), points.back()},
+                       "met1.drawing",
+                       std::nullopt,
+                       std::nullopt,
+                       false,
+                       false,
+                       std::nullopt,
+                       true);
+    }
+  }
 }
 
 }  // namespace atoms
