@@ -1,0 +1,32 @@
+.two-pane-layout {
+  display: grid;
+  grid-template-columns: 30% 70%;
+  height: calc(100vh - 60px);
+  gap: 0;
+}
+
+.left-pane {
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: #f9f9f9;
+}
+
+.right-pane {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .two-pane-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .left-pane {
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+    max-height: 50vh;
+  }
+}
