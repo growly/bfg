@@ -129,6 +129,12 @@ Sky130InterconnectMux1::BuildTransmissionGateParams(
   if (parameters_.vertical_pitch_nm) {
     params.min_height_nm = (needed_tracks + 3) * *parameters_.vertical_pitch_nm;
   }
+  // FIXME(aryap): This doesn't do waht I expect?!
+  if (parameters_.min_transmission_gate_stack_height_nm) {
+    params.min_height_nm = std::max(
+        *parameters_.min_transmission_gate_stack_height_nm,
+        *params.min_height_nm);
+  }
   params.poly_contact_vertical_pitch_nm = parameters_.vertical_pitch_nm;
   params.poly_contact_vertical_offset_nm = parameters_.vertical_offset_nm;
   params.input_vertical_pitch_nm = parameters_.vertical_pitch_nm;
@@ -476,7 +482,7 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
   //
   // This is actually an option: if parity flips, we can tile this module by
   // rotating the tiles above and below, as we do for standard cells.
-  if ((parameters_.num_inputs * kNumOutputs) % 2 == 0) {
+  if ((parameters_.num_inputs * NumOutputs()) % 2 == 0) {
     // Because the routing channel is an unusual height, we need to create a
     // special tap cell for it:
     atoms::Sky130Tap::Parameters channel_tap_params = {

@@ -103,6 +103,8 @@ class Sky130InterconnectMux1 : public Atom {
     // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
     uint16_t num_outputs = 1;
 
+    std::optional<uint64_t> min_transmission_gate_stack_height_nm = 5100;
+
     void ToProto(proto::parameters::Sky130InterconnectMux1 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux1 &pb);
   };
