@@ -319,6 +319,22 @@ bfg::Layout *Sky130SimpleTransistor::GenerateLayout(
   return layout.release();
 }
 
+int64_t Sky130SimpleTransistor::RequiredMetalSpacingForChannel() const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &metal_rules = db.Rules(FirstMetalLayer());
+  const auto &metal_encap_rules = db.Rules(
+      FirstMetalLayer(), FirstMetalViaLayer());
+  const auto &via_rules = db.Rules(FirstMetalViaLayer());
+  // We provide for a via and the necessary via encap to be accommodated in
+  // this spacing, even though on sky130 the encap width should just be the
+  // metal wire width.
+  int64_t required_spacing = 2 * metal_rules.min_separation + std::max(
+      metal_rules.min_width,
+      2 * metal_encap_rules.via_overhang_wide +
+          std::max(via_rules.via_height, via_rules.via_width));
+  return required_spacing;
+}
+
 //     |       | licon   |           |           |
 //     |       | via     |           |           |
 //     | diff  +---------+  ^        |    poly   |
@@ -383,17 +399,13 @@ int64_t Sky130SimpleTransistor::FigurePolyDiffExtension(
     bool allow_horizontal_metal_channel) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &metal_rules = db.Rules(FirstMetalLayer());
-  const auto &metal_encap_rules = db.Rules(
-      FirstMetalLayer(), FirstMetalViaLayer());
   const auto &pcon_rules = db.Rules(PolyConnectionLayer());
   const auto &diff_dcon_rules = db.Rules(DiffConnectionLayer(), DiffLayer());
   const auto &metal_dcon_rules = db.Rules(
       DiffConnectionLayer(), FirstMetalLayer());
 
   int64_t required_metal_spacing = allow_horizontal_metal_channel ?
-      2 * metal_rules.min_separation + metal_rules.min_width +
-          metal_encap_rules.via_overhang_wide :
-      metal_rules.min_separation;
+      RequiredMetalSpacingForChannel() : metal_rules.min_separation;
 
   return required_metal_spacing - (
       diff_dcon_rules.min_enclosure - metal_dcon_rules.via_overhang +

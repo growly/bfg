@@ -174,6 +174,8 @@ class Sky130SimpleTransistor : public Atom {
       int64_t separation_to_metal_via_centre,
       bool allow_horizontal_metal_channel = false) const;
 
+  int64_t RequiredMetalSpacingForChannel() const;
+
   std::string TerminalPortName(const Terminal &terminal) const;
 
   std::string CircuitCellName() const;

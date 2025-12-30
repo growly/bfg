@@ -257,6 +257,7 @@ class Sky130TransmissionGate : public Atom {
   }
 
   int64_t NextYOnTabGrid(int64_t current_y) const;
+  std::optional<int64_t> TabPitch() const;
 
   int64_t NextYOnNMOSLowerLeftGrid(int64_t current_y) const;
 
@@ -269,6 +270,7 @@ class Sky130TransmissionGate : public Atom {
   int64_t FigureCMOSGap(
       int64_t nmos_centre_y, int64_t current_y) const;
 
+  int64_t MinPolyBoundarySeparation() const;
   int64_t FigureTopPadding(int64_t pmos_poly_top_y) const;
 
   int64_t PMOSPolyHeight() const {
