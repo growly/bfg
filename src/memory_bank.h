@@ -16,6 +16,29 @@
 
 namespace bfg {
 
+// MemoryBank abstracts a collection of rows that together provide a
+// 2-dimensional structure for placing instances of geometry. MemoryBank isn't
+// really about memory, though it's useful for memory. We merely wrap a
+// RowGuide for each row and provide convenient ways to manipulate the
+// collection of RowGuides. You can still access each row individually if you
+// want to mess everything up (why would you do that?)
+//
+// Adding a row stacks it on top of the last row and gives it an index +1 over
+// the last one. If 'grow_down_' is set, adding a row stacks it below the last
+// one. By default, though, you have something like this:
+//
+//      +-------------+-------------+ - - - - 
+//   4  |             |             |
+//      +-------------+-------------+ - - - - 
+//   3  |             |             |
+//      +--------+----+------+------+ - - - - 
+//   2  |        |           |
+//      +--------+--+--------+-+----+ - - - - 
+//   1  |           |          |
+//      +-----------+-+--------+----+ - - - - 
+//   0  |             |             |
+//      +-------------+-------------+ - - - - 
+//
 class MemoryBank {
  public:
   MemoryBank()
