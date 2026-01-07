@@ -16,6 +16,7 @@ const generators = [
   'Sky130TransmissionGate',
   'Sky130TransmissionGateStack',
   'Sky130InterconnectMux1',
+  'Sky130InterconnectMux2',
   'Sky130Decap',
   'LutB',
   'Interconnect',

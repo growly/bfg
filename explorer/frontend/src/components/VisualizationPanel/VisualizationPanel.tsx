@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { GenerationResult } from '../Layout/TwoPaneLayout';
 import './VisualizationPanel.css';
 
@@ -21,12 +21,6 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const svgContainerRef = useRef<HTMLDivElement>(null);
-
-  // Reset view when switching results
-  useEffect(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, [result]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
