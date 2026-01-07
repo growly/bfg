@@ -53,13 +53,14 @@ export async function generateLayout(
 
     // Invoke BFG CLI
     const bfgArgs = [
+      '--logtostderr',
       '--technology', path.resolve(config.technologyPb),
       '--primitives', path.resolve(config.primitivesPb),
       '--external_circuits', path.resolve(config.sky130hdPb),
       '--write_text_format',
       '--run_generator', generator,
       '--params', paramsPath,
-      '--output_library', outputBase,
+      '--output_library', outputBase
     ];
 
     const command = `${config.bfgBinary} ${bfgArgs.join(' ')}`;
