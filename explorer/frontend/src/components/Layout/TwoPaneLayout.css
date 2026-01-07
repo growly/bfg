@@ -1,12 +1,18 @@
 .two-pane-layout {
   display: grid;
   grid-template-columns: 30% 70%;
+  grid-template-rows: 1fr;
   height: calc(100vh - 60px);
   gap: 0;
 }
 
 .two-pane-layout.with-output-pane {
-  grid-template-columns: 25% 45% 30%;
+  grid-template-rows: 1fr 250px;
+  grid-template-columns: 30% 70%;
+}
+
+.main-content {
+  display: contents;
 }
 
 .left-pane {
@@ -20,12 +26,51 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .output-pane {
+  grid-column: 1 / -1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  border-top: 1px solid #3e3e3e;
+}
+
+.toggle-output-button {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.toggle-output-button:hover {
+  background-color: #0056b3;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-output-button:active {
+  transform: translateY(1px);
+}
+
+.toggle-output-button.has-error {
+  background-color: #dc3545;
+}
+
+.toggle-output-button.has-error:hover {
+  background-color: #c82333;
 }
 
 @media (max-width: 768px) {

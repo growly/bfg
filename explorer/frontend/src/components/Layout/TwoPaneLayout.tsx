@@ -49,6 +49,10 @@ const TwoPaneLayout: React.FC = () => {
     setIsGenerating(false);
   };
 
+  const toggleOutputPane = () => {
+    setShowOutputPane(!showOutputPane);
+  };
+
   return (
     <div className={`two-pane-layout ${showOutputPane ? 'with-output-pane' : ''}`}>
       <div className="left-pane">
@@ -65,6 +69,15 @@ const TwoPaneLayout: React.FC = () => {
           isLoading={isGenerating}
           error={error}
         />
+        <button
+          className={`toggle-output-button ${error ? 'has-error' : ''}`}
+          onClick={toggleOutputPane}
+          title={showOutputPane ? 'Hide output panel' : 'Show output panel'}
+        >
+          <span>{showOutputPane ? '▼' : '▲'}</span>
+          <span>Tool Output</span>
+          {error && <span>⚠</span>}
+        </button>
       </div>
       {showOutputPane && (
         <div className="output-pane">

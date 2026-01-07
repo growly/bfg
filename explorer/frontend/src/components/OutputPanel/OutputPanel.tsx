@@ -18,17 +18,17 @@ const OutputPanel: React.FC<OutputPanelProps> = ({
     <div className="output-panel">
       <div className="output-header">
         <h3>Tool Output</h3>
+        {isGenerating && (
+          <div className="generating-indicator" style={{ flex: 1, marginLeft: '1rem', padding: '0.25rem 1rem' }}>
+            <div className="spinner-small"></div>
+            <span>Generation in progress...</span>
+          </div>
+        )}
         <button onClick={onClose} className="close-button" title="Close">
           ✕
         </button>
       </div>
       <div className="output-content">
-        {isGenerating && (
-          <div className="generating-indicator">
-            <div className="spinner-small"></div>
-            <span>Generation in progress...</span>
-          </div>
-        )}
         {stderr && (
           <div className="output-section">
             <h4>Standard Error</h4>
