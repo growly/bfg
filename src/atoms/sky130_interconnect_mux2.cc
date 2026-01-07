@@ -361,7 +361,6 @@ void Sky130InterconnectMux2::DrawScanChain(
                        false, false, net, true);
 
     } else if (y_diff == row_height) {
-      LOG(INFO) << "y_diff " << y_diff << " " << net << " ";
       vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
           row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
 
