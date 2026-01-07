@@ -84,6 +84,10 @@ class Sky130InterconnectMux1 : public Atom {
 
     std::optional<uint64_t> horizontal_pitch_nm = 460;
 
+    // TODO(aryap): This should be left as nullopt by default and filled in
+    // with a value computed from the number of inputs. We basically find the
+    // smallest multiple of the unit tile width that will fit N vertical
+    // tracks.
     std::optional<uint64_t> vertical_routing_channel_width_nm =
         ((8 * 340) / 460 + 1) * 460;
 
@@ -192,6 +196,8 @@ class Sky130InterconnectMux1 : public Atom {
     return std::nullopt;
   }
 
+  // Stacks memories vertically, using the given number of columns and rows,
+  // and returns them in scan-chain order (which is a snake sort of situation).
   std::vector<geometry::Instance*> AddMemoriesVertically(
     size_t first_row,
     uint32_t num_rows,
@@ -200,17 +206,18 @@ class Sky130InterconnectMux1 : public Atom {
     bool alternate_scan = false);
   geometry::Instance *AddClockBufferRight(
       const std::string &suffix, size_t row, MemoryBank *bank);
-  geometry::Instance *AddTransmissionGateStackRight(
-      geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank);
-
-  void AddOutputBuffers(
-      size_t row,
-      int64_t row_height,
-      MemoryBank *bank,
-      std::vector<geometry::Instance*> *output_bufs);
 
   geometry::Instance *AddOutputBufferRight(
       const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank);
+
+  virtual void AssembleOutputRow(
+      size_t output_row_index,
+      int64_t left_edge_x,
+      MemoryBank *bank,
+      geometry::Instance *vertical_neighbour,
+      int64_t *row_height,
+      geometry::Instance **generated_stack,
+      std::vector<geometry::Instance*> *output_bufs);
 
   Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
 

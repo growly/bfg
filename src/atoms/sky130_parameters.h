@@ -2,6 +2,8 @@
 #define ATOMS_SKY130_PARAMETERS_H_
 
 struct Sky130Parameters {
+  static constexpr uint64_t kStandardCellUnitWidthNm = 460;
+
   // TODO(aryap): Maybe these are queried from the PDK database?
   // and/or do they belong to a more generic "TransistorParameters" mix-in?
   std::string fet_model_length_parameter = "l";

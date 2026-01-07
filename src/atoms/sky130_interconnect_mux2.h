@@ -89,6 +89,15 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
 
   std::vector<std::vector<std::string>> BuildNetSequences() const override;
 
+  void AssembleOutputRow(
+      size_t output_row_index,
+      int64_t left_edge_x,
+      MemoryBank *bank,
+      geometry::Instance *vertical_neighbour,
+      int64_t *row_height,
+      geometry::Instance **generated_stack,
+      std::vector<geometry::Instance*> *output_bufs) override;
+
   std::vector<GateAssignment> AssignRow(
       const std::vector<geometry::Instance*> &row_memories,
       int64_t max_offset_from_first_poly_x,

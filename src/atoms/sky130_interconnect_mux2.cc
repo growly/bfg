@@ -227,22 +227,28 @@ void Sky130InterconnectMux2::DrawRoutes(
     columns_right_x.push_back(x);
   }
 
+  int64_t left_edge_x = bank.GetTilingBounds()->lower_left().x();
+
+  // Left columns should be counted from the left-most edge of the tile, i.e.
+  // the left edge of the vertical routing column.
   std::vector<int64_t> columns_left_x;
-  for (int64_t x = *left_most_vertical_x - met2_pitch;
-       x > bank.GetTilingBounds()->lower_left().x();
-       x -= met2_pitch) {
+  for (int64_t x = left_edge_x; 
+       x < *left_most_vertical_x;
+       x += met2_pitch) {
     columns_left_x.push_back(x);
   }
 
   // Allocate left columns so that they don't interfere with each other (or
   // cause problems for met1 connections below):
-  constexpr size_t kScanChainLeftIndex = 0;
-  constexpr size_t kInterconnectLeftStartIndex = 1;
+  const size_t kLastLeftMet2ColumnIndex = db.ToInternalUnits(
+      *parameters_.horizontal_routing_channel_height_nm) / met2_pitch;
+  const size_t kScanChainLeftIndex = kLastLeftMet2ColumnIndex + 1;
+  const size_t kInterconnectLeftStartIndex = kLastLeftMet2ColumnIndex;
 
   // Allocate right columns:
-  constexpr size_t kScanChainRightIndex = 11;
-  constexpr size_t kClockRightIndex = 5;
-  constexpr size_t kClockIRightIndex = 7;
+  constexpr size_t kScanChainRightIndex = 10;
+  constexpr size_t kClockRightIndex = 4;
+  constexpr size_t kClockIRightIndex = 6;
   constexpr size_t kInputClockRightIndex = 12;
   constexpr size_t kVPWRVGNDStartRightIndex = 13;
 
@@ -286,7 +292,7 @@ void Sky130InterconnectMux2::DrawRoutes(
             bottom_memories,
             clk_bufs,
             columns_right_x[kInputClockRightIndex],
-            columns_right_x[kClockRightIndex],
+            columns_right_x[kClockRightIndex] + met2_pitch / 2,
             columns_right_x[kClockIRightIndex],
             layout,
             circuit);
@@ -321,7 +327,7 @@ void Sky130InterconnectMux2::DrawScanChain(
     geometry::Port *next_D = next->GetFirstPortNamed("D");
 
     std::string net = absl::StrCat(memory->name(), ".Q");
-  
+
     int64_t vertical_x = 0;
     // There are three cases for scan chain links:
     // 1. They connect to their immediate neighbour on the same row, very close
@@ -409,9 +415,8 @@ void Sky130InterconnectMux2::DrawScanChain(
       ++row;
     }
 
-
-    LOG(INFO) << memory->name() << " -> " << next->name() << " "
-              << mem_Q->centre() << " -> " << next_D->centre();
+    LOG(INFO) << "Scan chain: " << memory->name() << " " << mem_Q->centre()
+              << " -> " << next->name() << " " << next_D->centre();
 
     // This better exist!
     auto out_name_it = memory_output_nets.find(memory);
@@ -438,6 +443,100 @@ void Sky130InterconnectMux2::DrawScanChain(
 
   circuit->AddPort(scan_in);
   circuit->AddPort(scan_out);
+}
+
+void Sky130InterconnectMux2::AssembleOutputRow(
+      size_t output_row_index,
+      int64_t left_edge_x,
+      MemoryBank *bank,
+      geometry::Instance *vertical_neighbour,
+      int64_t *row_height,
+      geometry::Instance **generated_stack,
+      std::vector<geometry::Instance*> *output_bufs) {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  RowGuide &output_row = bank->Row(output_row_index);
+  // Disable the tap cell on this row.
+  output_row.clear_tap_cell();
+
+
+  // We know by looking at the layout that:
+  // 1) We must save enough vertical met2 column space for the clock, power and
+  // ground inputs.
+  // 2) The output buffers could theoretically be resized, or chained, to
+  // something larger than they are now, and these would need a greater width.
+  // 3) The right-most point of the transmission gate stack needs to be right of
+  // the boundary between the two memories on the adjacent rows, and it needs
+  // to allow enough space to the right for (1) and (2).
+  //
+  // We can calculate this is we upper bound the buffer widths, since we don't
+  // actually support growing them yet:
+  static constexpr int64_t kReservedForVerticalRoutingRight =
+      4 * Sky130Parameters::kStandardCellUnitWidthNm;
+  static constexpr int64_t kMaxBufferWidth = 
+      4 * Sky130Parameters::kStandardCellUnitWidthNm;
+
+  auto tiling_bounds = bank->GetTilingBounds();
+  int64_t origin_x = tiling_bounds->upper_right().x() -
+      kReservedForVerticalRoutingRight - 2 * kMaxBufferWidth;
+
+  output_row.MoveTo({origin_x, 0});
+
+  // Generate the transmission gate and place it.
+  //
+  // For the Mux2, we shift the output row origin right so that the
+  // transmission gate stack "grows" to the left. This places it closer to the
+  // boundary of the memory tiles and gives them a better chance at being
+  // routable.
+  Sky130TransmissionGateStack::Parameters transmission_gate_mux_params =
+      BuildTransmissionGateParams(vertical_neighbour);
+  Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
+      transmission_gate_mux_params, design_db_);
+  std::string template_name = PrefixCellName("gate_stack");
+  std::string instance_name = absl::StrCat(template_name, "_i");
+  Cell *transmission_gate_stack_cell =
+      generator.GenerateIntoDatabase(template_name);
+
+  // By default, bank->Instantiate* will call MemoryBank::FixAlignments, which
+  // will mess with our deliberate offset, so we call on the row directly.
+  *generated_stack = output_row.InstantiateBack(
+      instance_name, transmission_gate_stack_cell);
+
+  (*row_height) = 
+      (*generated_stack)->template_layout()->GetTilingBounds().Height();
+
+  // TODO(aryap): Implement RowGuide::AvailableLeftSpanUpTo.
+  uint64_t special_decap_width =
+      origin_x - left_edge_x -
+      transmission_gate_stack_cell->layout()->GetTilingBounds().Width();
+
+  std::vector<int64_t> decap_widths = Utility::StripInUnits(
+      special_decap_width,
+      Sky130Decap::Parameters::kMaxWidthNm,
+      Sky130Parameters::kStandardCellUnitWidthNm,
+      Sky130Decap::Parameters::kMinWidthNm);
+
+  size_t i = 0;
+  for (auto it = decap_widths.rbegin(); it < decap_widths.rend(); ++it) {
+    Cell *special_decap_cell = MakeDecapCell(
+        db.ToExternalUnits(*it),
+        static_cast<uint64_t>(db.ToExternalUnits(*row_height)));
+    output_row.InstantiateAndInsertFront(
+        absl::StrCat(special_decap_cell->name(), "_i", i),
+        special_decap_cell);
+    ++i;
+  }
+
+  // The output buffer goes at the end of the transmission gate stack. Mux1
+  // only has one output buffer, but it's easy enough to leave this as
+  // generalised code for the interim.
+  uint32_t num_outputs = NumOutputs();
+  DCHECK(num_outputs == 2);
+  for (uint32_t i = 0; i < num_outputs; ++i) {
+    output_bufs->push_back(
+        AddOutputBufferRight(
+            absl::StrFormat("%d", i), *row_height, output_row_index, bank));
+  }
 }
 
 bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
@@ -652,8 +751,8 @@ Sky130InterconnectMux2::AssignRow(
           return lhs_distance < rhs_distance;
         });
 
-    LOG(INFO) << "gate " << gate.number << " is closest to memory ports x="
-              << port_average_x;
+    LOG(INFO) << "Gate " << gate.number << " is closest to memory ports x="
+              << port_average_x << " on " << memory->name();
     int64_t vertical_x = gate.p_contact.x() + max_offset_from_first_poly_x;
 
     GateAssignment assignment {
@@ -666,9 +765,9 @@ Sky130InterconnectMux2::AssignRow(
     gate_assignments.push_back(assignment);
 
     gates->erase(std::remove_if(gates->begin(), gates->end(),
-                                    [&](const GateContacts &entry) {
-                                      return entry.number == gate.number;
-                                    }),
+                                [&](const GateContacts &entry) {
+                                  return entry.number == gate.number;
+                                }),
                      gates->end());
   }
   return gate_assignments;
@@ -682,6 +781,9 @@ Sky130InterconnectMux2::FindGateAssignment(
     int64_t max_offset_from_first_poly_x,
     std::vector<std::vector<geometry::Instance*>> *sorted_memories_per_row,
     std::vector<GateContacts> *gates) const {
+  // This function tests if the wires we want to draw for a given gate
+  // assignment conflict with one another in obvious ways (that is, it does not
+  // check non-obvious ways).
   auto row_has_conflict_fn = [](
       const std::vector<GateAssignment> &assignments) -> bool {
     std::vector<geometry::Line> p_tests;
@@ -720,8 +822,9 @@ Sky130InterconnectMux2::FindGateAssignment(
   // We need to permute the order in which we allocate the rows, because
   // sometimes there are conflicts!
   std::vector<int> row_order;
-  for (int r = 0; r < num_rows; r++)
+  for (int r = 0; r < num_rows; r++) {
     row_order.push_back(r);
+  }
 
   std::vector<std::vector<geometry::Instance*>> memories_per_row;
   // The initial row order is the natural one: 0, 1, 2
@@ -778,7 +881,6 @@ Sky130InterconnectMux2::FindGateAssignment(
   return std::nullopt;
 }
 
-
 void Sky130InterconnectMux2::ConnectControlWiresWithEffort(
     const std::vector<geometry::Instance*> scan_order,
     size_t num_rows,
@@ -791,7 +893,6 @@ void Sky130InterconnectMux2::ConnectControlWiresWithEffort(
     std::map<geometry::Instance*, std::string> *memory_output_nets,
     Layout *layout,
     Circuit *circuit) const {
-
   std::vector<std::vector<geometry::Instance*>> sorted_memories_per_row;
   auto assignment = FindGateAssignment(scan_order,
                                        num_rows,

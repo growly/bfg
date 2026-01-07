@@ -129,7 +129,6 @@ Sky130InterconnectMux1::BuildTransmissionGateParams(
   if (parameters_.vertical_pitch_nm) {
     params.min_height_nm = (needed_tracks + 3) * *parameters_.vertical_pitch_nm;
   }
-  // FIXME(aryap): This doesn't do waht I expect?!
   if (parameters_.min_transmission_gate_stack_height_nm) {
     params.min_height_nm = std::max(
         *parameters_.min_transmission_gate_stack_height_nm,
@@ -176,19 +175,6 @@ Sky130InterconnectMux1::BuildTransmissionGateParams(
   return params;
 }
 
-void Sky130InterconnectMux1::AddOutputBuffers(
-    size_t row,
-    int64_t row_height,
-    MemoryBank *bank,
-    std::vector<geometry::Instance*> *output_bufs) {
-  uint32_t num_outputs = NumOutputs();
-  for (uint32_t i = 0; i < num_outputs; ++i) {
-    output_bufs->push_back(
-        AddOutputBufferRight(
-            absl::StrFormat("%d", i), row_height, row, bank));
-  }
-}
-
 std::vector<geometry::Instance*> Sky130InterconnectMux1::AddMemoriesVertically(
     size_t first_row,
     uint32_t num_rows,
@@ -197,6 +183,15 @@ std::vector<geometry::Instance*> Sky130InterconnectMux1::AddMemoriesVertically(
     bool alternate_scan) {
   std::vector<geometry::Instance*> memories(num_rows * columns, nullptr);
   for (size_t i = first_row; i < first_row + num_rows; ++i) {
+    // By default we reverse the scan order of alternating rows, which means
+    // the direction depends on whether the index is odd or even. If the number
+    // of rows is itself even then we have to complement this logic. If the
+    // explicit `alternate_scan` is true, then we complement it again. That's
+    // the same as XORing the two conditions before checking for even or
+    // oddness. (The '!=' serves as logical xor here, which is fine for
+    // booleans.)
+    bool reverse_scan_order = (
+        i % 2 == (alternate_scan != (num_rows % 2 == 0) ? 1 : 0));
     for (size_t j = 0; j < columns; ++j) {
       std::string cell_name = PrefixCellName(
           absl::StrFormat("dfxtp_%d", i * columns + j));
@@ -209,8 +204,7 @@ std::vector<geometry::Instance*> Sky130InterconnectMux1::AddMemoriesVertically(
       Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(cell_name);
       geometry::Instance *layout_instance = bank->InstantiateRight(
           i, instance_name, dfxtp_cell);
-      // Append in scan order.
-      size_t k = i % 2 == (alternate_scan ? 1 : 0) ?
+      size_t k = reverse_scan_order ?
           (i - first_row + 1)  * columns - (j + 1) :
           (i - first_row) * columns + j;
       memories[k] = layout_instance;
@@ -286,18 +280,54 @@ geometry::Instance *Sky130InterconnectMux1::AddOutputBufferRight(
       output_buf_cell);
 }
 
-geometry::Instance *Sky130InterconnectMux1::AddTransmissionGateStackRight(
-    geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank) {
+void Sky130InterconnectMux1::AssembleOutputRow(
+      size_t output_row_index,
+      int64_t left_edge_x,
+      MemoryBank *bank,
+      geometry::Instance *vertical_neighbour,
+      int64_t *row_height,
+      geometry::Instance **generated_stack,
+      std::vector<geometry::Instance*> *output_bufs) {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  // Disable the tap cell on this row.
+  bank->Row(output_row_index).clear_tap_cell();
+
+  // Generate the transmission gate and place it:
   Sky130TransmissionGateStack::Parameters transmission_gate_mux_params =
       BuildTransmissionGateParams(vertical_neighbour);
   Sky130TransmissionGateStack generator = Sky130TransmissionGateStack(
       transmission_gate_mux_params, design_db_);
-  std::string instance_name = PrefixCellName("gate_stack");
-  std::string template_name = absl::StrCat(instance_name, "_template");
+  std::string template_name = PrefixCellName("gate_stack");
+  std::string instance_name = absl::StrCat(template_name, "_i");
   Cell *transmission_gate_stack_cell =
       generator.GenerateIntoDatabase(template_name);
-  return bank->InstantiateRight(
-      row, instance_name, transmission_gate_stack_cell);
+  *generated_stack = bank->InstantiateRight(
+      output_row_index, instance_name, transmission_gate_stack_cell);
+
+  (*row_height) =
+      (*generated_stack)->template_layout()->GetTilingBounds().Height();
+
+  uint64_t special_decap_width_nm =
+      db.ToExternalUnits(0 - left_edge_x);
+  Cell *special_decap_cell = MakeDecapCell(
+      special_decap_width_nm, 
+      static_cast<uint64_t>(db.ToExternalUnits(*row_height)));
+  geometry::Instance *decap = bank->InstantiateLeft(
+      output_row_index,
+      absl::StrCat(special_decap_cell->name(), "_i0"),
+      special_decap_cell);
+
+  // The output buffer goes at the end of the transmission gate stack. Mux1
+  // only has one output buffer, but it's easy enough to leave this as
+  // generalised code for the interim.
+  uint32_t num_outputs = NumOutputs();
+  DCHECK(num_outputs == 1);
+  for (uint32_t i = 0; i < num_outputs; ++i) {
+    output_bufs->push_back(
+        AddOutputBufferRight(
+            absl::StrFormat("%d", i), *row_height, output_row_index, bank));
+  }
 }
 
 bfg::Cell *Sky130InterconnectMux1::Generate() {
@@ -348,6 +378,39 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
       num_ff_columns,
       &bank);
 
+  // The input clock buffers go next to the middle flip flop on the top and
+  // bottom side.
+  //
+  // Note that, for the bottom memory bank, the clock buffer goes on the middle
+  // row (when odd number of rows) or 1 above it (when even number of rows). We
+  // round up when finding the middle index because we want to put it on the
+  // row that preserves its rotation across any row configuration.
+  DCHECK(num_ff_rows_bottom > 1) << "Unsigned int underflow imminent.";
+  size_t clk_buf_bottom_row = (num_ff_rows_bottom - 1) / 2;
+  geometry::Instance *clk_buf_bottom_layout = AddClockBufferRight(
+      "bottom",
+      clk_buf_bottom_row,
+      &bank);
+
+  // With the bottom memories and their clock buffers placed, we can size the
+  // left routing channel and output row to make the overall mux meet the pitch
+  // requirement:
+  uint64_t fixed_row_width = bank.Row(num_ff_rows_bottom - 1).Width();
+  uint64_t horizontal_pitch_nm = parameters_.horizontal_pitch_nm.value_or(
+      Parameters::kHorizontalTilingUnitNm);
+  uint64_t vertical_channel_width_nm = Utility::NextMultiple(
+      parameters_.vertical_routing_channel_width_nm.value_or(1380) +
+          fixed_row_width,
+      horizontal_pitch_nm) - fixed_row_width;
+
+  // TODO(aryap): An easy way to get the existing routing mechanism to work
+  // with smaller muxes is to shift the transmission gate stack to the right. A
+  // hard way is to split the horizontal tracks used by the Q, QI outputs of
+  // each FF and try to assign the clock bufs to rows so that they don't
+  // interfere with them. A perfectly cromulent way, at least in theory, is to
+  // just use the routing grid. So, split the way the middle row is constructed
+  // between the Mux1 and Mux2 case and implement the Mux2 case here:
+
   //atoms::Sky130Tap::Parameters tap_params = {
   //  .height_nm = 2720,
   //  .width_nm = 460
@@ -358,16 +421,34 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
   //
   // Width of a tap, above.
   //bank.Row(num_ff_rows_bottom).AddBlankSpaceAndInsertFront(460);
-  // Disable the tap cell on this row.
-  bank.Row(num_ff_rows_bottom).clear_tap_cell();
-  geometry::Instance *stack_layout = AddTransmissionGateStackRight(
-      bottom_memories.back(), num_ff_rows_bottom, &bank);
+
+  int64_t mux_row_height = 0;
+  geometry::Instance *stack_layout = nullptr;
+  std::vector<geometry::Instance*> output_bufs;
+  AssembleOutputRow(
+      num_ff_rows_bottom,
+      -db.ToInternalUnits(vertical_channel_width_nm + tap_params.width_nm),
+      &bank,
+      bottom_memories.back(),
+      &mux_row_height,
+      &stack_layout,
+      &output_bufs);
 
   std::vector<geometry::Instance*> top_memories = AddMemoriesVertically(
       num_ff_rows_bottom + 1,
       num_ff_rows_top,
       num_ff_columns,
       &bank);
+
+  // Add the top memories' clock buffer.  (To the middle row on top.
+  size_t clk_buf_top_row = 
+      num_ff_rows_bottom + 1 + (num_ff_rows_top / 2);
+  geometry::Instance *clk_buf_top_layout = AddClockBufferRight(
+      "top", clk_buf_top_row, &bank);
+
+  std::vector<geometry::Instance*> clk_bufs = {
+      clk_buf_top_layout, clk_buf_bottom_layout
+  };
 
   // TODO(aryap): Document elsewhere:
   // right i remember now. to decode an address up to 6 needs 3 bits, so you pay
@@ -379,35 +460,11 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
   // a new class. perhaps a derived class so we can reuse the decap, buffer, etc
   // insertion. but the routing will need to be vastly different.
 
-  int64_t mux_row_height =
-      stack_layout->template_layout()->GetTilingBounds().Height();
-
-  // The output buffer goes at the end of the transmission gate stack.
-  std::vector<geometry::Instance*> output_bufs;
-  AddOutputBuffers(num_ff_rows_bottom, mux_row_height, &bank, &output_bufs);
-
-  // The input clock buffers go next to the middle flip flop on the top and
-  // bottom side.
-  geometry::Instance *clk_buf_top_layout = AddClockBufferRight(
-      "top",
-      // The middle row on top.
-      num_ff_rows_bottom + 1 + (num_ff_rows_top / 2),
-      &bank);
-  geometry::Instance *clk_buf_bottom_layout = AddClockBufferRight(
-      "bottom",
-      num_ff_rows_bottom / 2,   // The middle row on the bottom.
-      &bank);
-
-  std::vector<geometry::Instance*> clk_bufs = {
-      clk_buf_top_layout, clk_buf_bottom_layout
-  };
-
   // Decaps!
   Cell *right_decap_cell = MakeDecapCell(1380U, 2720U);
   std::set<size_t> skip_rows = {
-      // The middle row on top.
-      num_ff_rows_bottom + 1 + (num_ff_rows_top / 2),
-      num_ff_rows_bottom / 2,   // The middle row on the bottom.
+      clk_buf_top_row,
+      clk_buf_bottom_row,
       num_ff_rows_bottom,  // The transmission gate row (~middle).
   };
   for (size_t i = 0; i < num_ff_rows + 1; ++i) {
@@ -423,16 +480,6 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
 
   std::string left_decap_name = PrefixCellName("decap_left");
 
-  // Size the routing channel to make the overall mux meet the pitch
-  // requirement:
-  uint64_t fixed_row_width = bank.Row(num_ff_rows_bottom - 1).Width();
-  uint64_t horizontal_pitch_nm = parameters_.horizontal_pitch_nm.value_or(
-      Parameters::kHorizontalTilingUnitNm);
-  uint64_t vertical_channel_width_nm = Utility::NextMultiple(
-      parameters_.vertical_routing_channel_width_nm.value_or(1380) +
-          fixed_row_width,
-      horizontal_pitch_nm) - fixed_row_width;
-
   Cell *left_decap_cell =
       MakeDecapCell(vertical_channel_width_nm, 2720U);
   for (size_t i = 0; i < num_ff_rows + 1; ++i) {
@@ -445,16 +492,6 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
         absl::StrCat(left_decap_cell->name(), "_i", i),
         left_decap_cell);
   }
-
-  uint64_t special_decap_width_nm =
-      vertical_channel_width_nm + tap_params.width_nm;
-  Cell *special_decap_cell = MakeDecapCell(
-      special_decap_width_nm, 
-      static_cast<uint64_t>(db.ToExternalUnits(mux_row_height)));
-  geometry::Instance *decap = bank.InstantiateLeft(
-      num_ff_rows_bottom,
-      absl::StrCat(cell->name(), "_i0"),
-      special_decap_cell);
 
   int64_t tiling_bound_right_x =
       bank.Row(num_ff_rows_bottom + 1).UpperRight().x();
@@ -1317,7 +1354,7 @@ void Sky130InterconnectMux1::DrawScanChain(
     // the right. This test means we don't have to rely on a particular
     // orientation pattern when the memories are laid out.
     //
-    // FIXME(aryap): A more robust way to do the scan chain (without doing
+    // TODO(aryap): A more robust way to do the scan chain (without doing
     // anything intelligent) will be to dedicate a vertical channel on the
     // left and right sides of the flip flops that avoids other routes we are
     // planning, like the control wires. This limits vertical channel usage to
