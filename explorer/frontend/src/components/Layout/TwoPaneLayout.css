@@ -5,6 +5,10 @@
   gap: 0;
 }
 
+.two-pane-layout.with-output-pane {
+  grid-template-columns: 25% 45% 30%;
+}
+
 .left-pane {
   border-right: 1px solid #ddd;
   overflow-y: auto;
@@ -13,6 +17,12 @@
 }
 
 .right-pane {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.output-pane {
   overflow: hidden;
   display: flex;
   flex-direction: column;

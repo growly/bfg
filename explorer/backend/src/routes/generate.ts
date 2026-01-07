@@ -18,6 +18,8 @@ interface GenerateSuccessResponse {
     svg: string;
     libraryProto: string;
     packageProto: string;
+    stdout: string;
+    stderr: string;
   };
 }
 
@@ -54,19 +56,40 @@ router.post('/', async (req: Request, res: Response) => {
     const bfgOutput = await generateLayout(generator, parameters);
 
     // Step 2: Convert VLSIR to GDS
-    const gdsPath = await convertToGds(bfgOutput.libraryPb, bfgOutput.workDir);
+    const gdsOutput = await convertToGds(bfgOutput.libraryPb, bfgOutput.workDir);
 
     // Step 3: Convert GDS to SVG
     // Use generator name as cell name (BFG typically names the top cell after the generator)
-    const svgContent = await convertToSvg(gdsPath, generator, bfgOutput.workDir);
+    const svgOutput = await convertToSvg(gdsOutput.gdsPath, generator, bfgOutput.workDir);
+
+    // Combine all stdout and stderr from the three steps
+    const combinedStdout = [
+      '=== BFG Generation ===',
+      bfgOutput.stdout,
+      '\n=== VLSIR to GDS Conversion ===',
+      gdsOutput.stdout,
+      '\n=== GDS to SVG Conversion ===',
+      svgOutput.stdout,
+    ].join('\n');
+
+    const combinedStderr = [
+      '=== BFG Generation ===',
+      bfgOutput.stderr,
+      '\n=== VLSIR to GDS Conversion ===',
+      gdsOutput.stderr,
+      '\n=== GDS to SVG Conversion ===',
+      svgOutput.stderr,
+    ].join('\n');
 
     // Return success response
     const successResponse: GenerateSuccessResponse = {
       status: 'success',
       data: {
-        svg: svgContent,
+        svg: svgOutput.svgContent,
         libraryProto: bfgOutput.libraryPbTxt,
         packageProto: bfgOutput.packagePbTxt,
+        stdout: combinedStdout,
+        stderr: combinedStderr,
       },
     };
 

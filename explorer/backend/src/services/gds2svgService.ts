@@ -75,11 +75,17 @@ except Exception as e:
 `;
 }
 
+export interface Gds2SvgOutput {
+  svgContent: string;
+  stdout: string;
+  stderr: string;
+}
+
 export async function convertToSvg(
   gdsPath: string,
   cellName: string,
   workDir: string
-): Promise<string> {
+): Promise<Gds2SvgOutput> {
   const svgPath = path.join(workDir, 'output.svg');
   const scriptPath = path.join(workDir, 'convert.py');
 
@@ -119,7 +125,7 @@ export async function convertToSvg(
 
     // Read and return SVG content
     const svgContent = await fs.readFile(svgPath, 'utf-8');
-    return svgContent;
+    return { svgContent, stdout, stderr };
   } catch (error) {
     if (error instanceof Gds2SvgError) {
       throw error;

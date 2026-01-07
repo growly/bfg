@@ -15,6 +15,8 @@ export interface BfgOutput {
   libraryPb: string;
   libraryPbTxt: string;
   packagePbTxt: string;
+  stdout: string;
+  stderr: string;
 }
 
 export class BfgError extends Error {
@@ -111,6 +113,8 @@ export async function generateLayout(
       libraryPb,
       libraryPbTxt: libraryText,
       packagePbTxt: packageText,
+      stdout,
+      stderr,
     };
   } catch (error) {
     // Clean up on error

@@ -19,10 +19,16 @@ export class Proto2GdsError extends Error {
   }
 }
 
+export interface Proto2GdsOutput {
+  gdsPath: string;
+  stdout: string;
+  stderr: string;
+}
+
 export async function convertToGds(
   libraryPbPath: string,
   workDir: string
-): Promise<string> {
+): Promise<Proto2GdsOutput> {
   const gdsPath = path.join(workDir, 'output.gds');
 
   try {
@@ -59,7 +65,7 @@ export async function convertToGds(
       );
     }
 
-    return gdsPath;
+    return { gdsPath, stdout, stderr };
   } catch (error) {
     if (error instanceof Proto2GdsError) {
       throw error;

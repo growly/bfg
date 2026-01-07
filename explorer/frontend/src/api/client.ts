@@ -13,6 +13,8 @@ export interface GenerateResponse {
     svg: string;
     libraryProto: string;
     packageProto: string;
+    stdout: string;
+    stderr: string;
   };
   message?: string;
   details?: string;

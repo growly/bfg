@@ -7,7 +7,7 @@ import './ParameterPanel.css';
 
 interface ParameterPanelProps {
   onGenerationComplete: (result: GenerationResult) => void;
-  onGenerationError: (error: string) => void;
+  onGenerationError: (error: string, errorDetails?: string) => void;
   onGenerationStart: () => void;
   onGenerationEnd: () => void;
 }
@@ -53,12 +53,21 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
       if (response.status === 'success' && response.data) {
         onGenerationComplete(response.data);
       } else {
-        onGenerationError(response.message || 'Unknown error');
+        onGenerationError(response.message || 'Unknown error', response.details);
       }
-    } catch (error) {
-      onGenerationError(
-        error instanceof Error ? error.message : 'Failed to generate layout'
-      );
+    } catch (error: any) {
+      // Handle axios errors where the backend returned an error response
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        onGenerationError(
+          errorData.message || error.message || 'Failed to generate layout',
+          errorData.details
+        );
+      } else {
+        onGenerationError(
+          error instanceof Error ? error.message : 'Failed to generate layout'
+        );
+      }
     } finally {
       onGenerationEnd();
     }
