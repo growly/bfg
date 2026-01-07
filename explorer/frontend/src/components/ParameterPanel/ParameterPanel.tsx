@@ -10,6 +10,7 @@ interface ParameterPanelProps {
   onGenerationError: (error: string, errorDetails?: string) => void;
   onGenerationStart: () => void;
   onGenerationEnd: () => void;
+  onStreamOutput: (stdout: string, stderr: string) => void;
 }
 
 const generators = [
@@ -28,6 +29,7 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
   onGenerationError,
   onGenerationStart,
   onGenerationEnd,
+  onStreamOutput,
 }) => {
   const [selectedGenerator, setSelectedGenerator] = useState<string>('Sky130Decap');
   const [parameters, setParameters] = useState<Record<string, unknown>>({});
@@ -42,32 +44,90 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
   }, [selectedGenerator]);
 
   const handleGenerate = async () => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+    let accumulatedStdout = '';
+    let accumulatedStderr = '';
+
     try {
       onGenerationStart();
 
-      const response = await apiClient.generate({
-        generator: selectedGenerator,
-        parameters,
+      const response = await fetch(`${API_BASE_URL}/generate-stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          generator: selectedGenerator,
+          parameters,
+        }),
       });
 
-      if (response.status === 'success' && response.data) {
-        onGenerationComplete(response.data);
-      } else {
-        onGenerationError(response.message || 'Unknown error', response.details);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+      let currentEvent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            currentEvent = line.substring(6).trim();
+          } else if (line.startsWith('data:')) {
+            try {
+              const data = JSON.parse(line.substring(5).trim());
+
+              if (currentEvent === 'stdout') {
+                accumulatedStdout += data.data;
+                onStreamOutput(accumulatedStdout, accumulatedStderr);
+              } else if (currentEvent === 'stderr') {
+                accumulatedStderr += data.data;
+                onStreamOutput(accumulatedStdout, accumulatedStderr);
+              } else if (currentEvent === 'stage') {
+                // Stage change - could display this
+                console.log(`Stage: ${data.stage} - ${data.message}`);
+              } else if (currentEvent === 'complete') {
+                onGenerationComplete({
+                  svg: data.svg,
+                  libraryProto: data.libraryProto,
+                  packageProto: data.packageProto,
+                  stdout: data.stdout,
+                  stderr: data.stderr,
+                });
+                return;
+              } else if (currentEvent === 'error') {
+                onGenerationError(data.message, data.stderr || data.stdout || data.details);
+                return;
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e);
+            }
+          } else if (line === '') {
+            // Empty line resets event
+            currentEvent = '';
+          }
+        }
+      }
+
     } catch (error: any) {
-      // Handle axios errors where the backend returned an error response
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        onGenerationError(
-          errorData.message || error.message || 'Failed to generate layout',
-          errorData.details
-        );
-      } else {
-        onGenerationError(
-          error instanceof Error ? error.message : 'Failed to generate layout'
-        );
-      }
+      onGenerationError(
+        error instanceof Error ? error.message : 'Failed to generate layout',
+        accumulatedStderr || error.toString()
+      );
     } finally {
       onGenerationEnd();
     }

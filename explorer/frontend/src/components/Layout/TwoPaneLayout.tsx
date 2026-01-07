@@ -49,6 +49,10 @@ const TwoPaneLayout: React.FC = () => {
     setIsGenerating(false);
   };
 
+  const handleStreamOutput = (stdout: string, stderr: string) => {
+    setCurrentOutput({ stdout, stderr });
+  };
+
   const toggleOutputPane = () => {
     setShowOutputPane(!showOutputPane);
   };
@@ -61,6 +65,7 @@ const TwoPaneLayout: React.FC = () => {
           onGenerationError={handleGenerationError}
           onGenerationStart={handleGenerationStart}
           onGenerationEnd={handleGenerationEnd}
+          onStreamOutput={handleStreamOutput}
         />
       </div>
       <div className="right-pane">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import './OutputPanel.css';
 
 interface OutputPanelProps {
@@ -14,6 +14,21 @@ const OutputPanel: React.FC<OutputPanelProps> = ({
   isGenerating,
   onClose,
 }) => {
+  const stderrRef = useRef<HTMLPreElement>(null);
+  const stdoutRef = useRef<HTMLPreElement>(null);
+
+  // Auto-scroll to bottom when new output arrives
+  useEffect(() => {
+    if (stderrRef.current) {
+      stderrRef.current.scrollTop = stderrRef.current.scrollHeight;
+    }
+  }, [stderr]);
+
+  useEffect(() => {
+    if (stdoutRef.current) {
+      stdoutRef.current.scrollTop = stdoutRef.current.scrollHeight;
+    }
+  }, [stdout]);
   return (
     <div className="output-panel">
       <div className="output-header">
@@ -32,13 +47,13 @@ const OutputPanel: React.FC<OutputPanelProps> = ({
         {stderr && (
           <div className="output-section">
             <h4>Standard Error</h4>
-            <pre className="output-text stderr">{stderr}</pre>
+            <pre ref={stderrRef} className="output-text stderr">{stderr}</pre>
           </div>
         )}
         {stdout && (
           <div className="output-section">
             <h4>Standard Output</h4>
-            <pre className="output-text stdout">{stdout}</pre>
+            <pre ref={stdoutRef} className="output-text stdout">{stdout}</pre>
           </div>
         )}
         {!stdout && !stderr && !isGenerating && (

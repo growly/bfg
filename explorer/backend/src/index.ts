@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './config/paths.js';
 import generateRouter from './routes/generate.js';
+import generateStreamRouter from './routes/generateStream.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,7 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api/generate', generateRouter);
+app.use('/api/generate-stream', generateStreamRouter);
 
 // Serve frontend static files in production
 if (config.nodeEnv === 'production') {
