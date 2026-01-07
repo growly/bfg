@@ -1084,6 +1084,7 @@ void Sky130InterconnectMux2::DrawClock(
     int64_t clk_i_x,
     Layout *layout,
     Circuit *circuit) const {
+  // First call the parent implementation, since we only add to it:
   Sky130InterconnectMux1::DrawClock(
       bank, top_memories, bottom_memories, clk_bufs,
       input_clk_x, clk_x, clk_i_x, layout, circuit);
