@@ -30,6 +30,7 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
 }) => {
   const [selectedGenerator, setSelectedGenerator] = useState<string>('Sky130Decap');
   const [parameters, setParameters] = useState<Record<string, unknown>>({});
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
 
   // Load default parameters when generator changes
   useEffect(() => {
@@ -78,7 +79,26 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
     const schema = getGeneratorSchema(selectedGenerator);
     if (schema) {
       setParameters(schema.exampleParams);
+      // Generate after loading example
+      setTimeout(() => handleGenerate(), 0);
     }
+  };
+
+  // Auto-generate when generator changes
+  useEffect(() => {
+    // Skip auto-generation on initial mount
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      return;
+    }
+
+    // Generate when generator changes
+    handleGenerate();
+  }, [selectedGenerator, isInitialLoad]);
+
+  const handleFieldComplete = () => {
+    // Generate when a field change is complete
+    handleGenerate();
   };
 
   const schema = getGeneratorSchema(selectedGenerator);
@@ -116,6 +136,7 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
               field={field}
               value={parameters[field.name]}
               onChange={(value) => handleParameterChange(field.name, value)}
+              onComplete={handleFieldComplete}
             />
           ))}
         </div>

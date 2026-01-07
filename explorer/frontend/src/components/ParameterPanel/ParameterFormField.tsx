@@ -6,12 +6,14 @@ interface ParameterFormFieldProps {
   field: FieldSchema;
   value: unknown;
   onChange: (value: unknown) => void;
+  onComplete?: () => void;
 }
 
 const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
   field,
   value,
   onChange,
+  onComplete,
 }) => {
   const renderField = () => {
     switch (field.type) {
@@ -25,6 +27,7 @@ const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
                 const val = e.target.value === '' ? undefined : Number(e.target.value);
                 onChange(val);
               }}
+              onBlur={() => onComplete?.()}
               min={field.min}
               max={field.max}
               step={field.step ?? 1}
@@ -40,7 +43,10 @@ const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
             <input
               type="checkbox"
               checked={value as boolean ?? field.defaultValue ?? false}
-              onChange={(e) => onChange(e.target.checked)}
+              onChange={(e) => {
+                onChange(e.target.checked);
+                onComplete?.();
+              }}
             />
             <span className="checkbox-text">
               {value ? 'Enabled' : 'Disabled'}
@@ -52,7 +58,10 @@ const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
         return (
           <select
             value={value as string ?? ''}
-            onChange={(e) => onChange(e.target.value || undefined)}
+            onChange={(e) => {
+              onChange(e.target.value || undefined);
+              onComplete?.();
+            }}
           >
             <option value="">-- Select --</option>
             {field.enumValues?.map((enumValue) => (
@@ -69,6 +78,7 @@ const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
             type="text"
             value={value as string ?? ''}
             onChange={(e) => onChange(e.target.value || undefined)}
+            onBlur={() => onComplete?.()}
             placeholder={field.defaultValue as string}
           />
         );
@@ -98,6 +108,7 @@ const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
                     const newArray = [...arrayValue];
                     newArray.splice(index, 1);
                     onChange(newArray);
+                    onComplete?.();
                   }}
                   className="array-remove-btn"
                 >
@@ -128,6 +139,7 @@ const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
                           };
                           onChange(newArray);
                         }}
+                        onBlur={() => onComplete?.()}
                         placeholder="e.g., A,B,C"
                       />
                       <small className="field-help">{itemField.description}</small>
@@ -143,6 +155,7 @@ const ParameterFormField: React.FC<ParameterFormFieldProps> = ({
             type="button"
             onClick={() => {
               onChange([...arrayValue, { nets: [] }]);
+              onComplete?.();
             }}
             className="array-add-btn"
           >
