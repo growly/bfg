@@ -112,7 +112,7 @@ void MemoryBank::EnsureVerticalAbutment() {
 }
 
 // Aligns the origins of all rows such that the x position of each row's origin
-// aligns with the previous row's left or right-most x position, based on
+// aligns with the previous row's left- or right-most x position, based on
 // horizontal_alignment_.
 void MemoryBank::AlignRight() {
   int64_t right_x = 0;

@@ -109,6 +109,12 @@ class Sky130InterconnectMux1 : public Atom {
 
     std::optional<uint64_t> min_transmission_gate_stack_height_nm = 5100;
 
+    // Adds rows of just decap cells at standard height to the top/bottom, so
+    // that this mux might match others next to it.
+    // FIXME(aryap): Add space for this.
+    uint64_t additional_decap_rows_top = 0;
+    uint64_t additional_decap_rows_bottom = 0;
+
     void ToProto(proto::parameters::Sky130InterconnectMux1 *pb) const;
     void FromProto(const proto::parameters::Sky130InterconnectMux1 &pb);
   };
