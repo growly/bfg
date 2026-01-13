@@ -41,6 +41,15 @@ class Polygon : public Shape {
     vertices_.pop_back();
   }
 
+  // TODO(aryap): It would also be useful to have an Overlaps(...) method to
+  // test for collision with another polygon. It shouldn't be That Hard (TM):
+  // - Do the bounding boxes collide? If not, stop. If so,
+  // - Do any of the lines of the first polygon cross any of the lines of the
+  // second polygon?
+  // - Are any of the points of the first polygon interior to the second
+  // polygon?
+  bool Overlaps(const Polygon &other) const;
+  
   bool Overlaps(const Rectangle &rectangle) const;
   bool HasVertex(const Point &point) const;
 
@@ -57,7 +66,19 @@ class Polygon : public Shape {
   void ResetOrigin() override;
   void Rotate(int32_t degrees_ccw) override;
 
+  // NOTE(aryap): ASSUMES that vertices are in clockwise order. If they are in
+  // anti-clockwise order, give a negative margin to achieve same effect.
+  void Fatten(int64_t margin);
+
+  // This uses Fatten, which assumesa a clockwise vertex order!
+  Polygon WithPadding(int64_t margin) const;
+  Polygon WithKeepout(
+      const PhysicalPropertiesDatabase &db,
+      const std::optional<std::string> &layer) const;
+
   const Rectangle GetBoundingBox() const override;
+
+  std::vector<Line> Edges() const;
 
   const std::string Describe() const;
 
@@ -68,6 +89,15 @@ class Polygon : public Shape {
       const std::vector<PointOrChoice> &choices,
       const Point &reference_point);
 
+  // We should assume that vertices_ are stored in clockwise order. We've
+  // mostly gotten away with not making that assumption, but methods like
+  // Fatten(...) and any future triangulation will benefit.
+  //
+  // TODO(aryap): I think that seems reasonable, I've seen it done elsewhere?
+  // Can I do that? Should we test and re-arrange at construction?
+  //
+  // I think we can use the cross-product and/or use the sum of interior angles
+  // or something?
   std::vector<Point> vertices_;
 };
 

@@ -18,7 +18,8 @@
 #include "cell.h"
 #include "layout.h"
 #include "atoms/sky130_switch_complex.h"
-#include "atoms/sky130_interconnect_mux6.h"
+#include "atoms/sky130_interconnect_mux1.h"
+#include "atoms/sky130_interconnect_mux2.h"
 #include "atoms/sky130_transmission_gate.h"
 #include "atoms/sky130_transmission_gate_stack.h"
 #include "atoms/sky130_mux.h"
@@ -27,14 +28,16 @@
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
 #include "tiles/slice.h"
+#include "tiles/reduced_slice.h"
 #include "tiles/interconnect.h"
 #include "utility.h"
 
 #include "proto/parameters/interconnect.pb.h"
 #include "proto/parameters/lut_b.pb.h"
 #include "proto/parameters/slice.pb.h"
+#include "proto/parameters/reduced_slice.pb.h"
 #include "proto/parameters/sky130_decap.pb.h"
-#include "proto/parameters/sky130_interconnect_mux6.pb.h"
+#include "proto/parameters/sky130_interconnect_mux1.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
 
@@ -118,11 +121,17 @@ int DispatchGenerator(
         bfg::atoms::Sky130TransmissionGateStack::Parameters,
         bfg::atoms::Sky130TransmissionGateStack>(
             generator_name, parameter_pb_path, design_db);
-  } else if (generator_name == "Sky130InterconnectMux6") {
+  } else if (generator_name == "Sky130InterconnectMux1") {
     cell = ReadParamsAndGenerate<
-        bfg::proto::parameters::Sky130InterconnectMux6,
-        bfg::atoms::Sky130InterconnectMux6::Parameters,
-        bfg::atoms::Sky130InterconnectMux6>(
+        bfg::proto::parameters::Sky130InterconnectMux1,
+        bfg::atoms::Sky130InterconnectMux1::Parameters,
+        bfg::atoms::Sky130InterconnectMux1>(
+            generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130InterconnectMux2") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130InterconnectMux1,
+        bfg::atoms::Sky130InterconnectMux1::Parameters,
+        bfg::atoms::Sky130InterconnectMux2>(
             generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130Decap") {
     cell = ReadParamsAndGenerate<
@@ -144,6 +153,11 @@ int DispatchGenerator(
         bfg::proto::parameters::Slice,
         bfg::tiles::Slice::Parameters,
         bfg::tiles::Slice>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "ReducedSlice") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::ReducedSlice,
+        bfg::tiles::ReducedSlice::Parameters,
+        bfg::tiles::ReducedSlice>(generator_name, parameter_pb_path, design_db);
   } else {
     LOG(ERROR) << "Unrecognised generator name: " << generator_name;
     return EXIT_FAILURE;

@@ -27,7 +27,7 @@ class Sky130Decap: public Atom {
     static constexpr uint64_t kMaxWidthNm = 5520;
     // This is the width of the std_cell decap_3. Any smaller than this and we
     // violate DRC rules (look at the poly).
-    static constexpr uint64_t kMinWidthNm = 460;
+    static constexpr uint64_t kMinWidthNm = 1380;
 
     uint64_t width_nm = 1380;
     uint64_t height_nm = 2720;

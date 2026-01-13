@@ -725,6 +725,149 @@ TEST(Polygon, EqualUnderRotation) {
   EXPECT_FALSE(big_l_shape == big_l_rotated);
 }
 
+TEST(Polygon, Edges) {
+  Polygon square = Polygon({
+      {0, 0},
+      {0, 2},
+      {2, 2},
+      {2, 0}
+  });
+
+  std::vector<Line> edges = square.Edges();
+
+  EXPECT_EQ(edges[0].start(), Point(0, 0));
+  EXPECT_EQ(edges[0].end(), Point(0, 2));
+  EXPECT_EQ(edges[1].start(), Point(0, 2));
+  EXPECT_EQ(edges[1].end(), Point(2, 2));
+  EXPECT_EQ(edges[2].start(), Point(2, 2));
+  EXPECT_EQ(edges[2].end(), Point(2, 0));
+  EXPECT_EQ(edges[3].start(), Point(2, 0));
+  EXPECT_EQ(edges[3].end(), Point(0, 0));
+}
+
+TEST(Polygon, Fattened) {
+  Polygon square = Polygon({
+      {0, 0},
+      {0, 2},
+      {2, 2},
+      {2, 0}
+  });
+
+  square.Fatten(3);
+
+  std::vector<Point> expected = {
+      {-3, -3},
+      {-3, 5},
+      {5, 5},
+      {5, -3}
+  };
+  EXPECT_THAT(square.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(Polygon, PolygonOverlapsPolygon_NoOverlap_NotEvenClose) {
+  Polygon square = Polygon({
+      {20, 20},
+      {20, 22},
+      {22, 22},
+      {22, 20}
+  });
+
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+
+  EXPECT_FALSE(big_l_shape.Overlaps(square));
+  EXPECT_FALSE(square.Overlaps(big_l_shape));
+}
+
+TEST(Polygon, PolygonOverlapsPolygon_NoOverlap_WithinBoundingBox) {
+  Polygon square = Polygon({
+      {0, 5},
+      {0, 7},
+      {2, 5},
+      {2, 7}
+  });
+
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+
+  EXPECT_FALSE(big_l_shape.Overlaps(square));
+  EXPECT_FALSE(square.Overlaps(big_l_shape));
+}
+
+TEST(Polygon, PolygonOverlapsPolygon_Overlap_EntirelyContained) {
+  Polygon square = Polygon({
+      {1, 1},
+      {1, 3},
+      {3, 3},
+      {3, 1}
+  });
+
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+
+  // TODO(aryap): Implement these and uncomment.
+  //EXPECT_TRUE(big_l_shape.Overlaps(square));
+  //EXPECT_TRUE(square.Overlaps(big_l_shape));
+}
+
+TEST(Polygon, PolygonOverlapsPolygon_Overlap_EdgeIntersections) {
+  Polygon square = Polygon({
+      {-1, -1},
+      {-1, 5},
+      {5, 5},
+      {5, -1}
+  });
+
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+  EXPECT_TRUE(big_l_shape.Overlaps(square));
+  EXPECT_TRUE(square.Overlaps(big_l_shape));
+}
+
+TEST(Polygon, PolygonOverlapsPolygon_Overlap_EdgeIncidence) {
+  Polygon square = Polygon({
+      {6, 6},
+      {6, 10},
+      {10, 10},
+      {10, 6}
+  });
+
+  Polygon big_l_shape = Polygon({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {6, 10},
+      {6, 4},
+      {0, 4}
+  });
+  EXPECT_TRUE(big_l_shape.Overlaps(square));
+  EXPECT_TRUE(square.Overlaps(big_l_shape));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg

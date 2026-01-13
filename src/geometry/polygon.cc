@@ -586,6 +586,43 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
   return false;
 }
 
+bool Polygon::Overlaps(const Polygon &other) const {
+  // To speed things up, don't even bother checking if the bounding boxes don't
+  // overlap:
+  if (!GetBoundingBox().Overlaps(other.GetBoundingBox())) {
+    return false;
+  }
+
+  // Do any of the lines of the first polygon cross any of the lines of the
+  // second polygon?
+  //
+  // (Seems like we could optimise the search window for lines too.)
+  for (const auto &our_edge : Edges()) {
+    for (const auto &their_edge : other.Edges()) {
+      bool unused_incident;
+      Point unused_point;
+      if (our_edge.IntersectsInMutualBounds(
+            their_edge, &unused_incident, &unused_point)) {
+        return true;
+      }
+    }
+  }
+
+  // The right thing to do now is to check if any point in one polygon is
+  // contained within the other, and vice versa. The right way to do that is to
+  // triangulate them.
+  LOG(WARNING) << "Not implemented: not sure if one polygon is entirely "
+               << "contained within the other, so will assume not. Implement "
+               << "triangulation!";
+  return false;
+}
+
+geometry::Polygon Polygon::WithPadding(int64_t padding) const {
+  Polygon copy(*this);
+  copy.Fatten(padding);
+  return copy;
+}
+
 bool Polygon::HasVertex(const Point &point) const {
   return std::find(
       vertices_.begin(), vertices_.end(), point) != vertices_.end();
@@ -679,6 +716,36 @@ void Polygon::Rotate(int32_t degrees_ccw) {
   for (auto &vertex : vertices_) {
     vertex.Rotate(degrees_ccw);
   }
+}
+
+// 
+void Polygon::Fatten(int64_t margin) {
+  // Get existing edge lines.
+  std::vector<Line> edges = Edges();
+
+  // Shift them out by the given margin, ASSUMING that the vertices, and hence
+  // edges, are in clockwise order around the polygon.
+  //
+  // (We could test if everything does indeed get fattened, and then try the
+  // opposite if we want to be sure.)
+  std::vector<Line> shifted_lines;
+  for (const Line &line: edges) {
+    shifted_lines.push_back(Line::Shifted(line, margin));
+  }
+
+  std::vector<Point> new_vertices;
+  Line::AppendIntersections(shifted_lines, &new_vertices, true);
+
+  vertices_ = new_vertices;
+}
+
+std::vector<Line> Polygon::Edges() const {
+  std::vector<Line> edges;
+  for (size_t i = 0; i < vertices_.size(); ++i) {
+    size_t j = (i + 1) % vertices_.size();
+    edges.emplace_back(vertices_[i], vertices_[j]);
+  }
+  return edges;
 }
 
 const Rectangle Polygon::GetBoundingBox() const {

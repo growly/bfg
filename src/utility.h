@@ -89,13 +89,18 @@ class Utility {
   // sub-lengths of 'max' size as can fit, and any remaining length, where all
   // returned length are multiples of the given 'unit'. (The 'max' value is also
   // rounded down to the nearest multiple of 'unit'.)
+  //
+  // If 'min' is given, some attempt is made to rebalance the distribution of
+  // units so that no quantity is less than the min. Quantisation in multiples
+  // of unit will still occur.
   // 
   // e.g. StripInUnits(32, 9, 3) will result in [9, 9, 9, 3], with 2 leftover
   // of the original quantity not fitting a multiple of 3.
   // StripInUnits(33, 9, 3) will result in [9, 9, 9, 6].
   // StripInUnits(32, 8, 3) will result in [6, 6, 6, 6, 6].
   static std::vector<int64_t> StripInUnits(
-      int64_t length, int64_t max, int64_t unit) {
+      int64_t length, int64_t max, int64_t unit,
+      std::optional<int64_t> min = std::nullopt) {
     // Rely on truncating (floor) behaviour.
     int64_t real_max = (max / unit) * unit;
 
@@ -113,6 +118,34 @@ class Utility {
       }
       unallocated = remainder;
     }
+
+    // The last length is the smallest, by construction. But we might need to
+    // borrow from several previous lengths to get it up to the minimum size.
+    if (min &&
+        lengths.back() < *min) {
+      DCHECK(*min <= max);
+
+      int64_t real_min = unit * ((*min) / unit);
+      int64_t overflow = real_min - lengths.back();
+
+      for (auto it = lengths.rbegin() + 1; it < lengths.rend(); ++it) {
+        int64_t borrowable = (*it) - real_min;
+        if (borrowable <= overflow) {
+          (*it) -= borrowable;
+          lengths.back() += borrowable;
+          overflow -= borrowable;
+        } else {
+          (*it) -= overflow;
+          lengths.back() += overflow;
+          break;
+        }
+      }
+      if (overflow > 0) {
+        // Could not satisfy the minimum.
+        LOG(ERROR) << "Could not satisfy requirement for minimum value";
+      }
+    }
+
     return lengths;
   }
 };

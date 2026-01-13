@@ -229,6 +229,13 @@ class PhysicalPropertiesDatabase {
       const geometry::Layer &encap_layer,
       const geometry::Layer &via_layer) const;
 
+  // This convenience function returns the size of an encap that has to cover a
+  // via above and below:
+  ViaEncapInfo TypicalViaEncap(
+      const std::string &bottom_via_layer,
+      const std::string &encap_layer,
+      const std::string &top_via_layer) const;
+
   // TODO(aryap): Port these from RoutingGrid to here.
   // std::optional<double> FindViaStackCost(
   //     const geometry::Layer &lhs, const geometry::Layer &rhs) const;

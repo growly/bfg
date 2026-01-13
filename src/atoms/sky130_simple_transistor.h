@@ -143,6 +143,7 @@ class Sky130SimpleTransistor : public Atom {
   std::string PolyConnectionLayer() const { return "polycon.drawing"; }
 
   std::string FirstMetalLayer() const { return "li.drawing"; }
+  std::string FirstMetalViaLayer() const { return "mcon.drawing"; }
 
   int64_t TransistorWidth() const {
     return design_db_->physical_db().ToInternalUnits(parameters_.width_nm);
@@ -167,9 +168,13 @@ class Sky130SimpleTransistor : public Atom {
   geometry::Rectangle PolyContactingVia(const geometry::Point &centre) const;
 
   // Determine the minimum extension of poly required such that, after placing a
-  // tab there, the kMetalLayer via on that tab is at minimum separation from
-  // the closest via to the tab on the diff.
-  int64_t FigurePolyDiffExtension(int64_t separation_to_metal_via_centre) const;
+  // tab at the end, the kMetalLayer via on that tab is at minimum separation
+  // from the closest via to the tab on the diff.
+  int64_t FigurePolyDiffExtension(
+      int64_t separation_to_metal_via_centre,
+      bool allow_horizontal_metal_channel = false) const;
+
+  int64_t RequiredMetalSpacingForChannel() const;
 
   std::string TerminalPortName(const Terminal &terminal) const;
 

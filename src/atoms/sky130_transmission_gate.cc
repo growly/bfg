@@ -402,17 +402,22 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
   return circuit.release();
 }
 
-int64_t Sky130TransmissionGate::FigureTopPadding(int64_t pmos_poly_top_y)
-    const {
+int64_t Sky130TransmissionGate::MinPolyBoundarySeparation() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   const auto &poly_rules = db.Rules(pfet_generator_->PolyLayer());
   int64_t minimum = poly_rules.min_separation / 2;
-
   if (parameters_.min_poly_boundary_separation_nm) {
     minimum = std::max(
         minimum,
         db.ToInternalUnits(*parameters_.min_poly_boundary_separation_nm));
   }
+  return minimum;
+}
+
+int64_t Sky130TransmissionGate::FigureTopPadding(int64_t pmos_poly_top_y)
+    const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  int64_t minimum = MinPolyBoundarySeparation();
 
   if (!parameters_.vertical_tab_pitch_nm) {
     return minimum;
@@ -447,7 +452,7 @@ int64_t Sky130TransmissionGate::FigureBottomPadding() const {
   }
   int64_t tab_pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
   int64_t tab_offset = db.ToInternalUnits(
-      parameters_.vertical_tab_offset_nm.value_or(0)) % tab_pitch;
+      parameters_.vertical_tab_offset_nm.value_or(0));
 
   int64_t tab_height = NMOSPolyTabHeight();
 
@@ -458,16 +463,24 @@ int64_t Sky130TransmissionGate::FigureBottomPadding() const {
   return padding;
 }
 
-int64_t Sky130TransmissionGate::NextYOnTabGrid(int64_t current_y) const {
+std::optional<int64_t> Sky130TransmissionGate::TabPitch() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   if (!parameters_.vertical_tab_pitch_nm) {
+    return std::nullopt;
+  }
+  return db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
+}
+
+int64_t Sky130TransmissionGate::NextYOnTabGrid(int64_t current_y) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  auto tab_pitch = TabPitch();
+  if (!tab_pitch) {
     return current_y;
   }
-  int64_t pitch = db.ToInternalUnits(*parameters_.vertical_tab_pitch_nm);
   int64_t offset = db.ToInternalUnits(
-      parameters_.vertical_tab_offset_nm.value_or(0)) % pitch;
+      parameters_.vertical_tab_offset_nm.value_or(0));
 
-  return Utility::NextMultiple(current_y - offset, pitch) + offset;
+  return Utility::NextMultiple(current_y - offset, *tab_pitch) + offset;
 }
 
 int64_t Sky130TransmissionGate::NextYOnNMOSLowerLeftGrid(int64_t current_y)
@@ -477,17 +490,19 @@ int64_t Sky130TransmissionGate::NextYOnNMOSLowerLeftGrid(int64_t current_y)
       *parameters_.nmos_ll_vertical_pitch_nm == 0) {
     return current_y;
   }
-  int64_t pitch = db.ToInternalUnits(*parameters_.nmos_ll_vertical_pitch_nm);
+  int64_t tab_pitch = db.ToInternalUnits(
+      *parameters_.nmos_ll_vertical_pitch_nm);
   int64_t offset = db.ToInternalUnits(
-      parameters_.nmos_ll_vertical_offset_nm.value_or(0)) % pitch;
+      parameters_.nmos_ll_vertical_offset_nm.value_or(0));
 
-  return Utility::NextMultiple(current_y - offset, pitch) + offset;
+  return Utility::NextMultiple(current_y - offset, tab_pitch) + offset;
 }
 
 // Building the cell up from y = 0 and assuming the NMOS transistor
 // construction (including the poly) gets up to current_y, find the the
 // necessary cmos_gap so that when the PMOS construction is added (including
-// any tab placement, minimum cell height) all constraints are honoured.
+// any tab placement, metal channels, minimum cell height) all constraints are
+// honoured.
 //
 // TODO(aryap): This assumes that the PMOS to diff separation rule is the same
 // as the PMOS to diff minimum enclosure rule. That's probably not true in all
@@ -568,17 +583,45 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(
     }
   }
 
+  // This is honky. Half-baked. Smooth-brained. No bueno. But it works, just.
+  //
   // If the cell has a minimum height, the minimum y position must be adjusted
   // so that, after adding the PMOS transistor and tab (if any), the cell at
   // least meets that height. We determine the actual min_y when the tab needs
   // to align to the grid below, but we do not need to consider it here since
   // all we need is a minimum y value to meet the constraint. (Any adjustment
-  // to align the tab to the grid will have to increase the minimum y.)
+  // to align the tab to the grid will have to increase the minimum y.) Note
+  // that this means we will almost certainly be making the cell too tall in
+  // that case.
+  //
+  // Ok but also, to figure the CMOS gap when there is a poly pitch to which
+  // the tabs must accord, first assume that the poly connector is maximally
+  // sized to accommodate the pitch (pitch - 1), then figure the minimum y
+  // value needed to meet the needed cell height. Then use that minimum y to
+  // figure the upper tab connect height, and use that value for the top
+  // section height, determining the actual minimum y value.
+  //
+  // TODO(aryap): One path through this works, but I suspect I have added a lot
+  // of bugs because I have not thought this through.
   if (parameters_.min_cell_height_nm) {
-    min_y = std::max(
-        min_y,
-        db.ToInternalUnits(*parameters_.min_cell_height_nm) - (
-            PMOSPolyHeight() + (PMOSHasAnyTab() ? PMOSPolyTabHeight() : 0)));
+    int64_t min_cell_height = db.ToInternalUnits(*parameters_.min_cell_height_nm);
+    int64_t top_section_height = PMOSPolyHeight() + MinPolyBoundarySeparation();
+    int64_t channel_spacing = parameters_.allow_metal_channel_top ?
+        pfet_generator_->RequiredMetalSpacingForChannel() : 0;
+    if (PMOSHasLowerTab()) {
+      top_section_height += PMOSPolyTabHeight() +
+          FigurePMOSLowerTabConnectorHeight() + channel_spacing;
+    } else if (PMOSHasUpperTab()) {
+      top_section_height += PMOSPolyTabHeight();
+      int64_t max_top_section_height = top_section_height + (
+          TabPitch().value_or(1) - 1) + channel_spacing;
+      int64_t min_min_y = min_cell_height - max_top_section_height;
+
+      // Re-figures the channel spacing, if any.
+      top_section_height += FigurePMOSUpperTabConnectorHeight(
+          min_min_y + PMOSPolyHeight());
+    }
+    min_y = std::max(min_y, min_cell_height - top_section_height);
   }
 
   // If the PMOS transistor has a lower-side tab, we might need to add a gap
@@ -595,11 +638,14 @@ int64_t Sky130TransmissionGate::FigureCMOSGap(
 int64_t Sky130TransmissionGate::FigureNMOSLowerTabConnectorHeight(
     int64_t nmos_bottom_tab_top_y) const {
   int64_t minimum = 0;
-  if (parameters_.tabs_should_avoid_nearest_vias) {
+  if (parameters_.tabs_should_avoid_nearest_vias ||
+      parameters_.allow_metal_channel_bottom) {
     int64_t extra_necessary =
-        nfet_generator_->FigurePolyDiffExtension(NMOSPolyTabHeight() / 2);
+        nfet_generator_->FigurePolyDiffExtension(
+            NMOSPolyTabHeight() / 2, parameters_.allow_metal_channel_bottom);
     minimum = std::max(extra_necessary - NMOSPolyOverhangBottom(), 0L);
   }
+
   // The poly tab must be on the bottom, so the space to the lower-left diff
   // point is set by the tab connector height:
   if (parameters_.nmos_ll_vertical_pitch_nm) {
@@ -622,7 +668,8 @@ int64_t Sky130TransmissionGate::FigureNMOSUpperTabConnectorHeight(
 
   int64_t extra_extension = 0;
   if (parameters_.tabs_should_avoid_nearest_vias) {
-    extra_extension = nfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
+    extra_extension =
+        nfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
         NMOSPolyOverhangTop();
   }
 
@@ -645,9 +692,13 @@ int64_t Sky130TransmissionGate::FigurePMOSUpperTabConnectorHeight(
   int64_t tab_centre = pmos_poly_top_y + tab_height / 2;
 
   int64_t extra_extension = 0;
-  if (parameters_.tabs_should_avoid_nearest_vias) {
-    extra_extension = pfet_generator_->FigurePolyDiffExtension(tab_height / 2) -
-        PMOSPolyOverhangTop();
+  if (parameters_.tabs_should_avoid_nearest_vias ||
+      parameters_.allow_metal_channel_top) {
+    extra_extension = std::max(
+        pfet_generator_->FigurePolyDiffExtension(
+            tab_height / 2, parameters_.allow_metal_channel_top) -
+        PMOSPolyOverhangTop(),
+        0L);
   }
 
   int64_t next_on_grid = NextYOnTabGrid(tab_centre + extra_extension);

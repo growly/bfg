@@ -1,0 +1,22 @@
+{
+  "name": "bfg-explorer",
+  "version": "1.0.0",
+  "description": "Web-based parameter explorer for BFG generators",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "build": "npm run build:frontend && npm run build:backend"
+  },
+  "keywords": ["bfg", "vlsi", "layout", "generator"],
+  "author": "",
+  "license": "ISC"
+}

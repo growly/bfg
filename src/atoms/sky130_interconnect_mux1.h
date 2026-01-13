@@ -1,5 +1,5 @@
-#ifndef ATOMS_SKY130_INTERCONNECT_MUX6_H_
-#define ATOMS_SKY130_INTERCONNECT_MUX6_H_
+#ifndef ATOMS_SKY130_INTERCONNECT_MUX1_H_
+#define ATOMS_SKY130_INTERCONNECT_MUX1_H_
 
 #include "atom.h"
 #include "sky130_parameters.h"
@@ -7,7 +7,7 @@
 #include "../circuit.h"
 #include "../layout.h"
 #include "../geometry/instance.h"
-#include "proto/parameters/sky130_interconnect_mux6.pb.h"
+#include "proto/parameters/sky130_interconnect_mux1.pb.h"
 #include "sky130_transmission_gate_stack.h"
 
 namespace bfg {
@@ -16,7 +16,7 @@ class DesignDatabase;
 
 namespace atoms {
 
-// The mux6 we will build for interconnect (and the family of components like
+// The mux1 we will build for interconnect (and the family of components like
 // it) will look like:
 //
 //           +-+------------------------------+-+----+
@@ -69,7 +69,7 @@ namespace atoms {
 // TODO(aryap): We can also insert buffers into the vertical routing channel on
 // the left in order to buffer long wires travelling through.
 
-class Sky130InterconnectMux6 : public Atom {
+class Sky130InterconnectMux1 : public Atom {
  public:
   struct Parameters : public Sky130Parameters {
     // This is the default for the PDK.
@@ -84,6 +84,10 @@ class Sky130InterconnectMux6 : public Atom {
 
     std::optional<uint64_t> horizontal_pitch_nm = 460;
 
+    // TODO(aryap): This should be left as nullopt by default and filled in
+    // with a value computed from the number of inputs. We basically find the
+    // smallest multiple of the unit tile width that will fit N vertical
+    // tracks.
     std::optional<uint64_t> vertical_routing_channel_width_nm =
         ((8 * 340) / 460 + 1) * 460;
 
@@ -103,28 +107,57 @@ class Sky130InterconnectMux6 : public Atom {
     // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
     uint16_t num_outputs = 1;
 
-    void ToProto(proto::parameters::Sky130InterconnectMux6 *pb) const;
-    void FromProto(const proto::parameters::Sky130InterconnectMux6 &pb);
+    std::optional<uint64_t> min_transmission_gate_stack_height_nm = 5100;
+
+    // Adds rows of just decap cells at standard height to the top/bottom, so
+    // that this mux might match others next to it.
+    // FIXME(aryap): Add space for this.
+    uint64_t additional_decap_rows_top = 0;
+    uint64_t additional_decap_rows_bottom = 0;
+
+    void ToProto(proto::parameters::Sky130InterconnectMux1 *pb) const;
+    void FromProto(const proto::parameters::Sky130InterconnectMux1 &pb);
   };
 
-  static constexpr char kMuxOutputName[] = "Z";
+  static constexpr char kStackOutputName[] = "Z";
+  static constexpr char kMuxOutputName[] = "OUT";
 
-  Sky130InterconnectMux6(
+  Sky130InterconnectMux1(
       const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters) {
     const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+    // met2 control lines dictate the poly pitch:
+    //
+    //              met2      met2
+    //                |        |
+    //   +----+       | +----+ |
+    // +<---  |       +<---  | |
+    // | ++  ++         ++  ++ |
+    // |  |  | poly      |  |  |
+    // |  |  |           |  |  |
+    // |  |  |           |  |  |
+    // |  |  |      poly |  |  |
+    // | ++  ++         ++  ++ |
+    // | |  --->+       |  --->+
+    // | +----+ |       +----+ 
+    // |        |         met1 encap at end
+    // met2     met2
+    //   <------------------------------->
+    //           2x poly pitch
+    //
     // Correct any input parameters as needed:
     if (parameters_.num_outputs == 2) {
       int64_t min_poly_pitch = std::max({
           // Closest pitch from rulebook.
           db.Rules("poly.drawing").min_pitch,
-          // Closest they can to accommodate two horizontal met1 via encaps.
+          // Closest they be can to accommodate two horizontal met1 via encaps.
           db.Rules("met1.drawing").min_separation +
               db.Rules("met2.drawing").min_pitch / 2 +
               std::max(
                   db.TypicalViaEncap("met1.drawing", "via1.drawing").length,
-                  db.TypicalViaEncap("met1.drawing", "mcon.drawing").length)
+                  db.TypicalViaEncap("met1.drawing", "mcon.drawing").length),
+          2 * db.Rules("met2.drawing").min_pitch
       });
       uint64_t min_poly_pitch_nm = static_cast<uint64_t>(
           db.ToExternalUnits(min_poly_pitch));
@@ -138,41 +171,63 @@ class Sky130InterconnectMux6 : public Atom {
   // merge outputs directly into parent cell.
   bfg::Cell *Generate() override;
 
- private:
+ protected:
   void ConfigureSky130Parameters(Sky130Parameters *base_params) const {
     base_params->power_net = parameters_.power_net;
     base_params->ground_net = parameters_.ground_net;
   }
 
-  std::vector<std::vector<std::string>> BuildSingleOutputNetSequences() const;
-  std::vector<std::vector<std::string>> BuildDualOutputNetSequences() const;
-  Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
-    geometry::Instance *vertical_neighbour) const;
+  virtual std::vector<std::vector<std::string>> BuildNetSequences() const;
+
+  virtual Sky130TransmissionGateStack::Parameters BuildTransmissionGateParams(
+      geometry::Instance *vertical_neighbour) const;
 
   int64_t FigurePolyBoundarySeparationForMux(
       bfg::Layout *neighbour_layout) const;
 
+  virtual uint32_t NumOutputs() const {
+    return kNumOutputs;
+  }
+  virtual uint32_t NumMemories() const {
+    // For the single-output case, there is one control line per input.
+    return parameters_.num_inputs;
+  }
+  virtual uint32_t NumMemoryColumns() const {
+    return 1;
+  }
+  virtual std::optional<std::string> StackTopLiChannelNet() const {
+    return std::nullopt;
+  }
+  virtual std::optional<std::string> StackBottomLiChannelNet() const {
+    return std::nullopt;
+  }
+
+  // Stacks memories vertically, using the given number of columns and rows,
+  // and returns them in scan-chain order (which is a snake sort of situation).
   std::vector<geometry::Instance*> AddMemoriesVertically(
-      size_t first_row, uint32_t count, uint32_t columns, MemoryBank *bank);
+    size_t first_row,
+    uint32_t num_rows,
+    uint32_t columns,
+    MemoryBank *bank,
+    bool alternate_scan = false);
   geometry::Instance *AddClockBufferRight(
       const std::string &suffix, size_t row, MemoryBank *bank);
-  geometry::Instance *AddTransmissionGateStackRight(
-      geometry::Instance *vertical_neighbour, size_t row, MemoryBank *bank);
+
   geometry::Instance *AddOutputBufferRight(
       const std::string &suffix, uint32_t height, size_t row, MemoryBank *bank);
 
+  virtual void AssembleOutputRow(
+      size_t output_row_index,
+      int64_t left_edge_x,
+      MemoryBank *bank,
+      geometry::Instance *vertical_neighbour,
+      int64_t *row_height,
+      geometry::Instance **generated_stack,
+      std::vector<geometry::Instance*> *output_bufs);
+
   Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
 
-  void DrawRoutesForSingleOutput(
-      const MemoryBank &bank,
-      const std::vector<geometry::Instance*> &top_memories,
-      const std::vector<geometry::Instance*> &bottom_memories,
-      const std::vector<geometry::Instance*> &clk_bufs,
-      geometry::Instance *stack,
-      geometry::Instance *output_buffer,
-      Layout *layout,
-      Circuit *circuit) const;
-  void DrawRoutesForDualOutputs(
+  virtual void DrawRoutes(
       const MemoryBank &bank,
       const std::vector<geometry::Instance*> &top_memories,
       const std::vector<geometry::Instance*> &bottom_memories,
@@ -182,7 +237,7 @@ class Sky130InterconnectMux6 : public Atom {
       Layout *layout,
       Circuit *circuit) const;
 
-  void DrawScanChain(
+  virtual void DrawScanChain(
       const std::vector<geometry::Instance*> &all_memories,
       const std::map<geometry::Instance*, std::string> &memory_output_nets,
       int64_t num_ff_bottom,
@@ -191,46 +246,54 @@ class Sky130InterconnectMux6 : public Atom {
       Layout *layout,
       Circuit *circuit) const;
 
-  void DrawOutput(geometry::Instance *stack,
-                  geometry::Instance *output_buffer,
-                  int64_t *mux_pre_buffer_y,
-                  int64_t output_port_x,
-                  Layout *layout,
-                  Circuit *circuit) const;
+  virtual void DrawOutput(
+      const std::vector<geometry::Instance*> &output_buffers,
+      geometry::Instance *stack,
+      int64_t *mux_pre_buffer_y,
+      int64_t output_port_x,
+      Layout *layout,
+      Circuit *circuit) const;
 
-  void DrawInputs(geometry::Instance *stack,
-                  int64_t mux_pre_buffer_y,
-                  int64_t vertical_x_left,
-                  Layout *layout,
-                  Circuit *circuit) const;
-
-  void DrawPowerAndGround(const MemoryBank &bank,
-                          int64_t start_column_x,
+  virtual void DrawInputs(geometry::Instance *stack,
+                          int64_t mux_pre_buffer_y,
+                          int64_t vertical_x_left,
+                          bool allow_mux_pre_buffer_y_use,
                           Layout *layout,
                           Circuit *circuit) const;
 
-  void DrawClock(const MemoryBank &bank,
-                 const std::vector<geometry::Instance*> &top_memories,
-                 const std::vector<geometry::Instance*> &bottom_memories,
-                 const std::vector<geometry::Instance*> &clk_bufs,
-                 int64_t input_clk_x,
-                 int64_t clk_x,
-                 int64_t clk_i_x,
-                 Layout *layout,
-                 Circuit *circuit) const;
+  virtual void DrawPowerAndGround(const MemoryBank &bank,
+                                  int64_t start_column_x,
+                                  Layout *layout,
+                                  Circuit *circuit) const;
 
-  void ConnectVertically(const geometry::Point &top,
-                         const geometry::Point &bottom,
-                         int64_t vertical_x,
-                         bfg::Layout *layout) const;
+  virtual void DrawClock(
+      const MemoryBank &bank,
+      const std::vector<geometry::Instance*> &top_memories,
+      const std::vector<geometry::Instance*> &bottom_memories,
+      const std::vector<geometry::Instance*> &clk_bufs,
+      int64_t input_clk_x,
+      int64_t clk_x,
+      int64_t clk_i_x,
+      Layout *layout,
+      Circuit *circuit) const;
+
+  std::vector<geometry::Point> ConnectVertically(const geometry::Point &top,
+                                                 const geometry::Point &bottom,
+                                                 int64_t vertical_x,
+                                                 bfg::Layout *layout,
+                                                 const std::string &net) const;
   void AddPolyconAndLi(const geometry::Point tab_centre,
                        bool bulges_up,
                        bfg::Layout *layout) const;
 
   Parameters parameters_;
+
+ private:
+  // This is fixed for this implementation.
+  static constexpr int kNumOutputs = 1;
 };
 
 }  // namespace atoms
 }  // namespace bfg
 
-#endif  // ATOMS_SKY130_INTERCONNECT_MUX6_H_
+#endif  // ATOMS_SKY130_INTERCONNECT_MUX1_H_

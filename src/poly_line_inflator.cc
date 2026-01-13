@@ -23,26 +23,6 @@ using geometry::Polygon;
 using geometry::Point;
 using geometry::Rectangle;
 
-static bool IntersectsInBoundsAnyInRange(
-    const Line &candidate,
-    std::vector<Line>::const_reverse_iterator end,
-    std::vector<Line>::const_reverse_iterator start) {
-  for (std::vector<Line>::const_reverse_iterator it = end;
-       it != start;
-       it++) {
-    bool incident = false;
-    bool is_start_or_end = false;
-    Point intersection;
-    if (candidate.IntersectsInBounds(*it,
-                                     &incident,
-                                     &is_start_or_end,
-                                     &intersection)) {
-      return false;
-    }
-  }
-  return false;
-}
-
 Layout *PolyLineInflator::Inflate(
     const RoutingGrid &routing_grid,
     const PolyLineCell &poly_line_cell) {
@@ -188,11 +168,18 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
     int64_t half_side = static_cast<int64_t>(
         std::max(polyline.overhang_start(), polyline.overhang_end()));
     LOG(WARNING) << "Inflating empty PolyLine as Point";
-    return InflatePoint(polyline.start(), half_side, half_side);
+    auto point_to_polygon = InflatePoint(
+        polyline.start(), half_side, half_side);
+    if (point_to_polygon) {
+      point_to_polygon->set_net(polyline.net());
+      point_to_polygon->set_is_connectable(polyline.is_connectable());
+    }
+    return point_to_polygon;
   }
   Polygon polygon;
   // Carry over the net label.
   polygon.set_net(polyline.net());
+  polygon.set_is_connectable(polyline.is_connectable());
 
   std::vector<Line> line_stack;
   std::vector<Line> forward_lines;
@@ -219,11 +206,16 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
       line.StretchEnd(polyline.overhang_end());
     }
 
+    // We divide the intended width by 2, since the central axis line will be
+    // shifted by this much in both directions to find the bounding edge lines.
+    // NOTE(aryap): This division may lead to precision loss, when converting
+    // to/from floating point. We could fix that by track (width - half_width)
+    // for each segment.
     double width = segment.width == 0 ?
         100 : static_cast<double>(segment.width);
+    double half_width = static_cast<double>(width) / 2.0;
 
-    std::unique_ptr<Line> shifted_line(GenerateShiftedLine(line, width));
-    forward_lines.push_back(*shifted_line);
+    forward_lines.push_back(Line::Shifted(line, half_width));
 
     start = segment.end;
   }
@@ -235,11 +227,11 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
     line.Reverse();
 
     const LineSegment &segment = polyline.segments().at(i);
+
     double width = segment.width == 0 
         ? 100 : static_cast<double>(segment.width);
-
-    std::unique_ptr<Line> shifted_line(GenerateShiftedLine(line, width));
-    reverse_lines.push_back(*shifted_line);
+    double half_width = static_cast<double>(width) / 2.0;
+    reverse_lines.push_back(Line::Shifted(line, half_width));
   }
 
   AppendIntersections(forward_lines, &polygon);
@@ -247,41 +239,6 @@ std::optional<Polygon> PolyLineInflator::InflatePolyLine(
  
   return polygon;
 }
-
-Line *PolyLineInflator::GenerateShiftedLine(
-    const Line &source, double width,
-    double extension_source, double extension_end) {
-  // TODO(aryap): Integer division can lead to precision loss here,
-  // so we *should* make sure we recover it.
-  double half_width = static_cast<double>(width) / 2.0;
-
-  double theta = source.AngleToHorizon();
-
-  int64_t shift_x = static_cast<int64_t>(std::sin(theta) * half_width);
-  int64_t shift_y = static_cast<int64_t>(std::cos(theta) * half_width);
-
-  Line *shifted_line = new Line(source);
-  shifted_line->Shift(-shift_x, shift_y);
-
-  if (extension_source > 0.0) {
-    int64_t extension_x =
-        static_cast<int64_t>(std::cos(theta) * extension_source);
-    int64_t extension_y =
-        static_cast<int64_t>(std::sin(theta) * extension_source);
-    shifted_line->ShiftStart(extension_x, extension_y);
-  }
-
-  if (extension_end > 0.0) {
-    int64_t extension_x =
-        static_cast<int64_t>(std::cos(theta) * extension_end);
-    int64_t extension_y =
-        static_cast<int64_t>(std::sin(theta) * extension_end);
-    shifted_line->ShiftEnd(extension_x, extension_y);
-  }
-
-  return shifted_line;
-}
-
 
 // There is a very real problem when a line about-faces and goes back the
 // way it came:
@@ -328,7 +285,7 @@ Line *PolyLineInflator::GenerateShiftedLine(
 // just be able to check if, immediately following an about-face, the shifted
 // line we've generated intersects with any previously generated line, in
 // bounds.
- 
+//
 void PolyLineInflator::AppendIntersections(
     const std::vector<Line> &shifted_lines,
     Polygon *polygon) {
@@ -338,86 +295,11 @@ void PolyLineInflator::AppendIntersections(
   // Always add the start vertex.
   polygon->AddVertex(shifted_lines.front().start());
 
-  for (size_t i = 1; i < shifted_lines.size(); ++i) {
-    const Line &current_line = shifted_lines.at(i);
-    const Line &last_line = shifted_lines.at(i - 1);
+  std::vector<Point> intersections;
+  Line::AppendIntersections(shifted_lines, &intersections);
 
-    if (Line::AreAntiParallel(current_line, last_line)) {
-      // Line turns 180 degrees to about-face. If this happens in the middle of
-      // a line in one direction then the line has a kink in it and we have to
-      //  - check for intersections of the current line with the line before
-      //  last; 
-      //  - check for inter
-      //  - check for intersections of the _next line_ with the one before last
-      //  (also in bounds).
-      //
-      // We have to assume that there are no back-to-back parallel or
-      // anti-parallel lines to simplify this considerably. This invariant must
-      // be enforced by the Line itself.
-      if (i < shifted_lines.size() - 1) {
-        const Line &next_line = shifted_lines.at(i + 1);
-
-        bool incident = false;
-        bool ignored = false;
-        Point intersection;
-        if (next_line.IntersectsInBounds(last_line,
-                                         &incident,
-                                         &ignored,
-                                         &intersection)) {
-          polygon->AddVertex(intersection);
-          // Also skip the next line, since we've already effectively found the
-          // intersection point it would yield.
-          ++i;
-          continue;
-        }
-      }
-
-      if (i >= 2) {
-        const Line &before_last_line = shifted_lines.at(i - 2);
-
-        bool incident = false;
-        Point intersection;
-        if (before_last_line.IntersectsInMutualBounds(current_line,
-                                                      &incident,
-                                                      &intersection)) {
-          // Have to replace the last polygon vertex with this intersection
-          // instead:
-          polygon->RemoveLastVertex();
-          polygon->AddVertex(intersection);
-          continue;
-        }
-      }
-    }
-
-    Point intersection;
-    bool incident;
-    if (Line::Intersect(last_line,
-                        current_line,
-                        &incident,
-                        &intersection)) {
-      if (!incident) {
-        polygon->AddVertex(intersection);
-      }
-    } else {
-      // The lines never intersect, which means they're parallel or
-      // anti-parallel.  That also means that we can simply insert the end of
-      // the last line and the start of the next line as additional vertices to
-      // join the widths of the two:
-      //
-      //          v start
-      //          +-----------+
-      //            next ^
-      // ---------+           +----------
-      // last ^   ^ end
-      //
-      //
-      //      last ---------+ < end
-      //
-      //      next ---------+ <start
-      //
-      polygon->AddVertex(last_line.end());
-      polygon->AddVertex(current_line.start());
-    }
+  for (const auto &point : intersections) {
+    polygon->AddVertex(point);
   }
 
   // Always add the final vertex..

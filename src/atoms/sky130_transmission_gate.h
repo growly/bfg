@@ -34,8 +34,8 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> min_cell_height_nm;
 
-    std::optional<uint64_t> vertical_tab_pitch_nm = 340;
-    std::optional<int64_t> vertical_tab_offset_nm = 0;
+    std::optional<uint64_t> vertical_tab_pitch_nm = 170;
+    std::optional<int64_t> vertical_tab_offset_nm = 170;
     
     std::optional<uint64_t> poly_pitch_nm = 500;
 
@@ -46,6 +46,12 @@ class Sky130TransmissionGate : public Atom {
 
     std::optional<uint64_t> min_p_tab_diff_separation_nm;
     std::optional<uint64_t> min_n_tab_diff_separation_nm;
+
+    // Position tabs or the cell boundary so that there is room for a min-width
+    // horizontal li wire above (or below) the vertical li wires connecting the
+    // sources/drains.
+    bool allow_metal_channel_top = false;
+    bool allow_metal_channel_bottom = false;
 
     std::optional<uint64_t> min_poly_boundary_separation_nm;
 
@@ -71,6 +77,8 @@ class Sky130TransmissionGate : public Atom {
       const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters) {
+
+
     // There's a PMOS transistor and there's an NMOS transistor.
     Sky130SimpleTransistor::Parameters nfet_params = {
       .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
@@ -249,6 +257,7 @@ class Sky130TransmissionGate : public Atom {
   }
 
   int64_t NextYOnTabGrid(int64_t current_y) const;
+  std::optional<int64_t> TabPitch() const;
 
   int64_t NextYOnNMOSLowerLeftGrid(int64_t current_y) const;
 
@@ -261,6 +270,7 @@ class Sky130TransmissionGate : public Atom {
   int64_t FigureCMOSGap(
       int64_t nmos_centre_y, int64_t current_y) const;
 
+  int64_t MinPolyBoundarySeparation() const;
   int64_t FigureTopPadding(int64_t pmos_poly_top_y) const;
 
   int64_t PMOSPolyHeight() const {

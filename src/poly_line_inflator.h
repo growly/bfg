@@ -45,24 +45,7 @@ class PolyLineInflator {
       const geometry::Point &point, int64_t horizontal, int64_t vertical);
 
  private:
-  // Shift the given line consistently (relative to its bearing) by half the
-  // 'width' amount. Add 'extension_source' to the start and 'extension_source'
-  // to end of the line's length.
-  geometry::Line *GenerateShiftedLine(
-      const geometry::Line &source, double width,
-      double extension_source, double extension_end);
-
-  geometry::Line *GenerateShiftedLine(
-      const geometry::Line &source, double width) {
-    return GenerateShiftedLine(source, width, 0.0, 0.0);
-  }
-
-  bool IntersectsInBoundsAnyInRange(
-      const geometry::Line &candidate,
-      std::vector<geometry::Line>::const_iterator start,
-      std::vector<geometry::Line>::const_iterator end);
-
-  void AppendIntersections(
+  static void AppendIntersections(
     const std::vector<geometry::Line> &shifted_lines,
     geometry::Polygon *polygon);
 

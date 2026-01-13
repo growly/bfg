@@ -449,6 +449,18 @@ ViaEncapInfo PhysicalPropertiesDatabase::TypicalViaEncap(
   };
 }
 
+ViaEncapInfo PhysicalPropertiesDatabase::TypicalViaEncap(
+      const std::string &bottom_via_layer,
+      const std::string &encap_layer,
+      const std::string &top_via_layer) const {
+  ViaEncapInfo top = TypicalViaEncap(encap_layer, top_via_layer);
+  ViaEncapInfo bottom = TypicalViaEncap(encap_layer, bottom_via_layer);
+  return ViaEncapInfo {
+      .length = std::max(top.length, bottom.length),
+      .width = std::max(top.width, bottom.width)
+  };
+}
+
 std::optional<std::vector<RoutingViaInfo>>
 PhysicalPropertiesDatabase::FindViaStack(
     const geometry::Layer &lhs, const geometry::Layer &rhs) const {

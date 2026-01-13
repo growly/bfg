@@ -167,6 +167,7 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .via_overhang = db->ToInternalUnits(80),
     .via_overhang_wide = db->ToInternalUnits(0)
   };
+  db->AddRules("li.drawing", "mcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "pcon.drawing", inter_constraints);
   db->AddRules("li.drawing", "ncon.drawing", inter_constraints);
   db->AddRules("li.drawing", "polycon.drawing", inter_constraints);
@@ -210,7 +211,6 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
     .via_overhang = db->ToInternalUnits(60),
     .via_overhang_wide = db->ToInternalUnits(30)
   };
-  db->AddRules("li.drawing", "mcon.drawing", inter_constraints);
   db->AddRules("met1.drawing", "mcon.drawing", inter_constraints);
   inter_constraints = {
     .min_separation = db->ToInternalUnits(50),

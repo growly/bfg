@@ -42,6 +42,32 @@ class Line {
 
   static bool PointsFormRectilinearLine(const Point &a, const Point &b);
 
+  // Shift the given line consistently (relative to its bearing) by half the
+  // 'width' amount. Add 'extension_source' to the start and 'extension_source'
+  // to end of the line's length.
+  static Line Shifted(
+      const Line &source, double width,
+      double extension_source, double extension_end);
+
+  static Line Shifted(
+      const Line &source, double width) {
+    return Shifted(source, width, 0.0, 0.0);
+  }
+
+  // TODO(aryap): I don't think this does anything. I don't remember what it was
+  // for.
+  static bool IntersectsInBoundsAnyInRange(
+      const Line &candidate,
+      std::vector<Line>::const_reverse_iterator end,
+      std::vector<Line>::const_reverse_iterator start);
+
+  // Emit intersections between successive pairs of lines to 'intersections'.
+  // Does not add the first or final points. Useful for making polygons.
+  static void AppendIntersections(
+    const std::vector<Line> &lines,
+    std::vector<Point> *intersections,
+    bool wraparound = false);
+
   Line() = default;
   Line(const Point &start, const Point &end)
       : start_(start), end_(end) {}

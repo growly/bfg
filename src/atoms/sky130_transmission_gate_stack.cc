@@ -230,12 +230,16 @@ void Sky130TransmissionGateStack::BuildSequence(
       .min_cell_height_nm = parameters_.min_height_nm,
       .vertical_tab_pitch_nm = parameters_.poly_contact_vertical_pitch_nm,
       .vertical_tab_offset_nm =
-          parameters_.poly_contact_vertical_pitch_nm.value_or(0) / 2,
+          parameters_.poly_contact_vertical_offset_nm.value_or(0),
       .poly_pitch_nm = parameters_.poly_pitch_nm,
       .nmos_ll_vertical_pitch_nm = parameters_.input_vertical_pitch_nm,
       .nmos_ll_vertical_offset_nm = -db.ToExternalUnits(
           diff_ll_to_bottom_via_centre_y) +
           parameters_.input_vertical_offset_nm.value_or(0),
+      .min_p_tab_diff_separation_nm = parameters_.min_p_tab_diff_separation_nm,
+      .min_n_tab_diff_separation_nm = parameters_.min_n_tab_diff_separation_nm,
+      .allow_metal_channel_top = parameters_.top_metal_channel_net.has_value(),
+      .allow_metal_channel_bottom = parameters_.bottom_metal_channel_net.has_value(),
       .min_poly_boundary_separation_nm =
           parameters_.min_poly_boundary_separation_nm,
       .min_furthest_via_distance_nm = min_via_distance_nm,
@@ -346,7 +350,6 @@ void Sky130TransmissionGateStack::BuildSequence(
   *gates_so_far += num_gates;
 }
 
-
 bfg::Cell *Sky130TransmissionGateStack::Generate() {
   std::unique_ptr<bfg::Cell> cell(
       new bfg::Cell(name_.empty() ? "sky130_transmission_gate_stack": name_));
@@ -431,6 +434,22 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
     cell->layout()->AddRectangle(new_tiling_bounds);
   }
   cell->layout()->SetTilingBounds(new_tiling_bounds);
+
+  // Add the top and/or bottom li channel, if present.
+  if (parameters_.top_metal_channel_net) {
+    AddHorizontalMetalChannel(
+        net_counts,
+        geometry::Compass::UPPER,
+        *parameters_.top_metal_channel_net,
+        cell->layout());
+  }
+  if (parameters_.bottom_metal_channel_net) {
+    AddHorizontalMetalChannel(
+        net_counts,
+        geometry::Compass::LOWER,
+        *parameters_.bottom_metal_channel_net,
+        cell->layout());
+  }
 
   // Add nwell.
   if (pdiff_cover) {
@@ -538,6 +557,11 @@ void Sky130TransmissionGateStack::ConnectDiffs(
   ScopedLayer scoped_layer(layout, kMetalLayer);
   geometry::PolyLine line = geometry::PolyLine({top, bottom});
 
+
+  // In C++23 this is just:
+  //line.SetWidth(parameters_.li_width_nm
+  //                  .and_then(db.ToInternalUnits)
+  //                  .value_or(metal_rules.min_width));
   if (parameters_.li_width_nm) {
     line.SetWidth(db.ToInternalUnits(*parameters_.li_width_nm));
   } else {
@@ -582,7 +606,90 @@ void Sky130TransmissionGateStack::ConnectDiffs(
   layout->SavePoint(
       absl::StrFormat("net_%s_via_bottom_%u", net, count),
       bottom);
+
+  geometry::Point wire_centre = wire->GetBoundingBox().centre();
+  layout->SavePoint(
+      absl::StrFormat("net_%s_edge_top_%u", net, count),
+      {wire_centre.x(), wire->GetBoundingBox().upper_right().y()});
+  layout->SavePoint(
+      absl::StrFormat("net_%s_edge_bottom_%u", net, count),
+      {wire_centre.x(), wire->GetBoundingBox().lower_left().y()});
   (*net_counts)[net] = count + 1;
+}
+
+void Sky130TransmissionGateStack::AddHorizontalMetalChannel(
+    const std::map<std::string, size_t> &net_counts,
+    const geometry::Compass &side,
+    const std::string &net,
+    Layout *layout) const {
+  // Assemble the connection points for the bars of the given net.
+  std::vector<geometry::Point> edge_points;
+
+  // TODO(aryap): We don't have to use the saved point mechanism for this,
+  // since we're using the data in this generator. We could just  emit the
+  // points directly. But that adds significant complexity to the function
+  // signature for very little real gain.
+  size_t count = net_counts.find(net)->second;
+  std::string top_or_bottom =
+      geometry::CompassHasNorth(side) ? "top" : "bottom";
+  for (int i = 0; i < count; ++i) {
+    geometry::Point point = layout->GetPointOrDie(
+        absl::StrFormat("net_%s_edge_%s_%u", net, top_or_bottom, i));
+    edge_points.push_back(point);
+  }
+
+  if (edge_points.size() < 2) {
+    LOG(WARNING) << "Will not draw horizontal metal channel for net with 1 "
+                 << "connection point";
+    // Nope.
+    return;
+  }
+
+  std::sort(
+      edge_points.begin(), edge_points.end(), geometry::Point::CompareXThenY);
+
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  const auto &metal_rules = db.Rules(kMetalLayer);
+
+  int64_t metal_width = parameters_.li_width_nm ?
+    metal_width = db.ToInternalUnits(*parameters_.li_width_nm) :
+    metal_rules.min_width;
+
+  const geometry::Point &first = edge_points.front();
+  const geometry::Point &last = edge_points.back();
+
+  int64_t y_level = edge_points.front().y() + (
+      geometry::CompassHasNorth(side) ? 1 : -1) * (
+      metal_width / 2 + metal_rules.min_separation);
+  geometry::Point p1 = {first.x(), y_level};
+  geometry::Point p2 = {last.x(), y_level};
+
+  ScopedLayer sl(layout, kMetalLayer);
+  geometry::PolyLine line({first, p1, p2, last});
+  line.SetWidth(metal_width);
+  line.set_net(net);
+
+  // p2 becomes a good place to put a port, by the way.
+  geometry::Polygon *wire = layout->AddPolyLine(line);
+
+  layout->SavePoint(absl::StrFormat("net_%s_rightmost_wire_centre", net), p2);
+
+  // Lastly, connect all the other wires.
+  //
+  // TODO(aryap): I'm trying to just touch the metal wire, but under some
+  // conditions (odd wire width), truncation on division by 2 will mean the
+  // wire doesn't touch. That is bad. Easy remedy is to just overlap the wire,
+  // but it's inelegant.
+  for (auto it = edge_points.begin() + 1; it < edge_points.end() - 1; ++it) {
+    const geometry::Point &source = *it;
+    geometry::Point dest = {
+        source.x(),
+        y_level + (geometry::CompassHasNorth(side) ? -1 : 1) * metal_width / 2};
+    geometry::PolyLine jog({source, dest});
+    jog.SetWidth(metal_width);
+    jog.set_net(net);
+    layout->AddPolyLine(jog);
+  }
 }
 
 }  // namespace atoms

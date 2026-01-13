@@ -72,6 +72,12 @@ class Instance : public Manipulable {
     point->Translate(lower_left_);
   }
 
+  Point ApplyInstanceTransforms(const Point &point) const {
+    Point mutated = point;
+    ApplyInstanceTransforms(&mutated);
+    return mutated;
+  }
+
   // Apply rotation in a way that keeps the lower_left_ point the same as it
   // currently is.
   void RotatePreservingLowerLeft(int32_t rotation_degrees_ccw);
@@ -229,6 +235,9 @@ class Instance : public Manipulable {
   // FIXME(aryap): This is confusing because "lower_left_" actually stores the
   // origin of the cell, not the "lower left" point. This should be renamed to
   // origin for instances.
+  //
+  // If you want the effecitve lower left point of the instance after all
+  // transformations, use GetBoundingBox().lower_left().
   Point lower_left_;
   // This is mirroring in the X axis.
   bool reflect_vertical_;
