@@ -30,9 +30,11 @@
 #include "tiles/slice.h"
 #include "tiles/reduced_slice.h"
 #include "tiles/interconnect.h"
+#include "tiles/interconnect_wire_block.h"
 #include "utility.h"
 
 #include "proto/parameters/interconnect.pb.h"
+#include "proto/parameters/interconnect_wire_block.pb.h"
 #include "proto/parameters/lut_b.pb.h"
 #include "proto/parameters/slice.pb.h"
 #include "proto/parameters/reduced_slice.pb.h"
@@ -148,6 +150,12 @@ int DispatchGenerator(
         bfg::proto::parameters::Interconnect,
         bfg::tiles::Interconnect::Parameters,
         bfg::tiles::Interconnect>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "InterconnectWireBlock") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::InterconnectWireBlock,
+        bfg::tiles::InterconnectWireBlock::Parameters,
+        bfg::tiles::InterconnectWireBlock>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Slice") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Slice,

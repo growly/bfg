@@ -268,13 +268,13 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
       30000,
       &oib_s2);
   
-  std::string oib_s2_mux_name = "oib_s2_mux_tall";
-  atoms::Sky130InterconnectMux1::Parameters oib_s2_params = {
-    .num_inputs = 5,
-    .num_outputs = 2,
-  };
-  atoms::Sky130InterconnectMux2 oib_s2_generator(oib_s2_params, design_db_);
-  Cell *oib_s2_cell = oib_s2_generator.GenerateIntoDatabase(oib_s2_mux_name);
+  //std::string oib_s2_mux_name = "oib_s2_mux_tall";
+  //atoms::Sky130InterconnectMux1::Parameters oib_s2_params = {
+  //  .num_inputs = 5,
+  //  .num_outputs = 2,
+  //};
+  //atoms::Sky130InterconnectMux2 oib_s2_generator(oib_s2_params, design_db_);
+  //Cell *oib_s2_cell = oib_s2_generator.GenerateIntoDatabase(oib_s2_mux_name);
 
 
   oib_s2.MoveTo(
