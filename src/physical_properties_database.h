@@ -150,6 +150,18 @@ class PhysicalPropertiesDatabase {
   int64_t ToInternalUnits(const int64_t external_value) const {
     return external_value * internal_units_per_external_;
   }
+  // Useful for all the parameters that optionally define something in external
+  // units (like nm), but that we usually use in an optional chain with
+  // .value_or after conversion to internal units. (Newer C++ provides built-in
+  // methods on std::optional for this.)
+  std::optional<int64_t> ToInternalUnits(
+      const std::optional<int64_t> &external_value) const {
+    if (!external_value) {
+      return std::nullopt;
+    }
+    return ToInternalUnits(*external_value);
+  }
+
   int64_t ToSquareInternalUnits(const int64_t external_square_value) const {
     return external_square_value *
         internal_units_per_external_ * internal_units_per_external_;
