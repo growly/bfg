@@ -41,18 +41,6 @@ namespace tiles {
 class InterconnectWireBlock : public Tile {
  public:
   struct Parameters {
-    RoutingTrackDirection direction = RoutingTrackDirection::kTrackVertical;
-
-    // Not sure if this can be automatically deduced, since other PDKs will
-    // have multiple horizontal/vertical layers anyway.
-    std::string horizontal_layer = "met1.drawing";
-    std::string vertical_layer = "met2.drawing";
-
-    // The length of the block is either its height or its width depending on
-    // whether the routing is vertical or horizontal (respectively).
-    uint64_t length;
-
-    // TODO(aryap): Complete.
     struct Bundle {
       int num_wires;
     };
@@ -63,6 +51,27 @@ class InterconnectWireBlock : public Tile {
       int num_bundles;
       Bundle bundle;
     };
+
+    RoutingTrackDirection direction = RoutingTrackDirection::kTrackVertical;
+
+    bool flip = false;
+
+    // Not sure if this can be automatically deduced, since other PDKs will
+    // have multiple horizontal/vertical layers anyway.
+    std::string horizontal_layer = "met1.drawing";
+    std::string via_layer = "via1.drawing";
+    std::string vertical_layer = "met2.drawing";
+
+    std::optional<int64_t> horizontal_wire_width_nm;
+    std::optional<int64_t> horizontal_wire_separation_nm;
+    std::optional<int64_t> horizontal_wire_offset_nm;
+    std::optional<int64_t> vertical_wire_width_nm;
+    std::optional<int64_t> vertical_wire_separation_nm;
+    std::optional<int64_t> vertical_wire_offset_nm;
+
+    // The length of the block is either its height or its width depending on
+    // whether the routing is vertical or horizontal (respectively).
+    uint64_t length = 10000;
 
     std::vector<Channel> channels = {
       Channel {
@@ -87,12 +96,33 @@ class InterconnectWireBlock : public Tile {
     void FromProto(const proto::parameters::InterconnectWireBlock &pb); 
   };
 
+  struct TrackTriple {
+    static TrackTriple Make(
+        const PhysicalPropertiesDatabase &db,
+        const std::optional<int64_t> &forced_width_nm,
+        const std::optional<int64_t> &forced_separation_nm,
+        const std::optional<int64_t> &forced_offset_nm,
+        const IntraLayerConstraints &rules);
+
+    int64_t width;
+    int64_t separation;
+    int64_t offset;
+  };
+
   InterconnectWireBlock(
       const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
-        parameters_(parameters) {
-    // Determine the layers to use based on the parameters:
-    DetermineLayersAndRules(parameters_.direction);
+        parameters_(parameters),
+        main_layer_(
+            parameters_.direction == RoutingTrackDirection::kTrackVertical ?
+            design_db->physical_db().GetLayer(parameters.vertical_layer) :
+            design_db->physical_db().GetLayer(parameters.horizontal_layer)),
+        off_layer_(
+            parameters_.direction == RoutingTrackDirection::kTrackVertical ?
+            design_db->physical_db().GetLayer(parameters.horizontal_layer) :
+            design_db->physical_db().GetLayer(parameters.vertical_layer)),
+        via_layer_(
+            design_db->physical_db().GetLayer(parameters.via_layer)) {
   }
 
   Cell *GenerateIntoDatabase(const std::string &name) override;
@@ -102,13 +132,17 @@ class InterconnectWireBlock : public Tile {
   //    Layout *layout);
 
  private:
-  void DetermineLayersAndRules(const RoutingTrackDirection &main_direction);
+  geometry::Point MakePoint(
+      int64_t main_axis_pos, int64_t off_axis_pos) const;
+
+  TrackTriple GetMainAxisTrackTriple() const;
+  TrackTriple GetOffAxisTrackTriple() const;
 
   Parameters parameters_;
 
-  const geometry::Layer &main_layer_;
-  const geometry::Layer &via_layer_;
-  const geometry::Layer &off_layer_;
+  const geometry::Layer main_layer_;
+  const geometry::Layer via_layer_;
+  const geometry::Layer off_layer_;
 };
 
 }  // namespace atoms
