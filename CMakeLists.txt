@@ -110,6 +110,7 @@ set(TILES_SRC
   ${PROJECT_SOURCE_DIR}/src/tiles/lut_b.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/slice.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/reduced_slice.cc
+  ${PROJECT_SOURCE_DIR}/src/tiles/interconnect_wire_block.cc
 )
 
 set(SKY130_ATOMS_SRC
