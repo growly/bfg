@@ -15,12 +15,128 @@ namespace tiles {
 
 void InterconnectWireBlock::Parameters::ToProto(
     proto::parameters::InterconnectWireBlock *pb) const {
-  // TODO(aryap): Complete.
+  switch (direction) {
+    case RoutingTrackDirection::kTrackHorizontal:
+      pb->set_direction(
+          proto::parameters::InterconnectWireBlock::TRACK_HORIZONTAL);
+      break;
+    case RoutingTrackDirection::kTrackVertical:
+      pb->set_direction(
+          proto::parameters::InterconnectWireBlock::TRACK_VERTICAL);
+      break;
+  }
+
+  pb->set_grow_down(grow_down);
+  pb->set_grow_left(grow_left);
+
+  pb->set_horizontal_layer(horizontal_layer);
+  pb->set_via_layer(via_layer);
+  pb->set_vertical_layer(vertical_layer);
+
+  if (horizontal_wire_width_nm) {
+    pb->set_horizontal_wire_width_nm(*horizontal_wire_width_nm);
+  }
+  if (horizontal_wire_pitch_nm) {
+    pb->set_horizontal_wire_pitch_nm(*horizontal_wire_pitch_nm);
+  }
+  if (horizontal_wire_offset_nm) {
+    pb->set_horizontal_wire_offset_nm(*horizontal_wire_offset_nm);
+  }
+  if (vertical_wire_width_nm) {
+    pb->set_vertical_wire_width_nm(*vertical_wire_width_nm);
+  }
+  if (vertical_wire_pitch_nm) {
+    pb->set_vertical_wire_pitch_nm(*vertical_wire_pitch_nm);
+  }
+  if (vertical_wire_offset_nm) {
+    pb->set_vertical_wire_offset_nm(*vertical_wire_offset_nm);
+  }
+
+  pb->set_length(length);
+
+  for (const Channel &channel : channels) {
+    auto *pb_channel = pb->add_channels();
+    pb_channel->set_name(channel.name);
+    for (int break_out_idx : channel.break_out) {
+      pb_channel->add_break_out(break_out_idx);
+    }
+    pb_channel->set_num_bundles(channel.num_bundles);
+    pb_channel->mutable_bundle()->set_num_wires(channel.bundle.num_wires);
+  }
 }
 
 void InterconnectWireBlock::Parameters::FromProto(
     const proto::parameters::InterconnectWireBlock &pb) {
-  // TODO(aryap): Complete.
+  if (pb.has_direction()) {
+    switch (pb.direction()) {
+      case proto::parameters::InterconnectWireBlock::TRACK_HORIZONTAL:
+        direction = RoutingTrackDirection::kTrackHorizontal;
+        break;
+      case proto::parameters::InterconnectWireBlock::TRACK_VERTICAL:
+        direction = RoutingTrackDirection::kTrackVertical;
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (pb.has_grow_down()) {
+    grow_down = pb.grow_down();
+  }
+  if (pb.has_grow_left()) {
+    grow_left = pb.grow_left();
+  }
+
+  if (pb.has_horizontal_layer()) {
+    horizontal_layer = pb.horizontal_layer();
+  }
+  if (pb.has_via_layer()) {
+    via_layer = pb.via_layer();
+  }
+  if (pb.has_vertical_layer()) {
+    vertical_layer = pb.vertical_layer();
+  }
+
+  if (pb.has_horizontal_wire_width_nm()) {
+    horizontal_wire_width_nm = pb.horizontal_wire_width_nm();
+  }
+  if (pb.has_horizontal_wire_pitch_nm()) {
+    horizontal_wire_pitch_nm = pb.horizontal_wire_pitch_nm();
+  }
+  if (pb.has_horizontal_wire_offset_nm()) {
+    horizontal_wire_offset_nm = pb.horizontal_wire_offset_nm();
+  }
+  if (pb.has_vertical_wire_width_nm()) {
+    vertical_wire_width_nm = pb.vertical_wire_width_nm();
+  }
+  if (pb.has_vertical_wire_pitch_nm()) {
+    vertical_wire_pitch_nm = pb.vertical_wire_pitch_nm();
+  }
+  if (pb.has_vertical_wire_offset_nm()) {
+    vertical_wire_offset_nm = pb.vertical_wire_offset_nm();
+  }
+
+  if (pb.has_length()) {
+    length = pb.length();
+  }
+
+  channels.clear();
+  for (const auto &pb_channel : pb.channels()) {
+    Channel channel;
+    if (pb_channel.has_name()) {
+      channel.name = pb_channel.name();
+    }
+    for (int break_out_idx : pb_channel.break_out()) {
+      channel.break_out.insert(break_out_idx);
+    }
+    if (pb_channel.has_num_bundles()) {
+      channel.num_bundles = pb_channel.num_bundles();
+    }
+    if (pb_channel.has_bundle() && pb_channel.bundle().has_num_wires()) {
+      channel.bundle.num_wires = pb_channel.bundle().num_wires();
+    }
+    channels.push_back(channel);
+  }
 }
 
 InterconnectWireBlock::TrackTriple
