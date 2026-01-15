@@ -619,9 +619,16 @@ void Layout::MakePin(
     const geometry::Point &centre,
     const std::string &layer_name) {
   int64_t layer = layer_name == "" ? 0 : physical_db_.GetLayer(layer_name);
+  return MakePin(net_name, centre, layer_name);
+}
+
+void Layout::MakePin(
+    const std::string &net_name,
+    const geometry::Point &centre,
+    const geometry::Layer &layer) {
   int64_t via_side = std::max(
-      physical_db_.Rules(layer_name).via_height,
-      physical_db_.Rules(layer_name).via_width);
+      physical_db_.Rules(layer).via_height,
+      physical_db_.Rules(layer).via_width);
   geometry::Port port = geometry::Port(
       centre, via_side, via_side, layer, net_name);
 

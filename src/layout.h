@@ -199,6 +199,9 @@ class Layout : public geometry::Manipulable {
   void MakePin(const std::string &net_name,
                const geometry::Point &centre,
                const std::string &pin_layer);
+  void MakePin(const std::string &net_name,
+               const geometry::Point &centre,
+               const geometry::Layer &layer);
 
   void MakePort(const std::string &net_name,
                 const geometry::Point &centre,

@@ -90,6 +90,10 @@ class Point : public AbstractShape, public Manipulable {
   void Rotate(double theta_radians);
   void Rotate(int32_t degrees_ccw) override;
 
+  Point Transpose() const {
+    return {y_, x_};
+  }
+
   // This is the same as creating a unit vector with the given angle and adding
   // it to this Point (treated as a Vector).
   void AddComponents(double amount, double angle_rads);

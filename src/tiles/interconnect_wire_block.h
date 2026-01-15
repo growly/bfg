@@ -38,6 +38,50 @@ namespace tiles {
 // |                                                                  |
 // +------------------------------------------------------------------+
 //
+// The naive way to arrange these wires requires extra spacing whenever there is
+// a wire encap. This requires greater wire spacing:
+//                              +----+
+//                            +--------+
+// ---------------------------+        |
+// ---------------------------+        |
+//                   +----+   +--------+
+//                 +--------+   ++  ++
+// ----------------+        |    |  |
+// ----------------+        |    |  |
+//        +----+   +--------+    |  |
+//      +--------+   ++  ++      |  |
+// -----+        |    |  |       |  |
+// -----+        |    |  |       |  |
+//      +--------+    |  |       |  |
+//        ++  ++      |  |       |  |
+//         |  |       |  |       |  |
+//
+//
+// There might be a way to make this more efficient. Permutation might be
+// possible if there are a great many wires, but for a small number it does not
+// avoid conflicts of geometrically close neighbours:
+//                              +----+
+//                            +--------+
+// ---------------------------+        |
+// ---------------------------+        |
+//                            +--------+
+//        +----+                ++  ++
+//      +--------+               |  |
+// -----+        |               |  |
+// -----+        |               |  |
+//      +--------+               |  |
+//        ++  ++     +----+      |  |
+//         |  |    +--------+    |  |
+// ----------------+        |    |  |
+// ----------------+        |    |  |
+//         |  |    +--------+    |  |
+//         |  |      ++  ++      |  |
+// 
+// Put another way, there's no way to arrange these connections in a 3x3 grid
+// such that there are no direct neighbours. But this would certainly allow you
+// to mix pitches so that some wires can be closer together.
+//
+// I don't think that complexity buys us anything at this point, though.
 class InterconnectWireBlock : public Tile {
  public:
   struct Parameters {
@@ -54,7 +98,14 @@ class InterconnectWireBlock : public Tile {
 
     RoutingTrackDirection direction = RoutingTrackDirection::kTrackVertical;
 
-    bool flip = false;
+    // You could get the same effect by flipping and translating all of the
+    // shapes in the generated layout, but these might be easier to use for a
+    // designer.
+    // TODO(aryap): Implement these. Do they even make any sense to include? I
+    // don't know. If you don't need the annoyingly indirect Increment...()
+    // functions remove those too.
+    bool grow_down = false;
+    bool grow_left = true;
 
     // Not sure if this can be automatically deduced, since other PDKs will
     // have multiple horizontal/vertical layers anyway.
@@ -63,15 +114,15 @@ class InterconnectWireBlock : public Tile {
     std::string vertical_layer = "met2.drawing";
 
     std::optional<int64_t> horizontal_wire_width_nm;
-    std::optional<int64_t> horizontal_wire_separation_nm;
-    std::optional<int64_t> horizontal_wire_offset_nm;
+    std::optional<int64_t> horizontal_wire_pitch_nm;
+    std::optional<int64_t> horizontal_wire_offset_nm = 340;
     std::optional<int64_t> vertical_wire_width_nm;
-    std::optional<int64_t> vertical_wire_separation_nm;
-    std::optional<int64_t> vertical_wire_offset_nm;
+    std::optional<int64_t> vertical_wire_pitch_nm;
+    std::optional<int64_t> vertical_wire_offset_nm = 340;
 
     // The length of the block is either its height or its width depending on
     // whether the routing is vertical or horizontal (respectively).
-    uint64_t length = 10000;
+    uint64_t length = 30000;
 
     std::vector<Channel> channels = {
       Channel {
@@ -96,19 +147,6 @@ class InterconnectWireBlock : public Tile {
     void FromProto(const proto::parameters::InterconnectWireBlock &pb); 
   };
 
-  struct TrackTriple {
-    static TrackTriple Make(
-        const PhysicalPropertiesDatabase &db,
-        const std::optional<int64_t> &forced_width_nm,
-        const std::optional<int64_t> &forced_separation_nm,
-        const std::optional<int64_t> &forced_offset_nm,
-        const IntraLayerConstraints &rules);
-
-    int64_t width;
-    int64_t separation;
-    int64_t offset;
-  };
-
   InterconnectWireBlock(
       const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
@@ -123,6 +161,16 @@ class InterconnectWireBlock : public Tile {
             design_db->physical_db().GetLayer(parameters.vertical_layer)),
         via_layer_(
             design_db->physical_db().GetLayer(parameters.via_layer)) {
+    auto main_layer_pins =
+        design_db->physical_db().GetPinLayersFor(main_layer_);
+    if (!main_layer_pins.empty()) {
+      main_layer_pin_ = *main_layer_pins.begin();
+    }
+    auto off_layer_pins =
+        design_db->physical_db().GetPinLayersFor(off_layer_);
+    if (!off_layer_pins.empty()) {
+      off_layer_pin_ = *off_layer_pins.begin();
+    }
   }
 
   Cell *GenerateIntoDatabase(const std::string &name) override;
@@ -132,17 +180,60 @@ class InterconnectWireBlock : public Tile {
   //    Layout *layout);
 
  private:
+  struct TrackTriple {
+    int64_t width;
+    int64_t pitch;
+    int64_t offset;
+  };
+
+  TrackTriple MakeTrackTriple(
+      const geometry::Layer &wire_layer,
+      const std::optional<int64_t> forced_width_nm,
+      const std::optional<int64_t> forced_pitch_nm,
+      const std::optional<int64_t> forced_offset_nm) const;
+
   geometry::Point MakePoint(
       int64_t main_axis_pos, int64_t off_axis_pos) const;
 
+  void DrawStraightThroughBundle(
+      const Parameters::Channel &channel,
+      const TrackTriple &main_axis,
+      const TrackTriple &off_axis,
+      size_t bundle_number,
+      int64_t *off_axis_pos,
+      Layout *layout) const;
+
+  void DrawBrokenOutBundle(
+      const Parameters::Channel &channel,
+      const TrackTriple &main_axis,
+      const TrackTriple &off_axis,
+      int64_t breakout_gap,
+      size_t bundle_number,
+      int64_t *main_axis_pos,
+      int64_t *off_axis_pos,
+      Layout *layout) const;
+
+  // TODO(aryap): Why don't I keep more state in the generator itself? It can
+  // always be reset when Generate() is called again... these function
+  // signatures are nuts!
+  void IncrementMainAxisPosition(int64_t *main_axis_pos, int64_t amount) const;
+  void IncrementOffAxisPosition(int64_t *off_axis_pos, int64_t amount) const;
+
   TrackTriple GetMainAxisTrackTriple() const;
   TrackTriple GetOffAxisTrackTriple() const;
+
+  // Compute the minimum distance between the incoming and outgoing wire when
+  // the bundle is being broken out. This measurement is between the centres of
+  // the two wires on either side of the gap, so inclues 1x wire width.
+  int64_t GetMinMainAxisBreakoutGap(const TrackTriple &main_axis) const;
 
   Parameters parameters_;
 
   const geometry::Layer main_layer_;
   const geometry::Layer via_layer_;
   const geometry::Layer off_layer_;
+  std::optional<geometry::Layer> main_layer_pin_;
+  std::optional<geometry::Layer> off_layer_pin_;
 };
 
 }  // namespace atoms

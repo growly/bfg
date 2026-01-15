@@ -283,6 +283,9 @@ class PhysicalPropertiesDatabase {
   const std::vector<CostedLayer> FindCostedLayersReachableThroughOneVia(
       const geometry::Layer &source_layer) const;
 
+  const std::set<geometry::Layer> GetPinLayersFor(
+      const geometry::Layer &layer) const;
+
   std::string DescribeLayers() const;
   std::string DescribeLayer(const geometry::Layer &layer) const;
 

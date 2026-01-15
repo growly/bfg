@@ -659,6 +659,18 @@ const CostedLayer PhysicalPropertiesDatabase::GetCostedLayer(
   };
 }
 
+const std::set<geometry::Layer> PhysicalPropertiesDatabase::GetPinLayersFor(
+    const geometry::Layer &layer) const {
+  const auto &layer_info = GetLayerInfo(layer);
+
+  std::set<geometry::Layer> accessed_by;
+  if (layer_info.accessed_by) {
+    accessed_by.insert(layer_info.accessed_by->begin(),
+                       layer_info.accessed_by->end());
+  }
+  return accessed_by;
+}
+
 std::string PhysicalPropertiesDatabase::DescribeLayers() const {
   std::stringstream ss;
   ss << "Physical properties database layer information:" << std::endl;
