@@ -619,7 +619,7 @@ void Layout::MakePin(
     const geometry::Point &centre,
     const std::string &layer_name) {
   int64_t layer = layer_name == "" ? 0 : physical_db_.GetLayer(layer_name);
-  return MakePin(net_name, centre, layer_name);
+  return MakePin(net_name, centre, layer);
 }
 
 void Layout::MakePin(
