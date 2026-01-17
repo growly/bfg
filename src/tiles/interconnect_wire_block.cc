@@ -181,15 +181,15 @@ InterconnectWireBlock::GetOffAxisMappedParameters() const {
   };
 }
 
-geometry::Point InterconnectWireBlock::MakePoint(
-    int64_t main_axis_pos, int64_t off_axis_pos) const {
+geometry::Point InterconnectWireBlock::MapToPoint(
+    int64_t pos_on_main_axis, int64_t pos_on_off_axis) const {
   switch (parameters_.direction) {
     default:
       // Fallthrough intended.
     case RoutingTrackDirection::kTrackVertical:
-      return geometry::Point(off_axis_pos, main_axis_pos);
+      return geometry::Point(pos_on_off_axis, pos_on_main_axis);
     case RoutingTrackDirection::kTrackHorizontal:
-      return geometry::Point(main_axis_pos, off_axis_pos);
+      return geometry::Point(pos_on_main_axis, pos_on_off_axis);
   }
 }
 
@@ -197,12 +197,12 @@ geometry::Point InterconnectWireBlock::MakePoint(
 // direction depending on settings (like 'flip'), if desired. But in reality you
 // can just flip the whole cell with the primitive Layout methods.
 void InterconnectWireBlock::IncrementMainAxisPosition(
-    int64_t *main_axis_pos, int64_t amount) const {
-  *main_axis_pos += amount;
+    int64_t *pos_on_main_axis, int64_t amount) const {
+  *pos_on_main_axis += amount;
 }
 void InterconnectWireBlock::IncrementOffAxisPosition(
-    int64_t *off_axis_pos, int64_t amount) const {
-  *off_axis_pos += amount;
+    int64_t *pos_on_off_axis, int64_t amount) const {
+  *pos_on_off_axis += amount;
 }
 
 // TODO(aryap): This is similar to Layout::MakeWire or
@@ -253,14 +253,14 @@ void InterconnectWireBlock::DrawElbowWire(
 }
 
 void InterconnectWireBlock::DrawStraightWire(
-    int64_t off_axis_pos,
+    int64_t pos_on_off_axis,
     int64_t length,
     int64_t width,
     const std::string &net,
     Layout *layout) const {
   ScopedLayer sl(layout, main_layer_);
-  geometry::Point start_edge = MakePoint(0, off_axis_pos);
-  geometry::Point end_edge = MakePoint(length, off_axis_pos);
+  geometry::Point start_edge = MapToPoint(0, pos_on_off_axis);
+  geometry::Point end_edge = MapToPoint(length, pos_on_off_axis);
   geometry::PolyLine line({start_edge, end_edge});
   line.SetWidth(width);
   line.set_net(net);
@@ -274,17 +274,19 @@ void InterconnectWireBlock::DrawStraightWire(
 }
 
 void InterconnectWireBlock::DrawBrokenOutWire(
-    int64_t main_axis_pos,
-    int64_t off_axis_pos,
+    int64_t pos_on_main_axis,
+    int64_t pos_on_off_axis,
     int64_t main_axis_gap,
     int64_t main_wire_width,
     int64_t off_wire_width,
     const std::string &net_0,
     const std::string &net_1,
+    std::optional<int64_t> off_axis_edge_pos,
     Layout *layout) const {
-  geometry::Point start_edge = MakePoint(0, off_axis_pos);
-  geometry::Point break_start = MakePoint(main_axis_pos, off_axis_pos);
-  geometry::Point off_axis_pin_0 = MakePoint(main_axis_pos, 0);
+  geometry::Point start_edge = MapToPoint(0, pos_on_off_axis);
+  geometry::Point break_start = MapToPoint(pos_on_main_axis, pos_on_off_axis);
+  geometry::Point off_axis_pin_0 = MapToPoint(
+      pos_on_main_axis, off_axis_edge_pos.value_or(0));
 
   // Draw the first half, which could be incoming or outgoing.
   DrawElbowWire(start_edge,
@@ -296,9 +298,10 @@ void InterconnectWireBlock::DrawBrokenOutWire(
                 layout);
 
   geometry::Point break_end = 
-      MakePoint(main_axis_pos + main_axis_gap, off_axis_pos);
-  geometry::Point end_edge = MakePoint(parameters_.length, off_axis_pos);
-  geometry::Point off_axis_pin_1 = MakePoint(main_axis_pos + main_axis_gap, 0);
+      MapToPoint(pos_on_main_axis + main_axis_gap, pos_on_off_axis);
+  geometry::Point end_edge = MapToPoint(parameters_.length, pos_on_off_axis);
+  geometry::Point off_axis_pin_1 = MapToPoint(
+      pos_on_main_axis + main_axis_gap, off_axis_edge_pos.value_or(0));
 
   // Draw the second half, which could be outgoing or incoming.
   DrawElbowWire(end_edge,
@@ -321,7 +324,9 @@ int64_t InterconnectWireBlock::GetMinMainAxisBreakoutGap(
   return num_broken_out_wires * main_axis.pitch.value_or(0);
 }
 
-void InterconnectWireBlock::DrawConservatively(Layout *layout) const {
+void InterconnectWireBlock::DrawConservative(
+    geometry::Point *diagonal_corner,
+    Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
   MappedParameters main_axis = GetMainAxisMappedParameters();
@@ -356,13 +361,19 @@ void InterconnectWireBlock::DrawConservatively(Layout *layout) const {
   int64_t breakout_gap = GetMinMainAxisBreakoutGap(main_axis);
 
   // These values should now be set.
-  int64_t main_width = main_axis.width.value_or(0);
+  int64_t main_width = main_axis.width.value_or(main_rules.min_width);
   int64_t main_offset = main_axis.offset.value_or(0);
-  int64_t off_width = off_axis.width.value_or(0);
+  int64_t off_width = off_axis.width.value_or(off_rules.min_width);
   int64_t off_offset = off_axis.offset.value_or(0);
 
-  int64_t main_axis_pos = main_offset + main_width / 2;
-  int64_t off_axis_pos = off_offset + off_width / 2;
+  // The main axis is the axis along which the principle wire is run. Break
+  // offs, for connection to the side of the tile, occur along the off axis.
+  //
+  // pos_on_main_axis is the position along the main axis, and likewise
+  // pos_on_off_axis is the position along the off axis. It is not the position
+  // _of_ the main axis, or the off axis, respectively. 
+  int64_t pos_on_main_axis = off_offset + off_width / 2;
+  int64_t pos_on_off_axis = main_offset + main_width / 2;
 
   // Laying out a bundle is just drawing N wires in the right direction.
   for (size_t c = 0; c < parameters_.channels.size(); ++c) {
@@ -373,35 +384,185 @@ void InterconnectWireBlock::DrawConservatively(Layout *layout) const {
         std::string net_name = absl::StrFormat(
             "channel_%s_bundle_%d_wire_%d", channel.name, b, w);
         if (channel.break_out.find(b) == channel.break_out.end()) {
-          DrawStraightWire(off_axis_pos,
+          DrawStraightWire(pos_on_off_axis,
                            parameters_.length,
                            main_width,
                            net_name,
                            layout);
 
-          IncrementOffAxisPosition(&off_axis_pos, off_pitch);
+          IncrementOffAxisPosition(&pos_on_off_axis, main_pitch);
           continue;
         }
         std::string net_name_0 = absl::StrCat(net_name, "_A");
         std::string net_name_1 = absl::StrCat(net_name, "_B");
 
-        DrawBrokenOutWire(main_axis_pos,
-                          off_axis_pos,
+        DrawBrokenOutWire(pos_on_main_axis,
+                          pos_on_off_axis,
                           breakout_gap,
                           main_width,
                           off_width,
                           net_name_0,
                           net_name_1,
+                          std::nullopt,
                           layout);
 
-        IncrementOffAxisPosition(&off_axis_pos, off_pitch);
-        IncrementMainAxisPosition(&main_axis_pos, main_pitch);
+        IncrementOffAxisPosition(&pos_on_off_axis, main_pitch);
+        IncrementMainAxisPosition(&pos_on_main_axis, off_pitch);
       }
     }
   }
+  *diagonal_corner = MapToPoint(parameters_.length, pos_on_off_axis);
 }
 
-void InterconnectWireBlock::DrawModestlyCleverlike(Layout *layout) const {
+void InterconnectWireBlock::DrawModestlyClever(
+    geometry::Point *diagonal_corner,
+    Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  MappedParameters main_axis = GetMainAxisMappedParameters();
+  MappedParameters off_axis = GetOffAxisMappedParameters();
+
+  // The defaults (and also bounds) for the track parameters in the conservative
+  // case.
+  //
+  // The min pitch is actually dictated by how closely we can put the via encaps
+  // together.
+  //
+  // TODO(aryap): If we assume that the off-axis wires will need to connect on
+  // a smaller pitch, typically the PDK min pitch used for routing, and that the
+  // main-axis wires must be separated to enable this. (This is much less area
+  // efficient than the opposite case, but it's easier for routing, probably.
+  // Also the main-axis wires are more likely to be thicker to cover longer
+  // distances.)
+  const auto &main_rules = db.Rules(main_layer_);
+  auto main_via_encap = db.TypicalViaEncap(main_layer_, via_layer_);
+  int64_t main_pitch = main_rules.min_separation + main_axis.width.value_or(
+      (main_via_encap.width + main_rules.min_width) / 2);
+  main_axis.pitch = main_axis.pitch.value_or(main_pitch);
+
+  const auto &off_rules = db.Rules(off_layer_);
+  auto off_via_encap = db.TypicalViaEncap(off_layer_, via_layer_);
+  int64_t off_pitch = off_rules.min_separation + off_axis.width.value_or(
+      (off_via_encap.width + off_rules.min_width) / 2);
+  off_axis.pitch = off_axis.pitch.value_or(off_pitch);
+
+  int64_t breakout_gap = GetMinMainAxisBreakoutGap(main_axis);
+
+  // These values should now be set.
+  int64_t main_width = main_axis.width.value_or(main_rules.min_width);
+  int64_t main_offset = main_axis.offset.value_or(0);
+  int64_t off_width = off_axis.width.value_or(off_rules.min_width);
+  int64_t off_offset = off_axis.offset.value_or(0);
+
+  int64_t pos_on_main_axis = off_offset + off_width / 2;
+  int64_t pos_on_off_axis = main_offset + main_width / 2;
+
+  // Because we access the wire collection across a few dimensions (the wire
+  // index, the bundle index (for breakout neighbours), and the channel index
+  // (declaration order), we have to compute different properties at different
+  // times. We collect all data here. The indices are channel, bundle and then
+  // wire.
+  std::vector<std::vector<std::vector<WireIndex>>> all_wires;
+
+  // Later we'll want to iterate over and assign break out positions based on
+  // the order in which the bundles are broken out, so we store the channel and
+  // bundle number pair of the break outs in the order we find them.
+  //
+  // (We could use a set since the implicit ordering on two ints is what we
+  // expect by iterating over them in ascending order, but I'm going to make it
+  // an explicit part of algorithm.)
+  std::vector<std::pair<int, int>> break_outs;
+
+  for (size_t c = 0; c < parameters_.channels.size(); ++c) {
+    const auto &channel = parameters_.channels[c];
+    std::vector<std::vector<WireIndex>> by_bundle;
+    by_bundle.reserve(channel.num_bundles);
+    for (size_t b = 0; b < channel.num_bundles; ++b) {
+      std::vector<WireIndex> by_wire;
+      by_wire.reserve(channel.bundle.num_wires);
+      for (size_t w = 0; w < channel.bundle.num_wires; ++w) {
+        by_wire.push_back({
+          .channel_number = c,
+          .bundle_number = b,
+          .wire_number = w,
+          .net = absl::StrFormat(
+              "channel_%s_bundle_%d_wire_%d", channel.name, b, w)
+        });
+      }
+      by_bundle.push_back(by_wire);
+
+      if (channel.break_out.find(b) == channel.break_out.end()) {
+        continue;
+      }
+      break_outs.emplace_back(c, b);
+    }
+    all_wires.push_back(by_bundle);
+  }
+
+  // Invert the collection so that we lay out same-index wires together.
+  //
+  // None of the vectors in all_wires should change after this point, so we can
+  // work with pointers to their contents.
+  std::map<int, std::vector<WireIndex*>> indices_by_wire_index;
+  for (auto &channel : all_wires) {   // Channels are a a list of bundles.
+    for (auto &bundle : channel) {    // Bundles are a list of wires.
+      for (auto &wire : bundle) {
+        indices_by_wire_index[wire.wire_number].push_back(&wire);
+      }
+    }
+  }
+
+  // Assign positions along the off axis.
+  for (auto &entry : indices_by_wire_index) {
+    for (auto &wire_index : entry.second) {
+      wire_index->pos_on_off_axis = pos_on_off_axis;
+      LOG(INFO) << entry.first << " " << wire_index->channel_number
+                << " " << wire_index->bundle_number
+                << " on off axis: " << pos_on_off_axis;
+      IncrementOffAxisPosition(&pos_on_off_axis, main_pitch);
+    }
+  }
+
+  // Assign positoins along main axis for break outs.
+  for (auto [c, b] : break_outs) {
+    for (WireIndex &wire_index : all_wires[c][b]) {
+      wire_index.pos_on_main_axis = pos_on_main_axis;
+      LOG(INFO) << c << ", " << b << " off: " << *wire_index.pos_on_main_axis;
+      IncrementMainAxisPosition(&pos_on_main_axis, off_pitch);
+    }
+  }
+
+  // Finally we can draw everything!
+  for (auto &channel : all_wires) {
+    for (auto &bundle : channel) {
+      for (auto &wire : bundle) {
+        if (!wire.pos_on_main_axis) {
+          DrawStraightWire(wire.pos_on_off_axis,
+                           parameters_.length,
+                           main_width,
+                           wire.net,
+                           layout);
+
+          continue;
+        }
+        std::string net_name_0 = absl::StrCat(wire.net, "_A");
+        std::string net_name_1 = absl::StrCat(wire.net, "_B");
+
+        DrawBrokenOutWire(*wire.pos_on_main_axis,
+                          wire.pos_on_off_axis,
+                          breakout_gap,
+                          main_width,
+                          off_width,
+                          net_name_0,
+                          net_name_1,
+                          std::nullopt,
+                          layout);
+
+      }
+    }
+  }
+
+  *diagonal_corner = MapToPoint(parameters_.length, pos_on_off_axis);
 }
 
 Cell *InterconnectWireBlock::GenerateIntoDatabase(const std::string &name) {
@@ -410,26 +571,26 @@ Cell *InterconnectWireBlock::GenerateIntoDatabase(const std::string &name) {
   cell->SetCircuit(new bfg::Circuit());
   cell->SetLayout(new bfg::Layout(db));
 
+  geometry::Point diagonal_corner;
+
   switch (parameters_.layout_mode) {
     default:
       // Fallthrough intended.
     case Parameters::LayoutMode::kConservative:
-      DrawConservatively(cell->layout());
+      DrawConservative(&diagonal_corner, cell->layout());
       break;
     case Parameters::LayoutMode::kModestlyClever:
-      DrawModestlyCleverlike(cell->layout());
+      DrawModestlyClever(&diagonal_corner, cell->layout());
       break;
   }
 
-  //geometry::Point diagonal_corner = MakePoint(
-  //    parameters_.length, off_axis_pos);
-  //// TODO(aryap): Add tiling bounds.
-  //geometry::Rectangle tiling_bounds({0, 0}, diagonal_corner);
-  //{
-  //  ScopedLayer sl(cell->layout(), "areaid.standardc");
-  //  cell->layout()->AddRectangle(tiling_bounds);
-  //}
-  //cell->layout()->SetTilingBounds(tiling_bounds);
+  // TODO(aryap): Add tiling bounds.
+  geometry::Rectangle tiling_bounds({0, 0}, diagonal_corner);
+  {
+    ScopedLayer sl(cell->layout(), "areaid.standardc");
+    cell->layout()->AddRectangle(tiling_bounds);
+  }
+  cell->layout()->SetTilingBounds(tiling_bounds);
 
   //cell->layout()->FlipVertical();
   //cell->layout()->ResetOrigin();
