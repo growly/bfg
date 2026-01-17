@@ -82,9 +82,18 @@ namespace tiles {
 // to mix pitches so that some wires can be closer together.
 //
 // I don't think that complexity buys us anything at this point, though.
+//
+// OH! An actually-useful way to make this work is to interleave bundle wires
+// with one another, so that neighbouring wires will never be broken out in the
+// same place. This will only fail if there is only one bundle in the channel.
 class InterconnectWireBlock : public Tile {
  public:
   struct Parameters {
+    enum class LayoutMode {
+      kConservative = 0,
+      kModestlyClever = 1
+    };
+
     struct Bundle {
       int num_wires;
     };
@@ -95,6 +104,8 @@ class InterconnectWireBlock : public Tile {
       int num_bundles;
       Bundle bundle;
     };
+
+    LayoutMode layout_mode = LayoutMode::kConservative;
 
     RoutingTrackDirection direction = RoutingTrackDirection::kTrackVertical;
 
@@ -180,38 +191,49 @@ class InterconnectWireBlock : public Tile {
   //    Layout *layout);
 
  private:
-  struct TrackTriple {
-    int64_t width;
-    int64_t pitch;
-    int64_t offset;
+  // These are the user-specified width, pitch and offset parameters, in
+  // internal units, from the Parameters struct. If they were not specified they
+  // are still std::nullopt here.
+  struct MappedParameters {
+    std::optional<int64_t> width;
+    std::optional<int64_t> pitch;
+    std::optional<int64_t> offset;
   };
-
-  TrackTriple MakeTrackTriple(
-      const geometry::Layer &wire_layer,
-      const std::optional<int64_t> forced_width_nm,
-      const std::optional<int64_t> forced_pitch_nm,
-      const std::optional<int64_t> forced_offset_nm) const;
 
   geometry::Point MakePoint(
       int64_t main_axis_pos, int64_t off_axis_pos) const;
 
-  void DrawStraightThroughBundle(
-      const Parameters::Channel &channel,
-      const TrackTriple &main_axis,
-      const TrackTriple &off_axis,
-      size_t bundle_number,
-      int64_t *off_axis_pos,
+  void DrawElbowWire(
+    const geometry::Point start_of_main_axis_wire,
+    const geometry::Point corner,
+    const geometry::Point end_of_off_axis_wire,
+    int64_t main_wire_width,
+    int64_t off_wire_width,
+    const std::string &net,
+    Layout *layout) const;
+
+  // The main_axis_pos is the coordinate along the main axis, e.g. for the
+  // vertical orientation, it is the y coordinate. The off_axis_pos is the other
+  // coordinate, e.g. x in the same case.
+  void DrawBrokenOutWire(
+    int64_t main_axis_pos,
+    int64_t off_axis_pos,
+    int64_t main_axis_gap,
+    int64_t main_wire_width,
+    int64_t off_wire_width,
+    const std::string &net_0,
+    const std::string &net_1,
+    Layout *layout) const;
+
+  void DrawStraightWire(
+      int64_t off_axis_pos,
+      int64_t length,
+      int64_t width,
+      const std::string &net,
       Layout *layout) const;
 
-  void DrawBrokenOutBundle(
-      const Parameters::Channel &channel,
-      const TrackTriple &main_axis,
-      const TrackTriple &off_axis,
-      int64_t breakout_gap,
-      size_t bundle_number,
-      int64_t *main_axis_pos,
-      int64_t *off_axis_pos,
-      Layout *layout) const;
+  void DrawConservatively(Layout *layout) const;
+  void DrawModestlyCleverlike(Layout *layout) const;
 
   // TODO(aryap): Why don't I keep more state in the generator itself? It can
   // always be reset when Generate() is called again... these function
@@ -219,13 +241,13 @@ class InterconnectWireBlock : public Tile {
   void IncrementMainAxisPosition(int64_t *main_axis_pos, int64_t amount) const;
   void IncrementOffAxisPosition(int64_t *off_axis_pos, int64_t amount) const;
 
-  TrackTriple GetMainAxisTrackTriple() const;
-  TrackTriple GetOffAxisTrackTriple() const;
+  MappedParameters GetMainAxisMappedParameters() const;
+  MappedParameters GetOffAxisMappedParameters() const;
 
   // Compute the minimum distance between the incoming and outgoing wire when
   // the bundle is being broken out. This measurement is between the centres of
   // the two wires on either side of the gap, so inclues 1x wire width.
-  int64_t GetMinMainAxisBreakoutGap(const TrackTriple &main_axis) const;
+  int64_t GetMinMainAxisBreakoutGap(const MappedParameters &main_axis) const;
 
   Parameters parameters_;
 
