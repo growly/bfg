@@ -26,8 +26,16 @@ void InterconnectWireBlock::Parameters::ToProto(
       break;
   }
 
-  pb->set_grow_down(grow_down);
-  pb->set_grow_left(grow_left);
+  switch (layout_mode) {
+    case LayoutMode::kConservative:
+      pb->set_layout_mode(
+          proto::parameters::InterconnectWireBlock::CONSERVATIVE);
+      break;
+    case LayoutMode::kModestlyClever:
+      pb->set_layout_mode(
+          proto::parameters::InterconnectWireBlock::MODESTLY_CLEVER);
+      break;
+  }
 
   pb->set_horizontal_layer(horizontal_layer);
   pb->set_via_layer(via_layer);
@@ -80,11 +88,17 @@ void InterconnectWireBlock::Parameters::FromProto(
     }
   }
 
-  if (pb.has_grow_down()) {
-    grow_down = pb.grow_down();
-  }
-  if (pb.has_grow_left()) {
-    grow_left = pb.grow_left();
+  if (pb.has_layout_mode()) {
+    switch (pb.layout_mode()) {
+      case proto::parameters::InterconnectWireBlock::CONSERVATIVE:
+        layout_mode = LayoutMode::kConservative;
+        break;
+      case proto::parameters::InterconnectWireBlock::MODESTLY_CLEVER:
+        layout_mode = LayoutMode::kModestlyClever;
+        break;
+      default:
+        break;
+    }
   }
 
   if (pb.has_horizontal_layer()) {
@@ -137,6 +151,22 @@ void InterconnectWireBlock::Parameters::FromProto(
     }
     channels.push_back(channel);
   }
+}
+
+std::string InterconnectWireBlock::MakeNetName(
+    const std::string &channel_name,
+    int bundle_number,
+    int wire_number,
+    std::optional<bool> first_end_of_breakout) {
+  std::string stem = absl::StrFormat(
+      "channel_%s_bundle_%d_wire_%d", channel_name, bundle_number, wire_number);
+  if (!first_end_of_breakout.has_value()) {
+    return stem;
+  }
+  if (*first_end_of_breakout) {
+    return absl::StrCat(stem, "_A");
+  }
+  return absl::StrCat(stem, "_B");
 }
 
 InterconnectWireBlock::MappedParameters
@@ -196,11 +226,11 @@ geometry::Point InterconnectWireBlock::MapToPoint(
 // TODO(aryap): I factored these out so that you could flip the incremement
 // direction depending on settings (like 'flip'), if desired. But in reality you
 // can just flip the whole cell with the primitive Layout methods.
-void InterconnectWireBlock::IncrementMainAxisPosition(
+void InterconnectWireBlock::IncrementPositionOnMainAxis(
     int64_t *pos_on_main_axis, int64_t amount) const {
   *pos_on_main_axis += amount;
 }
-void InterconnectWireBlock::IncrementOffAxisPosition(
+void InterconnectWireBlock::IncrementPositionOnOffAxis(
     int64_t *pos_on_off_axis, int64_t amount) const {
   *pos_on_off_axis += amount;
 }
@@ -270,6 +300,9 @@ void InterconnectWireBlock::DrawStraightWire(
     layout->MakePin(net, end_edge, *main_layer_pin_);
   }
 
+  layout->SavePoint(absl::StrCat(net, "_start"), start_edge);
+  layout->SavePoint(absl::StrCat(net, "_end"), end_edge);
+
   geometry::Polygon *wire = layout->AddPolyLine(line);
 }
 
@@ -297,6 +330,9 @@ void InterconnectWireBlock::DrawBrokenOutWire(
                 net_0,
                 layout);
 
+  layout->SavePoint(absl::StrCat(net_0, "_main"), start_edge);
+  layout->SavePoint(absl::StrCat(net_0, "_off"), off_axis_pin_0);
+
   geometry::Point break_end = 
       MapToPoint(pos_on_main_axis + main_axis_gap, pos_on_off_axis);
   geometry::Point end_edge = MapToPoint(parameters_.length, pos_on_off_axis);
@@ -311,17 +347,19 @@ void InterconnectWireBlock::DrawBrokenOutWire(
                 off_wire_width,
                 net_1,
                 layout);
+
+  layout->SavePoint(absl::StrCat(net_1, "_main"), end_edge);
+  layout->SavePoint(absl::StrCat(net_1, "_off"), off_axis_pin_1);
 }
 
-int64_t InterconnectWireBlock::GetMinMainAxisBreakoutGap(
-    const MappedParameters &main_axis) const {
+int64_t InterconnectWireBlock::GetMinBreakoutGap(int64_t off_axis_pitch) const {
   uint64_t num_broken_out_wires = 0;
   for (const auto &channel : parameters_.channels) {
     num_broken_out_wires +=
         channel.break_out.size() * channel.bundle.num_wires;
   }
 
-  return num_broken_out_wires * main_axis.pitch.value_or(0);
+  return num_broken_out_wires * off_axis_pitch;
 }
 
 void InterconnectWireBlock::DrawConservative(
@@ -337,34 +375,27 @@ void InterconnectWireBlock::DrawConservative(
   //
   // The min pitch is actually dictated by how closely we can put the via encaps
   // together.
-  //
-  // TODO(aryap): If we assume that the off-axis wires will need to connect on
-  // a smaller pitch, typically the PDK min pitch used for routing, and that the
-  // main-axis wires must be separated to enable this. (This is much less area
-  // efficient than the opposite case, but it's easier for routing, probably.
-  // Also the main-axis wires are more likely to be thicker to cover longer
-  // distances.)
   const auto &main_rules = db.Rules(main_layer_);
   auto main_via_encap = db.TypicalViaEncap(main_layer_, via_layer_);
   int64_t main_pitch = main_rules.min_separation +
       main_axis.width.value_or(
           std::max(main_via_encap.width, main_rules.min_width));
-  main_axis.pitch = main_axis.pitch.value_or(main_pitch);
+  main_pitch = main_axis.pitch.value_or(main_pitch);
 
   const auto &off_rules = db.Rules(off_layer_);
   auto off_via_encap = db.TypicalViaEncap(off_layer_, via_layer_);
   int64_t off_pitch = off_rules.min_separation +
       off_axis.width.value_or(
           std::max(off_via_encap.width, off_rules.min_width));
-  off_axis.pitch = off_axis.pitch.value_or(off_pitch);
+  off_pitch = off_axis.pitch.value_or(off_pitch);
 
-  int64_t breakout_gap = GetMinMainAxisBreakoutGap(main_axis);
+  int64_t breakout_gap = GetMinBreakoutGap(off_pitch);
 
   // These values should now be set.
   int64_t main_width = main_axis.width.value_or(main_rules.min_width);
-  int64_t main_offset = main_axis.offset.value_or(0);
+  int64_t main_offset = main_axis.offset.value_or(main_pitch / 2);
   int64_t off_width = off_axis.width.value_or(off_rules.min_width);
-  int64_t off_offset = off_axis.offset.value_or(0);
+  int64_t off_offset = off_axis.offset.value_or(off_pitch / 2);
 
   // The main axis is the axis along which the principle wire is run. Break
   // offs, for connection to the side of the tile, occur along the off axis.
@@ -372,8 +403,8 @@ void InterconnectWireBlock::DrawConservative(
   // pos_on_main_axis is the position along the main axis, and likewise
   // pos_on_off_axis is the position along the off axis. It is not the position
   // _of_ the main axis, or the off axis, respectively. 
-  int64_t pos_on_main_axis = off_offset + off_width / 2;
-  int64_t pos_on_off_axis = main_offset + main_width / 2;
+  int64_t pos_on_main_axis = off_offset;
+  int64_t pos_on_off_axis = main_offset;
 
   // Laying out a bundle is just drawing N wires in the right direction.
   for (size_t c = 0; c < parameters_.channels.size(); ++c) {
@@ -381,39 +412,40 @@ void InterconnectWireBlock::DrawConservative(
     for (size_t b = 0; b < channel.num_bundles; ++b) {
       // Wires that don't need to be broken out are the simple case:
       for (size_t w = 0; w < channel.bundle.num_wires; ++w) {
-        std::string net_name = absl::StrFormat(
-            "channel_%s_bundle_%d_wire_%d", channel.name, b, w);
         if (channel.break_out.find(b) == channel.break_out.end()) {
           DrawStraightWire(pos_on_off_axis,
                            parameters_.length,
                            main_width,
-                           net_name,
+                           MakeNetName(channel.name, b, w),
                            layout);
 
-          IncrementOffAxisPosition(&pos_on_off_axis, main_pitch);
+          IncrementPositionOnOffAxis(&pos_on_off_axis, main_pitch);
           continue;
         }
-        std::string net_name_0 = absl::StrCat(net_name, "_A");
-        std::string net_name_1 = absl::StrCat(net_name, "_B");
 
         DrawBrokenOutWire(pos_on_main_axis,
                           pos_on_off_axis,
                           breakout_gap,
                           main_width,
                           off_width,
-                          net_name_0,
-                          net_name_1,
+                          MakeNetName(channel.name, b, w, true),
+                          MakeNetName(channel.name, b, w, false),
                           std::nullopt,
                           layout);
 
-        IncrementOffAxisPosition(&pos_on_off_axis, main_pitch);
-        IncrementMainAxisPosition(&pos_on_main_axis, off_pitch);
+        IncrementPositionOnOffAxis(&pos_on_off_axis, main_pitch);
+        IncrementPositionOnMainAxis(&pos_on_main_axis, off_pitch);
       }
     }
   }
+  IncrementPositionOnOffAxis(&pos_on_off_axis, -main_pitch / 2);
   *diagonal_corner = MapToPoint(parameters_.length, pos_on_off_axis);
 }
 
+// The default pitch calculation for the modestly clever method is less
+// conservative than in the conservative method (no kidding). In the modestly
+// clever method we can use the min routing pitch, since we arrange wires such
+// that no vias are near each other.
 void InterconnectWireBlock::DrawModestlyClever(
     geometry::Point *diagonal_corner,
     Layout *layout) const {
@@ -427,35 +459,28 @@ void InterconnectWireBlock::DrawModestlyClever(
   //
   // The min pitch is actually dictated by how closely we can put the via encaps
   // together.
-  //
-  // TODO(aryap): If we assume that the off-axis wires will need to connect on
-  // a smaller pitch, typically the PDK min pitch used for routing, and that the
-  // main-axis wires must be separated to enable this. (This is much less area
-  // efficient than the opposite case, but it's easier for routing, probably.
-  // Also the main-axis wires are more likely to be thicker to cover longer
-  // distances.)
   const auto &main_rules = db.Rules(main_layer_);
   auto main_via_encap = db.TypicalViaEncap(main_layer_, via_layer_);
   int64_t main_pitch = main_rules.min_separation + main_axis.width.value_or(
       (main_via_encap.width + main_rules.min_width) / 2);
-  main_axis.pitch = main_axis.pitch.value_or(main_pitch);
+  main_pitch = main_axis.pitch.value_or(main_pitch);
 
   const auto &off_rules = db.Rules(off_layer_);
   auto off_via_encap = db.TypicalViaEncap(off_layer_, via_layer_);
   int64_t off_pitch = off_rules.min_separation + off_axis.width.value_or(
       (off_via_encap.width + off_rules.min_width) / 2);
-  off_axis.pitch = off_axis.pitch.value_or(off_pitch);
+  off_pitch = off_axis.pitch.value_or(off_pitch);
 
-  int64_t breakout_gap = GetMinMainAxisBreakoutGap(main_axis);
+  int64_t breakout_gap = GetMinBreakoutGap(off_pitch);
 
   // These values should now be set.
   int64_t main_width = main_axis.width.value_or(main_rules.min_width);
-  int64_t main_offset = main_axis.offset.value_or(0);
+  int64_t main_offset = main_axis.offset.value_or(main_pitch / 2);
   int64_t off_width = off_axis.width.value_or(off_rules.min_width);
-  int64_t off_offset = off_axis.offset.value_or(0);
+  int64_t off_offset = off_axis.offset.value_or(off_pitch / 2);
 
-  int64_t pos_on_main_axis = off_offset + off_width / 2;
-  int64_t pos_on_off_axis = main_offset + main_width / 2;
+  int64_t pos_on_main_axis = off_offset;
+  int64_t pos_on_off_axis = main_offset;
 
   // Because we access the wire collection across a few dimensions (the wire
   // index, the bundle index (for breakout neighbours), and the channel index
@@ -473,6 +498,7 @@ void InterconnectWireBlock::DrawModestlyClever(
   // an explicit part of algorithm.)
   std::vector<std::pair<int, int>> break_outs;
 
+  int num_bundles = 0;
   for (size_t c = 0; c < parameters_.channels.size(); ++c) {
     const auto &channel = parameters_.channels[c];
     std::vector<std::vector<WireIndex>> by_bundle;
@@ -482,12 +508,12 @@ void InterconnectWireBlock::DrawModestlyClever(
       by_wire.reserve(channel.bundle.num_wires);
       for (size_t w = 0; w < channel.bundle.num_wires; ++w) {
         by_wire.push_back({
+          .channel_name = channel.name,
           .channel_number = c,
           .bundle_number = b,
-          .wire_number = w,
-          .net = absl::StrFormat(
-              "channel_%s_bundle_%d_wire_%d", channel.name, b, w)
+          .wire_number = w
         });
+        num_bundles++;
       }
       by_bundle.push_back(by_wire);
 
@@ -498,6 +524,10 @@ void InterconnectWireBlock::DrawModestlyClever(
     }
     all_wires.push_back(by_bundle);
   }
+
+  LOG_IF(ERROR, num_bundles == 1)
+      << "The modestly clever method does not guarantee correct spacing when "
+      << "there is only one wire bundle. In fact I'm also sure it's wrong now.";
 
   // Invert the collection so that we lay out same-index wires together.
   //
@@ -519,7 +549,7 @@ void InterconnectWireBlock::DrawModestlyClever(
       LOG(INFO) << entry.first << " " << wire_index->channel_number
                 << " " << wire_index->bundle_number
                 << " on off axis: " << pos_on_off_axis;
-      IncrementOffAxisPosition(&pos_on_off_axis, main_pitch);
+      IncrementPositionOnOffAxis(&pos_on_off_axis, main_pitch);
     }
   }
 
@@ -528,7 +558,7 @@ void InterconnectWireBlock::DrawModestlyClever(
     for (WireIndex &wire_index : all_wires[c][b]) {
       wire_index.pos_on_main_axis = pos_on_main_axis;
       LOG(INFO) << c << ", " << b << " off: " << *wire_index.pos_on_main_axis;
-      IncrementMainAxisPosition(&pos_on_main_axis, off_pitch);
+      IncrementPositionOnMainAxis(&pos_on_main_axis, off_pitch);
     }
   }
 
@@ -537,16 +567,20 @@ void InterconnectWireBlock::DrawModestlyClever(
     for (auto &bundle : channel) {
       for (auto &wire : bundle) {
         if (!wire.pos_on_main_axis) {
-          DrawStraightWire(wire.pos_on_off_axis,
-                           parameters_.length,
-                           main_width,
-                           wire.net,
-                           layout);
+          DrawStraightWire(
+              wire.pos_on_off_axis,
+              parameters_.length,
+              main_width,
+              MakeNetName(
+                  wire.channel_name, wire.bundle_number, wire.wire_number),
+              layout);
 
           continue;
         }
-        std::string net_name_0 = absl::StrCat(wire.net, "_A");
-        std::string net_name_1 = absl::StrCat(wire.net, "_B");
+        std::string net_name_0 = MakeNetName(
+            wire.channel_name, wire.bundle_number, wire.wire_number, true);
+        std::string net_name_1 = MakeNetName(
+            wire.channel_name, wire.bundle_number, wire.wire_number, false);
 
         DrawBrokenOutWire(*wire.pos_on_main_axis,
                           wire.pos_on_off_axis,
@@ -561,6 +595,7 @@ void InterconnectWireBlock::DrawModestlyClever(
       }
     }
   }
+  IncrementPositionOnOffAxis(&pos_on_off_axis, -main_pitch / 2);
 
   *diagonal_corner = MapToPoint(parameters_.length, pos_on_off_axis);
 }
@@ -584,7 +619,6 @@ Cell *InterconnectWireBlock::GenerateIntoDatabase(const std::string &name) {
       break;
   }
 
-  // TODO(aryap): Add tiling bounds.
   geometry::Rectangle tiling_bounds({0, 0}, diagonal_corner);
   {
     ScopedLayer sl(cell->layout(), "areaid.standardc");
@@ -592,6 +626,7 @@ Cell *InterconnectWireBlock::GenerateIntoDatabase(const std::string &name) {
   }
   cell->layout()->SetTilingBounds(tiling_bounds);
 
+  // You can flip to make this more useful:
   //cell->layout()->FlipVertical();
   //cell->layout()->ResetOrigin();
 

@@ -98,6 +98,11 @@ class InterconnectWireBlock : public Tile {
       kModestlyClever = 1
     };
 
+    // TODO(aryap): We're going to need to split the incoming wires out quire
+    // far from where we send the outgoing wires in, but isn't that just a
+    // matter of setting breakout_gap appropriately? We don't need to mirror off
+    // the end of the tile or anything like that. No tyet.
+
     struct Bundle {
       int num_wires;
     };
@@ -119,8 +124,6 @@ class InterconnectWireBlock : public Tile {
     // TODO(aryap): Implement these. Do they even make any sense to include? I
     // don't know. If you don't need the annoyingly indirect Increment...()
     // functions remove those too.
-    bool grow_down = false;
-    bool grow_left = true;
 
     // Not sure if this can be automatically deduced, since other PDKs will
     // have multiple horizontal/vertical layers anyway.
@@ -130,10 +133,10 @@ class InterconnectWireBlock : public Tile {
 
     std::optional<int64_t> horizontal_wire_width_nm;
     std::optional<int64_t> horizontal_wire_pitch_nm;
-    std::optional<int64_t> horizontal_wire_offset_nm = 340;
+    std::optional<int64_t> horizontal_wire_offset_nm;
     std::optional<int64_t> vertical_wire_width_nm;
     std::optional<int64_t> vertical_wire_pitch_nm;
-    std::optional<int64_t> vertical_wire_offset_nm = 340;
+    std::optional<int64_t> vertical_wire_offset_nm;
 
     // The length of the block is either its height or its width depending on
     // whether the routing is vertical or horizontal (respectively).
@@ -188,11 +191,13 @@ class InterconnectWireBlock : public Tile {
     }
   }
 
-  Cell *GenerateIntoDatabase(const std::string &name) override;
+  static std::string MakeNetName(
+      const std::string &channel_name,
+      int bundle_number,
+      int wire_number,
+      std::optional<bool> first_end_of_breakout = std::nullopt);
 
-  //void Route(
-  //    const std::vector<std::vector<geometry::Instance*>> muxes,
-  //    Layout *layout);
+  Cell *GenerateIntoDatabase(const std::string &name) override;
 
  private:
   // These are the user-specified width, pitch and offset parameters, in
@@ -205,10 +210,10 @@ class InterconnectWireBlock : public Tile {
   };
 
   struct WireIndex {
+    std::string channel_name;
     size_t channel_number;
     size_t bundle_number;
     size_t wire_number;
-    std::string net;
     int64_t pos_on_off_axis;
     // If present, this wire is broken out:
     std::optional<int64_t> pos_on_main_axis;
@@ -267,8 +272,10 @@ class InterconnectWireBlock : public Tile {
   // TODO(aryap): Why don't I keep more state in the generator itself? It can
   // always be reset when Generate() is called again... these function
   // signatures are nuts!
-  void IncrementMainAxisPosition(int64_t *pos_on_main_axis, int64_t amount) const;
-  void IncrementOffAxisPosition(int64_t *pos_on_off_axis, int64_t amount) const;
+  void IncrementPositionOnMainAxis(
+      int64_t *pos_on_main_axis, int64_t amount) const;
+  void IncrementPositionOnOffAxis(
+      int64_t *pos_on_off_axis, int64_t amount) const;
 
   MappedParameters GetMainAxisMappedParameters() const;
   MappedParameters GetOffAxisMappedParameters() const;
@@ -276,7 +283,7 @@ class InterconnectWireBlock : public Tile {
   // Compute the minimum distance between the incoming and outgoing wire when
   // the bundle is being broken out. This measurement is between the centres of
   // the two wires on either side of the gap, so inclues 1x wire width.
-  int64_t GetMinMainAxisBreakoutGap(const MappedParameters &main_axis) const;
+  int64_t GetMinBreakoutGap(int64_t off_axis_pitch) const;
 
   Parameters parameters_;
 
