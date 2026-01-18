@@ -8,6 +8,11 @@ message InterconnectWireBlock {
     TRACK_VERTICAL = 1;
   }
 
+  enum LayoutMode {
+    CONSERVATIVE = 0;
+    MODESTLY_CLEVER = 1;
+  }
+
   message Bundle {
     optional int32 num_wires = 1;
   }
@@ -20,8 +25,7 @@ message InterconnectWireBlock {
   }
 
   optional RoutingTrackDirection direction = 1;
-  optional bool grow_down = 2;
-  optional bool grow_left = 3;
+  optional LayoutMode layout_mode = 2;
 
   optional string horizontal_layer = 4;
   optional string via_layer = 5;

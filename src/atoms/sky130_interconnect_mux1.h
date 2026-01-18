@@ -76,6 +76,12 @@ class Sky130InterconnectMux1 : public Atom {
     static constexpr uint64_t kHorizontalTilingUnitNm = 460;
 
     uint32_t num_inputs = 6;
+
+    // Either 1 or 2.
+    //
+    // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
+    uint16_t num_outputs = 1;
+
     std::optional<uint64_t> poly_pitch_nm = 500;
 
     std::optional<uint64_t> vertical_pitch_nm = 340;
@@ -101,11 +107,6 @@ class Sky130InterconnectMux1 : public Atom {
     std::optional<uint64_t> power_ground_strap_width_nm = 300;
 
     bool redraw_rail_vias = true;
-
-    // Either 1 or 2.
-    //
-    // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
-    uint16_t num_outputs = 1;
 
     std::optional<uint64_t> min_transmission_gate_stack_height_nm = 5100;
 

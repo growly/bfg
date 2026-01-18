@@ -9,6 +9,7 @@
 #include "../layout.h"
 #include "../memory_bank.h"
 #include "lut_b.h"
+#include "interconnect_wire_block.h"
 #include "proto/parameters/lut_b.pb.h"
 #include "proto/parameters/reduced_slice.pb.h"
 #include "../utility.h"
@@ -123,7 +124,9 @@ void FillClockwise(
   }
 
   for (int i = num_rows_right; i >= 0; --i) {
-    for (size_t j = 0; j < columns_right && count < target_count; ++j, ++count) {
+    for (size_t j = 0;
+        j < columns_right && count < target_count;
+        ++j, ++count) {
       geometry::Instance *instance = bank->InstantiateRight(
           row + i, absl::StrCat(cell_left->name(), "_i", count), cell_left);
       instances.push_back(instance);
@@ -143,6 +146,43 @@ void FillClockwise(
   LOG(INFO) << "Instance count: " << count;
 }
 
+void ReducedSlice::GenerateInterconnectChannels(
+    InterconnectWireBlock::Parameters *iwb_params) const {
+  iwb_params->channels.clear();
+  // For wire lengths not 1 and not the greatest, we create a bundle per side of
+  // the tile, as well as a bundle for every other block that must pass through
+  // this one.
+  size_t num_lengths = sizeof(parameters_.kInterconnectLengths) / sizeof(int);
+  for (size_t i = 0; i < num_lengths - 1; ++i) {
+    int length_in_tiles = parameters_.kInterconnectLengths[i];
+    if (length_in_tiles == 1) {
+      // Length 1 connections do not go in the block, they are more directly
+      // routed.
+      continue;
+    }
+    for (const auto &side_of_tile : parameters_.kSidesOfTile) {
+      iwb_params->channels.push_back({
+        .name = absl::StrFormat("%dX_%s", length_in_tiles, side_of_tile),
+        .break_out = {0},   // FIXME(aryap): This is a parameter.
+        .num_bundles = length_in_tiles,
+        .bundle = {
+          .num_wires = parameters_.kBundleSize
+        }
+      });
+    }
+  }
+
+  // The last length, the largest, 
+  int last_length = parameters_.kInterconnectLengths[num_lengths - 1];
+  iwb_params->channels.push_back({
+    .name = absl::StrFormat("%dX", last_length),
+    .break_out = {0},   // FIXME(aryap): This is a parameter.
+    .num_bundles = last_length,
+    .bundle = {
+      .num_wires = parameters_.kBundleSize
+    }
+  });
+}
 
 Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
@@ -197,7 +237,10 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   std::string iib_s2_mux_name = "iib_s2_mux";
   atoms::Sky130InterconnectMux1::Parameters iib_s2_params = {
     .num_inputs = 6,
-    .num_outputs = 1
+    .num_outputs = 1,
+    .vertical_pitch_nm = 340,
+    .vertical_offset_nm = 170,
+    .horizontal_pitch_nm = 340
   };
   atoms::Sky130InterconnectMux1 iib_s2_generator(iib_s2_params, design_db_);
   Cell *iib_s2_cell = iib_s2_generator.GenerateIntoDatabase(iib_s2_mux_name);
@@ -218,7 +261,10 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   std::string iib_s1_mux_name = "iib_s1_mux";
   atoms::Sky130InterconnectMux1::Parameters iib_s1_params = {
     .num_inputs = 7,
-    .num_outputs = 2
+    .num_outputs = 2,
+    .vertical_pitch_nm = 340,
+    .vertical_offset_nm = 170,
+    .horizontal_pitch_nm = 340
   };
   atoms::Sky130InterconnectMux2 iib_s1_generator(iib_s1_params, design_db_);
   Cell *iib_s1_cell = iib_s1_generator.GenerateIntoDatabase(iib_s1_mux_name);
@@ -249,7 +295,10 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   std::string oib_s2_mux_name = "oib_s2_mux";
   atoms::Sky130InterconnectMux1::Parameters oib_s2_params = {
     .num_inputs = 5,
-    .num_outputs = 2
+    .num_outputs = 2,
+    .vertical_pitch_nm = 340,
+    .vertical_offset_nm = 170,
+    .horizontal_pitch_nm = 340
   };
   atoms::Sky130InterconnectMux2 oib_s2_generator(oib_s2_params, design_db_);
   Cell *oib_s2_cell = oib_s2_generator.GenerateIntoDatabase(oib_s2_mux_name);
@@ -293,7 +342,10 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   std::string oib_s1_mux_name = "oib_s1_mux";
   atoms::Sky130InterconnectMux1::Parameters oib_s1_params = {
     .num_inputs = 6,
-    .num_outputs = 1
+    .num_outputs = 1,
+    .vertical_pitch_nm = 340,
+    .vertical_offset_nm = 170,
+    .horizontal_pitch_nm = 340
   };
   atoms::Sky130InterconnectMux1 oib_s1_generator(oib_s1_params, design_db_);
   Cell *oib_s1_cell = oib_s1_generator.GenerateIntoDatabase(oib_s1_mux_name);
@@ -316,6 +368,55 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
       {0, 
        oib_s2.GetTilingBounds()->lower_left().y() -
           static_cast<int64_t>(oib_s1.GetTilingBounds()->Height())});
+
+  uint64_t current_height = west_layout->GetTilingBounds().Height();
+  uint64_t current_width = west_layout->GetTilingBounds().Width();
+
+  {
+    InterconnectWireBlock::Parameters horizontal_wire_block_params = {
+      .layout_mode =
+          InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
+      .direction = RoutingTrackDirection::kTrackHorizontal,
+      .length = 2 * current_width   // FIXME(aryap).
+    };
+    GenerateInterconnectChannels(&horizontal_wire_block_params);
+    std::string horizontal_wire_block_name = "horizontal_wire_block";
+    InterconnectWireBlock horizontal_wire_block_generator(
+        horizontal_wire_block_params, design_db_);
+    Cell *horizontal_wire_block =
+        horizontal_wire_block_generator.GenerateIntoDatabase(
+            horizontal_wire_block_name);
+    int64_t height =
+        horizontal_wire_block->layout()->GetTilingBounds().Height();
+    geometry::Instance horizontal_wire_block_instance(
+        horizontal_wire_block->layout(),
+        {0,  // FIXME(aryap)
+         west_layout->GetTilingBounds().lower_left().y() - height});
+    horizontal_wire_block_instance.set_name(
+        absl::StrCat(horizontal_wire_block_name, "_i"));
+    cell->layout()->AddInstance(horizontal_wire_block_instance);
+  }
+  {
+    InterconnectWireBlock::Parameters vertical_wire_block_params = {
+      .layout_mode =
+          InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
+      .direction = RoutingTrackDirection::kTrackVertical,
+      .length = current_height    // FIXME(aryap).
+    };
+    GenerateInterconnectChannels(&vertical_wire_block_params);
+    std::string vertical_wire_block_name = "vertical_wire_block";
+    InterconnectWireBlock vertical_wire_block_generator(
+        vertical_wire_block_params, design_db_);
+    Cell *vertical_wire_block =
+        vertical_wire_block_generator.GenerateIntoDatabase(
+            vertical_wire_block_name);
+    geometry::Instance vertical_wire_block_instance(
+        vertical_wire_block->layout(),
+        west_layout->GetTilingBounds().LowerRight());
+    vertical_wire_block_instance.set_name(
+        absl::StrCat(vertical_wire_block_name, "_i"));
+    cell->layout()->AddInstance(vertical_wire_block_instance);
+  }
 
   //// FIXME(aryap): This is dumb.
   cell->layout()->AddLayout(*west_layout);

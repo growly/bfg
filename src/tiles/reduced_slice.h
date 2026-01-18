@@ -1,6 +1,7 @@
 #ifndef TILES_REDUCED_SLICE_H_
 #define TILES_REDUCED_SLICE_H_
 
+#include <string_view>
 #include <string>
 
 #include "../atoms/sky130_interconnect_mux1.h"
@@ -12,12 +13,15 @@
 #include "../routing_grid.h"
 #include "proto/parameters/reduced_slice.pb.h"
 #include "tile.h"
+#include "interconnect_wire_block.h"
 
 namespace bfg {
 
 class DesignDatabase;
 
 namespace tiles {
+
+using namespace std::string_view_literals;
 
 // The BFG ReducedSlice is an example of a complete FPGA slice built around a
 // fixed number of LUTs and Interconnect muxes. The interconnectivity of these
@@ -75,19 +79,24 @@ class ReducedSlice : public Tile {
     static constexpr int kBundleSize = 4;
     // The units are tiles traversed:
     static constexpr int kInterconnectLengths[3] = {1, 2, 6};
+    // We try C++17's string_view to avoid the pain of a statically-defined
+    // C-style strings:
+    static constexpr std::array kSidesOfTile = {"E"sv, "W"sv};
     // Note that the longest-length bundles are treated differently, per the
     // UltraScale-like architecture.
 
     // Per side.
     static constexpr int kNumLUTs = 8;
     static constexpr int kLutSize = 4;
-    // TODO(aryap): Add LUT type.
-    static constexpr int kNumIIBS1 = 16;  // 32 logical 6:1 muxes is 16 shared 7:2 muxes.
+    // TODO(aryap): Add LUT type as an option.
+    //    32 logical 6:1 muxes is 16 shared 7:2 muxes.
+    static constexpr int kNumIIBS1 = 16;
     static constexpr int kNumIIBS2 = 40;
     // ... of which:
     static constexpr int kNumIIBS2Bounce = 8;
     static constexpr int kNumIIBS2Bypass = 2;
-    static constexpr int kNumOIBS2 = 24;  // 48 logical 4:1 is 24 shared 5:2 muxes.
+    //    48 logical 4:1 is 24 shared 5:2 muxes.
+    static constexpr int kNumOIBS2 = 24;
     static constexpr int kNumOIBS1 = 28;
 
     // There is a central structure of muxes that drives only the
@@ -112,6 +121,9 @@ class ReducedSlice : public Tile {
   //    Layout *layout);
 
  private:
+  void GenerateInterconnectChannels(
+      InterconnectWireBlock::Parameters *iwb_params) const;
+
   Parameters parameters_;
 };
 
