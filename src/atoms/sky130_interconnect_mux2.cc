@@ -333,7 +333,11 @@ void Sky130InterconnectMux2::DrawScanChain(
     // 1. They connect to their immediate neighbour on the same row, very close
     // by. These are routed on li.drawing.
     // 2. They connect to their neighbour vertically on the row above.
-    // 3. They connect to their neighbour diagonally on the row TWO above.
+    // 3. They connect to their neighbour diagonally on the row TWO above, by
+    // straddling the central transmission gate stack row.
+    //
+    // The 3rd case is split into two further case: when the block is inside out
+    // and when it is not, since that changes which way around the memories are.
     geometry::Rectangle memory_tiling_bounds = memory->GetTilingBounds();
     int64_t y_diff = std::abs(memory_tiling_bounds.lower_left().y() -
         next->GetTilingBounds().lower_left().y());
@@ -383,6 +387,40 @@ void Sky130InterconnectMux2::DrawScanChain(
                         vertical_x,
                         layout,
                         net);
+    } else if (parameters_.inside_out) {
+      //vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
+      //    row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
+
+      // TODO(aryap): When do these need to be swapped?
+      int64_t first_x = vertical_x_right;
+      int64_t second_x = vertical_x_left;
+
+      int64_t dest_y_offset = 5 * db.Rules("met1.drawing").min_pitch;
+
+      geometry::Point source = mem_Q->centre();
+      geometry::Point dest = next_D->centre();
+
+      geometry::Point p1 = {first_x, source.y()};
+
+      geometry::Point p2 = {first_x, source.y() + dest_y_offset};
+      geometry::Point p3 = {second_x, p2.y()};
+      geometry::Point p4 = {second_x, dest.y()};
+
+      std::vector<geometry::Point> points = {source, p1, p2, p3, p4, dest};
+      layout->MakeVia("mcon.drawing", source);
+      layout->MakeAlternatingWire(points, "met1.drawing", "met2.drawing", net);
+      //layout->MakeVia("via1.drawing", dest);
+      auto encap_info = db.TypicalViaEncap(
+          "mcon.drawing", "met1.drawing", "via1.drawing");
+      {
+        ScopedLayer sl(layout, "met1.drawing");
+        geometry::Rectangle *via_encap = layout->AddRectangle(
+            geometry::Rectangle::CentredAt(
+                dest, encap_info.length, encap_info.width));
+        via_encap->set_net(net);
+      }
+      layout->MakeVia("mcon.drawing", dest);
+      ++row;
     } else {
       vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
           row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
@@ -1020,6 +1058,8 @@ void Sky130InterconnectMux2::DrawOutput(
   LOG_IF(FATAL, NumOutputs() != output_buffers.size())
       << "We expect as many output buffers are there are output ports.";
 
+  std::set<int64_t> used_y;
+
   // Assign left-most mux output to left-most output buffer, and right-most
   // output to right-most output buffer.
   for (int i = 0; i < NumOutputs(); ++i) {
@@ -1034,6 +1074,11 @@ void Sky130InterconnectMux2::DrawOutput(
     std::string mid_net_name = absl::StrFormat(
         "%s_to_%s.%s", stack_output_name, buf->name(), "A");
 
+    // We try to distribute the output wires around the incoming wire,
+    // alternating with each successive output. There might be collisions
+    // depending on the orientation of the buffers (i.e. if
+    // parameters_.inside_out is set), so we also check for those and try to
+    // correct.
     int64_t mid_y_level = ff_out->centre().y() + i * met2_rules.min_pitch;
 
     *mux_pre_buffer_y = mid_y_level;
@@ -1041,6 +1086,9 @@ void Sky130InterconnectMux2::DrawOutput(
     geometry::Point p0 = {ff_out->centre().x(), mid_y_level};
     geometry::Point p2 = buf_A->centre();
     geometry::Point p1 = {p2.x(), mid_y_level};
+
+    used_y.insert(mid_y_level);
+    used_y.insert(p2.y());
 
     layout->MakeAlternatingWire(
         {p0, p1, p2}, "met1.drawing", "met2.drawing", mid_net_name, true);
@@ -1064,13 +1112,20 @@ void Sky130InterconnectMux2::DrawOutput(
 
     std::string out_net_name = absl::StrCat("OUT", i);
 
+    p0 = buf_X->centre();
+    used_y.insert(p0.y());
+
     // ¯\_(ツ)_/¯
     int64_t out_y_level = mid_y_level +
         (i % 2 == 0 ? -1 : 1) * (i + 1) * met2_rules.min_pitch;
 
-    p0 = buf_X->centre();
+    while (used_y.find(out_y_level) != used_y.end()) {
+      out_y_level += (i % 2 == 0 ? -1 : 1) * met2_rules.min_pitch;
+    }
+
     p1 = {buf_X->centre().x(), out_y_level};
     p2 = {output_port_x, out_y_level};
+
 
     // TODO(another micro-optimisation to this layout would be to only use
     // met1: either by specialising the output path for each buffer, or by

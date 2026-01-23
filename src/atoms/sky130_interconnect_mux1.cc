@@ -368,7 +368,8 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
   // rotated, if not don't.
   //
   // If inside_out is set, we flip this setting.
-  bool rotate_first_row = num_ff_rows_bottom % 2 != (parameters_.inside_out ? 1 : 0);
+  bool rotate_first_row = num_ff_rows_bottom % 2 != (
+      parameters_.inside_out ? 1 : 0);
   MemoryBank bank = MemoryBank(cell->layout(),
                                cell->circuit(),
                                design_db_,

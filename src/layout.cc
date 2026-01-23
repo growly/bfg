@@ -717,9 +717,22 @@ geometry::Group Layout::MakeVerticalSpineWithFingers(
     if (point.x() == spine_x) {
       spine_line.InsertBulge(point, spine_bulge_width, spine_bulge_length);
       layout->MakeVia(via_layer, point, net);
+
+      // Add a via encap to make sure one exists that's big enough for the
+      // via_layer via.
+      // TODO(aryap): Determine if this needs to be an option.
+      geometry::Rectangle finger = geometry::Rectangle::CentredAt(
+          point, finger_bulge_length, finger_bulge_width);
+      finger.set_net(net);
+      {
+        ScopedLayer sl(this, finger_layer);
+        geometry::Rectangle *finger_rectangle = layout->AddRectangle(finger);
+        created_shapes.Add(finger_rectangle);
+      }
       continue;
     }
     geometry::Point spine_via = {spine_x, point.y()};
+
     // Have to draw a finger!
     geometry::PolyLine finger({point, spine_via});
 

@@ -295,6 +295,7 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   atoms::Sky130InterconnectMux1::Parameters oib_s2_params;
   oib_s2_params.num_inputs = 5;
   oib_s2_params.num_outputs = 2;
+  oib_s2_params.inside_out = true;
 
   std::string oib_s2_mux_name = "oib_s2_mux";
   atoms::Sky130InterconnectMux2 oib_s2_generator(oib_s2_params, design_db_);
