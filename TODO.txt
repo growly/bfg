@@ -13,16 +13,6 @@ nwells are too close, and disaster.
   outer-most rails will be the opposite ones. This will be hard to route around
   with the strict schemes in place, but it might also be not that hard.
 
-2) Setting
- horizontal_pitch_nm: 340
- vertical_pitch_nm: 340
- vertical_offset_nm: 170
-
-on Sky130InterconnectMux2 avoids some met1 spacing errors in the met1 routing,
-which I had not seen before. These would ideally not happen as a function of
-these settings, which are just the PDK defaults.
-
-Worse, the mcon vias stamped out between cells do not overlap correctly, and it
-definitely has something to do with how the vertical pitch changes the vertical
-routing channel width or something. Anyway, need to figure out what parameters
-to keep to align everything.
+2) add option for top AND/OR BOTTOM dummy rows in Sky130InterconnectMux* generators
+3) finish laying out 8x 4-LUT generator
+4) fix deadlock in router (different paths call same fn with different locks - ValidAgainstKnownBlockages or wahtever)
