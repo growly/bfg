@@ -113,6 +113,9 @@ class Sky130InterconnectMux1 : public Atom {
 
     std::optional<uint64_t> min_transmission_gate_stack_height_nm = 5100;
 
+    // Flip the rotation of all rows.
+    bool inside_out = false;
+
     // Adds rows of just decap cells at standard height to the top/bottom, so
     // that this mux might match others next to it.
     // FIXME(aryap): Add space for this.

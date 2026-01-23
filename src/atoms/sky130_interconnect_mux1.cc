@@ -55,6 +55,7 @@ void Sky130InterconnectMux1::Parameters::ToProto(
   } else {
     pb->clear_power_ground_strap_width_nm();
   }
+  pb->set_inside_out(inside_out);
 }
 
 // TODO(aryap): Empty fields in the proto should yield default values of fields
@@ -84,6 +85,9 @@ void Sky130InterconnectMux1::Parameters::FromProto(
   }
   if (pb.has_num_outputs()) {
     num_outputs = pb.num_outputs();
+  }
+  if (pb.has_inside_out()) {
+    inside_out = pb.inside_out();
   }
 }
 
@@ -362,7 +366,9 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
   // the first row is rotated or not is determined by whether the number of
   // memories below the centre row is even or odd. If it's odd, we must start
   // rotated, if not don't.
-  bool rotate_first_row = num_ff_rows_bottom % 2 != 0;
+  //
+  // If inside_out is set, we flip this setting.
+  bool rotate_first_row = num_ff_rows_bottom % 2 != (parameters_.inside_out ? 1 : 0);
   MemoryBank bank = MemoryBank(cell->layout(),
                                cell->circuit(),
                                design_db_,
@@ -376,7 +382,8 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
       0,
       num_ff_rows_bottom,
       num_ff_columns,
-      &bank);
+      &bank,
+      parameters_.inside_out);
 
   // The input clock buffers go next to the middle flip flop on the top and
   // bottom side.
@@ -438,7 +445,8 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
       num_ff_rows_bottom + 1,
       num_ff_rows_top,
       num_ff_columns,
-      &bank);
+      &bank,
+      parameters_.inside_out);
 
   // Add the top memories' clock buffer.  (To the middle row on top.
   size_t clk_buf_top_row = 
