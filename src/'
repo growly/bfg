@@ -247,8 +247,8 @@ void Sky130InterconnectMux2::DrawRoutes(
 
   // Allocate right columns:
   constexpr size_t kScanChainRightIndex = 10;
-  constexpr size_t kClockRightIndex = 3;
-  constexpr size_t kClockIRightIndex = 5;
+  constexpr size_t kClockRightIndex = 4;
+  constexpr size_t kClockIRightIndex = 6;
   constexpr size_t kInputClockRightIndex = 12;
   constexpr size_t kVPWRVGNDStartRightIndex = 13;
 
@@ -631,23 +631,15 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
               db, "met1.drawing");
     };
 
-    // Because this is specific to the layout of sky130 dfxtps around the
-    // transmission gate, we know that any invalid wire wll collide with the
-    // VGND rail or with the CLK net.
-    //
-    // Instead of the more general, aspirational function to find empty space,
-    // we just the 5x5 grid of via position around the intended original for
-    // conflicts.
-    //
-    // port_is_left_of_x is used to more quickly arrive at a solution on the
-    // happy path.
     auto find_jig_fn = [&](
         const geometry::Line &test_line,
         bool port_is_left_of_x,
         int64_t start_x,
         int64_t start_y) -> std::pair<int64_t, int64_t> {
+      ShapeCollection *met1_shapes = layout->GetShapeCollection(
+          db.GetLayer("met1.drawing"));
+
       int64_t direction_coefficient = port_is_left_of_x ? -1 : 1;
-      int64_t met1_pitch = db.Rules("met1.drawing").min_pitch;
       int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
       int64_t jig_y = 0;
       int64_t jig_x = 0;
@@ -655,15 +647,12 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
       geometry::Rectangle test_shape = via_with_margin_fn(
           {start_x + jig_x, start_y});
       size_t attempts = 0;
-      bool try_vertical = false;
       while (clk_net_shapes.Overlaps(test_shape)) {
         if (attempts > 2) {
           // Over 2x met2_pitch from the initial x we might hit another vertical
           // wire from the transmission gate stack.
+          LOG(ERROR) << "Could not jig enough to avoid obstacle";
           // Give up.
-          LOG(INFO) << "Need to try vertical jiggle to find via location";
-          jig_x -= direction_coefficient * met2_pitch;
-          try_vertical = true;
           break;
         }
         jig_x += direction_coefficient * met2_pitch;
@@ -678,23 +667,11 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
           attempts = 0;
         }
 
-        test_shape = via_with_margin_fn({start_x + jig_x, start_y});
+        test_shape = via_with_margin_fn({start_x + jig_x, start_y + jig_x});
         attempts++;
       }
 
-      if (!try_vertical) {
-        return {jig_x, jig_y};
-      }
 
-      for (int i : {-1, 1}) {
-        jig_y = i * met1_pitch;
-        test_shape = via_with_margin_fn({start_x + jig_x, start_y + jig_y});
-        if (!clk_net_shapes.Overlaps(test_shape)) {
-          return {jig_x, jig_y};
-        }
-      }
-
-      LOG(ERROR) << "Could not heuristically find appropriate place for a via";
       return {jig_x, jig_y};
     };
 
@@ -703,18 +680,15 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
                                       vertical_x,
                                       target_centre.y());
 
-    if (jig_x != 0 || jig_y != 0) {
-      // Some of these points may be duplicated if jig_x == 0 or jig_y == 0, but
-      // geometry::PolyLine handles that for us.
+    if (jig_x != 0) {
       geometry::Point p0 = target_centre;
       geometry::Point p1 = {vertical_x + jig_x, target_centre.y()};
-      geometry::Point p2 = {vertical_x + jig_x, target_centre.y() + jig_y};
-      geometry::Point p3 = {vertical_x, target_centre.y()};
-      geometry::Point p4 = {vertical_x, n_tab_centre.y()};
-      geometry::Point p5 = n_tab_centre;
+      geometry::Point p2 = {vertical_x, target_centre.y()};
+      geometry::Point p3 = {vertical_x, n_tab_centre.y()};
+      geometry::Point p4 = n_tab_centre;
 
       layout->MakeVia("mcon.drawing", p0);
-      layout->MakeWire({p0, p1, p2},
+      layout->MakeWire({p0, p1},
                        "met1.drawing",
                        "li.drawing",
                        "met2.drawing",
@@ -722,7 +696,7 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
                        false,
                        net_QI,
                        true);
-      layout->MakeWire({p2, p1, p3, p4},
+      layout->MakeWire({p1, p2, p3},
                        "met2.drawing",
                        "met1.drawing",
                        "met1.drawing",
@@ -730,7 +704,7 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
                        false,
                        net_QI,
                        true);
-      layout->MakeWire({p4, p5},
+      layout->MakeWire({p3, p4},
                        "met1.drawing",
                        "met2.drawing",
                        "li.drawing",
@@ -738,7 +712,7 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
                        false,
                        net_QI,
                        true);
-      layout->MakeVia("mcon.drawing", p5);
+      layout->MakeVia("mcon.drawing", p4);
     } else {
       ConnectVertically(target_centre,
                         n_tab_centre,
