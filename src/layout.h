@@ -207,6 +207,20 @@ class Layout : public geometry::Manipulable {
                 const geometry::Point &centre,
                 const std::string &layer_name = "");
 
+
+  // TODO(aryap): This is a very interesting problem to solve, and I don't know
+  // how to do it right now, and I don't have time for it, because I need to
+  // graduate. I'm going to leave it in because it is indeed a very useful
+  // feature, if someone ever bothers to write it (and explain it to me).
+  //
+  // Find the rectangular area in which the given point appears, bounded by some
+  // layers with some margin. If there is no valid empty space, such as if the
+  // point collides with an object already, std::nullopt is returned.
+  std::optional<geometry::Rectangle> FindEmptySpaceAround(
+      const geometry::Point &point,
+      const std::vector<std::string> &layers,
+      uint64_t margin) const;
+
   // Draw that alternates between two layers with every subsequent edge.
   void MakeAlternatingWire(
       const std::vector<geometry::Point> &points,

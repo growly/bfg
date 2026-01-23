@@ -234,14 +234,17 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
 
   static constexpr int kNumLeftSkinnyRows = 2;
 
-  std::string iib_s2_mux_name = "iib_s2_mux";
-  atoms::Sky130InterconnectMux1::Parameters iib_s2_params = {
-    .num_inputs = 6,
-    .num_outputs = 1,
+  static const atoms::Sky130InterconnectMux1::Parameters defaults = {
     .vertical_pitch_nm = 340,
     .vertical_offset_nm = 170,
-    .horizontal_pitch_nm = 340
+    .horizontal_pitch_nm = 460
   };
+
+  atoms::Sky130InterconnectMux1::Parameters iib_s2_params = defaults;
+  iib_s2_params.num_inputs = 6;
+  iib_s2_params.num_outputs = 1;
+
+  std::string iib_s2_mux_name = "iib_s2_mux";
   atoms::Sky130InterconnectMux1 iib_s2_generator(iib_s2_params, design_db_);
   Cell *iib_s2_cell = iib_s2_generator.GenerateIntoDatabase(iib_s2_mux_name);
   FillClockwise(
@@ -258,14 +261,11 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
       1000,   // ?
       &iib);
 
+  atoms::Sky130InterconnectMux1::Parameters iib_s1_params = defaults;
+  iib_s1_params.num_inputs = 7;
+  iib_s1_params.num_outputs = 2;
+
   std::string iib_s1_mux_name = "iib_s1_mux";
-  atoms::Sky130InterconnectMux1::Parameters iib_s1_params = {
-    .num_inputs = 7,
-    .num_outputs = 2,
-    .vertical_pitch_nm = 340,
-    .vertical_offset_nm = 170,
-    .horizontal_pitch_nm = 340
-  };
   atoms::Sky130InterconnectMux2 iib_s1_generator(iib_s1_params, design_db_);
   Cell *iib_s1_cell = iib_s1_generator.GenerateIntoDatabase(iib_s1_mux_name);
 
@@ -292,14 +292,11 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
                                  false,      // Rotate first row.
                                  geometry::Compass::RIGHT);
 
+  atoms::Sky130InterconnectMux1::Parameters oib_s2_params;
+  oib_s2_params.num_inputs = 5;
+  oib_s2_params.num_outputs = 2;
+
   std::string oib_s2_mux_name = "oib_s2_mux";
-  atoms::Sky130InterconnectMux1::Parameters oib_s2_params = {
-    .num_inputs = 5,
-    .num_outputs = 2,
-    .vertical_pitch_nm = 340,
-    .vertical_offset_nm = 170,
-    .horizontal_pitch_nm = 340
-  };
   atoms::Sky130InterconnectMux2 oib_s2_generator(oib_s2_params, design_db_);
   Cell *oib_s2_cell = oib_s2_generator.GenerateIntoDatabase(oib_s2_mux_name);
 
@@ -325,7 +322,6 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   //atoms::Sky130InterconnectMux2 oib_s2_generator(oib_s2_params, design_db_);
   //Cell *oib_s2_cell = oib_s2_generator.GenerateIntoDatabase(oib_s2_mux_name);
 
-
   oib_s2.MoveTo(
       {0,
       iib.Row(kNumLeftSkinnyRows).GetTilingBounds()->lower_left().y() -
@@ -339,14 +335,11 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
                                  false,      // Rotate first row.
                                  geometry::Compass::LEFT);
 
+  atoms::Sky130InterconnectMux1::Parameters oib_s1_params = iib_s1_params;
+  oib_s1_params.num_inputs = 6;
+  oib_s1_params.num_outputs = 1;
+
   std::string oib_s1_mux_name = "oib_s1_mux";
-  atoms::Sky130InterconnectMux1::Parameters oib_s1_params = {
-    .num_inputs = 6,
-    .num_outputs = 1,
-    .vertical_pitch_nm = 340,
-    .vertical_offset_nm = 170,
-    .horizontal_pitch_nm = 340
-  };
   atoms::Sky130InterconnectMux1 oib_s1_generator(oib_s1_params, design_db_);
   Cell *oib_s1_cell = oib_s1_generator.GenerateIntoDatabase(oib_s1_mux_name);
 
@@ -372,6 +365,7 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   uint64_t current_height = west_layout->GetTilingBounds().Height();
   uint64_t current_width = west_layout->GetTilingBounds().Width();
 
+  uint64_t horizontal_wire_block_height = 0;
   {
     InterconnectWireBlock::Parameters horizontal_wire_block_params = {
       .layout_mode =
@@ -386,22 +380,28 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
     Cell *horizontal_wire_block =
         horizontal_wire_block_generator.GenerateIntoDatabase(
             horizontal_wire_block_name);
-    int64_t height =
+    horizontal_wire_block_height =
         horizontal_wire_block->layout()->GetTilingBounds().Height();
     geometry::Instance horizontal_wire_block_instance(
-        horizontal_wire_block->layout(),
+        horizontal_wire_block->layout(), {0, 0});
+    horizontal_wire_block_instance.FlipVertical();
+    horizontal_wire_block_instance.ResetOrigin();
+    horizontal_wire_block_instance.Translate(
         {0,  // FIXME(aryap)
-         west_layout->GetTilingBounds().lower_left().y() - height});
+         west_layout->GetTilingBounds().lower_left().y()});
     horizontal_wire_block_instance.set_name(
         absl::StrCat(horizontal_wire_block_name, "_i"));
-    cell->layout()->AddInstance(horizontal_wire_block_instance);
+    geometry::Instance *actual_instance = cell->layout()->AddInstance(
+        horizontal_wire_block_instance);
   }
+  geometry::Instance *central_wire_block = nullptr;
   {
     InterconnectWireBlock::Parameters vertical_wire_block_params = {
       .layout_mode =
           InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
+          //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
       .direction = RoutingTrackDirection::kTrackVertical,
-      .length = current_height    // FIXME(aryap).
+      .length = current_height + horizontal_wire_block_height
     };
     GenerateInterconnectChannels(&vertical_wire_block_params);
     std::string vertical_wire_block_name = "vertical_wire_block";
@@ -411,15 +411,32 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
         vertical_wire_block_generator.GenerateIntoDatabase(
             vertical_wire_block_name);
     geometry::Instance vertical_wire_block_instance(
-        vertical_wire_block->layout(),
-        west_layout->GetTilingBounds().LowerRight());
+        vertical_wire_block->layout(), {0, 0});
+    vertical_wire_block_instance.FlipVertical();
+    vertical_wire_block_instance.ResetOrigin();
+    vertical_wire_block_instance.Translate(
+        west_layout->GetTilingBounds().upper_right());
     vertical_wire_block_instance.set_name(
         absl::StrCat(vertical_wire_block_name, "_i"));
-    cell->layout()->AddInstance(vertical_wire_block_instance);
+    central_wire_block = cell->layout()->AddInstance(
+        vertical_wire_block_instance);
   }
+
+  // Is the east layout just a dumb copy/mirror of the west layout?
+  std::unique_ptr<Layout> east_layout(new bfg::Layout(db));
+  //east_layout->AddLayout(*west_layout);
+  //east_layout->FlipHorizontal();
+  //// FIXME(aryap): FlipHorizontal is broken?
+  ////east_layout->FlipHorizontal();
+  //east_layout->AlignPointTo(
+  //    east_layout->GetTilingBounds().lower_left(),
+  //    {central_wire_block->GetTilingBounds().upper_right().x(),
+  //     west_layout->GetTilingBounds().lower_left().y()});
+
 
   //// FIXME(aryap): This is dumb.
   cell->layout()->AddLayout(*west_layout);
+  cell->layout()->AddLayout(*east_layout);
 
   return cell.release();
 }

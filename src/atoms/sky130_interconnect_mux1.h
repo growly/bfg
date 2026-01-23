@@ -88,6 +88,9 @@ class Sky130InterconnectMux1 : public Atom {
 
     std::optional<uint64_t> vertical_offset_nm = 170;
 
+    // Dictates the unit of which the width of the cell will be a multiple.
+    // Defaults to the horizontal tiling unit, which is the min. width of a
+    // Sky130 standard-cell site.
     std::optional<uint64_t> horizontal_pitch_nm = 460;
 
     // TODO(aryap): This should be left as nullopt by default and filled in

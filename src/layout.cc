@@ -751,6 +751,92 @@ geometry::Group Layout::MakeVerticalSpineWithFingers(
   return created_shapes;
 }
 
+std::optional<geometry::Rectangle> Layout::FindEmptySpaceAround(
+    const geometry::Point &point,
+    const std::vector<std::string> &layers,
+    uint64_t margin) const {
+  // Find the maximum x not greater than point.x() which is occupied by a shape
+  // on each of the layers. Likewise, the minimum y not greater than point.y().
+  // Same with the other side: find the minimum x not less than point.x(),
+  // respectively for y. Then find the minimum over all layers. Those are the
+  // bounds in which there no shapes on other layers. Apply the margin from that
+  // bound to determine the usable area.
+  //
+  // We do not guarantee to find the _largest_ such space, or indeed any
+  // particular property about the space, because that is way more complicated.
+  // Consider:
+  //           |
+  //           +-----
+  //
+  //        x
+  //
+  // -----+
+  //      |
+  //
+  // x is part of three different empty space rectangles in this picture. Which
+  // is the most valuable? Probably the biggest. But we don't guarantee which is
+  // which. We will bias to find one or the other rectangle over the smaller
+  // square though:
+  //
+  //           |                      +--+|                           |      
+  //           +-----                 |  |+-----                      +-----
+  // +--------------+                 |  |                        +--+       
+  // |      x       |                 |x |                        |x |
+  // +--------------+                 |  |                        +--+
+  // -----+                     -----+|  |                  -----+
+  //      |                          |+--+                       |
+  //
+  //
+  // In the naive version we do not sort shapes, we must check them all. This is
+  // slow. In less naive versions, we have lists of shapes sorted by
+  // lower_left/upper_right. In the even less naive version, we have this in a
+  // k-d tree or something.
+  //
+  // In the naive version we also only use the rectangular outlines of
+  // non-rectangular shapes, which could be disastrous.
+
+  // Find nearest shape in +/- x, y:
+  //
+  // TODO(aryap): Implement.
+  //
+  int64_t y_max;
+  std::set<geometry::Rectangle> nearest_y_max;
+  int64_t y_min;
+  std::set<geometry::Rectangle> nearest_y_min;
+
+  int64_t x_max;
+  std::set<geometry::Rectangle> nearest_x_max;
+  int64_t x_min;
+  std::set<geometry::Rectangle> nearest_x_min;
+
+  std::vector<geometry::Rectangle> bounding_boxes;
+  for (const std::string &layer : layers) {
+    const ShapeCollection *shapes = GetShapeCollection(
+        physical_db_.GetLayer(layer));
+    for (const auto &rectangle : shapes->rectangles()) {
+      if (rectangle->Intersects(point)) { return std::nullopt; }
+      bounding_boxes.push_back(*rectangle);
+    }
+    for (const auto &polygon : shapes->polygons()) {
+      if (polygon->Intersects(point)) { return std::nullopt; }
+      bounding_boxes.push_back(polygon->GetBoundingBox());
+    }
+    for (const auto &port : shapes->ports()) {
+      if (port->Intersects(point)) { return std::nullopt; }
+      bounding_boxes.push_back(*port);
+    }
+    // Ignore polylines for now.
+    // for (const auto &poly_line : poly_lines_) { poly_line->MirrorY(); }
+  }
+
+  LOG(INFO) << "Will check " << bounding_boxes.size()
+            << " bounding box(es) around " << point;
+  for (const auto &rectangle : bounding_boxes) {
+  }
+
+  return std::nullopt;
+}
+
 void Layout::MakeAlternatingWire(
     const std::vector<geometry::Point> &points,
     const std::string &first_layer_name,

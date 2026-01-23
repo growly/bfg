@@ -392,9 +392,9 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
       clk_buf_bottom_row,
       &bank);
 
-  // With the bottom memories and their clock buffers placed, we can size the
-  // left routing channel and output row to make the overall mux meet the pitch
-  // requirement:
+  // With the bottom memories and their clock buffers placed, we have the
+  // minimum width of the cell and so can size the left routing channel and
+  // output row to make the overall mux meet the pitch requirement:
   uint64_t fixed_row_width = bank.Row(num_ff_rows_bottom - 1).Width();
   uint64_t horizontal_pitch_nm = parameters_.horizontal_pitch_nm.value_or(
       Parameters::kHorizontalTilingUnitNm);

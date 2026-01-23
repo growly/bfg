@@ -631,46 +631,53 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
               db, "met1.drawing");
     };
 
+    // Ok because I am lazy this is going to check a 5x5 grid of positions
+    // around the nominal (given) one:
     auto find_jig_fn = [&](
         const geometry::Line &test_line,
         bool port_is_left_of_x,
         int64_t start_x,
-        int64_t y) {
+        int64_t start_y) -> std::pair<int64_t, int64_t> {
       int64_t direction_coefficient = port_is_left_of_x ? -1 : 1;
       int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
-      int64_t jig = 0;
+      int64_t jig_y = 0;
+      int64_t jig_x = 0;
 
-      geometry::Rectangle test_shape = via_with_margin_fn(
-          {start_x + jig, y});
+      geometry::Rectangle test_shape = via_with_margin_fn({start_x, start_y});
       size_t attempts = 0;
       while (clk_net_shapes.Overlaps(test_shape)) {
-        if (attempts > 3) {
+        if (attempts > 2) {
+          // Over 2x met2_pitch from the initial x we might hit another vertical
+          // wire from the transmission gate stack.
           LOG(ERROR) << "Could not jig enough to avoid obstacle";
           // Give up.
           break;
         }
-        jig += direction_coefficient * met2_pitch;
+        jig_x += direction_coefficient * met2_pitch;
 
-        geometry::Line jig_line({start_x, y}, {start_x + jig, y});
+        geometry::Line x_line({start_x, start_y}, {start_x + jig_x, start_y});
         bool incident = false;
         geometry::Point intersection;
-        if (jig_line.IntersectsInMutualBounds(
+        if (x_line.IntersectsInMutualBounds(
               test_line, &incident, &intersection)) {
           direction_coefficient *= -1;
-          jig = 0;
+          jig_x = 0;
           attempts = 0;
         }
 
-        test_shape = via_with_margin_fn({start_x + jig, y});
+        test_shape = via_with_margin_fn({start_x + jig_x, start_y + jig_x});
         attempts++;
       }
-      return jig;
+
+
+
+      return {jig_x, jig_y};
     };
 
-    int64_t jig_x = find_jig_fn(p_tab_vertical_line,
-                                target_centre.x() < vertical_x,
-                                vertical_x,
-                                target_centre.y());
+    auto [jig_x, jig_y] = find_jig_fn(p_tab_vertical_line,
+                                      target_centre.x() < vertical_x,
+                                      vertical_x,
+                                      target_centre.y());
 
     if (jig_x != 0) {
       geometry::Point p0 = target_centre;

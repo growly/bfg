@@ -90,6 +90,17 @@ namespace tiles {
 // An extra-step of cleverness is to include same-index wires from all channels
 // so that even the single-bundle case is handled. This is implemented as the
 // "modestly clever" layout mode.
+//
+// TODO(aryap): Ideas for how this should work. Add a 'break_out_A_offset' and a
+// 'break_out_B_offset' that are signed indicating the offset from the start (if
+// positive) or end (if negative) of the length of the block that the respective
+// breakouts should start being laid out. If both are not specified, use the
+// default breakout gap calculation. If the user asks for them to overlap,
+// that's on them.
+// 
+// TODO(aryap): Need a generator method that can predict the width/height of the
+// block without generating, since there is a mutual dependence in the
+// ReducedSlice between the horizontal and vertical wire block's sizes.
 class InterconnectWireBlock : public Tile {
  public:
   struct Parameters {
