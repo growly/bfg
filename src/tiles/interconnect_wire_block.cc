@@ -153,6 +153,55 @@ void InterconnectWireBlock::Parameters::FromProto(
   }
 }
 
+// Be very clear about what is meant by "off axis" and "main axis". Sometimes
+// you refer to the orhogonal properties by the axis whose wires they apply to.
+uint64_t InterconnectWireBlock::PredictSpanAlongOffAxis(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters) {
+  uint64_t wire_count = 0;
+  for (const auto &channel : parameters.channels) {
+    wire_count += channel.num_bundles * channel.bundle.num_wires;
+  }
+
+  // Since we know the block is vertical, and we're interested in the horizontal
+  // span, we know we want the off-axis.
+  ResolvedParameters main_axis;
+  ResolvedParameters unused;
+
+  switch (parameters.layout_mode) {
+    case Parameters::LayoutMode::kConservative: {
+      ResolveParametersConservative(db, parameters, &main_axis, &unused);
+      break;
+    }
+    case Parameters::LayoutMode::kModestlyClever:
+      ResolveParametersModestlyClever(db, parameters, &main_axis, &unused);
+      break;
+    default:
+      LOG(FATAL) << "Unsupported layout_mode.";
+  }
+  uint64_t span = 2 * main_axis.offset + (wire_count - 1) * main_axis.pitch;
+  return span;
+}
+
+uint64_t InterconnectWireBlock::PredictWidth(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters) {
+  // Easy out:
+  if (parameters.direction == RoutingTrackDirection::kTrackHorizontal) {
+    return parameters.length;
+  }
+  return PredictSpanAlongOffAxis(db, parameters);
+}
+uint64_t InterconnectWireBlock::PredictHeight(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters) {
+  // Easy out:
+  if (parameters.direction == RoutingTrackDirection::kTrackVertical) {
+    return parameters.length;
+  }
+  return PredictSpanAlongOffAxis(db, parameters);
+}
+
 std::string InterconnectWireBlock::MakeNetName(
     const std::string &channel_name,
     int bundle_number,
@@ -170,18 +219,19 @@ std::string InterconnectWireBlock::MakeNetName(
 }
 
 InterconnectWireBlock::MappedParameters
-InterconnectWireBlock::GetMainAxisMappedParameters() const {
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+InterconnectWireBlock::GetMainAxisMappedParameters(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters) {
   const auto &forced_width_nm =
-    parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-    parameters_.vertical_wire_width_nm : parameters_.horizontal_wire_width_nm;
+    parameters.direction == RoutingTrackDirection::kTrackVertical ?
+    parameters.vertical_wire_width_nm : parameters.horizontal_wire_width_nm;
   const auto &forced_pitch_nm =
-    parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-    parameters_.vertical_wire_pitch_nm :
-    parameters_.horizontal_wire_pitch_nm;
+    parameters.direction == RoutingTrackDirection::kTrackVertical ?
+    parameters.vertical_wire_pitch_nm :
+    parameters.horizontal_wire_pitch_nm;
   const auto &forced_offset_nm =
-    parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-    parameters_.vertical_wire_offset_nm : parameters_.horizontal_wire_offset_nm;
+    parameters.direction == RoutingTrackDirection::kTrackVertical ?
+    parameters.vertical_wire_offset_nm : parameters.horizontal_wire_offset_nm;
 
   return MappedParameters {
     .width = db.ToInternalUnits(forced_width_nm),
@@ -191,18 +241,19 @@ InterconnectWireBlock::GetMainAxisMappedParameters() const {
 }
 
 InterconnectWireBlock::MappedParameters
-InterconnectWireBlock::GetOffAxisMappedParameters() const {
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+InterconnectWireBlock::GetOffAxisMappedParameters(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters) {
   const auto &forced_width_nm =
-    parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-    parameters_.horizontal_wire_width_nm : parameters_.vertical_wire_width_nm;
+    parameters.direction == RoutingTrackDirection::kTrackVertical ?
+    parameters.horizontal_wire_width_nm : parameters.vertical_wire_width_nm;
   const auto &forced_pitch_nm =
-    parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-    parameters_.horizontal_wire_pitch_nm :
-    parameters_.vertical_wire_pitch_nm;
+    parameters.direction == RoutingTrackDirection::kTrackVertical ?
+    parameters.horizontal_wire_pitch_nm :
+    parameters.vertical_wire_pitch_nm;
   const auto &forced_offset_nm =
-    parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-    parameters_.horizontal_wire_offset_nm : parameters_.vertical_wire_offset_nm;
+    parameters.direction == RoutingTrackDirection::kTrackVertical ?
+    parameters.horizontal_wire_offset_nm : parameters.vertical_wire_offset_nm;
 
   return MappedParameters {
     .width = db.ToInternalUnits(forced_width_nm),
@@ -223,9 +274,10 @@ geometry::Point InterconnectWireBlock::MapToPoint(
   }
 }
 
-// TODO(aryap): I factored these out so that you could flip the incremement
-// direction depending on settings (like 'flip'), if desired. But in reality you
-// can just flip the whole cell with the primitive Layout methods.
+// I factored these out so that you could flip the incremement direction
+// depending on settings (like 'flip'), if desired. But in reality you can just
+// flip the whole cell with the primitive Layout methods. So you can probably go
+// back to dereferencing pointers.
 void InterconnectWireBlock::IncrementPositionOnMainAxis(
     int64_t *pos_on_main_axis, int64_t amount) const {
   *pos_on_main_axis += amount;
@@ -352,9 +404,10 @@ void InterconnectWireBlock::DrawBrokenOutWire(
   layout->SavePoint(absl::StrCat(net_1, "_off"), off_axis_pin_1);
 }
 
-int64_t InterconnectWireBlock::GetMinBreakoutGap(int64_t off_axis_pitch) const {
+int64_t InterconnectWireBlock::GetMinBreakoutGap(
+    const Parameters &parameters, int64_t off_axis_pitch) {
   uint64_t num_broken_out_wires = 0;
-  for (const auto &channel : parameters_.channels) {
+  for (const auto &channel : parameters.channels) {
     num_broken_out_wires +=
         channel.break_out.size() * channel.bundle.num_wires;
   }
@@ -362,40 +415,59 @@ int64_t InterconnectWireBlock::GetMinBreakoutGap(int64_t off_axis_pitch) const {
   return num_broken_out_wires * off_axis_pitch;
 }
 
-void InterconnectWireBlock::DrawConservative(
-    geometry::Point *diagonal_corner,
-    Layout *layout) const {
-  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-
-  MappedParameters main_axis = GetMainAxisMappedParameters();
-  MappedParameters off_axis = GetOffAxisMappedParameters();
+void InterconnectWireBlock::ResolveParametersConservative(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters,
+    ResolvedParameters *main_axis,
+    ResolvedParameters *off_axis) {
+  const geometry::Layer &main_layer = ResolveMainLayer(db, parameters);
+  const geometry::Layer &off_layer = ResolveOffLayer(db, parameters);
+  const geometry::Layer &via_layer = ResolveViaLayer(db, parameters);
+  MappedParameters mapped_main = GetMainAxisMappedParameters(db, parameters);
+  MappedParameters mapped_off = GetOffAxisMappedParameters(db, parameters);
 
   // The defaults (and also bounds) for the track parameters in the conservative
   // case.
   //
   // The min pitch is actually dictated by how closely we can put the via encaps
   // together.
-  const auto &main_rules = db.Rules(main_layer_);
-  auto main_via_encap = db.TypicalViaEncap(main_layer_, via_layer_);
+  const auto &main_rules = db.Rules(main_layer);
+  auto main_via_encap = db.TypicalViaEncap(main_layer, via_layer);
   int64_t main_pitch = main_rules.min_separation +
-      main_axis.width.value_or(
+      mapped_main.width.value_or(
           std::max(main_via_encap.width, main_rules.min_width));
-  main_pitch = main_axis.pitch.value_or(main_pitch);
+  main_pitch = mapped_main.pitch.value_or(main_pitch);
 
-  const auto &off_rules = db.Rules(off_layer_);
-  auto off_via_encap = db.TypicalViaEncap(off_layer_, via_layer_);
+  const auto &off_rules = db.Rules(off_layer);
+  auto off_via_encap = db.TypicalViaEncap(off_layer, via_layer);
   int64_t off_pitch = off_rules.min_separation +
-      off_axis.width.value_or(
+      mapped_off.width.value_or(
           std::max(off_via_encap.width, off_rules.min_width));
-  off_pitch = off_axis.pitch.value_or(off_pitch);
-
-  int64_t breakout_gap = GetMinBreakoutGap(off_pitch);
+  off_pitch = mapped_off.pitch.value_or(off_pitch);
 
   // These values should now be set.
-  int64_t main_width = main_axis.width.value_or(main_rules.min_width);
-  int64_t main_offset = main_axis.offset.value_or(main_pitch / 2);
-  int64_t off_width = off_axis.width.value_or(off_rules.min_width);
-  int64_t off_offset = off_axis.offset.value_or(off_pitch / 2);
+  //
+  // "main_axis" refers to properties of the wires in the direction of the main
+  // axis, but in fact the values apply to spacing along the orthogonal (off)
+  // axis.  And vice versa.
+  main_axis->pitch = main_pitch;
+  main_axis->width = mapped_main.width.value_or(main_rules.min_width);
+  main_axis->offset = mapped_main.offset.value_or(main_pitch / 2);
+  off_axis->pitch = off_pitch;
+  off_axis->width = mapped_off.width.value_or(off_rules.min_width);
+  off_axis->offset = mapped_off.offset.value_or(off_pitch / 2);
+}
+
+void InterconnectWireBlock::DrawConservative(
+    geometry::Point *diagonal_corner,
+    Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  ResolvedParameters main_axis;
+  ResolvedParameters off_axis;
+  ResolveParametersConservative(db, parameters_, &main_axis, &off_axis);
+
+  int64_t breakout_gap = GetMinBreakoutGap(parameters_, off_axis.pitch);
 
   // The main axis is the axis along which the principle wire is run. Break
   // offs, for connection to the side of the tile, occur along the off axis.
@@ -403,8 +475,8 @@ void InterconnectWireBlock::DrawConservative(
   // pos_on_main_axis is the position along the main axis, and likewise
   // pos_on_off_axis is the position along the off axis. It is not the position
   // _of_ the main axis, or the off axis, respectively. 
-  int64_t pos_on_main_axis = off_offset;
-  int64_t pos_on_off_axis = main_offset;
+  int64_t pos_on_main_axis = off_axis.offset;
+  int64_t pos_on_off_axis = main_axis.offset;
 
   // Laying out a bundle is just drawing N wires in the right direction.
   for (size_t c = 0; c < parameters_.channels.size(); ++c) {
@@ -415,31 +487,69 @@ void InterconnectWireBlock::DrawConservative(
         if (channel.break_out.find(b) == channel.break_out.end()) {
           DrawStraightWire(pos_on_off_axis,
                            parameters_.length,
-                           main_width,
+                           main_axis.width,
                            MakeNetName(channel.name, b, w),
                            layout);
 
-          IncrementPositionOnOffAxis(&pos_on_off_axis, main_pitch);
+          IncrementPositionOnOffAxis(&pos_on_off_axis, main_axis.pitch);
           continue;
         }
 
         DrawBrokenOutWire(pos_on_main_axis,
                           pos_on_off_axis,
                           breakout_gap,
-                          main_width,
-                          off_width,
+                          main_axis.width,
+                          off_axis.width,
                           MakeNetName(channel.name, b, w, true),
                           MakeNetName(channel.name, b, w, false),
                           std::nullopt,
                           layout);
 
-        IncrementPositionOnOffAxis(&pos_on_off_axis, main_pitch);
-        IncrementPositionOnMainAxis(&pos_on_main_axis, off_pitch);
+        IncrementPositionOnOffAxis(&pos_on_off_axis, main_axis.pitch);
+        IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
       }
     }
   }
-  IncrementPositionOnOffAxis(&pos_on_off_axis, -main_pitch / 2);
-  *diagonal_corner = MapToPoint(parameters_.length, pos_on_off_axis);
+  IncrementPositionOnOffAxis(&pos_on_off_axis, -main_axis.pitch);
+  *diagonal_corner = MapToPoint(
+      parameters_.length, pos_on_off_axis + main_axis.offset);
+}
+
+void InterconnectWireBlock::ResolveParametersModestlyClever(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters,
+    ResolvedParameters *main_axis,
+    ResolvedParameters *off_axis) {
+  const geometry::Layer &main_layer = ResolveMainLayer(db, parameters);
+  const geometry::Layer &off_layer = ResolveOffLayer(db, parameters);
+  const geometry::Layer &via_layer = ResolveViaLayer(db, parameters);
+  MappedParameters mapped_main = GetMainAxisMappedParameters(db, parameters);
+  MappedParameters mapped_off = GetOffAxisMappedParameters(db, parameters);
+
+  // The defaults (and also bounds) for the track parameters in the conservative
+  // case.
+  //
+  // The min pitch is actually dictated by how closely we can put the via encaps
+  // together.
+  const auto &main_rules = db.Rules(main_layer);
+  auto main_via_encap = db.TypicalViaEncap(main_layer, via_layer);
+  int64_t main_pitch = main_rules.min_separation + mapped_main.width.value_or(
+      (main_via_encap.width + main_rules.min_width) / 2);
+  main_pitch = mapped_main.pitch.value_or(main_pitch);
+
+  const auto &off_rules = db.Rules(off_layer);
+  auto off_via_encap = db.TypicalViaEncap(off_layer, via_layer);
+  int64_t off_pitch = off_rules.min_separation + mapped_off.width.value_or(
+      (off_via_encap.width + off_rules.min_width) / 2);
+  off_pitch = mapped_off.pitch.value_or(off_pitch);
+
+  // These values should now be set.
+  main_axis->pitch = main_pitch;
+  main_axis->width = mapped_main.width.value_or(main_rules.min_width);
+  main_axis->offset = mapped_main.offset.value_or(main_pitch / 2);
+  off_axis->pitch = off_pitch;
+  off_axis->width = mapped_off.width.value_or(off_rules.min_width);
+  off_axis->offset = mapped_off.offset.value_or(off_pitch / 2);
 }
 
 // The default pitch calculation for the modestly clever method is less
@@ -451,36 +561,14 @@ void InterconnectWireBlock::DrawModestlyClever(
     Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
-  MappedParameters main_axis = GetMainAxisMappedParameters();
-  MappedParameters off_axis = GetOffAxisMappedParameters();
+  ResolvedParameters main_axis;
+  ResolvedParameters off_axis;
+  ResolveParametersModestlyClever(db, parameters_, &main_axis, &off_axis);
 
-  // The defaults (and also bounds) for the track parameters in the conservative
-  // case.
-  //
-  // The min pitch is actually dictated by how closely we can put the via encaps
-  // together.
-  const auto &main_rules = db.Rules(main_layer_);
-  auto main_via_encap = db.TypicalViaEncap(main_layer_, via_layer_);
-  int64_t main_pitch = main_rules.min_separation + main_axis.width.value_or(
-      (main_via_encap.width + main_rules.min_width) / 2);
-  main_pitch = main_axis.pitch.value_or(main_pitch);
+  int64_t breakout_gap = GetMinBreakoutGap(parameters_, off_axis.pitch);
 
-  const auto &off_rules = db.Rules(off_layer_);
-  auto off_via_encap = db.TypicalViaEncap(off_layer_, via_layer_);
-  int64_t off_pitch = off_rules.min_separation + off_axis.width.value_or(
-      (off_via_encap.width + off_rules.min_width) / 2);
-  off_pitch = off_axis.pitch.value_or(off_pitch);
-
-  int64_t breakout_gap = GetMinBreakoutGap(off_pitch);
-
-  // These values should now be set.
-  int64_t main_width = main_axis.width.value_or(main_rules.min_width);
-  int64_t main_offset = main_axis.offset.value_or(main_pitch / 2);
-  int64_t off_width = off_axis.width.value_or(off_rules.min_width);
-  int64_t off_offset = off_axis.offset.value_or(off_pitch / 2);
-
-  int64_t pos_on_main_axis = off_offset;
-  int64_t pos_on_off_axis = main_offset;
+  int64_t pos_on_main_axis = off_axis.offset;
+  int64_t pos_on_off_axis = main_axis.offset;
 
   // Because we access the wire collection across a few dimensions (the wire
   // index, the bundle index (for breakout neighbours), and the channel index
@@ -549,7 +637,7 @@ void InterconnectWireBlock::DrawModestlyClever(
       LOG(INFO) << entry.first << " " << wire_index->channel_number
                 << " " << wire_index->bundle_number
                 << " on off axis: " << pos_on_off_axis;
-      IncrementPositionOnOffAxis(&pos_on_off_axis, main_pitch);
+      IncrementPositionOnOffAxis(&pos_on_off_axis, main_axis.pitch);
     }
   }
 
@@ -558,7 +646,7 @@ void InterconnectWireBlock::DrawModestlyClever(
     for (WireIndex &wire_index : all_wires[c][b]) {
       wire_index.pos_on_main_axis = pos_on_main_axis;
       LOG(INFO) << c << ", " << b << " off: " << *wire_index.pos_on_main_axis;
-      IncrementPositionOnMainAxis(&pos_on_main_axis, off_pitch);
+      IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
     }
   }
 
@@ -570,7 +658,7 @@ void InterconnectWireBlock::DrawModestlyClever(
           DrawStraightWire(
               wire.pos_on_off_axis,
               parameters_.length,
-              main_width,
+              main_axis.width,
               MakeNetName(
                   wire.channel_name, wire.bundle_number, wire.wire_number),
               layout);
@@ -585,8 +673,8 @@ void InterconnectWireBlock::DrawModestlyClever(
         DrawBrokenOutWire(*wire.pos_on_main_axis,
                           wire.pos_on_off_axis,
                           breakout_gap,
-                          main_width,
-                          off_width,
+                          main_axis.width,
+                          off_axis.width,
                           net_name_0,
                           net_name_1,
                           std::nullopt,
@@ -595,9 +683,12 @@ void InterconnectWireBlock::DrawModestlyClever(
       }
     }
   }
-  IncrementPositionOnOffAxis(&pos_on_off_axis, -main_pitch / 2);
+  // Undo the last increment so that the pos_on_off_axis now points to where the
+  // last track was placed.
+  IncrementPositionOnOffAxis(&pos_on_off_axis, -main_axis.pitch);
 
-  *diagonal_corner = MapToPoint(parameters_.length, pos_on_off_axis);
+  *diagonal_corner = MapToPoint(
+      parameters_.length, pos_on_off_axis + main_axis.offset);
 }
 
 Cell *InterconnectWireBlock::GenerateIntoDatabase(const std::string &name) {

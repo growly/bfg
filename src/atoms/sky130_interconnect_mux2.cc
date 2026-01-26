@@ -242,7 +242,7 @@ void Sky130InterconnectMux2::DrawRoutes(
   // cause problems for met1 connections below):
   const size_t kLastLeftMet2ColumnIndex = db.ToInternalUnits(
       *parameters_.horizontal_routing_channel_height_nm) / met2_pitch;
-  const size_t kScanChainLeftIndex = kLastLeftMet2ColumnIndex + 1;
+  const size_t kScanChainLeftIndex = kLastLeftMet2ColumnIndex;
   const size_t kInterconnectLeftStartIndex = kLastLeftMet2ColumnIndex;
 
   // Allocate right columns:
@@ -266,7 +266,7 @@ void Sky130InterconnectMux2::DrawRoutes(
   DrawScanChain(scan_order,
                 memory_output_nets,
                 bottom_memories.size() - 1,
-                columns_left_x[kScanChainLeftIndex],
+                columns_left_x[kScanChainLeftIndex] + met2_pitch / 2,
                 columns_right_x[kScanChainRightIndex],
                 layout,
                 circuit);
@@ -1144,9 +1144,10 @@ void Sky130InterconnectMux2::DrawOutput(
     circuit->AddPort(output_signal);
     buf->circuit_instance()->Connect("X", output_signal);
 
-    // To keep VLSIR happy, connect port P to a floating net (it is disconnected).
-    // TODO(aryap): This should be automatically emitted by our circuit model for
-    // explicitly disconnected ports!
+    // To keep VLSIR happy, connect port P to a floating net (it is
+    // disconnected).
+    // TODO(aryap): This should be automatically emitted by our circuit model
+    // for explicitly disconnected ports!
     circuit::Wire disconnected_P = circuit->AddSignal(
         absl::StrCat("disconnected_P", i));
     buf->circuit_instance()->Connect("P", disconnected_P);

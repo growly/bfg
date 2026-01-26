@@ -104,7 +104,7 @@ namespace tiles {
 class InterconnectWireBlock : public Tile {
  public:
   struct Parameters {
-    enum class LayoutMode {
+    enum class LayoutMode : uint8_t {
       kConservative = 0,
       kModestlyClever = 1
     };
@@ -142,6 +142,9 @@ class InterconnectWireBlock : public Tile {
     std::string via_layer = "via1.drawing";
     std::string vertical_layer = "met2.drawing";
 
+    // Read these as "the width of the horizontal wire", "the pitch of the
+    // vertical wire", etc. They dictate sizing in the dimension orthogonal to
+    // the direction of the wire.
     std::optional<int64_t> horizontal_wire_width_nm;
     std::optional<int64_t> horizontal_wire_pitch_nm;
     std::optional<int64_t> horizontal_wire_offset_nm;
@@ -152,6 +155,9 @@ class InterconnectWireBlock : public Tile {
     // The length of the block is either its height or its width depending on
     // whether the routing is vertical or horizontal (respectively).
     uint64_t length = 30000;
+
+    std::optional<int64_t> first_break_out_start_nm;
+    std::optional<int64_t> second_break_out_start_nm;
 
     std::vector<Channel> channels = {
       Channel {
@@ -176,20 +182,41 @@ class InterconnectWireBlock : public Tile {
     void FromProto(const proto::parameters::InterconnectWireBlock &pb); 
   };
 
+  static uint64_t PredictWidth(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters);
+  static uint64_t PredictHeight(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters);
+
+  static const geometry::Layer ResolveMainLayer(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters) {
+    return parameters.direction == RoutingTrackDirection::kTrackVertical ?
+        db.GetLayer(parameters.vertical_layer) :
+        db.GetLayer(parameters.horizontal_layer);
+  }
+  static const geometry::Layer ResolveOffLayer(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters) {
+    return parameters.direction == RoutingTrackDirection::kTrackVertical ?
+        db.GetLayer(parameters.horizontal_layer) :
+        db.GetLayer(parameters.vertical_layer);
+  }
+  static const geometry::Layer ResolveViaLayer(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters) {
+    return db.GetLayer(parameters.via_layer);
+  }
+
+
   InterconnectWireBlock(
       const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
         parameters_(parameters),
-        main_layer_(
-            parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-            design_db->physical_db().GetLayer(parameters.vertical_layer) :
-            design_db->physical_db().GetLayer(parameters.horizontal_layer)),
-        off_layer_(
-            parameters_.direction == RoutingTrackDirection::kTrackVertical ?
-            design_db->physical_db().GetLayer(parameters.horizontal_layer) :
-            design_db->physical_db().GetLayer(parameters.vertical_layer)),
-        via_layer_(
-            design_db->physical_db().GetLayer(parameters.via_layer)) {
+        main_layer_(ResolveMainLayer(design_db->physical_db(), parameters)),
+        off_layer_(ResolveOffLayer(design_db->physical_db(), parameters)),
+        via_layer_(ResolveViaLayer(design_db->physical_db(), parameters)) {
     auto main_layer_pins =
         design_db->physical_db().GetPinLayersFor(main_layer_);
     if (!main_layer_pins.empty()) {
@@ -220,6 +247,14 @@ class InterconnectWireBlock : public Tile {
     std::optional<int64_t> offset;
   };
 
+  // These are the internal-unit-valued, non-optional values of the
+  // MappedParameters with default values applied if necessary.
+  struct ResolvedParameters {
+    int64_t width;
+    int64_t pitch;
+    int64_t offset;
+  };
+
   struct WireIndex {
     std::string channel_name;
     size_t channel_number;
@@ -231,6 +266,43 @@ class InterconnectWireBlock : public Tile {
     // If present, the broken-out pin is shifted to this off-axis position:
     std::optional<int64_t> off_axis_edge_pos;
   };
+
+  static uint64_t PredictSpanAlongOffAxis(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters);
+  static MappedParameters GetMainAxisMappedParameters(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters);
+  static MappedParameters GetOffAxisMappedParameters(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters);
+
+  // Compute the minimum distance between the incoming and outgoing wire when
+  // the bundle is being broken out. This measurement is between the centres of
+  // the two wires on either side of the gap, so inclues 1x wire width.
+  static int64_t GetMinBreakoutGap(
+      const Parameters &parameters,
+      int64_t off_axis_pitch);
+
+  static void ResolveParametersConservative(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters,
+      ResolvedParameters *main_axis,
+      ResolvedParameters *off_axis);
+
+  static void ResolveParametersModestlyClever(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters,
+      ResolvedParameters *main_axis,
+      ResolvedParameters *off_axis);
+
+
+  MappedParameters GetMainAxisMappedParameters() const {
+    return GetMainAxisMappedParameters(design_db_->physical_db(), parameters_);
+  }
+  MappedParameters GetOffAxisMappedParameters() const {
+    return GetOffAxisMappedParameters(design_db_->physical_db(), parameters_);
+  }
 
   geometry::Point MapToPoint(
       int64_t pos_on_main_axis, int64_t pos_on_off_axis) const;
@@ -262,7 +334,7 @@ class InterconnectWireBlock : public Tile {
     Layout *layout) const;
 
   void DrawStraightWire(
-      int64_t pos_on_off_axis,
+          int64_t pos_on_off_axis,
       int64_t length,
       int64_t width,
       const std::string &net,
@@ -287,14 +359,6 @@ class InterconnectWireBlock : public Tile {
       int64_t *pos_on_main_axis, int64_t amount) const;
   void IncrementPositionOnOffAxis(
       int64_t *pos_on_off_axis, int64_t amount) const;
-
-  MappedParameters GetMainAxisMappedParameters() const;
-  MappedParameters GetOffAxisMappedParameters() const;
-
-  // Compute the minimum distance between the incoming and outgoing wire when
-  // the bundle is being broken out. This measurement is between the centres of
-  // the two wires on either side of the gap, so inclues 1x wire width.
-  int64_t GetMinBreakoutGap(int64_t off_axis_pitch) const;
 
   Parameters parameters_;
 

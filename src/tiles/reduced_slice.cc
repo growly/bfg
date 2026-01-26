@@ -29,7 +29,6 @@ void ReducedSlice::Parameters::FromProto(
   // TODO(aryap): Complete.
 }
 
-
 // Ok the thing I want to capture is the generation logic for slices "like
 // this", meaning nothing more general than that.
 //
@@ -366,23 +365,36 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   uint64_t current_height = west_layout->GetTilingBounds().Height();
   uint64_t current_width = west_layout->GetTilingBounds().Width();
 
-  uint64_t horizontal_wire_block_height = 0;
+  InterconnectWireBlock::Parameters horizontal_wire_block_params = {
+    .layout_mode =
+        InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
+    .direction = RoutingTrackDirection::kTrackHorizontal,
+    .horizontal_wire_offset_nm = db.ToExternalUnits(
+        db.Rules("met1.drawing").min_pitch)
+  };
+  GenerateInterconnectChannels(&horizontal_wire_block_params);
+
+  InterconnectWireBlock::Parameters vertical_wire_block_params = {
+    .layout_mode =
+        InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
+    .direction = RoutingTrackDirection::kTrackVertical
+  };
+  GenerateInterconnectChannels(&vertical_wire_block_params);
+
+  horizontal_wire_block_params.length =
+      2 * current_width + InterconnectWireBlock::PredictWidth(
+          db, vertical_wire_block_params);
+  vertical_wire_block_params.length =
+      current_height + InterconnectWireBlock::PredictHeight(
+          db, horizontal_wire_block_params);
+
   {
-    InterconnectWireBlock::Parameters horizontal_wire_block_params = {
-      .layout_mode =
-          InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
-      .direction = RoutingTrackDirection::kTrackHorizontal,
-      .length = 2 * current_width   // FIXME(aryap).
-    };
-    GenerateInterconnectChannels(&horizontal_wire_block_params);
     std::string horizontal_wire_block_name = "horizontal_wire_block";
     InterconnectWireBlock horizontal_wire_block_generator(
         horizontal_wire_block_params, design_db_);
     Cell *horizontal_wire_block =
         horizontal_wire_block_generator.GenerateIntoDatabase(
             horizontal_wire_block_name);
-    horizontal_wire_block_height =
-        horizontal_wire_block->layout()->GetTilingBounds().Height();
     geometry::Instance horizontal_wire_block_instance(
         horizontal_wire_block->layout(), {0, 0});
     horizontal_wire_block_instance.FlipVertical();
@@ -397,14 +409,6 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   }
   geometry::Instance *central_wire_block = nullptr;
   {
-    InterconnectWireBlock::Parameters vertical_wire_block_params = {
-      .layout_mode =
-          InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
-          //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
-      .direction = RoutingTrackDirection::kTrackVertical,
-      .length = current_height + horizontal_wire_block_height
-    };
-    GenerateInterconnectChannels(&vertical_wire_block_params);
     std::string vertical_wire_block_name = "vertical_wire_block";
     InterconnectWireBlock vertical_wire_block_generator(
         vertical_wire_block_params, design_db_);
