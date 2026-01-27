@@ -14,6 +14,7 @@
 #include "proto/parameters/reduced_slice.pb.h"
 #include "../utility.h"
 
+#include <absl/strings/str_join.h>
 #include <absl/strings/str_format.h>
 
 namespace bfg {
@@ -146,7 +147,15 @@ void FillClockwise(
 }
 
 void ReducedSlice::GenerateInterconnectChannels(
+    const std::vector<std::string> &direction_prefixes,
+    int64_t long_bundle_break_out,
+    bool break_out_regular_side_first,
+    bool alternate_break_out,
     InterconnectWireBlock::Parameters *iwb_params) const {
+  // Vertical wires combine North and South driving wires, and each needs its
+  // own bundle. Horizontal wires combine East and West driving wires.
+  static constexpr int kDirectionsPerBlock = 2;
+
   iwb_params->channels.clear();
   // For wire lengths not 1 and not the greatest, we create a bundle per side of
   // the tile, as well as a bundle for every other block that must pass through
@@ -159,28 +168,67 @@ void ReducedSlice::GenerateInterconnectChannels(
       // routed.
       continue;
     }
-    for (const auto &side_of_tile : parameters_.kSidesOfTile) {
-      iwb_params->channels.push_back({
-        .name = absl::StrFormat("%dX_%s", length_in_tiles, side_of_tile),
-        .break_out = {0},   // FIXME(aryap): This is a parameter.
-        .num_bundles = length_in_tiles,
-        .bundle = {
-          .num_wires = parameters_.kBundleSize
+    for (const std::string &prefix : direction_prefixes) {
+      bool alternate_side = break_out_regular_side_first;
+      for (const auto &side_of_tile : parameters_.kSidesOfTile) {
+        InterconnectWireBlock::Parameters::Channel channel = {
+          .name = absl::StrFormat(
+              "%s%d_%s", prefix, length_in_tiles, side_of_tile)
+        };
+        for (int i = 0; i < length_in_tiles; ++i) {
+          InterconnectWireBlock::Parameters::Bundle bundle = {
+            .num_wires = parameters_.kBundleSize
+          };
+          // TODO(aryap): This is a parameter.
+          if (i == 0) {
+            bundle.tap = true;
+            bundle.break_out = InterconnectWireBlock::Parameters::Break();
+            bundle.break_out->alternate_side = alternate_side;
+            bundle.break_out->offset = std::nullopt;
+            bundle.break_in = InterconnectWireBlock::Parameters::Break();
+            bundle.break_in->alternate_side = alternate_side;
+            bundle.break_in->offset = std::nullopt;
+          }
+          channel.bundles.push_back(bundle);
         }
-      });
+        iwb_params->channels.push_back(channel);
+        if (alternate_break_out) {
+          alternate_side = !alternate_side;
+        }
+      }
     }
   }
 
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  int64_t stride = InterconnectWireBlock::PredictPitchOfOffAxis(
+      db, *iwb_params);
+
   // The last length, the largest, 
+  std::string prefix = absl::StrJoin(direction_prefixes, "");
   int last_length = parameters_.kInterconnectLengths[num_lengths - 1];
-  iwb_params->channels.push_back({
-    .name = absl::StrFormat("%dX", last_length),
-    .break_out = {0},   // FIXME(aryap): This is a parameter.
-    .num_bundles = last_length,
-    .bundle = {
-      .num_wires = parameters_.kBundleSize
+  InterconnectWireBlock::Parameters::Channel channel = {
+    .name = absl::StrFormat("%s%d", prefix, last_length),
+  };
+  for (int d = 0; d < kDirectionsPerBlock; ++d) {
+    for (int i = 0; i < last_length; ++i) {
+      InterconnectWireBlock::Parameters::Bundle bundle = {
+        .num_wires = parameters_.kBundleSize
+      };
+      // TODO(aryap): This is a parameter.
+      if (i == 0) {
+        bundle.tap = true;
+        bundle.break_out = InterconnectWireBlock::Parameters::Break();
+        bundle.break_out->alternate_side = false;
+        bundle.break_out->offset = long_bundle_break_out +
+            d * stride * bundle.num_wires;
+        bundle.break_in = InterconnectWireBlock::Parameters::Break();
+        bundle.break_in->alternate_side = alternate_break_out;
+        bundle.break_in->offset = std::nullopt;
+      }
+      channel.bundles.push_back(bundle);
     }
-  });
+  }
+  iwb_params->channels.push_back(channel);
 }
 
 Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
@@ -368,18 +416,34 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   InterconnectWireBlock::Parameters horizontal_wire_block_params = {
     .layout_mode =
         InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
+        //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
     .direction = RoutingTrackDirection::kTrackHorizontal,
     .horizontal_wire_offset_nm = db.ToExternalUnits(
         db.Rules("met1.drawing").min_pitch)
   };
-  GenerateInterconnectChannels(&horizontal_wire_block_params);
+  GenerateInterconnectChannels(
+      {"EE", "WW"},
+      current_width - oib_s1_cell->layout()->GetTilingBounds().Width(),
+      false,
+      false,
+      &horizontal_wire_block_params);
+
+  // "NN2_b0_w0_A" is by convention outgoing wire 0, bundle 0, size, to the
+  // north. "SS2_b0_w0_A" is by convention incoming wire 0, bundle 0, from the
+  // north.
 
   InterconnectWireBlock::Parameters vertical_wire_block_params = {
     .layout_mode =
         InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
+        //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
     .direction = RoutingTrackDirection::kTrackVertical
   };
-  GenerateInterconnectChannels(&vertical_wire_block_params);
+  GenerateInterconnectChannels(
+      {"NN", "SS"},
+      current_height - oib_s1_cell->layout()->GetTilingBounds().Height(),
+      true,
+      true,
+      &vertical_wire_block_params);
 
   horizontal_wire_block_params.length =
       2 * current_width + InterconnectWireBlock::PredictWidth(
@@ -402,6 +466,11 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
     horizontal_wire_block_instance.Translate(
         {0,  // FIXME(aryap)
          west_layout->GetTilingBounds().lower_left().y()});
+    //horizontal_wire_block_instance.ResetOrigin();
+    //horizontal_wire_block_instance.Translate(
+    //    {0,  // FIXME(aryap)
+    //     west_layout->GetTilingBounds().lower_left().y() - static_cast<int64_t>(
+    //         horizontal_wire_block_instance.GetTilingBounds().Height())});
     horizontal_wire_block_instance.set_name(
         absl::StrCat(horizontal_wire_block_name, "_i"));
     geometry::Instance *actual_instance = cell->layout()->AddInstance(

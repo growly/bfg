@@ -62,15 +62,16 @@ void InterconnectWireBlock::Parameters::ToProto(
 
   pb->set_length(length);
 
-  for (const Channel &channel : channels) {
-    auto *pb_channel = pb->add_channels();
-    pb_channel->set_name(channel.name);
-    for (int break_out_idx : channel.break_out) {
-      pb_channel->add_break_out(break_out_idx);
-    }
-    pb_channel->set_num_bundles(channel.num_bundles);
-    pb_channel->mutable_bundle()->set_num_wires(channel.bundle.num_wires);
-  }
+  // TODO(aryap): Complete.
+  //for (const Channel &channel : channels) {
+  //  auto *pb_channel = pb->add_channels();
+  //  pb_channel->set_name(channel.name);
+  //  for (int break_out_idx : channel.break_out) {
+  //    pb_channel->add_break_out(break_out_idx);
+  //  }
+  //  pb_channel->set_num_bundles(channel.num_bundles);
+  //  pb_channel->mutable_bundle()->set_num_wires(channel.bundle.num_wires);
+  //}
 }
 
 void InterconnectWireBlock::Parameters::FromProto(
@@ -135,21 +136,40 @@ void InterconnectWireBlock::Parameters::FromProto(
   }
 
   channels.clear();
-  for (const auto &pb_channel : pb.channels()) {
-    Channel channel;
-    if (pb_channel.has_name()) {
-      channel.name = pb_channel.name();
+  // TODO(aryap): Complete.
+  //for (const auto &pb_channel : pb.channels()) {
+  //  Channel channel;
+  //  if (pb_channel.has_name()) {
+  //    channel.name = pb_channel.name();
+  //  }
+  //  for (int break_out_idx : pb_channel.break_out()) {
+  //    channel.break_out.insert(break_out_idx);
+  //  }
+  //  if (pb_channel.has_num_bundles()) {
+  //    channel.num_bundles = pb_channel.num_bundles();
+  //  }
+  //  if (pb_channel.has_bundle() && pb_channel.bundle().has_num_wires()) {
+  //    channel.bundle.num_wires = pb_channel.bundle().num_wires();
+  //  }
+  //  channels.push_back(channel);
+  //}
+}
+
+void InterconnectWireBlock::ResolveParameters(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters,
+    ResolvedParameters *main_axis,
+    ResolvedParameters *off_axis) {
+  switch (parameters.layout_mode) {
+    case Parameters::LayoutMode::kConservative: {
+      ResolveParametersConservative(db, parameters, main_axis, off_axis);
+      break;
     }
-    for (int break_out_idx : pb_channel.break_out()) {
-      channel.break_out.insert(break_out_idx);
-    }
-    if (pb_channel.has_num_bundles()) {
-      channel.num_bundles = pb_channel.num_bundles();
-    }
-    if (pb_channel.has_bundle() && pb_channel.bundle().has_num_wires()) {
-      channel.bundle.num_wires = pb_channel.bundle().num_wires();
-    }
-    channels.push_back(channel);
+    case Parameters::LayoutMode::kModestlyClever:
+      ResolveParametersModestlyClever(db, parameters, main_axis, off_axis);
+      break;
+    default:
+      LOG(FATAL) << "Unsupported layout_mode.";
   }
 }
 
@@ -158,27 +178,13 @@ void InterconnectWireBlock::Parameters::FromProto(
 uint64_t InterconnectWireBlock::PredictSpanAlongOffAxis(
     const PhysicalPropertiesDatabase &db,
     const Parameters &parameters) {
-  uint64_t wire_count = 0;
-  for (const auto &channel : parameters.channels) {
-    wire_count += channel.num_bundles * channel.bundle.num_wires;
-  }
+  uint64_t wire_count = parameters.NumWires();
 
   // Since we know the block is vertical, and we're interested in the horizontal
   // span, we know we want the off-axis.
   ResolvedParameters main_axis;
   ResolvedParameters unused;
-
-  switch (parameters.layout_mode) {
-    case Parameters::LayoutMode::kConservative: {
-      ResolveParametersConservative(db, parameters, &main_axis, &unused);
-      break;
-    }
-    case Parameters::LayoutMode::kModestlyClever:
-      ResolveParametersModestlyClever(db, parameters, &main_axis, &unused);
-      break;
-    default:
-      LOG(FATAL) << "Unsupported layout_mode.";
-  }
+  ResolveParameters(db, parameters, &main_axis, &unused);
   uint64_t span = 2 * main_axis.offset + (wire_count - 1) * main_axis.pitch;
   return span;
 }
@@ -192,6 +198,7 @@ uint64_t InterconnectWireBlock::PredictWidth(
   }
   return PredictSpanAlongOffAxis(db, parameters);
 }
+
 uint64_t InterconnectWireBlock::PredictHeight(
     const PhysicalPropertiesDatabase &db,
     const Parameters &parameters) {
@@ -202,13 +209,22 @@ uint64_t InterconnectWireBlock::PredictHeight(
   return PredictSpanAlongOffAxis(db, parameters);
 }
 
+uint64_t InterconnectWireBlock::PredictPitchOfOffAxis(
+    const PhysicalPropertiesDatabase &db,
+    const Parameters &parameters) {
+  ResolvedParameters unused;
+  ResolvedParameters off_axis;
+  ResolveParameters(db, parameters, &unused, &off_axis);
+  return off_axis.pitch;
+}
+
 std::string InterconnectWireBlock::MakeNetName(
     const std::string &channel_name,
     int bundle_number,
     int wire_number,
     std::optional<bool> first_end_of_breakout) {
   std::string stem = absl::StrFormat(
-      "channel_%s_bundle_%d_wire_%d", channel_name, bundle_number, wire_number);
+      "%s_b%d_w%d", channel_name, bundle_number, wire_number);
   if (!first_end_of_breakout.has_value()) {
     return stem;
   }
@@ -359,60 +375,59 @@ void InterconnectWireBlock::DrawStraightWire(
 }
 
 void InterconnectWireBlock::DrawBrokenOutWire(
-    int64_t pos_on_main_axis,
     int64_t pos_on_off_axis,
-    int64_t main_axis_gap,
+    int64_t pos_on_main_axis_out,
+    int64_t pos_on_main_axis_in,
     int64_t main_wire_width,
     int64_t off_wire_width,
     const std::string &net_0,
     const std::string &net_1,
-    std::optional<int64_t> off_axis_edge_pos,
+    std::optional<int64_t> off_axis_edge_pos_out,
+    std::optional<int64_t> off_axis_edge_pos_in,
     Layout *layout) const {
-  geometry::Point start_edge = MapToPoint(0, pos_on_off_axis);
-  geometry::Point break_start = MapToPoint(pos_on_main_axis, pos_on_off_axis);
-  geometry::Point off_axis_pin_0 = MapToPoint(
-      pos_on_main_axis, off_axis_edge_pos.value_or(0));
+  if (off_axis_edge_pos_out) {
+    geometry::Point start_edge = MapToPoint(0, pos_on_off_axis);
+    geometry::Point break_start = MapToPoint(
+        pos_on_main_axis_out, pos_on_off_axis);
+    geometry::Point off_axis_pin_0 = MapToPoint(
+        pos_on_main_axis_out, *off_axis_edge_pos_out);
 
-  // Draw the first half, which could be incoming or outgoing.
-  DrawElbowWire(start_edge,
-                break_start,
-                off_axis_pin_0,
-                main_wire_width,
-                off_wire_width,
-                net_0,
-                layout);
+    // Draw the first half, which could be incoming or outgoing.
+    DrawElbowWire(start_edge,
+                  break_start,
+                  off_axis_pin_0,
+                  main_wire_width,
+                  off_wire_width,
+                  net_0,
+                  layout);
 
-  layout->SavePoint(absl::StrCat(net_0, "_main"), start_edge);
-  layout->SavePoint(absl::StrCat(net_0, "_off"), off_axis_pin_0);
+    layout->SavePoint(absl::StrCat(net_0, "_main"), start_edge);
+    layout->SavePoint(absl::StrCat(net_0, "_off"), off_axis_pin_0);
+  }
+  if (off_axis_edge_pos_in) {
+    geometry::Point break_end = 
+        MapToPoint(pos_on_main_axis_in, pos_on_off_axis);
+    geometry::Point end_edge = MapToPoint(parameters_.length, pos_on_off_axis);
+    geometry::Point off_axis_pin_1 = MapToPoint(
+        pos_on_main_axis_in, *off_axis_edge_pos_in);
 
-  geometry::Point break_end = 
-      MapToPoint(pos_on_main_axis + main_axis_gap, pos_on_off_axis);
-  geometry::Point end_edge = MapToPoint(parameters_.length, pos_on_off_axis);
-  geometry::Point off_axis_pin_1 = MapToPoint(
-      pos_on_main_axis + main_axis_gap, off_axis_edge_pos.value_or(0));
+    // Draw the second half, which could be outgoing or incoming.
+    DrawElbowWire(end_edge,
+                  break_end,
+                  off_axis_pin_1,
+                  main_wire_width,
+                  off_wire_width,
+                  net_1,
+                  layout);
 
-  // Draw the second half, which could be outgoing or incoming.
-  DrawElbowWire(end_edge,
-                break_end,
-                off_axis_pin_1,
-                main_wire_width,
-                off_wire_width,
-                net_1,
-                layout);
-
-  layout->SavePoint(absl::StrCat(net_1, "_main"), end_edge);
-  layout->SavePoint(absl::StrCat(net_1, "_off"), off_axis_pin_1);
+    layout->SavePoint(absl::StrCat(net_1, "_main"), end_edge);
+    layout->SavePoint(absl::StrCat(net_1, "_off"), off_axis_pin_1);
+  }
 }
 
 int64_t InterconnectWireBlock::GetMinBreakoutGap(
     const Parameters &parameters, int64_t off_axis_pitch) {
-  uint64_t num_broken_out_wires = 0;
-  for (const auto &channel : parameters.channels) {
-    num_broken_out_wires +=
-        channel.break_out.size() * channel.bundle.num_wires;
-  }
-
-  return num_broken_out_wires * off_axis_pitch;
+  return parameters.NumTaps() * off_axis_pitch;
 }
 
 void InterconnectWireBlock::ResolveParametersConservative(
@@ -468,6 +483,7 @@ void InterconnectWireBlock::DrawConservative(
   ResolveParametersConservative(db, parameters_, &main_axis, &off_axis);
 
   int64_t breakout_gap = GetMinBreakoutGap(parameters_, off_axis.pitch);
+  int64_t off_axis_span = PredictSpanAlongOffAxis(db, parameters_);
 
   // The main axis is the axis along which the principle wire is run. Break
   // offs, for connection to the side of the tile, occur along the off axis.
@@ -481,10 +497,21 @@ void InterconnectWireBlock::DrawConservative(
   // Laying out a bundle is just drawing N wires in the right direction.
   for (size_t c = 0; c < parameters_.channels.size(); ++c) {
     const auto &channel = parameters_.channels[c];
-    for (size_t b = 0; b < channel.num_bundles; ++b) {
-      // Wires that don't need to be broken out are the simple case:
-      for (size_t w = 0; w < channel.bundle.num_wires; ++w) {
-        if (channel.break_out.find(b) == channel.break_out.end()) {
+    for (size_t b = 0; b < channel.bundles.size(); ++b) {
+      const auto &bundle = channel.bundles[b];
+
+      std::optional<int64_t> forced_pos_on_main_axis_out;
+      if (bundle.break_out && bundle.break_out->offset) {
+        forced_pos_on_main_axis_out = *bundle.break_out->offset;
+      }
+      std::optional<int64_t> forced_pos_on_main_axis_in;
+      if (bundle.break_in && bundle.break_in->offset) {
+        forced_pos_on_main_axis_out = *bundle.break_in->offset;
+      }
+
+      for (size_t w = 0; w < bundle.num_wires; ++w) {
+        if (!bundle.tap) {
+          // Wires that don't need to be broken out are the simple case:
           DrawStraightWire(pos_on_off_axis,
                            parameters_.length,
                            main_axis.width,
@@ -495,18 +522,36 @@ void InterconnectWireBlock::DrawConservative(
           continue;
         }
 
-        DrawBrokenOutWire(pos_on_main_axis,
-                          pos_on_off_axis,
-                          breakout_gap,
-                          main_axis.width,
-                          off_axis.width,
-                          MakeNetName(channel.name, b, w, true),
-                          MakeNetName(channel.name, b, w, false),
-                          std::nullopt,
-                          layout);
+        std::optional<int64_t> out_edge_pos = GetBreakEdgePosition(
+            bundle.break_out, 0, off_axis_span);
+        std::optional<int64_t> in_edge_pos = GetBreakEdgePosition(
+            bundle.break_in, 0, off_axis_span);
+
+        DrawBrokenOutWire(
+            pos_on_off_axis,
+            forced_pos_on_main_axis_out.value_or(pos_on_main_axis),
+            forced_pos_on_main_axis_in.value_or(
+                forced_pos_on_main_axis_out.value_or(pos_on_main_axis) +
+                breakout_gap),
+            main_axis.width,
+            off_axis.width,
+            MakeNetName(channel.name, b, w, true),
+            MakeNetName(channel.name, b, w, false),
+            out_edge_pos,
+            in_edge_pos,
+            layout);
 
         IncrementPositionOnOffAxis(&pos_on_off_axis, main_axis.pitch);
-        IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
+
+        if (forced_pos_on_main_axis_out) {
+          *forced_pos_on_main_axis_out += off_axis.pitch;
+        }
+        if (forced_pos_on_main_axis_in) {
+          *forced_pos_on_main_axis_in += off_axis.pitch;
+        }
+        if (!forced_pos_on_main_axis_out || !forced_pos_on_main_axis_in) {
+          IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
+        }
       }
     }
   }
@@ -566,6 +611,7 @@ void InterconnectWireBlock::DrawModestlyClever(
   ResolveParametersModestlyClever(db, parameters_, &main_axis, &off_axis);
 
   int64_t breakout_gap = GetMinBreakoutGap(parameters_, off_axis.pitch);
+  int64_t off_axis_span = PredictSpanAlongOffAxis(db, parameters_);
 
   int64_t pos_on_main_axis = off_axis.offset;
   int64_t pos_on_off_axis = main_axis.offset;
@@ -590,22 +636,24 @@ void InterconnectWireBlock::DrawModestlyClever(
   for (size_t c = 0; c < parameters_.channels.size(); ++c) {
     const auto &channel = parameters_.channels[c];
     std::vector<std::vector<WireIndex>> by_bundle;
-    by_bundle.reserve(channel.num_bundles);
-    for (size_t b = 0; b < channel.num_bundles; ++b) {
+    by_bundle.reserve(channel.bundles.size());
+    for (size_t b = 0; b < channel.bundles.size(); ++b) {
+      const Parameters::Bundle &bundle = channel.bundles[b];
       std::vector<WireIndex> by_wire;
-      by_wire.reserve(channel.bundle.num_wires);
-      for (size_t w = 0; w < channel.bundle.num_wires; ++w) {
+      by_wire.reserve(bundle.num_wires);
+      for (size_t w = 0; w < bundle.num_wires; ++w) {
         by_wire.push_back({
           .channel_name = channel.name,
           .channel_number = c,
           .bundle_number = b,
-          .wire_number = w
+          .wire_number = w,
+          .bundle = bundle
         });
         num_bundles++;
       }
       by_bundle.push_back(by_wire);
 
-      if (channel.break_out.find(b) == channel.break_out.end()) {
+      if (!bundle.tap) {
         continue;
       }
       break_outs.emplace_back(c, b);
@@ -641,12 +689,35 @@ void InterconnectWireBlock::DrawModestlyClever(
     }
   }
 
-  // Assign positoins along main axis for break outs.
+  // Assign positions along main axis for break outs.
   for (auto [c, b] : break_outs) {
+    std::optional<int64_t> forced_pos_on_main_axis_out;
+    std::optional<int64_t> forced_pos_on_main_axis_in;
     for (WireIndex &wire_index : all_wires[c][b]) {
-      wire_index.pos_on_main_axis = pos_on_main_axis;
-      LOG(INFO) << c << ", " << b << " off: " << *wire_index.pos_on_main_axis;
-      IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
+      if (!forced_pos_on_main_axis_out &&
+          wire_index.bundle.break_out &&
+          wire_index.bundle.break_out->offset) {
+        forced_pos_on_main_axis_out = *wire_index.bundle.break_out->offset;
+      }
+      if (!forced_pos_on_main_axis_in &&
+          wire_index.bundle.break_in &&
+          wire_index.bundle.break_in->offset) {
+        forced_pos_on_main_axis_in = *wire_index.bundle.break_in->offset;
+      }
+      wire_index.pos_on_main_axis_out = forced_pos_on_main_axis_out.value_or(
+          pos_on_main_axis);
+      wire_index.pos_on_main_axis_in = forced_pos_on_main_axis_in.value_or(
+          forced_pos_on_main_axis_out.value_or(pos_on_main_axis) +
+          breakout_gap);
+      if (forced_pos_on_main_axis_out) {
+        *forced_pos_on_main_axis_out += off_axis.pitch;
+      }
+      if (forced_pos_on_main_axis_in) {
+        *forced_pos_on_main_axis_in += off_axis.pitch;
+      }
+      if (!forced_pos_on_main_axis_out || !forced_pos_on_main_axis_in) {
+        IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
+      }
     }
   }
 
@@ -654,7 +725,7 @@ void InterconnectWireBlock::DrawModestlyClever(
   for (auto &channel : all_wires) {
     for (auto &bundle : channel) {
       for (auto &wire : bundle) {
-        if (!wire.pos_on_main_axis) {
+        if (!wire.pos_on_main_axis_out) {
           DrawStraightWire(
               wire.pos_on_off_axis,
               parameters_.length,
@@ -670,14 +741,20 @@ void InterconnectWireBlock::DrawModestlyClever(
         std::string net_name_1 = MakeNetName(
             wire.channel_name, wire.bundle_number, wire.wire_number, false);
 
-        DrawBrokenOutWire(*wire.pos_on_main_axis,
-                          wire.pos_on_off_axis,
-                          breakout_gap,
+        std::optional<int64_t> out_edge_pos = GetBreakEdgePosition(
+            wire.bundle.break_out, 0, off_axis_span);
+        std::optional<int64_t> in_edge_pos = GetBreakEdgePosition(
+            wire.bundle.break_in, 0, off_axis_span);
+
+        DrawBrokenOutWire(wire.pos_on_off_axis,
+                          *wire.pos_on_main_axis_out,
+                          *wire.pos_on_main_axis_in,
                           main_axis.width,
                           off_axis.width,
                           net_name_0,
                           net_name_1,
-                          std::nullopt,
+                          out_edge_pos,
+                          in_edge_pos,
                           layout);
 
       }
@@ -689,6 +766,16 @@ void InterconnectWireBlock::DrawModestlyClever(
 
   *diagonal_corner = MapToPoint(
       parameters_.length, pos_on_off_axis + main_axis.offset);
+}
+
+std::optional<int64_t> InterconnectWireBlock::GetBreakEdgePosition(
+    const std::optional<Parameters::Break> &break_spec,
+    int64_t default_case,
+    int64_t alternate_case) {
+  if (!break_spec) {
+    return std::nullopt;
+  }
+  return break_spec->alternate_side ? alternate_case : default_case;
 }
 
 Cell *InterconnectWireBlock::GenerateIntoDatabase(const std::string &name) {

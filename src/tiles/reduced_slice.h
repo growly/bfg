@@ -122,6 +122,10 @@ class ReducedSlice : public Tile {
 
  private:
   void GenerateInterconnectChannels(
+      const std::vector<std::string> &direction_prefixes,
+      int64_t long_bundle_break_out,
+      bool break_out_regular_side_first,
+      bool alternate_break_out,
       InterconnectWireBlock::Parameters *iwb_params) const;
 
   Parameters parameters_;

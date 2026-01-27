@@ -1,6 +1,7 @@
 #ifndef TILES_INTERCONNECT_WIRE_BLOCK_H_
 #define TILES_INTERCONNECT_WIRE_BLOCK_H_
 
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -109,20 +110,57 @@ class InterconnectWireBlock : public Tile {
       kModestlyClever = 1
     };
 
-    // TODO(aryap): We're going to need to split the incoming wires out quire
-    // far from where we send the outgoing wires in, but isn't that just a
-    // matter of setting breakout_gap appropriately? We don't need to mirror off
-    // the end of the tile or anything like that. No tyet.
+    struct Break {
+      // Default side (0) or the other (span of off-axis).
+      bool alternate_side;
+
+      // Offset along main axis.
+      std::optional<int64_t> offset;
+    };
 
     struct Bundle {
       int num_wires;
+
+      // If true, the wires in this bundled are broken out (or in) with
+      // orthogonal wires running to the parallel edge of the block. If false,
+      // the wires in the bundle are drawn straight through from the start of
+      // the block to the end.
+      bool tap;
+
+      // If tap is true and break_out is specified, the starting wires in
+      // the block are drawn and broken out according to the details in the
+      // Break structure. If tap is true and break_out is missing, the
+      // starting wires are not drawn.
+      std::optional<Break> break_out;
+
+      // If tap is true and break_in is specified, the ending wires in the
+      // block are drawn and broken out according to the details in the Break
+      // structure. If tap is true and break_in is missing, the ending
+      // wires are not drawn.
+      std::optional<Break> break_in;
     };
 
     struct Channel {
       std::string name;
-      std::set<int> break_out;
-      int num_bundles;
-      Bundle bundle;
+      std::vector<Bundle> bundles;
+
+      size_t NumTaps() const {
+        size_t count = 0;
+        for (const Bundle &bundle : bundles) {
+          if (bundle.tap) {
+            count += bundle.num_wires;
+          }
+        }
+        return count;
+      }
+
+      size_t NumWires() const {
+        size_t count = 0;
+        for (const Bundle &bundle : bundles) {
+          count += bundle.num_wires;
+        }
+        return count;
+      }
     };
 
     LayoutMode layout_mode = LayoutMode::kModestlyClever;
@@ -162,21 +200,39 @@ class InterconnectWireBlock : public Tile {
     std::vector<Channel> channels = {
       Channel {
         .name = "6X",
-        .break_out = {0},
-        .num_bundles = 6,
-        .bundle = Bundle {
-          .num_wires = 4
-        }
+        //.break_out = {0},
+        //.num_bundles = 6,
+        //.bundle = Bundle {
+        //  .num_wires = 4
+        //}
       },
       Channel {
         .name = "2X",
-        .break_out = {0},
-        .num_bundles = 2,
-        .bundle = Bundle {
-          .num_wires = 4
-        }
+        //.break_out = {0},
+        //.num_bundles = 2,
+        //.bundle = Bundle {
+        //  .num_wires = 4
+        //}
       }
     };
+
+    size_t NumTaps() const {
+      // I like this more than a for-loop that increases a counter. It feels
+      // like it has bigger cojones.
+      return std::accumulate(
+          channels.begin(), channels.end(), 0U,
+          [](size_t sum, const Channel &channel) {
+            return sum + channel.NumTaps();
+          });
+    }
+
+    size_t NumWires() const {
+      return std::accumulate(
+          channels.begin(), channels.end(), 0U,
+          [](size_t sum, const Channel &channel) {
+            return sum + channel.NumWires();
+          });
+    }
 
     void ToProto(proto::parameters::InterconnectWireBlock *pb) const;
     void FromProto(const proto::parameters::InterconnectWireBlock &pb); 
@@ -186,6 +242,9 @@ class InterconnectWireBlock : public Tile {
       const PhysicalPropertiesDatabase &db,
       const Parameters &parameters);
   static uint64_t PredictHeight(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters);
+  static uint64_t PredictPitchOfOffAxis(
       const PhysicalPropertiesDatabase &db,
       const Parameters &parameters);
 
@@ -260,9 +319,12 @@ class InterconnectWireBlock : public Tile {
     size_t channel_number;
     size_t bundle_number;
     size_t wire_number;
+    const Parameters::Bundle &bundle;
     int64_t pos_on_off_axis;
     // If present, this wire is broken out:
-    std::optional<int64_t> pos_on_main_axis;
+    std::optional<int64_t> pos_on_main_axis_out;
+    // If present, this wire is broken in:
+    std::optional<int64_t> pos_on_main_axis_in;
     // If present, the broken-out pin is shifted to this off-axis position:
     std::optional<int64_t> off_axis_edge_pos;
   };
@@ -284,6 +346,12 @@ class InterconnectWireBlock : public Tile {
       const Parameters &parameters,
       int64_t off_axis_pitch);
 
+  static void ResolveParameters(
+      const PhysicalPropertiesDatabase &db,
+      const Parameters &parameters,
+      ResolvedParameters *main_axis,
+      ResolvedParameters *off_axis);
+
   static void ResolveParametersConservative(
       const PhysicalPropertiesDatabase &db,
       const Parameters &parameters,
@@ -296,6 +364,10 @@ class InterconnectWireBlock : public Tile {
       ResolvedParameters *main_axis,
       ResolvedParameters *off_axis);
 
+  static std::optional<int64_t> GetBreakEdgePosition(
+      const std::optional<Parameters::Break> &break_spec,
+      int64_t default_case,
+      int64_t alternate_case);
 
   MappedParameters GetMainAxisMappedParameters() const {
     return GetMainAxisMappedParameters(design_db_->physical_db(), parameters_);
@@ -323,14 +395,15 @@ class InterconnectWireBlock : public Tile {
   // off_axis_edge_pos, is given, determines the position of the off-axis wire
   // pin, i.e. the point to which the off-axis wire is broken out.
   void DrawBrokenOutWire(
-    int64_t pos_on_main_axis,
     int64_t pos_on_off_axis,
-    int64_t main_axis_gap,
+    int64_t pos_on_main_axis_out,
+    int64_t pos_on_main_axis_in,
     int64_t main_wire_width,
     int64_t off_wire_width,
     const std::string &net_0,
     const std::string &net_1,
-    std::optional<int64_t> off_axis_edge_pos,
+    std::optional<int64_t> off_axis_edge_pos_out,
+    std::optional<int64_t> off_axis_edge_pos_in,
     Layout *layout) const;
 
   void DrawStraightWire(
