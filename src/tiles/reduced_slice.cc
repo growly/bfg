@@ -419,7 +419,9 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
         //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
     .direction = RoutingTrackDirection::kTrackHorizontal,
     .horizontal_wire_offset_nm = db.ToExternalUnits(
-        db.Rules("met1.drawing").min_pitch)
+        db.Rules("met1.drawing").min_pitch),
+    .vertical_wire_pitch_nm = db.ToExternalUnits(
+        2 * db.Rules("met1.drawing").min_pitch)
   };
   GenerateInterconnectChannels(
       {"EE", "WW"},
@@ -436,7 +438,9 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
     .layout_mode =
         InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
         //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
-    .direction = RoutingTrackDirection::kTrackVertical
+    .direction = RoutingTrackDirection::kTrackVertical,
+    .horizontal_wire_pitch_nm = db.ToExternalUnits(
+        2 * db.Rules("met1.drawing").min_pitch)
   };
   GenerateInterconnectChannels(
       {"NN", "SS"},
