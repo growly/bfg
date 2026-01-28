@@ -13,6 +13,10 @@ message InterconnectWireBlock {
     MODESTLY_CLEVER = 1;
   }
 
+  message Break {
+
+  }
+
   message Bundle {
     optional int32 num_wires = 1;
   }

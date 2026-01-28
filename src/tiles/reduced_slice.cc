@@ -247,17 +247,18 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
                                false,      // Rotate first row.
                                geometry::Compass::LEFT);
 
-  //LutB::Parameters default_lut_params = {
-  //    .lut_size = 4
-  //};
-  //LutB default_lut_gen(default_lut_params, design_db_);
-  //std::string lut_name = "lut";
-  //Cell *default_lut_cell = default_lut_gen.GenerateIntoDatabase(lut_name);
+  LutB::Parameters default_lut_params = {
+      .lut_size = 4
+  };
+  LutB default_lut_gen(default_lut_params, design_db_);
+  std::string lut_name = "lut";
+  Cell *default_lut_cell = default_lut_gen.GenerateIntoDatabase(lut_name);
 
-  //for (size_t i = 0; i < parameters_.kNumLUTs; ++i) {
-  //  geometry::Instance *instance = luts.InstantiateRight(
-  //      i / 2, absl::StrCat(lut_name, "_i"), default_lut_cell);
-  //}
+  static constexpr int kLutsPerRow = 4;
+  for (size_t i = 0; i < parameters_.kNumLUTs; ++i) {
+    geometry::Instance *instance = luts.InstantiateRight(
+        i / kLutsPerRow, absl::StrCat(lut_name, "_i", i), default_lut_cell);
+  }
 
   //std::unique_ptr<bfg::Layout> middle_layout(new bfg::Layout(db));
   //Interconnect::Parameters interconnect_params;
@@ -330,7 +331,6 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
       1000,   // ?
       &iib);
 
-
   MemoryBank oib_s2 = MemoryBank(west_layout.get(),
                                  cell->circuit(),
                                  design_db_,
@@ -348,10 +348,12 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   atoms::Sky130InterconnectMux2 oib_s2_generator(oib_s2_params, design_db_);
   Cell *oib_s2_cell = oib_s2_generator.GenerateIntoDatabase(oib_s2_mux_name);
 
+  static constexpr int kNumRightSkinnyRows = 3;
+
   FillClockwise(
       0,
       0,
-      3,
+      kNumRightSkinnyRows,
       1,
       oib_s2_cell,
       oib_s2_cell,
@@ -374,6 +376,24 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
       {0,
       iib.Row(kNumLeftSkinnyRows).GetTilingBounds()->lower_left().y() -
           static_cast<int64_t>(oib_s2.GetTilingBounds()->Height())});
+
+  // With the LUT group, IIB and OIBS2 generated, we can now position the LUT
+  // group in the centre of the gap we've created:
+  const RowGuide &row_upper_left = iib.Row(kNumLeftSkinnyRows - 1);
+  const RowGuide &row_lower_right = oib_s2.Row(
+      oib_s2.NumRows() - kNumRightSkinnyRows);
+  geometry::Point cavity_centre = {
+    (row_upper_left.GetTilingBounds()->upper_right().x() +
+     row_lower_right.GetTilingBounds()->lower_left().x()) / 2,
+    (row_upper_left.GetTilingBounds()->upper_right().y() +
+     row_lower_right.GetTilingBounds()->lower_left().y()) / 2};
+      
+  int64_t luts_x = iib.Row(0).GetTilingBounds()->upper_right().x();
+  int64_t luts_y = iib.Row(0).GetTilingBounds()->upper_right().y() -
+      static_cast<int64_t>(luts.GetTilingBounds()->Height()) / 2;
+  luts.MoveTo(cavity_centre - geometry::Point(
+        static_cast<int64_t>(luts.GetTilingBounds()->Width()) / 2,
+        static_cast<int64_t>(luts.GetTilingBounds()->Height()) / 2));
 
   MemoryBank oib_s1 = MemoryBank(west_layout.get(),
                                  cell->circuit(),
@@ -472,7 +492,7 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
          west_layout->GetTilingBounds().lower_left().y()});
     //horizontal_wire_block_instance.ResetOrigin();
     //horizontal_wire_block_instance.Translate(
-    //    {0,  // FIXME(aryap)
+    //    {0,
     //     west_layout->GetTilingBounds().lower_left().y() - static_cast<int64_t>(
     //         horizontal_wire_block_instance.GetTilingBounds().Height())});
     horizontal_wire_block_instance.set_name(
@@ -502,14 +522,14 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
 
   // Is the east layout just a dumb copy/mirror of the west layout?
   std::unique_ptr<Layout> east_layout(new bfg::Layout(db));
-  //east_layout->AddLayout(*west_layout);
-  //east_layout->FlipHorizontal();
-  //// FIXME(aryap): FlipHorizontal is broken?
-  ////east_layout->FlipHorizontal();
-  //east_layout->AlignPointTo(
-  //    east_layout->GetTilingBounds().lower_left(),
-  //    {central_wire_block->GetTilingBounds().upper_right().x(),
-  //     west_layout->GetTilingBounds().lower_left().y()});
+  east_layout->AddLayout(*west_layout);
+  // FIXME(aryap): FlipHorizontal is broken?
+  east_layout->FlipHorizontal();
+  //east_layout->ResetOrigin();
+  east_layout->AlignPointTo(
+      east_layout->GetTilingBounds().lower_left(),
+      {central_wire_block->GetTilingBounds().upper_right().x(),
+       west_layout->GetTilingBounds().lower_left().y()});
 
 
   //// FIXME(aryap): This is dumb.
