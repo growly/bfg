@@ -46,7 +46,17 @@ void Layout::MirrorY() {
     ShapeCollection *shapes = entry.second.get();
     shapes->MirrorY();
   }
-  for (const auto &instance : instances_) { instance->MirrorY(); }
+  // Mirrorying an instance in the y-axis is slightly more complicated.
+  // Instances are transformed by flags marking metadata and that is eventually
+  // translated to GDSII (via VLSIR). An instance's transformation is considered
+  // relative to the origin of the cell it instantiates. When we mirror in Y
+  // across a whole layout, we have to also adjust the origin of the instance to
+  // reflect the mirror of its position in the context of the layout, too.
+  for (const auto &instance : instances_) {
+    instance->MirrorY();
+    instance->set_lower_left(geometry::Point(
+        -instance->lower_left().x(), instance->lower_left().y()));
+  }
   for (auto &entry : named_points_) { entry.second.MirrorY(); }
   if (tiling_bounds_) {
     tiling_bounds_->MirrorY();
@@ -68,13 +78,13 @@ void Layout::MirrorX() {
 void Layout::FlipHorizontal() {
   geometry::Rectangle bounding_box = GetBoundingBox();
   MirrorY();
-  Translate(Point(bounding_box.Width() * 2, 0));
+  Translate(Point(bounding_box.Width(), 0));
 }
 
 void Layout::FlipVertical() {
   geometry::Rectangle bounding_box = GetBoundingBox();
   MirrorX();
-  Translate(Point(0, bounding_box.Height() * 2));
+  Translate(Point(0, bounding_box.Height()));
 }
 
 void Layout::Translate(const Point &offset) {

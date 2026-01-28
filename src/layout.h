@@ -324,6 +324,8 @@ class Layout : public geometry::Manipulable {
     if (tiling_bounds_) {
       return *tiling_bounds_;
     } else {
+      // FIXME(aryap): This should be FindTilingBoundsFromChildren or something
+      // that does that.
       return GetBoundingBox();
     }
   }

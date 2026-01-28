@@ -260,16 +260,6 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
         i / kLutsPerRow, absl::StrCat(lut_name, "_i", i), default_lut_cell);
   }
 
-  //std::unique_ptr<bfg::Layout> middle_layout(new bfg::Layout(db));
-  //Interconnect::Parameters interconnect_params;
-  //Interconnect interconnect_gen(interconnect_params, design_db_);
-  //Cell *interconnect_cell =
-  //    interconnect_gen.GenerateIntoDatabase("interconnect");
-  //geometry::Instance interconnect_instance(
-  //    interconnect_cell->layout(), {0, 0});
-  //middle_layout->AddInstance(interconnect_instance);
-  //middle_layout->MoveTo({left_layout->GetTilingBounds().upper_right().x(), 0});
-
   std::vector<std::vector<geometry::Instance*>> muxes;
 
   MemoryBank iib = MemoryBank(west_layout.get(),
@@ -420,7 +410,7 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
       oib_s1_cell,
       oib_s1_cell,
       oib_s1_cell,
-      parameters_.kNumOIBS1,
+      parameters_.kNumOIBS1 + parameters_.kNumOIBS1Shared / 2,
       10000,
       10000,
       &oib_s1);
@@ -523,18 +513,20 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   // Is the east layout just a dumb copy/mirror of the west layout?
   std::unique_ptr<Layout> east_layout(new bfg::Layout(db));
   east_layout->AddLayout(*west_layout);
-  // FIXME(aryap): FlipHorizontal is broken?
+  LOG(INFO) << "east layout tiling bounds: " << east_layout->GetTilingBounds();
   east_layout->FlipHorizontal();
-  //east_layout->ResetOrigin();
-  east_layout->AlignPointTo(
-      east_layout->GetTilingBounds().lower_left(),
-      {central_wire_block->GetTilingBounds().upper_right().x(),
-       west_layout->GetTilingBounds().lower_left().y()});
+  LOG(INFO) << "east layout tiling bounds: " << east_layout->GetTilingBounds();
+  geometry::Point reference =
+      east_layout->GetTilingBounds().lower_left();
+  geometry::Point target = {
+      central_wire_block->GetTilingBounds().upper_right().x(),
+      west_layout->GetTilingBounds().lower_left().y()};
+  LOG(INFO) << "aligning " << reference << " target: " << target;
+  east_layout->AlignPointTo(reference, target);
+  cell->layout()->AddLayout(*east_layout, "east");
 
 
-  //// FIXME(aryap): This is dumb.
-  cell->layout()->AddLayout(*west_layout);
-  cell->layout()->AddLayout(*east_layout);
+  cell->layout()->AddLayout(*west_layout, "west");
 
   return cell.release();
 }

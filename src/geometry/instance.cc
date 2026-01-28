@@ -14,11 +14,14 @@ namespace bfg {
 
 namespace geometry {
 
+// Mirror in the y-axis by rotating about the origin and mirroring in the
+// x-axis.
 void Instance::MirrorY() {
   rotation_degrees_ccw_ = (rotation_degrees_ccw_ + 180) % 360;
-  FlipVertical();
+  MirrorX();
 }
 
+// Mirror in the x-axis.
 void Instance::MirrorX() {
   reflect_vertical_ = !reflect_vertical_;
 }
@@ -126,6 +129,9 @@ const Rectangle Instance::GetBoundingBox() const {
 
   Rectangle rotated = template_bb.BoundingBoxIfRotated(
       Point(0, 0), rotation_degrees_ccw_);
+  if (reflect_vertical_) {
+    rotated.MirrorX();
+  }
   rotated.Translate(lower_left_);
   return rotated;
 }
