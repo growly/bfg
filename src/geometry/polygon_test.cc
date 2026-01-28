@@ -868,6 +868,434 @@ TEST(Polygon, PolygonOverlapsPolygon_Overlap_EdgeIncidence) {
   EXPECT_TRUE(square.Overlaps(big_l_shape));
 }
 
+TEST(PolygonTest, MirrorY_Square) {
+  Polygon square({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  square.MirrorY();
+  // MirrorY negates x coordinates of all vertices
+  std::vector<Point> expected = {
+      {0, 0},
+      {-10, 0},
+      {-10, 10},
+      {0, 10}
+  };
+  EXPECT_THAT(square.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, MirrorY_OffsetPolygon) {
+  Polygon poly({
+      {5, 10},
+      {15, 10},
+      {15, 30},
+      {5, 30}
+  });
+  poly.MirrorY();
+  std::vector<Point> expected = {
+      {-5, 10},
+      {-15, 10},
+      {-15, 30},
+      {-5, 30}
+  };
+  EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, MirrorY_TwiceReturnsToOriginal) {
+  Polygon original({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  Polygon poly = original;
+  poly.MirrorY();
+  poly.MirrorY();
+  EXPECT_TRUE(original == poly);
+}
+
+TEST(PolygonTest, MirrorX_Square) {
+  Polygon square({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  square.MirrorX();
+  // MirrorX negates y coordinates of all vertices
+  std::vector<Point> expected = {
+      {0, 0},
+      {10, 0},
+      {10, -10},
+      {0, -10}
+  };
+  EXPECT_THAT(square.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, MirrorX_OffsetPolygon) {
+  Polygon poly({
+      {5, 10},
+      {15, 10},
+      {15, 30},
+      {5, 30}
+  });
+  poly.MirrorX();
+  std::vector<Point> expected = {
+      {5, -10},
+      {15, -10},
+      {15, -30},
+      {5, -30}
+  };
+  EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, MirrorX_TwiceReturnsToOriginal) {
+  Polygon original({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  Polygon poly = original;
+  poly.MirrorX();
+  poly.MirrorX();
+  EXPECT_TRUE(original == poly);
+}
+
+TEST(PolygonTest, Translate_ZeroOffset) {
+  Polygon poly({
+      {5, 10},
+      {15, 10},
+      {15, 30},
+      {5, 30}
+  });
+  poly.Translate(Point(0, 0));
+  std::vector<Point> expected = {
+      {5, 10},
+      {15, 10},
+      {15, 30},
+      {5, 30}
+  };
+  EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Translate_PositiveOffset) {
+  Polygon poly({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  poly.Translate(Point(100, 200));
+  std::vector<Point> expected = {
+      {100, 200},
+      {110, 200},
+      {110, 210},
+      {100, 210}
+  };
+  EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Translate_NegativeOffset) {
+  Polygon poly({
+      {50, 60},
+      {70, 60},
+      {70, 80},
+      {50, 80}
+  });
+  poly.Translate(Point(-30, -40));
+  std::vector<Point> expected = {
+      {20, 20},
+      {40, 20},
+      {40, 40},
+      {20, 40}
+  };
+  EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Translate_PreservesBoundingBoxDimensions) {
+  Polygon poly({
+      {0, 0},
+      {100, 0},
+      {100, 200},
+      {0, 200}
+  });
+  Rectangle original_bb = poly.GetBoundingBox();
+  poly.Translate(Point(1000, 2000));
+  Rectangle new_bb = poly.GetBoundingBox();
+  EXPECT_EQ(original_bb.Width(), new_bb.Width());
+  EXPECT_EQ(original_bb.Height(), new_bb.Height());
+}
+
+TEST(PolygonTest, FlipHorizontal_Square) {
+  // FlipHorizontal mirrors Y then moves back to original lower_left
+  Polygon poly({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  Rectangle original_bb = poly.GetBoundingBox();
+  poly.FlipHorizontal();
+  Rectangle new_bb = poly.GetBoundingBox();
+  // The bounding box lower_left should be preserved
+  EXPECT_EQ(original_bb.lower_left(), new_bb.lower_left());
+  EXPECT_EQ(original_bb.Width(), new_bb.Width());
+  EXPECT_EQ(original_bb.Height(), new_bb.Height());
+}
+
+TEST(PolygonTest, FlipHorizontal_LShape) {
+  // L-shape should flip horizontally
+  Polygon l_shape({
+      {0, 0},
+      {10, 0},
+      {10, 5},
+      {5, 5},
+      {5, 10},
+      {0, 10}
+  });
+  l_shape.FlipHorizontal();
+  // After FlipHorizontal, the L should be mirrored
+  std::vector<Point> expected = {
+      {0, 0},
+      {-10, 0},
+      {-10, 5},
+      {-5, 5},
+      {-5, 10},
+      {0, 10}
+  };
+  // Translate expected to match new lower_left
+  // Original lower_left was (0,0), after MirrorY it would be (-10,0)
+  // So it gets translated by (10,0) to put lower_left back at (0,0)
+  expected = {
+      {10, 0},
+      {0, 0},
+      {0, 5},
+      {5, 5},
+      {5, 10},
+      {10, 10}
+  };
+  EXPECT_THAT(l_shape.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, FlipVertical_Square) {
+  // FlipVertical mirrors X then moves back to original lower_left
+  Polygon poly({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  Rectangle original_bb = poly.GetBoundingBox();
+  poly.FlipVertical();
+  Rectangle new_bb = poly.GetBoundingBox();
+  // The bounding box lower_left should be preserved
+  EXPECT_EQ(original_bb.lower_left(), new_bb.lower_left());
+  EXPECT_EQ(original_bb.Width(), new_bb.Width());
+  EXPECT_EQ(original_bb.Height(), new_bb.Height());
+}
+
+TEST(PolygonTest, FlipVertical_LShape) {
+  Polygon l_shape({
+      {0, 0},
+      {10, 0},
+      {10, 5},
+      {5, 5},
+      {5, 10},
+      {0, 10}
+  });
+  l_shape.FlipVertical();
+  // After FlipVertical (MirrorX then restore lower_left)
+  std::vector<Point> expected = {
+      {0, 10},
+      {10, 10},
+      {10, 5},
+      {5, 5},
+      {5, 0},
+      {0, 0}
+  };
+  EXPECT_THAT(l_shape.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Rotate_Square90Degrees) {
+  // Square at origin rotated 90 degrees CCW
+  Polygon square({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  square.Rotate(90);
+  std::vector<Point> expected = {
+      {0, 0},
+      {0, 10},
+      {-10, 10},
+      {-10, 0}
+  };
+  EXPECT_THAT(square.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Rotate_Square180Degrees) {
+  Polygon square({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  square.Rotate(180);
+  std::vector<Point> expected = {
+      {0, 0},
+      {-10, 0},
+      {-10, -10},
+      {0, -10}
+  };
+  EXPECT_THAT(square.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Rotate_Square270Degrees) {
+  Polygon square({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  square.Rotate(270);
+  std::vector<Point> expected = {
+      {0, 0},
+      {0, -10},
+      {10, -10},
+      {10, 0}
+  };
+  EXPECT_THAT(square.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Rotate_360DegreesReturnsToOriginal) {
+  Polygon original({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  Polygon poly = original;
+  poly.Rotate(360);
+  EXPECT_TRUE(original == poly);
+}
+
+TEST(PolygonTest, Rotate_FourRotationsOf90ReturnsToOriginal) {
+  Polygon original({
+      {1, 2},
+      {5, 2},
+      {5, 10},
+      {1, 10}
+  });
+  Polygon poly = original;
+  poly.Rotate(90);
+  poly.Rotate(90);
+  poly.Rotate(90);
+  poly.Rotate(90);
+  EXPECT_TRUE(original == poly);
+}
+
+TEST(PolygonTest, Rotate_LShape90Degrees) {
+  Polygon l_shape({
+      {0, 0},
+      {10, 0},
+      {10, 5},
+      {5, 5},
+      {5, 10},
+      {0, 10}
+  });
+  l_shape.Rotate(90);
+  std::vector<Point> expected = {
+      {0, 0},
+      {0, 10},
+      {-5, 10},
+      {-5, 5},
+      {-10, 5},
+      {-10, 0}
+  };
+  EXPECT_THAT(l_shape.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, Rotate_NegativeDegrees) {
+  // -90 degrees should be equivalent to 270 degrees CCW
+  Polygon poly1({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  Polygon poly2({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  poly1.Rotate(-90);
+  poly2.Rotate(270);
+  EXPECT_TRUE(poly1 == poly2);
+}
+
+TEST(PolygonTest, CombinedOperations_MirrorYThenTranslate) {
+  Polygon poly({
+      {5, 10},
+      {15, 10},
+      {15, 30},
+      {5, 30}
+  });
+  poly.MirrorY();
+  poly.Translate(Point(20, 0));
+  // After MirrorY: (-5,10), (-15,10), (-15,30), (-5,30)
+  // After Translate: (15,10), (5,10), (5,30), (15,30)
+  std::vector<Point> expected = {
+      {15, 10},
+      {5, 10},
+      {5, 30},
+      {15, 30}
+  };
+  EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
+}
+
+TEST(PolygonTest, CombinedOperations_MirrorXThenMirrorY) {
+  // MirrorX then MirrorY is equivalent to 180 degree rotation
+  Polygon poly1({
+      {5, 10},
+      {15, 10},
+      {15, 30},
+      {5, 30}
+  });
+  Polygon poly2({
+      {5, 10},
+      {15, 10},
+      {15, 30},
+      {5, 30}
+  });
+  poly1.MirrorX();
+  poly1.MirrorY();
+  poly2.Rotate(180);
+  EXPECT_TRUE(poly1 == poly2);
+}
+
+TEST(PolygonTest, CombinedOperations_RotateThenTranslate) {
+  Polygon poly({
+      {0, 0},
+      {10, 0},
+      {10, 10},
+      {0, 10}
+  });
+  poly.Rotate(90);
+  poly.Translate(Point(20, 0));
+  std::vector<Point> expected = {
+      {20, 0},
+      {20, 10},
+      {10, 10},
+      {10, 0}
+  };
+  EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg
