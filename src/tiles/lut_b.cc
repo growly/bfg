@@ -9,6 +9,7 @@
 #include <absl/strings/str_join.h>
 
 #include "../atoms/sky130_buf.h"
+#include "../atoms/sky130_decap.h"
 #include "../atoms/sky130_dfxtp.h"
 #include "../atoms/sky130_hd_mux2_1.h"
 #include "../atoms/sky130_mux.h"
@@ -400,6 +401,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
         banks_[1].InstantiateRight(1, instance_name, combinational_cell);
   }
 
+
   // Now that all instances have been assigned to the banks and their
   // dimensions are known, move them into place around the muxes. Well, move
   // the right bank because the first bank is fixed.
@@ -439,6 +441,35 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       {right_bank_row_2_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
+  // We can now fill any gaps with decaps.
+  //
+  // NOTE(aryap): We are statically assuming only a single top row. That might
+  // not be true if generalise this to larger LUTs.
+  //
+  // We could also use any available gap for a passive mux to select between two
+  // adjacent 4-LUT structures.
+  int64_t top_row_available_x =
+      banks_[1].rows().back().GetTilingBounds()->lower_left().x() -
+      banks_[0].rows().back().GetTilingBounds()->upper_right().x();
+  if (top_row_available_x >= db.ToInternalUnits(
+          atoms::Sky130Decap::Parameters::kMinWidthNm) &&
+      top_row_available_x <= db.ToInternalUnits(
+          atoms::Sky130Decap::Parameters::kMaxWidthNm)) {
+    std::string template_name = "top_decap_fill";
+    atoms::Sky130Decap::Parameters decap_params = {
+      .width_nm = static_cast<uint64_t>(db.ToExternalUnits(top_row_available_x))
+    };
+    atoms::Sky130Decap decap_generator(decap_params, design_db_);
+    Cell *decap_cell = decap_generator.GenerateIntoDatabase(template_name);
+    geometry::Instance *decap = banks_[0].InstantiateRight(
+        banks_[0].NumRows() - 1,
+        absl::StrCat(template_name, "_i0"),
+        decap_cell);
+  }
+
+
+
+
   //Route(circuit.get(), layout.get());
 
   // //// FIXME(aryap): remove
@@ -470,7 +501,7 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   // many, possibly connected, layers. The tricky thing is that connecting on
   // one layer might create DRC violations on an adjacent layer (e.g. if you
   // connect on met2 but jump up from met1 just before, and there's a met1
-  // shape near, you get a problem).
+  // shape near, you have a problem).
   //
   // A related and important consideration is that all shapes with the same
   // port name label should be considered connected, even if they are not port
@@ -486,7 +517,7 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   // BankArrangement.
   std::map<geometry::Instance*, std::string> memory_output_net_names;
 
-  AddClockAndPowerStraps(&routing_grid, circuit, layout);
+  //AddClockAndPowerStraps(&routing_grid, circuit, layout);
 
   errors_.clear();
 
