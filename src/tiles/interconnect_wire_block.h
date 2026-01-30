@@ -25,11 +25,8 @@ namespace tiles {
 // For each channel, a given bundle (by index) can be broken out in the
 // orthogonal routing direction to the edge of the block.
 //
-// TODO(aryap): 
-//
-//
 // e.g. A channel with bundles of length n, breaking out bundle 1:
-//                  IN/OUT      OUT/IN
+// x = 0            OUT          IN
 // +-----------------|-----------|------------------------------------+
 // | 0      N        |           |                                    |
 // ---------/--------|-----------|-------------------------------------
@@ -39,6 +36,9 @@ namespace tiles {
 // ---------/----------------------------------------------------------
 // |                                                                  |
 // +------------------------------------------------------------------+
+//
+// (Note also the naming convention here: the break out closest to the start of
+// the block is named OUT, and the break out closest to the end is named IN.
 //
 // The naive way to arrange these wires requires extra spacing whenever there is
 // a wire encap. This requires greater wire spacing:
@@ -98,10 +98,6 @@ namespace tiles {
 // breakouts should start being laid out. If both are not specified, use the
 // default breakout gap calculation. If the user asks for them to overlap,
 // that's on them.
-// 
-// TODO(aryap): Need a generator method that can predict the width/height of the
-// block without generating, since there is a mutual dependence in the
-// ReducedSlice between the horizontal and vertical wire block's sizes.
 class InterconnectWireBlock : public Tile {
  public:
   struct Parameters {

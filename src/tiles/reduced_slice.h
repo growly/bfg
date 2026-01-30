@@ -53,17 +53,17 @@ using namespace std::string_view_literals;
 //
 // The west side looks something like:
 //
-// +----------------------------+
-// |   IIB S1                   |
-// |    +-----------------------+
-// |    |    IIB S2             |
-// |    |    +-----------+------+
-// |    |    |           |      |
-// |    |    |   LUTs    |      |
-// |    |    |           |      |
-// +----+----+-----------+      +
-// |              OIB S2        |
-// +-----------------------+----+----+
+// +-------------------------------+
+// |   IIB S1                      |
+// |    +--------------------------+
+// |    |    IIB S2                |
+// |    |    +-----------+---------+
+// |    |    |           |         |
+// |    |    |   LUTs    |         |
+// |    |    |           |         |
+// +----+----+-----------+         +
+// |              OIB S2           |
+// +-----------------------+-------+-+
 // |                OIB S1 |  OIB S1 |
 // |                       |         |
 // +-----------------------+---------+
@@ -124,6 +124,7 @@ class ReducedSlice : public Tile {
   void GenerateInterconnectChannels(
       const std::vector<std::string> &direction_prefixes,
       int64_t long_bundle_break_out,
+      int64_t long_bundle_break_in,
       bool break_out_regular_side_first,
       bool alternate_break_out,
       InterconnectWireBlock::Parameters *iwb_params) const;

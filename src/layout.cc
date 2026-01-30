@@ -131,7 +131,8 @@ void Layout::ResetOrigin() {
   Translate(-bounding_box.lower_left());
 }
 
-const geometry::Rectangle Layout::GetBoundingBox() const {
+const geometry::Rectangle Layout::GetBoundingBox(
+    bool use_tiling_bounds_for_children) const {
   std::optional<Point> start;
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
@@ -142,7 +143,11 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
     }
   }
   if (!start && !instances_.empty()) {
-    start = instances_.front()->GetBoundingBox().lower_left();
+    const std::unique_ptr<geometry::Instance> &first_instance =
+        instances_.front();
+    start = (use_tiling_bounds_for_children ? 
+        first_instance->GetTilingBounds() : first_instance->GetBoundingBox())
+        .lower_left();
   }
   if (!start) {
     // Layout is empty.
@@ -163,7 +168,8 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
     max_y = std::max(bb.upper_right().y(), max_y);
   }
   for (const auto &instance : instances_) {
-    geometry::Rectangle bounding_box = instance->GetBoundingBox();
+    geometry::Rectangle bounding_box = use_tiling_bounds_for_children ?
+        instance->GetTilingBounds() : instance->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
     const Point &upper_right = bounding_box.upper_right();
     min_x = std::min(lower_left.x(), min_x);

@@ -35,6 +35,21 @@ class Instance;
 
 namespace tiles {
 
+// Ideally this is what we have:
+//                +-----------+
+// LUT        k   |           |           |\        Combinational out,
+// select   --/---|   k-LUT   |--+--------| |-------------- O
+// S_k, S_k-1...  |           |  |   +----| |
+//                +-----------+  |   |    |/
+//                               |   |
+//                               |   |
+// Bypass                        |   |    |\   +-----+  Registered out,
+// input, X  --------------------|---+----| |--+ FF  |---- Q
+//                               +--------| |  |>    |
+//                                        |/   +-----+
+//
+// Note that with this additional logic, we have something closer to what Xilinx
+// calls a "Configurable Logic Block".
 class LutB : public Tile {
  public:
   // A k-LUT is made up of:
@@ -66,6 +81,7 @@ class LutB : public Tile {
     std::vector<size_t> clk_buf_rows;
     geometry::Compass horizontal_alignment;
     geometry::Compass strap_alignment;
+    bool alternate_rotation;
   };
 
   struct LayoutConfig {
@@ -78,7 +94,10 @@ class LutB : public Tile {
   };
 
   struct Parameters {
+    // This is k.
     uint32_t lut_size = 4;
+
+    // TODO(aryap): Add horizontal width min. multiple unit.
 
     void ToProto(proto::parameters::LutB *pb) const;
     void FromProto(const proto::parameters::LutB &pb); 

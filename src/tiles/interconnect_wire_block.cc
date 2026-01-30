@@ -545,12 +545,11 @@ void InterconnectWireBlock::DrawConservative(
 
         if (forced_pos_on_main_axis_out) {
           *forced_pos_on_main_axis_out += off_axis.pitch;
+        } else {
+          IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
         }
         if (forced_pos_on_main_axis_in) {
           *forced_pos_on_main_axis_in += off_axis.pitch;
-        }
-        if (!forced_pos_on_main_axis_out || !forced_pos_on_main_axis_in) {
-          IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
         }
       }
     }
@@ -711,12 +710,11 @@ void InterconnectWireBlock::DrawModestlyClever(
           breakout_gap);
       if (forced_pos_on_main_axis_out) {
         *forced_pos_on_main_axis_out += off_axis.pitch;
+      } else {
+        IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
       }
       if (forced_pos_on_main_axis_in) {
         *forced_pos_on_main_axis_in += off_axis.pitch;
-      }
-      if (!forced_pos_on_main_axis_out || !forced_pos_on_main_axis_in) {
-        IncrementPositionOnMainAxis(&pos_on_main_axis, off_axis.pitch);
       }
     }
   }

@@ -319,14 +319,14 @@ class Layout : public geometry::Manipulable {
     return GetBoundingBox().Width();
   }
 
-  const geometry::Rectangle GetBoundingBox() const;
+  const geometry::Rectangle GetBoundingBox() const {
+    return GetBoundingBox(false);
+  }
   const geometry::Rectangle GetTilingBounds() const {
     if (tiling_bounds_) {
       return *tiling_bounds_;
     } else {
-      // FIXME(aryap): This should be FindTilingBoundsFromChildren or something
-      // that does that.
-      return GetBoundingBox();
+      return GetBoundingBox(true);
     }
   }
 
@@ -451,6 +451,9 @@ class Layout : public geometry::Manipulable {
   }
 
  private:
+  const geometry::Rectangle GetBoundingBox(
+      bool use_tiling_bounds_for_children) const;
+
   bfg::Cell *parent_cell_;
 
   std::string name_;

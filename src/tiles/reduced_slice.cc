@@ -149,6 +149,7 @@ void FillClockwise(
 void ReducedSlice::GenerateInterconnectChannels(
     const std::vector<std::string> &direction_prefixes,
     int64_t long_bundle_break_out,
+    int64_t long_bundle_break_in,
     bool break_out_regular_side_first,
     bool alternate_break_out,
     InterconnectWireBlock::Parameters *iwb_params) const {
@@ -247,6 +248,7 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
                                false,      // Rotate first row.
                                geometry::Compass::LEFT);
 
+  // Add LUTs.
   LutB::Parameters default_lut_params = {
       .lut_size = 4
   };
@@ -429,13 +431,14 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
         //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
     .direction = RoutingTrackDirection::kTrackHorizontal,
     .horizontal_wire_offset_nm = db.ToExternalUnits(
-        db.Rules("met1.drawing").min_pitch),
+        3 * db.Rules("met1.drawing").min_pitch),
     .vertical_wire_pitch_nm = db.ToExternalUnits(
-        2 * db.Rules("met1.drawing").min_pitch)
+        2 * db.Rules("met2.drawing").min_pitch)
   };
   GenerateInterconnectChannels(
       {"EE", "WW"},
       current_width - oib_s1_cell->layout()->GetTilingBounds().Width(),
+      0, // FIXME(aryap): UNUSED.
       false,
       false,
       &horizontal_wire_block_params);
@@ -450,11 +453,14 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
         //InterconnectWireBlock::Parameters::LayoutMode::kConservative,
     .direction = RoutingTrackDirection::kTrackVertical,
     .horizontal_wire_pitch_nm = db.ToExternalUnits(
-        2 * db.Rules("met1.drawing").min_pitch)
+        2 * db.Rules("met1.drawing").min_pitch),
+    .vertical_wire_offset_nm = db.ToExternalUnits(
+        3 * db.Rules("met2.drawing").min_pitch)
   };
   GenerateInterconnectChannels(
       {"NN", "SS"},
       current_height - oib_s1_cell->layout()->GetTilingBounds().Height(),
+      0, // FIXME(aryap): UNUSED.
       true,
       true,
       &vertical_wire_block_params);
@@ -511,18 +517,19 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   }
 
   // Is the east layout just a dumb copy/mirror of the west layout?
+  LOG(INFO) << "west tiling bounds: "  << west_layout->GetTilingBounds();
   std::unique_ptr<Layout> east_layout(new bfg::Layout(db));
   east_layout->AddLayout(*west_layout);
-  LOG(INFO) << "east layout tiling bounds: " << east_layout->GetTilingBounds();
+  LOG(INFO) << "east tiling bounds: "  << east_layout->GetTilingBounds();
   east_layout->FlipHorizontal();
-  LOG(INFO) << "east layout tiling bounds: " << east_layout->GetTilingBounds();
+  LOG(INFO) << "east post flip: "  << east_layout->GetTilingBounds();
   geometry::Point reference =
       east_layout->GetTilingBounds().lower_left();
   geometry::Point target = {
       central_wire_block->GetTilingBounds().upper_right().x(),
       west_layout->GetTilingBounds().lower_left().y()};
-  LOG(INFO) << "aligning " << reference << " target: " << target;
   east_layout->AlignPointTo(reference, target);
+  //LOG(INFO) << "will align " << reference << " to target " << target;
   cell->layout()->AddLayout(*east_layout, "east");
 
 
