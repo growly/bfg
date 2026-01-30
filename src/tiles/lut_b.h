@@ -97,7 +97,7 @@ class LutB : public Tile {
     // This is k.
     uint32_t lut_size = 4;
 
-    // TODO(aryap): Add horizontal width min. multiple unit.
+    std::optional<uint64_t> tiling_width_unit_nm = 460;
 
     void ToProto(proto::parameters::LutB *pb) const;
     void FromProto(const proto::parameters::LutB &pb); 

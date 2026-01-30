@@ -17,11 +17,11 @@
 #include "../equivalent_nets.h"
 #include "../geometry/compass.h"
 #include "../geometry/group.h"
-#include "../geometry/rectangle.h"
-#include "../geometry/shape_collection.h"
-#include "../geometry/port.h"
 #include "../geometry/poly_line.h"
 #include "../geometry/polygon.h"
+#include "../geometry/port.h"
+#include "../geometry/rectangle.h"
+#include "../geometry/shape_collection.h"
 #include "../layout.h"
 #include "../memory_bank.h"
 #include "../poly_line_cell.h"
@@ -30,6 +30,7 @@
 #include "../routing_layer_info.h"
 #include "../routing_via_info.h"
 #include "../row_guide.h"
+#include "../utility.h"
 #include "proto/parameters/lut_b.pb.h"
 
 namespace bfg {
@@ -403,11 +404,25 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // dimensions are known, move them into place around the muxes. Well, move
   // the right bank because the first bank is fixed.
   int64_t right_bank_row_2_left_x = banks_[1].Row(2).LowerLeft().x();
+  int64_t right_bank_row_2_width = banks_[1].Row(2).GetTilingBounds()->Width();
   int64_t right_bank_bottom_row_top_y =
       banks_[1].rows().front().UpperLeft().y();
 
+
   x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
       mux_area_horizontal_padding;
+
+  // We now have the opportunity to position the right bank so that the overall
+  // tile width is a multiple of something, if required.
+  //
+  // TODO(aryap): This assumes that the left-most point on the layout is at x=0.
+  std::optional<int64_t> width_unit = db.ToInternalUnits(
+      parameters_.tiling_width_unit_nm);
+  if (width_unit) {
+    int64_t total_width = x_pos + right_bank_row_2_width;
+    int64_t required_width = Utility::NextMultiple(total_width, *width_unit);
+    x_pos += (required_width - total_width);
+  }
 
   int64_t y_pitch = db.Rules("met1.drawing").min_pitch;
   // To maintain the relative alignment of the RoutingGrid to the cells, we
@@ -424,7 +439,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       {right_bank_row_2_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
-  Route(circuit.get(), layout.get());
+  //Route(circuit.get(), layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
