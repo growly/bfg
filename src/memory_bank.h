@@ -75,6 +75,8 @@ class MemoryBank {
 
   RowGuide &Row(size_t index);
 
+  size_t NumRows() const { return rows_.size(); }
+
   bool RowIsRotated(size_t index);
 
   // Instantiates on the opposite side to which the bank is aligned:

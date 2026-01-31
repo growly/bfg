@@ -14,11 +14,14 @@ namespace bfg {
 
 namespace geometry {
 
+// Mirror in the y-axis by rotating about the origin and mirroring in the
+// x-axis.
 void Instance::MirrorY() {
   rotation_degrees_ccw_ = (rotation_degrees_ccw_ + 180) % 360;
-  FlipVertical();
+  MirrorX();
 }
 
+// Mirror in the x-axis.
 void Instance::MirrorX() {
   reflect_vertical_ = !reflect_vertical_;
 }
@@ -48,7 +51,11 @@ void Instance::AlignPoints(const Point &our_point, const Point &align_to) {
 }
 
 void Instance::ApplyInstanceTransforms(Layout *layout) const {
+  // TODO(aryap): Test this.
   layout->Rotate(rotation_degrees_ccw_);
+  if (reflect_vertical_) {
+    layout->MirrorX();
+  }
   layout->Translate(lower_left_);
 }
 
@@ -104,10 +111,10 @@ void Instance::MoveTilingLowerLeft(const Point &new_lower_left) {
 
 const Rectangle Instance::GetTilingBounds() const {
   Rectangle transformed = template_layout_->GetTilingBounds();
-  if (reflect_vertical_) {
-    transformed.FlipVertical();
-  }
   transformed.Rotate(rotation_degrees_ccw_);
+  if (reflect_vertical_) {
+    transformed.MirrorX();
+  }
   transformed.MoveLowerLeftTo(lower_left_ + transformed.lower_left());
   return transformed;
 }
@@ -126,6 +133,9 @@ const Rectangle Instance::GetBoundingBox() const {
 
   Rectangle rotated = template_bb.BoundingBoxIfRotated(
       Point(0, 0), rotation_degrees_ccw_);
+  if (reflect_vertical_) {
+    rotated.MirrorX();
+  }
   rotated.Translate(lower_left_);
   return rotated;
 }

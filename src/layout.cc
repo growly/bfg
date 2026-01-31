@@ -46,7 +46,17 @@ void Layout::MirrorY() {
     ShapeCollection *shapes = entry.second.get();
     shapes->MirrorY();
   }
-  for (const auto &instance : instances_) { instance->MirrorY(); }
+  // Mirrorying an instance in the y-axis is slightly more complicated.
+  // Instances are transformed by flags marking metadata and that is eventually
+  // translated to GDSII (via VLSIR). An instance's transformation is considered
+  // relative to the origin of the cell it instantiates. When we mirror in Y
+  // across a whole layout, we have to also adjust the origin of the instance to
+  // reflect the mirror of its position in the context of the layout, too.
+  for (const auto &instance : instances_) {
+    instance->MirrorY();
+    instance->set_lower_left(geometry::Point(
+        -instance->lower_left().x(), instance->lower_left().y()));
+  }
   for (auto &entry : named_points_) { entry.second.MirrorY(); }
   if (tiling_bounds_) {
     tiling_bounds_->MirrorY();
@@ -68,13 +78,13 @@ void Layout::MirrorX() {
 void Layout::FlipHorizontal() {
   geometry::Rectangle bounding_box = GetBoundingBox();
   MirrorY();
-  Translate(Point(bounding_box.Width() * 2, 0));
+  Translate(Point(bounding_box.Width(), 0));
 }
 
 void Layout::FlipVertical() {
   geometry::Rectangle bounding_box = GetBoundingBox();
   MirrorX();
-  Translate(Point(0, bounding_box.Height() * 2));
+  Translate(Point(0, bounding_box.Height()));
 }
 
 void Layout::Translate(const Point &offset) {
@@ -121,7 +131,8 @@ void Layout::ResetOrigin() {
   Translate(-bounding_box.lower_left());
 }
 
-const geometry::Rectangle Layout::GetBoundingBox() const {
+const geometry::Rectangle Layout::GetBoundingBox(
+    bool use_tiling_bounds_for_children) const {
   std::optional<Point> start;
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
@@ -132,7 +143,11 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
     }
   }
   if (!start && !instances_.empty()) {
-    start = instances_.front()->GetBoundingBox().lower_left();
+    const std::unique_ptr<geometry::Instance> &first_instance =
+        instances_.front();
+    start = (use_tiling_bounds_for_children ? 
+        first_instance->GetTilingBounds() : first_instance->GetBoundingBox())
+        .lower_left();
   }
   if (!start) {
     // Layout is empty.
@@ -153,7 +168,8 @@ const geometry::Rectangle Layout::GetBoundingBox() const {
     max_y = std::max(bb.upper_right().y(), max_y);
   }
   for (const auto &instance : instances_) {
-    geometry::Rectangle bounding_box = instance->GetBoundingBox();
+    geometry::Rectangle bounding_box = use_tiling_bounds_for_children ?
+        instance->GetTilingBounds() : instance->GetBoundingBox();
     const Point &lower_left = bounding_box.lower_left();
     const Point &upper_right = bounding_box.upper_right();
     min_x = std::min(lower_left.x(), min_x);
@@ -619,9 +635,16 @@ void Layout::MakePin(
     const geometry::Point &centre,
     const std::string &layer_name) {
   int64_t layer = layer_name == "" ? 0 : physical_db_.GetLayer(layer_name);
+  return MakePin(net_name, centre, layer);
+}
+
+void Layout::MakePin(
+    const std::string &net_name,
+    const geometry::Point &centre,
+    const geometry::Layer &layer) {
   int64_t via_side = std::max(
-      physical_db_.Rules(layer_name).via_height,
-      physical_db_.Rules(layer_name).via_width);
+      physical_db_.Rules(layer).via_height,
+      physical_db_.Rules(layer).via_width);
   geometry::Port port = geometry::Port(
       centre, via_side, via_side, layer, net_name);
 
@@ -710,9 +733,22 @@ geometry::Group Layout::MakeVerticalSpineWithFingers(
     if (point.x() == spine_x) {
       spine_line.InsertBulge(point, spine_bulge_width, spine_bulge_length);
       layout->MakeVia(via_layer, point, net);
+
+      // Add a via encap to make sure one exists that's big enough for the
+      // via_layer via.
+      // TODO(aryap): Determine if this needs to be an option.
+      geometry::Rectangle finger = geometry::Rectangle::CentredAt(
+          point, finger_bulge_length, finger_bulge_width);
+      finger.set_net(net);
+      {
+        ScopedLayer sl(this, finger_layer);
+        geometry::Rectangle *finger_rectangle = layout->AddRectangle(finger);
+        created_shapes.Add(finger_rectangle);
+      }
       continue;
     }
     geometry::Point spine_via = {spine_x, point.y()};
+
     // Have to draw a finger!
     geometry::PolyLine finger({point, spine_via});
 
@@ -742,6 +778,92 @@ geometry::Group Layout::MakeVerticalSpineWithFingers(
   created_shapes.Add(spine_metal_pour);
 
   return created_shapes;
+}
+
+std::optional<geometry::Rectangle> Layout::FindEmptySpaceAround(
+    const geometry::Point &point,
+    const std::vector<std::string> &layers,
+    uint64_t margin) const {
+  // Find the maximum x not greater than point.x() which is occupied by a shape
+  // on each of the layers. Likewise, the minimum y not greater than point.y().
+  // Same with the other side: find the minimum x not less than point.x(),
+  // respectively for y. Then find the minimum over all layers. Those are the
+  // bounds in which there no shapes on other layers. Apply the margin from that
+  // bound to determine the usable area.
+  //
+  // We do not guarantee to find the _largest_ such space, or indeed any
+  // particular property about the space, because that is way more complicated.
+  // Consider:
+  //           |
+  //           +-----
+  //
+  //        x
+  //
+  // -----+
+  //      |
+  //
+  // x is part of three different empty space rectangles in this picture. Which
+  // is the most valuable? Probably the biggest. But we don't guarantee which is
+  // which. We will bias to find one or the other rectangle over the smaller
+  // square though:
+  //
+  //           |                      +--+|                           |      
+  //           +-----                 |  |+-----                      +-----
+  // +--------------+                 |  |                        +--+       
+  // |      x       |                 |x |                        |x |
+  // +--------------+                 |  |                        +--+
+  // -----+                     -----+|  |                  -----+
+  //      |                          |+--+                       |
+  //
+  //
+  // In the naive version we do not sort shapes, we must check them all. This is
+  // slow. In less naive versions, we have lists of shapes sorted by
+  // lower_left/upper_right. In the even less naive version, we have this in a
+  // k-d tree or something.
+  //
+  // In the naive version we also only use the rectangular outlines of
+  // non-rectangular shapes, which could be disastrous.
+
+  // Find nearest shape in +/- x, y:
+  //
+  // TODO(aryap): Implement.
+  //
+  int64_t y_max;
+  std::set<geometry::Rectangle> nearest_y_max;
+  int64_t y_min;
+  std::set<geometry::Rectangle> nearest_y_min;
+
+  int64_t x_max;
+  std::set<geometry::Rectangle> nearest_x_max;
+  int64_t x_min;
+  std::set<geometry::Rectangle> nearest_x_min;
+
+  std::vector<geometry::Rectangle> bounding_boxes;
+  for (const std::string &layer : layers) {
+    const ShapeCollection *shapes = GetShapeCollection(
+        physical_db_.GetLayer(layer));
+    for (const auto &rectangle : shapes->rectangles()) {
+      if (rectangle->Intersects(point)) { return std::nullopt; }
+      bounding_boxes.push_back(*rectangle);
+    }
+    for (const auto &polygon : shapes->polygons()) {
+      if (polygon->Intersects(point)) { return std::nullopt; }
+      bounding_boxes.push_back(polygon->GetBoundingBox());
+    }
+    for (const auto &port : shapes->ports()) {
+      if (port->Intersects(point)) { return std::nullopt; }
+      bounding_boxes.push_back(*port);
+    }
+    // Ignore polylines for now.
+    // for (const auto &poly_line : poly_lines_) { poly_line->MirrorY(); }
+  }
+
+  LOG(INFO) << "Will check " << bounding_boxes.size()
+            << " bounding box(es) around " << point;
+  for (const auto &rectangle : bounding_boxes) {
+  }
+
+  return std::nullopt;
 }
 
 void Layout::MakeAlternatingWire(

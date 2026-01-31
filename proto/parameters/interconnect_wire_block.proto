@@ -3,4 +3,46 @@ syntax = "proto3";
 package bfg.proto.parameters;
 
 message InterconnectWireBlock {
+  enum RoutingTrackDirection {
+    TRACK_HORIZONTAL = 0;
+    TRACK_VERTICAL = 1;
+  }
+
+  enum LayoutMode {
+    CONSERVATIVE = 0;
+    MODESTLY_CLEVER = 1;
+  }
+
+  message Break {
+
+  }
+
+  message Bundle {
+    optional int32 num_wires = 1;
+  }
+
+  message Channel {
+    optional string name = 1;
+    repeated int32 break_out = 2;
+    optional int32 num_bundles = 3;
+    optional Bundle bundle = 4;
+  }
+
+  optional RoutingTrackDirection direction = 1;
+  optional LayoutMode layout_mode = 2;
+
+  optional string horizontal_layer = 4;
+  optional string via_layer = 5;
+  optional string vertical_layer = 6;
+
+  optional int64 horizontal_wire_width_nm = 7;
+  optional int64 horizontal_wire_pitch_nm = 8;
+  optional int64 horizontal_wire_offset_nm = 9;
+  optional int64 vertical_wire_width_nm = 10;
+  optional int64 vertical_wire_pitch_nm = 11;
+  optional int64 vertical_wire_offset_nm = 12;
+
+  optional uint64 length = 13;
+
+  repeated Channel channels = 14;
 }

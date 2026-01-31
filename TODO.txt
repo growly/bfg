@@ -1,0 +1,45 @@
+Sorry, GitHub issues, I want to write a text note to myself:
+
+1/28/26
+
+1) add additional OIBS2 muxes :/
+
+2) add option for top AND/OR BOTTOM dummy rows in Sky130InterconnectMux* generators
+4) fix deadlock in router (different paths call same fn with different locks - ValidAgainstKnownBlockages or wahtever)
+5) DecapFill would be a cool cell. We have some version of this in the
+Sky130InterconnectMux1/2 already so it should be straightforward. Just fill a
+MemoryBank with decap, fitting to a given height/width in height/width units...
+
+7) fix LUT generator
+a) bug with random met2 pour between two unrelated nets
+b) are all routes added correctly? looks like another bug with routes
+c) flip-flops on both sides not matching orientation, which would help for
+tiling. maybe every other LUT is rotated?
+
+d) add output flop, connected to application clock, with second LUT out
++1 bit memory
+
+e) add new bypass input and a mux that outputs either the LUT output or the
+bypass. actually, my ultrascale-like interconnect assumes only 2 outputs total,
+so this should just be a mux in front of the existing combinational out (the
+other output is the registered one)
++1 bit memory
+
+f) add mux at one input of every 2nd LUT to select from output of first lut
+(note that it should be an input used later in address resolution, ideally the
+last one, s3, since that will mask the propagation delay through the first lut).
++1 bit memory
+
+g) add output flop and a mux that selects between bypass and lut.
+
+h) add carry logic
+- carry logic seems difficult at the outset because, if implemented like in the
+  UltraScale, we have to double the width of all muxes to accommodate the carry
+  outputs as possible inputs. that means adding an extra flip flop per output
+  mux, so 2 more.
+
+8) assign interconnect wire block break-out and break-in offsets correctly
+
+9) generate connectivity netlist based on ultrascale architecture
+
+10) route ReducedSlice

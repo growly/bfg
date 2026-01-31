@@ -292,9 +292,12 @@ bfg::Layout *Sky130HdMux21::GenerateLayout() {
   layout->AddRectangleAsPort(
       Rectangle(Point(2910, 1445), Point(3080, 1615)), "S");
   layout->AddRectangleAsPort(
-      Rectangle(Point(1990, 1105), Point(2160, 1275)), "A0");
-  layout->AddRectangleAsPort(
       Rectangle(Point(3370, 1445), Point(3540, 1615)), "S");
+  layout->AddRectangleAsPort(
+      Rectangle(Point(1990, 1105), Point(2160, 1275)), "A0");
+  // Add a new A0 port that wasn't in the standard cell:
+  layout->AddRectangleAsPort(
+      Rectangle(Point(1990, 1105 - 680), Point(2160, 1275 - 680)), "A0");
 
   // licon.drawing [DRAWING] 66/44
   layout->SetActiveLayerByName("licon.drawing");

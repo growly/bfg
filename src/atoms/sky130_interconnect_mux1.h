@@ -76,12 +76,21 @@ class Sky130InterconnectMux1 : public Atom {
     static constexpr uint64_t kHorizontalTilingUnitNm = 460;
 
     uint32_t num_inputs = 6;
+
+    // Either 1 or 2.
+    //
+    // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
+    uint16_t num_outputs = 1;
+
     std::optional<uint64_t> poly_pitch_nm = 500;
 
     std::optional<uint64_t> vertical_pitch_nm = 340;
 
     std::optional<uint64_t> vertical_offset_nm = 170;
 
+    // Dictates the unit of which the width of the cell will be a multiple.
+    // Defaults to the horizontal tiling unit, which is the min. width of a
+    // Sky130 standard-cell site.
     std::optional<uint64_t> horizontal_pitch_nm = 460;
 
     // TODO(aryap): This should be left as nullopt by default and filled in
@@ -102,12 +111,10 @@ class Sky130InterconnectMux1 : public Atom {
 
     bool redraw_rail_vias = true;
 
-    // Either 1 or 2.
-    //
-    // If 2, poly_pitch_nm will be increased to at least 2x met2 pitch.
-    uint16_t num_outputs = 1;
-
     std::optional<uint64_t> min_transmission_gate_stack_height_nm = 5100;
+
+    // Flip the rotation of all rows.
+    bool inside_out = false;
 
     // Adds rows of just decap cells at standard height to the top/bottom, so
     // that this mux might match others next to it.

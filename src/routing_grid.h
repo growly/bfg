@@ -32,6 +32,14 @@
 #include "routing_vertex_kd_tree.h"
 #include "routing_via_info.h"
 
+// Placeholder thread-safety annotations in case a supporting compiler is not
+// available.
+#ifndef THREAD_SAFETY_ANNOTATIONS
+#define REQUIRES(...)
+#define REQUIRES_SHARED(...)
+#define EXCLUDES(...)
+#endif
+
 // TODO(aryap): Another version of this RoutingGrid should exist that uses a
 // more standard model of the routing fabric. Instead of generating 1 edge for
 // every possible wire length, represent every wire segment as an edge and vias
@@ -145,11 +153,11 @@ class RoutingGrid {
 
   void AddVertex(RoutingVertex *vertex);
 
-  void AddOffGridVertex(RoutingVertex *vertex);
+  void AddOffGridVertex(RoutingVertex *vertex) EXCLUDES(lock_);
 
   void AddOffGridEdge(RoutingEdge *edge);
 
-  bool RemoveVertex(RoutingVertex *vertex, bool and_delete);
+  bool RemoveVertex(RoutingVertex *vertex, bool and_delete) EXCLUDES(lock_);
 
   bool ContainsVertex(RoutingVertex *vertex) const;
 
@@ -237,30 +245,31 @@ class RoutingGrid {
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const;
+          std::nullopt) const REQUIRES(lock_);
 
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
   absl::Status ValidAgainstKnownBlockages(
       const RoutingEdge &edge,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const;
+      const REQUIRES(lock_);
 
   absl::Status ValidAgainstKnownBlockages(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const;
+          std::nullopt) const REQUIRES(lock_);
 
   absl::Status ValidAgainstInstalledPaths(
       const RoutingEdge &edge,
-      const std::optional<EquivalentNets> &for_nets = std::nullopt) const;
+      const std::optional<EquivalentNets> &for_nets = std::nullopt) const
+      REQUIRES(lock_);
 
   absl::Status ValidAgainstInstalledPaths(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &for_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const;
+          std::nullopt) const REQUIRES(lock_);
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsForVertex(
       const RoutingVertex &vertex,
@@ -515,13 +524,13 @@ class RoutingGrid {
       const geometry::Port &begin,
       const geometry::Port &end,
       const RoutingBlockageCache &blockage_cache,
-      const EquivalentNets &nets);
+      const EquivalentNets &nets) EXCLUDES(lock_);
 
   absl::StatusOr<RoutingPath*> FindRouteToNet(
       const geometry::Port &begin,
       const EquivalentNets &target_nets,
       const EquivalentNets &usable_nets,
-      const RoutingBlockageCache &blockage_cache);
+      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
 
   absl::Status ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,
@@ -590,7 +599,7 @@ class RoutingGrid {
   absl::StatusOr<VertexWithLayer> AddAccessVerticesForPoint(
       const geometry::Point &point,
       const geometry::Layer &layer,
-      const EquivalentNets &connectable_nets);
+      const EquivalentNets &connectable_nets) EXCLUDES(lock_);
 
   absl::StatusOr<VertexWithLayer> ConnectToNearestAvailableVertex(
       const geometry::Port &port,
@@ -599,7 +608,7 @@ class RoutingGrid {
   absl::StatusOr<RoutingVertex*> ConnectToNearestAvailableVertex(
       const geometry::Point &point,
       const geometry::Layer &target_layer,
-      const EquivalentNets &connectable_nets);
+      const EquivalentNets &connectable_nets) EXCLUDES(lock_);
 
   absl::Status AddRoutingGridGeometry(
       const geometry::Layer &lhs, const geometry::Layer &rhs,
@@ -691,7 +700,7 @@ class RoutingGrid {
       std::function<bool(RoutingEdge*)> usable_edge,
       bool target_must_be_usable);
 
-  absl::Status InstallPath(RoutingPath *path);
+  absl::Status InstallPath(RoutingPath *path) EXCLUDES(lock_);
 
   void InstallVertexInPath(RoutingVertex *vertex, const std::string &net);
 

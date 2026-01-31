@@ -1099,12 +1099,12 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid_copy);
     edge->set_layer(vertex_layer);
+    mu.unlock();
     if (!ValidAgainstKnownBlockages(*edge, for_nets).ok() ||
         !ValidAgainstInstalledPaths(*edge, for_nets).ok()) {
       VLOG(15) << "Invalid off grid edge between " << bridging_vertex->centre()
                << " and " << off_grid_copy->centre();
       // Rollback extra hard!
-      mu.unlock();
       if (bridging_vertex_is_new) {
         RemoveVertex(bridging_vertex, true);  // and delete!
       }
@@ -1121,6 +1121,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
       continue;
     }
+    mu.lock();
     LOG(INFO) << "Connected new vertex " << bridging_vertex->centre()
               << " on layer " << edge->EffectiveLayer();
     bridging_vertex->AddEdge(edge);
@@ -2224,11 +2225,18 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
 
   // Legalise the path. This might modify the edges the path contains, which
   // smells funny, but what are you gonna do?
+  mu.unlock();
   path->Legalise();
+  mu.lock();
 
   // FIXME(aryap): When multithreading, we need to re-check the validity of
   // every vertex and edge in the path before installation, under lock, in case
   // things have changed since we started the search.
+  //
+  // FIXME(aryap): The thread safety model is not very robust.
+  // ValidAgainstKnownBlockages(...) should not take its own lock. But because
+  // it does, we have to relinquish the lock before calling
+  // RoutingPath->Legalise().
 
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {

@@ -9,6 +9,7 @@
 #include <absl/strings/str_join.h>
 
 #include "../atoms/sky130_buf.h"
+#include "../atoms/sky130_decap.h"
 #include "../atoms/sky130_dfxtp.h"
 #include "../atoms/sky130_hd_mux2_1.h"
 #include "../atoms/sky130_mux.h"
@@ -17,11 +18,11 @@
 #include "../equivalent_nets.h"
 #include "../geometry/compass.h"
 #include "../geometry/group.h"
-#include "../geometry/rectangle.h"
-#include "../geometry/shape_collection.h"
-#include "../geometry/port.h"
 #include "../geometry/poly_line.h"
 #include "../geometry/polygon.h"
+#include "../geometry/port.h"
+#include "../geometry/rectangle.h"
+#include "../geometry/shape_collection.h"
 #include "../layout.h"
 #include "../memory_bank.h"
 #include "../poly_line_cell.h"
@@ -30,6 +31,7 @@
 #include "../routing_layer_info.h"
 #include "../routing_via_info.h"
 #include "../row_guide.h"
+#include "../utility.h"
 #include "proto/parameters/lut_b.pb.h"
 
 namespace bfg {
@@ -52,15 +54,17 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
       .buffer_rows = {7, 7, 7},
       .clk_buf_rows = {4},
       .horizontal_alignment = geometry::Compass::LEFT,
-      .strap_alignment = geometry::Compass::RIGHT
+      .strap_alignment = geometry::Compass::RIGHT,
+      .alternate_rotation = false
     },
     .right = LutB::BankArrangement {
-      .memory_rows = {7, 6, 5, 4, 3, 2, 1, 0},
+      .memory_rows = {8, 8, 7, 6, 5, 4, 3, 2},
       .buffer_rows = {0},
       .active_mux2_rows = {0},
       .clk_buf_rows = {3},
       .horizontal_alignment = geometry::Compass::RIGHT,
-      .strap_alignment = geometry::Compass::LEFT
+      .strap_alignment = geometry::Compass::LEFT,
+      .alternate_rotation = true
     },
     .mux_area_horizontal_padding = 0,   // Determined at runtime.
     .mux_area_vertical_min_padding = 1250,
@@ -158,8 +162,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
                                 circuit.get(),
                                 design_db_,
                                 tap_cell,
-                                true,      // Rotate alternate rows.
-                                true,      // Rotate the first row.
+                                true,  // Rotate alternate rows.
+                                // Rotate the first row.
+                                !bank_arrangement.alternate_rotation,
                                 bank_arrangement.horizontal_alignment));
     MemoryBank &bank = banks_.back();
 
@@ -170,12 +175,12 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     for (size_t i = 0; i < bank_arrangement.memory_rows.size(); ++i) {
       size_t assigned_row = bank_arrangement.memory_rows[i];
 
-      std::string instance_name = absl::StrFormat(
+      std::string template_name = absl::StrFormat(
           "lut_dfxtp_%d_%d", p, num_memories);
-      std::string cell_name = absl::StrCat(instance_name, "_template");
+      std::string instance_name = absl::StrCat(template_name, "_i");
       atoms::Sky130Dfxtp::Parameters params;
       atoms::Sky130Dfxtp generator(params, design_db_);
-      Cell *cell = generator.GenerateIntoDatabase(cell_name);
+      Cell *cell = generator.GenerateIntoDatabase(template_name);
       cell->layout()->DeletePorts("QI");
 
       geometry::Instance *installed =
@@ -253,8 +258,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
                              circuit.get(),
                              design_db_);
   mux_grid.set_template_cells(&mux_templates);
-  // FIXME(aryap): This is a function of track pitch, really, not some number I
-  // eyeballed.
+  // FIXME(aryap): This is a function of track pitch, really, it's not some
+  // number I eyeballed. Except that it *is* some number I just eyeballed and it
+  // should be a function of track pitch.
   mux_grid.set_horizontal_overlap(18 * met1_x_pitch);
   mux_grid.set_vertical_overlap(-2500);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
@@ -325,15 +331,100 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     }
   }
 
+  // Place the registered output flop in the bottom-most row of the right bank.
+  // Also place the input select mux here: we can register 
+  // This is clocked by the application clock, not the scan clock!
+  //
+  // FIXME(aryap): Route these.
+  //
+  // First, the mux:
+  {
+    std::string template_name = "register_select_hd_mux2_1";
+    std::string instance_name = absl::StrCat(instance_name, "_i");
+    atoms::Sky130HdMux21 register_mux_generator({}, design_db_);
+    Cell *register_mux_cell = register_mux_generator.GenerateIntoDatabase(
+        template_name);
+    register_mux_cell->layout()->ResetY();
+    geometry::Instance *instance = banks_[1].InstantiateLeft(
+        0, instance_name, register_mux_cell);
+    // TODO(aryap): Do we need to store this?
+    //active_mux2s_.push_back(instance);
+  }
+
+  // Then the register:
+  {
+    std::string template_name = "register_dfxtp";
+    std::string instance_name = absl::StrCat(template_name, "_i");
+    atoms::Sky130Dfxtp::Parameters params;
+    atoms::Sky130Dfxtp generator(params, design_db_);
+    Cell *register_cell = generator.GenerateIntoDatabase(template_name);
+    register_cell->layout()->DeletePorts("QI");
+    geometry::Instance *installed =
+        banks_[1].InstantiateLeft(0, instance_name, register_cell);
+  }
+
+  // Then the memory holding the configuration for the output mux:
+  {
+    std::string template_name = "register_config_dfxtp";
+    std::string instance_name = absl::StrCat(template_name, "_i");
+    atoms::Sky130Dfxtp::Parameters params;
+    atoms::Sky130Dfxtp generator(params, design_db_);
+    Cell *register_cell = generator.GenerateIntoDatabase(template_name);
+    register_cell->layout()->DeletePorts("QI");
+    geometry::Instance *installed =
+        banks_[1].InstantiateLeft(0, instance_name, register_cell);
+  }
+
+  // Next we add the combinational output select mux:
+  {
+    std::string template_name = "combinational_select_hd_mux2_1";
+    std::string instance_name = absl::StrCat(instance_name, "_i");
+    atoms::Sky130HdMux21 combinational_mux_generator({}, design_db_);
+    Cell *combinational_mux_cell =
+        combinational_mux_generator.GenerateIntoDatabase(template_name);
+    combinational_mux_cell->layout()->ResetY();
+    geometry::Instance *instance = banks_[1].InstantiateRight(
+        0, instance_name, combinational_mux_cell);
+    // TODO(aryap): Do we need to store this?
+    //active_mux2s_.push_back(instance);
+  }
+
+  // Then the memory holding the configuration for the output mux:
+  {
+    std::string template_name = "combinational_config_dfxtp";
+    std::string instance_name = absl::StrCat(template_name, "_i");
+    atoms::Sky130Dfxtp::Parameters params;
+    atoms::Sky130Dfxtp generator(params, design_db_);
+    Cell *combinational_cell = generator.GenerateIntoDatabase(template_name);
+    combinational_cell->layout()->DeletePorts("QI");
+    geometry::Instance *installed =
+        banks_[1].InstantiateRight(1, instance_name, combinational_cell);
+  }
+
+
   // Now that all instances have been assigned to the banks and their
   // dimensions are known, move them into place around the muxes. Well, move
   // the right bank because the first bank is fixed.
-  int64_t right_bank_top_row_left_x = banks_[1].rows().back().LowerLeft().x();
+  int64_t right_bank_row_2_left_x = banks_[1].Row(2).LowerLeft().x();
+  int64_t right_bank_row_2_width = banks_[1].Row(2).GetTilingBounds()->Width();
   int64_t right_bank_bottom_row_top_y =
       banks_[1].rows().front().UpperLeft().y();
 
+
   x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
       mux_area_horizontal_padding;
+
+  // We now have the opportunity to position the right bank so that the overall
+  // tile width is a multiple of something, if required.
+  //
+  // TODO(aryap): This assumes that the left-most point on the layout is at x=0.
+  std::optional<int64_t> width_unit = db.ToInternalUnits(
+      parameters_.tiling_width_unit_nm);
+  if (width_unit) {
+    int64_t total_width = x_pos + right_bank_row_2_width;
+    int64_t required_width = Utility::NextMultiple(total_width, *width_unit);
+    x_pos += (required_width - total_width);
+  }
 
   int64_t y_pitch = db.Rules("met1.drawing").min_pitch;
   // To maintain the relative alignment of the RoutingGrid to the cells, we
@@ -347,10 +438,39 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       static_cast<double>(y_diff) / static_cast<double>(y_pitch));
 
   banks_[1].AlignPointTo(
-      {right_bank_top_row_left_x, right_bank_bottom_row_top_y},
+      {right_bank_row_2_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
-  Route(circuit.get(), layout.get());
+  // We can now fill any gaps with decaps.
+  //
+  // NOTE(aryap): We are statically assuming only a single top row. That might
+  // not be true if generalise this to larger LUTs.
+  //
+  // We could also use any available gap for a passive mux to select between two
+  // adjacent 4-LUT structures.
+  int64_t top_row_available_x =
+      banks_[1].rows().back().GetTilingBounds()->lower_left().x() -
+      banks_[0].rows().back().GetTilingBounds()->upper_right().x();
+  if (top_row_available_x >= db.ToInternalUnits(
+          atoms::Sky130Decap::Parameters::kMinWidthNm) &&
+      top_row_available_x <= db.ToInternalUnits(
+          atoms::Sky130Decap::Parameters::kMaxWidthNm)) {
+    std::string template_name = "top_decap_fill";
+    atoms::Sky130Decap::Parameters decap_params = {
+      .width_nm = static_cast<uint64_t>(db.ToExternalUnits(top_row_available_x))
+    };
+    atoms::Sky130Decap decap_generator(decap_params, design_db_);
+    Cell *decap_cell = decap_generator.GenerateIntoDatabase(template_name);
+    geometry::Instance *decap = banks_[0].InstantiateRight(
+        banks_[0].NumRows() - 1,
+        absl::StrCat(template_name, "_i0"),
+        decap_cell);
+  }
+
+
+
+
+  //Route(circuit.get(), layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -381,7 +501,7 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   // many, possibly connected, layers. The tricky thing is that connecting on
   // one layer might create DRC violations on an adjacent layer (e.g. if you
   // connect on met2 but jump up from met1 just before, and there's a met1
-  // shape near, you get a problem).
+  // shape near, you have a problem).
   //
   // A related and important consideration is that all shapes with the same
   // port name label should be considered connected, even if they are not port
@@ -397,7 +517,7 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   // BankArrangement.
   std::map<geometry::Instance*, std::string> memory_output_net_names;
 
-  AddClockAndPowerStraps(&routing_grid, circuit, layout);
+  //AddClockAndPowerStraps(&routing_grid, circuit, layout);
 
   errors_.clear();
 
@@ -494,6 +614,9 @@ void LutB::ConfigureRoutingGrid(
   routing_grid->AddGlobalNet("CLK");
 }
 
+// FIXME(aryap): The clock/power/etc straps need to connect to the left most
+// ports of the left- or right-most memories on each row of the bank, depending
+// on the bank, and they need to connect to every memory on that row.
 void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
                              Circuit *circuit,
                              Layout *layout) {
@@ -639,11 +762,15 @@ void LutB::RouteMuxInputs(
   // input_2  --|
   // input_0  --|
   // input_1  --+---------
+  //
+  // FIXME(aryap): These depend on the way the banks are filled, so they depend
+  // on the bank arrangement! But the basic principle is to find the nearest
+  // memories, right? This is the TODO above actually...
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-    {banks_[1].instances()[2][0], mux_order_[0], "input_4"},
-    {banks_[1].instances()[0][0], mux_order_[0], "input_7"},
-    {banks_[1].instances()[3][0], mux_order_[0], "input_5"},
-    {banks_[1].instances()[1][0], mux_order_[0], "input_6"},
+    {banks_[1].instances()[4][0], mux_order_[0], "input_4"},
+    {banks_[1].instances()[2][0], mux_order_[0], "input_7"},
+    {banks_[1].instances()[5][0], mux_order_[0], "input_5"},
+    {banks_[1].instances()[3][0], mux_order_[0], "input_6"},
 
     {banks_[0].instances()[7][0], mux_order_[1], "input_5"},
     {banks_[0].instances()[5][0], mux_order_[1], "input_6"},
@@ -655,10 +782,10 @@ void LutB::RouteMuxInputs(
     {banks_[0].instances()[2][0], mux_order_[0], "input_2"},
     {banks_[0].instances()[0][0], mux_order_[0], "input_1"},
 
-    {banks_[1].instances()[5][0], mux_order_[1], "input_0"},
-    {banks_[1].instances()[7][0], mux_order_[1], "input_3"},
-    {banks_[1].instances()[6][0], mux_order_[1], "input_2"},
-    {banks_[1].instances()[4][0], mux_order_[1], "input_1"},
+    {banks_[1].instances()[7][0], mux_order_[1], "input_0"},
+    {banks_[1].instances()[8][0], mux_order_[1], "input_3"},
+    {banks_[1].instances()[8][1], mux_order_[1], "input_2"},
+    {banks_[1].instances()[6][0], mux_order_[1], "input_1"},
   };
 
   for (auto &auto_connection : auto_mem_connections) {

@@ -199,10 +199,27 @@ class Layout : public geometry::Manipulable {
   void MakePin(const std::string &net_name,
                const geometry::Point &centre,
                const std::string &pin_layer);
+  void MakePin(const std::string &net_name,
+               const geometry::Point &centre,
+               const geometry::Layer &layer);
 
   void MakePort(const std::string &net_name,
                 const geometry::Point &centre,
                 const std::string &layer_name = "");
+
+
+  // TODO(aryap): This is a very interesting problem to solve, and I don't know
+  // how to do it right now, and I don't have time for it, because I need to
+  // graduate. I'm going to leave it in because it is indeed a very useful
+  // feature, if someone ever bothers to write it (and explain it to me).
+  //
+  // Find the rectangular area in which the given point appears, bounded by some
+  // layers with some margin. If there is no valid empty space, such as if the
+  // point collides with an object already, std::nullopt is returned.
+  std::optional<geometry::Rectangle> FindEmptySpaceAround(
+      const geometry::Point &point,
+      const std::vector<std::string> &layers,
+      uint64_t margin) const;
 
   // Draw that alternates between two layers with every subsequent edge.
   void MakeAlternatingWire(
@@ -302,12 +319,14 @@ class Layout : public geometry::Manipulable {
     return GetBoundingBox().Width();
   }
 
-  const geometry::Rectangle GetBoundingBox() const;
+  const geometry::Rectangle GetBoundingBox() const {
+    return GetBoundingBox(false);
+  }
   const geometry::Rectangle GetTilingBounds() const {
     if (tiling_bounds_) {
       return *tiling_bounds_;
     } else {
-      return GetBoundingBox();
+      return GetBoundingBox(true);
     }
   }
 
@@ -432,6 +451,9 @@ class Layout : public geometry::Manipulable {
   }
 
  private:
+  const geometry::Rectangle GetBoundingBox(
+      bool use_tiling_bounds_for_children) const;
+
   bfg::Cell *parent_cell_;
 
   std::string name_;
