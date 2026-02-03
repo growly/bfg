@@ -105,7 +105,12 @@ class LutB : public Tile {
 
   LutB(const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
-        parameters_(parameters) {}
+        parameters_(parameters),
+        comb_output_mux_(nullptr),
+        comb_output_mux_config_(nullptr),
+        reg_output_flop_(nullptr),
+        reg_output_mux_(nullptr),
+        reg_output_mux_config_(nullptr) {}
 
   Cell *GenerateIntoDatabase(const std::string &name) override;
 
@@ -192,6 +197,13 @@ class LutB : public Tile {
   std::vector<geometry::Instance*> active_mux2s_;
   std::vector<geometry::Instance*> clk_buf_order_;
   std::vector<geometry::Instance*> memories_;
+
+  // Features of all LutBs:
+  geometry::Instance *comb_output_mux_;
+  geometry::Instance *comb_output_mux_config_;
+  geometry::Instance *reg_output_flop_;
+  geometry::Instance *reg_output_mux_;
+  geometry::Instance *reg_output_mux_config_;
 
   std::vector<absl::Status> errors_;
 };

@@ -345,10 +345,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     Cell *register_mux_cell = register_mux_generator.GenerateIntoDatabase(
         template_name);
     register_mux_cell->layout()->ResetY();
-    geometry::Instance *instance = banks_[1].InstantiateLeft(
+    geometry::Instance *installed = banks_[1].InstantiateLeft(
         0, instance_name, register_mux_cell);
-    // TODO(aryap): Do we need to store this?
-    //active_mux2s_.push_back(instance);
+    reg_output_mux_ = installed;
   }
 
   // Then the register:
@@ -361,11 +360,12 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     register_cell->layout()->DeletePorts("QI");
     geometry::Instance *installed =
         banks_[1].InstantiateLeft(0, instance_name, register_cell);
+    reg_output_flop_ = installed;
   }
 
   // Then the memory holding the configuration for the output mux:
   {
-    std::string template_name = "register_config_dfxtp";
+    std::string template_name = "register_select_config_dfxtp";
     std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130Dfxtp::Parameters params;
     atoms::Sky130Dfxtp generator(params, design_db_);
@@ -373,6 +373,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     register_cell->layout()->DeletePorts("QI");
     geometry::Instance *installed =
         banks_[1].InstantiateLeft(0, instance_name, register_cell);
+    reg_output_mux_config_ = installed;
   }
 
   // Next we add the combinational output select mux:
@@ -383,10 +384,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     Cell *combinational_mux_cell =
         combinational_mux_generator.GenerateIntoDatabase(template_name);
     combinational_mux_cell->layout()->ResetY();
-    geometry::Instance *instance = banks_[1].InstantiateRight(
+    geometry::Instance *installed = banks_[1].InstantiateRight(
         0, instance_name, combinational_mux_cell);
-    // TODO(aryap): Do we need to store this?
-    //active_mux2s_.push_back(instance);
+    comb_output_mux_ = installed;
   }
 
   // Then the memory holding the configuration for the output mux:
@@ -399,6 +399,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     combinational_cell->layout()->DeletePorts("QI");
     geometry::Instance *installed =
         banks_[1].InstantiateRight(1, instance_name, combinational_cell);
+    comb_output_mux_config_ = installed;
   }
 
 
@@ -470,7 +471,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
 
 
-  //Route(circuit.get(), layout.get());
+  Route(circuit.get(), layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -522,10 +523,10 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   errors_.clear();
 
   RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteClockBuffers(&routing_grid, circuit, layout);
-  RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteRemainder(&routing_grid, circuit, layout);
-  RouteInputs(&routing_grid, circuit, layout);
+  //RouteClockBuffers(&routing_grid, circuit, layout);
+  //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteRemainder(&routing_grid, circuit, layout);
+  //RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
@@ -687,9 +688,21 @@ void LutB::RouteScanChain(
     Circuit *circuit,
     Layout *layout,
     std::map<geometry::Instance*, std::string> *memory_output_net_names) {
+  std::vector<geometry::Instance*> scan_order(
+      memories_.begin(), memories_.end());
+  // TODO(aryap): We should instead determine this from the other instances of
+  // memories in the left bank, so that then this is a purely geometric
+  // reasoning.
+  if (reg_output_mux_config_) {
+    scan_order.insert(scan_order.begin(), reg_output_mux_config_);
+  }
+  if (comb_output_mux_config_) {
+    scan_order.push_back(comb_output_mux_config_);
+  }
+
   // For now the input/output of the first/last flip-flop (respectively) is just
   // the port for the entire LUT; later we route this to pins on the edge:
-  memories_.front()->circuit_instance()->Connect("D",
+  scan_order.front()->circuit_instance()->Connect("D",
       *circuit->GetOrAddSignal("CONFIG_IN", 1));
 
   // FIXME(aryap): This is terrible! We need a way to re-assign, or connect,
@@ -700,9 +713,9 @@ void LutB::RouteScanChain(
   //memories_.back()->circuit_instance()->Connect("Q",
   //    *circuit->GetOrAddSignal("CONFIG_OUT", 1));
 
-  for (size_t i = 0; i < memories_.size() - 1; ++i) {
-    geometry::Instance *source = memories_[i];
-    geometry::Instance *sink = memories_[i + 1];
+  for (size_t i = 0; i < scan_order.size() - 1; ++i) {
+    geometry::Instance *source = scan_order[i];
+    geometry::Instance *sink = scan_order[i + 1];
 
     LOG(INFO) << "Adding scan routes for pair "
               << source->name() << ", " << sink->name();
@@ -977,11 +990,180 @@ void LutB::RouteInputs(
   }
 }
 
+// The output of the look-up table connects to two muxes:
+//  - one which discriminates the combinational output between LUT-output,
+//  bypass input and in future carry output; and
+//  - one which discriminates the input to the application register between the
+//  same three inputs.
 void LutB::RouteOutputs(
     RoutingGrid *routing_grid,
     Circuit *circuit,
     Layout *layout) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  DCHECK(comb_output_mux_ != nullptr &&
+         comb_output_mux_config_ != nullptr &&
+         reg_output_flop_ != nullptr &&
+         reg_output_mux_ != nullptr &&
+         reg_output_mux_config_ != nullptr)
+    << "Output structures must be installed and available before RouteOutputs "
+    << "is called";
+
+  // TODO(aryap):
+  // bypass input pin
+  // application clock input pin
+  // combinational output pin, O
+  // registered output pin, Q
+  //
+  // TODO(aryap): Pin input order matters. If the reg. output flop Q port isn't
+  // a blockage when the config for its mux is routed, it might be blocked.
+  //
+  // TODO(aryap): Why are there two sets of names for the same thing? Fucking
+  // annoying.
+  //
+  // FIXME(aryap): The application flop at the output needs a clock buffer.
+  // Probably easiest (least routing congegstion) to include the original clock
+  // buf from the flip flop that was chopped off (that should be a parameter
+  // anyway).
+
+  std::string comb_input_A0 = "comb_input_A0";
+  std::string reg_input_A0 = "comb_input_A0";
+  std::string bypass_input = "X";
+  std::string reg_flop_in = "reg_flop_in";
+  std::string reg_flop_control = "reg_flop_control";
+  std::string comb_flop_control = "comb_flop_control";
+
+  // Combinational output.
+  //
+  // Connect the A0 input of the combinational output selection mux to the
+  // output of the LUT.
+  {
+    geometry::ShapeCollection non_net_connectables;
+    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+
+    std::vector<geometry::Port*> comb_output_mux_A0_ports;
+    comb_output_mux_->GetInstancePorts("A0", &comb_output_mux_A0_ports);
+
+    std::vector<geometry::Port*> lut_output_ports;
+    active_mux2s_[0]->GetInstancePorts("X", &lut_output_ports);
+
+    routing_grid->AddRouteBetween(
+        *comb_output_mux_A0_ports.front(),
+        *lut_output_ports.front(),
+        non_net_connectables,
+        comb_input_A0).IgnoreError();
+
+  }
+
+  // Registered output.
+  //
+  // Connect the A0 input of the register selection mux to the output of the
+  // LUT.
+  {
+    geometry::ShapeCollection non_net_connectables;
+    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+
+    std::vector<geometry::Port*> reg_output_mux_A0_ports;
+    reg_output_mux_->GetInstancePorts("A0", &reg_output_mux_A0_ports);
+
+    std::vector<geometry::Port*> lut_output_ports;
+    active_mux2s_[0]->GetInstancePorts("X", &lut_output_ports);
+
+    auto result = routing_grid->AddRouteBetween(
+        *reg_output_mux_A0_ports.front(),
+        *lut_output_ports.front(),
+        non_net_connectables,
+        reg_input_A0);
+    if (!result.ok()) {
+      LOG(ERROR) << "Could not connect registered output mux A0";
+    }
+  }
+  // Connect the output of the register input selection mux to the input of the
+  // flop.
+  {
+    geometry::ShapeCollection non_net_connectables;
+    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+
+    std::vector<geometry::Port*> reg_select_output_ports;
+    reg_output_mux_->GetInstancePorts("X", &reg_select_output_ports);
+
+    std::vector<geometry::Port*> reg_input;
+    reg_output_flop_->GetInstancePorts("D", &reg_input);
+
+    auto result = routing_grid->AddRouteBetween(
+        *reg_select_output_ports.front(),
+        *reg_input.front(),
+        non_net_connectables,
+        reg_flop_in);
+    if (!result.ok()) {
+      LOG(ERROR) << "Could not connect application register input";
+    }
+  }
+  // Connect the output of the register selection mux config memory to the
+  // select line of the mux.
+  {
+    geometry::ShapeCollection non_net_connectables;
+    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+
+    std::vector<geometry::Port*> reg_select_S_ports;
+    reg_output_mux_->GetInstancePorts("S", &reg_select_S_ports);
+
+    std::vector<geometry::Port*> reg_select_mem_Q_ports;
+    reg_output_mux_config_->GetInstancePorts("Q", &reg_select_mem_Q_ports);
+
+    auto result = routing_grid->AddRouteBetween(
+        *reg_select_S_ports.front(),
+        *reg_select_mem_Q_ports.front(),
+        non_net_connectables,
+        reg_flop_control);
+    if (!result.ok()) {
+      LOG(ERROR) << "Could not connect application register mux control";
+    }
+  }
+  // Connect the output of the combinational selection mux config memory to the
+  // select line of the mux.
+  {
+    geometry::ShapeCollection non_net_connectables;
+    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+
+    std::vector<geometry::Port*> comb_select_S_ports;
+    comb_output_mux_->GetInstancePorts("S", &comb_select_S_ports);
+
+    std::vector<geometry::Port*> comb_select_mem_Q_ports;
+    comb_output_mux_config_->GetInstancePorts("Q", &comb_select_mem_Q_ports);
+
+    auto result = routing_grid->AddRouteBetween(
+        *comb_select_S_ports.front(),
+        *comb_select_mem_Q_ports.front(),
+        non_net_connectables,
+        comb_flop_control);
+    if (!result.ok()) {
+      LOG(ERROR) << "Could not connect combinational select mux control";
+    }
+  }
+
+  // The bypass input connects to both muxes.
+  //
+  // Connect the A1 inputs of the combinational output selection mux and the
+  // register selection mux to the bypass input.
+  {
+    geometry::ShapeCollection non_net_connectables;
+    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+
+    std::vector<geometry::Port*> comb_output_mux_A1_ports;
+    comb_output_mux_->GetInstancePorts("A1", &comb_output_mux_A1_ports);
+
+    std::vector<geometry::Port*> reg_output_mux_A1_ports;
+    reg_output_mux_->GetInstancePorts("A1", &reg_output_mux_A1_ports);
+
+    routing_grid->AddRouteBetween(
+        *comb_output_mux_A1_ports.front(),
+        *reg_output_mux_A1_ports.front(),
+        non_net_connectables,
+        bypass_input).IgnoreError();
+  }
+
+  // Make input/output pins.
   const std::array<PortKeyAlias, 2> pin_map = {
     // Take the output from the final 2:1 mux output (for now).
     PortKeyAlias {{active_mux2s_[0], "port_X_centre_middle"}, "Z"},
