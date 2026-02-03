@@ -470,7 +470,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
 
 
-  //Route(circuit.get(), layout.get());
+  Route(circuit.get(), layout.get());
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -517,16 +517,16 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   // BankArrangement.
   std::map<geometry::Instance*, std::string> memory_output_net_names;
 
-  //AddClockAndPowerStraps(&routing_grid, circuit, layout);
+  AddClockAndPowerStraps(&routing_grid, circuit, layout);
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteClockBuffers(&routing_grid, circuit, layout);
-  RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteRemainder(&routing_grid, circuit, layout);
-  RouteInputs(&routing_grid, circuit, layout);
-  RouteOutputs(&routing_grid, circuit, layout);
+  //RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteClockBuffers(&routing_grid, circuit, layout);
+  //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteRemainder(&routing_grid, circuit, layout);
+  //RouteInputs(&routing_grid, circuit, layout);
+  //RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -1204,7 +1204,6 @@ void LutB::AddClockAndPowerStraps(
   std::unordered_map<std::string, std::set<geometry::Polygon*>> spines;
 
   for (size_t bank = 0; bank < banks_.size(); ++bank) {
-    std::optional<int64_t> last_spine_x;
     for (size_t i = 0; i < kStrapInfo.size(); ++i) {
       const auto &strap_info = kStrapInfo[i];
       const std::string &port_name = strap_info.port_name;
@@ -1215,6 +1214,7 @@ void LutB::AddClockAndPowerStraps(
       std::vector<geometry::Point> connections;
       for (const auto &row : banks_.at(bank).instances()) {
         for (geometry::Instance *instance : row) {
+          LOG(INFO) << " instance " << instance->name();
           // We only care about the memories:
           if (std::find(memories_.begin(), memories_.end(), instance) ==
                   memories_.end()) {
@@ -1227,6 +1227,7 @@ void LutB::AddClockAndPowerStraps(
           instance->GetInstancePorts(port_name, &ports);
 
           for (geometry::Port *port : ports) {
+            LOG(INFO) << " added " << *port;
             connections.push_back(port->centre());
           }
 
@@ -1239,23 +1240,27 @@ void LutB::AddClockAndPowerStraps(
       }
 
       // Sort connections so that the left-most (lowest-x) is at the front.
-      // Thus pick the left-most port.
       std::sort(connections.begin(), connections.end(),
                 geometry::Point::CompareX);
 
-      int64_t spine_x = 0;
-      if (strap_alignment_per_bank[bank] == geometry::Compass::LEFT) {
-        spine_x = connections.front().x() + kOffsetNumPitches * strap_pitch;
-        if (last_spine_x) {
-          spine_x = std::min(spine_x, *last_spine_x - strap_pitch);
-        }
-      } else if (strap_alignment_per_bank[bank] == geometry::Compass::RIGHT) {
-        spine_x = connections.back().x() - kOffsetNumPitches * strap_pitch;
-        if (last_spine_x) {
-          spine_x = std::max(spine_x, *last_spine_x + strap_pitch);
-        }
+      for (const auto &point : connections) {
+        LOG(INFO) << "bank " << bank << " strap " << i << " has connection " << point;
       }
-      last_spine_x = spine_x;
+
+      std::optional<int64_t> spine_x;
+      if (strap_alignment_per_bank[bank] == geometry::Compass::LEFT) {
+        for (const geometry::Point &point : connections) {
+          // Pick the left-most point.
+          Utility::UpdateMin(point.x(), &spine_x);
+        }
+        *spine_x += kOffsetNumPitches * strap_pitch;
+      } else if (strap_alignment_per_bank[bank] == geometry::Compass::RIGHT) {
+        for (const geometry::Point &point : connections) {
+          // Pick the right-most point.
+          Utility::UpdateMax(point.x(), &spine_x);
+        }
+        *spine_x -= kOffsetNumPitches * strap_pitch;
+      }
 
       geometry::Group new_shapes =
           AddVerticalSpineWithFingers("met2.drawing",
@@ -1263,7 +1268,7 @@ void LutB::AddClockAndPowerStraps(
                                       "met1.drawing",
                                       net,
                                       connections,
-                                      spine_x,
+                                      *spine_x,
                                       spine_bulge_width,
                                       layout);
       if (strap_info.create_cross_bar_and_port) {
