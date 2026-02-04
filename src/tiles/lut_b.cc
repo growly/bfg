@@ -203,10 +203,10 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   LOG_IF(FATAL, banks_.size() < 1) << "Expected at least 1 bank by this point.";
 
-  static constexpr int kSkinnyRowLeft = 1;
+  static constexpr int kTypicalRowLeft = 1;
 
   int64_t row_height =
-      banks_[0].Row(kSkinnyRowLeft).GetTilingBounds()->Height();
+      banks_[0].Row(kTypicalRowLeft).GetTilingBounds()->Height();
   banks_[0].MoveTo(geometry::Point(0, -row_height));
 
   // Set the grid alignment point to fall on the output port of this memory:
@@ -244,16 +244,14 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // they are in this chain.
   int64_t mux_height = base_mux_cell->layout()->GetBoundingBox().Height();
   int64_t mux_width = base_mux_cell->layout()->GetBoundingBox().Width();
-  int64_t left_bank_bottom_row_right_x =
-      banks_[0].Row(kSkinnyRowLeft).Width();
+  int64_t left_bank_inside_x = banks_[0].Row(kTypicalRowLeft).Width();
 
   int64_t met1_x_pitch = db.Rules("met1.drawing").min_pitch;
   int64_t mux_area_horizontal_padding =
       layout_config.mux_area_horizontal_padding +
       3 * met1_x_pitch;
 
-  int64_t x_pos =
-      left_bank_bottom_row_right_x + mux_area_horizontal_padding;
+  int64_t x_pos = left_bank_inside_x + mux_area_horizontal_padding;
 
   // This staggers the mux area below the memories on the left:
   //int64_t y_pos = -mux_height / 2;
@@ -351,7 +349,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // First, the mux:
   {
     std::string template_name = "register_select_hd_mux2_1";
-    std::string instance_name = absl::StrCat(instance_name, "_i");
+    std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130HdMux21 register_mux_generator({}, design_db_);
     Cell *register_mux_cell = register_mux_generator.GenerateIntoDatabase(
         template_name);
@@ -365,7 +363,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   {
     std::string template_name = "register_dfxtp";
     std::string instance_name = absl::StrCat(template_name, "_i");
-    atoms::Sky130Dfxtp::Parameters params;
+    atoms::Sky130Dfxtp::Parameters params = {
+      .input_clock_buffer = true
+    };
     atoms::Sky130Dfxtp generator(params, design_db_);
     Cell *register_cell = generator.GenerateIntoDatabase(template_name);
     register_cell->layout()->DeletePorts("QI");
@@ -376,6 +376,9 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
 
   // Then the memory holding the configuration for the output mux:
   {
+    // Disable tap cell on this row since it will join the other row shortly:
+    banks_[0].Row(0).clear_tap_cell();
+
     std::string template_name = "register_select_config_dfxtp";
     std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130Dfxtp::Parameters params;
@@ -425,14 +428,28 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   int64_t right_bank_bottom_row_top_y =
       banks_[1].rows().front().UpperLeft().y();
 
+  // We don't want the right bank to come any more left than the right bound of
+  // the mux grid, but we also don't want the top or bottom row to overlap.
+  int64_t right_bank_bottom_row_width =
+      banks_[1].Row(0).GetTilingBounds()->Width();
+  int64_t left_bank_bottom_row_width =
+      banks_[0].Row(0).GetTilingBounds()->Width();
 
   x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
       mux_area_horizontal_padding;
 
+  int64_t bottom_row_overlap = x_pos + right_bank_row_2_width - (
+      left_bank_bottom_row_width + right_bank_bottom_row_width);
+  if (bottom_row_overlap < 0) {
+    x_pos += -bottom_row_overlap;
+    // TODO(aryap): The mux grid can also be repositioned in the centre of the
+    // gap.
+  }
+
   // We now have the opportunity to position the right bank so that the overall
   // tile width is a multiple of something, if required.
   //
-  // TODO(aryap): This assumes that the left-most point on the layout is at x=0.
+  // NOTE(aryap): This assumes that the left-most point on the layout is at x=0.
   std::optional<int64_t> width_unit = db.ToInternalUnits(
       parameters_.tiling_width_unit_nm);
   if (width_unit) {
@@ -483,6 +500,13 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   }
 
   Route(circuit.get(), layout.get());
+
+  // Because there is a lot of spurious crap in this cell, we explicitly set
+  // the tiling bounds to what we expect.
+  geometry::Rectangle tiling_bounds(
+      banks_[0].GetTilingBounds()->lower_left(),
+      banks_[1].GetTilingBounds()->upper_right());
+  layout->SetTilingBounds(tiling_bounds);
 
   // //// FIXME(aryap): remove
   // ///DEBUG
@@ -547,11 +571,11 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
+  //RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
   RouteClockBuffers(&routing_grid, circuit, layout);
   //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
   //RouteRemainder(&routing_grid, circuit, layout);
-  //RouteInputs(&routing_grid, circuit, layout);
+  RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
