@@ -570,11 +570,11 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  RouteInputs(&routing_grid, circuit, layout);
   RouteScanChain(&routing_grid, circuit, layout);
   RouteClockBuffers(&routing_grid, circuit, layout);
   //RouteMuxInputs(&routing_grid, circuit, layout);
   //RouteRemainder(&routing_grid, circuit, layout);
+  RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
@@ -1279,31 +1279,24 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
 
   geometry::Group created_shapes;
 
-  // TODO(aryap): Redo this, since we have multiple points ona single y now:
-  // Sort points by y (the key) and remove duplicates by keeping either the
-  // closest or the furthest point from spine_x.
-  std::map<int64_t, geometry::Point> points;
+  std::map<int64_t, std::set<geometry::Point>> points_by_y;
   for (const geometry::Point &point : connections) {
-    auto it = points.find(point.y());
-    if (it != points.end()) {
-      geometry::Point on_spine = {spine_x, point.y()};
-      const geometry::Point &existing = it->second;
-      // Keeps closest point:
-      if (point.L1DistanceTo(on_spine) < existing.L1DistanceTo(on_spine)) {
-        points[point.y()] = point;
-      }
-    } else {
-      points[point.y()] = point;
-    }
+    // We connect to every point with the same y-coordinate in the dumbest way:
+    // just drawing a finger to each one. This will necessarily mean some
+    // overlapping, redundant shapes, which is gross. However, I need to
+    // graduate. The nicer way to do this is to determine the limits of the
+    // horizontal wire, draw it, and place bulges at any intermediate points
+    // (including on the spine itself).
+    points_by_y[point.y()].insert(point);
   }
 
-  if (points.size() < 2) {
+  if (points_by_y.size() < 2) {
     return created_shapes;
   }
 
   // Draw spine.
-  int64_t y_min = points.begin()->second.y();
-  int64_t y_max = points.rbegin()->second.y();
+  int64_t y_min = points_by_y.begin()->second.begin()->y();
+  int64_t y_max = points_by_y.rbegin()->second.begin()->y();
 
   geometry::PolyLine spine_line({{spine_x, y_min}, {spine_x, y_max}});
   spine_line.SetWidth(
@@ -1318,35 +1311,36 @@ geometry::Group LutB::AddVerticalSpineWithFingers(
       2 * finger_via_rules.via_overhang_wide + via_side;
   uint64_t finger_bulge_length = 2 * finger_via_rules.via_overhang + via_side;
 
-  for (const auto &entry : points) {
-    const geometry::Point &point = entry.second;
-    if (point.x() == spine_x) {
-      spine_line.InsertBulge(point, spine_bulge_width, spine_bulge_length);
-      layout->MakeVia(via_layer_name, point, net);
-      continue;
+  for (const auto &points : points_by_y) {
+    for (const geometry::Point &point : points.second) {
+      if (point.x() == spine_x) {
+        spine_line.InsertBulge(point, spine_bulge_width, spine_bulge_length);
+        layout->MakeVia(via_layer_name, point, net);
+        continue;
+      }
+      geometry::Point spine_via = {spine_x, point.y()};
+      // Have to draw a finger!
+      geometry::PolyLine finger({point, spine_via});
+
+      finger.SetWidth(finger_rules.min_width);
+      finger.set_min_separation(finger_rules.min_separation);
+      finger.InsertBulge(spine_via, finger_bulge_width, finger_bulge_length);
+      finger.set_net(net);
+      layout->SetActiveLayerByName(finger_layer_name);
+      geometry::Polygon *finger_polygon = layout->AddPolyLine(finger);
+      created_shapes.Add(finger_polygon);
+
+      layout->RestoreLastActiveLayer();
+
+      geometry::Rectangle *via = layout->MakeVia(via_layer_name, spine_via, net);
+      created_shapes.Add(via);
+
+      spine_line.InsertBulge(spine_via, spine_bulge_width, spine_bulge_length);
+
+      // TODO: do we worry about the via from the finger to the connection pin
+      // here?
+      // finger.InsertBulge(point, finger_bulge_width, finger_bulge_length);
     }
-    geometry::Point spine_via = {spine_x, point.y()};
-    // Have to draw a finger!
-    geometry::PolyLine finger({point, spine_via});
-
-    finger.SetWidth(finger_rules.min_width);
-    finger.set_min_separation(finger_rules.min_separation);
-    finger.InsertBulge(spine_via, finger_bulge_width, finger_bulge_length);
-    finger.set_net(net);
-    layout->SetActiveLayerByName(finger_layer_name);
-    geometry::Polygon *finger_polygon = layout->AddPolyLine(finger);
-    created_shapes.Add(finger_polygon);
-
-    layout->RestoreLastActiveLayer();
-
-    geometry::Rectangle *via = layout->MakeVia(via_layer_name, spine_via, net);
-    created_shapes.Add(via);
-
-    spine_line.InsertBulge(spine_via, spine_bulge_width, spine_bulge_length);
-
-    // TODO: do we worry about the via from the finger to the connection pin
-    // here?
-    // finger.InsertBulge(point, finger_bulge_width, finger_bulge_length);
   }
 
   layout->SetActiveLayerByName(spine_layer_name);
