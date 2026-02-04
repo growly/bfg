@@ -8,9 +8,17 @@
 #include "../circuit/wire.h"
 #include "../cell.h"
 #include "../layout.h"
+#include "proto/parameters/sky130_dfxtp.pb.h"
 
 namespace bfg {
 namespace atoms {
+
+void Sky130Dfxtp::Parameters::ToProto(
+    proto::parameters::Sky130Dfxtp *pb) const {
+}
+void Sky130Dfxtp::Parameters::FromProto(
+    const proto::parameters::Sky130Dfxtp &pb) {
+}
 
 using ::bfg::geometry::Point;
 using ::bfg::geometry::Polygon;
@@ -232,6 +240,13 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   // X11 VPWR Q_B Q VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u  ; pfet9
   // X23 VGND Q_B Q VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u     ; pfet8
   // .ends
+  //
+  // If the input clock buffer is included, we X16, X18, X19, X20 are included
+  // back in.
+  //
+  // FIXME(aryap): Complete spice model when input clock buffer included.
+  // FIXME(aryap): Also, CLK/CLKI are the external ports. The internal net
+  // names should be clk/clk_i respectively.
 
   //                    /                    /
   //                   _|                   _|
@@ -254,6 +269,21 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   //                    |                    |
   //                    V                    V
 
+  // If the input clock buffer is included, we add this circuit to generate
+  // clk and clk_i from a single CLK source. The CLKI port is then disabled,
+  // since only a CLK port is needed.
+  //
+  //              /                    /
+  //              |                    |
+  //         g   _| s             g   _| s
+  //         +-o|_ pfet_10        +-o|_  pfet_11
+  //         |    | d             |    | d
+  //  CLK ---+    +------- clk_i -+    +--- clk
+  //         |   _| d             |   _| d
+  //         +--|_ nfet_10        +--|_  nfet_11
+  //         g    | s             g    | s
+  //              |                    |
+  //              V                    V
 
   circuit::Wire a = circuit->AddSignal("a");
   circuit::Wire b = circuit->AddSignal("b");
@@ -363,10 +393,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // mcon drawings on either the VSS or VDD rails when the cell is flipped for
   // placement. This could be an option. I don't think that would violate
   // spacing rules.
-  // int64_t x_min = 80;
-  int64_t x_min = 20 - 460;
-
-  layout->AddRectangle(Rectangle(Point(x_min, 0), Point(6000, 2720)));
+  // int64_t x_start = 80;
+  int64_t x_start = 20 - 460;
 
   // mcon.drawing [DRAWING] 67/44
   layout->SetActiveLayerByName("mcon.drawing");
@@ -386,8 +414,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
     layout->AddRectangle(Rectangle(Point(1085, -85), Point(1255, 85)));
     // Additional mcon added to correct for cut in non-unit-widths:
     layout->AddRectangle(Rectangle(
-          Point(x_min + 145, -85),
-          Point(x_min + 145 + 170, 85)));
+          Point(x_start + 145, -85),
+          Point(x_start + 145 + 170, 85)));
   }
   if (parameters_.draw_vpwr_vias) {
     layout->AddRectangle(Rectangle(Point(2925, 2635), Point(3095, 2805)));
@@ -404,8 +432,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
     layout->AddRectangle(Rectangle(Point(2465, 2635), Point(2635, 2805)));
     layout->AddRectangle(Rectangle(Point(2005, 2635), Point(2175, 2805)));
     layout->AddRectangle(Rectangle(
-          Point(x_min + 145, 2635),
-          Point(x_min + 145 + 170, 2805)));
+          Point(x_start + 145, 2635),
+          Point(x_start + 145 + 170, 2805)));
   }
   layout->AddRectangle(Rectangle(Point(2940, 1785), Point(3110, 1955)));
   layout->AddRectangle(Rectangle(Point(3375, 1445), Point(3545, 1615)));
@@ -414,15 +442,6 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   // met1.drawing [DRAWING] 68/20
   layout->SetActiveLayerByName("met1.drawing");
-  Rectangle *vpwr_bar = layout->AddRectangle(
-      Rectangle(Point(x_min, 2480), Point(6000, 2960)));
-  vpwr_bar->set_net(parameters_.power_net);
-  // vpwr_bar->set_is_connectable(true);
-  Rectangle *vgnd_bar = layout->AddRectangle(
-      Rectangle(Point(x_min, -240), Point(6000, 240)));
-  vgnd_bar->set_net(parameters_.ground_net);
-  // vgnd_bar->set_is_connectable(true);
-
   Polygon *clk_i_bar = layout->AddPolygon(
       Polygon({//Point(0, 1800),
                //Point(1310, 1800),
@@ -597,7 +616,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(3290, 1995),
                               Point(3290, 1035),
                               Point(3145, 1035)}));
-  layout->AddPolygon(Polygon({Point(x_min, 2635),
+  layout->AddPolygon(Polygon({Point(x_start, 2635),
                               Point(80, 2635),
                               Point(80, 2175),
                               Point(345, 2175),
@@ -616,8 +635,8 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(5355, 2635),
                               Point(6000, 2635),
                               Point(6000, 2805),
-                              Point(x_min, 2805)}));
-  layout->AddPolygon(Polygon({Point(x_min, -85),
+                              Point(x_start, 2805)}));
+  layout->AddPolygon(Polygon({Point(x_start, -85),
                               Point(6000, -85),
                               Point(6000, 85),
                               Point(5365, 85),
@@ -636,7 +655,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(345, 545),
                               Point(95, 545),
                               Point(95, 85),
-                              Point(x_min, 85)}));
+                              Point(x_start, 85)}));
   layout->AddPolygon(Polygon({Point(515, 365),
                               Point(850, 365),
                               Point(850, 535),
@@ -807,14 +826,9 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(2170, 1275),
                               Point(2470, 1275)}));
 
-  // nwell.drawing [DRAWING] 64/20
-  layout->SetActiveLayerByName("nwell.drawing");
-  //layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
-  layout->AddRectangle(Rectangle(Point(x_min, 1305), Point(6000, 2910)));
-
   // npc.drawing [DRAWING] 95/20
   layout->SetActiveLayerByName("npc.drawing");
-  layout->AddPolygon(Polygon({Point(x_min, 975),
+  layout->AddPolygon(Polygon({Point(x_start + 380, 975),
                               Point(835, 975),
                               Point(835, 685),
                               Point(1545, 685),
@@ -839,34 +853,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                               Point(735, 1685),
                               Point(20, 1685),
                               Point(20, 1420),
-                              Point(x_min, 1420)}));
-
-  // nsdm.drawing [DRAWING] 93/44
-  layout->SetActiveLayerByName("nsdm.drawing");
-  layout->AddRectangle(Rectangle(Point(x_min, -190), Point(6000, 1015)));
-
-  // hvtp.drawing [DRAWING] 78/44
-  layout->SetActiveLayerByName("hvtp.drawing");
-  layout->AddRectangle(Rectangle(Point(x_min, 1250), Point(6000, 2720)));
-
-  // areaid.standardc 81/4
-  layout->SetActiveLayerByName("areaid.standardc");
-  Rectangle *tiling_bounds = layout->AddRectangle(
-      Rectangle(Point(x_min, 0), Point(6000, 2720)));
-  layout->SetTilingBounds(*tiling_bounds);
-
-  // psdm.drawing [DRAWING] 94/20
-  layout->SetActiveLayerByName("psdm.drawing");
-  layout->AddPolygon(Polygon({Point(x_min, 1935),
-                              Point(1880, 1935),
-                              Point(1880, 1605),
-                              Point(3305, 1605),
-                              Point(3305, 1935),
-                              Point(4570, 1935),
-                              Point(4570, 1355),
-                              Point(6000, 1355),
-                              Point(6000, 2910),
-                              Point(x_min, 2910)}));
+                              Point(x_start + 380, 1420)}));
 
   // li.pin [PIN] 67/16
   layout->SetActiveLayerByName("li.pin");
@@ -911,14 +898,67 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // met1.pin [PIN] 68/16
   layout->SetActiveLayerByName("met1.pin");
 
-  layout->AddRectangleAsPort(
-      Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLK");
-  layout->AddRectangleAsPort(
-      Rectangle(Point(855, 1445), Point(1025, 1615)), "CLK");
-  layout->AddRectangleAsPort(
-      Rectangle(Point(2940, 1785), Point(3110, 1955)), "CLKI");
-  layout->AddRectangleAsPort(
-      Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLKI");
+  int64_t x_min = parameters_.input_clock_buffer ?
+      x_start - 920 : x_start;
+
+  if (parameters_.input_clock_buffer) {
+    DrawInputClockBuffer(x_min, layout.get());
+  } else {
+    layout->AddRectangleAsPort(
+        Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLK");
+    layout->AddRectangleAsPort(
+        Rectangle(Point(855, 1445), Point(1025, 1615)), "CLK");
+    layout->AddRectangleAsPort(
+        Rectangle(Point(2940, 1785), Point(3110, 1955)), "CLKI");
+    layout->AddRectangleAsPort(
+        Rectangle(Point(1370, 1785), Point(1540, 1955)), "CLKI");
+  }
+
+  // This is on layer 236/0 in the library cell.
+  layout->AddRectangle(Rectangle(Point(x_min, 0), Point(6000, 2720)));
+
+  // met1.drawing [DRAWING] 68/20
+  layout->SetActiveLayerByName("met1.drawing");
+  Rectangle *vpwr_bar = layout->AddRectangle(
+      Rectangle(Point(x_min, 2480), Point(6000, 2960)));
+  vpwr_bar->set_net(parameters_.power_net);
+  // vpwr_bar->set_is_connectable(true);
+  Rectangle *vgnd_bar = layout->AddRectangle(
+      Rectangle(Point(x_min, -240), Point(6000, 240)));
+  vgnd_bar->set_net(parameters_.ground_net);
+  // vgnd_bar->set_is_connectable(true);
+
+  // nsdm.drawing [DRAWING] 93/44
+  layout->SetActiveLayerByName("nsdm.drawing");
+  layout->AddRectangle(Rectangle(Point(x_min, -190), Point(6000, 1015)));
+
+  // hvtp.drawing [DRAWING] 78/44
+  layout->SetActiveLayerByName("hvtp.drawing");
+  layout->AddRectangle(Rectangle(Point(x_min, 1250), Point(6000, 2720)));
+
+  // nwell.drawing [DRAWING] 64/20
+  layout->SetActiveLayerByName("nwell.drawing");
+  //layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
+  layout->AddRectangle(Rectangle(Point(x_min, 1305), Point(6000, 2910)));
+
+  // areaid.standardc 81/4
+  layout->SetActiveLayerByName("areaid.standardc");
+  Rectangle *tiling_bounds = layout->AddRectangle(
+      Rectangle(Point(x_min, 0), Point(6000, 2720)));
+  layout->SetTilingBounds(*tiling_bounds);
+
+  //// psdm.drawing [DRAWING] 94/20
+  //layout->SetActiveLayerByName("psdm.drawing");
+  //layout->AddPolygon(Polygon({Point(x_min, 1935),
+  //                            Point(1880, 1935),
+  //                            Point(1880, 1605),
+  //                            Point(3305, 1605),
+  //                            Point(3305, 1935),
+  //                            Point(4570, 1935),
+  //                            Point(4570, 1355),
+  //                            Point(6000, 1355),
+  //                            Point(6000, 2910),
+  //                            Point(x_min, 2910)}));
 
   //layout->MakePin("VPWR", {230, static_cast<int64_t>(height)}, "met1.pin");
   //layout->MakePin("VGND", {230, 0}, "met1.pin");
@@ -946,6 +986,167 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   layout->Translate(Point(-x_min, 0));
   return layout.release();
+}
+
+void Sky130Dfxtp::DrawInputClockBuffer(
+    int64_t x_min,
+    bfg::Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  int64_t height = 2720;
+  int64_t transistor_mid_x = x_min + 135 + 545;
+
+  // diff.drawing
+  layout->SetActiveLayerByName("diff.drawing");
+  layout->AddRectangle(Rectangle(
+      {x_min + 135, 235},
+      {transistor_mid_x,
+          235 + db.ToInternalUnits(parameters_.nfet_10_width_nm)}));
+  layout->AddRectangle(Rectangle(
+      {transistor_mid_x, 235},
+      {transistor_mid_x + 545,
+          235 + db.ToInternalUnits(parameters_.nfet_11_width_nm)}));
+
+  layout->AddRectangle(Rectangle(
+      {x_min + 135, 1815},
+      {transistor_mid_x,
+          1815 + db.ToInternalUnits(parameters_.pfet_10_width_nm)}));
+  layout->AddRectangle(Rectangle(
+      {transistor_mid_x, 1815},
+      {transistor_mid_x + 545,
+          1815 + db.ToInternalUnits(parameters_.pfet_11_width_nm)}));
+
+  // li.drawing
+  layout->SetActiveLayerByName("li.drawing");
+  layout->AddPolygon(Polygon({
+      {x_min, -85},
+      {x_min, 85},
+      {x_min + 515, 85},
+      {x_min + 515, 85 + 380},
+      {x_min + 515 + 330, 85 + 380},
+      {x_min + 515 + 330, 85},
+      {x_min + 135 + 785, 85},
+      {x_min + 135 + 785, -85}
+  }));
+  layout->MakeVia("mcon.drawing", {x_min + 230, 0});
+  layout->MakeVia("mcon.drawing", {x_min + 690, 0});
+  layout->MakeVia("licon.drawing", {x_min + 680, 380});
+
+  layout->AddPolygon(Polygon({
+      {x_min, height -85},
+      {x_min, height + 85},
+      {x_min + 135 + 785, height + 85},
+      {x_min + 135 + 785, height - 85},
+      {x_min + 515 + 330, height - 85},
+      {x_min + 515 + 330, height - 85 - 500},
+      {x_min + 515, height - 85 - 500},
+      {x_min + 515, height - 85},
+  }));
+  layout->MakeVia("mcon.drawing", {x_min + 230, height});
+  layout->MakeVia("mcon.drawing", {x_min + 690, height});
+  layout->MakeVia("licon.drawing", {x_min + 680, 2220});
+
+  layout->AddRectangle(Rectangle(
+      {x_min + 1015, 345}, {x_min + 1200, 2465}));
+  layout->MakeVia("licon.drawing", {x_min + 1100, 2300});
+  layout->MakeVia("licon.drawing", {x_min + 1100, 1960});
+  layout->MakeVia("licon.drawing", {x_min + 1100, 510});
+
+  layout->AddPolygon(Polygon({
+      {x_min + 175, 345},
+      {x_min + 175, 805},
+      {x_min + 610, 805},
+      {x_min + 610, 1795},
+      {x_min + 175, 1795},
+      {x_min + 175, 2465},
+      {x_min + 345, 2465},
+      {x_min + 345, 1965},
+      {x_min + 840, 1965},
+      {x_min + 840, 635},
+      {x_min + 345, 635},
+      {x_min + 345, 345}
+  }));
+  layout->MakeVia("licon.drawing", {x_min + 260, 2300});
+  layout->MakeVia("licon.drawing", {x_min + 260, 1960});
+  layout->MakeVia("licon.drawing", {x_min + 260, 510});
+
+  layout->AddRectangle(Rectangle(
+      {x_min + 90, 975}, {x_min + 440, 1625}));
+  layout->MakeVia("licon.drawing", {x_min + 245, 1160});
+
+  layout->MakePin("CLK", {x_min + 230, 1190}, "li.pin");
+
+  // poly.drawing
+  // TODO(aryap): The thickness of the poly.drawing polygons determines the
+  // transistor length, which a parameter of the generator. Since these are
+  // statically defined the parameter currently does nothing.
+  layout->SetActiveLayerByName("poly.drawing");
+  layout->AddPolygon(Polygon({
+      {x_min + 395, 105},
+      {x_min + 395, 730},
+      {x_min + 230, 730},
+      {x_min + 230, 995},
+      {x_min + 110, 995},
+      {x_min + 110, 1325},
+      {x_min + 230, 1325},
+      {x_min + 230, 1740},
+      {x_min + 395, 1740},
+      {x_min + 395, 2585},
+      {x_min + 545, 2585},
+      {x_min + 545, 1590},
+      {x_min + 380, 1590},
+      {x_min + 380, 880},
+      {x_min + 545, 880},
+      {x_min + 545, 105}
+  }));
+
+  layout->AddPolygon(Polygon({
+      {x_min + 815, 105},
+      {x_min + 815, 1100},
+      {x_min + 590, 1100},
+      {x_min + 590, 1370},
+      {x_min + 815, 1370},
+      {x_min + 815, 2585},
+      {x_min + 965, 2585},
+      {x_min + 965, 105}
+  }));
+
+  // npc.drawing
+  layout->SetActiveLayerByName("npc.drawing");
+  layout->AddPolygon(Polygon({
+      {x_min, 975},
+      {x_min, 1345},
+      {x_min + 565, 1345},
+      {x_min + 565, 1420},
+      {x_min + 1300, 1420},
+      {x_min + 1300, 975},
+  }));
+
+  // met1.drawing
+  layout->SetActiveLayerByName("met1.drawing");
+  layout->AddPolygon(Polygon({
+      {x_min + 570, 1755},
+      {x_min + 570, 1985},
+      {x_min + 860, 1985},
+      {x_min + 860, 1940},
+      {x_min + 2670, 1940},
+      {x_min + 2670, 1800},
+      {x_min + 860, 1800},
+      {x_min + 860, 1755}
+  }));
+  layout->MakeVia("mcon.drawing", {x_min + 715, 1870});
+
+  layout->AddPolygon(Polygon({
+      {x_min + 965, 1415},
+      {x_min + 965, 1645},
+      {x_min + 1255, 1645},
+      {x_min + 1255, 1600},
+      {x_min + 2155, 1600},
+      {x_min + 2155, 1460},
+      {x_min + 1255, 1460},
+      {x_min + 1255, 1415}
+  }));
+  layout->MakeVia("mcon.drawing", {x_min + 1110, 1530});
 }
 
 }  // namespace atoms
