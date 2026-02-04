@@ -895,15 +895,14 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // pwell.pin [PIN] 122/16
   layout->SetActiveLayerByName("pwell.pin");
 
-  // met1.pin [PIN] 68/16
-  layout->SetActiveLayerByName("met1.pin");
-
   int64_t x_min = parameters_.input_clock_buffer ?
       x_start - 920 : x_start;
 
   if (parameters_.input_clock_buffer) {
     DrawInputClockBuffer(x_min, layout.get());
   } else {
+    // met1.pin [PIN] 68/16
+    layout->SetActiveLayerByName("met1.pin");
     layout->AddRectangleAsPort(
         Rectangle(Point(3375, 1445), Point(3545, 1615)), "CLK");
     layout->AddRectangleAsPort(
@@ -915,7 +914,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   }
 
   // This is on layer 236/0 in the library cell.
-  layout->AddRectangle(Rectangle(Point(x_min, 0), Point(6000, 2720)));
+  //layout->AddRectangle(Rectangle(Point(x_min, 0), Point(6000, 2720)));
 
   // met1.drawing [DRAWING] 68/20
   layout->SetActiveLayerByName("met1.drawing");
@@ -947,19 +946,20 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
       Rectangle(Point(x_min, 0), Point(6000, 2720)));
   layout->SetTilingBounds(*tiling_bounds);
 
-  //// psdm.drawing [DRAWING] 94/20
-  //layout->SetActiveLayerByName("psdm.drawing");
-  //layout->AddPolygon(Polygon({Point(x_min, 1935),
-  //                            Point(1880, 1935),
-  //                            Point(1880, 1605),
-  //                            Point(3305, 1605),
-  //                            Point(3305, 1935),
-  //                            Point(4570, 1935),
-  //                            Point(4570, 1355),
-  //                            Point(6000, 1355),
-  //                            Point(6000, 2910),
-  //                            Point(x_min, 2910)}));
+  // psdm.drawing [DRAWING] 94/20
+  layout->SetActiveLayerByName("psdm.drawing");
+  layout->AddPolygon(Polygon({Point(x_min, 1935),
+                              Point(1880, 1935),
+                              Point(1880, 1605),
+                              Point(3305, 1605),
+                              Point(3305, 1935),
+                              Point(4570, 1935),
+                              Point(4570, 1355),
+                              Point(6000, 1355),
+                              Point(6000, 2910),
+                              Point(x_min, 2910)}));
 
+  layout->SetActiveLayerByName("met1.pin");
   //layout->MakePin("VPWR", {230, static_cast<int64_t>(height)}, "met1.pin");
   //layout->MakePin("VGND", {230, 0}, "met1.pin");
 

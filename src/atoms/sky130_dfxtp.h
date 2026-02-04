@@ -72,7 +72,7 @@ class Sky130Dfxtp: public Atom {
 
     // If true, also add the input clock buffer to the circuit.
     // This has additional fets with widths and lengths.
-    bool input_clock_buffer = false;
+    bool input_clock_buffer = true;
 
     uint64_t nfet_10_width_nm = 420;
     uint64_t nfet_11_width_nm = 420;
