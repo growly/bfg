@@ -268,8 +268,6 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   }
   // In between every row of LUTs we add a horizontal channel, both for routing
   // wires and for matching the rails at the top/bottom of the LUT cell.
-  //
-  // Note that we deliberately rely on truncating behaviour.
   int num_lut_rows = std::ceil(
       static_cast<double>(parameters_.kNumLUTs) /
       static_cast<double>(kLutsPerRow));
