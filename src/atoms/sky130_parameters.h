@@ -1,6 +1,9 @@
 #ifndef ATOMS_SKY130_PARAMETERS_H_
 #define ATOMS_SKY130_PARAMETERS_H_
 
+namespace bfg {
+namespace atoms {
+
 struct Sky130Parameters {
   static constexpr uint64_t kStandardCellUnitWidthNm = 460;
 
@@ -15,5 +18,8 @@ struct Sky130Parameters {
   std::string power_net = "VPWR";
   std::string ground_net = "VGND";
 };
+
+}   // namespace atoms
+}   // namespace bfg
 
 #endif  // ATOMS_SKY130_PARAMETERS_H_

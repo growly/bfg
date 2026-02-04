@@ -572,8 +572,8 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   RouteScanChain(&routing_grid, circuit, layout);
   RouteClockBuffers(&routing_grid, circuit, layout);
-  //RouteMuxInputs(&routing_grid, circuit, layout);
-  //RouteRemainder(&routing_grid, circuit, layout);
+  RouteMuxInputs(&routing_grid, circuit, layout);
+  RouteRemainder(&routing_grid, circuit, layout);
   RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
