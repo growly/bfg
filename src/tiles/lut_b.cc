@@ -121,6 +121,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   reg_output_flop_ = nullptr;
   reg_output_mux_ = nullptr;
   reg_output_mux_config_ = nullptr;
+  memory_output_net_names_.clear();
 
   const LutB::LayoutConfig layout_config =
       *LutB::GetLayoutConfiguration(parameters_.lut_size);
@@ -565,17 +566,15 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   // The scan chain is connected in the order memories are assigned by the
   // BankArrangement.
-  std::map<geometry::Instance*, std::string> memory_output_net_names;
-
   AddClockAndPowerStraps(&routing_grid, circuit, layout);
 
   errors_.clear();
 
-  //RouteScanChain(&routing_grid, circuit, layout, &memory_output_net_names);
-  RouteClockBuffers(&routing_grid, circuit, layout);
-  //RouteMuxInputs(&routing_grid, circuit, layout, &memory_output_net_names);
-  //RouteRemainder(&routing_grid, circuit, layout);
   RouteInputs(&routing_grid, circuit, layout);
+  RouteScanChain(&routing_grid, circuit, layout);
+  RouteClockBuffers(&routing_grid, circuit, layout);
+  //RouteMuxInputs(&routing_grid, circuit, layout);
+  //RouteRemainder(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
@@ -735,8 +734,7 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
 void LutB::RouteScanChain(
     RoutingGrid *routing_grid,
     Circuit *circuit,
-    Layout *layout,
-    std::map<geometry::Instance*, std::string> *memory_output_net_names) {
+    Layout *layout) {
   // For now the input/output of the first/last flip-flop (respectively) is just
   // the port for the entire LUT; later we route this to pins on the edge:
   scan_order_.front()->circuit_instance()->Connect("D",
@@ -766,7 +764,7 @@ void LutB::RouteScanChain(
     geometry::Port *end = *ports.begin();
 
     EquivalentNets net_names({end->net(), start->net()});
-    (*memory_output_net_names)[source] = net_names.primary();
+    memory_output_net_names_[source] = net_names.primary();
 
     circuit::Signal *signal = circuit->GetOrAddSignal(net_names.primary(), 1);
 
@@ -787,8 +785,7 @@ void LutB::RouteScanChain(
 void LutB::RouteMuxInputs(
     RoutingGrid *routing_grid,
     Circuit *circuit,
-    Layout *layout,
-    std::map<geometry::Instance*, std::string> *memory_output_net_names) {
+    Layout *layout) {
   // Connect mux substrates.
   circuit::Signal *VPWR = circuit->GetOrAddSignal("VPWR", 1);
   circuit::Signal *VGND = circuit->GetOrAddSignal("VGND", 1);
@@ -878,10 +875,10 @@ void LutB::RouteMuxInputs(
       std::string target_net;
       absl::StatusOr<RoutingPath*> route_result;
       circuit::Signal *signal = nullptr;
-      auto named_output_it = memory_output_net_names->find(memory);
-      if (named_output_it == memory_output_net_names->end()) {
+      auto named_output = GetMemoryOutputNet(memory);
+      if (!named_output) {
         target_net = net_names.primary();
-        (*memory_output_net_names)[memory] = target_net;
+        memory_output_net_names_[memory] = target_net;
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to " << memory->name();
         route_result = routing_grid->AddRouteBetween(
@@ -897,7 +894,7 @@ void LutB::RouteMuxInputs(
         // set; in fact we must make sure that the net has a distinct name from
         // either start/end port so that routed wires can be differentiated from
         // start/end obstacles and ports!
-        const std::string &target_net = named_output_it->second;
+        const std::string &target_net = *named_output;
         net_names.set_primary(target_net);
         LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
                   << " to net " << target_net;
@@ -1011,7 +1008,7 @@ void LutB::RouteInputs(
     PortKeyAlias {{buf_order_[1], "port_A_centre"}, "S1"},
     PortKeyAlias {{buf_order_[2], "port_A_centre"}, "S2"},
     PortKeyAlias {{buf_order_[3], "port_A_centre"}, "S3"},
-    PortKeyAlias {{memories_.front(), "port_D_centre"}, "CONFIG_IN"}
+    PortKeyAlias {{scan_order_.front(), "port_D_centre"}, "CONFIG_IN"}
   };
 
   layout->SetActiveLayerByName("li.pin");
@@ -1067,8 +1064,10 @@ void LutB::RouteOutputs(
   std::string reg_input_A0 = "comb_input_A0";
   std::string bypass_input = "X";
   std::string reg_flop_in = "reg_flop_in";
-  std::string reg_flop_control = "reg_flop_control";
-  std::string comb_flop_control = "comb_flop_control";
+  std::string reg_flop_control = 
+      GetMemoryOutputNet(reg_output_mux_config_).value_or("reg_flop_control");
+  std::string comb_flop_control = 
+      GetMemoryOutputNet(comb_output_mux_config_).value_or("comb_flop_control");
 
   // Combinational output.
   //
@@ -1568,6 +1567,15 @@ void LutB::AddClockAndPowerStraps(
       port_y -= met3_rules.min_pitch;
     }
   }
+}
+
+std::optional<std::string> LutB::GetMemoryOutputNet(
+    geometry::Instance *memory) const {
+  auto it = memory_output_net_names_.find(memory);
+  if (it == memory_output_net_names_.end()) {
+    return std::nullopt;
+  }
+  return it->second;
 }
 
 void LutB::AccumulateAnyErrors(const absl::Status &status) {

@@ -143,6 +143,9 @@ class LutB : public Tile {
   // Sets the scan_order_ based on memories_ and other participating flops.
   void SetScanOrder();
 
+  std::optional<std::string> GetMemoryOutputNet(
+      geometry::Instance *memory) const;
+
   void Route(Circuit *circuit, Layout *layout);
   void RouteClockBuffers(
       RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
@@ -151,13 +154,11 @@ class LutB : public Tile {
   void RouteMuxInputs(
       RoutingGrid *routing_grid,
       Circuit *circuit,
-      Layout *layout,
-      std::map<geometry::Instance*, std::string> *memory_output_net_names);
+      Layout *layout);
   void RouteScanChain(
       RoutingGrid *routing_grid,
       Circuit *circuit,
-      Layout *layout,
-      std::map<geometry::Instance*, std::string> *memory_output_net_names);
+      Layout *layout);
   void RouteInputs(
       RoutingGrid *routing_grid,
       Circuit *circuit,
@@ -212,6 +213,8 @@ class LutB : public Tile {
   geometry::Instance *reg_output_mux_config_;
 
   std::vector<absl::Status> errors_;
+
+  std::map<geometry::Instance*, std::string> memory_output_net_names_;
 };
 
 }  // namespace atoms
