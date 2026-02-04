@@ -15,9 +15,13 @@ namespace atoms {
 
 void Sky130Dfxtp::Parameters::ToProto(
     proto::parameters::Sky130Dfxtp *pb) const {
+  pb->set_input_clock_buffer(input_clock_buffer);
 }
 void Sky130Dfxtp::Parameters::FromProto(
     const proto::parameters::Sky130Dfxtp &pb) {
+  if (pb.has_input_clock_buffer()) {
+    input_clock_buffer = pb.input_clock_buffer();
+  }
 }
 
 using ::bfg::geometry::Point;

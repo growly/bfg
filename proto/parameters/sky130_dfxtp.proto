@@ -3,4 +3,63 @@ syntax = "proto3";
 package bfg.proto.parameters;
 
 message Sky130Dfxtp {
+  optional uint64 width_nm = 1;
+  optional uint64 height_nm = 2;
+
+  // If true, also add the input clock buffer to the circuit.
+  optional bool input_clock_buffer = 10;
+
+  optional uint64 pfet_0_width_nm = 100;
+  optional uint64 pfet_1_width_nm = 101;
+  optional uint64 pfet_2_width_nm = 102;
+  optional uint64 pfet_3_width_nm = 103;
+  optional uint64 pfet_4_width_nm = 104;
+  optional uint64 pfet_5_width_nm = 105;
+  optional uint64 pfet_6_width_nm = 106;
+  optional uint64 pfet_7_width_nm = 107;
+  optional uint64 pfet_8_width_nm = 108;
+  optional uint64 pfet_9_width_nm = 109;
+
+  optional uint64 nfet_0_width_nm = 200;
+  optional uint64 nfet_1_width_nm = 201;
+  optional uint64 nfet_2_width_nm = 202;
+  optional uint64 nfet_3_width_nm = 203;
+  optional uint64 nfet_4_width_nm = 204;
+  optional uint64 nfet_5_width_nm = 205;
+  optional uint64 nfet_6_width_nm = 206;
+  optional uint64 nfet_7_width_nm = 207;
+  optional uint64 nfet_8_width_nm = 208;
+  optional uint64 nfet_9_width_nm = 209;
+
+  optional uint64 pfet_0_length_nm = 300;
+  optional uint64 pfet_1_length_nm = 301;
+  optional uint64 pfet_2_length_nm = 302;
+  optional uint64 pfet_3_length_nm = 303;
+  optional uint64 pfet_4_length_nm = 304;
+  optional uint64 pfet_5_length_nm = 305;
+  optional uint64 pfet_6_length_nm = 306;
+  optional uint64 pfet_7_length_nm = 307;
+  optional uint64 pfet_8_length_nm = 308;
+  optional uint64 pfet_9_length_nm = 309;
+
+  optional uint64 nfet_0_length_nm = 400;
+  optional uint64 nfet_1_length_nm = 401;
+  optional uint64 nfet_2_length_nm = 402;
+  optional uint64 nfet_3_length_nm = 403;
+  optional uint64 nfet_4_length_nm = 404;
+  optional uint64 nfet_5_length_nm = 405;
+  optional uint64 nfet_6_length_nm = 406;
+  optional uint64 nfet_7_length_nm = 407;
+  optional uint64 nfet_8_length_nm = 408;
+  optional uint64 nfet_9_length_nm = 409;
+
+  optional uint64 nfet_10_width_nm = 110;
+  optional uint64 nfet_11_width_nm = 111;
+  optional uint64 pfet_10_width_nm = 210;
+  optional uint64 pfet_11_width_nm = 211;
+
+  optional uint64 nfet_10_length_nm = 310;
+  optional uint64 nfet_11_length_nm = 311;
+  optional uint64 pfet_10_length_nm = 410;
+  optional uint64 pfet_11_length_nm = 411;
 }
