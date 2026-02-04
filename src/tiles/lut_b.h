@@ -140,6 +140,9 @@ class LutB : public Tile {
 
   void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
 
+  // Sets the scan_order_ based on memories_ and other participating flops.
+  void SetScanOrder();
+
   void Route(Circuit *circuit, Layout *layout);
   void RouteClockBuffers(
       RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
@@ -197,6 +200,9 @@ class LutB : public Tile {
   std::vector<geometry::Instance*> active_mux2s_;
   std::vector<geometry::Instance*> clk_buf_order_;
   std::vector<geometry::Instance*> memories_;
+
+  // Contains all memories involved in the scan chain in the right order.
+  std::vector<geometry::Instance*> scan_order_;
 
   // Features of all LutBs:
   geometry::Instance *comb_output_mux_;

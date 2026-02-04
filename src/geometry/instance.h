@@ -181,16 +181,23 @@ class Instance : public Manipulable {
     return circuit_instance_;
   }
 
-  void set_name(const std::string &name) { name_ = name; }
+  void set_name(const std::string &name) {
+    name_ = name;
+    ports_generated_ = false;
+  }
   const std::string &name() const { return name_; }
 
   bfg::Layout *template_layout() const { return template_layout_; }
 
-  void set_lower_left(const Point &lower_left) { lower_left_ = lower_left; }
+  void set_lower_left(const Point &lower_left) {
+    lower_left_ = lower_left;
+    ports_generated_ = false;
+  }
   const Point &lower_left() const { return lower_left_; }
 
   void set_reflect_vertical(bool reflect) {
     reflect_vertical_ = reflect;
+    ports_generated_ = false;
   }
   const bool reflect_vertical() const { return reflect_vertical_; }
 

@@ -145,8 +145,8 @@ class MemoryBank {
   std::vector<std::vector<std::string>> instance_names_;
 
   // Instances per row. Major index is row, minor index is column. These are
-  // pointers to Instances in the main layout, not the bank-specific temporary
-  // layout below.
+  // pointers to Instances in the main layout. Each RowGuide in rows_ will also
+  // have a copy of these handles.
   std::vector<std::vector<geometry::Instance*>> instances_;
 
   std::vector<RowGuide> rows_;
