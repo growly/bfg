@@ -1,11 +1,19 @@
 // API route for generating layouts
 
 import express, { Request, Response } from 'express';
+import { appendFile } from 'fs/promises';
+import path from 'path';
 import { generateLayout, BfgError } from '../services/bfgService.js';
 import { convertToGds, Proto2GdsError } from '../services/proto2gdsService.js';
 import { convertToSvg, Gds2SvgError } from '../services/gds2svgService.js';
 
 const router = express.Router();
+
+// Helper to append to logfile with timestamp
+async function logToFile(logPath: string, message: string): Promise<void> {
+  const timestamp = new Date().toISOString();
+  await appendFile(logPath, `[${timestamp}] ${message}\n`, 'utf-8');
+}
 
 interface GenerateRequest {
   generator: string;
@@ -55,12 +63,30 @@ router.post('/', async (req: Request, res: Response) => {
     // Step 1: Generate layout with BFG
     const bfgOutput = await generateLayout(generator, parameters);
 
+    // Set up logging
+    const logPath = path.join(bfgOutput.workDir, 'generation.log');
+    await logToFile(logPath, `=== Generation Session Started ===`);
+    await logToFile(logPath, `Generator: ${generator}`);
+    await logToFile(logPath, `Parameters: ${JSON.stringify(parameters, null, 2)}`);
+    await logToFile(logPath, `\n=== Stage 1: BFG Generation ===`);
+    await logToFile(logPath, `STDOUT:\n${bfgOutput.stdout || '(empty)'}`);
+    await logToFile(logPath, `STDERR:\n${bfgOutput.stderr || '(empty)'}`);
+
     // Step 2: Convert VLSIR to GDS
     const gdsOutput = await convertToGds(bfgOutput.libraryPb, bfgOutput.workDir);
+    await logToFile(logPath, `\n=== Stage 2: Proto2GDS Conversion ===`);
+    await logToFile(logPath, `STDOUT:\n${gdsOutput.stdout || '(empty)'}`);
+    await logToFile(logPath, `STDERR:\n${gdsOutput.stderr || '(empty)'}`);
 
     // Step 3: Convert GDS to SVG
     // Use generator name as cell name (BFG typically names the top cell after the generator)
     const svgOutput = await convertToSvg(gdsOutput.gdsPath, generator, bfgOutput.workDir);
+    await logToFile(logPath, `\n=== Stage 3: GDS2SVG Conversion ===`);
+    await logToFile(logPath, `STDOUT:\n${svgOutput.stdout || '(empty)'}`);
+    await logToFile(logPath, `STDERR:\n${svgOutput.stderr || '(empty)'}`);
+
+    await logToFile(logPath, `\n=== Generation Complete ===`);
+    await logToFile(logPath, `Output files generated in: ${bfgOutput.workDir}`);
 
     // Combine all stdout and stderr from the three steps
     const combinedStdout = [

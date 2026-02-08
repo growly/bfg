@@ -21,6 +21,7 @@ const generators = [
   'Sky130Decap',
   'LutB',
   'Interconnect',
+  'InterconnectWireBlock',
   'Slice',
 ] as const;
 
