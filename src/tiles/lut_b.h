@@ -105,7 +105,12 @@ class LutB : public Tile {
 
   LutB(const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
-        parameters_(parameters) {}
+        parameters_(parameters),
+        comb_output_mux_(nullptr),
+        comb_output_mux_config_(nullptr),
+        reg_output_flop_(nullptr),
+        reg_output_mux_(nullptr),
+        reg_output_mux_config_(nullptr) {}
 
   Cell *GenerateIntoDatabase(const std::string &name) override;
 
@@ -135,6 +140,12 @@ class LutB : public Tile {
 
   void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
 
+  // Sets the scan_order_ based on memories_ and other participating flops.
+  void SetScanOrder();
+
+  std::optional<std::string> GetMemoryOutputNet(
+      geometry::Instance *memory) const;
+
   void Route(Circuit *circuit, Layout *layout);
   void RouteClockBuffers(
       RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
@@ -143,13 +154,11 @@ class LutB : public Tile {
   void RouteMuxInputs(
       RoutingGrid *routing_grid,
       Circuit *circuit,
-      Layout *layout,
-      std::map<geometry::Instance*, std::string> *memory_output_net_names);
+      Layout *layout);
   void RouteScanChain(
       RoutingGrid *routing_grid,
       Circuit *circuit,
-      Layout *layout,
-      std::map<geometry::Instance*, std::string> *memory_output_net_names);
+      Layout *layout);
   void RouteInputs(
       RoutingGrid *routing_grid,
       Circuit *circuit,
@@ -193,7 +202,19 @@ class LutB : public Tile {
   std::vector<geometry::Instance*> clk_buf_order_;
   std::vector<geometry::Instance*> memories_;
 
+  // Contains all memories involved in the scan chain in the right order.
+  std::vector<geometry::Instance*> scan_order_;
+
+  // Features of all LutBs:
+  geometry::Instance *comb_output_mux_;
+  geometry::Instance *comb_output_mux_config_;
+  geometry::Instance *reg_output_flop_;
+  geometry::Instance *reg_output_mux_;
+  geometry::Instance *reg_output_mux_config_;
+
   std::vector<absl::Status> errors_;
+
+  std::map<geometry::Instance*, std::string> memory_output_net_names_;
 };
 
 }  // namespace atoms

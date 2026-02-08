@@ -4,6 +4,8 @@
 
 #include "../atoms/sky130_interconnect_mux1.h"
 #include "../atoms/sky130_interconnect_mux2.h"
+#include "../atoms/sky130_decap.h"
+#include "../atoms/sky130_parameters.h"
 #include "../circuit.h"
 #include "../geometry/instance.h"
 #include "../layout.h"
@@ -256,10 +258,42 @@ Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
   std::string lut_name = "lut";
   Cell *default_lut_cell = default_lut_gen.GenerateIntoDatabase(lut_name);
 
+  int64_t lut_width = default_lut_cell->layout()->GetTilingBounds().Width();
+
   static constexpr int kLutsPerRow = 4;
   for (size_t i = 0; i < parameters_.kNumLUTs; ++i) {
+    size_t row = 2 * (i / kLutsPerRow);
     geometry::Instance *instance = luts.InstantiateRight(
-        i / kLutsPerRow, absl::StrCat(lut_name, "_i", i), default_lut_cell);
+        row, absl::StrCat(lut_name, "_i", i), default_lut_cell);
+  }
+  // In between every row of LUTs we add a horizontal channel, both for routing
+  // wires and for matching the rails at the top/bottom of the LUT cell.
+  //
+  // Note that we deliberately rely on truncating behaviour.
+  int num_lut_rows = std::ceil(
+      static_cast<double>(parameters_.kNumLUTs) /
+      static_cast<double>(kLutsPerRow));
+  for (size_t i = 0; i < num_lut_rows - 1; ++i) {
+    size_t row = 2 * i + 1;
+    std::vector<int64_t> decap_widths = Utility::StripInUnits(
+        lut_width * kLutsPerRow,
+        atoms::Sky130Decap::Parameters::kMaxWidthNm,
+        atoms::Sky130Parameters::kStandardCellUnitWidthNm,
+        atoms::Sky130Decap::Parameters::kMinWidthNm);
+
+    for (size_t j = 0; j < decap_widths.size(); ++j) {
+      int64_t decap_width = decap_widths[j];
+      std::string template_name = absl::StrFormat(
+          "lut_decap_%d_%d_%d", i, j, decap_width);
+      std::string instance_name = absl::StrCat(template_name, "_i");
+      atoms::Sky130Decap::Parameters decap_params = {
+        .width_nm = static_cast<uint64_t>(db.ToExternalUnits(decap_width))
+        // Default height should be fine.
+      };
+      atoms::Sky130Decap decap(decap_params, design_db_);
+      Cell *decap_cell = decap.GenerateIntoDatabase(template_name);
+      luts.InstantiateRight(row, instance_name, decap_cell);
+    }
   }
 
   std::vector<std::vector<geometry::Instance*>> muxes;

@@ -7,6 +7,7 @@
 #include "sky130_parameters.h"
 #include "../circuit.h"
 #include "../layout.h"
+#include "proto/parameters/sky130_dfxtp.pb.h"
 
 namespace bfg {
 
@@ -68,10 +69,26 @@ class Sky130Dfxtp: public Atom {
     uint64_t nfet_7_length_nm = 150;
     uint64_t nfet_8_length_nm = 150;
     uint64_t nfet_9_length_nm = 150;
+
+    // If true, also add the input clock buffer to the circuit.
+    // This has additional fets with widths and lengths.
+    bool input_clock_buffer = false;
+
+    uint64_t nfet_10_width_nm = 420;
+    uint64_t nfet_11_width_nm = 420;
+    uint64_t pfet_10_width_nm = 640;
+    uint64_t pfet_11_width_nm = 640;
+
+    uint64_t nfet_10_length_nm = 150;
+    uint64_t nfet_11_length_nm = 150;
+    uint64_t pfet_10_length_nm = 150;
+    uint64_t pfet_11_length_nm = 150;
+
+    void ToProto(proto::parameters::Sky130Dfxtp *pb) const;
+    void FromProto(const proto::parameters::Sky130Dfxtp &pb);
   };
 
-  Sky130Dfxtp(const Parameters &parameters,
-              DesignDatabase *design_db)
+  Sky130Dfxtp(const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters) {}
 
@@ -81,6 +98,10 @@ class Sky130Dfxtp: public Atom {
  private:
   bfg::Layout *GenerateLayout();
   bfg::Circuit *GenerateCircuit();
+
+  void DrawInputClockBuffer(
+      int64_t x_min,
+      bfg::Layout *layout) const;
 
   Parameters parameters_;
 };

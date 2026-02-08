@@ -81,10 +81,10 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
   // These should match what BuildNetSequences() does. It would be better to
   // combine the two concerns somehow.
   std::optional<std::string> StackTopLiChannelNet() const override {
-    return absl::StrCat(kMuxOutputName, 0);
+    return absl::StrCat(kStackOutputName, 0);
   }
   std::optional<std::string> StackBottomLiChannelNet() const override {
-    return absl::StrCat(kMuxOutputName, 1);
+    return absl::StrCat(kStackOutputName, 1);
   }
 
   std::vector<std::vector<std::string>> BuildNetSequences() const override;

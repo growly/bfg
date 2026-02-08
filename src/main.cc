@@ -24,6 +24,7 @@
 #include "atoms/sky130_transmission_gate_stack.h"
 #include "atoms/sky130_mux.h"
 #include "atoms/sky130_decap.h"
+#include "atoms/sky130_dfxtp.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
@@ -39,6 +40,7 @@
 #include "proto/parameters/slice.pb.h"
 #include "proto/parameters/reduced_slice.pb.h"
 #include "proto/parameters/sky130_decap.pb.h"
+#include "proto/parameters/sky130_dfxtp.pb.h"
 #include "proto/parameters/sky130_interconnect_mux1.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
@@ -140,6 +142,11 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130Decap,
         bfg::atoms::Sky130Decap::Parameters,
         bfg::atoms::Sky130Decap>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130Dfxtp") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130Dfxtp,
+        bfg::atoms::Sky130Dfxtp::Parameters,
+        bfg::atoms::Sky130Dfxtp>(generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "LutB") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::LutB,

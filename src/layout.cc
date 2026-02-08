@@ -138,8 +138,10 @@ const geometry::Rectangle Layout::GetBoundingBox(
     ShapeCollection *shapes = entry.second.get();
     if (!shapes->rectangles().empty()) {
       start = shapes->rectangles().front()->lower_left();
+      break;
     } else if (!shapes->polygons().empty()) {
       start = shapes->polygons().front()->GetBoundingBox().lower_left();
+      break;
     }
   }
   if (!start && !instances_.empty()) {
