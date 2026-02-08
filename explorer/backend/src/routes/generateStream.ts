@@ -3,12 +3,19 @@
 import express, { Request, Response } from 'express';
 import { spawn } from 'child_process';
 import fs from 'fs/promises';
+import { appendFile } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config/paths.js';
 import { formatProtoText } from '../utils/protoFormatter.js';
 
 const router = express.Router();
+
+// Helper to append to logfile with timestamp
+async function logToFile(logPath: string, message: string): Promise<void> {
+  const timestamp = new Date().toISOString();
+  await appendFile(logPath, `[${timestamp}] ${message}\n`, 'utf-8');
+}
 
 interface GenerateRequest {
   generator: string;
@@ -42,13 +49,23 @@ router.post('/', async (req: Request, res: Response) => {
   const tmpDirAbsolute = path.resolve(config.tmpDir);
   const workDir = path.join(tmpDirAbsolute, sessionId);
 
+  // Create logfile path
+  const logPath = path.join(workDir, 'generation.log');
+
   try {
     await fs.mkdir(workDir, { recursive: true });
+
+    // Initialize logfile
+    await logToFile(logPath, `=== Generation Session Started ===`);
+    await logToFile(logPath, `Session ID: ${sessionId}`);
+    await logToFile(logPath, `Generator: ${generator}`);
+    await logToFile(logPath, `Parameters: ${JSON.stringify(parameters, null, 2)}`);
 
     // Write parameters to .pb.txt file
     const paramsPath = path.join(workDir, 'params.pb.txt');
     const protoText = formatProtoText(parameters);
     await fs.writeFile(paramsPath, protoText, 'utf-8');
+    await logToFile(logPath, `Parameters written to: ${paramsPath}`);
 
     const outputBase = path.join(workDir, 'output');
 
@@ -56,6 +73,7 @@ router.post('/', async (req: Request, res: Response) => {
     sendEvent('stage', { stage: 'bfg', message: 'Running BFG generator...' });
 
     const bfgArgs = [
+      '--logtostderr',
       '--technology', path.resolve(config.technologyPb),
       '--primitives', path.resolve(config.primitivesPb),
       '--external_circuits', path.resolve(config.sky130hdPb),
@@ -64,6 +82,10 @@ router.post('/', async (req: Request, res: Response) => {
       '--params', paramsPath,
       '--output_library', outputBase,
     ];
+
+    const bfgCommand = `${config.bfgBinary} ${bfgArgs.join(' ')}`;
+    await logToFile(logPath, `\n=== Stage 1: BFG Generation ===`);
+    await logToFile(logPath, `Command: ${bfgCommand}`);
 
     const bfgProcess = spawn(config.bfgBinary, bfgArgs, { cwd: workDir });
 
@@ -86,7 +108,12 @@ router.post('/', async (req: Request, res: Response) => {
       bfgProcess.on('close', (code) => resolve(code || 0));
     });
 
+    await logToFile(logPath, `Exit code: ${bfgExitCode}`);
+    await logToFile(logPath, `STDOUT:\n${bfgStdout || '(empty)'}`);
+    await logToFile(logPath, `STDERR:\n${bfgStderr || '(empty)'}`);
+
     if (bfgExitCode !== 0) {
+      await logToFile(logPath, `ERROR: BFG generation failed`);
       sendEvent('error', {
         stage: 'bfg',
         message: 'BFG generation failed',
@@ -109,6 +136,10 @@ router.post('/', async (req: Request, res: Response) => {
       '-o', gdsPath,
     ];
 
+    const proto2gdsCommand = `${config.proto2gdsBinary} ${proto2gdsArgs.join(' ')}`;
+    await logToFile(logPath, `\n=== Stage 2: Proto2GDS Conversion ===`);
+    await logToFile(logPath, `Command: ${proto2gdsCommand}`);
+
     const proto2gdsProcess = spawn(config.proto2gdsBinary, proto2gdsArgs, { cwd: workDir });
 
     let proto2gdsStdout = '';
@@ -130,7 +161,12 @@ router.post('/', async (req: Request, res: Response) => {
       proto2gdsProcess.on('close', (code) => resolve(code || 0));
     });
 
+    await logToFile(logPath, `Exit code: ${proto2gdsExitCode}`);
+    await logToFile(logPath, `STDOUT:\n${proto2gdsStdout || '(empty)'}`);
+    await logToFile(logPath, `STDERR:\n${proto2gdsStderr || '(empty)'}`);
+
     if (proto2gdsExitCode !== 0) {
+      await logToFile(logPath, `ERROR: GDS conversion failed`);
       sendEvent('error', {
         stage: 'proto2gds',
         message: 'GDS conversion failed',
@@ -150,6 +186,10 @@ router.post('/', async (req: Request, res: Response) => {
     const pythonScript = generateGdspyScript(gdsPath, generator, svgPath);
     await fs.writeFile(scriptPath, pythonScript, 'utf-8');
     await fs.chmod(scriptPath, 0o755);
+
+    const gds2svgCommand = `python3 ${scriptPath}`;
+    await logToFile(logPath, `\n=== Stage 3: GDS2SVG Conversion ===`);
+    await logToFile(logPath, `Command: ${gds2svgCommand}`);
 
     const gds2svgProcess = spawn('python3', [scriptPath], { cwd: workDir });
 
@@ -172,7 +212,12 @@ router.post('/', async (req: Request, res: Response) => {
       gds2svgProcess.on('close', (code) => resolve(code || 0));
     });
 
+    await logToFile(logPath, `Exit code: ${gds2svgExitCode}`);
+    await logToFile(logPath, `STDOUT:\n${gds2svgStdout || '(empty)'}`);
+    await logToFile(logPath, `STDERR:\n${gds2svgStderr || '(empty)'}`);
+
     if (gds2svgExitCode !== 0) {
+      await logToFile(logPath, `ERROR: SVG conversion failed`);
       sendEvent('error', {
         stage: 'gds2svg',
         message: 'SVG conversion failed',
@@ -187,6 +232,9 @@ router.post('/', async (req: Request, res: Response) => {
     const svgContent = await fs.readFile(svgPath, 'utf-8');
     const libraryPbTxt = await fs.readFile(`${outputBase}.library.pb.txt`, 'utf-8').catch(() => '');
     const packagePbTxt = await fs.readFile(`${outputBase}.package.pb.txt`, 'utf-8').catch(() => '');
+
+    await logToFile(logPath, `\n=== Generation Complete ===`);
+    await logToFile(logPath, `Output files generated in: ${workDir}`);
 
     // Send success event with all data
     sendEvent('complete', {
@@ -213,9 +261,18 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.end();
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Try to log the error, but don't fail if workDir wasn't created
+    try {
+      await logToFile(logPath, `\n=== ERROR ===`);
+      await logToFile(logPath, `Stage: setup`);
+      await logToFile(logPath, `Error: ${errorMessage}`);
+    } catch {
+      // Ignore logging errors if directory doesn't exist
+    }
     sendEvent('error', {
       stage: 'setup',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: errorMessage,
     });
     res.end();
   }
