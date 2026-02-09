@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './OutputPanel.css';
 
 interface OutputPanelProps {
@@ -16,6 +16,8 @@ const OutputPanel: React.FC<OutputPanelProps> = ({
 }) => {
   const stderrRef = useRef<HTMLPreElement>(null);
   const stdoutRef = useRef<HTMLPreElement>(null);
+  const [showStdout, setShowStdout] = useState(true);
+  const [showStderr, setShowStderr] = useState(true);
 
   // Auto-scroll to bottom when new output arrives
   useEffect(() => {
@@ -45,15 +47,21 @@ const OutputPanel: React.FC<OutputPanelProps> = ({
       </div>
       <div className="output-content">
         {stderr && (
-          <div className="output-section">
-            <h4>Standard Error</h4>
-            <pre ref={stderrRef} className="output-text stderr">{stderr}</pre>
+          <div className={`output-section ${!showStderr ? 'collapsed' : ''}`}>
+            <h4 className="section-toggle" onClick={() => setShowStderr(!showStderr)}>
+              <span className="chevron">{showStderr ? '▼' : '▶'}</span>
+              Standard Error
+            </h4>
+            {showStderr && <pre ref={stderrRef} className="output-text stderr">{stderr}</pre>}
           </div>
         )}
         {stdout && (
-          <div className="output-section">
-            <h4>Standard Output</h4>
-            <pre ref={stdoutRef} className="output-text stdout">{stdout}</pre>
+          <div className={`output-section ${!showStdout ? 'collapsed' : ''}`}>
+            <h4 className="section-toggle" onClick={() => setShowStdout(!showStdout)}>
+              <span className="chevron">{showStdout ? '▼' : '▶'}</span>
+              Standard Output
+            </h4>
+            {showStdout && <pre ref={stdoutRef} className="output-text stdout">{stdout}</pre>}
           </div>
         )}
         {!stdout && !stderr && !isGenerating && (

@@ -86,6 +86,29 @@
   letter-spacing: 0.5px;
 }
 
+.section-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  border-radius: 3px;
+  transition: color 0.15s;
+}
+
+.section-toggle:hover {
+  color: #ffffff;
+}
+
+.chevron {
+  font-size: 0.7em;
+}
+
+.output-section.collapsed {
+  flex: 0;
+}
+
 .output-text {
   background-color: #252526;
   padding: 1rem;
@@ -103,7 +126,7 @@
 }
 
 .output-text.stderr {
-  color: #f48771;
+  color: #e5e54b;
 }
 
 .output-text.stdout {

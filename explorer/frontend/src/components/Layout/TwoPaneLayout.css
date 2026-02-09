@@ -7,7 +7,6 @@
 }
 
 .two-pane-layout.with-output-pane {
-  grid-template-rows: 1fr 250px;
   grid-template-columns: 30% 70%;
 }
 
@@ -35,6 +34,19 @@
   display: flex;
   flex-direction: column;
   border-top: 1px solid #3e3e3e;
+  position: relative;
+}
+
+.resize-handle {
+  height: 5px;
+  cursor: row-resize;
+  background-color: transparent;
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+}
+
+.resize-handle:hover {
+  background-color: #007bff;
 }
 
 .toggle-output-button {
