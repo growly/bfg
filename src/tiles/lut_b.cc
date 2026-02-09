@@ -1203,7 +1203,7 @@ void LutB::RouteOutputs(
   const std::array<PortKeyAlias, 2> pin_map = {
     // Take the output from the final 2:1 mux output (for now).
     PortKeyAlias {{active_mux2s_[0], "port_X_centre_middle"}, "Z"},
-    PortKeyAlias {{memories_.back(), "port_Q_centre"}, "CONFIG_OUT"}
+    PortKeyAlias {{scan_order_.back(), "port_Q_centre"}, "CONFIG_OUT"}
   };
   layout->SetActiveLayerByName("li.pin");
   for (const auto &entry : pin_map) {
