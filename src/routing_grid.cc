@@ -3559,34 +3559,21 @@ std::optional<std::reference_wrapper<RoutingGridGeometry>>
 
 std::vector<std::reference_wrapper<const RoutingGridGeometry>>
 RoutingGrid::FindRoutingGridGeometriesUsingLayer(
-    const geometry::Layer &layer, bool include_via_access) const {
-  std::set<geometry::Layer> layers = {layer};
+    const geometry::Layer &layer) const {
+  return FindRoutingGridGeometriesUsingLayers({layer});
+}
 
-  const auto &layer_info = physical_db_.GetLayerInfo(layer);
-  if (layer_info.accesses) {
-    layers.insert(layer_info.accesses->begin(),
-                  layer_info.accesses->end());
-  }
-  if (include_via_access) {
-    std::set<geometry::Layer> more_layers;
-    for (const geometry::Layer &target : layers) {
-      const std::set<geometry::Layer> reachable =
-          physical_db_.FindLayersReachableThroughOneVia(target);
-      more_layers.insert(reachable.begin(), reachable.end());
-    }
-    layers.insert(more_layers.begin(), more_layers.end());
-  }
-  auto is_layer_of_interest_fn = [&](const geometry::Layer &test) -> bool {
-    return layers.find(test) != layers.end();
-  };
-
+std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+RoutingGrid::FindRoutingGridGeometriesUsingLayers(
+    const std::set<geometry::Layer> &layers) const {
   std::vector<std::reference_wrapper<const RoutingGridGeometry>>
       grid_geometries;
   for (auto &entry : grid_geometry_by_layers_) {
     const Layer &first = entry.first;
     for (auto &inner : entry.second) {
       const Layer &second = inner.first;
-      if (!is_layer_of_interest_fn(first) && !is_layer_of_interest_fn(second))
+      if (layers.find(first) == layers.end() &&
+          layers.find(second) == layers.end())
         continue;
       const RoutingGridGeometry &grid_geometry = inner.second;
       grid_geometries.push_back(grid_geometry);

@@ -60,6 +60,8 @@ class Rectangle : public Shape {
         upper_right_(ll_ur.second),
         Shape(0, "") {}
 
+  // These methods do NOT consider the layers of shapes involved. They assume
+  // all shapes are on the same plane.
   bool Overlaps(const Rectangle &other) const;
   const Rectangle OverlapWith(const Rectangle &other) const;
   bool Intersects(const Point &point) const;

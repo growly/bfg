@@ -8,7 +8,6 @@
 namespace bfg {
 
 // A key for something like a KD tree.
-// TODO(aryap): Maybe this should live int he RoutingVertexKDTree.
 class RoutingVertexKDNode {
  public:
   typedef int64_t value_type;

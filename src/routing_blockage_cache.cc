@@ -98,16 +98,22 @@ RoutingBlockageCache::RoutingBlockageCache(const RoutingGrid &grid)
 
 void RoutingBlockageCache::AddBlockage(
     const geometry::Rectangle &rectangle,
-    int64_t padding) {
+    int64_t padding,
+    bool include_connecting_layers) {
+  std::set<geometry::Layer> blocked_layers = include_connecting_layers ?
+      grid_.physical_db().GetAccessibleLayersForPin(rectangle.layer()) :
+      std::set<geometry::Layer>({rectangle.layer()});
+
   // Find possibly-affected vertices.
   std::vector<const RoutingVertex*> vertices =
-      DeterminePossiblyAffectedVertices(rectangle, padding);
+      DeterminePossiblyAffectedVertices(
+          rectangle, blocked_layers, padding);
 
   int64_t min_separation = grid_.GetMinSeparation(rectangle.layer());
 
   RoutingGridBlockage<geometry::Rectangle> *blockage =
       new RoutingGridBlockage<geometry::Rectangle>(
-          grid_, rectangle, padding + min_separation);
+          grid_, rectangle, blocked_layers, padding + min_separation);
   for (const RoutingVertex *vertex : vertices) {
     ApplyBlockageToOneVertex(*blockage, vertex, std::nullopt);
   }
@@ -115,7 +121,7 @@ void RoutingBlockageCache::AddBlockage(
   // Edge blockages are much simpler; we only need the shape and a net, and to
   // ask tracks (mostly) what edges are affected:
   std::vector<const RoutingEdge*> edges =
-      DetermineAffectedEdges(rectangle, padding);
+      DetermineAffectedEdges(rectangle, blocked_layers, padding);
   for (const RoutingEdge *edge : edges) {
     blocked_edges_[edge].sources[rectangle.net()].insert(blockage);
   }
@@ -126,21 +132,23 @@ void RoutingBlockageCache::AddBlockage(
 void RoutingBlockageCache::AddBlockage(
     const geometry::Polygon &polygon,
     int64_t padding) {
+  std::set<geometry::Layer> blocked_layers = {polygon.layer()};
+
   std::vector<const RoutingVertex*> vertices =
-      DeterminePossiblyAffectedVertices(polygon, padding);
+      DeterminePossiblyAffectedVertices(polygon, blocked_layers, padding);
 
   int64_t min_separation = grid_.GetMinSeparation(polygon.layer());
 
   RoutingGridBlockage<geometry::Polygon> *blockage =
       new RoutingGridBlockage<geometry::Polygon>(
-          grid_, polygon, padding + min_separation);
+          grid_, polygon, blocked_layers, padding + min_separation);
 
   for (const RoutingVertex *vertex : vertices) {
     ApplyBlockageToOneVertex(*blockage, vertex, std::nullopt);
   }
 
   std::vector<const RoutingEdge*> edges =
-      DetermineAffectedEdges(polygon, padding);
+      DetermineAffectedEdges(polygon, blocked_layers, padding);
   for (const RoutingEdge *edge : edges) {
     blocked_edges_[edge].sources[polygon.net()].insert(blockage);
   }
@@ -377,14 +385,14 @@ bool RoutingBlockageCache::IsVertexBlocked(
 std::vector<const RoutingVertex*>
 RoutingBlockageCache::DeterminePossiblyAffectedVertices(
     const geometry::Rectangle &rectangle,
+    const std::set<geometry::Layer> &blocked_layers,
     int64_t padding) const {
-  const geometry::Layer &layer = rectangle.layer();
-
   std::set<RoutingVertex*> targets;
 
   // Check on-grid vertices for each RoutingGridGeometry in which the shape is
   // involved:
-  auto grid_geometries = grid_.FindRoutingGridGeometriesUsingLayer(layer);
+  auto grid_geometries =
+      grid_.FindRoutingGridGeometriesUsingLayers(blocked_layers);
   for (auto ref : grid_geometries) {
     const RoutingGridGeometry &grid_geometry = ref.get();
     std::set<RoutingVertex*> enveloping_vertices;
@@ -419,13 +427,14 @@ RoutingBlockageCache::DeterminePossiblyAffectedVertices(
 template<typename T>
 std::vector<const RoutingEdge*>
 RoutingBlockageCache::DetermineAffectedOnGridEdges(
-    const T &shape, int64_t padding) const {
-  const geometry::Layer &layer = shape.layer();
-
+    const T &shape,
+    const std::set<geometry::Layer> &blocked_layers,
+    int64_t padding) const {
   std::set<RoutingEdge*> targets;
   // Check on-grid vertices for each RoutingGridGeometry in which the shape is
   // involved:
-  auto grid_geometries = grid_.FindRoutingGridGeometriesUsingLayer(layer);
+  auto grid_geometries =
+      grid_.FindRoutingGridGeometriesUsingLayers(blocked_layers);
   for (auto ref : grid_geometries) {
     const RoutingGridGeometry &grid_geometry = ref.get();
     std::set<RoutingTrack*> tracks;
@@ -434,7 +443,7 @@ RoutingBlockageCache::DetermineAffectedOnGridEdges(
                                 &tracks,
                                 1);   // Nearest edges to the boundary, no more.
     for (RoutingTrack *track : tracks) {
-      if (track->layer() != shape.layer()) {
+      if (blocked_layers.find(track->layer()) == blocked_layers.end()) {
         continue;
       }
       auto edges = track->EdgesBlockedByShape(shape, padding);
@@ -452,21 +461,22 @@ template<typename T>
 std::vector<const RoutingEdge*>
 RoutingBlockageCache::DetermineAffectedEdges(
     const T &shape,
+    const std::set<geometry::Layer> &blocked_layers,
     int64_t padding) const {
-  const geometry::Layer &layer = shape.layer();
-
   std::vector<const RoutingEdge*> const_targets =
-      DetermineAffectedOnGridEdges(shape, padding);
+      DetermineAffectedOnGridEdges(shape, blocked_layers, padding);
 
   // Check off-grid edges:
   const std::set<RoutingEdge*> off_grid_edges = grid_.off_grid_edges();
   // TODO(aryap): We just check all of these? Hello?
   std::vector<RoutingEdge*> off_grid_collisions;
   for (RoutingEdge *edge : off_grid_edges) {
-    if (edge->layer() != shape.layer()) {
+    if (edge->layer() &&
+        blocked_layers.find(*edge->layer()) == blocked_layers.end()) {
       continue;
     }
-    bool hazard = grid_.WireWouldIntersect(*edge, shape, padding);
+    bool hazard = grid_.WireWouldIntersect(
+        *edge, shape, blocked_layers, padding);
     if (!hazard) {
       continue;
     }
@@ -485,12 +495,14 @@ template
 std::vector<const RoutingEdge*>
 RoutingBlockageCache::DetermineAffectedEdges(
     const geometry::Rectangle &rectangle,
+    const std::set<geometry::Layer> &blocked_layers,
     int64_t padding) const;
 
 template
 std::vector<const RoutingEdge*>
 RoutingBlockageCache::DetermineAffectedEdges(
     const geometry::Polygon &polygon,
+    const std::set<geometry::Layer> &blocked_layers,
     int64_t padding) const;
 
 }   // namespace bfg

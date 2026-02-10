@@ -298,6 +298,13 @@ class PhysicalPropertiesDatabase {
 
   bool IsPinLayer(const geometry::Layer &layer) const;
 
+  // For a given layer, returns:
+  // - the layer
+  // - any layers for which the layer is an access pin layer
+  // - any layers which can access any of these layers with a via.
+  const std::set<geometry::Layer>
+  GetAccessibleLayersForPin(const geometry::Layer &layer) const;
+
   std::string DescribeLayers() const;
   std::string DescribeLayer(const geometry::Layer &layer) const;
 

@@ -26,7 +26,18 @@ class RoutingGridBlockage {
       const RoutingGrid &routing_grid, const T& shape, int64_t padding)
       : routing_grid_(routing_grid),
         shape_(shape),
-        padding_(padding) {}
+        padding_(padding),
+        blockage_layers_({shape.layer()}) {}
+
+  RoutingGridBlockage(
+      const RoutingGrid &routing_grid, 
+      const T& shape,
+      const std::set<geometry::Layer> &blockage_layers,
+      int64_t padding)
+      : routing_grid_(routing_grid),
+        shape_(shape),
+        padding_(padding),
+        blockage_layers_(blockage_layers.begin(), blockage_layers.end()) {}
 
   ~RoutingGridBlockage();
 
@@ -80,6 +91,10 @@ class RoutingGridBlockage {
 
   void ClearChildTrackBlockages();
 
+  const std::set<geometry::Layer> &blockage_layers() const {
+    return blockage_layers_;
+  }
+
   const T& shape() const { return shape_; }
   const int64_t &padding() const { return padding_; }
 
@@ -107,6 +122,8 @@ class RoutingGridBlockage {
   // harder!
   const T shape_;
   int64_t padding_;
+
+  std::set<geometry::Layer> blockage_layers_;
 
   std::vector<std::pair<RoutingTrack*, std::unique_ptr<RoutingTrackBlockage>>>
       child_track_blockages_;

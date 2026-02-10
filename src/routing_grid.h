@@ -326,9 +326,11 @@ class RoutingGrid {
   // If 'include_via_access' is true, we also check for layers that access the
   // given layer through a via.
   std::vector<std::reference_wrapper<const RoutingGridGeometry>>
+      FindRoutingGridGeometriesUsingLayers(
+          const std::set<geometry::Layer> &layers) const;
+  std::vector<std::reference_wrapper<const RoutingGridGeometry>>
       FindRoutingGridGeometriesUsingLayer(
-          const geometry::Layer &layer,
-          bool include_via_access = false) const;
+          const geometry::Layer &layer) const;
 
   // FIXME(aryap): We take a via's footprint to the max of the metal overlap on
   // either side, in either direction. The test for whether we can access a via
@@ -420,8 +422,10 @@ class RoutingGrid {
   template<typename T>
   bool WireWouldIntersect(const RoutingEdge &edge,
                           const T &obstruction,
+                          const std::set<geometry::Layer> &obstructed_layers,
                           int64_t padding = 0) const {
-    if (edge.layer() != obstruction.layer()) {
+    if (edge.layer() &&
+        obstructed_layers.find(*edge.layer()) == obstructed_layers.end()) {
       return false;
     }
     // Consider the edge as a rectangle of the appropriate width for that edge
@@ -433,6 +437,14 @@ class RoutingGrid {
       return false;
     }
     return obstruction.Overlaps(keep_out.value());
+  }
+
+  template<typename T>
+  bool WireWouldIntersect(const RoutingEdge &edge,
+                          const T &obstruction,
+                          int64_t padding = 0) const {
+    return WireWouldIntersect(
+        edge, obstruction, {obstruction.layer()}, padding);
   }
 
   // The search window margin is the maximum distance from a given blockage to

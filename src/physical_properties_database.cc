@@ -699,6 +699,25 @@ bool PhysicalPropertiesDatabase::IsPinLayer(
   return GetLayerInfo(layer).purpose == LayerInfo::Purpose::kPin;
 }
 
+const std::set<geometry::Layer>
+PhysicalPropertiesDatabase::GetAccessibleLayersForPin(
+    const geometry::Layer &layer) const {
+  std::set<geometry::Layer> accessible_layers;
+  const auto &layer_info = GetLayerInfo(layer);
+  if (layer_info.accesses) {
+    accessible_layers.insert(layer_info.accesses->begin(),
+                             layer_info.accesses->end());
+  }
+  std::set<geometry::Layer> more_layers;
+  for (const geometry::Layer &target : accessible_layers) {
+    const std::set<geometry::Layer> reachable =
+        FindLayersReachableThroughOneVia(target);
+    more_layers.insert(reachable.begin(), reachable.end());
+  }
+  accessible_layers.insert(more_layers.begin(), more_layers.end());
+  return accessible_layers;
+}
+
 std::string PhysicalPropertiesDatabase::DescribeLayers() const {
   std::stringstream ss;
   ss << "Physical properties database layer information:" << std::endl;

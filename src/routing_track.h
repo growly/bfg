@@ -262,8 +262,9 @@ class RoutingTrack {
   // RoutingTrack does not check if any of the layers of these objects match its
   // layer when checking for intersection. It is more efficient for the caller
   // to avoid intersecting shapes with a routing track that is on a separate
-  // layer to them, than it is to check every single RoutingTrack.
-
+  // layer to them, than it is to check every single RoutingTrack. As with
+  // other geometric primitives, intersections are tested assuming all shapes
+  // are on the same layer.
   bool Intersects(RoutingVertex *vertex) const;
 
   bool Intersects(const geometry::Rectangle &rectangle,

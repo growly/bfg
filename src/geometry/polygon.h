@@ -48,6 +48,9 @@ class Polygon : public Shape {
   // second polygon?
   // - Are any of the points of the first polygon interior to the second
   // polygon?
+  //
+  // These methods do NOT consider the layers of shapes involved. They assume
+  // all shapes are on the same plane.
   bool Overlaps(const Polygon &other) const;
   
   bool Overlaps(const Rectangle &rectangle) const;

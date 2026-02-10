@@ -79,7 +79,7 @@ class RoutingBlockageCache {
     }
     for (const auto &port : shapes.ports()) {
       // Ports are Rectangles!
-      AddBlockage(*port, padding);
+      AddBlockage(*port, padding, true);
     }
   }
 
@@ -105,7 +105,8 @@ class RoutingBlockageCache {
         search_window_margin_(0) {}
 
   void AddBlockage(const geometry::Rectangle &rectangle,
-                   int64_t padding);
+                   int64_t padding,
+                   bool include_connecting_layers = false);
 
   void AddBlockage(const geometry::Polygon &polygon,
                    int64_t padding);
@@ -270,22 +271,28 @@ class RoutingBlockageCache {
 
   std::vector<const RoutingVertex*> DeterminePossiblyAffectedVertices(
       const geometry::Rectangle &rectangle,
+      const std::set<geometry::Layer> &blocked_layers,
       int64_t padding) const;
 
   std::vector<const RoutingVertex*> DeterminePossiblyAffectedVertices(
       const geometry::Polygon &polygon,
+      const std::set<geometry::Layer> &blocked_layers,
       int64_t padding) const {
     geometry::Rectangle bounding_box = polygon.GetBoundingBox();
-    return DeterminePossiblyAffectedVertices(bounding_box, padding);
+    return DeterminePossiblyAffectedVertices(
+        bounding_box, blocked_layers, padding);
   }
 
   template<typename T>
   std::vector<const RoutingEdge*> DetermineAffectedOnGridEdges(
-      const T &shape, int64_t padding) const;
+      const T &shape,
+      const std::set<geometry::Layer> &blocked_layers,
+      int64_t padding) const;
 
   template<typename T>
   std::vector<const RoutingEdge*> DetermineAffectedEdges(
       const T &rectangle,
+      const std::set<geometry::Layer> &blocked_layers,
       int64_t padding) const;
 
   RoutingGridBlockage<geometry::Rectangle> *FindBlockageByShape(
