@@ -27,6 +27,7 @@
 #include "../memory_bank.h"
 #include "../poly_line_cell.h"
 #include "../poly_line_inflator.h"
+#include "../route_manager.h"
 #include "../routing_grid.h"
 #include "../routing_layer_info.h"
 #include "../routing_via_info.h"
@@ -394,7 +395,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   // Next we add the combinational output select mux:
   {
     std::string template_name = "combinational_select_hd_mux2_1";
-    std::string instance_name = absl::StrCat(instance_name, "_i");
+    std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130HdMux21 combinational_mux_generator({}, design_db_);
     Cell *combinational_mux_cell =
         combinational_mux_generator.GenerateIntoDatabase(template_name);
@@ -570,11 +571,11 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, circuit, layout);
-  RouteClockBuffers(&routing_grid, circuit, layout);
-  RouteMuxInputs(&routing_grid, circuit, layout);
-  RouteRemainder(&routing_grid, circuit, layout);
-  RouteInputs(&routing_grid, circuit, layout);
+  //RouteScanChain(&routing_grid, circuit, layout);
+  //RouteClockBuffers(&routing_grid, circuit, layout);
+  //RouteMuxInputs(&routing_grid, circuit, layout);
+  //RouteRemainder(&routing_grid, circuit, layout);
+  //RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
@@ -1060,8 +1061,10 @@ void LutB::RouteOutputs(
   // buf from the flip flop that was chopped off (that should be a parameter
   // anyway).
 
+  RouteManager route_manager(layout, routing_grid);
+
   std::string comb_input_A0 = "comb_input_A0";
-  std::string reg_input_A0 = "comb_input_A0";
+  std::string reg_input_A0 = "reg_input_A0";
   std::string bypass_input = "X";
   std::string reg_flop_in = "reg_flop_in";
   std::string reg_flop_control = 
@@ -1074,21 +1077,16 @@ void LutB::RouteOutputs(
   // Connect the A0 input of the combinational output selection mux to the
   // output of the LUT.
   {
-    geometry::ShapeCollection non_net_connectables;
-    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+    std::set<geometry::Port*> comb_output_mux_A0_ports =
+        comb_output_mux_->GetInstancePorts("A0");
 
-    std::vector<geometry::Port*> comb_output_mux_A0_ports;
-    comb_output_mux_->GetInstancePorts("A0", &comb_output_mux_A0_ports);
+    std::set<geometry::Port*> lut_output_ports =
+        active_mux2s_[0]->GetInstancePorts("X");
 
-    std::vector<geometry::Port*> lut_output_ports;
-    active_mux2s_[0]->GetInstancePorts("X", &lut_output_ports);
-
-    routing_grid->AddRouteBetween(
-        *comb_output_mux_A0_ports.front(),
-        *lut_output_ports.front(),
-        non_net_connectables,
+    route_manager.Connect(
+        comb_output_mux_A0_ports,
+        lut_output_ports,
         comb_input_A0).IgnoreError();
-
   }
 
   // Registered output.
@@ -1096,86 +1094,58 @@ void LutB::RouteOutputs(
   // Connect the A0 input of the register selection mux to the output of the
   // LUT.
   {
-    geometry::ShapeCollection non_net_connectables;
-    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+    std::set<geometry::Port*> reg_output_mux_A0_ports =
+        reg_output_mux_->GetInstancePorts("A0");
 
-    std::vector<geometry::Port*> reg_output_mux_A0_ports;
-    reg_output_mux_->GetInstancePorts("A0", &reg_output_mux_A0_ports);
+    std::set<geometry::Port*> lut_output_ports =
+        active_mux2s_[0]->GetInstancePorts("X");
 
-    std::vector<geometry::Port*> lut_output_ports;
-    active_mux2s_[0]->GetInstancePorts("X", &lut_output_ports);
-
-    auto result = routing_grid->AddRouteBetween(
-        *reg_output_mux_A0_ports.front(),
-        *lut_output_ports.front(),
-        non_net_connectables,
-        reg_input_A0);
-    if (!result.ok()) {
-      LOG(ERROR) << "Could not connect registered output mux A0";
-    }
+    route_manager.Connect(
+        reg_output_mux_A0_ports,
+        lut_output_ports,
+        reg_input_A0).IgnoreError();
   }
   // Connect the output of the register input selection mux to the input of the
   // flop.
   {
-    geometry::ShapeCollection non_net_connectables;
-    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+    std::set<geometry::Port*> reg_select_output_ports =
+        reg_output_mux_->GetInstancePorts("X");
 
-    std::vector<geometry::Port*> reg_select_output_ports;
-    reg_output_mux_->GetInstancePorts("X", &reg_select_output_ports);
+    std::set<geometry::Port*> reg_input =
+        reg_output_flop_->GetInstancePorts("D");
 
-    std::vector<geometry::Port*> reg_input;
-    reg_output_flop_->GetInstancePorts("D", &reg_input);
-
-    auto result = routing_grid->AddRouteBetween(
-        *reg_select_output_ports.front(),
-        *reg_input.front(),
-        non_net_connectables,
-        reg_flop_in);
-    if (!result.ok()) {
-      LOG(ERROR) << "Could not connect application register input";
-    }
+    route_manager.Connect(
+        reg_select_output_ports,
+        reg_input,
+        reg_flop_in).IgnoreError();
   }
   // Connect the output of the register selection mux config memory to the
   // select line of the mux.
   {
-    geometry::ShapeCollection non_net_connectables;
-    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+    std::set<geometry::Port*> reg_select_S_ports =
+        reg_output_mux_->GetInstancePorts("S");
 
-    std::vector<geometry::Port*> reg_select_S_ports;
-    reg_output_mux_->GetInstancePorts("S", &reg_select_S_ports);
+    std::set<geometry::Port*> reg_select_mem_Q_ports =
+        reg_output_mux_config_->GetInstancePorts("Q");
 
-    std::vector<geometry::Port*> reg_select_mem_Q_ports;
-    reg_output_mux_config_->GetInstancePorts("Q", &reg_select_mem_Q_ports);
-
-    auto result = routing_grid->AddRouteBetween(
-        *reg_select_S_ports.front(),
-        *reg_select_mem_Q_ports.front(),
-        non_net_connectables,
-        reg_flop_control);
-    if (!result.ok()) {
-      LOG(ERROR) << "Could not connect application register mux control";
-    }
+    route_manager.Connect(
+        reg_select_S_ports,
+        reg_select_mem_Q_ports,
+        reg_flop_control).IgnoreError();
   }
   // Connect the output of the combinational selection mux config memory to the
   // select line of the mux.
   {
-    geometry::ShapeCollection non_net_connectables;
-    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+    std::set<geometry::Port*> comb_select_S_ports =
+        comb_output_mux_->GetInstancePorts("S");
 
-    std::vector<geometry::Port*> comb_select_S_ports;
-    comb_output_mux_->GetInstancePorts("S", &comb_select_S_ports);
+    std::set<geometry::Port*> comb_select_mem_Q_ports =
+        comb_output_mux_config_->GetInstancePorts("Q");
 
-    std::vector<geometry::Port*> comb_select_mem_Q_ports;
-    comb_output_mux_config_->GetInstancePorts("Q", &comb_select_mem_Q_ports);
-
-    auto result = routing_grid->AddRouteBetween(
-        *comb_select_S_ports.front(),
-        *comb_select_mem_Q_ports.front(),
-        non_net_connectables,
-        comb_flop_control);
-    if (!result.ok()) {
-      LOG(ERROR) << "Could not connect combinational select mux control";
-    }
+    route_manager.Connect(
+        comb_select_S_ports,
+        comb_select_mem_Q_ports,
+        comb_flop_control).IgnoreError();
   }
 
   // The bypass input connects to both muxes.
@@ -1183,21 +1153,21 @@ void LutB::RouteOutputs(
   // Connect the A1 inputs of the combinational output selection mux and the
   // register selection mux to the bypass input.
   {
-    geometry::ShapeCollection non_net_connectables;
-    //layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
+    std::set<geometry::Port*> comb_output_mux_A1_ports =
+        comb_output_mux_->GetInstancePorts("A1");
 
-    std::vector<geometry::Port*> comb_output_mux_A1_ports;
-    comb_output_mux_->GetInstancePorts("A1", &comb_output_mux_A1_ports);
+    std::set<geometry::Port*> reg_output_mux_A1_ports = 
+        reg_output_mux_->GetInstancePorts("A1");
 
-    std::vector<geometry::Port*> reg_output_mux_A1_ports;
-    reg_output_mux_->GetInstancePorts("A1", &reg_output_mux_A1_ports);
-
-    routing_grid->AddRouteBetween(
-        *comb_output_mux_A1_ports.front(),
-        *reg_output_mux_A1_ports.front(),
-        non_net_connectables,
+    route_manager.Connect(
+        comb_output_mux_A1_ports,
+        reg_output_mux_A1_ports,
         bypass_input).IgnoreError();
   }
+
+  LOG(INFO) << route_manager.DescribeOrders();
+
+  route_manager.Solve().IgnoreError();
 
   // Make input/output pins.
   const std::array<PortKeyAlias, 2> pin_map = {

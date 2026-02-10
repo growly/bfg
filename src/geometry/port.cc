@@ -48,13 +48,14 @@ std::string Port::DescribePorts(const std::vector<geometry::Port*> &ports) {
 
 std::string Port::DescribePorts(const PortSet &ports) {
   std::vector<geometry::Port*> sorted_ports(ports.begin(), ports.end());
-  std::sort(sorted_ports.begin(), sorted_ports.end(),
-            [](geometry::Port *lhs, geometry::Port *rhs) {
-              if (lhs->centre().x() == rhs->centre().x()) {
-                return lhs->centre().y() < rhs->centre().y();
-              }
-              return lhs->centre().x() < rhs->centre().x();
-            });
+  std::sort(
+      sorted_ports.begin(), sorted_ports.end(),
+      [](geometry::Port *lhs, geometry::Port *rhs) {
+        if (lhs->centre().x() == rhs->centre().x()) {
+          return lhs->centre().y() < rhs->centre().y();
+        }
+        return lhs->centre().x() < rhs->centre().x();
+      });
   return DescribePorts(sorted_ports);
 }
 

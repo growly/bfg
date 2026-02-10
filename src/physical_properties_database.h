@@ -17,11 +17,21 @@ namespace bfg {
 class RoutingLayerInfo;
 
 struct LayerInfo {
+  enum class Purpose {
+    kUnknown,
+    kLabel,
+    kDrawing,
+    kPin,
+    kObstruction,
+    kOutline
+  };
+
   geometry::Layer internal_layer;
   // Shorthand name, e.g. "met1".
   std::string name;
+  Purpose purpose;
   // Shorthand purpose, e.g. "drawing".
-  std::string purpose;
+  std::string purpose_text;
 
   uint16_t gds_layer;
   uint16_t gds_datatype;
@@ -285,6 +295,8 @@ class PhysicalPropertiesDatabase {
 
   const std::set<geometry::Layer> GetPinLayersFor(
       const geometry::Layer &layer) const;
+
+  bool IsPinLayer(const geometry::Layer &layer) const;
 
   std::string DescribeLayers() const;
   std::string DescribeLayer(const geometry::Layer &layer) const;

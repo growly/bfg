@@ -46,7 +46,17 @@ absl::StatusOr<int64_t> RouteManager::Connect(
   order.nodes().emplace_back(std::set<const geometry::Port*>{&from});
   order.nodes().emplace_back(std::set<const geometry::Port*>{&to});
   orders_.push_back(order);
+  return 0;
+}
 
+absl::StatusOr<int64_t> RouteManager::Connect(
+    const std::set<geometry::Port*> &from_ports,
+    const std::set<geometry::Port*> &to_ports,
+    const EquivalentNets &as_nets) {
+  NetRouteOrder order(as_nets);
+  order.nodes().emplace_back(from_ports.begin(), from_ports.end());
+  order.nodes().emplace_back(to_ports.begin(), to_ports.end());
+  orders_.push_back(order);
   return 0;
 }
 
@@ -178,7 +188,6 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
         first_pair_routed = true;
         target_nets.Add(from->net());
         target_nets.Add(to->net());
-
       } else {
         // Save for later? Come back and attempt at the end?
       }
@@ -207,6 +216,9 @@ int32_t RouteManager::GetConcurrency() const {
 // The default configuration of the RoutingBlockageCache is to stage all
 // connectable shapes as blockages, so that each NetRouteOrder can operate under
 // a child RoutingBlockageCache with its net objects as exceptions.
+//
+// TODO(aryap): Optionally, we should only avoid the union of nets specified
+// in all current orders_, with the exception of those in this order.
 void RouteManager::ConfigureRoutingBlockageCache() {
   geometry::ShapeCollection connectables;
   layout_->CopyConnectableShapes(&connectables);
@@ -257,6 +269,8 @@ absl::Status RouteManager::Solve() {
   } else {
     RunAllParallel().IgnoreError();
   }
+
+  orders_.clear();
 
   return absl::OkStatus();
 }

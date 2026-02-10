@@ -19,7 +19,6 @@ template<>
 bool RoutingGridBlockage<geometry::Polygon>::IntersectsPoint(
     const geometry::Point &point, int64_t margin) const {
   return shape_.Intersects(point, margin);
-  return false;
 }
 
 // We have a specialisation for {Rectangle, Polygon} X {Vertex, Edge}.

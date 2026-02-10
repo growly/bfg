@@ -27,6 +27,28 @@ namespace bfg {
 
 using geometry::Layer;
 
+namespace {
+
+LayerInfo::Purpose FromVLSIRPurpose(
+    const vlsir::tech::LayerPurposeType &purpose_pb) {
+  switch (purpose_pb) {
+    case vlsir::tech::LayerPurposeType::LABEL:
+      return LayerInfo::Purpose::kLabel;
+    case vlsir::tech::LayerPurposeType::DRAWING:
+      return LayerInfo::Purpose::kDrawing;
+    case vlsir::tech::LayerPurposeType::PIN:
+      return LayerInfo::Purpose::kPin;
+    case vlsir::tech::LayerPurposeType::OBSTRUCTION:
+      return LayerInfo::Purpose::kObstruction;
+    case vlsir::tech::LayerPurposeType::UNKNOWN:
+      // Fallthrough intended.
+    default:
+      return LayerInfo::Purpose::kUnknown;
+  }
+}
+
+}   // namespace
+
 void PhysicalPropertiesDatabase::LoadTechnologyFromFile(
     const std::string &path) {
   vlsir::tech::Technology tech_pb;
@@ -46,7 +68,8 @@ void PhysicalPropertiesDatabase::LoadTechnology(
     VLOG(3) << "Loading layer from proto: \"" << info_pb.name() << "\"";
     LayerInfo info {
         .name = info_pb.name(),
-        .purpose = info_pb.purpose().description(),
+        .purpose = FromVLSIRPurpose(info_pb.purpose().type()),
+        .purpose_text = info_pb.purpose().description(),
         .gds_layer = static_cast<uint16_t>(info_pb.index().major()),
         .gds_datatype = static_cast<uint16_t>(info_pb.index().minor())
     };
@@ -171,7 +194,7 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
       << "Duplicate layer info: " << layer;
   layer_infos_.insert({layer, copy});
 
-  std::string internal_name = absl::StrCat(copy.name, ".", copy.purpose);
+  std::string internal_name = absl::StrCat(copy.name, ".", copy.purpose_text);
 
   auto name_iterator = layers_by_name_.find(internal_name);
   LOG_IF(FATAL, name_iterator != layers_by_name_.end())
@@ -183,7 +206,7 @@ void PhysicalPropertiesDatabase::AddLayerInfo(const LayerInfo &info) {
   layers_by_layer_key_[info.gds_layer][info.gds_datatype] = layer;
 
   VLOG(3) << "Added layer " << layer << ", name: " << info.name
-          << ", purpose: " << info.purpose;
+          << ", purpose: " << info.purpose_text;
 }
 
 const LayerInfo &PhysicalPropertiesDatabase::GetLayerInfo(
@@ -669,6 +692,11 @@ const std::set<geometry::Layer> PhysicalPropertiesDatabase::GetPinLayersFor(
                        layer_info.accessed_by->end());
   }
   return accessed_by;
+}
+
+bool PhysicalPropertiesDatabase::IsPinLayer(
+    const geometry::Layer &layer) const {
+  return GetLayerInfo(layer).purpose == LayerInfo::Purpose::kPin;
 }
 
 std::string PhysicalPropertiesDatabase::DescribeLayers() const {

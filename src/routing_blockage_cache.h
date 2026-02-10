@@ -62,7 +62,7 @@ class RoutingBlockageCache {
  public:
   // This is similar to the identically-named function in RoutingGrid.
   //
-  // Works for T = geometry::Group and T = geomtery::ShapeCollection, since the
+  // Works for T = geometry::Group and T = geometry::ShapeCollection, since the
   // code needed to use the interface looks the same. The interface is not
   // type-compatible because ShapeCollection contains std::unique_ptr and Group
   // contains straight pointers. It would be nicer to simply provide converting

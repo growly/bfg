@@ -111,8 +111,17 @@ class Instance : public Manipulable {
   //
   // Find the port named 'name', without the instance name prefix.
   //
-  // TODO(aryap): Replace or supplement this with
+  // TODO(aryap): Figure out whether PortSet is universally useful, or if there
+  // should be some distinction between a GeometricPortSet (ordered by
+  // cartesian position) and PortSet (ordered by pointer).
   // PortSet GetPorts(const std::string &name);
+  std::set<Port*> GetInstancePorts(const std::string &name) {
+    std::vector<Port*> port_vector;
+    GetInstancePorts(name, &port_vector);
+
+    return std::set<Port*>(port_vector.begin(), port_vector.end());
+  }
+
   void GetInstancePorts(const std::string &name, std::vector<Port*> *out) {
     PortSet ports = Port::MakePortSet();
     GetInstancePorts(name, &ports);

@@ -12,24 +12,29 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   // Virtual layers for n-type and p-type diffusion rules.
   bfg::LayerInfo pdiff = db->GetLayerInfo("diff.drawing");
   pdiff.name = "pdiff";
-  pdiff.purpose = "drawing";
+  pdiff.purpose = LayerInfo::Purpose::kDrawing;
+  pdiff.purpose_text = "drawing";
   db->AddLayerInfo(pdiff);
   bfg::LayerInfo ndiff = db->GetLayerInfo("diff.drawing");
   ndiff.name = "ndiff";
-  ndiff.purpose = "drawing";
+  ndiff.purpose = LayerInfo::Purpose::kDrawing;
+  ndiff.purpose_text = "drawing";
   db->AddLayerInfo(ndiff);
 
   bfg::LayerInfo ncon = db->GetLayerInfo("licon.drawing");
   ncon.name = "ncon";
-  ncon.purpose = "drawing";
+  ncon.purpose = LayerInfo::Purpose::kDrawing;
+  ncon.purpose_text = "drawing";
   db->AddLayerInfo(ncon);
   bfg::LayerInfo pcon = db->GetLayerInfo("licon.drawing");
   pcon.name = "pcon";
-  pcon.purpose = "drawing";
+  pcon.purpose = LayerInfo::Purpose::kDrawing;
+  pcon.purpose_text = "drawing";
   db->AddLayerInfo(pcon);
   bfg::LayerInfo polycon = db->GetLayerInfo("licon.drawing");
   polycon.name = "polycon";
-  polycon.purpose = "drawing";
+  polycon.purpose = LayerInfo::Purpose::kDrawing;
+  polycon.purpose_text = "drawing";
   db->AddLayerInfo(polycon);
 
   //std::cout << "\n" << db->DescribeLayers();
@@ -353,25 +358,30 @@ void SetUpGf180Mcu(bfg::PhysicalPropertiesDatabase *db) {
   // Virtual layers for n-type and p-type diffusion rules.
   bfg::LayerInfo pdiff = db->GetLayerInfo("diff.drawing");
   pdiff.name = "pdiff";
-  pdiff.purpose = "drawing";
+  pdiff.purpose = LayerInfo::Purpose::kDrawing;
+  pdiff.purpose_text = "drawing";
   db->AddLayerInfo(pdiff);
   bfg::LayerInfo ndiff = db->GetLayerInfo("diff.drawing");
   ndiff.name = "ndiff";
-  ndiff.purpose = "drawing";
+  ndiff.purpose = LayerInfo::Purpose::kDrawing;
+  ndiff.purpose_text = "drawing";
   db->AddLayerInfo(ndiff);
 
   // Virtual layers to separate diffusion contacts and poly contacts.
   bfg::LayerInfo ncon = db->GetLayerInfo("licon.drawing");
   ncon.name = "ncon";
-  ncon.purpose = "drawing";
+  ncon.purpose = LayerInfo::Purpose::kDrawing;
+  ncon.purpose_text = "drawing";
   db->AddLayerInfo(ncon);
   bfg::LayerInfo pcon = db->GetLayerInfo("licon.drawing");
   pcon.name = "pcon";
-  pcon.purpose = "drawing";
+  pcon.purpose = LayerInfo::Purpose::kDrawing;
+  pcon.purpose_text = "drawing";
   db->AddLayerInfo(pcon);
   bfg::LayerInfo polycon = db->GetLayerInfo("licon.drawing");
   polycon.name = "polycon";
-  polycon.purpose = "drawing";
+  polycon.purpose = LayerInfo::Purpose::kDrawing;
+  polycon.purpose_text = "drawing";
   db->AddLayerInfo(polycon);
 
   db->AddLayerAlias("li.pin", "text.text");

@@ -122,6 +122,10 @@ class RouteManager {
       const geometry::Port &to,
       const EquivalentNets &as_nets = {});
 
+  absl::StatusOr<int64_t> Connect(
+      const std::set<geometry::Port*> &from_ports,
+      const std::set<geometry::Port*> &to_ports,
+      const EquivalentNets &as_nets = {});
 
   // Solve for required routes:
   absl::Status Solve();
@@ -142,7 +146,6 @@ class RouteManager {
   absl::Status ConsolidateOrders();
   absl::Status CollectConnectedNets();
 
-  // TODO(aryap): This was wishfully written:
   absl::Status RunOrder(const NetRouteOrder &order);
 
   absl::Status RunAllSerial();
@@ -161,7 +164,7 @@ class RouteManager {
 
   std::vector<NetRouteOrder> orders_;
 
-  static constexpr size_t kNumRetries = 1;
+  static constexpr size_t kNumRetries = 2;
 
   FRIEND_TEST(RouteManagerTest, ConsolidateOrders);
   FRIEND_TEST(RouteManagerTest, MergeAndReplaceEquivalentNets);
