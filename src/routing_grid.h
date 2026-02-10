@@ -319,8 +319,16 @@ class RoutingGrid {
 
   // Hands out pointers to RoutingGridGeometries that have tracks in either the
   // horizontal or vertical direction on the given layer.
+  //
+  // If the given layer is a pin access layer, we find routing grid geometries
+  // which use any of the layers it gives pin access for.
+  //
+  // If 'include_via_access' is true, we also check for layers that access the
+  // given layer through a via.
   std::vector<std::reference_wrapper<const RoutingGridGeometry>>
-      FindRoutingGridGeometriesUsingLayer(const geometry::Layer &layer) const;
+      FindRoutingGridGeometriesUsingLayer(
+          const geometry::Layer &layer,
+          bool include_via_access = false) const;
 
   // FIXME(aryap): We take a via's footprint to the max of the metal overlap on
   // either side, in either direction. The test for whether we can access a via
