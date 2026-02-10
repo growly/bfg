@@ -12,12 +12,6 @@ class RoutingVertexKDNode {
  public:
   typedef int64_t value_type;
 
-  // Convert an L2 distance (euclidean distance) to the internal distance
-  // measure.
-  static value_type L2DistanceToInternal(int64_t l2_distance) {
-    return l2_distance * l2_distance;
-  }
-
   RoutingVertexKDNode(RoutingVertex *vertex) : vertex_(vertex) {}
 
   inline value_type operator[](const size_t n) const {
@@ -30,19 +24,6 @@ class RoutingVertexKDNode {
         // For any higher dimensions, use the pointer itself.
         return reinterpret_cast<value_type>(vertex_);
     }
-  }
-
-  // KDTree will use this function to check distance.
-  //
-  // We use the square of the L2 distance to avoid a square-root computation.
-  // L2DistanceToInternal converts the L2 distance a user specifies as the
-  // radius to FindNearby into the internal measure by squaring it.
-  //
-  // L1 (Manhattan) distance would be even faster!
-  inline value_type distance(const RoutingVertexKDNode &other) const {
-    const geometry::Point &lhs = vertex_->centre();
-    const geometry::Point &rhs = other.vertex_->centre();
-    return lhs.L2SquaredDistanceTo(rhs);
   }
 
   RoutingVertex *vertex() const { return vertex_; }
@@ -58,6 +39,10 @@ class RoutingVertexKDNode {
 // The appropriate usage of KDTree::optimise() is described on the library
 // GitHub page here:
 //    <I can't find it>
+//
+// So I think libkdtree++ k-d trees work only with manhattan distance (the L1
+// norm), even though I initially thought I could define my own distance
+// function.
 class RoutingVertexKDTree {
  public:
   RoutingVertexKDTree()

@@ -109,7 +109,7 @@ void RoutingBlockageCache::AddBlockage(
       DeterminePossiblyAffectedVertices(
           rectangle, blocked_layers, padding);
 
-  int64_t min_separation = grid_.GetMinSeparation(rectangle.layer());
+  int64_t min_separation = grid_.GetMinSeparation(rectangle.layer());   // FIXME(aryap)
 
   RoutingGridBlockage<geometry::Rectangle> *blockage =
       new RoutingGridBlockage<geometry::Rectangle>(

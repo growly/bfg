@@ -27,7 +27,7 @@ std::vector<RoutingVertex*> RoutingVertexKDTree::FindNearby(
   std::vector<RoutingVertexKDNode> nearby_nodes;
   tree_.find_within_range(
       ref_node,
-      RoutingVertexKDNode::L2DistanceToInternal(radius),
+      radius,
       std::back_inserter(nearby_nodes));
 
   std::vector<RoutingVertex*> nearby;
