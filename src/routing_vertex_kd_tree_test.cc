@@ -71,9 +71,8 @@ TEST(RoutingVertexKDTreeTest, FindNearby_SingleVertex_OutsideRadius) {
   RoutingVertex v0({500, 500});
   tree.Add(&v0);
 
-  // distance() returns (int64_t)L2 distance. For (0,0)->(500,500):
-  // (int64_t)sqrt(500000) = 707. L2DistanceToInternal(10) = 100.
-  // 707 > 100 -> not found.
+  // find_within_range checks per-axis: |500 - 0| = 500 > 100 -> not found.
+  // (L2DistanceToInternal(10) = 100.)
   std::vector<RoutingVertex*> results =
       tree.FindNearby(geometry::Point(0, 0), 10);
   EXPECT_THAT(results, IsEmpty());
@@ -81,17 +80,17 @@ TEST(RoutingVertexKDTreeTest, FindNearby_SingleVertex_OutsideRadius) {
 
 TEST(RoutingVertexKDTreeTest, FindNearby_MultipleVertices_FiltersCorrectly) {
   RoutingVertexKDTree tree;
-  // distance() returns (int64_t)L2, find_within_range compares against
+  // find_within_range uses per-axis bounding box with half-width
   // L2DistanceToInternal(radius) = radius^2.
-  RoutingVertex v_close_0({10, 10});    // (int64_t)sqrt(200) = 14
-  RoutingVertex v_close_1({-10, -10});  // (int64_t)sqrt(200) = 14
-  RoutingVertex v_far({1000, 1000});    // (int64_t)sqrt(2000000) = 1414
+  RoutingVertex v_close_0({10, 10});    // max per-axis dist from origin = 10
+  RoutingVertex v_close_1({-10, -10});  // max per-axis dist from origin = 10
+  RoutingVertex v_far({1000, 1000});    // max per-axis dist from origin = 1000
 
   tree.Add(&v_close_0);
   tree.Add(&v_close_1);
   tree.Add(&v_far);
 
-  // radius=4, threshold = 16. 14 <= 16 (close in), 1414 > 16 (far out).
+  // radius=4, threshold = 16. 10 <= 16 (close in), 1000 > 16 (far out).
   std::vector<RoutingVertex*> results =
       tree.FindNearby(geometry::Point(0, 0), 4);
 
@@ -99,8 +98,7 @@ TEST(RoutingVertexKDTreeTest, FindNearby_MultipleVertices_FiltersCorrectly) {
 }
 
 TEST(RoutingVertexKDTreeTest, FindNearby_ExactlyAtThreshold) {
-  // Place vertex so that (int64_t)L2 distance == radius^2.
-  // Vertex at (25, 0): distance = 25. radius = 5, threshold = 25.
+  // Vertex at (25, 0): per-axis distance = 25. radius = 5, threshold = 25.
   // 25 <= 25 -> found.
   RoutingVertexKDTree tree;
   RoutingVertex v0({25, 0});
@@ -112,7 +110,7 @@ TEST(RoutingVertexKDTreeTest, FindNearby_ExactlyAtThreshold) {
 }
 
 TEST(RoutingVertexKDTreeTest, FindNearby_JustOutsideThreshold) {
-  // Vertex at (26, 0): distance = 26. radius = 5, threshold = 25.
+  // Vertex at (26, 0): per-axis distance = 26. radius = 5, threshold = 25.
   // 26 > 25 -> not found.
   RoutingVertexKDTree tree;
   RoutingVertex v0({26, 0});
@@ -139,15 +137,15 @@ TEST(RoutingVertexKDTreeTest, FindNearby_AfterErase_DoesNotReturnErased) {
 
 TEST(RoutingVertexKDTreeTest, FindNearby_NonOriginReference) {
   RoutingVertexKDTree tree;
-  RoutingVertex v0({500, 500});  // (int64_t)sqrt(50) = 7 from (505,505)
-  RoutingVertex v1({510, 510});  // (int64_t)sqrt(50) = 7 from (505,505)
-  RoutingVertex v2({0, 0});      // (int64_t)sqrt(510050) = 714 from (505,505)
+  RoutingVertex v0({500, 500});  // per-axis dist from (505,505): max(5,5) = 5
+  RoutingVertex v1({510, 510});  // per-axis dist from (505,505): max(5,5) = 5
+  RoutingVertex v2({0, 0});      // per-axis dist from (505,505): max(505,505) = 505
 
   tree.Add(&v0);
   tree.Add(&v1);
   tree.Add(&v2);
 
-  // radius=3, threshold = 9. 7 <= 9 (nearby in), 714 > 9 (far out).
+  // radius=3, threshold = 9. 5 <= 9 (nearby in), 505 > 9 (far out).
   std::vector<RoutingVertex*> results =
       tree.FindNearby(geometry::Point(505, 505), 3);
   EXPECT_THAT(results, UnorderedElementsAre(&v0, &v1));
@@ -155,15 +153,15 @@ TEST(RoutingVertexKDTreeTest, FindNearby_NonOriginReference) {
 
 TEST(RoutingVertexKDTreeTest, FindNearby_NegativeCoordinates) {
   RoutingVertexKDTree tree;
-  RoutingVertex v0({-100, -100});  // (int64_t)sqrt(50) = 7 from (-105,-95)
-  RoutingVertex v1({-110, -90});   // (int64_t)sqrt(50) = 7 from (-105,-95)
-  RoutingVertex v2({100, 100});    // (int64_t)sqrt(80050) = 282 from (-105,-95)
+  RoutingVertex v0({-100, -100});  // per-axis dist from (-105,-95): max(5,5) = 5
+  RoutingVertex v1({-110, -90});   // per-axis dist from (-105,-95): max(5,5) = 5
+  RoutingVertex v2({100, 100});    // per-axis dist from (-105,-95): max(205,195) = 205
 
   tree.Add(&v0);
   tree.Add(&v1);
   tree.Add(&v2);
 
-  // radius=3, threshold = 9. 7 <= 9 (nearby in), 282 > 9 (far out).
+  // radius=3, threshold = 9. 5 <= 9 (nearby in), 205 > 9 (far out).
   std::vector<RoutingVertex*> results =
       tree.FindNearby(geometry::Point(-105, -95), 3);
   EXPECT_THAT(results, UnorderedElementsAre(&v0, &v1));
@@ -198,13 +196,13 @@ TEST(RoutingVertexKDTreeTest, FindNearby_ManyVertices) {
   EXPECT_EQ(tree.Size(), 100);
 
   // radius=12, threshold = 144.
-  // (int64_t) L2 distances from origin:
-  //   (0,0):     0    <= 144 -> in
-  //   (100,0):   100  <= 144 -> in
-  //   (0,100):   100  <= 144 -> in
-  //   (100,100): 141  <= 144 -> in
-  //   (200,0):   200  > 144  -> out
-  //   (0,200):   200  > 144  -> out
+  // find_within_range uses per-axis bounding box [ref - 144, ref + 144]:
+  //   (0,0):     max(0,0) = 0     <= 144 -> in
+  //   (100,0):   max(100,0) = 100 <= 144 -> in
+  //   (0,100):   max(0,100) = 100 <= 144 -> in
+  //   (100,100): max(100,100)=100 <= 144 -> in
+  //   (200,0):   max(200,0) = 200 > 144  -> out
+  //   (0,200):   max(0,200) = 200 > 144  -> out
   std::vector<RoutingVertex*> results =
       tree.FindNearby(geometry::Point(0, 0), 12);
   EXPECT_EQ(results.size(), 4);
@@ -268,15 +266,15 @@ TEST(RoutingVertexKDNodeTest, IndexOperator_ReturnsCoordinates) {
   EXPECT_EQ(node[1], 456);
 }
 
-TEST(RoutingVertexKDNodeTest, Distance_IsL2) {
+TEST(RoutingVertexKDNodeTest, Distance_IsL2Squared) {
   RoutingVertex v0({0, 0});
   RoutingVertex v1({3, 4});
   RoutingVertexKDNode n0(&v0);
   RoutingVertexKDNode n1(&v1);
 
-  // L2 distance from (0,0) to (3,4) = sqrt(9 + 16) = 5, truncated to int64_t.
-  EXPECT_EQ(n0.distance(n1), 5);
-  EXPECT_EQ(n1.distance(n0), 5);
+  // L2Squared distance from (0,0) to (3,4) = 9 + 16 = 25.
+  EXPECT_EQ(n0.distance(n1), 25);
+  EXPECT_EQ(n1.distance(n0), 25);
 }
 
 TEST(RoutingVertexKDNodeTest, Distance_SamePoint_IsZero) {

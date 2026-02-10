@@ -33,15 +33,16 @@ class RoutingVertexKDNode {
   }
 
   // KDTree will use this function to check distance.
+  //
+  // We use the square of the L2 distance to avoid a square-root computation.
+  // L2DistanceToInternal converts the L2 distance a user specifies as the
+  // radius to FindNearby into the internal measure by squaring it.
+  //
+  // L1 (Manhattan) distance would be even faster!
   inline value_type distance(const RoutingVertexKDNode &other) const {
-    // L2 squared distance saves a sqrt.
-    // L1 (Manhattan) distance would be even faster.
-    // Unfortunately neither of these is intuitive to use. If speed is
-    // imperative the implications for the radius value in FindNearby(...)
-    // should be clearly communicated.
     const geometry::Point &lhs = vertex_->centre();
     const geometry::Point &rhs = other.vertex_->centre();
-    return lhs.L2DistanceTo(rhs);
+    return lhs.L2SquaredDistanceTo(rhs);
   }
 
   RoutingVertex *vertex() const { return vertex_; }
