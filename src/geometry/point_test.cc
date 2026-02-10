@@ -237,6 +237,117 @@ TEST(PointTest, CombinedOperations_TranslateThenRotate) {
   EXPECT_EQ(Point(0, 15), p);
 }
 
+// --- L1DistanceTo ---
+
+TEST(PointTest, L1DistanceTo_SamePoint) {
+  EXPECT_EQ(Point(5, 10).L1DistanceTo(Point(5, 10)), 0);
+}
+
+TEST(PointTest, L1DistanceTo_HorizontalOnly) {
+  EXPECT_EQ(Point(0, 0).L1DistanceTo(Point(7, 0)), 7);
+}
+
+TEST(PointTest, L1DistanceTo_VerticalOnly) {
+  EXPECT_EQ(Point(0, 0).L1DistanceTo(Point(0, 13)), 13);
+}
+
+TEST(PointTest, L1DistanceTo_Diagonal) {
+  // Manhattan distance from (0,0) to (3,4) = 3 + 4 = 7.
+  EXPECT_EQ(Point(0, 0).L1DistanceTo(Point(3, 4)), 7);
+}
+
+TEST(PointTest, L1DistanceTo_IsSymmetric) {
+  Point a(10, 20);
+  Point b(35, 47);
+  EXPECT_EQ(a.L1DistanceTo(b), b.L1DistanceTo(a));
+}
+
+TEST(PointTest, L1DistanceTo_NegativeCoordinates) {
+  // |(-3) - 4| + |(-5) - 6| = 7 + 11 = 18.
+  EXPECT_EQ(Point(-3, -5).L1DistanceTo(Point(4, 6)), 18);
+}
+
+TEST(PointTest, L1DistanceTo_Origin) {
+  EXPECT_EQ(Point(0, 0).L1DistanceTo(Point(0, 0)), 0);
+}
+
+// --- L2SquaredDistanceTo ---
+
+TEST(PointTest, L2SquaredDistanceTo_SamePoint) {
+  EXPECT_EQ(Point(5, 10).L2SquaredDistanceTo(Point(5, 10)), 0);
+}
+
+TEST(PointTest, L2SquaredDistanceTo_HorizontalOnly) {
+  // 7^2 + 0^2 = 49.
+  EXPECT_EQ(Point(0, 0).L2SquaredDistanceTo(Point(7, 0)), 49);
+}
+
+TEST(PointTest, L2SquaredDistanceTo_VerticalOnly) {
+  // 0^2 + 13^2 = 169.
+  EXPECT_EQ(Point(0, 0).L2SquaredDistanceTo(Point(0, 13)), 169);
+}
+
+TEST(PointTest, L2SquaredDistanceTo_345Triangle) {
+  // 3^2 + 4^2 = 9 + 16 = 25.
+  EXPECT_EQ(Point(0, 0).L2SquaredDistanceTo(Point(3, 4)), 25);
+}
+
+TEST(PointTest, L2SquaredDistanceTo_IsSymmetric) {
+  Point a(10, 20);
+  Point b(35, 47);
+  EXPECT_EQ(a.L2SquaredDistanceTo(b), b.L2SquaredDistanceTo(a));
+}
+
+TEST(PointTest, L2SquaredDistanceTo_NegativeCoordinates) {
+  // dx=7, dy=11. 49 + 121 = 170.
+  EXPECT_EQ(Point(-3, -5).L2SquaredDistanceTo(Point(4, 6)), 170);
+}
+
+TEST(PointTest, L2SquaredDistanceTo_LargeValues) {
+  // dx=100000, dy=100000. 10^10 + 10^10 = 2*10^10.
+  EXPECT_EQ(Point(0, 0).L2SquaredDistanceTo(Point(100000, 100000)),
+            20000000000LL);
+}
+
+// --- L2DistanceTo ---
+
+TEST(PointTest, L2DistanceTo_SamePoint) {
+  EXPECT_DOUBLE_EQ(Point(5, 10).L2DistanceTo(Point(5, 10)), 0.0);
+}
+
+TEST(PointTest, L2DistanceTo_HorizontalOnly) {
+  EXPECT_DOUBLE_EQ(Point(0, 0).L2DistanceTo(Point(7, 0)), 7.0);
+}
+
+TEST(PointTest, L2DistanceTo_VerticalOnly) {
+  EXPECT_DOUBLE_EQ(Point(0, 0).L2DistanceTo(Point(0, 13)), 13.0);
+}
+
+TEST(PointTest, L2DistanceTo_345Triangle) {
+  // sqrt(9 + 16) = 5.0 exactly.
+  EXPECT_DOUBLE_EQ(Point(0, 0).L2DistanceTo(Point(3, 4)), 5.0);
+}
+
+TEST(PointTest, L2DistanceTo_IsSymmetric) {
+  Point a(10, 20);
+  Point b(35, 47);
+  EXPECT_DOUBLE_EQ(a.L2DistanceTo(b), b.L2DistanceTo(a));
+}
+
+TEST(PointTest, L2DistanceTo_NegativeCoordinates) {
+  // sqrt(49 + 121) = sqrt(170).
+  EXPECT_DOUBLE_EQ(Point(-3, -5).L2DistanceTo(Point(4, 6)),
+                   std::sqrt(170.0));
+}
+
+TEST(PointTest, L2DistanceTo_ConsistentWithL2Squared) {
+  Point a(17, 43);
+  Point b(-29, 81);
+  double l2 = a.L2DistanceTo(b);
+  int64_t l2_sq = a.L2SquaredDistanceTo(b);
+  EXPECT_DOUBLE_EQ(l2 * l2, static_cast<double>(l2_sq));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg
