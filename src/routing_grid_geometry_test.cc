@@ -490,6 +490,7 @@ TEST_F(RoutingGridGeometryTestFixture, ConnectablePerimeter_Polygon) {
     for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
       // Dummy.
       RoutingVertex *vertex = new RoutingVertex({i, j});
+      vertex->AddConnectedLayer(0);
       grid_geometry_.AssignVertexAt(i, j, vertex);
       all_vertices.insert(vertex);
     }
@@ -538,19 +539,40 @@ TEST_F(RoutingGridGeometryTestFixture,
     for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
       // Dummy.
       RoutingVertex *vertex = new RoutingVertex({i, j});
+      // Need at least one connected layer to enforce blockages:
+      vertex->AddConnectedLayer(0);
       grid_geometry_.AssignVertexAt(i, j, vertex);
       if (j > 0 && i == 3) {
         vertex->SetForcedBlocked(true, false);   // Permanent.
+        ASSERT_FALSE(vertex->Available());
       }
       if (j == 1 && i == 5) {
         vertex->SetForcedBlocked(true, false);
+        ASSERT_FALSE(vertex->Available());
       }
       if (j == 2 && i == 4) {
         vertex->SetForcedBlocked(true, false);
+        ASSERT_FALSE(vertex->Available());
       }
       all_vertices.insert(vertex);
     }
   }
+
+  // RoutingGridGeometry tracks the coordinates of elements on the grid
+  // independently of how the elements track their own positions. That's why
+  // we can use the centre_ field on a RoutingVertex to remember which ordinal
+  // coordinates it was assigned in the RoutingGridGeometry.
+  //
+  // i=  0         1         2         3         4         5   j
+  //                                                           v
+  //     o         o         o         o         o         o   3
+  // y=35     +------------+ 
+  //     o    |    o       | o         o         o         o   2
+  // y=25     |            +-------------------------+
+  //     o    |    o         o         o         o   |     o   1
+  // y=15     +--------------------------------------+
+  //     o         o         o         o         o         o   0
+  // y=0
   geometry::Polygon polygon({
       {15, 15},
       {15, 35},
@@ -576,10 +598,12 @@ TEST_F(RoutingGridGeometryTestFixture,
       {2, 2},
       {3, 0},
       // The other vertices north of {3, 1} are unavailable.
+      // {3, 2}
       {4, 0},
       // {4, 2} is (manually) unavailable also so:
       {4, 3},
-      {6, 1}    // {5, 1} is unavailable so the next one right should be ok.
+      // {5, 1} is unavailable, so the next one right should be ok:
+      {6, 1}
   };
 
   EXPECT_THAT(centres, ContainerEq(expected));
