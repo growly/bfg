@@ -470,6 +470,7 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing_vertex_kd_tree_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_track_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector_test.cc
   ${PROJECT_SOURCE_DIR}/src/utility_test.cc
@@ -485,6 +486,7 @@ target_link_libraries(bfg_test
   Threads::Threads
   gtest
   gtest_main
+  GTest::gmock
   ${tcmalloc_lib}
   ${profiler_lib}
   gflags
