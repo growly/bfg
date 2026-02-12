@@ -14,6 +14,7 @@
 #include "geometry/port.h"
 #include "geometry/radian.h"
 #include "abstract_via.h"
+#include "routing_blockage_cache.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_vertex.h"
@@ -1078,7 +1079,8 @@ absl::Status RoutingPath::CheckAndForceEncapDirections(
             vertex->centre(),
             connected_layers[0],
             connected_layers[1],  // The footprint layer.
-            nets_);
+            nets_,
+            RoutingBlockageCache(*routing_grid_));
     create_or_intersect_fn(connected_layers[1], access_directions);
 
     access_directions =
@@ -1086,7 +1088,8 @@ absl::Status RoutingPath::CheckAndForceEncapDirections(
             vertex->centre(),
             connected_layers[1],
             connected_layers[0],  // The footprint layer.
-            nets_);
+            nets_,
+            RoutingBlockageCache(*routing_grid_));
     create_or_intersect_fn(connected_layers[0], access_directions);
   }
 

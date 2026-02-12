@@ -1049,11 +1049,6 @@ bool RoutingTrack::Intersects(
     std::vector<geometry::PointPair> *intersections,
     int64_t padding,
     int64_t min_transverse_separation) const {
-  DCHECK(polygon.layer() == layer_)
-      << "Caller must ensure that blockage/intersection-tested shapes are on "
-      << "the same layer as this RoutingTrack, viz. "
-      << polygon.layer() << " vs. " << layer_;
-
   // FIXME(aryap): This should be width_ / 2, or at least consider the actual
   // maximum thickness (still divided by 2) at vertices, wherever they are.
   //

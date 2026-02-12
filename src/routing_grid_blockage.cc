@@ -39,7 +39,7 @@ bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
     const std::optional<RoutingTrackDirection> &access_direction) const {
   // Check if there's an intersection within the default padding region:
   bool intersects = routing_grid_.ViaWouldIntersect(
-      vertex, shape_, padding, access_direction);
+      vertex, shape_, blockage_layers_, padding, access_direction);
   // If so, and if exceptional nets are defined and match, then the
   // intersection is permissible if the shapes are touching (i.e. intersection
   // with padding = 0). If we just checked that because padding == 0 already,
@@ -50,7 +50,7 @@ bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
       return false;
     }
     return !routing_grid_.ViaWouldIntersect(
-        vertex, shape_, 0, access_direction);
+        vertex, shape_, blockage_layers_, 0, access_direction);
   }
   return intersects;
 }
@@ -96,7 +96,7 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
     const std::optional<EquivalentNets> &exceptional_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const {
   bool intersects = routing_grid_.ViaWouldIntersect(
-      vertex, shape_, padding, access_direction);
+      vertex, shape_, blockage_layers_, padding, access_direction);
   if (intersects &&
       exceptional_nets &&
       exceptional_nets->Contains(shape_.net())) {
@@ -104,7 +104,7 @@ bool RoutingGridBlockage<geometry::Polygon>::Blocks(
       return false;
     }
     return !routing_grid_.ViaWouldIntersect(
-      vertex, shape_, 0, access_direction);
+      vertex, shape_, blockage_layers_, 0, access_direction);
   }
   return intersects;
 }

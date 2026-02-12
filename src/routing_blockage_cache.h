@@ -5,6 +5,9 @@
 #include <set>
 #include <optional>
 
+#include <absl/status/status.h>
+
+#include "equivalent_nets.h"
 #include "routing_vertex.h"
 #include "routing_track_direction.h"
 #include "routing_grid_blockage.h"
@@ -154,6 +157,24 @@ class RoutingBlockageCache {
       const EquivalentNets &for_nets,
       const std::optional<RoutingTrackDirection> &direction_or_any,
       const std::optional<geometry::Layer> &layer_or_any) const;
+
+  absl::Status ValidAgainstKnownBlockages(
+      const RoutingEdge &edge,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
+      const;
+
+  absl::Status ValidAgainstKnownBlockages(
+      const RoutingVertex &vertex,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt) const;
+
+  absl::Status ValidAgainstKnownBlockages(
+      const geometry::Rectangle &footprint,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
+      const;
+
+  std::string Summary() const;
 
   void set_search_window_margin(int64_t search_window_margin) {
     search_window_margin_ = search_window_margin;

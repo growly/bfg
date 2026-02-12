@@ -1,8 +1,11 @@
 #include "routing_blockage_cache.h"
 
 #include <map>
-#include <set>
 #include <optional>
+#include <set>
+#include <sstream>
+
+#include <absl/status/status.h>
 
 #include "routing_grid.h"
 #include "routing_vertex.h"
@@ -109,7 +112,8 @@ void RoutingBlockageCache::AddBlockage(
       DeterminePossiblyAffectedVertices(
           rectangle, blocked_layers, padding);
 
-  int64_t min_separation = grid_.GetMinSeparation(rectangle.layer());   // FIXME(aryap)
+  // FIXME(aryap): This should be the worst-case across all blocked layers.
+  int64_t min_separation = grid_.GetMinSeparation(rectangle.layer());
 
   RoutingGridBlockage<geometry::Rectangle> *blockage =
       new RoutingGridBlockage<geometry::Rectangle>(
@@ -126,6 +130,7 @@ void RoutingBlockageCache::AddBlockage(
     blocked_edges_[edge].sources[rectangle.net()].insert(blockage);
   }
 
+  // Take ownership of the RoutingGridBlockage.
   rectangle_blockages_.emplace_back(blockage);
 }
 
@@ -422,6 +427,94 @@ RoutingBlockageCache::DeterminePossiblyAffectedVertices(
   }
 
   return const_targets;
+}
+
+absl::Status RoutingBlockageCache::ValidAgainstKnownBlockages(
+    const RoutingEdge &edge,
+    const std::optional<EquivalentNets> &exceptional_nets) const {
+  if (parent_) {
+    auto status = parent_->get().ValidAgainstKnownBlockages(
+        edge, exceptional_nets);
+    if (!status.ok()) {
+      return status;
+    }
+  }
+  for (const auto &blockage : rectangle_blockages_) {
+    if (blockage->Blocks(edge, exceptional_nets)) {
+      return absl::ResourceExhaustedError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  for (const auto &blockage : polygon_blockages_) {
+    if (blockage->Blocks(edge, exceptional_nets)) {
+      return absl::ResourceExhaustedError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status RoutingBlockageCache::ValidAgainstKnownBlockages(
+    const RoutingVertex &vertex,
+    const std::optional<EquivalentNets> &exceptional_nets,
+    const std::optional<RoutingTrackDirection> &access_direction) const {
+  if (parent_) {
+    auto status = parent_->get().ValidAgainstKnownBlockages(
+        vertex, exceptional_nets, access_direction);
+    if (!status.ok()) {
+      return status;
+    }
+  }
+  for (const auto &blockage : rectangle_blockages_) {
+    if (blockage->Blocks(vertex, exceptional_nets, access_direction)) {
+      return absl::ResourceExhaustedError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  for (const auto &blockage : polygon_blockages_) {
+    if (blockage->Blocks(vertex, exceptional_nets, access_direction)) {
+      return absl::ResourceExhaustedError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status RoutingBlockageCache::ValidAgainstKnownBlockages(
+    const geometry::Rectangle &footprint,
+    const std::optional<EquivalentNets> &exceptional_nets) const {
+  if (parent_) {
+    auto status = parent_->get().ValidAgainstKnownBlockages(
+        footprint, exceptional_nets);
+    if (!status.ok()) {
+      return status;
+    }
+  }
+  for (const auto &blockage : rectangle_blockages_) {
+    if (blockage->Blocks(footprint, exceptional_nets)) {
+      return absl::ResourceExhaustedError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  for (const auto &blockage : polygon_blockages_) {
+    if (blockage->Blocks(footprint, exceptional_nets)) {
+      return absl::ResourceExhaustedError(
+          absl::StrCat("Blocked by ", blockage->shape().Describe()));
+    }
+  }
+  return absl::OkStatus();
+}
+
+std::string RoutingBlockageCache::Summary() const {
+  std::stringstream ss;
+  ss << "[RoutingBlockageCache hazards: "
+     << polygon_blockages_.size() << " polygons, "
+     << rectangle_blockages_.size() << " rectangles, known blocked: "
+     << blocked_vertices_.size() << " vertices, "
+     << blocked_edges_.size() << " edges; parent: "
+     << (parent_ ? parent_->get().Summary() : "none")
+     << "]";
+  return ss.str();
 }
 
 template<typename T>

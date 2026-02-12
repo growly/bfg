@@ -243,6 +243,7 @@ class RoutingGrid {
 
   absl::Status ValidAgainstHazards(
       const RoutingVertex &vertex,
+      const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt) const REQUIRES(lock_);
@@ -273,13 +274,15 @@ class RoutingGrid {
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsForVertex(
       const RoutingVertex &vertex,
-      const EquivalentNets &for_nets) const;
+      const EquivalentNets &for_nets,
+      const RoutingBlockageCache &blockage_cache) const;
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsAt(
       const geometry::Point &point,
       const geometry::Layer &other_layer,
       const geometry::Layer &footprint_layer,
-      const EquivalentNets &for_nets) const;
+      const EquivalentNets &for_nets,
+      const RoutingBlockageCache &blockage_cache) const;
 
   std::optional<double> FindViaStackCost(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
@@ -399,17 +402,24 @@ class RoutingGrid {
   bool ViaWouldIntersect(
       const RoutingVertex &vertex,
       const T &obstruction,
+      const std::set<geometry::Layer> &obstructed_layers,
       int64_t padding = 0,
       const std::optional<RoutingTrackDirection> &access_direction =
           std::nullopt)
       const {
     // Note that we subtract 1 from the padding, as above.
-    if (!vertex.ConnectsLayer(obstruction.layer())) {
+    std::set<geometry::Layer> check_layers;
+    for (const auto &layer : obstructed_layers) {
+      if (vertex.ConnectsLayer(layer)) {
+        check_layers.insert(layer);
+      }
+    }
+    if (check_layers.empty()) {
       return false;
     }
     std::optional<geometry::Rectangle> keep_out = VertexFootprint(
         vertex,
-        obstruction.layer(),
+        *check_layers.begin(),
         std::max(padding - 1, 0L),
         access_direction);
     if (!keep_out) {
@@ -559,10 +569,12 @@ class RoutingGrid {
       const std::optional<
           std::reference_wrapper<
               const std::set<RoutingTrackDirection>>> &directions,
+      const RoutingBlockageCache &blockage_cache,
       RoutingVertex *off_grid);
 
   absl::Status ValidAgainstHazards(
       const geometry::Rectangle &footprint,
+      const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
       const;
 
@@ -614,21 +626,25 @@ class RoutingGrid {
 
   absl::StatusOr<VertexWithLayer> ConnectToGrid(
       const geometry::Port &port,
-      const EquivalentNets &connectable_nets = EquivalentNets());
+      const EquivalentNets &connectable_nets,
+      const RoutingBlockageCache &blockage_cache);
 
   absl::StatusOr<VertexWithLayer> AddAccessVerticesForPoint(
       const geometry::Point &point,
       const geometry::Layer &layer,
-      const EquivalentNets &connectable_nets) EXCLUDES(lock_);
+      const EquivalentNets &connectable_nets,
+      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
 
   absl::StatusOr<VertexWithLayer> ConnectToNearestAvailableVertex(
       const geometry::Port &port,
-      const EquivalentNets &connectable_nets);
+      const EquivalentNets &connectable_nets,
+      const RoutingBlockageCache &blockage_cache);
 
   absl::StatusOr<RoutingVertex*> ConnectToNearestAvailableVertex(
       const geometry::Point &point,
       const geometry::Layer &target_layer,
-      const EquivalentNets &connectable_nets) EXCLUDES(lock_);
+      const EquivalentNets &connectable_nets,
+      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
 
   absl::Status AddRoutingGridGeometry(
       const geometry::Layer &lhs, const geometry::Layer &rhs,
