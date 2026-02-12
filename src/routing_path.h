@@ -148,6 +148,7 @@ class RoutingPath {
       std::vector<std::unique_ptr<AbstractVia>> *vias) const;
 
   absl::Status CheckAndForceEncapDirections(
+      const RoutingBlockageCache &blockage_cache,
       const geometry::Layer &from_layer,
       const geometry::Layer &to_layer,
       RoutingVertex *vertex) const;
@@ -245,7 +246,7 @@ class RoutingPath {
   void MergeConsecutiveEdgesOnSameTrack();
 
   // Remove illegal (and inefficient) jogs between tracks.
-  void Flatten();
+  void Flatten(const RoutingBlockageCache &blockage_cache);
 
   void ResolveTerminatingLayersAtBothEnds();
   void ResolveTerminatingLayers(

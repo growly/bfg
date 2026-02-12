@@ -443,7 +443,8 @@ void RoutingPath::MergeConsecutiveEdgesOnSameTrack() {
   }
 }
 
-void RoutingPath::Flatten() {
+void RoutingPath::Flatten(
+    const RoutingBlockageCache &blockage_cache) {
   // We look for and try to eliminate wires that are too short to allow another
   // layer N wire over the top:
   //
@@ -551,6 +552,7 @@ void RoutingPath::Flatten() {
       // is really bad, since this condition should have been cleared before the
       // RoutingPath was created, as part of the path search.
       auto check_encaps = CheckAndForceEncapDirections(
+          blockage_cache,
           last_layer,
           last_target_layer,
           last_vertex);
@@ -559,6 +561,7 @@ void RoutingPath::Flatten() {
       }
 
       check_encaps.Update(CheckAndForceEncapDirections(
+          blockage_cache,
           next_layer,
           next_target_layer,
           current_vertex));
@@ -676,7 +679,7 @@ void RoutingPath::Legalise(
     return;
   Abbreviate(blockage_cache);
   MergeConsecutiveEdgesOnSameTrack();
-  Flatten();
+  Flatten(blockage_cache);
   ResolveTerminatingLayersAtBothEnds();
   legalised_ = true;
 }
@@ -1045,6 +1048,7 @@ void RoutingPath::MaybeFixFirstAndLastJog(
 }
 
 absl::Status RoutingPath::CheckAndForceEncapDirections(
+    const RoutingBlockageCache &blockage_cache,
     const geometry::Layer &from_layer,
     const geometry::Layer &to_layer,
     RoutingVertex *vertex) const {
@@ -1088,7 +1092,7 @@ absl::Status RoutingPath::CheckAndForceEncapDirections(
             connected_layers[0],
             connected_layers[1],  // The footprint layer.
             nets_,
-            RoutingBlockageCache(*routing_grid_));
+            blockage_cache);
     create_or_intersect_fn(connected_layers[1], access_directions);
 
     access_directions =
@@ -1097,7 +1101,7 @@ absl::Status RoutingPath::CheckAndForceEncapDirections(
             connected_layers[1],
             connected_layers[0],  // The footprint layer.
             nets_,
-            RoutingBlockageCache(*routing_grid_));
+            blockage_cache);
     create_or_intersect_fn(connected_layers[0], access_directions);
   }
 
