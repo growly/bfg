@@ -1790,7 +1790,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
 
   // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
   // rest must be deleted.
-  absl::Status install_status = InstallPath(cheapest);
+  absl::Status install_status = InstallPath(blockage_cache, cheapest);
 
   for (auto it = options.begin() + 1; it != options.end(); ++it) {
     delete *it;
@@ -1823,7 +1823,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
     return find_path.status();
   }
 
-  absl::Status install = InstallPath(*find_path);
+  absl::Status install = InstallPath(blockage_cache, *find_path);
   if (!install.ok()) {
     return install;
   }
@@ -1933,7 +1933,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteToNet(
   if (!find_path.ok()) {
     return find_path;
   }
-  absl::Status install = InstallPath(*find_path);
+  absl::Status install = InstallPath(blockage_cache, *find_path);
   if (!install.ok()) {
     return install;
   }
@@ -2231,7 +2231,9 @@ void RoutingGrid::InstallVertexInPath(
   }
 }
 
-absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
+absl::Status RoutingGrid::InstallPath(
+    const RoutingBlockageCache &blockage_cache,
+    RoutingPath *path) {
   LOG(INFO) << "In InstallPath waiting for lock";
   std::unique_lock mu(lock_);
   LOG(INFO) << "In InstallPath lock ok";
@@ -2258,7 +2260,7 @@ absl::Status RoutingGrid::InstallPath(RoutingPath *path) {
   // Legalise the path. This might modify the edges the path contains, which
   // smells funny, but what are you gonna do?
   mu.unlock();
-  path->Legalise();
+  path->Legalise(blockage_cache);
   mu.lock();
 
   // FIXME(aryap): When multithreading, we need to re-check the validity of

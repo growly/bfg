@@ -12,6 +12,7 @@
 #include "geometry/layer.h"
 #include "geometry/poly_line.h"
 #include "geometry/port.h"
+#include "routing_blockage_cache.h"
 #include "routing_vertex.h"
 #include "routing_edge.h"
 #include "equivalent_nets.h"
@@ -40,7 +41,7 @@ class RoutingPath {
 
   // TODO(aryap): Rename to "TryToLegalise" or something that isn't confused
   // next to "IsLegal".
-  void Legalise();
+  void Legalise(const RoutingBlockageCache &blockage_cache);
 
   absl::Status CheckStillAvailable() const;
 
@@ -199,11 +200,15 @@ class RoutingPath {
   // We will restrict ourselves to the case where they are separated by one
   // orthogonal edge. And we will replace that edge if we find the overlapping
   // case.
-  bool AbbreviateOnce();
-  bool MaybeAbbreviate(size_t starting_index);
+  bool AbbreviateOnce(const RoutingBlockageCache &blockage_cache);
+  bool MaybeAbbreviate(const RoutingBlockageCache &blockage_cache,
+                       size_t starting_index);
 
   // Continue to Abbreviate from the start until it is not possible.
-  inline void Abbreviate() { while (AbbreviateOnce()); }
+  inline void Abbreviate(
+      const RoutingBlockageCache &blockage_cache) {
+    while (AbbreviateOnce(blockage_cache));
+  }
 
   // For internal methods that implement the abbreviation refer to this diagram
   // for the names of objects:
@@ -226,7 +231,8 @@ class RoutingPath {
   RoutingEdge *MaybeMakeAbbreviatingEdge(
       RoutingVertex *bridging_vertex,
       RoutingVertex *off_host_track,
-      const geometry::Layer &target_layer);
+      const geometry::Layer &target_layer,
+      const RoutingBlockageCache &blockage_cache);
 
   void InstallAbbreviatingJog(size_t starting_index,
                               bool new_edge_first,

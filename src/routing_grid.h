@@ -736,7 +736,9 @@ class RoutingGrid {
       std::function<bool(RoutingEdge*)> usable_edge,
       bool target_must_be_usable);
 
-  absl::Status InstallPath(RoutingPath *path) EXCLUDES(lock_);
+  absl::Status InstallPath(
+      const RoutingBlockageCache &blockage_cache,
+      RoutingPath *path) EXCLUDES(lock_);
 
   void InstallVertexInPath(RoutingVertex *vertex, const std::string &net);
 

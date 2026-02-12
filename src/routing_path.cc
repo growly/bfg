@@ -148,13 +148,17 @@ RoutingPath::GetOverlapOrSkipAbbreviation(size_t starting_index) {
 RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
     RoutingVertex *bridging_vertex,
     RoutingVertex *off_host_track,
-    const geometry::Layer &target_layer) {
+    const geometry::Layer &target_layer,
+    const RoutingBlockageCache &blockage_cache) {
   // Try to add edge between the off_host_vertex and the track. Check
   // RoutingGrid to see if this is a valid edge.
   RoutingEdge *new_edge = new RoutingEdge(bridging_vertex, off_host_track);
   new_edge->set_layer(target_layer);
 
-  auto valid = routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_);
+  auto valid = blockage_cache.ValidAgainstKnownBlockages(*new_edge, nets_);
+  if (valid.ok()) {
+    valid = routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_);
+  }
   if (!valid.ok()) {
     LOG(INFO) << "Invalid off grid edge between "
               << bridging_vertex->centre()
@@ -212,7 +216,9 @@ void RoutingPath::InstallAbbreviatingJog(
   vertices_.insert(vertices_.begin() + starting_index + 1, bridging_vertex);
 }
 
-bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
+bool RoutingPath::MaybeAbbreviate(
+    const RoutingBlockageCache &blockage_cache,
+    size_t starting_index) {
   DCHECK(starting_index < vertices_.size() - 3);
 
   RoutingEdge *current_edge = edges_[starting_index];
@@ -352,7 +358,7 @@ bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
   }
 
   RoutingEdge *new_edge = MaybeMakeAbbreviatingEdge(
-      bridging_vertex, off_host_track, target_layer);
+      bridging_vertex, off_host_track, target_layer, blockage_cache);
   if (!new_edge) {
     return false;
   }
@@ -376,12 +382,13 @@ bool RoutingPath::MaybeAbbreviate(size_t starting_index) {
 }
 
 // Remove reundant direction switching.
-bool RoutingPath::AbbreviateOnce() {
+bool RoutingPath::AbbreviateOnce(
+    const RoutingBlockageCache &blockage_cache) {
   if (vertices_.size() <= 3) {
     return false;
   }
   for (size_t i = 0; i < vertices_.size() - 3; ++i) {
-    MaybeAbbreviate(i);
+    MaybeAbbreviate(blockage_cache, i);
   }
 
   return false;
@@ -663,10 +670,11 @@ void RoutingPath::ResolveTerminatingLayers(
   *picked = *costed_access_layer;
 }
 
-void RoutingPath::Legalise() {
+void RoutingPath::Legalise(
+    const RoutingBlockageCache &blockage_cache) {
   if (legalised_)
     return;
-  Abbreviate();
+  Abbreviate(blockage_cache);
   MergeConsecutiveEdgesOnSameTrack();
   Flatten();
   ResolveTerminatingLayersAtBothEnds();
