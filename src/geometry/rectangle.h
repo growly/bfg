@@ -66,6 +66,7 @@ class Rectangle : public Shape {
   // all shapes are on the same plane.
   bool Overlaps(const Rectangle &other) const;
   bool Overlaps(const RoundedRectangle &other) const;
+  bool EntirelyContains(const Rectangle &other) const;
   const Rectangle OverlapWith(const Rectangle &other) const;
   bool Intersects(const Point &point) const;
   bool Intersects(const Point &point, int64_t margin) const;

@@ -588,7 +588,7 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
 }
 
 // We can solve the overlap of a RoundedRectangle with a Polygon in the same
-// way we solved the overlap of a regular Rectangle with a Polgyon. Actually we
+// way we solved the overlap of a regular Rectangle with a Polygon. Actually we
 // can just reuse the Rectangle overlap to save ourselves some trouble: first
 // we just check if the Polygon overlaps any of the RoundedRectangle's inner
 // regions.
@@ -601,7 +601,6 @@ bool Polygon::Overlaps(const RoundedRectangle &other) const {
   if (!GetBoundingBox().Overlaps(other.GetBoundingBox())) {
     return false;
   }
-
 }
 
 bool Polygon::Overlaps(const Polygon &other) const {

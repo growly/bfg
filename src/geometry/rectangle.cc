@@ -154,6 +154,11 @@ bool Rectangle::Overlaps(const RoundedRectangle &other) const {
   return other.Overlaps(*this);
 }
 
+bool Rectangle::EntirelyContains(const Rectangle &other) const {
+  return Intersects(other.lower_left()) &&
+         Intersects(other.upper_right());
+}
+
 const Rectangle Rectangle::OverlapWith(const Rectangle &other) const {
   if (!Overlaps(other))
     return Rectangle(Point(0, 0), Point(0, 0));

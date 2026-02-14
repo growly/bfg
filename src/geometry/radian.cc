@@ -16,5 +16,9 @@ double Radian::RadiansToDegrees(double radians) {
   return radians / Radian::kPi * 180.0;
 }
 
+double Radian::DegreesToRadians(double degrees) {
+  return degrees / 180.0 * Radian::kPi;
+}
+
 }  // namespace geometry
 }  // namespace bfg

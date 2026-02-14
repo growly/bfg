@@ -16,7 +16,26 @@ namespace bfg {
 namespace geometry {
 
 const Rectangle Arc::GetBoundingBox() const {
-  LOG(FATAL) << "Unimplemented.";
+  Rectangle bounding_box;
+
+  int64_t min_x = std::min({centre_.x(), Start().x(), End().x()});
+  int64_t min_y = std::min({centre_.y(), Start().y(), End().y()});
+  int64_t max_x = std::max({centre_.x(), Start().x(), End().x()});
+  int64_t max_y = std::max({centre_.y(), Start().y(), End().y()});
+
+  if (IsAngleInArcBoundsDegrees(0)) {
+    max_x = centre_.x() + radius_;
+  }
+  if (IsAngleInArcBoundsDegrees(90)) {
+    max_y = centre_.y() + radius_;
+  }
+  if (IsAngleInArcBoundsDegrees(180)) {
+    min_x = centre_.x() - radius_;
+  }
+  if (IsAngleInArcBoundsDegrees(270)) {
+    min_y = centre_.y() - radius_;
+  }
+  return Rectangle({min_x, min_y}, {max_x, max_y});
 }
 
 std::vector<Point> Arc::IntersectingPoints(const Line &line) const {
@@ -52,7 +71,10 @@ std::vector<Point> Arc::IntersectingPoints(const Line &line) const {
 
     std::vector<Point> result;
     for (double y_value : y_values) {
-      result.emplace_back(k, y_value);
+      Point point(k, y_value);
+      if (IsPointInArcBounds(point)) {
+        result.push_back(point);
+      }
     }
     return result;
   }
@@ -83,12 +105,77 @@ std::vector<Point> Arc::IntersectingPoints(const Line &line) const {
 
   std::vector<Point> result;
   for (double x_value : x_values) {
-    result.emplace_back(x_value, m*x_value + c);
+    Point point(x_value, m*x_value + c);
+    if (IsPointInArcBounds(point)) {
+      result.push_back(point);
+    }
   }
   return result;
 }
 
-bool Arc::InArcBounds(const Point &point) const {
+std::vector<Point> Arc::IntersectingPointsInBounds(
+    const Line &line) const {
+  auto points = IntersectingPoints(line);
+  std::vector<Point> in_bounds;
+  for (const Point &point : points) {
+    if (line.IntersectsInBounds(point)) {
+      in_bounds.push_back(point);
+    }
+  }
+  return in_bounds;
+}
+// This should handle rectangles at odd angles, even though using those would
+// break a lot of other stuff.
+bool Arc::Overlaps(const Rectangle &other) const {
+  std::vector<Line> boundary_lines = other.GetBoundaryLines();
+
+  // Additionally test the two straight boundary lines on the arc:
+  Line boundary_start = Line(centre_, Start());
+  Line boundary_end = Line(centre_, End());
+
+  for (const Line &line : boundary_lines) {
+    std::vector<Point> intersections = IntersectingPointsInBounds(line);
+    if (!intersections.empty()) {
+      return true;
+    }
+
+    for (const Line &boundary : {boundary_start, boundary_end}) {
+      bool incident;
+      Point unused_point;
+      if (boundary.IntersectsInMutualBounds(line, &incident, &unused_point)) {
+        return true;
+      }
+    }
+  }
+
+  // It's possible that the rectangle contains the entire arc.
+  Rectangle bounding_box = GetBoundingBox();
+  if (other.EntirelyContains(bounding_box)) {
+    return true;
+  }
+
+  // The last possibility is that the other rectangle is contained entirely
+  // within the arc.
+  //
+  // Since there are no boundary intersections, if any of the rectangle's four
+  // corners are in the arc region, all of them are.
+  return Intersects(other.lower_left());
+}
+
+bool Arc::Intersects(const Point &other) const {
+  double distance = centre_.L2DistanceTo(other);
+  return distance <= radius_ && IsPointInArcBounds(other);
+}
+
+Point Arc::Start() const {
+  return PointOnArcAtAngle(start_angle_deg_);
+}
+
+Point Arc::End() const {
+  return PointOnArcAtAngle(end_angle_deg_);
+}
+
+bool Arc::IsPointInArcBounds(const Point &point) const {
   double angle_rad = std::atan2(
       static_cast<double>(point.y() - centre_.y()),
       static_cast<double>(point.x() - centre_.x()));
@@ -97,14 +184,28 @@ bool Arc::InArcBounds(const Point &point) const {
     angle_rad += 2 * Radian::kPi;
   }
 
-  double angle_deg = Radian::RadiansToDegrees(angle_rad);
+  return IsAngleInArcBoundsRadians(angle_rad);
+}
 
+bool Arc::IsAngleInArcBoundsRadians(double angle_rad) const {
+  double angle_deg = Radian::RadiansToDegrees(angle_rad);
+  return IsAngleInArcBoundsDegrees(angle_deg);
+}
+
+bool Arc::IsAngleInArcBoundsDegrees(double angle_deg) const {
   if (end_angle_deg_ > start_angle_deg_) {
     return angle_deg >= start_angle_deg_ &&
            angle_deg <= end_angle_deg_;
   }
   return (angle_deg >= start_angle_deg_ && angle_deg < 360.0) ||
          (angle_deg >= 0 && angle_deg <= end_angle_deg_);
+}
+
+Point Arc::PointOnArcAtAngle(double angle_deg) const {
+  double angle_rad = Radian::DegreesToRadians(angle_deg);
+  int64_t y = static_cast<double>(radius_) * std::sin(angle_rad);
+  int64_t x = static_cast<double>(radius_) * std::cos(angle_rad);
+  return Point(x, y) + centre_;
 }
 
 std::string Arc::Describe() const {
