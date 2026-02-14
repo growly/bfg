@@ -149,6 +149,7 @@ set(GEOMETRY_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/port.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/radian.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/rounded_rectangle.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/shape_collection.cc
 )
@@ -457,6 +458,7 @@ set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/rounded_rectangle_test.cc
 )
 
 set(TEST_SRC

@@ -7,6 +7,7 @@
 
 #include "point.h"
 #include "../physical_properties_database.h"
+#include "rounded_rectangle.h"
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -147,6 +148,10 @@ bool Rectangle::Overlaps(const Rectangle &other) const {
     return false;
   }
   return true;
+}
+
+bool Rectangle::Overlaps(const RoundedRectangle &other) const {
+  return other.Overlaps(*this);
 }
 
 const Rectangle Rectangle::OverlapWith(const Rectangle &other) const {

@@ -16,6 +16,8 @@ class PhysicalPropertiesDatabase;
 
 namespace geometry {
 
+class RoundedRectangle;
+
 // TODO(aryap): Do we need to have separate classes for a "rectangle", the
 // object on a layer with connected nets and such, and a generic notion of a
 // "rectangular region", which we use to do math? I mean, maybe. But
@@ -63,6 +65,7 @@ class Rectangle : public Shape {
   // These methods do NOT consider the layers of shapes involved. They assume
   // all shapes are on the same plane.
   bool Overlaps(const Rectangle &other) const;
+  bool Overlaps(const RoundedRectangle &other) const;
   const Rectangle OverlapWith(const Rectangle &other) const;
   bool Intersects(const Point &point) const;
   bool Intersects(const Point &point, int64_t margin) const;
