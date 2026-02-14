@@ -12,5 +12,9 @@ bool Radian::IsEffectivelyZero(double radians) {
   return std::abs(radians) < std::numeric_limits<double>::epsilon();
 }
 
+double Radian::RadiansToDegrees(double radians) {
+  return radians / Radian::kPi * 180.0;
+}
+
 }  // namespace geometry
 }  // namespace bfg

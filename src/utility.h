@@ -2,6 +2,7 @@
 #define UTILITY_H_
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <glog/logging.h>
 #include <google/protobuf/text_format.h>
@@ -72,6 +73,25 @@ class Utility {
     }
     // We want 'floor' behaviour.
     return (max / multiple) * multiple;
+  }
+
+  // Solves the quadratic formula for A, B, C as given in:
+  //    Ax^2 + Bx + C = 0
+  //                x = (-B +- sqrt(B^2 - 4AC)) / 2A 
+  // and returns the 0, 1 or 2 _real_ solutions accordingly.
+  static std::vector<double> SolveQuadraticReal(
+      double A, double B, double C) {
+    // Check discriminant:
+    double discriminant = B * B - 4 * A * C;
+    if (discriminant < 0) {
+      return {};
+    } else if (discriminant == 0) {
+      return {-B / (2 * A)};
+    }
+    return {
+      (-B + std::sqrt(discriminant)) / (2 * A),
+      (-B - std::sqrt(discriminant)) / (2 * A)
+    };
   }
 
   static bool ReadTextProtoOrDie(

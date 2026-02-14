@@ -12,6 +12,7 @@
 
 #include "point.h"
 #include "rectangle.h"
+#include "rounded_rectangle.h"
 
 namespace bfg {
 namespace geometry {
@@ -584,6 +585,23 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
   }
 
   return false;
+}
+
+// We can solve the overlap of a RoundedRectangle with a Polygon in the same
+// way we solved the overlap of a regular Rectangle with a Polgyon. Actually we
+// can just reuse the Rectangle overlap to save ourselves some trouble: first
+// we just check if the Polygon overlaps any of the RoundedRectangle's inner
+// regions.
+//
+// If the polygon and rounded rectangle collide in bounding box but not in any
+// of the inner regions, we just need to check for collision with each of the
+// corner arcs.
+//
+bool Polygon::Overlaps(const RoundedRectangle &other) const {
+  if (!GetBoundingBox().Overlaps(other.GetBoundingBox())) {
+    return false;
+  }
+
 }
 
 bool Polygon::Overlaps(const Polygon &other) const {

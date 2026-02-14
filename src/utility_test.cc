@@ -105,5 +105,18 @@ TEST(Utility, StripInUnits_WithMin) {
       Utility::StripInUnits(110, 50, 1, 40), testing::ContainerEq(expected));
 }
 
+TEST(Utility, SolveQuadraticReal) {
+  std::vector<double> expected = {-0.2, -1};
+  auto results = Utility::SolveQuadraticReal(5, 6, 1);
+  EXPECT_THAT(results, testing::ContainerEq(expected));
+
+  results = Utility::SolveQuadraticReal(1, -4, 6.25);
+  EXPECT_TRUE(results.empty());
+
+  expected = {0};
+  results = Utility::SolveQuadraticReal(1, 0, 0);
+  EXPECT_THAT(results, testing::ContainerEq(expected));
+}
+
 }   // namespace
 }   // namespace bfg

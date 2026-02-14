@@ -9,6 +9,7 @@
 #include "point.h"
 #include "point_or_choice.h"
 #include "rectangle.h"
+#include "rounded_rectangle.h"
 #include "shape.h"
 #include "line.h"
 
@@ -54,6 +55,9 @@ class Polygon : public Shape {
   bool Overlaps(const Polygon &other) const;
   
   bool Overlaps(const Rectangle &rectangle) const;
+
+  bool Overlaps(const RoundedRectangle &rectangle) const;
+
   bool HasVertex(const Point &point) const;
 
   bool Intersects(const Point &point) const;

@@ -10,6 +10,7 @@ class Radian {
  public:
   static double kPi;
   static bool IsEffectivelyZero(double radians);
+  static double RadiansToDegrees(double radians);
 };
 
 }  // namespace geometry

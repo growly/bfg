@@ -21,6 +21,18 @@ namespace geometry {
 // regular rectilinear rectangle.
 class RoundedRectangle : public Rectangle {
  public:
+  struct Regions {
+    Rectangle centre;
+    Rectangle left;
+    Rectangle upper;
+    Rectangle right;
+    Rectangle lower;
+    Rectangle lower_left;
+    Rectangle upper_left;
+    Rectangle upper_right;
+    Rectangle lower_right;
+  };
+
   //static double ClosestDistanceBetween(
   //    const RoundedRectangle &lhs, const RoundedRectangle &rhs);
 
@@ -38,6 +50,9 @@ class RoundedRectangle : public Rectangle {
   bool Overlaps(const RoundedRectangle &other) const;
   bool Intersects(const Point &point) const;
   bool Intersects(const Point &point, int64_t margin) const;
+
+  std::tuple<Point, Point, Point, Point> GetInnerCoordinates() const;
+  Regions GetRegions() const;
 
   uint64_t Width() const { return upper_right_.x() - lower_left_.x(); }
   uint64_t Height() const { return upper_right_.y() - lower_left_.y(); }
@@ -90,20 +105,6 @@ class RoundedRectangle : public Rectangle {
   int64_t corner_radius_;
 
  private:
-  struct Regions {
-    Rectangle centre;
-    Rectangle left;
-    Rectangle upper;
-    Rectangle right;
-    Rectangle lower;
-    Rectangle lower_left;
-    Rectangle upper_left;
-    Rectangle upper_right;
-    Rectangle lower_right;
-  };
-
-  std::tuple<Point, Point, Point, Point> GetInnerCoordinates() const;
-  Regions GetRegions() const;
   bool WithinRadius(const Point &centre, const Point &test_point) const;
 };
 

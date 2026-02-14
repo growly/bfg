@@ -138,6 +138,7 @@ set(ATOMS_SRC
 )
 
 set(GEOMETRY_SRC 
+  ${PROJECT_SOURCE_DIR}/src/geometry/arc.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/compass.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/group.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance.cc
@@ -451,6 +452,7 @@ set(ATOMS_TEST_SRC
 )
 
 set(GEOMETRY_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/geometry/arc_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/point_test.cc

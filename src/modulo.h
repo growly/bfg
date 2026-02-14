@@ -5,7 +5,8 @@ namespace bfg {
 //    mod(-3, 5) = 2
 //    rem(-3, 5) = -3 (since -3 / 5 = 0)
 // So we have to do this:
-inline int64_t modulo(int64_t a, int64_t b) {
+template<typename T>
+inline T modulo(T a, T b) {
   int64_t remainder = a % b;
   return remainder < 0 ? remainder + b : remainder;
 }
