@@ -13,7 +13,6 @@
 #include "geometry/compass.h"
 #include "geometry/layer.h"
 #include "geometry/point.h"
-
 #include "equivalent_nets.h"
 
 namespace bfg {
@@ -23,6 +22,7 @@ class Polygon;
 class Rectangle;
 }
 
+class RoutingBlockageCache;
 class RoutingEdge;
 class RoutingTrack;
 class RoutingPath;
@@ -44,7 +44,7 @@ class RoutingVertex {
         grid_position_x_(std::nullopt),
         grid_position_y_(std::nullopt),
         centre_(centre) {
-    UpdateCachedStatus();
+    UpdateCachedStatus(std::nullopt);
   }
 
   typedef std::map<std::string, std::set<geometry::Layer>> NetToLayersMap;
@@ -100,17 +100,23 @@ class RoutingVertex {
   void AddUsingNet(
       const std::string &net,
       bool temporary,
-      std::optional<geometry::Layer> layer = std::nullopt,
-      std::optional<const geometry::Rectangle*>
+      const std::optional<const RoutingBlockageCache*> &blockage_cache =
+          std::nullopt,
+      const std::optional<geometry::Layer> layer = std::nullopt,
+      const std::optional<const geometry::Rectangle*>
           blocking_rectangle = std::nullopt,
-      std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
+      const std::optional<const geometry::Polygon*> blocking_polygon =
+          std::nullopt);
   void AddBlockingNet(
       const std::string &net,
       bool temporary,
-      std::optional<geometry::Layer> layer = std::nullopt,
-      std::optional<const geometry::Rectangle*>
+      const std::optional<const RoutingBlockageCache*> &blockage_cache =
+          std::nullopt,
+      const std::optional<geometry::Layer> layer = std::nullopt,
+      const std::optional<const geometry::Rectangle*>
           blocking_rectangle = std::nullopt,
-      std::optional<const geometry::Polygon*> blocking_polygon = std::nullopt);
+      const std::optional<const geometry::Polygon*> blocking_polygon =
+          std::nullopt);
 
   // Returns true iff the vertex is blocked given the equivalent nets `for_nets`
   // and on layer `layer_or_any`. If `layer_or_any` is std::nullopt, a blockage
@@ -127,12 +133,15 @@ class RoutingVertex {
   void SetForcedBlocked(
       bool blocked,
       bool temporary,
+      const std::optional<const RoutingBlockageCache*> &blockage_cache =
+          std::nullopt,
       const std::optional<geometry::Layer> &layer = std::nullopt);
 
   bool ForcedBlocked(
       const std::optional<geometry::Layer> &layer = std::nullopt) const;
 
-  void ResetTemporaryStatus();
+  void ResetTemporaryStatus(
+      const std::optional<const RoutingBlockageCache*> &blockage_cache);
 
   std::optional<NetWithLayers> InUseBySingleNet(
       const std::optional<geometry::Layer> &layer = std::nullopt) const {
@@ -346,7 +355,8 @@ class RoutingVertex {
 
   // Updates totally_blocked_ and totally_available_ based on the using and
   // blocking nets, permanent and temporary.
-  void UpdateCachedStatus();
+  void UpdateCachedStatus(
+      const std::optional<const RoutingBlockageCache*> &blockage_cache);
 
   // Returns all of the nets using this vertex in a map whose index is the net
   // and whose entry is a set of all the layers on which the usage occurs.

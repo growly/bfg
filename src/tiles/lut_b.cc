@@ -1072,38 +1072,30 @@ void LutB::RouteOutputs(
   std::string comb_flop_control = 
       GetMemoryOutputNet(comb_output_mux_config_).value_or("comb_flop_control");
 
-  // Combinational output.
+  // LUT output to combinational and registered outputs.
   //
-  // Connect the A0 input of the combinational output selection mux to the
-  // output of the LUT.
+  // Connect the output of the LUT to the A0 input of the register selection
+  // mux and to the A0 input of the combinational output selection mux.
   {
     std::set<geometry::Port*> comb_output_mux_A0_ports =
         comb_output_mux_->GetInstancePorts("A0");
 
-    std::set<geometry::Port*> lut_output_ports =
-        active_mux2s_[0]->GetInstancePorts("X");
-
-    route_manager.Connect(
-        comb_output_mux_A0_ports,
-        lut_output_ports,
-        comb_input_A0).IgnoreError();
-  }
-
-  // Registered output.
-  //
-  // Connect the A0 input of the register selection mux to the output of the
-  // LUT.
-  {
     std::set<geometry::Port*> reg_output_mux_A0_ports =
         reg_output_mux_->GetInstancePorts("A0");
 
     std::set<geometry::Port*> lut_output_ports =
         active_mux2s_[0]->GetInstancePorts("X");
 
-    route_manager.Connect(
-        reg_output_mux_A0_ports,
-        lut_output_ports,
-        reg_input_A0).IgnoreError();
+    route_manager.ConnectMultiplePorts(
+        std::vector<std::set<geometry::Port*>>({
+          lut_output_ports,
+          reg_output_mux_A0_ports,
+          comb_output_mux_A0_ports
+        }),
+        EquivalentNets(std::set<std::string>({
+          comb_input_A0,
+          reg_input_A0
+        }))).IgnoreError();
   }
   // Connect the output of the register input selection mux to the input of the
   // flop.

@@ -166,7 +166,7 @@ RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
               << valid.message();
     // TODO(aryap): Don't think this gets added to RoutingGrid, only the
     // track.
-    routing_grid_->RemoveVertex(bridging_vertex, true);
+    routing_grid_->RemoveVertex(bridging_vertex, true, blockage_cache);
     delete new_edge;
     return nullptr;
   }
@@ -350,7 +350,7 @@ bool RoutingPath::MaybeAbbreviate(
   geometry::Layer target_layer = DetermineLayerForAbbreviation(
       starting_index, vertex_b, vertex_d, host_track);
   RoutingVertex *bridging_vertex = host_track->CreateNewVertexAndConnect(
-      *routing_grid_, point_a, target_layer, nets_);
+      *routing_grid_, blockage_cache, point_a, target_layer, nets_);
   if (!bridging_vertex) {
     LOG(INFO) << "Could not abbreviate: " << point_a << " not available on "
               << *host_track;

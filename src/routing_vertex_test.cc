@@ -26,19 +26,19 @@ TEST(RoutingVertex, Availabile_SetForcedBlocked_Permanent) {
 
   EXPECT_TRUE(test.Available());
 
-  test.SetForcedBlocked(true, false, 0);
+  test.SetForcedBlocked(true, false, std::nullopt, 0);
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(true, false, 1);
+  test.SetForcedBlocked(true, false, std::nullopt, 1);
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(false, false, 0);
+  test.SetForcedBlocked(false, false, std::nullopt, 0);
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(false, false, 1);
+  test.SetForcedBlocked(false, false, std::nullopt, 1);
 
   EXPECT_TRUE(test.Available());
 }
@@ -58,19 +58,19 @@ TEST(RoutingVertex, Availabile_SetForcedBlocked_Temporary) {
 
   EXPECT_TRUE(test.Available());
 
-  test.SetForcedBlocked(true, true, 0);
+  test.SetForcedBlocked(true, true, std::nullopt, 0);
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(true, true, 1);
+  test.SetForcedBlocked(true, true, std::nullopt, 1);
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(false, true, 0);
+  test.SetForcedBlocked(false, true, std::nullopt, 0);
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(false, true, 1);
+  test.SetForcedBlocked(false, true, std::nullopt, 1);
 
   EXPECT_TRUE(test.Available());
 }
@@ -90,15 +90,15 @@ TEST(RoutingVertex, Availabile_SetForcedBlocked_TemporaryOverPermanent) {
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(true, true, 0);
+  test.SetForcedBlocked(true, true, std::nullopt, 0);
 
   EXPECT_FALSE(test.Available());
 
-  test.SetForcedBlocked(true, true, 1);
+  test.SetForcedBlocked(true, true, std::nullopt, 1);
 
   EXPECT_FALSE(test.Available());
 
-  test.ResetTemporaryStatus();
+  test.ResetTemporaryStatus(std::nullopt);
 
   EXPECT_FALSE(test.Available());
 }
@@ -115,7 +115,7 @@ TEST(RoutingVertex, AvailabileFor) {
   EXPECT_TRUE(test.AvailableForAll(nets));
   EXPECT_TRUE(test.AvailableForAll(nets, 0));
 
-  test.SetForcedBlocked(true, true, 0);
+  test.SetForcedBlocked(true, true, std::nullopt, 0);
 
   EXPECT_FALSE(test.Available());
   EXPECT_FALSE(test.AvailableForAll());
@@ -125,7 +125,7 @@ TEST(RoutingVertex, AvailabileFor) {
   EXPECT_TRUE(test.AvailableForAll(std::nullopt, 1));
   EXPECT_FALSE(test.AvailableForAll(std::nullopt, 0));
 
-  test.ResetTemporaryStatus();
+  test.ResetTemporaryStatus(std::nullopt);
 
   EXPECT_TRUE(test.Available());
   EXPECT_TRUE(test.AvailableForAll());
@@ -149,6 +149,7 @@ TEST(RoutingVertex, AvailabileFor_BlockingOne) {
 
   test.AddBlockingNet("other_net",
                       false,
+                      std::nullopt,
                       0);
 
   EXPECT_FALSE(test.Available());
@@ -182,9 +183,11 @@ TEST(RoutingVertex, AvailabileFor_BlockingOneUsingOther) {
 
   test.AddBlockingNet("other_net",
                       false,
+                      std::nullopt,
                       0);
   test.AddUsingNet(nets.primary(),
                    false,
+                   std::nullopt,
                    1);
 
   EXPECT_FALSE(test.Available());
@@ -211,18 +214,18 @@ TEST(RoutingVertex, AvailableForNetsOnAnyLayer) {
 
   EXPECT_TRUE(test.AvailableForNetsOnAnyLayer(nets));
 
-  test.AddBlockingNet("other", false, 0);
+  test.AddBlockingNet("other", false, std::nullopt, 0);
 
   // Should be available for net "net" on layer 1.
   EXPECT_TRUE(test.AvailableForNetsOnAnyLayer(nets));
 
-  test.AddUsingNet("net", true, 1);
+  test.AddUsingNet("net", true, std::nullopt, 1);
 
   // Still available on layer 1.
   EXPECT_TRUE(test.AvailableForNetsOnAnyLayer(nets));
 
-  test.ResetTemporaryStatus();
-  test.AddUsingNet("another", true, 1);
+  test.ResetTemporaryStatus(std::nullopt);
+  test.AddUsingNet("another", true, std::nullopt, 1);
 
   EXPECT_FALSE(test.AvailableForNetsOnAnyLayer(nets));
 }

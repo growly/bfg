@@ -68,7 +68,22 @@ absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
   for (geometry::Port *port : ports) {
     order.nodes().emplace_back(std::set<const geometry::Port*>{port});
   }
+  int64_t position = orders_.size();
+  orders_.push_back(order);
+  return position;
+}
 
+absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
+  const std::vector<std::set<geometry::Port*>> &port_sets,
+  const EquivalentNets &nets,
+  const std::optional<int64_t> priority) {
+  NetRouteOrder order(nets);
+  for (const std::set<geometry::Port*> &ports : port_sets) {
+    order.nodes().emplace_back();
+    for (const geometry::Port* port: ports) {
+      order.nodes().back().insert(port);
+    }
+  }
   int64_t position = orders_.size();
   orders_.push_back(order);
   return position;

@@ -83,7 +83,8 @@ RoutingVertex::ChangedEdgeAndLayers(
   return std::nullopt;
 }
 
-void RoutingVertex::UpdateCachedStatus() {
+void RoutingVertex::UpdateCachedStatus(
+    const std::optional<const RoutingBlockageCache*> &blockage_cache) {
   totally_available_ = forced_blockages_.empty() &&
                        temporary_forced_blockages_.empty() &&
                        in_use_by_nets_.empty() &&
@@ -98,8 +99,13 @@ void RoutingVertex::UpdateCachedStatus() {
   if (!update_tracks_on_blockage_ || totally_available_) {
     return;
   }
+
+  if (!blockage_cache) {
+    return;
+  }
+
   for (RoutingTrack *track : Tracks()) {
-    bool healed = track->HealAroundBlockedVertex(*this);
+    bool healed = track->HealAroundBlockedVertex(*this, **blockage_cache);
 
     //LOG_IF(INFO, healed)
     //    << "Track " << *track << " healed around vertex " << *this;
@@ -109,15 +115,18 @@ void RoutingVertex::UpdateCachedStatus() {
 void RoutingVertex::AddUsingNet(
     const std::string &net,
     bool temporary,
-    std::optional<geometry::Layer> layer,
-    std::optional<const geometry::Rectangle*> blocking_rectangle,
-    std::optional<const geometry::Polygon*> blocking_polygon) {
+    const std::optional<const RoutingBlockageCache*> &blockage_cache,
+    const std::optional<geometry::Layer> layer,
+    const std::optional<const geometry::Rectangle*> blocking_rectangle,
+    const std::optional<const geometry::Polygon*> blocking_polygon) {
   if (net == "") {
     return;
   }
-  // This mutates blocking state and should call UpdateCachedStatus() before it
+  // This mutates blocking state and should call UpdateCachedStatus(before it
   // exits.
-  absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
+  absl::Cleanup update_cached_status = [&]() {
+    UpdateCachedStatus(blockage_cache);
+  };
 
   auto it = in_use_by_nets_.find(net);
   if (it == in_use_by_nets_.end()) {
@@ -143,15 +152,18 @@ void RoutingVertex::AddUsingNet(
 void RoutingVertex::AddBlockingNet(
     const std::string &net,
     bool temporary,
-    std::optional<geometry::Layer> layer,
-    std::optional<const geometry::Rectangle*> blocking_rectangle,
-    std::optional<const geometry::Polygon*> blocking_polygon) {
+    const std::optional<const RoutingBlockageCache*> &blockage_cache,
+    const std::optional<geometry::Layer> layer,
+    const std::optional<const geometry::Rectangle*> blocking_rectangle,
+    const std::optional<const geometry::Polygon*> blocking_polygon) {
   if (net == "") {
     return;
   }
-  // This mutates blocking state and should call UpdateCachedStatus() before it
+  // This mutates blocking state and should call UpdateCachedStatus before it
   // exits.
-  absl::Cleanup update_cached_status = [&]() { UpdateCachedStatus(); };
+  absl::Cleanup update_cached_status = [&]() {
+    UpdateCachedStatus(blockage_cache);
+  };
 
   auto it = blocked_by_nearby_nets_.find(net);
   if (it == blocked_by_nearby_nets_.end()) {
@@ -179,6 +191,7 @@ void RoutingVertex::AddBlockingNet(
 void RoutingVertex::SetForcedBlocked(
     bool blocked,
     bool temporary,
+    const std::optional<const RoutingBlockageCache*> &blockage_cache,
     const std::optional<geometry::Layer> &layer) {
   std::set<geometry::Layer> &container =
       temporary ? temporary_forced_blockages_ : forced_blockages_;
@@ -196,7 +209,7 @@ void RoutingVertex::SetForcedBlocked(
     container.clear();
   }
 
-  UpdateCachedStatus();
+  UpdateCachedStatus(blockage_cache);
 }
 
 void RoutingVertex::RemoveTemporaryHazardsFrom(
@@ -220,13 +233,14 @@ void RoutingVertex::RemoveTemporaryHazardsFrom(
 
 // This mutates blocking state and should call UpdateCachedStatus() before it
 // exits.
-void RoutingVertex::ResetTemporaryStatus() {
+void RoutingVertex::ResetTemporaryStatus(
+    const std::optional<const RoutingBlockageCache*> &blockage_cache) {
   temporary_forced_blockages_.clear();
 
   RemoveTemporaryHazardsFrom(&in_use_by_nets_);
   RemoveTemporaryHazardsFrom(&blocked_by_nearby_nets_);
 
-  UpdateCachedStatus();
+  UpdateCachedStatus(blockage_cache);
 }
 
 std::optional<std::set<geometry::Layer>> RoutingVertex::GetNetLayers(

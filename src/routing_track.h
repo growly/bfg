@@ -15,6 +15,7 @@
 #include "geometry/point.h"
 #include "geometry/polygon.h"
 #include "geometry/rectangle.h"
+#include "routing_blockage_cache.h"
 #include "routing_edge.h"
 #include "routing_vertex.h"
 #include "physical_properties_database.h"
@@ -82,6 +83,7 @@ class RoutingTrack {
   bool MaybeAddEdgeBetween(
       RoutingVertex *one,
       RoutingVertex *the_other,
+      const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &for_nets = std::nullopt);
 
   std::set<RoutingEdge*>::iterator RemoveEdge(
@@ -94,22 +96,30 @@ class RoutingTrack {
   // track, as long as that edge would not be blocked already.
   bool AddVertex(
       RoutingVertex *vertex,
+      const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &for_nets = std::nullopt);
 
   // Checks every vertex to see if a new edge needs to be created to span over
   // it. This is necessary when vertices are blocked on other layers and
   // therefore inadvertently block edges in this track.
-  void HealEdges();
+  void HealEdges(const RoutingBlockageCache &blockage_cache);
 
   // Returns true if an edge was added.
-  bool HealAroundBlockedVertex(const RoutingVertex &vertex);
+  bool HealAroundBlockedVertex(
+      const RoutingVertex &vertex,
+      const RoutingBlockageCache &blockage_cache);
 
   RoutingEdge *GetEdgeBetween(
       RoutingVertex *lhs, RoutingVertex *rhs) const;
 
   // Remove the vertex from this track, and remove any edge that uses it.
   // Thread-safe.
-  bool RemoveVertex(RoutingVertex *vertex);
+  //
+  // The RoutingBlockageCache is used to check for any externally-managed
+  // hazards when creating "healing" edges need to be created.
+  bool RemoveVertex(
+      RoutingVertex *vertex,
+      const RoutingBlockageCache &blockage_cache);
 
   bool ContainsVertex(RoutingVertex *vertex) const;
 
@@ -117,7 +127,10 @@ class RoutingTrack {
   RoutingVertex *GetVertexAt(const geometry::Point &point) const;
   RoutingVertex *GetVertexAtOffset(int64_t offset) const;
 
-  void MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net);
+  void MarkEdgeAsUsed(
+      RoutingEdge *edge,
+      const std::string &net,
+      const RoutingBlockageCache &blockage_cache);
 
   bool IsPerpendicularTo(const RoutingTrackDirection &other) const;
 
@@ -152,6 +165,7 @@ class RoutingTrack {
   // This is a thread-safe function.
   bool CreateNearestVertexAndConnect(
       const RoutingGrid &grid,
+      const RoutingBlockageCache &blockage_cache,
       RoutingVertex *target,
       const geometry::Layer &target_layer,
       const EquivalentNets &for_nets,
@@ -161,6 +175,7 @@ class RoutingTrack {
 
   RoutingVertex *CreateNewVertexAndConnect(
       const RoutingGrid &grid,
+      const RoutingBlockageCache &blockage_cache,
       const geometry::Point &candidate_centre,
       const geometry::Layer &target_layer,
       const EquivalentNets &for_nets);

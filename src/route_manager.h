@@ -96,6 +96,11 @@ class RouteManager {
       const EquivalentNets &nets,
       const std::optional<int64_t> priority = std::nullopt);
 
+  absl::StatusOr<int64_t> ConnectMultiplePorts(
+    const std::vector<std::set<geometry::Port*>> &port_sets,
+    const EquivalentNets &nets,
+    const std::optional<int64_t> priority = std::nullopt);
+
   //absl::StatusOr<int64_t> ConnectMultiplePorts(
   //    const std::vector<std::pair<std::string, std::string>> port_names,
   //    const EquivalentNets &nets,

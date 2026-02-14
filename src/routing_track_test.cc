@@ -8,6 +8,7 @@
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 #include "physical_properties_database.h"
+#include "routing_grid.h"
 #include "routing_track.h"
 #include "routing_track_blockage.h"
 
@@ -189,11 +190,15 @@ TEST(RoutingTrackTest, GetImmediateNeighbours) {
     vertices.emplace_back(vertex);
   }
 
+  PhysicalPropertiesDatabase physical_db;
+  RoutingGrid routing_grid(physical_db);
+  RoutingBlockageCache empty_blockage_cache(routing_grid);
+
   // Empty track -> no neighbours:
   EXPECT_TRUE(track.GetImmediateNeighbours(*vertices[5]).empty());
 
   for (auto &vertex : vertices) {
-    track.AddVertex(vertex.get());
+    track.AddVertex(vertex.get(), empty_blockage_cache);
   }
 
   // Do not return the vertex matching the requested offset.

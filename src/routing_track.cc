@@ -15,6 +15,7 @@
 #include "geometry/polygon.h"
 #include "geometry/radian.h"
 #include "geometry/rectangle.h"
+#include "routing_blockage_cache.h"
 #include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_vertex.h"
@@ -177,6 +178,7 @@ RoutingEdge *RoutingTrack::GetEdgeBetween(
 bool RoutingTrack::MaybeAddEdgeBetween(
     RoutingVertex *one,
     RoutingVertex *the_other,
+    const RoutingBlockageCache &blockage_cache,
     const std::optional<EquivalentNets> &for_nets) {
   std::vector<RoutingTrackBlockage*> same_net_collisions;
   std::vector<RoutingTrackBlockage*> temporary_same_net_collisions;
@@ -187,9 +189,18 @@ bool RoutingTrack::MaybeAddEdgeBetween(
                            &same_net_collisions,
                            &temporary_same_net_collisions))
     return false;
+
   RoutingEdge *edge = new RoutingEdge(one, the_other);
   edge->set_track(this);
   edge->set_layer(layer_);
+
+  auto cache_check = blockage_cache.ValidAgainstKnownBlockages(
+      *edge, for_nets);
+  if (!cache_check.ok()) {
+    delete edge;
+    return false;
+  }
+
   edge->first()->AddEdge(edge);
   edge->second()->AddEdge(edge);
   edges_.insert(edge);
@@ -211,25 +222,30 @@ bool RoutingTrack::MaybeAddEdgeBetween(
   return true;
 }
 
-void RoutingTrack::HealEdges() {
+// FIXME(aryap): Why isn't this called anywhere?
+void RoutingTrack::HealEdges(const RoutingBlockageCache &blockage_cache) {
   for (RoutingVertex *vertex : vertices_) {
     if (vertex->Available()) {
       continue;
     }
     std::vector neighbours = GetImmediateNeighbours(*vertex);
     if (neighbours.size() == 2) {
-      MaybeAddEdgeBetween(neighbours.front(), neighbours.back(), {});
+      MaybeAddEdgeBetween(
+          neighbours.front(), neighbours.back(), blockage_cache, {});
     }
   }
 }
 
-bool RoutingTrack::HealAroundBlockedVertex(const RoutingVertex &vertex) {
+bool RoutingTrack::HealAroundBlockedVertex(
+    const RoutingVertex &vertex,
+    const RoutingBlockageCache &blockage_cache) {
   if (vertex.Available()) {
     return false;
   }
   std::vector neighbours = GetImmediateNeighbours(vertex);
   if (neighbours.size() == 2) {
-    return MaybeAddEdgeBetween(neighbours.front(), neighbours.back(), {});
+    return MaybeAddEdgeBetween(
+        neighbours.front(), neighbours.back(), blockage_cache, {});
   }
   return false;
 }
@@ -292,6 +308,7 @@ std::vector<RoutingVertex*> RoutingTrack::GetImmediateNeighbours(
 
 bool RoutingTrack::AddVertex(
     RoutingVertex *vertex,
+    const RoutingBlockageCache &blockage_cache,
     const std::optional<EquivalentNets> &for_nets) {
   std::unique_lock mu(lock_);
   LOG_IF(FATAL, !Intersects(vertex))
@@ -311,7 +328,8 @@ bool RoutingTrack::AddVertex(
   if (edges_only_to_neighbours_) {
     std::vector<RoutingVertex*> neighbours = GetImmediateNeighbours(*vertex);
     for (RoutingVertex *other : neighbours) {
-      any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
+      any_success |= MaybeAddEdgeBetween(
+          vertex, other, blockage_cache, for_nets);
     }
   } else {
     // Generate an edge between the new vertex and every other vertex, unless it
@@ -322,7 +340,8 @@ bool RoutingTrack::AddVertex(
       // We _don't want_ short-circuiting here. Using the bitwise OR is correct
       // because bools are defined to be true or false, and it forces evaluation
       // of both operands every time.
-      any_success |= MaybeAddEdgeBetween(vertex, other, for_nets);
+      any_success |= MaybeAddEdgeBetween(
+          vertex, other, blockage_cache, for_nets);
     }
   }
 
@@ -335,7 +354,9 @@ bool RoutingTrack::AddVertex(
   return any_success;
 }
 
-bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
+bool RoutingTrack::RemoveVertex(
+    RoutingVertex *vertex,
+    const RoutingBlockageCache &blockage_cache) {
   std::unique_lock mu(lock_);
 
   int64_t vertex_offset = ProjectOntoTrack(vertex->centre());
@@ -351,7 +372,8 @@ bool RoutingTrack::RemoveVertex(RoutingVertex *vertex) {
     std::vector<RoutingVertex*> neighbours = GetImmediateNeighbours(*vertex);
     if (neighbours.size() == 2) {
       // TODO(aryap): for_nets is what here?
-      MaybeAddEdgeBetween(neighbours.front(), neighbours.back(), {});
+      MaybeAddEdgeBetween(
+          neighbours.front(), neighbours.back(), blockage_cache, {});
     }
   }
 
@@ -428,7 +450,10 @@ bool RoutingTrack::IsPointOnTrack(const geometry::Point &point) const {
   return true;
 }
 
-void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
+void RoutingTrack::MarkEdgeAsUsed(
+    RoutingEdge *edge,
+    const std::string &net,
+    const RoutingBlockageCache &blockage_cache) {
   edge->SetPermanentNet(net);
   //LOG(INFO) << "assigning edge " << *edge;
 
@@ -486,7 +511,7 @@ void RoutingTrack::MarkEdgeAsUsed(RoutingEdge *edge, const std::string &net) {
     if (vertex != edge->first() && vertex != edge->second()) {
       if (EdgeSpansVertex(*edge, *vertex)) {
         vertex->AddEdges(edge, edge);
-        vertex->AddUsingNet(net, false);   // Permanent.
+        vertex->AddUsingNet(net, false, &blockage_cache);   // Permanent.
       }
     }
   }
@@ -544,6 +569,7 @@ void RoutingTrack::AssignThisTrackToVertex(RoutingVertex *vertex) {
 // need to return the existing one to the caller.
 bool RoutingTrack::CreateNearestVertexAndConnect(
     const RoutingGrid &grid,
+    const RoutingBlockageCache &blockage_cache,
     RoutingVertex *target,
     const geometry::Layer &target_layer,
     const EquivalentNets &for_nets,
@@ -622,8 +648,8 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
   }
 
   mu.unlock();
-  if (!AddVertex(bridging_vertex, for_nets)) {
-    RemoveVertex(bridging_vertex);
+  if (!AddVertex(bridging_vertex, blockage_cache, for_nets)) {
+    RemoveVertex(bridging_vertex, blockage_cache);
     return false;
   }
 
@@ -633,6 +659,7 @@ bool RoutingTrack::CreateNearestVertexAndConnect(
 
 RoutingVertex *RoutingTrack::CreateNewVertexAndConnect(
     const RoutingGrid &grid,
+    const RoutingBlockageCache &blockage_cache,
     const geometry::Point &candidate_centre,
     const geometry::Layer &target_layer,
     const EquivalentNets &for_nets) {
@@ -653,8 +680,8 @@ RoutingVertex *RoutingTrack::CreateNewVertexAndConnect(
   }
 
   mu.unlock();
-  if (!AddVertex(validated_vertex, for_nets)) {
-    RemoveVertex(validated_vertex);
+  if (!AddVertex(validated_vertex, blockage_cache, for_nets)) {
+    RemoveVertex(validated_vertex, blockage_cache);
     return nullptr;
   }
 
@@ -1430,9 +1457,9 @@ bool RoutingTrack::ApplyVertexBlockageToSingleVertex(
   if (net != "") {
     // TODO(aryap): Put these on temporary mutation plane so that they can
     // be undone.
-    vertex->AddBlockingNet(net, is_temporary, layer_);
+    vertex->AddBlockingNet(net, is_temporary, std::nullopt, layer_);
   } else {
-    vertex->SetForcedBlocked(true, is_temporary, layer_);
+    vertex->SetForcedBlocked(true, is_temporary, std::nullopt, layer_);
   }
   return true;
 }

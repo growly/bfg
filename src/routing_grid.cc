@@ -248,6 +248,9 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
   auto tracks_and_positions =
       grid_geometry.CandidateVertexPositionsOnCrossedTracks(
           blockage.shape());
+
+  // Empty;
+  RoutingBlockageCache blockage_cache(*this);
   
   for (auto entry : tracks_and_positions) {
     RoutingTrack *track = entry.first;
@@ -258,6 +261,7 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
     for (const geometry::Point &point : entry.second) {
       RoutingVertex *new_vertex =
           track->CreateNewVertexAndConnect(*this,
+                                           blockage_cache,
                                            point,
                                            other_layer,
                                            blockage.shape().net());
@@ -266,6 +270,7 @@ void RoutingGrid::AddOffGridVerticesForBlockage(
       }
       new_vertex->AddUsingNet(blockage.shape().net(),
                               is_temporary,
+                              &blockage_cache,
                               blockage.shape().layer());
       AddOffGridVertex(new_vertex);
 
@@ -291,9 +296,6 @@ absl::Status RoutingGrid::ValidAgainstHazards(
   }
   status = ValidAgainstInstalledPaths(
       vertex, exceptional_nets, access_direction);
-  if (!status.ok()) {
-    return status;
-  }
   return status;
 }
 
@@ -311,9 +313,6 @@ absl::Status RoutingGrid::ValidAgainstHazards(
     return status;
   }
   status = ValidAgainstInstalledPaths(footprint, exceptional_nets);
-  if (!status.ok()) {
-    return status;
-  }
   return status;
 }
 
@@ -585,7 +584,6 @@ absl::StatusOr<RoutingGrid::VertexWithLayer> RoutingGrid::ConnectToGrid(
     const geometry::Port &port,
     const EquivalentNets &connectable_nets,
     const RoutingBlockageCache &blockage_cache) {
-  LOG(INFO) << blockage_cache.Summary();
   auto try_add_access_vertices = AddAccessVerticesForPoint(
       port.centre(), port.layer(), connectable_nets, blockage_cache);
   if (try_add_access_vertices.ok()) {
@@ -648,6 +646,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     // Thread-safe call.
     bool success = track->CreateNearestVertexAndConnect(
         *this,
+        blockage_cache,
         off_grid,
         access_layer,
         connectable_nets,
@@ -696,7 +695,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
             *bridging_vertex, connectable_nets, track->direction());
       }
       if (!validity.ok()) {
-        track->RemoveVertex(bridging_vertex);
+        track->RemoveVertex(bridging_vertex, blockage_cache);
         delete bridging_vertex;
         errors.push_back(std::string(validity.message()));
         continue;
@@ -728,7 +727,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
                 << " and " << off_grid->centre();
       if (bridging_vertex_is_new) {
         // Rollback extra hard!
-        RemoveVertex(bridging_vertex, true);  // and delete!
+        RemoveVertex(bridging_vertex, true, blockage_cache);  // and delete!
       }
       delete edge;
       errors.push_back(std::string(validity.message()));
@@ -832,6 +831,8 @@ RoutingGrid::AddAccessVerticesForPoint(
   };
   std::sort(access_options.begin(), access_options.end(), comparator);
 
+  std::string error_message;
+
   // Now that our options are sorted by the via cost they would incur, iterate
   // in increasing cost order until one of the options can accommodate the
   // target point.
@@ -859,6 +860,10 @@ RoutingGrid::AddAccessVerticesForPoint(
     std::set<RoutingTrackDirection> access_directions =
         ValidAccessDirectionsForVertex(*off_grid, for_nets, blockage_cache);
     if (access_directions.empty()) {
+      error_message = absl::StrCat(
+          error_message,
+          "; No valid access directions on layer ",
+          access_layer);
       VLOG(15) << "Invalid off grid candidate at " << off_grid->centre();
       continue;
     }
@@ -885,7 +890,7 @@ RoutingGrid::AddAccessVerticesForPoint(
     return {{vertex, target_layer}};
   }
 
-  return absl::NotFoundError("No workable options");
+  return absl::NotFoundError(absl::StrCat(error_message, "; No workable options"));
 }
 
 absl::StatusOr<RoutingGrid::VertexWithLayer>
@@ -1072,6 +1077,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
       bool off_grid_already_exists = false;
       success = tracks[i]->CreateNearestVertexAndConnect(
           *this,
+          blockage_cache,
           off_grid.get(),
           vertex_layer,
           for_nets,
@@ -1135,9 +1141,9 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
                << " and " << off_grid_copy->centre();
       // Rollback extra hard!
       if (bridging_vertex_is_new) {
-        RemoveVertex(bridging_vertex, true);  // and delete!
+        RemoveVertex(bridging_vertex, true, blockage_cache);  // and delete!
       }
-      RemoveVertex(off_grid_copy, true);  // and delete!
+      RemoveVertex(off_grid_copy, true, blockage_cache);  // and delete!
       mu.lock();
       delete edge;    
 
@@ -1482,6 +1488,9 @@ absl::Status RoutingGrid::ConnectLayers(
   const RoutingLayerInfo &horizontal_info = split_directions.first;
   const RoutingLayerInfo &vertical_info = split_directions.second;
 
+  // Empty.
+  RoutingBlockageCache blockage_cache(*this);
+
   auto maybe_routing_via_info = GetRoutingViaInfo(first, second);
   if (!maybe_routing_via_info) {
     std::stringstream ss;
@@ -1568,8 +1577,8 @@ absl::Status RoutingGrid::ConnectLayers(
       RoutingVertex *vertex = new RoutingVertex(geometry::Point(x, y));
       // These methods will assign the respective horizontal_track and
       // vertical_tracks of the vertex to the tracks themselves.
-      horizontal_track->AddVertex(vertex);
-      vertical_track->AddVertex(vertex);
+      horizontal_track->AddVertex(vertex, blockage_cache);
+      vertical_track->AddVertex(vertex, blockage_cache);
 
       vertex->set_update_tracks_on_blockage(use_linear_cost_model_);
 
@@ -1790,7 +1799,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
 
   // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
   // rest must be deleted.
-  absl::Status install_status = InstallPath(blockage_cache, cheapest);
+  absl::Status install_status = InstallPath(cheapest, blockage_cache);
 
   for (auto it = options.begin() + 1; it != options.end(); ++it) {
     delete *it;
@@ -1823,7 +1832,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
     return find_path.status();
   }
 
-  absl::Status install = InstallPath(blockage_cache, *find_path);
+  absl::Status install = InstallPath(*find_path, blockage_cache);
   if (!install.ok()) {
     return install;
   }
@@ -1933,7 +1942,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteToNet(
   if (!find_path.ok()) {
     return find_path;
   }
-  absl::Status install = InstallPath(blockage_cache, *find_path);
+  absl::Status install = InstallPath(*find_path, blockage_cache);
   if (!install.ok()) {
     return install;
   }
@@ -2013,15 +2022,18 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   return shortest_path.release();
 }
 
-bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
+bool RoutingGrid::RemoveVertex(
+    RoutingVertex *vertex,
+    bool and_delete,
+    const RoutingBlockageCache &blockage_cache) {
   bool might_be_off_grid = false;
   if (vertex->horizontal_track()) {
-    vertex->horizontal_track()->RemoveVertex(vertex);
+    vertex->horizontal_track()->RemoveVertex(vertex, blockage_cache);
   } else {
     might_be_off_grid = true;
   }
   if (vertex->vertical_track()) {
-    vertex->vertical_track()->RemoveVertex(vertex);
+    vertex->vertical_track()->RemoveVertex(vertex, blockage_cache);
   } else {
     might_be_off_grid = true;
   }
@@ -2077,7 +2089,9 @@ bool RoutingGrid::RemoveVertex(RoutingVertex *vertex, bool and_delete) {
 //
 // We do this even though the vias might get "optimised out".
 void RoutingGrid::InstallVertexInPath(
-    RoutingVertex *vertex, const std::string &net) {
+    RoutingVertex *vertex,
+    const std::string &net,
+    const RoutingBlockageCache &blockage_cache) {
   if (vertex->horizontal_track() && vertex->vertical_track()) {
     // If the vertex is on the grid, we only disable the recorded neighbours.
     // We maybe could get await without adding blockages to their tracks as well
@@ -2105,7 +2119,7 @@ void RoutingGrid::InstallVertexInPath(
     for (const auto &position : kDisabledNeighbours) {
       std::set<RoutingVertex*> neighbours = vertex->GetNeighbours(position);
       for (RoutingVertex *neighbour : neighbours) {
-        neighbour->AddBlockingNet(net, false);  // Permanent.
+        neighbour->AddBlockingNet(net, false, &blockage_cache);  // Permanent.
       }
     };
     return;
@@ -2157,7 +2171,7 @@ void RoutingGrid::InstallVertexInPath(
 
   std::set<RoutingTrack*> blocked_tracks;
   for (RoutingVertex *enveloping_vertex : inner_vertices) {
-    enveloping_vertex->AddBlockingNet(net, false);   // Permanent.
+    enveloping_vertex->AddBlockingNet(net, false, &blockage_cache);   // Permanent.
     // We also have to add blockages to the tracks on which these vertices
     // appear, since by being off-grid we're _presumably_ too close to
     // accomodate both a via and an edge next to each other.
@@ -2225,15 +2239,16 @@ void RoutingGrid::InstallVertexInPath(
         //          << " is too close (" << min_distance << " < "
         //          << min_separation << ") to "
         //          << *via_encap << " at " << vertex->centre();
-        enveloping_vertex->AddBlockingNet(net, false);   // Permanent.
+        // Permanent.
+        enveloping_vertex->AddBlockingNet(net, false, &blockage_cache);
       }
     }
   }
 }
 
 absl::Status RoutingGrid::InstallPath(
-    const RoutingBlockageCache &blockage_cache,
-    RoutingPath *path) {
+    RoutingPath *path,
+    const RoutingBlockageCache &blockage_cache) {
   LOG(INFO) << "In InstallPath waiting for lock";
   std::unique_lock mu(lock_);
   LOG(INFO) << "In InstallPath lock ok";
@@ -2275,7 +2290,7 @@ absl::Status RoutingGrid::InstallPath(
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
     if (edge->track() != nullptr) {
-      edge->track()->MarkEdgeAsUsed(edge, net);
+      edge->track()->MarkEdgeAsUsed(edge, net, blockage_cache);
     } else {
       edge->SetPermanentNet(net);
       // Edges which aren't on a track (off grid edges) could be blockages to
@@ -2314,8 +2329,9 @@ absl::Status RoutingGrid::InstallPath(
     next_vertex = path->vertices()[i + 1];
 
     last_vertex->AddEdges(last_edge, next_edge);
-    last_vertex->AddUsingNet(net, false, *next_edge->layer());  // Permanent.
-    next_vertex->AddUsingNet(net, false, *next_edge->layer());  // Permanent.
+    // Permanent.
+    last_vertex->AddUsingNet(net, false, &blockage_cache, *next_edge->layer());
+    next_vertex->AddUsingNet(net, false, &blockage_cache, *next_edge->layer());
 
     last_edge = next_edge;
     last_vertex = next_vertex;
@@ -2323,8 +2339,10 @@ absl::Status RoutingGrid::InstallPath(
     ++i;
   }
   last_vertex->AddEdges(last_edge, nullptr);
-  path->vertices().back()->AddUsingNet(net, false, *path->EndAccessLayer());
-  path->vertices().front()->AddUsingNet(net, false, *path->StartAccessLayer());
+  path->vertices().back()->AddUsingNet(
+      net, false, &blockage_cache, *path->EndAccessLayer());
+  path->vertices().front()->AddUsingNet(
+      net, false, &blockage_cache, *path->StartAccessLayer());
 
   // This is in lieu of a unit test :/
   if (VLOG_IS_ON(60)) {
@@ -2340,7 +2358,7 @@ absl::Status RoutingGrid::InstallPath(
   }
 
   for (RoutingVertex *vertex : path->vertices()) {
-    InstallVertexInPath(vertex, net);
+    InstallVertexInPath(vertex, net, blockage_cache);
   }
   
   paths_.push_back(path);
@@ -2867,6 +2885,9 @@ void RoutingGrid::ApplyBlockageToOneVertex(
     RoutingVertex *vertex,
     bool *any_access_out,
     std::optional<RoutingTrackDirection> access_direction) {
+  // Empty.
+  RoutingBlockageCache blockage_cache(*this);
+
   // TODO(aryap): Speed this up by returning early if the blockage is really far
   // from the vertex. Like > 2 pitches.
   // TODO(aryap): Doesn't this need to be temporary and rewindable like all
@@ -2887,12 +2908,12 @@ void RoutingGrid::ApplyBlockageToOneVertex(
   if (blockage.IntersectsPoint(vertex->centre(), 0)) {
     const std::string &net = blockage.shape().net();
     if (net != "") {
-      vertex->AddUsingNet(net, is_temporary, layer);
+      vertex->AddUsingNet(net, is_temporary, &blockage_cache, layer);
       // See note above.
-      //vertex->AddBlockingNet(net, is_temporary, layer);
+      //vertex->AddBlockingNet(net, is_temporary, &blockage_cache, layer);
     } else {
       // See note above.
-      //vertex->SetForcedBlocked(true, is_temporary, layer);
+      //vertex->SetForcedBlocked(true, is_temporary, &blockage_cache, layer);
     }
     VLOG(16) << "Blockage: " << blockage.shape()
              << " intersects " << vertex->centre()
@@ -2914,7 +2935,7 @@ void RoutingGrid::ApplyBlockageToOneVertex(
       // exceptional_nets = nullopt so that no exception is made.
       if (blockage.Blocks(*vertex, std::nullopt, direction)) {
         if (net != "") {
-          vertex->AddBlockingNet(net, is_temporary, layer);
+          vertex->AddBlockingNet(net, is_temporary, &blockage_cache, layer);
         }
         VLOG(16) << "Blockage: " << blockage.shape()
                  << " blocks " << vertex->centre()
@@ -2934,7 +2955,7 @@ void RoutingGrid::ApplyBlockageToOneVertex(
   }
 
   if (!any_access) {
-    vertex->SetForcedBlocked(true, is_temporary, layer);
+    vertex->SetForcedBlocked(true, is_temporary, &blockage_cache, layer);
   }
   if (any_access_out) {
     *any_access_out = any_access;
@@ -3316,7 +3337,7 @@ void RoutingGrid::SetUpTemporaryBlockages(
 void RoutingGrid::TearDownTemporaryBlockages(
     const TemporaryBlockageInfo &blockage_info) {
   for (RoutingVertex *const vertex : blockage_info.blocked_vertices) {
-    vertex->ResetTemporaryStatus();
+    vertex->ResetTemporaryStatus(std::nullopt);
   }
   for (RoutingEdge *const edge : blockage_info.blocked_edges) {
     // This should clear any used nets and unblock the edge.

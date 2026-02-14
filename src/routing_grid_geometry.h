@@ -21,10 +21,9 @@ class RoutingGridGeometry {
  public:
   // Modifies the RoutingLayerInfo offset so that a track falls on the given
   // position.
-  static void AlignRoutingLayerInfos(
-      const geometry::Point &point,
-      RoutingLayerInfo *horizontal,
-      RoutingLayerInfo *vertical);
+  static void AlignRoutingLayerInfos(const geometry::Point &point,
+                                     RoutingLayerInfo *horizontal,
+                                     RoutingLayerInfo *vertical);
 
   RoutingGridGeometry();
   RoutingGridGeometry(const RoutingGridGeometry &other);

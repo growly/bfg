@@ -60,13 +60,14 @@ bool RoutingGridBlockage<geometry::Rectangle>::Blocks(
     const RoutingEdge &edge,
     int64_t padding,
     const std::optional<EquivalentNets> &exceptional_nets) const {
-  bool intersects = routing_grid_.WireWouldIntersect(edge, shape_, padding); 
+  bool intersects = routing_grid_.WireWouldIntersect(
+      edge, shape_, blockage_layers_, padding); 
   if (intersects &&
       exceptional_nets && exceptional_nets->Contains(shape_.net())) {
     if (padding == 0) {
       return false;
     }
-    return !routing_grid_.WireWouldIntersect(edge, shape_, 0);
+    return !routing_grid_.WireWouldIntersect(edge, shape_, blockage_layers_, 0);
   }
   return intersects;
 }

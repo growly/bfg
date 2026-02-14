@@ -68,6 +68,20 @@
 //
 // In the short term it will be enough to give users a way to simply connect a
 // point to an existing net, I think?
+//
+// On the relationship between TemopraryBlockages and RoutingBlockageCache
+// ----------------------------------------------------------------------------
+//
+// RoutingBlockageCache is meant to act as a fast, thread-local collection of
+// blockages. The RoutingGrid itself supports permanent mutations to the base
+// grid as a result of both permanent and temporary blockages, but these
+// mutations are intended to be longer-lived than a single path search, because
+// they will necessarily apply to all paths. As a result, permanent and
+// temporary blockages applied to the RoutingGrid itself must safely assume
+// that no RoutingBlockageCache exists, and any mutations that are caused must
+// be independent of such caches. It is expected that any searches relying on
+// RoutingBlockageCaches be executed in between calls to SetUp- and
+// TearDownTemporaryBlockages, for example.
 
 namespace bfg {
 
@@ -157,7 +171,10 @@ class RoutingGrid {
 
   void AddOffGridEdge(RoutingEdge *edge);
 
-  bool RemoveVertex(RoutingVertex *vertex, bool and_delete) EXCLUDES(lock_);
+  bool RemoveVertex(
+      RoutingVertex *vertex,
+      bool and_delete,
+      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
 
   bool ContainsVertex(RoutingVertex *vertex) const;
 
@@ -737,10 +754,13 @@ class RoutingGrid {
       bool target_must_be_usable);
 
   absl::Status InstallPath(
-      const RoutingBlockageCache &blockage_cache,
-      RoutingPath *path) EXCLUDES(lock_);
+      RoutingPath *path,
+      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
 
-  void InstallVertexInPath(RoutingVertex *vertex, const std::string &net);
+  void InstallVertexInPath(
+      RoutingVertex *vertex,
+      const std::string &net,
+      const RoutingBlockageCache &blockage_cache);
 
   void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
 
