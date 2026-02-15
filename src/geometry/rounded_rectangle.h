@@ -4,6 +4,7 @@
 #include <ostream>
 #include <optional>
 
+#include "arc.h"
 #include "rectangle.h"
 #include "shape.h"
 #include "point.h"
@@ -27,6 +28,12 @@ class RoundedRectangle : public Rectangle {
     Rectangle upper;
     Rectangle right;
     Rectangle lower;
+    Arc lower_left_arc;
+    Arc upper_left_arc;
+    Arc upper_right_arc;
+    Arc lower_right_arc;
+
+    // Bounding boxes for the corner regions.
     Rectangle lower_left;
     Rectangle upper_left;
     Rectangle upper_right;

@@ -5,6 +5,7 @@
 #include <glog/logging.h>
 #include <sstream>
 
+#include "arc.h"
 #include "point.h"
 #include "../physical_properties_database.h"
 
@@ -55,6 +56,12 @@ RoundedRectangle::Regions RoundedRectangle::GetRegions() const {
   regions.lower_right = Rectangle(inner_lower_right + Point(0, -corner_radius_),
                                   inner_lower_right + Point(corner_radius_, 0));
   regions.lower_left = Rectangle(lower_left_, inner_lower_left);
+
+  regions.lower_left_arc = Arc(inner_lower_left, corner_radius_, 180, 270);
+  regions.upper_left_arc = Arc(inner_upper_left, corner_radius_, 90, 180);
+  regions.upper_right_arc = Arc(inner_upper_right, corner_radius_, 0, 90);
+  regions.lower_right_arc = Arc(inner_lower_right, corner_radius_, 270, 0);
+
   return regions;
 }
 
@@ -143,13 +150,13 @@ bool RoundedRectangle::Overlaps(const RoundedRectangle &other) const {
       &our_regions.upper,
       &our_regions.right,
       &our_regions.lower};
-
   std::vector<Rectangle*> theirs_easy = {
       &their_regions.centre,
       &their_regions.left,
       &their_regions.upper,
       &their_regions.right,
       &their_regions.lower};
+
   for (Rectangle *ours : ours_easy) {
     for (Rectangle *theirs : theirs_easy) {
       if (ours->Overlaps(*theirs)) {

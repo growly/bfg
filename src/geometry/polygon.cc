@@ -10,6 +10,7 @@
 
 #include <glog/logging.h>
 
+#include "arc.h"
 #include "point.h"
 #include "rectangle.h"
 #include "rounded_rectangle.h"
@@ -596,11 +597,34 @@ bool Polygon::Overlaps(const Rectangle &rectangle) const {
 // If the polygon and rounded rectangle collide in bounding box but not in any
 // of the inner regions, we just need to check for collision with each of the
 // corner arcs.
-//
 bool Polygon::Overlaps(const RoundedRectangle &other) const {
   if (!GetBoundingBox().Overlaps(other.GetBoundingBox())) {
     return false;
   }
+  RoundedRectangle::Regions other_regions = other.GetRegions();
+
+  std::array<Rectangle*, 5> rectangle_regions = {
+      &other_regions.centre,
+      &other_regions.left,
+      &other_regions.upper,
+      &other_regions.right,
+      &other_regions.lower
+  };
+  for (Rectangle *region : rectangle_regions) {
+    if (Overlaps(*region))
+      return true;
+  }
+  std::array<Arc*, 4> arc_regions = {
+      &other_regions.lower_left_arc,
+      &other_regions.upper_left_arc,
+      &other_regions.upper_right_arc,
+      &other_regions.lower_right_arc
+  };
+  for (Arc *arc : arc_regions) {
+    //if (arc->Overlaps(*this))
+    //  return true;
+  }
+  return false;
 }
 
 bool Polygon::Overlaps(const Polygon &other) const {

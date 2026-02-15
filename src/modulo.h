@@ -1,3 +1,6 @@
+#ifndef MODULO_H_
+#define MODULO_H_
+
 namespace bfg {
 
 // C++ modulo is more 'remainder' than 'modulo' because of how negative numbers
@@ -12,3 +15,5 @@ inline T modulo(T a, T b) {
 }
 
 }   // namespace bfg
+
+#endif  // MODULO_H_

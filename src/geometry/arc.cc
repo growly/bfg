@@ -6,14 +6,21 @@
 #include <vector>
 
 #include "../utility.h"
+#include "line.h"
 #include "point.h"
+#include "polygon.h"
 #include "radian.h"
 #include "rectangle.h"
 #include "shape.h"
-#include "line.h"
 
 namespace bfg {
 namespace geometry {
+
+Arc::Arc()
+    : centre_(Point(0, 0)),
+      radius_(0),
+      start_angle_deg_(0),
+      end_angle_deg_(0) {}
 
 const Rectangle Arc::GetBoundingBox() const {
   Rectangle bounding_box;
@@ -126,14 +133,62 @@ std::vector<Point> Arc::IntersectingPointsInBounds(
 }
 // This should handle rectangles at odd angles, even though using those would
 // break a lot of other stuff.
-bool Arc::Overlaps(const Rectangle &other) const {
-  std::vector<Line> boundary_lines = other.GetBoundaryLines();
+bool Arc::Overlaps(const Rectangle &rectangle) const {
+  if (!GetBoundingBox().Overlaps(rectangle)) {
+    return false;
+  }
 
+  std::vector<Line> boundary_lines = rectangle.GetBoundaryLines();
+  if (Intersects(boundary_lines)) {
+    return true;
+  }
+
+  // It's possible that the rectangle contains the entire arc.
+  Rectangle bounding_box = GetBoundingBox();
+  if (rectangle.EntirelyContains(bounding_box)) {
+    return true;
+  }
+
+  // The last possibility is that the other rectangle is contained entirely
+  // within the arc.
+  //
+  // Since there are no boundary intersections, if any of the rectangle's four
+  // corners are in the arc region, all of them are.
+  return Intersects(rectangle.lower_left());
+}
+
+bool Arc::Overlaps(const Polygon &polygon) const {
+  if (!GetBoundingBox().Overlaps(polygon.GetBoundingBox())) {
+    return false;
+  }
+
+  std::vector<Line> boundary_lines = polygon.Edges();
+  if (Intersects(boundary_lines)) {
+    return true;
+  }
+
+  // It's possible that the entire polygon fits in the arc or that the entire
+  // arc fits in the polygon.
+  //
+  // TODO(arypa): Until we have a Polygon triangulation + point intersection
+  // method, this is too hard to answer. It's also usually unnecessary. So in
+  // the interests of me graduating, I'll leave it for later.
+  LOG(WARNING) << "Fudging overlap without proper test: " << *this << " and "
+               << polygon;
+  return true;
+}
+
+bool Arc::Intersects(const Point &other) const {
+  double distance = centre_.L2DistanceTo(other);
+  return distance <= radius_ && IsPointInArcBounds(other);
+}
+
+bool Arc::Intersects(const std::vector<Line> &lines) const {
   // Additionally test the two straight boundary lines on the arc:
   Line boundary_start = Line(centre_, Start());
   Line boundary_end = Line(centre_, End());
 
-  for (const Line &line : boundary_lines) {
+  for (const Line &line : lines) {
     std::vector<Point> intersections = IntersectingPointsInBounds(line);
     if (!intersections.empty()) {
       return true;
@@ -148,23 +203,7 @@ bool Arc::Overlaps(const Rectangle &other) const {
     }
   }
 
-  // It's possible that the rectangle contains the entire arc.
-  Rectangle bounding_box = GetBoundingBox();
-  if (other.EntirelyContains(bounding_box)) {
-    return true;
-  }
-
-  // The last possibility is that the other rectangle is contained entirely
-  // within the arc.
-  //
-  // Since there are no boundary intersections, if any of the rectangle's four
-  // corners are in the arc region, all of them are.
-  return Intersects(other.lower_left());
-}
-
-bool Arc::Intersects(const Point &other) const {
-  double distance = centre_.L2DistanceTo(other);
-  return distance <= radius_ && IsPointInArcBounds(other);
+  return false;
 }
 
 Point Arc::Start() const {

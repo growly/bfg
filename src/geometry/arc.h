@@ -12,14 +12,19 @@
 #include "line.h"
 #include "point.h"
 #include "shape.h"
+#include "rectangle.h"
 
 namespace bfg {
 namespace geometry {
+
+class Polygon;
 
 // The angular range of the arc is determined by the start and end angles
 // _counter clockwise_.
 class Arc : public Shape {
  public:
+  Arc();
+
   Arc(const Point &centre,
       int64_t radius,
       int32_t start_angle_deg,
@@ -29,7 +34,6 @@ class Arc : public Shape {
         start_angle_deg_(modulo(start_angle_deg, 360)),
         end_angle_deg_(modulo(end_angle_deg, 360)) {}
 
-  // TODO(aryap): Implement.
   void MirrorY() override { LOG(FATAL) << "Unimplemented."; }
   void MirrorX() override { LOG(FATAL) << "Unimplemented."; }
   void FlipHorizontal() override { LOG(FATAL) << "Unimplemented."; }
@@ -48,7 +52,8 @@ class Arc : public Shape {
   // on that line where it intersects the arc.
   std::vector<Point> IntersectingPointsInBounds(const Line &line) const;
 
-  bool Overlaps(const Rectangle &other) const;
+  bool Overlaps(const Rectangle &rectangle) const;
+  bool Overlaps(const Polygon &polygon) const;
 
   // Returns true if the point is within the region defined by the arc.
   //
@@ -56,6 +61,7 @@ class Arc : public Shape {
   // radius, and also if the angle formed from the point to the centre is within
   // the start and end angles of the arc.
   bool Intersects(const Point &point) const;
+  bool Intersects(const std::vector<Line> &lines) const;
 
   Point Start() const;
   Point End() const;
