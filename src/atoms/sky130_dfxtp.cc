@@ -865,6 +865,15 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
       Rectangle(Point(85, 1105), Point(255, 1275)), "D");
   layout->SavePoint("port_D_centre", pin->centre());
 
+  if (!parameters_.input_clock_buffer) {
+    pin = layout->AddRectangleAsPort(
+        Rectangle(Point(85, 1105 + 340), Point(255, 1275 + 340)), "D");
+    layout->SavePoint("port_D_alt_0_centre", pin->centre());
+  }
+  pin = layout->AddRectangleAsPort(
+      Rectangle(Point(85, 1105 - 340), Point(255, 1275 - 340)), "D");
+  layout->SavePoint("port_D_alt_1_centre", pin->centre());
+
   // TODO(aryap): Add an alternate port for Q on the opposite track. This will
   // need regression testing because not all generator code is discerning about
   // which "Q" port it wants to connect to.
