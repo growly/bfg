@@ -13,6 +13,15 @@ namespace bfg {
 
 namespace geometry {
 
+PortSet Port::MakePortSet(const std::set<const Port*> &ports) {
+  PortSet port_set = MakePortSet();
+  for (const Port *port : ports) {
+    // TODO(aryap): Why tf did I make this a const Port*?
+    port_set.insert(const_cast<Port*>(port));
+  }
+  return port_set;
+}
+
 bool Port::Compare(const Port &lhs, const Port &rhs) {
   //LOG(INFO) << "comparing " << lhs.lower_left_ << " and " << rhs.lower_left_;
   return Point::CompareXThenY(lhs.lower_left_, rhs.lower_left_);

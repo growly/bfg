@@ -116,14 +116,9 @@ class RoutingGrid {
       const geometry::Layer &first,
       const geometry::Layer &second);
 
-  // Convenient form AddMultiPointRoute which determines all net aliases for
-  // the given ports and uses the given Layout to find all off-net ports to
-  // use as temporary obstacles.
-  absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
-      const Layout &layout,
-      const std::vector<std::vector<geometry::Port*>> ports,
-      const std::optional<std::string> &primary_net_Name);
-
+  // This is superseded by the methods in RouteManager, which do the same
+  // thing, but withs lightly more sophistication.
+  //
   // Connect multiple ports on the same net. One port from each successive set
   // of ports is connected.
   // 
@@ -133,11 +128,19 @@ class RoutingGrid {
       const std::vector<std::vector<geometry::Port*>> ports,
       const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
+  // Convenient form of AddMultiPointRoute which determines all net aliases for
+  // the given ports and uses the given Layout to find all off-net ports to use
+  // as temporary obstacles.
+  absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
+      const Layout &layout,
+      const std::vector<std::vector<geometry::Port*>> ports,
+      const std::optional<std::string> &primary_net_Name);
+
 
   absl::StatusOr<RoutingPath*> AddBestRouteBetween(
       const geometry::PortSet &begin_ports,
       const geometry::PortSet &end_ports,
-      const geometry::ShapeCollection &avoid,
+      const RoutingBlockageCache &blockage_cache,
       const EquivalentNets &nets);
 
   absl::StatusOr<RoutingPath*> AddRouteBetween(
@@ -158,12 +161,14 @@ class RoutingGrid {
       const geometry::Port &begin,
       const EquivalentNets &target_nets,
       const EquivalentNets &usable_nets,
-      const geometry::ShapeCollection &avoid);
+      const RoutingBlockageCache &blockage_cache);
+
+  // DEPRECATED.
   absl::StatusOr<RoutingPath*> AddRouteToNet(
       const geometry::Port &begin,
       const EquivalentNets &target_nets,
       const EquivalentNets &usable_nets,
-      const RoutingBlockageCache &blockage_cache);
+      const geometry::ShapeCollection &avoid);
 
   void AddVertex(RoutingVertex *vertex);
 

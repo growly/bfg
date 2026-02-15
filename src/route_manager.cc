@@ -91,6 +91,7 @@ absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
 
 absl::Status RouteManager::RunAllSerial() {
   for (const NetRouteOrder &order : orders_) {
+    LOG(INFO) << "Serial dispatch; routing " << std::endl << order.Describe();
     RunOrder(order).IgnoreError();
   }
   return absl::OkStatus();
@@ -145,9 +146,11 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   // Copy.
   EquivalentNets usable_nets = order.net();
   for (const auto &node : order.nodes()) {
-    // Add a net from the first port in each set, since the set of ports at each
-    // node is considered equivalent.
-    usable_nets.Add((*node.begin())->net());
+    // Add a net from the every port in each set, since although they're
+    // usually all the same, we don't need to enforce that.
+    for (const geometry::Port *port : node) {
+      usable_nets.Add(port->net());
+    }
   }
 
   RoutingBlockageCache child_blockage_cache(*routing_grid_,
@@ -155,7 +158,7 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
 
   // Another copy, so we can extract the shapes that aren't blocked.
   EquivalentNets ok_nets = usable_nets;
-  // Not sure why I'm doing this:
+  // TODO(aryap): Not sure why I'm doing this:
   ok_nets.Add(layout_->global_nets());
   geometry::ShapeCollection ok_shapes;
   layout_->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
@@ -165,7 +168,7 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   // usable nets, which are the set of all the nets that will *be* routed.
   EquivalentNets target_nets;
 
-  auto try_fn = [&](
+  auto retry_fn = [&](
       const std::function<absl::StatusOr<RoutingPath*>()> &route_fn)
           -> absl::Status {
     size_t attempts = 0;
@@ -190,24 +193,32 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
 
   bool first_pair_routed = false;
   for (size_t i = 0; i < order.nodes().size() - 1; ++i) {
-    const geometry::Port *from = *order.nodes()[i + 1].begin();
     if (!first_pair_routed) {
-      const geometry::Port *to = *order.nodes()[i].begin();
-      auto result = try_fn([&]() {
-        return routing_grid_->AddRouteBetween(*from,
-                                              *to,
-                                              child_blockage_cache,
-                                              usable_nets);
+      // A geometry::PortSet sorts Port*s by their cartesian coordinates.
+      geometry::PortSet begin_ports =
+          geometry::Port::MakePortSet(order.nodes()[i + 1]);
+      geometry::PortSet end_ports =
+          geometry::Port::MakePortSet(order.nodes()[i]);
+      auto result = retry_fn([&]() {
+        return routing_grid_->AddBestRouteBetween(begin_ports,
+                                                  end_ports,
+                                                  child_blockage_cache,
+                                                  usable_nets);
       });
       if (result.ok()) {
         first_pair_routed = true;
-        target_nets.Add(from->net());
-        target_nets.Add(to->net());
+        for (const geometry::Port *port : begin_ports) {
+          target_nets.Add(port->net());
+        }
+        for (const geometry::Port *port : end_ports) {
+          target_nets.Add(port->net());
+        }
       } else {
         // Save for later? Come back and attempt at the end?
       }
     } else {
-      auto result = try_fn([&]() {
+      const geometry::Port *from = *order.nodes()[i + 1].begin();
+      auto result = retry_fn([&]() {
           return routing_grid_->AddRouteToNet(*from,
                                               target_nets,
                                               usable_nets,
@@ -220,6 +231,14 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
       }
     }
   }
+
+  // On success, cancel the blockages on the root blockage cache, since we
+  // should be done with them.
+  LOG(INFO) << "Cancelling blockages for nets: "
+            << usable_nets.Describe();
+  geometry::ShapeCollection usable_nets_shapes;
+  layout_->CopyConnectableShapesOnNets(usable_nets, &usable_nets_shapes);
+  root_blockage_cache_.CancelBlockages(usable_nets_shapes);
 
   return absl::OkStatus();
 }

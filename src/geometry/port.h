@@ -27,6 +27,7 @@ class Port : public Rectangle {
   static inline PortSet MakePortSet() {
     return PortSet(Port::Compare);
   }
+  static PortSet MakePortSet(const std::set<const Port*> &ports);
 
   Port() {}
   ~Port() {}

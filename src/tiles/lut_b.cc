@@ -1157,8 +1157,6 @@ void LutB::RouteOutputs(
         bypass_input).IgnoreError();
   }
 
-  LOG(INFO) << route_manager.DescribeOrders();
-
   route_manager.Solve().IgnoreError();
 
   // Make input/output pins.

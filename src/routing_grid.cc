@@ -1715,6 +1715,9 @@ absl::StatusOr<std::vector<RoutingPath*>> RoutingGrid::AddMultiPointRoute(
     const std::vector<std::vector<geometry::Port*>> ports,
     const geometry::ShapeCollection &avoid,
     const EquivalentNets &nets) {
+  RoutingBlockageCache blockage_cache(*this);
+  blockage_cache.AddBlockages(avoid);
+
   bool all_ok = true;
   // The net_name is set once the first route is laid between some pair of
   // ports. Subsequent routes are to the net, not any particular point.
@@ -1734,7 +1737,7 @@ absl::StatusOr<std::vector<RoutingPath*>> RoutingGrid::AddMultiPointRoute(
       auto route_status = AddBestRouteBetween(
           begin_ports,
           end_ports,
-          avoid,
+          blockage_cache,
           nets);
       if (route_status.ok()) {
         net_name = nets.primary();
@@ -1748,7 +1751,7 @@ absl::StatusOr<std::vector<RoutingPath*>> RoutingGrid::AddMultiPointRoute(
 
     bool path_found = false;
     for (geometry::Port *port : port_group) {
-      auto route_status = AddRouteToNet(*port, *net_name, nets, avoid);
+      auto route_status = AddRouteToNet(*port, *net_name, nets, blockage_cache);
       if (route_status.ok()) {
         path_found = true;
         found_paths.push_back(*route_status);
@@ -1766,11 +1769,8 @@ absl::StatusOr<std::vector<RoutingPath*>> RoutingGrid::AddMultiPointRoute(
 absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
     const geometry::PortSet &begin_ports,
     const geometry::PortSet &end_ports,
-    const geometry::ShapeCollection &avoid,
+    const RoutingBlockageCache &blockage_cache,
     const EquivalentNets &nets) {
-  RoutingBlockageCache blockage_cache(*this);
-  blockage_cache.AddBlockages(avoid);
-
   std::vector<RoutingPath*> options;
   for (const geometry::Port *begin : begin_ports) {
     for (const geometry::Port *end : end_ports) {
@@ -1792,7 +1792,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
   std::sort(options.begin(), options.end(), sort_fn);
 
   for (RoutingPath *path : options) {
-    LOG(INFO) << "cost: " << path->Cost() << " option: " << path->Describe();
+    LOG(INFO) << "Cost: " << path->Cost() << " option: " << path->Describe();
   }
 
   RoutingPath *cheapest = options.front();

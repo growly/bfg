@@ -20,16 +20,7 @@ namespace bfg {
 
 // TODO(aryap): There's a chance this repeats some of the work of RouterSession,
 // which presents a similar interface over RPC. You should consolidate them.
-
-  // UNRELATED TODO
-  //  - shared_mutex in RoutingGrid
-  //  - shared lock for reads
-  //  - exclusive lock for installs
-  //  - part of install should be a check that the path remains valid, because
-  //  components on the path could have been invalidated by another install
-  //  - on failure, need to indicate; sometimes a retry is in order, sometimes
-  //  not
-
+//
 // The point of RouteManager is to take the burden of finding a collection of
 // routes simultaneously, so that clients need only specify ports, nets, etc,
 // and perhaps an ordering for the routes, then let the RouteManager figure it
