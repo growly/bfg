@@ -193,10 +193,10 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
 
   bool first_pair_routed = false;
   for (size_t i = 0; i < order.nodes().size() - 1; ++i) {
+    geometry::PortSet begin_ports =
+        geometry::Port::MakePortSet(order.nodes()[i + 1]);
     if (!first_pair_routed) {
       // A geometry::PortSet sorts Port*s by their cartesian coordinates.
-      geometry::PortSet begin_ports =
-          geometry::Port::MakePortSet(order.nodes()[i + 1]);
       geometry::PortSet end_ports =
           geometry::Port::MakePortSet(order.nodes()[i]);
       auto result = retry_fn([&]() {
@@ -217,28 +217,29 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
         // Save for later? Come back and attempt at the end?
       }
     } else {
-      const geometry::Port *from = *order.nodes()[i + 1].begin();
       auto result = retry_fn([&]() {
-          return routing_grid_->AddRouteToNet(*from,
-                                              target_nets,
-                                              usable_nets,
-                                              child_blockage_cache);
+          return routing_grid_->AddBestRouteToNet(begin_ports,
+                                                  target_nets,
+                                                  child_blockage_cache,
+                                                  usable_nets);
       });
       if (result.ok()) {
-        target_nets.Add(from->net());
+        for (const geometry::Port *port : begin_ports) {
+          target_nets.Add(port->net());
+        }
       } else {
         // Save for later? Come back and attempt at the end?
       }
     }
   }
 
-  // On success, cancel the blockages on the root blockage cache, since we
-  // should be done with them.
-  LOG(INFO) << "Cancelling blockages for nets: "
-            << usable_nets.Describe();
-  geometry::ShapeCollection usable_nets_shapes;
-  layout_->CopyConnectableShapesOnNets(usable_nets, &usable_nets_shapes);
-  root_blockage_cache_.CancelBlockages(usable_nets_shapes);
+  // On success, cancel the blockages on the root blockage cache belonging to
+  // UNUSED ports, since we should be done with them.
+  //LOG(INFO) << "Cancelling blockages for nets: "
+  //          << usable_nets.Describe();
+  //geometry::ShapeCollection usable_nets_shapes;
+  //layout_->CopyConnectableShapesOnNets(usable_nets, &usable_nets_shapes);
+  //root_blockage_cache_.CancelBlockages(usable_nets_shapes);
 
   return absl::OkStatus();
 }

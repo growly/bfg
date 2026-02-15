@@ -1766,6 +1766,36 @@ absl::StatusOr<std::vector<RoutingPath*>> RoutingGrid::AddMultiPointRoute(
   return absl::NotFoundError("Not all ports could be routed");
 }
 
+
+absl::StatusOr<RoutingPath*> RoutingGrid::InstallBestPath(
+    const std::vector<RoutingPath*> &unsorted_options,
+    const RoutingBlockageCache &blockage_cache){
+  auto sort_fn = [&](RoutingPath *lhs, RoutingPath *rhs) {
+    return lhs->Cost() < rhs->Cost();
+  };
+  std::vector<RoutingPath*> options(
+      unsorted_options.begin(), unsorted_options.end());
+  std::sort(options.begin(), options.end(), sort_fn);
+
+  for (RoutingPath *path : options) {
+    LOG(INFO) << "Cost: " << path->Cost() << " option: " << path->Describe();
+  }
+
+  RoutingPath *cheapest = options.front();
+
+  // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
+  // rest must be deleted.
+  absl::Status install_status = InstallPath(cheapest, blockage_cache);
+
+  for (auto it = options.begin() + 1; it != options.end(); ++it) {
+    delete *it;
+  }
+  if (install_status.ok()) {
+    return cheapest;
+  }
+  return install_status;
+}
+
 absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
     const geometry::PortSet &begin_ports,
     const geometry::PortSet &end_ports,
@@ -1786,28 +1816,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
     return absl::NotFoundError(
         "None of the begin/end combinations yielded a workable path.");
   }
-  auto sort_fn = [&](RoutingPath *lhs, RoutingPath *rhs) {
-    return lhs->Cost() < rhs->Cost();
-  };
-  std::sort(options.begin(), options.end(), sort_fn);
-
-  for (RoutingPath *path : options) {
-    LOG(INFO) << "Cost: " << path->Cost() << " option: " << path->Describe();
-  }
-
-  RoutingPath *cheapest = options.front();
-
-  // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
-  // rest must be deleted.
-  absl::Status install_status = InstallPath(cheapest, blockage_cache);
-
-  for (auto it = options.begin() + 1; it != options.end(); ++it) {
-    delete *it;
-  }
-  if (install_status.ok()) {
-    return cheapest;
-  }
-  return install_status;
+  return InstallBestPath(options, blockage_cache);
 }
 
 absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteBetween(
@@ -1921,6 +1930,28 @@ std::set<geometry::Layer> EffectiveLayersForInstalledVertex(
 }
 
 }   // namespace
+
+absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteToNet(
+    const geometry::PortSet &begin_ports,
+    const EquivalentNets &target_nets,
+    const RoutingBlockageCache &blockage_cache,
+    const EquivalentNets &usable_nets) {
+  std::vector<RoutingPath*> options;
+  for (const geometry::Port *begin : begin_ports) {
+    auto maybe_path = FindRouteToNet(
+        *begin, target_nets, usable_nets, blockage_cache);
+    if (!maybe_path.ok()) {
+      continue;
+    }
+    options.push_back(*maybe_path);
+  }
+  if (options.empty()) {
+    LOG(ERROR) << "None of the start ports yielded a workable path.";
+    return absl::NotFoundError(
+        "None of start ports yielded a workable path.");
+  }
+  return InstallBestPath(options, blockage_cache);
+}
 
 absl::StatusOr<RoutingPath*> RoutingGrid::AddRouteToNet(
     const geometry::Port &begin,

@@ -124,6 +124,8 @@ class RoutingGrid {
   // 
   // Routing is successful if a route is found that connects at least one port
   // from each set.
+  //
+  // DEPRECATED.
   absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
       const std::vector<std::vector<geometry::Port*>> ports,
       const geometry::ShapeCollection &avoid,
@@ -136,22 +138,32 @@ class RoutingGrid {
       const std::vector<std::vector<geometry::Port*>> ports,
       const std::optional<std::string> &primary_net_Name);
 
-
+  // TODO(aryap): Implement these in RouteManager with threading. They are
+  // trivially parallel within, and rely only on InstallBestPath to pick and
+  // install the best, under lock.
   absl::StatusOr<RoutingPath*> AddBestRouteBetween(
       const geometry::PortSet &begin_ports,
       const geometry::PortSet &end_ports,
       const RoutingBlockageCache &blockage_cache,
       const EquivalentNets &nets);
 
-  absl::StatusOr<RoutingPath*> AddRouteBetween(
-      const geometry::Port &begin,
-      const geometry::Port &end,
-      const geometry::ShapeCollection &avoid,
-      const EquivalentNets &nets);
+  absl::StatusOr<RoutingPath*> AddBestRouteToNet(
+      const geometry::PortSet &begin_ports,
+      const EquivalentNets &target_nets,
+      const RoutingBlockageCache &blockage_cache,
+      const EquivalentNets &usable_nets);
+
   absl::StatusOr<RoutingPath*> AddRouteBetween(
       const geometry::Port &begin,
       const geometry::Port &end,
       const RoutingBlockageCache &blockage_cache,
+      const EquivalentNets &nets);
+
+  // DEPRECATED.
+  absl::StatusOr<RoutingPath*> AddRouteBetween(
+      const geometry::Port &begin,
+      const geometry::Port &end,
+      const geometry::ShapeCollection &avoid,
       const EquivalentNets &nets);
 
   // target_nets: the nets we're trying to reach with the path.
@@ -765,6 +777,13 @@ class RoutingGrid {
   void InstallVertexInPath(
       RoutingVertex *vertex,
       const std::string &net,
+      const RoutingBlockageCache &blockage_cache);
+
+  // Finds the total cost of each RoutingPath in the given options, and
+  // installed the lowest-cost one. The given blockage cache is passed to
+  // InstallPath(...).
+  absl::StatusOr<RoutingPath*> InstallBestPath(
+      const std::vector<RoutingPath*> &unsorted_options,
       const RoutingBlockageCache &blockage_cache);
 
   void AddTrackToLayer(RoutingTrack *track, const geometry::Layer &layer);
