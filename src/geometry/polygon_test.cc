@@ -1296,6 +1296,113 @@ TEST(PolygonTest, CombinedOperations_RotateThenTranslate) {
   EXPECT_THAT(poly.vertices(), testing::ContainerEq(expected));
 }
 
+// --- Overlaps(const RoundedRectangle &) tests ---
+
+TEST(PolygonTest, OverlapsRoundedRectangle_ClearlyOutside) {
+  Polygon square({{0, 0}, {10, 0}, {10, 10}, {0, 10}});
+  RoundedRectangle rr(Point(100, 100), Point(200, 200), 10);
+  EXPECT_FALSE(square.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_ClearOverlapInCentre) {
+  // Polygon clearly overlapping the centre region of the rounded rectangle.
+  Polygon square({{40, 40}, {60, 40}, {60, 60}, {40, 60}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_TRUE(square.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_OverlapInLeftRegion) {
+  // Polygon overlapping the left strip of the rounded rectangle.
+  // RR: (0,0)-(100,100), radius 10. Left strip: x in [0,10], y in [10,90].
+  Polygon rect({{-5, 40}, {5, 40}, {5, 60}, {-5, 60}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_TRUE(rect.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_OverlapInUpperRegion) {
+  // Polygon overlapping the upper strip of the rounded rectangle.
+  Polygon rect({{40, 95}, {60, 95}, {60, 105}, {40, 105}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_TRUE(rect.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_PolygonFullyInsideRR) {
+  // Small polygon entirely inside the rounded rectangle.
+  Polygon small({{30, 30}, {70, 30}, {70, 70}, {30, 70}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_TRUE(small.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_RRFullyInsidePolygon) {
+  // Rounded rectangle entirely inside a large polygon.
+  Polygon big({{-100, -100}, {300, -100}, {300, 300}, {-100, 300}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_TRUE(big.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_InCornerCutoutRegion) {
+  // A small polygon sitting in the corner cutout of the rounded rectangle.
+  // RR: (0,0)-(100,100), radius 10. Lower-left corner arc centre is at (10,10).
+  // A polygon placed in the very corner, outside the arc, should not overlap.
+  Polygon corner({{0, 0}, {3, 0}, {3, 3}, {0, 3}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_FALSE(corner.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_BoundingBoxOverlapButNoRealOverlap) {
+  // Polygon near the corner whose bounding box overlaps RR's bounding box,
+  // but is entirely in the corner cutout region.
+  Polygon near_corner({{-2, -2}, {2, -2}, {2, 2}, {-2, 2}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_FALSE(near_corner.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_NonConvexPolygon) {
+  // L-shaped polygon overlapping the RR.
+  //
+  //         +--+
+  //         |  |
+  //    +----+  |
+  //    |       |
+  //    +-------+
+  Polygon l_shape({{0, 0}, {10, 0}, {10, 10}, {5, 10}, {5, 5}, {0, 5}});
+  RoundedRectangle rr(Point(3, 3), Point(12, 12), 2);
+  EXPECT_TRUE(l_shape.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_NonConvexPolygonMiss) {
+  // L-shaped polygon that does NOT overlap the RR, which sits in the concavity.
+  //
+  //    +--+
+  //    |  |      +--+  <- RR
+  //    +--+--+   +--+
+  //       |  |
+  //       +--+
+  Polygon l_shape({{0, 5}, {5, 5}, {5, 0}, {10, 0}, {10, 5}, {10, 10},
+                   {5, 10}, {0, 10}});
+  // RR placed outside the polygon entirely.
+  RoundedRectangle rr(Point(20, 20), Point(30, 30), 2);
+  EXPECT_FALSE(l_shape.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_EdgeIntersection) {
+  // Polygon edge crosses into the rounded rectangle's rectangular region.
+  // Triangle with one vertex inside the RR.
+  Polygon triangle({{-10, 50}, {50, 50}, {20, 80}});
+  RoundedRectangle rr(Point(0, 0), Point(100, 100), 10);
+  EXPECT_TRUE(triangle.Overlaps(rr));
+}
+
+TEST(PolygonTest, OverlapsRoundedRectangle_ZeroRadius) {
+  // With zero corner radius, this should behave like Overlaps(Rectangle).
+  Polygon square({{5, 5}, {15, 5}, {15, 15}, {5, 15}});
+  RoundedRectangle rr(Point(0, 0), Point(20, 20), 0);
+  EXPECT_TRUE(square.Overlaps(rr));
+
+  Polygon far({{50, 50}, {60, 50}, {60, 60}, {50, 60}});
+  EXPECT_FALSE(far.Overlaps(rr));
+}
+
 }  // namespace
 }  // namespace geometry
 }  // namespace bfg
