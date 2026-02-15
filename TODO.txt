@@ -7,15 +7,19 @@ Sorry, GitHub issues, I want to write a text note to myself:
 1)FIXME; ok to add these we need a smarter router that stops avoiding ports
  after they've been connected. Or maybe it only ever avoids one? An unblocked one?
 
-1) add additional OIBS2 muxes :/
+2) AddBestRoute... should be parallelised in RouteManager.
 
-2) add option for top AND/OR BOTTOM dummy rows in Sky130InterconnectMux* generators
-4) fix deadlock in router (different paths call same fn with different locks - ValidAgainstKnownBlockages or wahtever)
-5) DecapFill would be a cool cell. We have some version of this in the
+3) why do met1/mcon encaps seem too big?
+
+4) add additional OIBS2 muxes :/
+
+5) add option for top AND/OR BOTTOM dummy rows in Sky130InterconnectMux* generators
+7) fix deadlock in router (different paths call same fn with different locks - ValidAgainstKnownBlockages or wahtever)
+8) DecapFill would be a cool cell. We have some version of this in the
 Sky130InterconnectMux1/2 already so it should be straightforward. Just fill a
 MemoryBank with decap, fitting to a given height/width in height/width units...
 
-7) fix LUT generator
+10) fix LUT generator
 a) bug with random met2 pour between two unrelated nets
 b) are all routes added correctly? looks like another bug with routes
 
@@ -32,8 +36,8 @@ per design:
 
 i) need soft s44 selector ff and mux too, for between the luts
 
-8) assign interconnect wire block break-out and break-in offsets correctly
+11) assign interconnect wire block break-out and break-in offsets correctly
 
-9) generate connectivity netlist based on ultrascale architecture
+12) generate connectivity netlist based on ultrascale architecture
 
-10) route ReducedSlice
+13) route ReducedSlice
