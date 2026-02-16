@@ -874,21 +874,27 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
       Rectangle(Point(85, 1105 - 340), Point(255, 1275 - 340)), "D");
   layout->SavePoint("port_D_alt_1_centre", pin->centre());
 
-  // TODO(aryap): Add an alternate port for Q on the opposite track. This will
-  // need regression testing because not all generator code is discerning about
-  // which "Q" port it wants to connect to.
   Rectangle pin_Q_stencil = Rectangle(Point(5590, 425), Point(5760, 595));
   geometry::Rectangle *pin_Q = layout->AddRectangleAsPort(pin_Q_stencil, "Q");
   layout->SavePoint("port_Q_centre", pin->centre());
 
+  // TODO(aryap): This will need regression testing because not all generator
+  // code is discerning about which "Q" port it wants to connect to.
+  // This alt Q pin is on the opposite track in the cell.
+  Rectangle pin_Q_alt_stencil = Rectangle(
+      Point(5590, 425 + 5 * 340), Point(5760, 595 + 5 * 340));
+  geometry::Rectangle *pin_Q_alt =
+      layout->AddRectangleAsPort(pin_Q_alt_stencil, "Q");
+  layout->SavePoint("port_Q_alt_centre", pin->centre());
+
   // Notes for the hero who will eventually make this more of a generator than a
-  // static cell:
+  // static cell, this version:
   // x: Aligns with the Q port above.
   // y: 1.5x met1 pitch (340nm) from the top of the tiling boundary (2.72um).
   // The top of the tiling boundary should actually be given by the height_nm
   // parameter.
-  Point pin_Q_alt_centre = Point((5590 + 5760)/2, 2720 - 510);
-  layout->SavePoint("port_Q_alt_centre", pin_Q_alt_centre);
+  //Point pin_Q_alt_centre = Point((5590 + 5760)/2, 2720 - 510);
+  //layout->SavePoint("port_Q_alt_centre", pin_Q_alt_centre);
 
   // TODO(aryap): We also have to add a port for Q-bar, QI, complemented Q,
   // whatever you want to call it. This is scary because it might need to be

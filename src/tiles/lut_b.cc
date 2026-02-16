@@ -571,7 +571,7 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  //RouteScanChain(&routing_grid, circuit, layout);
+  RouteScanChain(&routing_grid, circuit, layout);
   //RouteClockBuffers(&routing_grid, circuit, layout);
   //RouteMuxInputs(&routing_grid, circuit, layout);
   //RouteRemainder(&routing_grid, circuit, layout);
@@ -749,6 +749,11 @@ void LutB::RouteScanChain(
   //memories_.back()->circuit_instance()->Connect("Q",
   //    *circuit->GetOrAddSignal("CONFIG_OUT", 1));
 
+  // FIXME(aryap): Not clear if this is a win. Avoiding _all_ other ports when
+  // routing the scan chain is needlessly prohibitive. But we would benefit
+  // from parallelism for sure.
+  RouteManager route_manager(layout, routing_grid);
+
   for (size_t i = 0; i < scan_order_.size() - 1; ++i) {
     geometry::Instance *source = scan_order_[i];
     geometry::Instance *sink = scan_order_[i + 1];
@@ -756,15 +761,17 @@ void LutB::RouteScanChain(
     LOG(INFO) << "Adding scan routes for pair "
               << source->name() << ", " << sink->name();
 
-    std::vector<geometry::Port*> ports;
-    source->GetInstancePorts("Q", &ports);
-    geometry::Port *start = *ports.begin();
+    std::set<geometry::Port*> start_ports = source->GetInstancePorts("Q");
+    std::set<geometry::Port*> end_ports = sink->GetInstancePorts("D");
 
-    ports.clear();
-    sink->GetInstancePorts("D", &ports);
-    geometry::Port *end = *ports.begin();
+    EquivalentNets net_names;
+    for (geometry::Port *port : start_ports) {
+      net_names.Add(port->net());
+    }
+    for (geometry::Port *port : end_ports) {
+      net_names.Add(port->net());
+    }
 
-    EquivalentNets net_names({end->net(), start->net()});
     memory_output_net_names_[source] = net_names.primary();
 
     circuit::Signal *signal = circuit->GetOrAddSignal(net_names.primary(), 1);
@@ -777,10 +784,14 @@ void LutB::RouteScanChain(
         net_names,
         &non_net_connectables);
 
-    auto result = routing_grid->AddRouteBetween(
-        *start, *end, non_net_connectables, net_names);
-    AccumulateAnyErrors(result.status());
+    route_manager.ConnectMultiplePorts(
+        std::vector<std::set<geometry::Port*>>({
+            start_ports, end_ports}),
+        net_names).IgnoreError();
   }
+
+  auto result = route_manager.Solve();
+  AccumulateAnyErrors(result);
 }
 
 void LutB::RouteMuxInputs(
@@ -841,7 +852,7 @@ void LutB::RouteMuxInputs(
     geometry::Instance *mux = auto_connection.target_mux;
     const std::string &input_name = auto_connection.mux_port_name;
 
-    // Heuristically determine which mux port to use based on which which is
+    // Heuristically determine which mux port to use based on which is
     // closest to the memory output, even if we're routing to the memory output
     // net instead of the port specifically.
     std::vector<geometry::Port*> memory_ports;
@@ -870,8 +881,6 @@ void LutB::RouteMuxInputs(
           {memory_output->net(), mux_port->net()});
       geometry::ShapeCollection non_net_connectables;
       layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
-      LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-                << " avoiding " << non_net_connectables.Describe();
 
       std::string target_net;
       absl::StatusOr<RoutingPath*> route_result;
@@ -1036,6 +1045,8 @@ void LutB::RouteOutputs(
     Layout *layout) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
+  RouteManager route_manager(layout, routing_grid);
+
   DCHECK(comb_output_mux_ != nullptr &&
          comb_output_mux_config_ != nullptr &&
          reg_output_flop_ != nullptr &&
@@ -1060,8 +1071,6 @@ void LutB::RouteOutputs(
   // Probably easiest (least routing congegstion) to include the original clock
   // buf from the flip flop that was chopped off (that should be a parameter
   // anyway).
-
-  RouteManager route_manager(layout, routing_grid);
 
   std::string comb_input_A0 = "comb_input_A0";
   std::string reg_input_A0 = "reg_input_A0";
