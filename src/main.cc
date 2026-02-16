@@ -26,6 +26,7 @@
 #include "atoms/sky130_decap.h"
 #include "atoms/sky130_dfxtp.h"
 #include "atoms/gf180mcu_mux.h"
+#include "tiles/carry1.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
 #include "tiles/slice.h"
@@ -34,6 +35,7 @@
 #include "tiles/interconnect_wire_block.h"
 #include "utility.h"
 
+#include "proto/parameters/carry1.pb.h"
 #include "proto/parameters/interconnect.pb.h"
 #include "proto/parameters/interconnect_wire_block.pb.h"
 #include "proto/parameters/lut_b.pb.h"
@@ -147,6 +149,11 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130Dfxtp,
         bfg::atoms::Sky130Dfxtp::Parameters,
         bfg::atoms::Sky130Dfxtp>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Carry1") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Carry1,
+        bfg::tiles::Carry1::Parameters,
+        bfg::tiles::Carry1>(generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "LutB") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::LutB,
