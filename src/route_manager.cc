@@ -191,6 +191,8 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
     return last_result;
   };
 
+  std::vector<absl::Status> errors;
+
   bool first_pair_routed = false;
   for (size_t i = 0; i < order.nodes().size() - 1; ++i) {
     geometry::PortSet begin_ports =
@@ -215,6 +217,7 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
         }
       } else {
         // Save for later? Come back and attempt at the end?
+        errors.push_back(result);
       }
     } else {
       auto result = retry_fn([&]() {
@@ -229,7 +232,15 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
         }
       } else {
         // Save for later? Come back and attempt at the end?
+        errors.push_back(result);
       }
+    }
+  }
+
+  if (!errors.empty()) {
+    LOG(ERROR) << "Failed to route order:";
+    for (const auto &status : errors) {
+      LOG(ERROR) << status.message();
     }
   }
 
