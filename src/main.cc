@@ -25,6 +25,7 @@
 #include "atoms/sky130_mux.h"
 #include "atoms/sky130_decap.h"
 #include "atoms/sky130_dfxtp.h"
+#include "atoms/sky130_xor2.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/carry1.h"
 #include "tiles/lut.h"
@@ -43,6 +44,7 @@
 #include "proto/parameters/reduced_slice.pb.h"
 #include "proto/parameters/sky130_decap.pb.h"
 #include "proto/parameters/sky130_dfxtp.pb.h"
+#include "proto/parameters/sky130_xor2.pb.h"
 #include "proto/parameters/sky130_interconnect_mux1.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
@@ -149,6 +151,11 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130Dfxtp,
         bfg::atoms::Sky130Dfxtp::Parameters,
         bfg::atoms::Sky130Dfxtp>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130Xor2") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130Xor2,
+        bfg::atoms::Sky130Xor2::Parameters,
+        bfg::atoms::Sky130Xor2>(generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Carry1") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Carry1,

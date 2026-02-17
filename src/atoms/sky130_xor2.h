@@ -8,6 +8,8 @@
 #include "../circuit.h"
 #include "../layout.h"
 
+#include "proto/parameters/sky130_xor2.pb.h"
+
 namespace bfg {
 
 class DesignDatabase;
@@ -58,6 +60,10 @@ class Sky130Xor2: public Atom {
     // width and so the vias do not line up with those set by cells in adjacent
     // rows.
     bool draw_overflowing_vias_and_pins = true;
+
+    // FIXME(aryap): Implement.
+    void ToProto(proto::parameters::Sky130Xor2 *pb) const {}
+    void FromProto(const proto::parameters::Sky130Xor2 &pb) {}
   };
 
   Sky130Xor2(const Parameters &parameters, DesignDatabase *design_db)
