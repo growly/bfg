@@ -12,4 +12,4 @@ PYTHONPATH=~/src/Hdl21:~/src/Hdl21/pdks/Sky130 python3 sky130_xor2.py
 
 ## Sky130Xor2
 
-[image](plot.sky130_xor2.png)
+![Sky130Mux2 simulation plot](plot.sky130_xor2.png)
