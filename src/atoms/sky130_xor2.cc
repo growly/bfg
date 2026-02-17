@@ -146,8 +146,9 @@ bfg::Circuit *Sky130Xor2::GenerateCircuit() {
 }
 
 bfg::Layout *Sky130Xor2::GenerateLayout() {
-  std::unique_ptr<bfg::Layout> layout(
-      new bfg::Layout(design_db_->physical_db()));
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
 
   // TODO(arya): Might be useful to set this to a multiple of some unit value
   // (per usual std. cells).
@@ -168,13 +169,236 @@ bfg::Layout *Sky130Xor2::GenerateLayout() {
   vpwr_bar->set_net(parameters_.power_net);
 
   // TODO(aryap): Implement full layout with diffusion, poly, contacts, etc.
+  
+  // poly.drawing
+  layout->SetActiveLayerByName("poly.drawing");
+  layout->AddPolygon(Polygon({
+      {435, 105},
+      {435, 995},
+      {375, 995},
+      {375, 1325},
+      {435, 1325},
+      {435, height - 105},
+      {585, height - 105},
+      {585, 1325},
+      {645, 1325},
+      {645, 995},
+      {585, 995},
+      {585, 105},
+  }));
+  layout->AddPolygon(Polygon({
+      {855, 105},
+      {855, height - 105},
+      {1005, height - 105},
+      {1005, 1325},
+      {1275, 1325},
+      {1275, height - 105},
+      {1425, height - 105},
+      {1425, 105},
+      {1275, 105},
+      {1275, 995},
+      {1005, 995},
+      {1005, 105},
+  }));
+  layout->AddPolygon(Polygon({
+      {1695, 105},
+      {1695, 995},
+      {1635, 995},
+      {1635, 1325},
+      {1695, 1325},
+      {1695, height - 105},
+      {1845, height - 105},
+      {1845, 1325},
+      {1905, 1325},
+      {1905, 995},
+      {1845, 995},
+      {1845, 105},
+  }));
+  layout->AddPolygon(Polygon({
+      {2615, 105},
+      {2615, 995},
+      {2115, 995},
+      {2115, 1325},
+      {2635, 1325},
+      {2635, height - 105},
+      {2785, height - 105},
+      {2785, 1160},
+      {2765, 1160},
+      {2765, 105},
+  }));
 
+  // diff.drawing
+  layout->SetActiveLayerByName("diff.drawing");
+  int64_t pdiff_top = height - 235;
+  Rectangle *pdiff_0 = layout->AddRectangle(Rectangle(
+      {175, pdiff_top - db.ToInternalUnits(parameters_.pfet_0_width_nm)},
+      {(585 + 855) / 2, pdiff_top}));
+  Rectangle *pdiff_1 = layout->AddRectangle(Rectangle(
+      {(585 + 855) / 2, pdiff_top - db.ToInternalUnits(
+          parameters_.pfet_1_width_nm)},
+      {(1005 + 1254) / 2, pdiff_top}));
+  Rectangle *pdiff_2 = layout->AddRectangle(Rectangle(
+      {(1005 + 1254) / 2, pdiff_top - db.ToInternalUnits(
+          parameters_.pfet_2_width_nm)},
+      {(1425 + 1695) / 2, pdiff_top}));
+  Rectangle *pdiff_3 = layout->AddRectangle(Rectangle(
+      {(1425 + 1695) / 2, pdiff_top - db.ToInternalUnits(
+          parameters_.pfet_3_width_nm)},
+      {2105, pdiff_top}));
+  Rectangle *pdiff_4 = layout->AddRectangle(Rectangle(
+      {2375, pdiff_top - db.ToInternalUnits(parameters_.pfet_4_width_nm)},
+      {3085, pdiff_top}));
+
+  std::vector<Rectangle*> all_pdiffs = {
+    pdiff_0, pdiff_1, pdiff_2, pdiff_3, pdiff_4};
+
+  int64_t ndiff_bottom = 235;
+  Rectangle *ndiff_0 = layout->AddRectangle(Rectangle(
+      {175, ndiff_bottom},
+      {(585 + 855) / 2,
+          ndiff_bottom + db.ToInternalUnits(parameters_.nfet_0_width_nm)}));
+  Rectangle *ndiff_1 = layout->AddRectangle(Rectangle(
+      {(585 + 855) / 2, ndiff_bottom},
+      {(1005 + 1254) / 2,
+          ndiff_bottom + db.ToInternalUnits(parameters_.nfet_1_width_nm)}));
+  Rectangle *ndiff_2 = layout->AddRectangle(Rectangle(
+      {(1005 + 1254) / 2, ndiff_bottom},
+      {(1425 + 1695) / 2,
+          ndiff_bottom + db.ToInternalUnits(parameters_.nfet_2_width_nm)}));
+  Rectangle *ndiff_3 = layout->AddRectangle(Rectangle(
+      {(1425 + 1695) / 2, ndiff_bottom},
+      {2105, ndiff_bottom + db.ToInternalUnits(parameters_.nfet_3_width_nm)}));
+  Rectangle *ndiff_4 = layout->AddRectangle(Rectangle(
+      {2105, ndiff_bottom},
+      {3085, ndiff_bottom + db.ToInternalUnits(parameters_.nfet_4_width_nm)}));
+
+  std::vector<Rectangle*> all_ndiffs = {
+    ndiff_0, ndiff_1, ndiff_2, ndiff_3, ndiff_4};
+
+  // li.drawing
+  layout->SetActiveLayerByName("li.drawing");
+  layout->AddPolygon(Polygon({
+      {635, 335},
+      {635, 655},
+      {85, 655},
+      {85, 2465},
+      {465, 2465},
+      {465, 1785},
+      {255, 1785},
+      {255, 825},
+      {2105, 825},
+      {2105, 1325},
+      {2335, 1325},
+      {2335, 655},
+      {805, 655},
+      {805, 335},
+  }));
+  layout->AddPolygon(Polygon({
+      {425, 995},
+      {425, 1615},
+      {1730, 1615},
+      {1730, 1245},
+      {1935, 1245},
+      {1935, 1075},
+      {1560, 1075},
+      {1560, 1445},
+      {670, 1445},
+      {670, 995},
+  }));
+  layout->AddPolygon(Polygon({
+      {1395, 1785},
+      {1395, 2465},
+      {1725, 2465},
+      {1725, 1955},
+      {2235, 1955},
+      {2235, 2465},
+      {2635, 2465},
+      {2635, 1785},
+  }));
+  layout->AddPolygon(Polygon({
+      {1720, 315},
+      {1720, 485},
+      {2505, 485},
+      {2505, 1535},
+      {2815, 1535},
+      {2815, 2465},
+      {3135, 2465},
+      {3135, 1365},
+      {2675, 1365},
+      {2675, 315},
+  }));
+
+  layout->MakeVia("ncon.drawing", {720, 500});
+  layout->MakeVia("ncon.drawing", {1980, 400});
+  layout->MakeVia("ncon.drawing", {2480, 400});
+  layout->MakeVia("ncon.drawing", {2930, 415});
+  layout->MakeVia("ncon.drawing", {2930, 755});
+
+  layout->MakeVia("pcon.drawing", {300, 2340});
+  layout->MakeVia("pcon.drawing", {300, 2000});
+  layout->MakeVia("pcon.drawing", {1560, 2290});
+  layout->MakeVia("pcon.drawing", {1560, 1950});
+  layout->MakeVia("pcon.drawing", {2500, 2290});
+  layout->MakeVia("pcon.drawing", {2500, 1950});
+  layout->MakeVia("pcon.drawing", {2920, 2300});
+  layout->MakeVia("pcon.drawing", {2920, 1960});
+  layout->MakeVia("pcon.drawing", {2920, 1620});
+
+  layout->MakeVia("polycon.drawing", {510, 1160});
+  layout->MakeVia("polycon.drawing", {1095, 1160});
+  layout->MakeVia("polycon.drawing", {1770, 1160});
+  layout->MakeVia("polycon.drawing", {2250, 1160});
+
+  // The polycon contacts need an npc.drawing perimeter around them.
+  {
+    // npc.drawing
+    ScopedLayer sl(layout.get(), "npc.drawing");
+    layout->AddRectangle(Rectangle({0, 975}, {width, 1345}));
+  }
+
+  // For ground contacts:
+  layout->AddRectangle(Rectangle({135, 85}, {465, 475}));
+  layout->AddRectangle(Rectangle({975, 85}, {1305, 475}));
+  layout->AddRectangle(Rectangle({2845, 85}, {3135, 920}));
+
+  layout->MakeVia("ncon.drawing", {300, 390});
+  layout->MakeVia("ncon.drawing", {1140, 390});
+
+  // For power contacts:
+  layout->AddRectangle(Rectangle({1055, 1785}, {1225, 2635}));
+  layout->AddRectangle(Rectangle({1895, 2125}, {2065, 2635}));
+
+  layout->MakeVia("pcon.drawing", {1140, 2290});
+  layout->MakeVia("pcon.drawing", {1140, 1950});
+  layout->MakeVia("pcon.drawing", {1980, 2290});
+
+  layout->AddRectangle(Rectangle({840, 1075}, {1390, 1275}));
+
+  layout->AddRectangle(Rectangle({0, -85}, {width, 85}));
+  layout->AddRectangle(Rectangle({0, height - 85}, {width, height + 85}));
+
+  // li.pin
+  // li.label
+  layout->MakePin("B", {690, 1530}, "li.pin");
+  layout->MakePin("A", {1150, 1190}, "li.pin");
+  layout->MakePin("X", {2990, 1530}, "li.pin");
+
+  // The following sections seems to be oft-repeated across cells and is largely
+  // a consequence of the diff sizing and pin placements (smells like it should
+  // be factored out!)
+
+  Rectangle *nwell_pin = nullptr;
+  Rectangle *pwell_pin = nullptr;
   if (parameters_.draw_overflowing_vias_and_pins) {
+    static constexpr int64_t kMconViaPitch = 460;
+
     if (parameters_.draw_vpwr_vias) {
       // Metal to li1.drawing contacts (VPWR side).
-      layout->MakeVia("mcon.drawing", {230,  static_cast<int64_t>(height)});
-      layout->MakeVia("mcon.drawing", {690,  static_cast<int64_t>(height)});
-      layout->MakeVia("mcon.drawing", {1150, static_cast<int64_t>(height)});
+      layout->StampVias(
+          "mcon.drawing",
+          {vpwr_bar->lower_left().x(), vpwr_bar->centre().y()},
+          {vpwr_bar->upper_right().x(), vpwr_bar->centre().y()},
+          kMconViaPitch);
     }
 
     // met1.pin
@@ -184,18 +408,67 @@ bfg::Layout *Sky130Xor2::GenerateLayout() {
 
     if (parameters_.draw_vgnd_vias) {
       // Metal to li1.drawing contacts (VGND side).
-      layout->MakeVia("mcon.drawing", {230, 0});
-      layout->MakeVia("mcon.drawing", {690, 0});
-      layout->MakeVia("mcon.drawing", {1150, 0});
+      layout->StampVias(
+          "mcon.drawing",
+          {vgnd_bar->lower_left().x(), vgnd_bar->centre().y()},
+          {vgnd_bar->upper_right().x(), vgnd_bar->centre().y()},
+          kMconViaPitch);
     }
 
     // nwell.pin 64/16
     layout->SetActiveLayerByName("nwell.pin");
-    layout->AddSquare({230, static_cast<int64_t>(height)}, 170);
+    nwell_pin = layout->AddSquare(
+        {kMconViaPitch / 2, vpwr_bar->centre().y()}, 170);
+    nwell_pin->set_net("VPB");
 
     // pwell.pin 122/16
     layout->SetActiveLayerByName("pwell.pin");
-    layout->AddSquare({240, 0}, 170);
+    pwell_pin = layout->AddSquare(
+        {kMconViaPitch / 2, vgnd_bar->centre().y()}, 170);
+    // FIXME(aryap): This still breaks proto2gds; see sky130_decap.cc for same
+    // note!
+    //pwell_pin->set_net("VNB");
+  }
+
+  Rectangle pdiff_cover = *Rectangle::AccumulatedOver(all_pdiffs);
+
+  int64_t nwell_y_max = nwell_pin ? nwell_pin->upper_right().y() : height;
+  {
+    ScopedLayer scoped_layer(layout.get(), "nwell.drawing");
+    int64_t nwell_margin = db.Rules(
+        "nwell.drawing", "pdiff.drawing").min_enclosure;
+    Rectangle nwell_rectangle = pdiff_cover.WithPadding(nwell_margin);
+    // Extend the nwell to the top of the cell.
+    nwell_rectangle.upper_right().set_y(nwell_y_max);
+    layout->AddRectangle(nwell_rectangle);
+  }
+  {
+    ScopedLayer layer(layout.get(), "psdm.drawing");
+    int64_t psdm_margin = db.Rules(
+        "psdm.drawing", "pdiff.drawing").min_enclosure;
+    Rectangle psdm_rectangle = pdiff_cover.WithPadding(psdm_margin);
+    psdm_rectangle.upper_right().set_y(nwell_y_max);
+    layout->AddRectangle(psdm_rectangle);
+  }
+  {
+    ScopedLayer layer(layout.get(), "hvtp.drawing");
+    int64_t hvtp_margin = db.Rules(
+        "hvtp.drawing", "pdiff.drawing").min_enclosure;
+    Rectangle hvtp_rectangle = pdiff_cover.WithPadding(hvtp_margin);
+    hvtp_rectangle.upper_right().set_y(nwell_y_max);
+    layout->AddRectangle(hvtp_rectangle);
+  }
+
+  Rectangle ndiff_cover = *Rectangle::AccumulatedOver(all_ndiffs);
+
+  int64_t psdm_y_min = pwell_pin ? pwell_pin->lower_left().y() : 0;
+  {
+    ScopedLayer layer(layout.get(), "nsdm.drawing");
+    int64_t nsdm_margin = db.Rules(
+        "nsdm.drawing", "ndiff.drawing").min_enclosure;
+    Rectangle nsdm_rectangle = ndiff_cover.WithPadding(nsdm_margin);
+    nsdm_rectangle.lower_left().set_y(psdm_y_min);
+    layout->AddRectangle(nsdm_rectangle);
   }
 
   // areaid.standardc 81/4

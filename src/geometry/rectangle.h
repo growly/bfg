@@ -34,6 +34,9 @@ class Rectangle : public Shape {
   static void ExpandAccumulate(const Rectangle &subsume,
                                std::optional<Rectangle> *target);
 
+  static std::optional<Rectangle> AccumulatedOver(
+      const std::vector<Rectangle*> rectangles);
+
   static Rectangle CentredAt(
       const Point &centre, uint64_t width, uint64_t height);
 

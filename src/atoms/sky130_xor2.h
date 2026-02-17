@@ -25,23 +25,23 @@ namespace atoms {
 class Sky130Xor2: public Atom {
  public:
   struct Parameters : public Sky130Parameters {
-    uint64_t width_nm = 1380;
+    uint64_t width_nm = 3220;
     uint64_t height_nm = 2720;
 
     // TODO(aryap): These are parameters which the layout should implement
     // dynamically, but currently all the shapes are static from the initial
     // import.
-    uint64_t nfet_0_width_nm = 520;
-    uint64_t nfet_1_width_nm = 520;
-    uint64_t nfet_2_width_nm = 520;
-    uint64_t nfet_3_width_nm = 520;
-    uint64_t nfet_4_width_nm = 520;
+    uint64_t nfet_0_width_nm = 645;
+    uint64_t nfet_1_width_nm = 645;
+    uint64_t nfet_2_width_nm = 645;
+    uint64_t nfet_3_width_nm = 645;
+    uint64_t nfet_4_width_nm = 645;
 
-    uint64_t pfet_0_width_nm = 790;
-    uint64_t pfet_1_width_nm = 790;
-    uint64_t pfet_2_width_nm = 790;
-    uint64_t pfet_3_width_nm = 790;
-    uint64_t pfet_4_width_nm = 790;
+    uint64_t pfet_0_width_nm = 1000;
+    uint64_t pfet_1_width_nm = 1000;
+    uint64_t pfet_2_width_nm = 1000;
+    uint64_t pfet_3_width_nm = 1000;
+    uint64_t pfet_4_width_nm = 1000;
 
     uint64_t nfet_0_length_nm = 150;
     uint64_t nfet_1_length_nm = 150;

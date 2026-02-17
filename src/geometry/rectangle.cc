@@ -47,6 +47,18 @@ std::optional<Rectangle> Rectangle::FromCentralAxis(
   return rectangle;
 }
 
+std::optional<Rectangle> Rectangle::AccumulatedOver(
+      const std::vector<Rectangle*> rectangles) {
+  if (rectangles.empty()) {
+    return std::nullopt;
+  }
+  Rectangle cover = *rectangles.front();
+  for (auto it = rectangles.begin() + 1; it < rectangles.end(); ++it) {
+    cover.ExpandToCover(**it);
+  }
+  return cover;
+}
+
 double Rectangle::ClosestDistanceBetween(
     const Rectangle &lhs, const Rectangle &rhs) {
   if (lhs.Overlaps(rhs))
