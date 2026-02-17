@@ -16,10 +16,7 @@ namespace atoms {
 
 // Generates a 2-input XOR gate for Sky130.
 //
-// Based on the implementation in the HD library, which looks like this:
-//
-// (TODO(aryap): Draw schematic. Sent John a drawing already, check email for
-// "xor2_1.pdf".)
+// Based on the implementation in the HD library.
 //
 // The XOR function is: X = A⊕B = A·B + A·B
 class Sky130Xor2: public Atom {
@@ -28,14 +25,11 @@ class Sky130Xor2: public Atom {
     uint64_t width_nm = 3220;
     uint64_t height_nm = 2720;
 
-    // TODO(aryap): These are parameters which the layout should implement
-    // dynamically, but currently all the shapes are static from the initial
-    // import.
-    uint64_t nfet_0_width_nm = 645;
-    uint64_t nfet_1_width_nm = 645;
-    uint64_t nfet_2_width_nm = 645;
-    uint64_t nfet_3_width_nm = 645;
-    uint64_t nfet_4_width_nm = 645;
+    uint64_t nfet_0_width_nm = 650;
+    uint64_t nfet_1_width_nm = 650;
+    uint64_t nfet_2_width_nm = 650;
+    uint64_t nfet_3_width_nm = 650;
+    uint64_t nfet_4_width_nm = 650;
 
     uint64_t pfet_0_width_nm = 1000;
     uint64_t pfet_1_width_nm = 1000;
@@ -43,6 +37,8 @@ class Sky130Xor2: public Atom {
     uint64_t pfet_3_width_nm = 1000;
     uint64_t pfet_4_width_nm = 1000;
 
+    // TODO(aryap): Gate lengths are not implemented. The parameters are left
+    // here as a reminder of the eternal Sisyphean burden of life.
     uint64_t nfet_0_length_nm = 150;
     uint64_t nfet_1_length_nm = 150;
     uint64_t nfet_2_length_nm = 150;

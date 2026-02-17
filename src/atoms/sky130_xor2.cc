@@ -21,6 +21,26 @@ using ::bfg::geometry::Polygon;
 using ::bfg::geometry::Rectangle;
 using ::bfg::geometry::Layer;
 
+// This cell copies the implementation of the sky130 hd-library xor2_1 cell:
+//
+//             /             /         /
+//            _|            _|pfet2   _|
+//       A -o|_ pfet1  A -o|_    B -o|_ pfet3
+//             |             |         |
+//             | (i1)        +----+----+ (i2)
+//            _|                 _|
+//       B -o|_ pfet0      +---o|_ pfet4
+//             |           |      |
+//   (i0) +----+---+-------+      +-------------+--- X
+//       _|nfet0  _|       |     _|            _|
+//  B --|_   A --|_ nfet1  +----|_ nfet4   A--|_ nfet2
+//        |        |              |             |
+//        V        V              V             | (i3)
+//                                             _|
+//                                         B--|_ nfet3
+//                                              |
+//                                              V
+// Internal nodes (wires) are indicated in brackets.
 bfg::Cell *Sky130Xor2::Generate() {
   // A 2-input XOR gate implements the function:
   //               _   _
@@ -59,12 +79,6 @@ bfg::Circuit *Sky130Xor2::GenerateCircuit() {
       design_db_->FindCellOrDie(
           "sky130", "sky130_fd_pr__pfet_01v8_hvt")->circuit();
 
-  // TODO(aryap): Implement XOR logic using transistors.
-  // A typical XOR2 implementation would require multiple transistors
-  // configured to implement X = A⊕B.
-  //
-  // For now, this is a placeholder structure.
-
   // nfet_0
   circuit::Instance *nfet_0 = circuit->AddInstance("nfet_0", nfet_01v8);
   // nfet_1
@@ -86,6 +100,25 @@ bfg::Circuit *Sky130Xor2::GenerateCircuit() {
   circuit::Instance *pfet_3 = circuit->AddInstance("pfet_3", pfet_01v8);
   // pfet_4
   circuit::Instance *pfet_4 = circuit->AddInstance("pfet_4", pfet_01v8);
+
+  circuit::Wire i_0 = circuit->AddSignal("i_0");
+  nfet_0->Connect({{"d", i_0}, {"g", B}, {"s", VGND}, {"b", VNB}});
+  nfet_1->Connect({{"d", i_0}, {"g", A}, {"s", VGND}, {"b", VNB}});
+
+  circuit::Wire i_1 = circuit->AddSignal("i_1");
+  pfet_0->Connect({{"d", i_1}, {"g", B}, {"s", i_0}, {"b", VPB}});
+  pfet_1->Connect({{"d", VPWR}, {"g", A}, {"s", i_1}, {"b", VPB}});
+
+  circuit::Wire i_2 = circuit->AddSignal("i_2");
+  pfet_2->Connect({{"d", VPWR}, {"g", A}, {"s", i_2}, {"b", VPB}});
+  pfet_3->Connect({{"d", VPWR}, {"g", B}, {"s", i_2}, {"b", VPB}});
+  
+  nfet_4->Connect({{"d", X}, {"g", i_0}, {"s", VGND}, {"b", VNB}});
+  pfet_4->Connect({{"d", i_2}, {"g", i_0}, {"s", X}, {"b", VPB}});
+
+  circuit::Wire i_3 = circuit->AddSignal("i_3");
+  nfet_2->Connect({{"d", X}, {"g", A}, {"s", i_3}, {"b", VNB}});
+  nfet_3->Connect({{"d", i_3}, {"g", B}, {"s", VGND}, {"b", VNB}});
 
   struct FetParameters {
     circuit::Instance *instance;
@@ -139,8 +172,6 @@ bfg::Circuit *Sky130Xor2::GenerateCircuit() {
             static_cast<int64_t>(fet_parameters[i].length_nm),
             Parameter::SIUnitPrefix::NANO));
   }
-
-  // TODO(aryap): Wire up the transistors to implement XOR logic.
 
   return circuit.release();
 }
@@ -230,21 +261,26 @@ bfg::Layout *Sky130Xor2::GenerateLayout() {
   // diff.drawing
   layout->SetActiveLayerByName("diff.drawing");
   int64_t pdiff_top = height - 235;
+  // pfet_0
   Rectangle *pdiff_0 = layout->AddRectangle(Rectangle(
       {175, pdiff_top - db.ToInternalUnits(parameters_.pfet_0_width_nm)},
       {(585 + 855) / 2, pdiff_top}));
+  // pfet_1
   Rectangle *pdiff_1 = layout->AddRectangle(Rectangle(
       {(585 + 855) / 2, pdiff_top - db.ToInternalUnits(
           parameters_.pfet_1_width_nm)},
       {(1005 + 1254) / 2, pdiff_top}));
+  // pfet_2
   Rectangle *pdiff_2 = layout->AddRectangle(Rectangle(
       {(1005 + 1254) / 2, pdiff_top - db.ToInternalUnits(
           parameters_.pfet_2_width_nm)},
       {(1425 + 1695) / 2, pdiff_top}));
+  // pfet_3
   Rectangle *pdiff_3 = layout->AddRectangle(Rectangle(
       {(1425 + 1695) / 2, pdiff_top - db.ToInternalUnits(
           parameters_.pfet_3_width_nm)},
       {2105, pdiff_top}));
+  // pfet_4
   Rectangle *pdiff_4 = layout->AddRectangle(Rectangle(
       {2375, pdiff_top - db.ToInternalUnits(parameters_.pfet_4_width_nm)},
       {3085, pdiff_top}));
@@ -253,21 +289,26 @@ bfg::Layout *Sky130Xor2::GenerateLayout() {
     pdiff_0, pdiff_1, pdiff_2, pdiff_3, pdiff_4};
 
   int64_t ndiff_bottom = 235;
+  // nfet_0
   Rectangle *ndiff_0 = layout->AddRectangle(Rectangle(
       {175, ndiff_bottom},
       {(585 + 855) / 2,
           ndiff_bottom + db.ToInternalUnits(parameters_.nfet_0_width_nm)}));
+  // nfet_1
   Rectangle *ndiff_1 = layout->AddRectangle(Rectangle(
       {(585 + 855) / 2, ndiff_bottom},
       {(1005 + 1254) / 2,
           ndiff_bottom + db.ToInternalUnits(parameters_.nfet_1_width_nm)}));
+  // nfet_2
   Rectangle *ndiff_2 = layout->AddRectangle(Rectangle(
       {(1005 + 1254) / 2, ndiff_bottom},
       {(1425 + 1695) / 2,
           ndiff_bottom + db.ToInternalUnits(parameters_.nfet_2_width_nm)}));
+  // nfet_3
   Rectangle *ndiff_3 = layout->AddRectangle(Rectangle(
       {(1425 + 1695) / 2, ndiff_bottom},
       {2105, ndiff_bottom + db.ToInternalUnits(parameters_.nfet_3_width_nm)}));
+  // nfet_4
   Rectangle *ndiff_4 = layout->AddRectangle(Rectangle(
       {2105, ndiff_bottom},
       {3085, ndiff_bottom + db.ToInternalUnits(parameters_.nfet_4_width_nm)}));
