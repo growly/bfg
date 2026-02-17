@@ -66,6 +66,14 @@ class Carry1 : public Tile {
         parameters_(parameters) {
   }
 
+  // TODO(aryap): Don't think I need the circuit argument. They have to be
+  // connected together all at once by a caller.
+  // TODO(aryap): Don't think I need the layout argument either.
+  geometry::Instance* AddConfigMemory(RowGuide *row) const;
+  geometry::Instance* AddGenerateSelectMux(RowGuide *row) const;
+  geometry::Instance* AddSumXor(RowGuide *row) const;
+  geometry::Instance* AddCarrySelectMux(RowGuide *row) const;
+
   Cell *GenerateIntoDatabase(const std::string &name) override;
 
  private:
