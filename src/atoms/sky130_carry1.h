@@ -1,5 +1,5 @@
-#ifndef TILES_CARRY1_H_
-#define TILES_CARRY1_H_
+#ifndef ATOMS_SKY130_CARRY1_H_
+#define ATOMS_SKY130_CARRY1_H_
 
 #include <string>
 #include <vector>
@@ -11,17 +11,17 @@
 #include "../memory_bank.h"
 #include "../routing_grid.h"
 #include "../cell.h"
-#include "proto/parameters/carry1.pb.h"
-#include "tile.h"
+#include "proto/parameters/sky130_carry1.pb.h"
+#include "atom.h"
 
 namespace bfg {
 
 class DesignDatabase;
 class RouteManager;
 
-namespace tiles {
+namespace atoms {
 
-// Carry1 forms 1 bit of the carry chain:
+// Sky130Carry1 forms 1 bit of the carry chain:
 //
 //
 //                                               +-----+
@@ -41,7 +41,7 @@ namespace tiles {
 //                           |/  2:1 MUX
 //
 // Inputs:
-//    C_I, carry in, typically from a prior Carry1 bit
+//    C_I, carry in, typically from a prior Sky130Carry1 bit
 //    P, propagate, typically from a LUT
 //    G_0, generate, typically from another LUT
 //    G_1, generate, typically from a bypass input
@@ -53,16 +53,16 @@ namespace tiles {
 //    C_O, carry out
 //    CONFIG_OUT, scan-chain config out
 //
-class Carry1 : public Tile {
+class Sky130Carry1 : public Atom {
  public:
   struct Parameters {
-    void ToProto(proto::parameters::Carry1 *pb) const;
-    void FromProto(const proto::parameters::Carry1 &pb); 
+    void ToProto(proto::parameters::Sky130Carry1 *pb) const;
+    void FromProto(const proto::parameters::Sky130Carry1 &pb); 
   };
 
-  Carry1(
+  Sky130Carry1(
       const Parameters &parameters, DesignDatabase *design_db)
-      : Tile(design_db),
+      : Atom(design_db),
         parameters_(parameters) {
   }
 
@@ -71,7 +71,7 @@ class Carry1 : public Tile {
   geometry::Instance* AddSumXor(RowGuide *row) const;
   geometry::Instance* AddCarrySelectMux(RowGuide *row) const;
 
-  Cell *GenerateIntoDatabase(const std::string &name) override;
+  Cell *Generate() override;
 
  private:
   void GenerateCircuit(const std::vector<geometry::Instance*> &taps,
@@ -87,4 +87,4 @@ class Carry1 : public Tile {
 }  // namespace atoms
 }  // namespace bfg
 
-#endif  // TILES_CARRY1_H_
+#endif  // ATOMS_SKY130_CARRY1_H_

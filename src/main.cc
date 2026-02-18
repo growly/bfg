@@ -17,6 +17,7 @@
 #include "physical_properties_database.h"
 #include "cell.h"
 #include "layout.h"
+#include "atoms/sky130_carry1.h"
 #include "atoms/sky130_switch_complex.h"
 #include "atoms/sky130_interconnect_mux1.h"
 #include "atoms/sky130_interconnect_mux2.h"
@@ -27,7 +28,6 @@
 #include "atoms/sky130_dfxtp.h"
 #include "atoms/sky130_xor2.h"
 #include "atoms/gf180mcu_mux.h"
-#include "tiles/carry1.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
 #include "tiles/slice.h"
@@ -36,7 +36,7 @@
 #include "tiles/interconnect_wire_block.h"
 #include "utility.h"
 
-#include "proto/parameters/carry1.pb.h"
+#include "proto/parameters/sky130_carry1.pb.h"
 #include "proto/parameters/interconnect.pb.h"
 #include "proto/parameters/interconnect_wire_block.pb.h"
 #include "proto/parameters/lut_b.pb.h"
@@ -156,11 +156,11 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130Xor2,
         bfg::atoms::Sky130Xor2::Parameters,
         bfg::atoms::Sky130Xor2>(generator_name, parameter_pb_path, design_db);
-  } else if (generator_name == "Carry1") {
+  } else if (generator_name == "Sky130Carry1") {
     cell = ReadParamsAndGenerate<
-        bfg::proto::parameters::Carry1,
-        bfg::tiles::Carry1::Parameters,
-        bfg::tiles::Carry1>(generator_name, parameter_pb_path, design_db);
+        bfg::proto::parameters::Sky130Carry1,
+        bfg::atoms::Sky130Carry1::Parameters,
+        bfg::atoms::Sky130Carry1>(generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "LutB") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::LutB,

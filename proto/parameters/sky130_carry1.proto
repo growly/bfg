@@ -2,5 +2,5 @@ syntax = "proto3";
 
 package bfg.proto.parameters;
 
-message Carry1 {
+message Sky130Carry1 {
 }

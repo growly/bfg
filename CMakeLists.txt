@@ -105,7 +105,6 @@ set(SRC
 )
 
 set(TILES_SRC
-  ${PROJECT_SOURCE_DIR}/src/tiles/carry1.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/interconnect.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut_b.cc
@@ -116,6 +115,7 @@ set(TILES_SRC
 
 set(SKY130_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_carry1.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_decap.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_hd_mux2_1.cc

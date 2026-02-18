@@ -1,7 +1,7 @@
-#include "carry1.h"
+#include "sky130_carry1.h"
 
 #include "../cell.h"
-#include "proto/parameters/carry1.pb.h"
+#include "proto/parameters/sky130_carry1.pb.h"
 #include "../atoms/sky130_hd_mux2_1.h"
 #include "../atoms/sky130_dfxtp.h"
 #include "../atoms/sky130_tap.h"
@@ -9,12 +9,14 @@
 #include "../routing_track_direction.h"
 
 namespace bfg {
-namespace tiles {
+namespace atoms {
 
-void Carry1::Parameters::ToProto(proto::parameters::Carry1 *pb) const {
+void Sky130Carry1::Parameters::ToProto(
+    proto::parameters::Sky130Carry1 *pb) const {
 }
 
-void Carry1::Parameters::FromProto(const proto::parameters::Carry1 &pb) {
+void Sky130Carry1::Parameters::FromProto(
+    const proto::parameters::Sky130Carry1 &pb) {
 }
 
 namespace {
@@ -55,9 +57,9 @@ void DrawElbowRoute(const PhysicalPropertiesDatabase &db,
 
 }   // namespace
 
-Cell *Carry1::GenerateIntoDatabase(const std::string &name) {
+Cell *Sky130Carry1::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<Cell> cell(new Cell(name));
+  std::unique_ptr<Cell> cell(new Cell(name_.empty() ? "sky130_carry1": name_));
 
   Layout *layout = new bfg::Layout(db);
   Circuit *circuit = new bfg::Circuit();
@@ -92,15 +94,6 @@ Cell *Carry1::GenerateIntoDatabase(const std::string &name) {
   std::vector<int64_t> tracks_y;
   // Start 1.5 pitches in and end 1.5 pitches before the boundary to accommodate
   // the VPWR/VGND rails.
-  //
-  // TODO(aryap): We shouldn't be doing it this way in a Tile. This is a
-  // violation of our intended separation of concerns. Tiles shouldn't know any
-  // PDK or cell-specific detail, or should at least query. (We could query for
-  // met1 - I mean, "arbitrary horizontal routing layer" - shapes and avoid
-  // them.) Or we could use the RoutingGrid, which is the right level of
-  // abstraction. Then again the whole reason I'm doing this is that the
-  // RoutingGrid is too heavy. Maybe it's best to just call this a Sky130Carry1,
-  // make it an Atom and not a Tile, and avoid the burden.
   for (int64_t y = 3 * met1_pitch / 2;
        y <= height - 3 * met1_pitch / 2;
        y += met1_pitch) {
@@ -254,7 +247,7 @@ Cell *Carry1::GenerateIntoDatabase(const std::string &name) {
   return cell.release();
 }
 
-geometry::Instance * Carry1::AddConfigMemory(RowGuide *row) const {
+geometry::Instance * Sky130Carry1::AddConfigMemory(RowGuide *row) const {
   std::string template_name = "config_memory";
   std::string instance_name = absl::StrCat(template_name, "_i");
   atoms::Sky130Dfxtp::Parameters params = {
@@ -268,7 +261,7 @@ geometry::Instance * Carry1::AddConfigMemory(RowGuide *row) const {
   return installed;
 }
 
-geometry::Instance* Carry1::AddGenerateSelectMux(RowGuide *row) const {
+geometry::Instance* Sky130Carry1::AddGenerateSelectMux(RowGuide *row) const {
   std::string template_name = "generate_select";
   std::string instance_name = absl::StrCat(template_name, "_i");
   // Default params.
@@ -279,7 +272,7 @@ geometry::Instance* Carry1::AddGenerateSelectMux(RowGuide *row) const {
   return installed;
 }
 
-geometry::Instance* Carry1::AddSumXor(RowGuide *row) const {
+geometry::Instance* Sky130Carry1::AddSumXor(RowGuide *row) const {
   std::string template_name = "sum_xor2";
   std::string instance_name = absl::StrCat(template_name, "_i");
   // Default params.
@@ -290,7 +283,7 @@ geometry::Instance* Carry1::AddSumXor(RowGuide *row) const {
   return installed;
 }
 
-geometry::Instance* Carry1::AddCarrySelectMux(RowGuide *row) const {
+geometry::Instance* Sky130Carry1::AddCarrySelectMux(RowGuide *row) const {
   std::string template_name = "carry_select";
   std::string instance_name = absl::StrCat(template_name, "_i");
   // Default params.
@@ -301,12 +294,12 @@ geometry::Instance* Carry1::AddCarrySelectMux(RowGuide *row) const {
   return installed;
 }
 
-void Carry1::GenerateCircuit(const std::vector<geometry::Instance*> &taps,
-                             geometry::Instance *config_memory,
-                             geometry::Instance *generate_select,
-                             geometry::Instance *carry_select,
-                             geometry::Instance *sum_xor,
-                             bfg::Circuit *circuit) const {
+void Sky130Carry1::GenerateCircuit(const std::vector<geometry::Instance*> &taps,
+                                   geometry::Instance *config_memory,
+                                   geometry::Instance *generate_select,
+                                   geometry::Instance *carry_select,
+                                   geometry::Instance *sum_xor,
+                                   bfg::Circuit *circuit) const {
   circuit::Wire VPWR = circuit->AddSignal("VPWR");
   circuit::Wire VGND = circuit->AddSignal("VGND");
 
@@ -373,5 +366,5 @@ void Carry1::GenerateCircuit(const std::vector<geometry::Instance*> &taps,
   }
 }
 
-}   // namespace tiles
+}   // namespace atoms
 }   // namespace bfg
