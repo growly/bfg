@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import util
 
 PDK_PATH = Path(os.environ.get("PDK_ROOT")) / "sky130A"
 #PDK_PATH = "/home/arya/src/pdk-root/sky130A_dan"
@@ -32,14 +33,7 @@ with open('../build/Sky130Xor2.package.pb', 'rb') as package_file:
 ns = h.from_proto(package)
 xor2 = ns.Sky130Xor2
 
-
-def scale_params(module: h.Module):
-    SCALE = 1E6
-    for name, instance in module.instances.items():
-        for param, value in instance.of.params.items():
-            new_value = (value * SCALE).scale(m)
-            instance.of.params[param] = new_value
-
+RUN_DIR = "./scratch_xor2"
 
 HIGH = 1.8  # volts
 LOW = 0.0   # volts
@@ -128,13 +122,13 @@ def main():
     options = spice.SimOptions(
         simulator=spice.SupportedSimulators.XYCE,
         fmt=spice.ResultFormat.SIM_DATA,
-        rundir="./scratch_xor2"
+        rundir=RUN_DIR
     )
     #if not spice.xyce.available():
     #    print("spice is not available!")
     #    return
 
-    scale_params(xor2)
+    util.scale_params(xor2)
 
     results = Sky130Xor2Sim.run(options)
 

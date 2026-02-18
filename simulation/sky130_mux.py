@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import sys
+sys.path.extend(['../vlsir/VlsirTools', '../vlsir/bindings/python'])
+
 import os
 from hdl21.prefix import m, u, n, p, f
 import hdl21 as h
@@ -14,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import util
 
 PDK_PATH = Path(os.environ.get("PDK_ROOT")) / "sky130A"
 #PDK_PATH = "/home/arya/src/pdk-root/sky130A_dan"
@@ -29,14 +33,7 @@ with open('../build/sky130_mux.package.pb', 'rb') as package_file:
 ns = h.from_proto(package)
 mux = ns.sky130_mux
 
-
-def scale_params(module: h.Module):
-    SCALE = 1E6
-    for name, instance in mux.instances.items():
-        for param, value in instance.of.params.items():
-            new_value = (value * SCALE).scale(m)
-            instance.of.params[param] = new_value
-
+RUN_DIR = "./scratch_mux"
 
 HIGH = 1.8  # volts
 LOW = 0.0   # volts
@@ -207,13 +204,13 @@ def main():
     options = spice.SimOptions(
         simulator=spice.SupportedSimulators.XYCE,
         fmt=spice.ResultFormat.SIM_DATA,
-        rundir="./scratch"
+        rundir=RUN_DIR
     )
     #if not spice.xyce.available():
     #    print("spice is not available!")
     #    return
 
-    scale_params(mux)
+    util.scale_params(mux)
 
     results = Sky130MuxSim.run(options)
 
