@@ -38,7 +38,7 @@ class RoutingGrid;
 // up.
 class RoutingTrack {
  public:
-  // TODO(aryap): Shouldn't this live in geometry?
+  // TODO(aryap): Move to geometry/RoutingTrackDirectionUtility.
   static int64_t ProjectOntoAxis(
       const geometry::Point &point, const RoutingTrackDirection &direction);
   static std::pair<int64_t, int64_t> ProjectOntoAxis(
@@ -47,8 +47,6 @@ class RoutingTrack {
       const RoutingTrackDirection &direction);
   // This is only here because I can't put it in the RoutingTrackDirection enum.
   static RoutingTrackDirection OrthogonalDirectionTo(
-      const RoutingTrackDirection &direction);
-  static double DirectionToAngle(
       const RoutingTrackDirection &direction);
   static RoutingTrackDirection AngleToDirection(double angle_to_horizon_rads);
 

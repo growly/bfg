@@ -137,8 +137,9 @@ RoutingPath::GetOverlapOrSkipAbbreviation(size_t starting_index) {
   }
 
   RoutingTrackDirection axis_direction = current_edge->Direction();
-  double axis_angle = RoutingTrack::DirectionToAngle(axis_direction);
-  double off_axis_angle = RoutingTrack::DirectionToAngle(
+  double axis_angle =
+      RoutingTrackDirectionUtility::DirectionToAngle(axis_direction);
+  double off_axis_angle = RoutingTrackDirectionUtility::DirectionToAngle(
       RoutingTrack::OrthogonalDirectionTo(axis_direction));
 
   return geometry::Line::OverlappingProjectionOnAxis(
@@ -289,10 +290,12 @@ bool RoutingPath::MaybeAbbreviate(
     LOG(FATAL) << "I asserted this was never the case!";
   }
 
-  double axis_angle = RoutingTrack::DirectionToAngle(axis_direction);
+  double axis_angle =
+      RoutingTrackDirectionUtility::DirectionToAngle(axis_direction);
   RoutingTrackDirection normal_direction =
       RoutingTrack::OrthogonalDirectionTo(axis_direction);
-  double normal_angle = RoutingTrack::DirectionToAngle(normal_direction);
+  double normal_angle =
+      RoutingTrackDirectionUtility::DirectionToAngle(normal_direction);
 
   geometry::Point point_a;
   // The host of the jog from a to do or a to b.
@@ -838,7 +841,8 @@ void RoutingPath::CheckForViaCrowding(
           *vertex, poly_line->layer());
       std::optional<double> angle_rads;
       if (encap_direction) {
-        angle_rads = RoutingTrack::DirectionToAngle(*encap_direction);
+        angle_rads =
+            RoutingTrackDirectionUtility::DirectionToAngle(*encap_direction);
       }
       for (RoutingEdge *other_edge : edges) {
         VLOG(13) << "Path " << path << " via " << *other_edge;
@@ -895,7 +899,7 @@ void RoutingPath::CheckForViaCrowding(
   }
 }
 
-// When a new edge comes in perpedicular to an existing edge, the presence of a
+  // When a new edge comes in perpedicular to an existing edge, the presence of a
 // nearby vias, or even just wide paths, can lead to a notch:
 //             +-----------+
 // +-----------+           |
@@ -1202,7 +1206,8 @@ void RoutingPath::BuildVias(
 
     std::optional<double> encap_angle;
     if (maybe_forced_direction) {
-      encap_angle = RoutingTrack::DirectionToAngle(*maybe_forced_direction);
+      encap_angle = RoutingTrackDirectionUtility::DirectionToAngle(
+          *maybe_forced_direction);
     }
 
     if (layer == from_layer) {

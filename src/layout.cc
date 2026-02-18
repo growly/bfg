@@ -13,7 +13,7 @@
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 #include "poly_line_inflator.h"
-
+#include "routing_track_direction.h"
 
 #include "vlsir/layout/raw.pb.h"
 
@@ -965,14 +965,17 @@ geometry::Polygon *Layout::MakeWire(
     bool start_pad_only,
     bool end_pad_only,
     const std::optional<std::string> &net,
-    bool is_connectable) {
+    bool is_connectable,
+    const std::optional<RoutingTrackDirection> &start_pad_direction,
+    const std::optional<RoutingTrackDirection> &end_pad_direction) {
   std::vector<ViaToSomeLayer> vias;
 
   if (start_layer_name) {
     vias.push_back({
         .centre = points.front(),
         .layer_name = *start_layer_name,
-        .pad_only = start_pad_only
+        .pad_only = start_pad_only,
+        .direction = start_pad_direction
     });
   }
 
@@ -980,7 +983,8 @@ geometry::Polygon *Layout::MakeWire(
     vias.push_back({
         .centre = points.back(),
         .layer_name = *end_layer_name,
-        .pad_only = end_pad_only
+        .pad_only = end_pad_only,
+        .direction = end_pad_direction
     });
   }
 
@@ -1011,7 +1015,17 @@ geometry::Polygon *Layout::MakeWire(
     const ViaEncapInfo encap_info =
         physical_db_.TypicalViaEncap(wire_layer, via_layer);
 
-    wire.InsertBulge(directive.centre, encap_info.width, encap_info.length);
+    std::optional<double> angle_rads;
+    if (directive.direction) {
+      angle_rads = RoutingTrackDirectionUtility::DirectionToAngle(
+          *directive.direction);
+    }
+ 
+    wire.InsertBulge(directive.centre,
+                     encap_info.width,
+                     encap_info.length,
+                     angle_rads);
+
     if (!directive.pad_only) {
       MakeVia(via_layer, directive.centre);
     }

@@ -118,7 +118,6 @@ class Instance : public Manipulable {
   std::set<Port*> GetInstancePorts(const std::string &name) {
     std::vector<Port*> port_vector;
     GetInstancePorts(name, &port_vector);
-
     return std::set<Port*>(port_vector.begin(), port_vector.end());
   }
 
@@ -126,6 +125,12 @@ class Instance : public Manipulable {
     PortSet ports = Port::MakePortSet();
     GetInstancePorts(name, &ports);
     out->insert(out->end(), ports.begin(), ports.end());
+  }
+
+  PortSet GetInstancePortSet(const std::string &name) {
+    PortSet ports = Port::MakePortSet();
+    GetInstancePorts(name, &ports);
+    return ports;
   }
 
   void GetInstancePorts(PortSet *out) {

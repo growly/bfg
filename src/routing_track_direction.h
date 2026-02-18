@@ -14,6 +14,8 @@ enum class RoutingTrackDirection {
 class RoutingTrackDirectionUtility {
  public:
   static const std::set<RoutingTrackDirection> kAllDirections;
+  static double DirectionToAngle(
+      const RoutingTrackDirection &direction);
 };
 
 std::ostream &operator<<(

@@ -45,6 +45,7 @@ class Layout : public geometry::Manipulable {
     // Indicate that the surrounding metal should be sized for a via here but
     // the via should not be inserted.
     bool pad_only;
+    std::optional<RoutingTrackDirection> direction;
   };
 
   Layout() = delete;
@@ -239,7 +240,11 @@ class Layout : public geometry::Manipulable {
       bool start_pad_only = false,
       bool end_pad_only = false,
       const std::optional<std::string> &net = std::nullopt,
-      bool is_connectable = false);
+      bool is_connectable = false,
+      const std::optional<RoutingTrackDirection> &start_pad_direction =
+          std::nullopt,
+      const std::optional<RoutingTrackDirection> &end_pad_direction =
+          std::nullopt);
 
   geometry::Polygon *MakeWire(
       const std::vector<geometry::Point> &points,

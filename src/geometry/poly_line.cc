@@ -99,7 +99,8 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
   }
   if (to.x() != last.x() && to.y() != last.y()) {
     LOG(FATAL) << "PolyLine segments must be rectilinear. Make sure the new "
-               << "x == last_x or y == last_y.";
+               << "x == last_x or y == last_y. c.f. "
+               << to << " vs. " << last;
   }
   segments_.push_back(LineSegment{to, width});
 }

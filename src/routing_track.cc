@@ -114,18 +114,6 @@ RoutingTrackDirection RoutingTrack::OrthogonalDirectionTo(
   return RoutingTrackDirection::kTrackVertical;
 }
 
-double RoutingTrack::DirectionToAngle(const RoutingTrackDirection &direction) {
-  switch (direction) {
-    case RoutingTrackDirection::kTrackHorizontal:
-      return 0.0;
-    case RoutingTrackDirection::kTrackVertical:
-      return geometry::Radian::kPi / 2;
-    default:
-      LOG(FATAL) << "Unknown RoutingTrackDirection: " << direction;
-  }
-  return 0.0;
-}
-
 RoutingTrackDirection RoutingTrack::AngleToDirection(
     double angle_to_horizon_rads) {
   if (angle_to_horizon_rads == 0.0) {
