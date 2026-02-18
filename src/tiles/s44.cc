@@ -1,0 +1,99 @@
+#include "s44.h"
+
+#include "../atoms/sky130_carry1.h"
+#include "../circuit.h"
+#include "../layout.h"
+#include "../memory_bank.h"
+#include "../tiles/lut_b.h"
+
+namespace bfg {
+namespace tiles {
+
+Cell *S44::GenerateIntoDatabase(const std::string &name) {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  std::unique_ptr<Cell> cell(new Cell(name));
+
+  bfg::Circuit *circuit = new bfg::Circuit();
+  cell->SetCircuit(circuit);
+  bfg::Layout *layout = new bfg::Layout(db);
+  cell->SetLayout(layout);
+
+  MemoryBank bank = MemoryBank(layout,
+                               circuit,
+                               design_db_,
+                               nullptr,    // No tap cells.
+                               false,      // Don't rotate alternate rows.
+                               false,      // Don't rotate first row.
+                               geometry::Compass::LEFT);
+
+  static constexpr size_t kBottom = 0;
+  static constexpr size_t kMiddle = 1;
+  static constexpr size_t kTop = 2;
+
+  std::string lut_name = "lut4";
+
+  // Add 2 4-LUTs.
+  {
+    LutB::Parameters bottom_lut_params = {
+        .lut_size = 4
+        // TODO(aryap): Enable input-sharing 2:1 mux.
+    };
+    LutB bottom_lut4_gen(bottom_lut_params, design_db_);
+    Cell *bottom_lut4_cell = bottom_lut4_gen.GenerateIntoDatabase(lut_name);
+
+    geometry::Instance *bottom_lut = bank.InstantiateRight(
+        kBottom, absl::StrCat(lut_name, "_i_bottom"), lut4_cell);
+  }
+
+  {
+    LutB::Parameters top_lut_params = {
+        .lut_size = 4
+        // TODO(aryap):: Enable additional input option for registered and
+        // combinational outputs.
+    };
+    LutB top_lut4_gen(top_lut_params, design_db_);
+    Cell *top_lut4_cell = top_lut4_gen.GenerateIntoDatabase(lut_name);
+    geometry::Instance *top_lut = bank.InstantiateRight(
+        kTop, absl::StrCat(lut_name, "_i_top"), lut4_cell);
+  }
+
+  std::string carry_name = "carry1";
+  atoms::Sky130Carry1 carry1_generator ({}, design_db_);
+  Cell *carry_cell = carry1_generator.GenerateIntoDatabase(carry_name);
+
+  bank.InstantiateRight(kMiddle, absl::StrCat(carry_name, "_i"), carry_cell);
+
+  int64_t lut_width = lut4_cell->layout()->GetTilingBounds().Width();
+
+  //// In between every row of LUTs we add a horizontal channel, both for routing
+  //// wires and for matching the rails at the top/bottom of the LUT cell.
+  //int num_lut_rows = std::ceil(
+  //    static_cast<double>(parameters_.kNumLUTs) /
+  //    static_cast<double>(kLutsPerRow));
+  //for (size_t i = 0; i < num_lut_rows - 1; ++i) {
+  //  size_t row = 2 * i + 1;
+  //  std::vector<int64_t> decap_widths = Utility::StripInUnits(
+  //      lut_width * kLutsPerRow,
+  //      atoms::Sky130Decap::Parameters::kMaxWidthNm,
+  //      atoms::Sky130Parameters::kStandardCellUnitWidthNm,
+  //      atoms::Sky130Decap::Parameters::kMinWidthNm);
+
+  //  for (size_t j = 0; j < decap_widths.size(); ++j) {
+  //    int64_t decap_width = decap_widths[j];
+  //    std::string template_name = absl::StrFormat(
+  //        "lut_decap_%d_%d_%d", i, j, decap_width);
+  //    std::string instance_name = absl::StrCat(template_name, "_i");
+  //    atoms::Sky130Decap::Parameters decap_params = {
+  //      .width_nm = static_cast<uint64_t>(db.ToExternalUnits(decap_width))
+  //      // Default height should be fine.
+  //    };
+  //    atoms::Sky130Decap decap(decap_params, design_db_);
+  //    Cell *decap_cell = decap.GenerateIntoDatabase(template_name);
+  //    luts.InstantiateRight(row, instance_name, decap_cell);
+  //  }
+  //}
+  return cell.release();
+}
+
+}  // namespace tiles
+}  // namespace bfg

@@ -501,7 +501,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
         decap_cell);
   }
 
-  Route(circuit.get(), layout.get());
+  //Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.

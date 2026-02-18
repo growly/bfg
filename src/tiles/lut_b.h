@@ -96,6 +96,9 @@ class LutB : public Tile {
   struct Parameters {
     // This is k.
     uint32_t lut_size = 4;
+  
+    bool add_s3_input_mux = false;
+    bool add_third_mux_option = false;
 
     std::optional<uint64_t> tiling_width_unit_nm = 460;
 
