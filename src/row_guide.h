@@ -143,8 +143,12 @@ class RowGuide {
     return instances_;
   };
 
+  const std::vector<geometry::Instance*> &generated_taps() const {
+    return generated_taps_;
+  }
+
  private:
-  static size_t tap_count_;
+  static size_t global_tap_count_;
 
   void Place(const geometry::Point &point,
              geometry::Instance *instance,
@@ -195,6 +199,8 @@ class RowGuide {
   // index. If the row's cells are rotated (rotate_instances_ is true) then each
   // instance is rotated, but the order is still left-to-right.
   std::vector<geometry::Instance*> instances_;
+
+  std::vector<geometry::Instance*> generated_taps_;
 
   bool start_with_tap_;
   int64_t num_taps_;

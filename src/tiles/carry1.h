@@ -36,7 +36,7 @@ namespace tiles {
 //                +-------+   |     +---- -| |
 //                            |     |      |/  2:1 MUX
 //                           |\     |
-//                      G_0 -| |----+
+//                      G_0 -| |----+ (i_0)
 //                      G_1 -| |
 //                           |/  2:1 MUX
 //
@@ -74,6 +74,13 @@ class Carry1 : public Tile {
   Cell *GenerateIntoDatabase(const std::string &name) override;
 
  private:
+  void GenerateCircuit(const std::vector<geometry::Instance*> &taps,
+                       geometry::Instance *config_memory,
+                       geometry::Instance *generate_select,
+                       geometry::Instance *carry_select,
+                       geometry::Instance *sum_xor,
+                       bfg::Circuit *circuit) const;
+
   Parameters parameters_;
 };
 

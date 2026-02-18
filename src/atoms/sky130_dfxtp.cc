@@ -55,13 +55,20 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   circuit->AddPort(D);
   circuit->AddPort(CLK);
-  circuit->AddPort(CLKI);
+
+  if (!parameters_.input_clock_buffer) {
+    circuit->AddPort(CLKI);
+  }
+
   circuit->AddPort(Q);
-  circuit->AddPort(QI);
   circuit->AddPort(VPWR);
   circuit->AddPort(VGND);
   circuit->AddPort(VPB);
   circuit->AddPort(VNB);
+
+  if (parameters_.add_inverted_output_port) {
+    circuit->AddPort(QI);
+  }
 
   // 18 transistors in flip-flop, 2 in output buffer.
 
@@ -905,8 +912,10 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   //Point offset_from_oem_Q = {-2 * 340, 5 * 340};
   geometry::Rectangle pin_QI_stencil = *pin_Q;
   pin_QI_stencil.Translate(offset_from_oem_Q);
-  pin = layout->AddRectangleAsPort(pin_QI_stencil, "QI");
-  layout->SavePoint("port_QI_centre", pin->centre());
+  if (parameters_.add_inverted_output_port) {
+    pin = layout->AddRectangleAsPort(pin_QI_stencil, "QI");
+    layout->SavePoint("port_QI_centre", pin->centre());
+  }
 
   // nwell.pin [PIN] 64/16
   layout->SetActiveLayerByName("nwell.pin");
@@ -957,7 +966,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   // nwell.drawing [DRAWING] 64/20
   layout->SetActiveLayerByName("nwell.drawing");
   //layout->AddRectangle(Rectangle(Point(0, 1305), Point(6190, 2910)));
-  layout->AddRectangle(Rectangle(Point(x_min, 1305), Point(6000, 2910)));
+  layout->AddRectangle(Rectangle({x_min - 190, 1305}, {6000 + 190, 2910}));
 
   // areaid.standardc 81/4
   layout->SetActiveLayerByName("areaid.standardc");

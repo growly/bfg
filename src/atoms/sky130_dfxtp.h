@@ -74,6 +74,11 @@ class Sky130Dfxtp: public Atom {
     // This has additional fets with widths and lengths.
     bool input_clock_buffer = false;
 
+    // TODO(aryap): Might be useful to make drawing QI an option too, since I've
+    // just been deleting when not needed but that doesn't remove it from the
+    // circuit port list.
+    bool add_inverted_output_port = true;
+
     uint64_t nfet_10_width_nm = 420;
     uint64_t nfet_11_width_nm = 420;
     uint64_t pfet_10_width_nm = 640;

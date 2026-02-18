@@ -11,7 +11,7 @@
 
 namespace bfg {
 
-size_t RowGuide::tap_count_ = 0;
+size_t RowGuide::global_tap_count_ = 0;
 
 geometry::Instance *RowGuide::InstantiateBack(
     const std::string &name, Layout *template_layout) {
@@ -128,11 +128,18 @@ void RowGuide::AddBlankSpaceFront(uint64_t span) {
 geometry::Instance *RowGuide::AddTap() {
   geometry::Instance *layout_instance = layout_->AddInstance(
       geometry::Instance(tap_cell_.value().get().layout()));
-  layout_instance->set_name(absl::StrCat("RowGuide_auto_tap_", tap_count_));
-  tap_count_++;
+  layout_instance->set_name(
+      absl::StrCat("RowGuide_auto_tap_", global_tap_count_));
+  global_tap_count_++;
+
+  // This is the local count (for this object).
+  num_taps_++;
   
   MakeCircuitInstance(
       layout_instance->name(), layout_instance, tap_cell_->get().circuit());
+
+  generated_taps_.push_back(layout_instance);
+
   return layout_instance;
 }
 
@@ -157,7 +164,6 @@ void RowGuide::MaybeAddTapLeftFor(uint64_t additional_span) {
   geometry::Instance *tap = AddTap();
   geometry::Point point = NextPointLeft(*tap);
   Place(point, tap, nullptr, nullptr);
-  num_taps_++;
   distance_to_tap_left_ = 0;
   instances_.insert(instances_.begin(), tap);
 }
@@ -169,7 +175,6 @@ void RowGuide::MaybeAddTapRightFor(uint64_t additional_span) {
   geometry::Instance *tap = AddTap();
   geometry::Point point = NextPointRight(*tap);
   Place(point, tap, nullptr, nullptr);
-  num_taps_++;
   distance_to_tap_right_ = 0;
   instances_.push_back(tap);
 }
