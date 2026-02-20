@@ -501,7 +501,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
         decap_cell);
   }
 
-  //Route(circuit.get(), layout.get());
+  Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.
@@ -573,7 +573,7 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   RouteScanChain(&routing_grid, circuit, layout);
   //RouteClockBuffers(&routing_grid, circuit, layout);
-  //RouteMuxInputs(&routing_grid, circuit, layout);
+  RouteMuxInputs(&routing_grid, circuit, layout);
   //RouteRemainder(&routing_grid, circuit, layout);
   //RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
