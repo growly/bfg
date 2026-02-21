@@ -24,9 +24,9 @@ void Slice::Parameters::FromProto(const proto::parameters::Slice &pb) {
   // TODO(aryap): Complete.
 }
 
-Cell *Slice::GenerateIntoDatabase(const std::string &name) {
+Cell *Slice::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<Cell> cell(new Cell(name));
+  std::unique_ptr<Cell> cell(new Cell(name_));
   cell->SetCircuit(new bfg::Circuit());
   cell->SetLayout(new bfg::Layout(db));
 

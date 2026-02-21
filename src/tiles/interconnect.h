@@ -48,7 +48,7 @@ class Interconnect : public Tile {
         parameters_(parameters) {
   }
 
-  Cell *GenerateIntoDatabase(const std::string &name) override;
+  Cell *Generate() override;
 
   void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
 

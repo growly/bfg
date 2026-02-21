@@ -104,9 +104,9 @@ const LutB::LayoutConfig *LutB::GetLayoutConfiguration(size_t lut_size) {
   return nullptr;
 }
 
-Cell *LutB::GenerateIntoDatabase(const std::string &name) {
+Cell *LutB::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<Cell> lut_cell(new Cell(name));
+  std::unique_ptr<Cell> lut_cell(new Cell(name_));
   std::unique_ptr<Layout> layout(new Layout(db));
   std::unique_ptr<Circuit> circuit(new Circuit());
 
@@ -159,7 +159,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   };
   atoms::Sky130Tap tap_generator(tap_params, design_db_);
   Cell *tap_cell = tap_generator.GenerateIntoDatabase(
-      "lut_tap_template");
+      PrefixCellName("lut_tap_template"));
 
   std::vector<std::reference_wrapper<const BankArrangement>> arrangements = {
     layout_config.left, layout_config.right};
@@ -188,7 +188,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       std::string instance_name = absl::StrCat(template_name, "_i");
       atoms::Sky130Dfxtp::Parameters params;
       atoms::Sky130Dfxtp generator(params, design_db_);
-      Cell *cell = generator.GenerateIntoDatabase(template_name);
+      Cell *cell = generator.GenerateIntoDatabase(
+          PrefixCellName(template_name));
       cell->layout()->DeletePorts("QI");
 
       geometry::Instance *installed =
@@ -221,7 +222,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   mux_params.extend_inputs_bottom = false;
 
   atoms::Sky130Mux mux(mux_params, design_db_);
-  Cell *base_mux_cell = mux.GenerateIntoDatabase("sky130_mux");
+  Cell *base_mux_cell = mux.GenerateIntoDatabase(
+      PrefixCellName("sky130_mux"));
 
   // A second version of the mux has its inputs on the bottom instead of the
   // top:
@@ -230,7 +232,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   alt_mux_params.extend_inputs_bottom = true;
 
   Cell *alt_mux_cell = atoms::Sky130Mux(
-      alt_mux_params, design_db_).GenerateIntoDatabase("alt_sky130_mux");
+      alt_mux_params, design_db_).GenerateIntoDatabase(
+          PrefixCellName("alt_sky130_mux"));
 
   // Muxes are positioned like so:
   //
@@ -293,7 +296,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130Buf::Parameters buf_params; // Default values.
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
-      Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      Cell *buf_cell = buf_generator.GenerateIntoDatabase(
+          PrefixCellName(cell_name));
       buf_cell->layout()->ResetY();
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell);
@@ -312,7 +316,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130Buf::Parameters buf_params;  // Defaults.
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
-      Cell *buf_cell = buf_generator.GenerateIntoDatabase(cell_name);
+      Cell *buf_cell = buf_generator.GenerateIntoDatabase(
+          PrefixCellName(cell_name));
       buf_cell->layout()->ResetY();
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell);
@@ -330,7 +335,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       std::string cell_name = absl::StrCat(instance_name, "_template");
       atoms::Sky130HdMux21 active_mux2_generator({}, design_db_);
       Cell *active_mux2_cell = active_mux2_generator.GenerateIntoDatabase(
-          cell_name);
+          PrefixCellName(cell_name));
       active_mux2_cell->layout()->ResetY();
       geometry::Instance *instance = bank.InstantiateInside(
           assigned_row, instance_name, active_mux2_cell);
@@ -354,7 +359,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130HdMux21 register_mux_generator({}, design_db_);
     Cell *register_mux_cell = register_mux_generator.GenerateIntoDatabase(
-        template_name);
+        PrefixCellName(template_name));
     register_mux_cell->layout()->ResetY();
     geometry::Instance *installed = banks_[1].InstantiateLeft(
         0, instance_name, register_mux_cell);
@@ -369,7 +374,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       .input_clock_buffer = true
     };
     atoms::Sky130Dfxtp generator(params, design_db_);
-    Cell *register_cell = generator.GenerateIntoDatabase(template_name);
+    Cell *register_cell = generator.GenerateIntoDatabase(
+        PrefixCellName(template_name));
     register_cell->layout()->DeletePorts("QI");
     geometry::Instance *installed =
         banks_[1].InstantiateLeft(0, instance_name, register_cell);
@@ -385,7 +391,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130Dfxtp::Parameters params;
     atoms::Sky130Dfxtp generator(params, design_db_);
-    Cell *register_cell = generator.GenerateIntoDatabase(template_name);
+    Cell *register_cell = generator.GenerateIntoDatabase(
+        PrefixCellName(template_name));
     register_cell->layout()->DeletePorts("QI");
     geometry::Instance *installed =
         banks_[0].InstantiateRight(0, instance_name, register_cell);
@@ -398,7 +405,8 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
     std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130HdMux21 combinational_mux_generator({}, design_db_);
     Cell *combinational_mux_cell =
-        combinational_mux_generator.GenerateIntoDatabase(template_name);
+        combinational_mux_generator.GenerateIntoDatabase(
+            PrefixCellName(template_name));
     combinational_mux_cell->layout()->ResetY();
     geometry::Instance *installed = banks_[1].InstantiateRight(
         0, instance_name, combinational_mux_cell);
@@ -409,13 +417,26 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   {
     std::string template_name = "combinational_config_dfxtp";
     std::string instance_name = absl::StrCat(template_name, "_i");
-    atoms::Sky130Dfxtp::Parameters params;
+    atoms::Sky130Dfxtp::Parameters params = {
+      .add_inverted_output_port = false  // No QI.
+    };
     atoms::Sky130Dfxtp generator(params, design_db_);
-    Cell *combinational_cell = generator.GenerateIntoDatabase(template_name);
-    combinational_cell->layout()->DeletePorts("QI");
+    Cell *combinational_cell = generator.GenerateIntoDatabase(
+        PrefixCellName(template_name));
     geometry::Instance *installed =
         banks_[1].InstantiateRight(1, instance_name, combinational_cell);
     comb_output_mux_config_ = installed;
+  }
+
+  if (parameters_.add_s2_input_mux) {
+    std::string template_name = "s2_select_mux";
+    std::string instance_name = absl::StrCat(template_name, "_i");
+    atoms::Sky130HdMux21 s2_select_generator({}, design_db_);
+    Cell *s2_select_cell = s2_select_generator.GenerateIntoDatabase(
+        PrefixCellName(template_name));
+    geometry::Instance *installed =
+        banks_[1].InstantiateRight(
+            banks_[1].NumRows() - 1, instance_name, s2_select_cell);
   }
 
   // Now that the flops controlling output muxes are installed, this is the
@@ -479,9 +500,6 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   //
   // NOTE(aryap): We are statically assuming only a single top row. That might
   // not be true if generalise this to larger LUTs.
-  //
-  // We could also use any available gap for a passive mux to select between two
-  // adjacent 4-LUT structures.
   int64_t top_row_available_x =
       banks_[1].rows().back().GetTilingBounds()->lower_left().x() -
       banks_[0].rows().back().GetTilingBounds()->upper_right().x();
@@ -494,14 +512,15 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
       .width_nm = static_cast<uint64_t>(db.ToExternalUnits(top_row_available_x))
     };
     atoms::Sky130Decap decap_generator(decap_params, design_db_);
-    Cell *decap_cell = decap_generator.GenerateIntoDatabase(template_name);
+    Cell *decap_cell = decap_generator.GenerateIntoDatabase(
+        PrefixCellName(template_name));
     geometry::Instance *decap = banks_[0].InstantiateRight(
         banks_[0].NumRows() - 1,
         absl::StrCat(template_name, "_i0"),
         decap_cell);
   }
 
-  Route(circuit.get(), layout.get());
+  //Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.
@@ -521,7 +540,7 @@ Cell *LutB::GenerateIntoDatabase(const std::string &name) {
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());
   Cell *cell = lut_cell.release();
-  cell->set_name(name);
+  cell->set_name(name_);
   design_db_->ConsumeCell(cell);
   return cell;
 }

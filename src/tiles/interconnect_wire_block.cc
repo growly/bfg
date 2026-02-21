@@ -776,9 +776,9 @@ std::optional<int64_t> InterconnectWireBlock::GetBreakEdgePosition(
   return break_spec->alternate_side ? alternate_case : default_case;
 }
 
-Cell *InterconnectWireBlock::GenerateIntoDatabase(const std::string &name) {
+Cell *InterconnectWireBlock::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<Cell> cell(new Cell(name));
+  std::unique_ptr<Cell> cell(new Cell(name_));
   cell->SetCircuit(new bfg::Circuit());
   cell->SetLayout(new bfg::Layout(db));
 

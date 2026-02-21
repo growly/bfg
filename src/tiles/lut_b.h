@@ -97,8 +97,13 @@ class LutB : public Tile {
     // This is k.
     uint32_t lut_size = 4;
   
-    bool add_s3_input_mux = false;
-    bool add_third_mux_option = false;
+    bool add_s2_input_mux = false;
+    // TODO(aryap): This is ideal, but is it too hard to change our layout to
+    // accommodate? S3 is at the other end of the tile. Need a more complete
+    // analysis when the designs are complete.
+    //bool add_s3_input_mux = false;
+  
+    bool add_sum_input_to_output_muxes = false;
 
     std::optional<uint64_t> tiling_width_unit_nm = 460;
 
@@ -115,7 +120,7 @@ class LutB : public Tile {
         reg_output_mux_(nullptr),
         reg_output_mux_config_(nullptr) {}
 
-  Cell *GenerateIntoDatabase(const std::string &name) override;
+  Cell *Generate() override;
 
  protected:
   struct PortKey {

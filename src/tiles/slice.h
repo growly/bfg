@@ -48,7 +48,7 @@ class Slice : public Tile {
         parameters_(parameters) {
   }
 
-  Cell *GenerateIntoDatabase(const std::string &name) override;
+  Cell *Generate() override;
 
   //void Route(
   //    const std::vector<std::vector<geometry::Instance*>> muxes,

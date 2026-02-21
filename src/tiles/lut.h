@@ -38,7 +38,7 @@ class Lut : public Tile {
       : Tile(design_db),
         lut_size_(lut_size) {}
 
-  bfg::Cell *GenerateIntoDatabase(const std::string &name) override;
+  bfg::Cell *Generate() override;
 
  protected:
   size_t lut_size_;

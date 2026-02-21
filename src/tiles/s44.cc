@@ -9,9 +9,9 @@
 namespace bfg {
 namespace tiles {
 
-Cell *S44::GenerateIntoDatabase(const std::string &name) {
+Cell *S44::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<Cell> cell(new Cell(name));
+  std::unique_ptr<Cell> cell(new Cell(name_));
 
   bfg::Circuit *circuit = new bfg::Circuit();
   cell->SetCircuit(circuit);
@@ -30,10 +30,11 @@ Cell *S44::GenerateIntoDatabase(const std::string &name) {
   static constexpr size_t kMiddle = 1;
   static constexpr size_t kTop = 2;
 
-  std::string lut_name = "lut4";
+  std::string root_lut_name = "lut4";
 
   // Add 2 4-LUTs.
   {
+    std::string lut_name = absl::StrCat(root_lut_name, "_A");
     LutB::Parameters bottom_lut_params = {
         .lut_size = 4
         // TODO(aryap): Enable input-sharing 2:1 mux.
@@ -42,10 +43,11 @@ Cell *S44::GenerateIntoDatabase(const std::string &name) {
     Cell *bottom_lut4_cell = bottom_lut4_gen.GenerateIntoDatabase(lut_name);
 
     geometry::Instance *bottom_lut = bank.InstantiateRight(
-        kBottom, absl::StrCat(lut_name, "_i_bottom"), lut4_cell);
+        kBottom, absl::StrCat(lut_name, "_i"), bottom_lut4_cell);
   }
 
   {
+    std::string lut_name = absl::StrCat(root_lut_name, "_B");
     LutB::Parameters top_lut_params = {
         .lut_size = 4
         // TODO(aryap):: Enable additional input option for registered and
@@ -54,7 +56,7 @@ Cell *S44::GenerateIntoDatabase(const std::string &name) {
     LutB top_lut4_gen(top_lut_params, design_db_);
     Cell *top_lut4_cell = top_lut4_gen.GenerateIntoDatabase(lut_name);
     geometry::Instance *top_lut = bank.InstantiateRight(
-        kTop, absl::StrCat(lut_name, "_i_top"), lut4_cell);
+        kTop, absl::StrCat(lut_name, "_i_top"), top_lut4_cell);
   }
 
   std::string carry_name = "carry1";
@@ -63,7 +65,7 @@ Cell *S44::GenerateIntoDatabase(const std::string &name) {
 
   bank.InstantiateRight(kMiddle, absl::StrCat(carry_name, "_i"), carry_cell);
 
-  int64_t lut_width = lut4_cell->layout()->GetTilingBounds().Width();
+  //int64_t lut_width = lut4_cell->layout()->GetTilingBounds().Width();
 
   //// In between every row of LUTs we add a horizontal channel, both for routing
   //// wires and for matching the rails at the top/bottom of the LUT cell.

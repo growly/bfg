@@ -39,7 +39,7 @@ const Lut::LayoutConfig *Lut::GetLayoutConfiguration(size_t lut_size) {
   return nullptr;
 }
 
-bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
+bfg::Cell *Lut::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   std::unique_ptr<bfg::Cell> lut_cell(new bfg::Cell("lut"));
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
@@ -579,12 +579,12 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
 
     auto it = all_instances_by_name.find(pair.first);
     LOG_IF(FATAL, it == all_instances_by_name.end())
-        << "Could not source memory \"" << name << "\" in main layout";
+        << "Could not source memory \"" << pair.first << "\" in main layout";
     geometry::Instance *source = it->second;
 
     it = all_instances_by_name.find(pair.second);
     LOG_IF(FATAL, it == all_instances_by_name.end())
-        << "Could not sink memory \"" << name << "\" in main layout";
+        << "Could not sink memory \"" << pair.second << "\" in main layout";
     geometry::Instance *sink = it->second;
 
     std::vector<geometry::Port*> ports;
@@ -850,7 +850,7 @@ bfg::Cell *Lut::GenerateIntoDatabase(const std::string &name) {
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());
   bfg::Cell *cell = lut_cell.release();
-  cell->set_name(name);
+  cell->set_name(name_);
   design_db_->ConsumeCell(cell);
   return cell;
 }

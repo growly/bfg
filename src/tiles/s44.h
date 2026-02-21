@@ -24,14 +24,14 @@ namespace tiles {
 //               +-----+ |
 //                       |
 //      +----------+     |
-//    --|          |--------------------------- O_MUX1
-//    --|  4-LUT   |--+------------------------ O1
+//    --|          |--------------------------- A_MUX
+//    --|  4-LUT   |--+------------------------ A_O
 //    --|    A     |  |  |   
 //    --|          |  |  |   
 //      +----------+  | |\
 //                    +-| |     +----------+
-//                  ----| |-----|          |--- O_MUX2
-//                      |/    --|  4-LUT   |--- O2
+//                  ----| |-----|          |--- B_MUX
+//                      |/    --|  4-LUT   |--- B_O
 //                            --|    B     |
 //                            --|          |
 //                              +----------+
@@ -46,7 +46,7 @@ class S44 : public Tile {
       : Tile(design_db),
         parameters_(parameters) {}
 
-  Cell *GenerateIntoDatabase(const std::string &name) override;
+  Cell *Generate() override;
 
  private:
   Parameters parameters_;

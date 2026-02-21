@@ -290,7 +290,7 @@ class InterconnectWireBlock : public Tile {
       int wire_number,
       std::optional<bool> first_end_of_breakout = std::nullopt);
 
-  Cell *GenerateIntoDatabase(const std::string &name) override;
+  Cell *Generate() override;
 
  private:
   // These are the user-specified width, pitch and offset parameters, in

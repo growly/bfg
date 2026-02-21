@@ -3,7 +3,6 @@
 
 #include <utility>
 
-#include <absl/strings/str_cat.h>
 #include "../design_database.h"
 #include "../tiles/tile.h"
 
@@ -13,33 +12,15 @@ class Cell;
 
 namespace atoms {
 
+// FIXME(aryap): There is a difference between "Tiles" and "Atoms" but the
+// code isn't it. Atoms are PDK-specific generators for different structures
+// and circuits, while Tiles are meant to be more PDK-agnostic, able to
+// switch between the atoms they use depending on higher level design
+// concerns. But the code for the two is very similar.
 class Atom : public tiles::Tile {
  public:
   Atom(DesignDatabase *design_db)
       : Tile(design_db) {}
-
-  bfg::Cell *GenerateIntoDatabase(const std::string &name) override {
-    // The name of the generator, which does not necessarily have to be used by
-    // the Generate() function. (That's why we have to override it explicitly in
-    // the generated cell below.)
-    name_ = name;
-
-    bfg::Cell *cell = Generate();
-    cell->set_name(name);
-    design_db_->ConsumeCell(cell);
-    return cell;
-  }
-
-  void set_name(const std::string &name) { name_ = name; }
-  const std::string &name() const { return name_; }
-
-  const std::string PrefixCellName(const std::string &value) const {
-    return absl::StrCat(name_, "_", value);
-  }
-
-  virtual bfg::Cell *Generate() = 0;
- protected:
-  std::string name_;
 };
 
 }  // namespace atoms

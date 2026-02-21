@@ -235,9 +235,9 @@ void ReducedSlice::GenerateInterconnectChannels(
   iwb_params->channels.push_back(channel);
 }
 
-Cell *ReducedSlice::GenerateIntoDatabase(const std::string &name) {
+Cell *ReducedSlice::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  std::unique_ptr<Cell> cell(new Cell(name));
+  std::unique_ptr<Cell> cell(new Cell(name_));
   cell->SetCircuit(new bfg::Circuit());
   cell->SetLayout(new bfg::Layout(db));
 
