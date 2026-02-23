@@ -41,8 +41,8 @@ bfg::Cell *Sky130PassiveMux3::Generate() {
 void Sky130PassiveMux3::GenerateLayout(RowGuide *row) const {
   Sky130TransmissionGateStack::Parameters stack_params = {
     .sequences = BuildNetSequences(),
-    //.min_poly_boundary_separation_nm = FigurePolyBoundarySeparationForMux(
-    //    vertical_neighbour->template_layout())
+    .p_width_nm = 420,
+    .n_width_nm = 360,
     .expand_wells_to_vertical_bounds = true,
     .expand_wells_to_horizontal_bounds = true
   };
