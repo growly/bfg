@@ -50,6 +50,7 @@ void Sky130PassiveMux3::GenerateLayout(RowGuide *row) const {
   stack_params.power_net = parameters_.power_net,
   stack_params.ground_net = parameters_.ground_net,
   stack_params.min_height_nm = 2720;
+  stack_params.num_horizontal_channels = parameters_.num_inputs + 1;
   //stack_params.poly_contact_vertical_pitch_nm = 340;
   //stack_params.poly_contact_vertical_offset_nm = 170;
   //stack_params.input_vertical_pitch_nm = 340;
@@ -78,6 +79,9 @@ void Sky130PassiveMux3::GenerateLayout(RowGuide *row) const {
   Sky130Buf buf_generator(buf_params, design_db_);
   bfg::Cell *buf_cell = buf_generator.GenerateIntoDatabase(buf_template_name);
 
+  // FIXME(aryap): Since we have to do some crazy routing, the best way to do
+  // this is to actually connect 1x buf to a 2-input transmission gate mux and
+  // then copy flip that (horizontally) for double the number of inputs.
   size_t num_buffers = std::ceil(
       static_cast<double>(parameters_.num_inputs) / 2.0);
   for (size_t i = 0; i < num_buffers; i++) {

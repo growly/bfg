@@ -507,6 +507,9 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
     if (parameters_.expand_wells_to_vertical_bounds) {
       nsdm_rectangle.lower_left().set_y(row.LowerLeft().y());
     }
+    if (parameters_.expand_wells_to_horizontal_bounds) {
+      nsdm_rectangle.ExpandHorizontallyToCover(new_tiling_bounds);
+    }
     cell->layout()->AddRectangle(nsdm_rectangle);
   }
 
