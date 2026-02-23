@@ -27,6 +27,7 @@
 #include "atoms/sky130_decap.h"
 #include "atoms/sky130_dfxtp.h"
 #include "atoms/sky130_xor2.h"
+#include "atoms/sky130_passive_mux3.h"
 #include "atoms/gf180mcu_mux.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
@@ -38,6 +39,7 @@
 #include "utility.h"
 
 #include "proto/parameters/sky130_carry1.pb.h"
+#include "proto/parameters/sky130_passive_mux3.pb.h"
 #include "proto/parameters/interconnect.pb.h"
 #include "proto/parameters/interconnect_wire_block.pb.h"
 #include "proto/parameters/lut_b.pb.h"
@@ -163,6 +165,12 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130Carry1,
         bfg::atoms::Sky130Carry1::Parameters,
         bfg::atoms::Sky130Carry1>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130PassiveMux3") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130PassiveMux3,
+        bfg::atoms::Sky130PassiveMux3::Parameters,
+        bfg::atoms::Sky130PassiveMux3>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "S44") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::S44,

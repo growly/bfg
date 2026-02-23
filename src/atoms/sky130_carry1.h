@@ -13,6 +13,7 @@
 #include "../cell.h"
 #include "proto/parameters/sky130_carry1.pb.h"
 #include "atom.h"
+#include "sky130_parameters.h"
 
 namespace bfg {
 
@@ -55,7 +56,7 @@ namespace atoms {
 //
 class Sky130Carry1 : public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     void ToProto(proto::parameters::Sky130Carry1 *pb) const;
     void FromProto(const proto::parameters::Sky130Carry1 &pb); 
   };

@@ -138,8 +138,8 @@ Sky130InterconnectMux1::BuildTransmissionGateParams(
         *parameters_.min_transmission_gate_stack_height_nm,
         *params.min_height_nm);
   }
-  params.poly_contact_vertical_pitch_nm = parameters_.vertical_pitch_nm;
-  params.poly_contact_vertical_offset_nm = parameters_.vertical_offset_nm;
+  //params.poly_contact_vertical_pitch_nm = parameters_.vertical_pitch_nm;
+  //params.poly_contact_vertical_offset_nm = parameters_.vertical_offset_nm;
   params.input_vertical_pitch_nm = parameters_.vertical_pitch_nm;
   params.input_vertical_offset_nm = parameters_.vertical_offset_nm;
   params.expand_wells_to_vertical_bounds = true;
