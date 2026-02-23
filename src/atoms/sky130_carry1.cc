@@ -236,6 +236,8 @@ Cell *Sky130Carry1::Generate() {
                   (*config_memory->GetInstancePortSet("Q").begin())->centre(),
                   "li.pin");
 
+  layout->SetTilingBounds(*row.GetTilingBounds());
+
   // Generate circuit.
   GenerateCircuit(row.generated_taps(),
                   config_memory,
