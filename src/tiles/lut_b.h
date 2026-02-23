@@ -213,6 +213,9 @@ class LutB : public Tile {
   // Contains all memories involved in the scan chain in the right order.
   std::vector<geometry::Instance*> scan_order_;
 
+  // Sometimes features:
+  geometry::Instance *s2_select_mux_;
+
   // Features of all LutBs:
   geometry::Instance *comb_output_mux_;
   geometry::Instance *comb_output_mux_config_;

@@ -34,9 +34,12 @@ Cell *S44::Generate() {
 
   // Add 2 4-LUTs.
   {
-    std::string lut_name = absl::StrCat(root_lut_name, "_A");
+    // The bottom one goes first. It has the s2 input selection mux for the
+    // soft-S44.
+    std::string lut_name = absl::StrCat(root_lut_name, "_B");
     LutB::Parameters bottom_lut_params = {
-        .lut_size = 4
+        .lut_size = 4,
+        .add_s2_input_mux = true
         // TODO(aryap): Enable input-sharing 2:1 mux.
     };
     LutB bottom_lut4_gen(bottom_lut_params, design_db_);
@@ -47,7 +50,9 @@ Cell *S44::Generate() {
   }
 
   {
-    std::string lut_name = absl::StrCat(root_lut_name, "_B");
+    // The top one goes second. It has an additional input on the output and
+    // registered output selection muxes.
+    std::string lut_name = absl::StrCat(root_lut_name, "_A");
     LutB::Parameters top_lut_params = {
         .lut_size = 4
         // TODO(aryap):: Enable additional input option for registered and

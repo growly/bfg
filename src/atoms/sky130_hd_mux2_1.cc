@@ -285,19 +285,25 @@ bfg::Layout *Sky130HdMux21::GenerateLayout() {
   pad = layout->AddRectangleAsPort(
       Rectangle(Point(150, 425), Point(320, 595)), "X");
   layout->SavePoint("port_X_centre_bottom", pad->centre());
-  layout->AddRectangleAsPort(
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(2450, 1105), Point(2620, 1275)), "A1");
-  layout->AddRectangleAsPort(
+  layout->SavePoint("port_A1_centre_top", pad->centre());
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(2450, 765), Point(2620, 935)), "A1");
-  layout->AddRectangleAsPort(
+  layout->SavePoint("port_A1_centre_bottom", pad->centre());
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(2910, 1445), Point(3080, 1615)), "S");
-  layout->AddRectangleAsPort(
+  layout->SavePoint("port_S_centre_left", pad->centre());
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(3370, 1445), Point(3540, 1615)), "S");
-  layout->AddRectangleAsPort(
+  layout->SavePoint("port_S_centre_right", pad->centre());
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(1990, 1105), Point(2160, 1275)), "A0");
+  layout->SavePoint("port_A0_centre_top", pad->centre());
   // Add a new A0 port that wasn't in the standard cell:
-  layout->AddRectangleAsPort(
+  pad = layout->AddRectangleAsPort(
       Rectangle(Point(1990, 1105 - 680), Point(2160, 1275 - 680)), "A0");
+  layout->SavePoint("port_A0_centre_bottom", pad->centre());
 
   // licon.drawing [DRAWING] 66/44
   layout->SetActiveLayerByName("licon.drawing");

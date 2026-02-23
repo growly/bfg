@@ -133,6 +133,12 @@ Cell *LutB::Generate() {
 
   // Selector signals S0, S1, S2, ... S(K - 1)
   for (size_t i = 0; i < parameters_.lut_size; ++i) {
+    if (i == 2 && parameters_.add_s2_input_mux) {
+      circuit->AddPort(circuit->AddSignal("S2_A"));
+      circuit->AddPort(circuit->AddSignal("S2_B"));
+      circuit->AddPort(circuit->AddSignal("S2_S"));
+      continue;
+    }
     circuit->AddPort(circuit->AddSignal(absl::StrCat("S", i)));
   }
   // Output.
@@ -186,14 +192,19 @@ Cell *LutB::Generate() {
       std::string template_name = absl::StrFormat(
           "lut_dfxtp_%d_%d", p, num_memories);
       std::string instance_name = absl::StrCat(template_name, "_i");
-      atoms::Sky130Dfxtp::Parameters params;
+      atoms::Sky130Dfxtp::Parameters params = {
+        .add_inverted_output_port = false  // No QI.
+      };
       atoms::Sky130Dfxtp generator(params, design_db_);
       Cell *cell = generator.GenerateIntoDatabase(
           PrefixCellName(template_name));
-      cell->layout()->DeletePorts("QI");
 
-      geometry::Instance *installed =
-          bank.InstantiateRight(assigned_row, instance_name, cell);
+      geometry::Instance *installed = nullptr;
+      if (bank_arrangement.horizontal_alignment == geometry::Compass::LEFT) {
+        installed = bank.InstantiateLeft(assigned_row, instance_name, cell);
+      } else {
+        installed = bank.InstantiateRight(assigned_row, instance_name, cell);
+      }
 
       //circuit::Instance *circuit_instance =
       //    circuit->AddInstance(instance_name, cell->circuit());
@@ -434,9 +445,8 @@ Cell *LutB::Generate() {
     atoms::Sky130HdMux21 s2_select_generator({}, design_db_);
     Cell *s2_select_cell = s2_select_generator.GenerateIntoDatabase(
         PrefixCellName(template_name));
-    geometry::Instance *installed =
-        banks_[1].InstantiateRight(
-            banks_[1].NumRows() - 1, instance_name, s2_select_cell);
+    s2_select_mux_ = banks_[1].InstantiateLeft(
+        banks_[1].NumRows() - 1, instance_name, s2_select_cell);
   }
 
   // Now that the flops controlling output muxes are installed, this is the
@@ -450,6 +460,7 @@ Cell *LutB::Generate() {
   int64_t right_bank_row_2_width = banks_[1].Row(2).GetTilingBounds()->Width();
   int64_t right_bank_bottom_row_top_y =
       banks_[1].rows().front().UpperLeft().y();
+
 
   // We don't want the right bank to come any more left than the right bound of
   // the mux grid, but we also don't want the top or bottom row to overlap.
@@ -467,6 +478,16 @@ Cell *LutB::Generate() {
     x_pos += -bottom_row_overlap;
     // TODO(aryap): The mux grid can also be repositioned in the centre of the
     // gap.
+  }
+
+  int64_t left_bank_top_row_width =
+      banks_[0].Row(banks_[0].NumRows() - 1).GetTilingBounds()->Width();
+  int64_t right_bank_top_row_width =
+      banks_[1].Row(banks_[1].NumRows() - 1).GetTilingBounds()->Width();
+  int64_t top_row_overlap = x_pos + right_bank_row_2_width - (
+      left_bank_top_row_width + right_bank_top_row_width);
+  if (top_row_overlap < 0) {
+    x_pos += -top_row_overlap;
   }
 
   // We now have the opportunity to position the right bank so that the overall
@@ -520,7 +541,7 @@ Cell *LutB::Generate() {
         decap_cell);
   }
 
-  //Route(circuit.get(), layout.get());
+  Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.
@@ -590,11 +611,11 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, circuit, layout);
+  //RouteScanChain(&routing_grid, circuit, layout);
   //RouteClockBuffers(&routing_grid, circuit, layout);
-  RouteMuxInputs(&routing_grid, circuit, layout);
+  //RouteMuxInputs(&routing_grid, circuit, layout);
   //RouteRemainder(&routing_grid, circuit, layout);
-  //RouteInputs(&routing_grid, circuit, layout);
+  RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
@@ -995,6 +1016,12 @@ void LutB::RouteRemainder(
     }
   };
 
+  if (parameters_.add_s2_input_mux) {
+    auto_connections.push_back(PortKeyCollection {
+      .port_keys = {{buf_order_[2], "A"}, {s2_select_mux_, "X"}}
+    });
+  }
+
   for (const PortKeyCollection &collection : auto_connections) {
     auto result = AddMultiPointRoute(collection, routing_grid, circuit, layout);
     AccumulateAnyErrors(result.status());
@@ -1032,13 +1059,25 @@ void LutB::RouteInputs(
   // stack between two layers.
 
   // Expect buffer inputs to be on li.drawing, identified by li.pin.
-  const std::array<PortKeyAlias, 5> pin_map = {
+  std::vector<PortKeyAlias> pin_map = {
     PortKeyAlias {{buf_order_[0], "port_A_centre"}, "S0"},
     PortKeyAlias {{buf_order_[1], "port_A_centre"}, "S1"},
-    PortKeyAlias {{buf_order_[2], "port_A_centre"}, "S2"},
     PortKeyAlias {{buf_order_[3], "port_A_centre"}, "S3"},
     PortKeyAlias {{scan_order_.front(), "port_D_centre"}, "CONFIG_IN"}
   };
+
+  if (parameters_.add_s2_input_mux) {
+    DCHECK(s2_select_mux_ != nullptr)
+        << "s2_select_mux_ must've been set by the time ports are added.";
+    pin_map.push_back(
+        PortKeyAlias {{s2_select_mux_, "port_A0_centre_top"}, "S2_A"});
+    pin_map.push_back(
+        PortKeyAlias {{s2_select_mux_, "port_A1_centre_bottom"}, "S2_B"});
+    pin_map.push_back(
+        PortKeyAlias {{s2_select_mux_, "port_S_centre_left"}, "S2_S"});
+  } else {
+    pin_map.push_back(PortKeyAlias {{buf_order_[2], "port_A_centre"}, "S2"});
+  }
 
   layout->SetActiveLayerByName("li.pin");
   for (const auto &entry : pin_map) {
