@@ -114,6 +114,8 @@ class RowGuide {
   void MoveLowerLeft(const geometry::Point &point);
   void MoveLowerRight(const geometry::Point &point);
 
+  bool empty() const { return instances_.empty(); }
+
   void set_origin(const geometry::Point &point) { origin_ = point; }
   const geometry::Point &origin() const { return origin_; }
 

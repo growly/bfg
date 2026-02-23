@@ -54,7 +54,8 @@ Cell *S44::Generate() {
     // registered output selection muxes.
     std::string lut_name = absl::StrCat(root_lut_name, "_A");
     LutB::Parameters top_lut_params = {
-        .lut_size = 4
+        .lut_size = 4,
+        .add_third_input_to_output_muxes = true
         // TODO(aryap):: Enable additional input option for registered and
         // combinational outputs.
     };

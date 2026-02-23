@@ -160,7 +160,7 @@ Cell *LutB::Generate() {
   int64_t buf_y_pos = 0;
 
   atoms::Sky130Tap::Parameters tap_params = {
-    .height_nm = 2720,
+    .height_nm = parameters_.default_row_height_nm,
     .width_nm = 460
   };
   atoms::Sky130Tap tap_generator(tap_params, design_db_);
@@ -218,9 +218,9 @@ Cell *LutB::Generate() {
   LOG_IF(FATAL, banks_.size() < 1) << "Expected at least 1 bank by this point.";
 
   static constexpr int kTypicalRowLeft = 1;
+  static constexpr int kTypicalRowRight = 2;
 
-  int64_t row_height =
-      banks_[0].Row(kTypicalRowLeft).GetTilingBounds()->Height();
+  int64_t row_height = banks_[0].Row(kTypicalRowLeft).Height();
   banks_[0].MoveTo(geometry::Point(0, -row_height));
 
   // Set the grid alignment point to fall on the output port of this memory:
@@ -362,8 +362,6 @@ Cell *LutB::Generate() {
   // Also place the input select mux here: we can register 
   // This is clocked by the application clock, not the scan clock!
   //
-  // FIXME(aryap): Route these.
-  //
   // First, the mux:
   {
     std::string template_name = "register_select_hd_mux2_1";
@@ -382,12 +380,12 @@ Cell *LutB::Generate() {
     std::string template_name = "register_dfxtp";
     std::string instance_name = absl::StrCat(template_name, "_i");
     atoms::Sky130Dfxtp::Parameters params = {
-      .input_clock_buffer = true
+      .input_clock_buffer = true,
+      .add_inverted_output_port = false  // No QI.
     };
     atoms::Sky130Dfxtp generator(params, design_db_);
     Cell *register_cell = generator.GenerateIntoDatabase(
         PrefixCellName(template_name));
-    register_cell->layout()->DeletePorts("QI");
     geometry::Instance *installed =
         banks_[1].InstantiateLeft(0, instance_name, register_cell);
     reg_output_flop_ = installed;
@@ -400,11 +398,12 @@ Cell *LutB::Generate() {
 
     std::string template_name = "register_select_config_dfxtp";
     std::string instance_name = absl::StrCat(template_name, "_i");
-    atoms::Sky130Dfxtp::Parameters params;
+    atoms::Sky130Dfxtp::Parameters params = {
+      .add_inverted_output_port = false  // No QI.
+    };
     atoms::Sky130Dfxtp generator(params, design_db_);
     Cell *register_cell = generator.GenerateIntoDatabase(
         PrefixCellName(template_name));
-    register_cell->layout()->DeletePorts("QI");
     geometry::Instance *installed =
         banks_[0].InstantiateRight(0, instance_name, register_cell);
     reg_output_mux_config_ = installed;
@@ -449,6 +448,76 @@ Cell *LutB::Generate() {
         banks_[1].NumRows() - 1, instance_name, s2_select_cell);
   }
 
+  if (parameters_.add_third_input_to_output_muxes) {
+    // A better way to do this would be re-arrange everything around a 3:1
+    // transmission gate mux, or equivalent, but since we have to add two whole
+    // memories to store the configuration these require it doesn't save us any
+    // area overall. (We have to add another row anyway.) It should be faster
+    // though.
+    //
+    // For now, we just add another 2:1 mux after the existing ones.
+    banks_[0].InsertRowZero();
+    banks_[1].InsertRowZero();
+    {
+      std::string template_name = "aux_combinational_config_dfxtp";
+      std::string instance_name = absl::StrCat(template_name, "_i");
+      atoms::Sky130Dfxtp::Parameters params = {
+        .add_inverted_output_port = false  // No QI.
+      };
+      atoms::Sky130Dfxtp generator(params, design_db_);
+      Cell *combinational_cell = generator.GenerateIntoDatabase(
+          PrefixCellName(template_name));
+      geometry::Instance *installed =
+          banks_[1].InstantiateRight(0, instance_name, combinational_cell);
+      aux_comb_output_mux_config_ = installed;
+    }
+    if (parameters_.add_s3_input_mux) {
+      std::string template_name = "s3_select_mux";
+      std::string instance_name = absl::StrCat(template_name, "_i");
+      atoms::Sky130HdMux21 s3_select_generator({}, design_db_);
+      Cell *s3_select_cell = s3_select_generator.GenerateIntoDatabase(
+          PrefixCellName(template_name));
+      s3_select_mux_ = banks_[1].InstantiateLeft(
+          0, instance_name, s3_select_cell);
+    }
+    {
+      std::string template_name = "aux_combinational_select_hd_mux2_1";
+      std::string instance_name = absl::StrCat(template_name, "_i");
+      atoms::Sky130HdMux21 combinational_mux_generator({}, design_db_);
+      Cell *combinational_mux_cell =
+          combinational_mux_generator.GenerateIntoDatabase(
+              PrefixCellName(template_name));
+      combinational_mux_cell->layout()->ResetY();
+      geometry::Instance *installed = banks_[1].InstantiateLeft(
+          0, instance_name, combinational_mux_cell);
+      aux_comb_output_mux_ = installed;
+    }
+    {
+      std::string template_name = "aux_register_select_hd_mux2_1";
+      std::string instance_name = absl::StrCat(template_name, "_i");
+      atoms::Sky130HdMux21 register_mux_generator({}, design_db_);
+      Cell *register_mux_cell = register_mux_generator.GenerateIntoDatabase(
+          PrefixCellName(template_name));
+      register_mux_cell->layout()->ResetY();
+      geometry::Instance *installed = banks_[1].InstantiateLeft(
+          0, instance_name, register_mux_cell);
+      aux_reg_output_mux_ = installed;
+    }
+    {
+      std::string template_name = "aux_register_select_config_dfxtp";
+      std::string instance_name = absl::StrCat(template_name, "_i");
+      atoms::Sky130Dfxtp::Parameters params = {
+        .add_inverted_output_port = false  // No QI.
+      };
+      atoms::Sky130Dfxtp generator(params, design_db_);
+      Cell *register_cell = generator.GenerateIntoDatabase(
+          PrefixCellName(template_name));
+      geometry::Instance *installed =
+          banks_[0].InstantiateLeft(0, instance_name, register_cell);
+      aux_reg_output_mux_config_ = installed;
+    }
+  }
+
   // Now that the flops controlling output muxes are installed, this is the
   // first chance we get to set the overall config scan chain order:
   SetScanOrder();
@@ -456,23 +525,23 @@ Cell *LutB::Generate() {
   // Now that all instances have been assigned to the banks and their
   // dimensions are known, move them into place around the muxes. Well, move
   // the right bank because the first bank is fixed.
-  int64_t right_bank_row_2_left_x = banks_[1].Row(2).LowerLeft().x();
-  int64_t right_bank_row_2_width = banks_[1].Row(2).GetTilingBounds()->Width();
+  int64_t right_bank_typical_row_left_x = banks_[1].Row(
+      kTypicalRowRight).LowerLeft().x();
+  int64_t right_bank_typical_row_width = banks_[1].Row(
+      kTypicalRowRight).Width();
   int64_t right_bank_bottom_row_top_y =
       banks_[1].rows().front().UpperLeft().y();
 
 
   // We don't want the right bank to come any more left than the right bound of
   // the mux grid, but we also don't want the top or bottom row to overlap.
-  int64_t right_bank_bottom_row_width =
-      banks_[1].Row(0).GetTilingBounds()->Width();
-  int64_t left_bank_bottom_row_width =
-      banks_[0].Row(0).GetTilingBounds()->Width();
+  int64_t right_bank_bottom_row_width = banks_[1].Row(0).Width();
+  int64_t left_bank_bottom_row_width = banks_[0].Row(0).Width();
 
   x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
       mux_area_horizontal_padding;
 
-  int64_t bottom_row_overlap = x_pos + right_bank_row_2_width - (
+  int64_t bottom_row_overlap = x_pos + right_bank_typical_row_width - (
       left_bank_bottom_row_width + right_bank_bottom_row_width);
   if (bottom_row_overlap < 0) {
     x_pos += -bottom_row_overlap;
@@ -481,10 +550,10 @@ Cell *LutB::Generate() {
   }
 
   int64_t left_bank_top_row_width =
-      banks_[0].Row(banks_[0].NumRows() - 1).GetTilingBounds()->Width();
+      banks_[0].Row(banks_[0].NumRows() - 1).Width();
   int64_t right_bank_top_row_width =
-      banks_[1].Row(banks_[1].NumRows() - 1).GetTilingBounds()->Width();
-  int64_t top_row_overlap = x_pos + right_bank_row_2_width - (
+      banks_[1].Row(banks_[1].NumRows() - 1).Width();
+  int64_t top_row_overlap = x_pos + right_bank_typical_row_width - (
       left_bank_top_row_width + right_bank_top_row_width);
   if (top_row_overlap < 0) {
     x_pos += -top_row_overlap;
@@ -497,7 +566,7 @@ Cell *LutB::Generate() {
   std::optional<int64_t> width_unit = db.ToInternalUnits(
       parameters_.tiling_width_unit_nm);
   if (width_unit) {
-    int64_t total_width = x_pos + right_bank_row_2_width;
+    int64_t total_width = x_pos + right_bank_typical_row_width;
     int64_t required_width = Utility::NextMultiple(total_width, *width_unit);
     x_pos += (required_width - total_width);
   }
@@ -510,11 +579,15 @@ Cell *LutB::Generate() {
   int64_t y_diff = banks_[0].Origin().y() - (
       mux_grid.GetBoundingBox()->lower_left().y() -
       layout_config.mux_area_vertical_min_padding);
-  y_pos = 0; // banks_[0].Origin().y() - std::ceil(
-      //static_cast<double>(y_diff) / static_cast<double>(y_pitch));
+
+  // If we haven't had to add another row for the third mux inputs, we align to
+  // y = 0. If we have had to, we align to y = -(row height).
+  int64_t bottom_row_height = banks_[1].Row(0).Height();
+  y_pos = parameters_.add_third_input_to_output_muxes ?
+    -bottom_row_height : 0;
 
   banks_[1].AlignPointTo(
-      {right_bank_row_2_left_x, right_bank_bottom_row_top_y},
+      {right_bank_typical_row_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
 
   // We can now fill any gaps with decaps.
@@ -524,24 +597,16 @@ Cell *LutB::Generate() {
   int64_t top_row_available_x =
       banks_[1].rows().back().GetTilingBounds()->lower_left().x() -
       banks_[0].rows().back().GetTilingBounds()->upper_right().x();
-  if (top_row_available_x >= db.ToInternalUnits(
-          atoms::Sky130Decap::Parameters::kMinWidthNm) &&
-      top_row_available_x <= db.ToInternalUnits(
-          atoms::Sky130Decap::Parameters::kMaxWidthNm)) {
-    std::string template_name = "top_decap_fill";
-    atoms::Sky130Decap::Parameters decap_params = {
-      .width_nm = static_cast<uint64_t>(db.ToExternalUnits(top_row_available_x))
-    };
-    atoms::Sky130Decap decap_generator(decap_params, design_db_);
-    Cell *decap_cell = decap_generator.GenerateIntoDatabase(
-        PrefixCellName(template_name));
-    geometry::Instance *decap = banks_[0].InstantiateRight(
-        banks_[0].NumRows() - 1,
-        absl::StrCat(template_name, "_i0"),
-        decap_cell);
+  FillDecapsRight(top_row_available_x, &banks_[0].LastRow());
+
+  if (parameters_.add_third_input_to_output_muxes) {
+    // Decap fill the new row.
+    int64_t left_x = banks_[0].Row(0).GetTilingBounds()->upper_right().x();
+    int64_t right_x = banks_[1].Row(0).GetTilingBounds()->lower_left().x();
+    FillDecapsRight(right_x - left_x, &banks_[0].Row(0));
   }
 
-  Route(circuit.get(), layout.get());
+  //Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.
@@ -575,8 +640,14 @@ void LutB::SetScanOrder() {
   if (reg_output_mux_config_) {
     scan_order_.insert(scan_order_.begin(), reg_output_mux_config_);
   }
+  if (aux_reg_output_mux_config_) {
+    scan_order_.insert(scan_order_.begin(), aux_reg_output_mux_config_);
+  }
   if (comb_output_mux_config_) {
     scan_order_.push_back(comb_output_mux_config_);
+  }
+  if (aux_comb_output_mux_config_) {
+    scan_order_.push_back(aux_comb_output_mux_config_);
   }
 }
 
@@ -1587,6 +1658,43 @@ void LutB::AddClockAndPowerStraps(
 
       port_y -= met3_rules.min_pitch;
     }
+  }
+}
+
+bfg::Cell *LutB::MakeDecapCell(uint32_t width_nm, uint32_t height_nm) {
+  std::string name = PrefixCellName(
+      absl::StrCat("decap_", width_nm, "x", height_nm));
+  Cell *cell = design_db_->FindCell("", name);
+  if (cell == nullptr) {
+    atoms::Sky130Decap::Parameters params = {
+      .width_nm = width_nm,
+      .height_nm = height_nm,
+    };
+    params.power_net = "VPWR";
+    params.ground_net = "VGND";
+    params.draw_vpwr_vias = true;
+    params.draw_vgnd_vias = true;
+    atoms::Sky130Decap decap_generator(params, design_db_);
+    cell = decap_generator.GenerateIntoDatabase(name);
+  }
+  return cell;
+}
+
+void LutB::FillDecapsRight(int64_t span, RowGuide *row) {
+  std::vector<int64_t> decap_widths = Utility::StripInUnits(
+      span,
+      atoms::Sky130Decap::Parameters::kMaxWidthNm,
+      atoms::Sky130Parameters::kStandardCellUnitWidthNm,
+      atoms::Sky130Decap::Parameters::kMinWidthNm);
+  static int num_decaps = 0;
+  uint64_t height_nm =
+      row->empty() ? parameters_.default_row_height_nm : row->Height();
+  for (int64_t width : decap_widths) {
+    Cell *decap_cell = MakeDecapCell(
+        design_db_->physical_db().ToExternalUnits(width), height_nm);
+    row->InstantiateBack(absl::StrCat(decap_cell->name(), "_i", num_decaps),
+                         decap_cell);
+    ++num_decaps;
   }
 }
 

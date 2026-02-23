@@ -75,6 +75,42 @@ RowGuide &MemoryBank::Row(size_t index) {
   return rows_[index];
 }
 
+RowGuide &MemoryBank::InsertRowZero() {
+  int64_t y_offset = 0;
+  if (NumRows() > 0) {
+    RowGuide &last = Row(0);
+    auto last_tiling_bounds  = last.GetTilingBounds();
+    if (last_tiling_bounds) {
+      y_offset = grow_down_ ? 
+        last.origin().y() + last_tiling_bounds->Height() :
+        last.origin().y() - last_tiling_bounds->Height();
+    }
+  }
+
+  instances_.insert(instances_.begin(), std::vector<geometry::Instance*>());
+  instance_names_.insert(instance_names_.begin(), std::vector<std::string>());
+  rows_.insert(rows_.begin(),
+               RowGuide(geometry::Point {0, y_offset},
+                        layout_,
+                        circuit_,
+                        design_db_));
+
+  RowGuide &row = rows_.front();
+
+  // Preserve the rotation of existing rows:
+  if (rotate_alternate_rows_) {
+    rotate_first_row_ = !rotate_first_row_;
+    // No, we don't need to use RowIsRotated, but it keeps us a little more
+    // sane.
+    row.set_rotate_instances(RowIsRotated(0));
+  }
+  if (tap_cell_) {
+    row.set_tap_cell(*tap_cell_);
+  }
+
+  return row;
+}
+
 void MemoryBank::DisableTapInsertionOnRow(size_t index) {
   Row(index).clear_tap_cell();
 }

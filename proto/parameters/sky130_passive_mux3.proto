@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+package bfg.proto.parameters;
+
+message Sky130PassiveMux3 {
+}

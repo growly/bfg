@@ -139,6 +139,10 @@ class Utility {
       unallocated = remainder;
     }
 
+    if (lengths.empty()) {
+      return lengths;
+    }
+
     // The last length is the smallest, by construction. But we might need to
     // borrow from several previous lengths to get it up to the minimum size.
     if (min &&

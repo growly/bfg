@@ -98,14 +98,16 @@ class LutB : public Tile {
     uint32_t lut_size = 4;
   
     bool add_s2_input_mux = false;
-    // TODO(aryap): This is ideal, but is it too hard to change our layout to
-    // accommodate? S3 is at the other end of the tile. Need a more complete
-    // analysis when the designs are complete.
-    //bool add_s3_input_mux = false;
+
+    // Pending a thorough redesign, you can only add an s3 input mux if you also
+    // opt to add_third_input_to_output_muxes, below.
+    bool add_s3_input_mux = true;
   
-    bool add_sum_input_to_output_muxes = false;
+    bool add_third_input_to_output_muxes = false;
 
     std::optional<uint64_t> tiling_width_unit_nm = 460;
+
+    uint64_t default_row_height_nm = 2720;
 
     void ToProto(proto::parameters::LutB *pb) const;
     void FromProto(const proto::parameters::LutB &pb); 
@@ -118,7 +120,13 @@ class LutB : public Tile {
         comb_output_mux_config_(nullptr),
         reg_output_flop_(nullptr),
         reg_output_mux_(nullptr),
-        reg_output_mux_config_(nullptr) {}
+        reg_output_mux_config_(nullptr) {
+    LOG_IF(WARNING,
+        parameters_.add_s3_input_mux &&
+        !parameters.add_third_input_to_output_muxes)
+        << "add_s3_input_mux set but add_third_input_to_output_muxes is not; "
+        << "no S3 mux will be added";
+  }
 
   Cell *Generate() override;
 
@@ -194,6 +202,9 @@ class LutB : public Tile {
       int64_t spine_width,
       Layout *layout) const;
 
+  bfg::Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
+  void FillDecapsRight(int64_t span, RowGuide *row);
+
   // TODO(aryap): Candidate for inclusion in base class.
   void AccumulateAnyErrors(const absl::Status &status);
 
@@ -215,6 +226,12 @@ class LutB : public Tile {
 
   // Sometimes features:
   geometry::Instance *s2_select_mux_;
+  geometry::Instance *s3_select_mux_;
+
+  geometry::Instance *aux_comb_output_mux_;
+  geometry::Instance *aux_comb_output_mux_config_;
+  geometry::Instance *aux_reg_output_mux_;
+  geometry::Instance *aux_reg_output_mux_config_;
 
   // Features of all LutBs:
   geometry::Instance *comb_output_mux_;

@@ -75,6 +75,14 @@ class MemoryBank {
 
   RowGuide &Row(size_t index);
 
+  // Insert a new row at index 0 and push every other row up.
+  //
+  // Preserves the rotation (if any) of existing rows.
+  //
+  // TODO(aryap): It would be nice if this behaviour was automatic when a
+  // negative index was given to Row(...).
+  RowGuide &InsertRowZero();
+
   size_t NumRows() const { return rows_.size(); }
 
   bool RowIsRotated(size_t index);
@@ -97,6 +105,9 @@ class MemoryBank {
   void EnableTapInsertionOnRow(size_t index);
   // Uses default tap_cell_.
   void EnableTapInsertionOnRow(size_t index, Cell *tap_cell);
+
+  RowGuide &LastRow() { return rows_.back(); }
+  size_t LastRowIndex() const { return NumRows() - 1; }
 
   std::vector<std::vector<std::string>> &instance_names() {
     return instance_names_;
