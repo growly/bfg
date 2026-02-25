@@ -57,6 +57,8 @@ namespace atoms {
 class Sky130Carry1 : public Atom {
  public:
   struct Parameters : public Sky130Parameters {
+    bool reverse_order = false;
+
     void ToProto(proto::parameters::Sky130Carry1 *pb) const;
     void FromProto(const proto::parameters::Sky130Carry1 &pb); 
   };
@@ -67,10 +69,10 @@ class Sky130Carry1 : public Atom {
         parameters_(parameters) {
   }
 
-  geometry::Instance* AddConfigMemory(RowGuide *row) const;
-  geometry::Instance* AddGenerateSelectMux(RowGuide *row) const;
-  geometry::Instance* AddSumXor(RowGuide *row) const;
-  geometry::Instance* AddCarrySelectMux(RowGuide *row) const;
+  geometry::Instance *AddConfigMemory(RowGuide *row) const;
+  geometry::Instance *AddGenerateSelectMux(RowGuide *row) const;
+  geometry::Instance *AddSumXor(RowGuide *row) const;
+  geometry::Instance *AddCarrySelectMux(RowGuide *row) const;
 
   Cell *Generate() override;
 

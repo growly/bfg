@@ -72,12 +72,15 @@ Cell *S44::Generate() {
   }
 
   bank.Row(kMiddle).set_rotate_instances(true);
+  geometry::Instance *carry = nullptr;
   {
     std::string carry_name = "carry1";
-    atoms::Sky130Carry1 carry1_generator ({}, design_db_);
+    atoms::Sky130Carry1 carry1_generator(
+        { .reverse_order = true }, design_db_);
     Cell *carry_cell = carry1_generator.GenerateIntoDatabase(carry_name);
 
-    bank.InstantiateRight(kMiddle, absl::StrCat(carry_name, "_i"), carry_cell);
+    carry = bank.InstantiateRight(
+        kMiddle, absl::StrCat(carry_name, "_i"), carry_cell);
   }
 
   {
@@ -109,6 +112,47 @@ Cell *S44::Generate() {
   base_params.draw_vgnd_vias = true;
   atoms::Sky130Decap::FillDecapsRight(
       base_params, empty_span, &bank.Row(kMiddle));
+
+  {
+    std::string net = "C_O";
+    // Continue the carry-out port on the carry to the end of the row.
+    geometry::Point start =
+        (*carry->GetInstancePortSet("C_O").begin())->centre();
+    geometry::Point end = {
+        bank.Row(kMiddle).GetTilingBounds()->upper_right().x(),
+        start.y()};
+    layout->MakeWire({start, end},
+                     "met1.drawing", std::nullopt, std::nullopt,
+                     false, false, net, false,
+                     RoutingTrackDirection::kTrackHorizontal, std::nullopt);
+    layout->MakePin("C_O", end, "met1.pin");
+  }
+
+  {
+    // Elevate Sky130Carry1 pins.
+    // TODO(aryap): Is there an easier way to do this?
+    std::vector<std::string> elevated_pins = {
+      "CONFIG_IN",
+      "CONFIG_OUT",
+      "CONFIG_CLK",
+      "C_I",
+      "G_0",
+      "G_1",
+      "S",
+      "P"
+    };
+
+    for (const std::string &pin : elevated_pins) {
+      geometry::Port *port = *carry->GetInstancePortSet(pin).begin();
+      LOG(INFO) << "Recreating " << pin << " at " << port->centre()
+                << " on layer " << port->layer();
+      layout->MakePin(pin, port->centre(), port->layer());
+    }
+  }
+
+  // FIXME(aryap):
+  // We need to route connections to the two luts now, including the brokwn scan
+  // chain (also TODO).
 
   // Add input and output ports.
 

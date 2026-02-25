@@ -13,10 +13,14 @@ namespace atoms {
 
 void Sky130Carry1::Parameters::ToProto(
     proto::parameters::Sky130Carry1 *pb) const {
+  pb->set_reverse_order(reverse_order);
 }
 
 void Sky130Carry1::Parameters::FromProto(
     const proto::parameters::Sky130Carry1 &pb) {
+  if (pb.has_reverse_order()) {
+    reverse_order = pb.reverse_order();
+  }
 }
 
 namespace {
@@ -81,16 +85,27 @@ Cell *Sky130Carry1::Generate() {
     row.set_tap_cell(*tap_cell);
   };
 
-  geometry::Instance *config_memory = AddConfigMemory(&row);
-  geometry::Instance *generate_select = AddGenerateSelectMux(&row);
-  geometry::Instance *sum_xor = AddSumXor(&row);
-  geometry::Instance *carry_select = AddCarrySelectMux(&row);
+  geometry::Instance *config_memory = nullptr;
+  geometry::Instance *generate_select = nullptr;
+  geometry::Instance *sum_xor = nullptr;
+  geometry::Instance *carry_select = nullptr;
+  if (parameters_.reverse_order) {
+    carry_select = AddCarrySelectMux(&row);
+    sum_xor = AddSumXor(&row);
+    generate_select = AddGenerateSelectMux(&row);
+    config_memory = AddConfigMemory(&row);
+  } else {
+    config_memory = AddConfigMemory(&row);
+    generate_select = AddGenerateSelectMux(&row);
+    sum_xor = AddSumXor(&row);
+    carry_select = AddCarrySelectMux(&row);
+  }
 
   // Draw routes.
 
   int64_t height = row.GetTilingBounds()->Height();
-  int64_t met1_pitch = db.Rules("met1.drawing").min_pitch; 
-  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch; 
+  int64_t met1_pitch = db.Rules("met1.drawing").min_pitch;
+  int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
   std::vector<int64_t> tracks_y;
   // Start 1.5 pitches in and end 1.5 pitches before the boundary to accommodate
   // the VPWR/VGND rails.
@@ -102,10 +117,15 @@ Cell *Sky130Carry1::Generate() {
 
   static constexpr int kCarryInOutTrack = 5;
 
+  int64_t left_x = layout->GetTilingBounds().lower_left().x();
+  int64_t right_x = layout->GetTilingBounds().upper_right().x();
+
   geometry::Point carry_in_pin =
-      {layout->GetTilingBounds().lower_left().x(), tracks_y[kCarryInOutTrack]};
+      {parameters_.reverse_order ? right_x : left_x,
+       tracks_y[kCarryInOutTrack]};
   geometry::Point carry_out_pin =
-      {layout->GetTilingBounds().upper_right().x(), tracks_y[kCarryInOutTrack]};
+      {parameters_.reverse_order ? left_x : right_x,
+       tracks_y[kCarryInOutTrack]};
   layout->MakePin("C_I", carry_in_pin, "met1.pin");
   layout->MakePin("C_O", carry_out_pin, "met1.pin");
 
@@ -118,7 +138,13 @@ Cell *Sky130Carry1::Generate() {
         *config_memory->GetInstancePortSet("Q").begin())->centre();
     geometry::Point end = (
         *generate_select->GetInstancePortSet("S").begin())->centre();
-    geometry::Point p0 = {start.x(), end.y()};
+
+    geometry::Point p0;
+    if (parameters_.reverse_order) {
+      p0 = {end.x(), start.y()};
+    } else {
+      p0 = {start.x(), end.y()};
+    }
 
     DrawElbowRoute(db, {start, p0, end}, net, layout);
   }
@@ -131,12 +157,21 @@ Cell *Sky130Carry1::Generate() {
     geometry::Point end = (
         *carry_select->GetInstancePortSet("A1").begin())->centre();
 
-    // Bottom-right of A1:
-    geometry::Point p0 =
-        (*generate_select->GetInstancePortSet("A1").begin())->centre() +
-        geometry::Point(2 * met2_pitch, -met1_pitch);
-
-    geometry::Point p1 = {p0.x(), end.y()};
+    geometry::Point p0;
+    geometry::Point p1;
+    if (parameters_.reverse_order) {
+      // Bottom-left of sum_xor/X:
+      p0 = {
+          (*sum_xor->GetInstancePortSet("X").begin())->centre().x() -
+              2*met2_pitch,
+          start.y()};
+      p1 = {p0.x(), end.y()};
+    } else {
+      // Bottom-right of generate_select/A1:
+      p0 = (*generate_select->GetInstancePortSet("A1").begin())->centre() +
+           geometry::Point(2 * met2_pitch, -met1_pitch);
+      p1 = {p0.x(), end.y()};
+    }
 
     DrawElbowRoute(db, {start, p0, p1, end}, net, layout);
   }
@@ -209,7 +244,7 @@ Cell *Sky130Carry1::Generate() {
   {
     geometry::Point start = (
         *sum_xor->GetInstancePortSet("X").begin())->centre();
-    layout->MakePin("P", start, "li.pin");
+    layout->MakePin("S", start, "li.pin");
   }
  
   // Generate inputs.

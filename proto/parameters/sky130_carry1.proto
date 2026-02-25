@@ -3,4 +3,5 @@ syntax = "proto3";
 package bfg.proto.parameters;
 
 message Sky130Carry1 {
+  optional bool reverse_order = 1;
 }
