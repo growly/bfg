@@ -30,7 +30,7 @@ class RowGuide {
       : origin_(origin),
         layout_(layout),
         circuit_(circuit),
-        design_db(design_db),
+        design_db_(design_db),
         rotate_instances_(false),
         start_with_tap_(true),
         num_taps_(0),
@@ -149,6 +149,8 @@ class RowGuide {
     return generated_taps_;
   }
 
+  DesignDatabase *design_db() const { return design_db_; }
+
  private:
   static size_t global_tap_count_;
 
@@ -195,7 +197,7 @@ class RowGuide {
 
   bfg::Layout *layout_;
   bfg::Circuit *circuit_;
-  bfg::DesignDatabase *design_db;
+  bfg::DesignDatabase *design_db_;
 
   // Stores all instances in the row in order from left to right with increasing
   // index. If the row's cells are rotated (rotate_instances_ is true) then each

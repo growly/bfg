@@ -5,14 +5,18 @@
 #include <string>
 
 #include "atom.h"
-#include "../circuit/wire.h"
 #include "../cell.h"
+#include "../circuit/wire.h"
+#include "../design_database.h"
 #include "../geometry/layer.h"
 #include "../geometry/point.h"
 #include "../geometry/polygon.h"
 #include "../geometry/rectangle.h"
 #include "../layout.h"
+#include "../physical_properties_database.h"
+#include "../row_guide.h"
 #include "../scoped_layer.h"
+#include "../utility.h"
 
 #include "proto/parameters/sky130_decap.pb.h"
 
@@ -448,6 +452,59 @@ int64_t Sky130Decap::NDiffHeight() const {
 int64_t Sky130Decap::PDiffHeight() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   return db.ToInternalUnits(parameters_.pfet_0_width_nm.value_or(870));
+}
+
+Cell *Sky130Decap::Make(const std::optional<Parameters> &base_params,
+                        uint64_t height_nm,
+                        uint64_t width_nm,
+                        DesignDatabase *design_db) {
+  Parameters base = base_params.value_or(Parameters());
+  base.width_nm = width_nm;
+  base.height_nm = height_nm;
+  std::string name = absl::StrCat("sky130_decap_", width_nm, "x", height_nm);
+  Cell *cell = design_db->FindCell("", name);
+  if (cell == nullptr) {
+    atoms::Sky130Decap::Parameters params = {
+      .width_nm = width_nm,
+      .height_nm = height_nm,
+    };
+    params.power_net = "VPWR";
+    params.ground_net = "VGND";
+    params.draw_vpwr_vias = true;
+    params.draw_vgnd_vias = true;
+    atoms::Sky130Decap decap_generator(params, design_db);
+    cell = decap_generator.GenerateIntoDatabase(name);
+  }
+  return cell;
+}
+
+void Sky130Decap::FillDecapsRight(const std::optional<Parameters> &base_params,
+                                  int64_t span,
+                                  RowGuide *row) {
+  if (span <= 0) {
+    return;
+  }
+  const PhysicalPropertiesDatabase &db = row->design_db()->physical_db();
+  std::vector<int64_t> decap_widths = Utility::StripInUnits(
+      span,
+      Parameters::kMaxWidthNm,
+      Sky130Parameters::kStandardCellUnitWidthNm,
+      Parameters::kMinWidthNm);
+  static int num_decaps = 0;
+  if (row->empty()) {
+    // Maybe we need to be able to specify a default height.
+    return;
+  }
+  uint64_t height_nm = row->Height();
+  for (int64_t width : decap_widths) {
+    Cell *decap_cell = Make(base_params,
+                            db.ToExternalUnits(row->Height()),
+                            db.ToExternalUnits(width),
+                            row->design_db());
+    row->InstantiateBack(absl::StrCat(decap_cell->name(), "_i", num_decaps),
+                         decap_cell);
+    ++num_decaps;
+  }
 }
 
 }  // namespace atoms

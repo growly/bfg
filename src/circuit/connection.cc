@@ -1,4 +1,7 @@
 #include "connection.h"
+
+#include <optional>
+
 #include "../circuit.h"
 #include "vlsir/circuit.pb.h"
 
@@ -47,6 +50,20 @@ vlsir::circuit::ConnectionTarget Connection::ToVLSIRConnection() const {
       break;
   }
   return target_pb;
+}
+
+
+std::optional<const Signal*> Connection::GetSingleReferencedSignal() const {
+  switch (connection_type_) {
+    case ConnectionType::SIGNAL:
+      return signal_;
+    case ConnectionType::SLICE:
+      return &slice_->signal();
+    case ConnectionType::CONCATENATION:
+      // Fallthrough intended.
+    default:
+      return std::nullopt;
+  }
 }
 
 }  // namespace circuit

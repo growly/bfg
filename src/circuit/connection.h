@@ -1,6 +1,8 @@
 #ifndef CIRCUIT_CONNECTION_H_
 #define CIRCUIT_CONNECTION_H_
 
+#include <optional>
+
 #include "slice.h"
 #include "vlsir/circuit.pb.h"
 
@@ -47,6 +49,8 @@ class Connection {
     connection_type_ = SLICE;
     slice_.reset(new Slice(slice));
   }
+
+  std::optional<const Signal*> GetSingleReferencedSignal() const;
 
   const ConnectionType &connection_type() const { return connection_type_; }
   const Signal *signal() const { return signal_; }

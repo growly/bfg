@@ -105,6 +105,7 @@ set(SRC
 )
 
 set(TILES_SRC
+  ${PROJECT_SOURCE_DIR}/src/tiles/fabric.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/interconnect.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/interconnect_wire_block.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc

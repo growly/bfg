@@ -33,6 +33,7 @@
 #include "tiles/lut_b.h"
 #include "tiles/s44.h"
 #include "tiles/slice.h"
+#include "tiles/fabric.h"
 #include "tiles/reduced_slice.h"
 #include "tiles/interconnect.h"
 #include "tiles/interconnect_wire_block.h"
@@ -45,6 +46,7 @@
 #include "proto/parameters/lut_b.pb.h"
 #include "proto/parameters/slice.pb.h"
 #include "proto/parameters/reduced_slice.pb.h"
+#include "proto/parameters/fabric.pb.h"
 #include "proto/parameters/s44.pb.h"
 #include "proto/parameters/sky130_decap.pb.h"
 #include "proto/parameters/sky130_dfxtp.pb.h"
@@ -171,6 +173,11 @@ int DispatchGenerator(
         bfg::atoms::Sky130PassiveMux3::Parameters,
         bfg::atoms::Sky130PassiveMux3>(
             generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Fabric") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Fabric,
+        bfg::tiles::Fabric::Parameters,
+        bfg::tiles::Fabric>(generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "S44") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::S44,

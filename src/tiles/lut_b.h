@@ -44,9 +44,80 @@ namespace tiles {
 //                               |   |
 //                               |   |
 // Bypass                        |   |    |\   +-----+  Registered out,
-// input, X  --------------------|---+----| |--+ FF  |---- Q
+// input, X  --------------------|---+----| |--| FF  |---- Q
 //                               +--------| |  |>    |
 //                                        |/   +-----+
+//
+// If add_s2_input_mux is set:       If add_s3_input_mux is set:
+//                                   
+//                 +-----------+                     +-----------+
+// LUT        S0,1 |           |     LUT        S0,1 |           |
+// select   ---/---|   k-LUT   |--   select   ---/---|   k-LUT   |--
+//            +----|           |           S2 -------|           |
+//       S3 --|----|           |                +----|           |
+//            |    +-----------+                |    +-----------+
+//       |\   |                            |\   |
+// S2_A -| |--+                      S3_A -| |--+
+// S2_B -| |                         S3_B -| |
+//       |/                                |/ 
+//        |                                 |
+//       S2_S                              S3_S
+//
+// If add_third_input_to_output_muxes is set, conceptually:
+//
+//
+//                                        +-----+
+//                                        | Mem |-+
+//                                        |>    | |
+//                                        +-----+ |
+//                +-----------+                   |
+// LUT        k   |           |           |\     |\ Combinational out,
+// select   --/---|   k-LUT   |--+--------| |----| |---------- O
+// S_k, S_k-1...  |           |  |   +----| |  +-| |
+//                +-----------+  |   |    |/   | |/    
+//                               |   |         |
+//                               |   | +-----+ |      
+//                               |   | | Mem |----+
+//                               |   | |>    | |  |
+//                               |   | +-----+ |  |
+//                               |   |         |  |
+// Bypass                        |   |    |\   | |\    +-----+  Registered out,
+// input, X  --------------------|---+----| |--|-| |---| FF  |---- Q
+//                               +--------| |  +-| |   |>    |
+//                                        |/   | |/    +-----+
+//                                             |
+//                                             |
+//                                             X2
+//
+// But actually this:
+//                                        +-----+
+//                                        | Mem |-+
+//                                        |>    | |
+//                                        +-----+ |
+//                +-----------+                   |
+// LUT        k   |           |           |\     |\ Combinational out,
+// select   --/---|   k-LUT   |--+--------| |----| |---------- O
+// S_k, S_k-1...  |           |  |   +----| |  +-| |
+//                +-----------+  |   |    |/   | |/    
+//                               |   |         |
+//                     +-----+   |   |         |
+//                     | Mem |---|---|----+    |
+//                     |>    |   |   |    |    |
+//                     +-----+   |   |    |    |
+//                               |   |    |    |  
+//                               |   |    |    | |\    +-----+  Registered out,
+//                               +---|-----------| |---| FF  |---- Q
+//                                   |    |  +---| |   |>    |
+//         Bypass                    |   |\  | | |/    +-----+
+//         input, X  ----------------+---| |-+ |
+//                                     +-| |   |
+//                                     | |/    |
+//                                     +-------+
+//                                     |
+//                                     X2
+//
+// Where X2 is typically used to connect the sum output from a carry-chain
+// block.
 //
 // Note that with this additional logic, we have something closer to what Xilinx
 // calls a "Configurable Logic Block".
@@ -105,6 +176,8 @@ class LutB : public Tile {
   
     bool add_third_input_to_output_muxes = false;
 
+    bool split_scan_order = false;
+
     std::optional<uint64_t> tiling_width_unit_nm = 460;
 
     uint64_t default_row_height_nm = 2720;
@@ -116,6 +189,12 @@ class LutB : public Tile {
   LutB(const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
         parameters_(parameters),
+        s2_select_mux_(nullptr),
+        s3_select_mux_(nullptr),
+        aux_comb_output_mux_(nullptr),
+        aux_comb_output_mux_config_(nullptr),
+        aux_reg_output_mux_(nullptr),
+        aux_reg_output_mux_config_(nullptr),
         comb_output_mux_(nullptr),
         comb_output_mux_config_(nullptr),
         reg_output_flop_(nullptr),
@@ -137,7 +216,7 @@ class LutB : public Tile {
   };
   struct PortKeyCollection {
     std::vector<PortKey> port_keys;
-    std::optional<std::string> net_name;
+    std::optional<EquivalentNets> as_nets;
   };
   struct PortKeyAlias {
     PortKey key;
@@ -184,6 +263,9 @@ class LutB : public Tile {
       Circuit *circuit,
       Layout *layout);
 
+  std::vector<std::set<geometry::Port*>> ResolvePortKeyCollection(
+      const PortKeyCollection &collection) const;
+
   absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
       const PortKeyCollection &collection,
       RoutingGrid *routing_grid,
@@ -202,7 +284,6 @@ class LutB : public Tile {
       int64_t spine_width,
       Layout *layout) const;
 
-  bfg::Cell *MakeDecapCell(uint32_t width_nm, uint32_t height_nm);
   void FillDecapsRight(int64_t span, RowGuide *row);
 
   // TODO(aryap): Candidate for inclusion in base class.

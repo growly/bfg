@@ -1,6 +1,8 @@
 #include "s44.h"
 
 #include "../atoms/sky130_carry1.h"
+#include "../atoms/sky130_dfxtp.h"
+#include "../atoms/sky130_decap.h"
 #include "../circuit.h"
 #include "../layout.h"
 #include "../memory_bank.h"
@@ -33,6 +35,9 @@ Cell *S44::Generate() {
   std::string root_lut_name = "lut4";
 
   // Add 2 4-LUTs.
+  //
+  // Because we add a row to the top LUT, we have a VPWR/VGND parity difference.
+  // The first and second row must be rotated.
   {
     // The bottom one goes first. It has the s2 input selection mux for the
     // soft-S44.
@@ -45,7 +50,8 @@ Cell *S44::Generate() {
     LutB bottom_lut4_gen(bottom_lut_params, design_db_);
     Cell *bottom_lut4_cell = bottom_lut4_gen.GenerateIntoDatabase(lut_name);
 
-    geometry::Instance *bottom_lut = bank.InstantiateRight(
+    bank.Row(kBottom).set_rotate_instances(true);
+    bank.InstantiateRight(
         kBottom, absl::StrCat(lut_name, "_i"), bottom_lut4_cell);
   }
 
@@ -61,15 +67,52 @@ Cell *S44::Generate() {
     };
     LutB top_lut4_gen(top_lut_params, design_db_);
     Cell *top_lut4_cell = top_lut4_gen.GenerateIntoDatabase(lut_name);
-    geometry::Instance *top_lut = bank.InstantiateRight(
+    bank.InstantiateRight(
         kTop, absl::StrCat(lut_name, "_i_top"), top_lut4_cell);
   }
 
-  std::string carry_name = "carry1";
-  atoms::Sky130Carry1 carry1_generator ({}, design_db_);
-  Cell *carry_cell = carry1_generator.GenerateIntoDatabase(carry_name);
+  bank.Row(kMiddle).set_rotate_instances(true);
+  {
+    std::string carry_name = "carry1";
+    atoms::Sky130Carry1 carry1_generator ({}, design_db_);
+    Cell *carry_cell = carry1_generator.GenerateIntoDatabase(carry_name);
 
-  bank.InstantiateRight(kMiddle, absl::StrCat(carry_name, "_i"), carry_cell);
+    bank.InstantiateRight(kMiddle, absl::StrCat(carry_name, "_i"), carry_cell);
+  }
+
+  {
+    // We also need 1 more config memory for the soft S44 selector:
+    std::string dfxtp_template_name = "s44_select_dfxtp";
+    atoms::Sky130Dfxtp::Parameters dfxtp_params = {
+      .add_inverted_output_port = false  // No QI.
+    };
+    atoms::Sky130Dfxtp dfxtp_generator(dfxtp_params, design_db_);
+    Cell *dfxtp_cell = dfxtp_generator.GenerateIntoDatabase(
+        PrefixCellName(dfxtp_template_name));
+    bank.InstantiateRight(
+        kMiddle, absl::StrCat(dfxtp_template_name, "_i"), dfxtp_cell);
+  }
+
+  uint64_t top_row_width = bank.Row(kTop).Width();
+  uint64_t bottom_row_width = bank.Row(kBottom).Width();
+
+  LOG_IF(WARNING, top_row_width != bottom_row_width)
+      << "Top and bottom rows (LUTs) of S-44 should be the same width.";
+
+  int64_t empty_span = std::max(bottom_row_width, top_row_width) -
+      bank.Row(kMiddle).Width();
+
+  atoms::Sky130Decap::Parameters base_params;
+  base_params.power_net = "VPWR";
+  base_params.ground_net = "VGND";
+  base_params.draw_vpwr_vias = true;
+  base_params.draw_vgnd_vias = true;
+  atoms::Sky130Decap::FillDecapsRight(
+      base_params, empty_span, &bank.Row(kMiddle));
+
+  // Add input and output ports.
+
+  // Connect circuit elements.
 
   //int64_t lut_width = lut4_cell->layout()->GetTilingBounds().Width();
 

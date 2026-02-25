@@ -14,7 +14,9 @@
 
 namespace bfg {
 
+class Cell;
 class DesignDatabase;
+class RowGuide;
 
 namespace atoms {
 
@@ -68,8 +70,16 @@ class Sky130Decap: public Atom {
         << "the minimum needed (" << Parameters::kMaxWidthNm << " nm)";
   }
 
+  static Cell *Make(const std::optional<Parameters> &base_params,
+                    uint64_t height_nm,
+                    uint64_t width_nm,
+                    DesignDatabase *design_db);
+  static void FillDecapsRight(const std::optional<Parameters> &base_params,
+                              int64_t span,
+                              RowGuide *row);
+
   // Caller takes ownership!
-  bfg::Cell *Generate() override;
+  Cell *Generate() override;
 
  private:
   bfg::Layout *GenerateLayout();

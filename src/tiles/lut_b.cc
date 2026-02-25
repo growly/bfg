@@ -139,6 +139,12 @@ Cell *LutB::Generate() {
       circuit->AddPort(circuit->AddSignal("S2_S"));
       continue;
     }
+    if (i == 3 && parameters_.add_s3_input_mux) {
+      circuit->AddPort(circuit->AddSignal("S3_A"));
+      circuit->AddPort(circuit->AddSignal("S3_B"));
+      circuit->AddPort(circuit->AddSignal("S3_S"));
+      continue;
+    }
     circuit->AddPort(circuit->AddSignal(absl::StrCat("S", i)));
   }
   // Output.
@@ -218,7 +224,8 @@ Cell *LutB::Generate() {
   LOG_IF(FATAL, banks_.size() < 1) << "Expected at least 1 bank by this point.";
 
   static constexpr int kTypicalRowLeft = 1;
-  static constexpr int kTypicalRowRight = 2;
+  const int kTypicalRowRight =
+      parameters_.add_third_input_to_output_muxes ? 3 : 2;
 
   int64_t row_height = banks_[0].Row(kTypicalRowLeft).Height();
   banks_[0].MoveTo(geometry::Point(0, -row_height));
@@ -448,6 +455,7 @@ Cell *LutB::Generate() {
         banks_[1].NumRows() - 1, instance_name, s2_select_cell);
   }
 
+  // TODO(aryap): Factor this out. This function is ridiculous.
   if (parameters_.add_third_input_to_output_muxes) {
     // A better way to do this would be re-arrange everything around a 3:1
     // transmission gate mux, or equivalent, but since we have to add two whole
@@ -522,6 +530,10 @@ Cell *LutB::Generate() {
   // first chance we get to set the overall config scan chain order:
   SetScanOrder();
 
+  const int kNormallyBottomRow =
+      parameters_.add_third_input_to_output_muxes ?  1 : 0;
+  const int kAlwaysBottomRow = 0;
+
   // Now that all instances have been assigned to the banks and their
   // dimensions are known, move them into place around the muxes. Well, move
   // the right bank because the first bank is fixed.
@@ -530,19 +542,20 @@ Cell *LutB::Generate() {
   int64_t right_bank_typical_row_width = banks_[1].Row(
       kTypicalRowRight).Width();
   int64_t right_bank_bottom_row_top_y =
-      banks_[1].rows().front().UpperLeft().y();
-
+      banks_[1].Row(kAlwaysBottomRow).UpperLeft().y();
 
   // We don't want the right bank to come any more left than the right bound of
   // the mux grid, but we also don't want the top or bottom row to overlap.
-  int64_t right_bank_bottom_row_width = banks_[1].Row(0).Width();
-  int64_t left_bank_bottom_row_width = banks_[0].Row(0).Width();
+  int64_t right_bank_normally_bottom_row_width =
+      banks_[1].Row(kNormallyBottomRow).Width();
+  int64_t left_bank_bottom_row_width =
+      banks_[0].Row(kNormallyBottomRow).Width();
 
   x_pos = mux_grid.GetBoundingBox()->upper_right().x() +
       mux_area_horizontal_padding;
 
   int64_t bottom_row_overlap = x_pos + right_bank_typical_row_width - (
-      left_bank_bottom_row_width + right_bank_bottom_row_width);
+      left_bank_bottom_row_width + right_bank_normally_bottom_row_width);
   if (bottom_row_overlap < 0) {
     x_pos += -bottom_row_overlap;
     // TODO(aryap): The mux grid can also be repositioned in the centre of the
@@ -586,6 +599,9 @@ Cell *LutB::Generate() {
   y_pos = parameters_.add_third_input_to_output_muxes ?
     -bottom_row_height : 0;
 
+  LOG(INFO) << "aligning point " << 
+      geometry::Point{right_bank_typical_row_left_x, right_bank_bottom_row_top_y}
+      << " to " << geometry::Point{x_pos, y_pos};
   banks_[1].AlignPointTo(
       {right_bank_typical_row_left_x, right_bank_bottom_row_top_y},
       {x_pos, y_pos});
@@ -682,8 +698,8 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  //RouteScanChain(&routing_grid, circuit, layout);
-  //RouteClockBuffers(&routing_grid, circuit, layout);
+  RouteScanChain(&routing_grid, circuit, layout);
+  RouteClockBuffers(&routing_grid, circuit, layout);
   //RouteMuxInputs(&routing_grid, circuit, layout);
   //RouteRemainder(&routing_grid, circuit, layout);
   RouteInputs(&routing_grid, circuit, layout);
@@ -791,21 +807,21 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
         .instance = clk_buf_order_[bank],
         .port_name = "X"
     });
-    clk_collection.net_name = absl::StrCat("clk_", bank);
+    clk_collection.as_nets = {absl::StrCat("clk_", bank)};
 
     PortKeyCollection &clk_i_collection = clk_connections.emplace_back();
     clk_i_collection.port_keys.push_back({
         .instance = clk_buf_order_[bank],
         .port_name = "P"
     });
-    clk_i_collection.net_name = absl::StrCat("clk_i_", bank);
+    clk_i_collection.as_nets = {absl::StrCat("clk_i_", bank)};
   }
 
   for (auto &clk_connection : clk_connections) {
     PortKey &source_spec = clk_connection.port_keys[0];
     geometry::Port *source_port =
         source_spec.instance->GetFirstPortNamed(source_spec.port_name);
-    const std::string &target_net = *clk_connection.net_name;
+    const std::string &target_net = clk_connection.as_nets->primary();
 
     // Note that source_port->net() will include the source_port's instance
     // name, which is important for disambiguating the port in the context of
@@ -832,7 +848,7 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
 
     // This matches the input port name, so that the connecting net label
     // matches the incoming port label.
-    clk_inputs.net_name = "CLK";
+    clk_inputs.as_nets = {"CLK"};
   }
   auto result = AddMultiPointRoute(clk_inputs, routing_grid, circuit, layout);
   if (result.ok()) {
@@ -1088,8 +1104,17 @@ void LutB::RouteRemainder(
   };
 
   if (parameters_.add_s2_input_mux) {
+    DCHECK(s2_select_mux_ != nullptr)
+        << "add_s2_input_mux is true but s2_select_mux_ is nullptr";
+  }
+  if (s2_select_mux_) {
     auto_connections.push_back(PortKeyCollection {
       .port_keys = {{buf_order_[2], "A"}, {s2_select_mux_, "X"}}
+    });
+  }
+  if (s3_select_mux_) {
+    auto_connections.push_back(PortKeyCollection {
+      .port_keys = {{buf_order_[3], "A"}, {s3_select_mux_, "X"}}
     });
   }
 
@@ -1133,13 +1158,13 @@ void LutB::RouteInputs(
   std::vector<PortKeyAlias> pin_map = {
     PortKeyAlias {{buf_order_[0], "port_A_centre"}, "S0"},
     PortKeyAlias {{buf_order_[1], "port_A_centre"}, "S1"},
-    PortKeyAlias {{buf_order_[3], "port_A_centre"}, "S3"},
     PortKeyAlias {{scan_order_.front(), "port_D_centre"}, "CONFIG_IN"}
   };
 
-  if (parameters_.add_s2_input_mux) {
-    DCHECK(s2_select_mux_ != nullptr)
-        << "s2_select_mux_ must've been set by the time ports are added.";
+  if (s2_select_mux_) {
+    DCHECK(parameters_.add_s2_input_mux)
+        << "s2_select_mux_ has been set so add_s2_select_mux should have been "
+        << "set";
     pin_map.push_back(
         PortKeyAlias {{s2_select_mux_, "port_A0_centre_top"}, "S2_A"});
     pin_map.push_back(
@@ -1148,6 +1173,20 @@ void LutB::RouteInputs(
         PortKeyAlias {{s2_select_mux_, "port_S_centre_left"}, "S2_S"});
   } else {
     pin_map.push_back(PortKeyAlias {{buf_order_[2], "port_A_centre"}, "S2"});
+  }
+
+  if (s3_select_mux_) {
+    pin_map.push_back(
+        PortKeyAlias {{s3_select_mux_, "port_A0_centre_top"}, "S3_A"});
+    pin_map.push_back(
+        PortKeyAlias {{s3_select_mux_, "port_A1_centre_bottom"}, "S3_B"});
+    pin_map.push_back(
+        PortKeyAlias {{s3_select_mux_, "port_S_centre_left"}, "S3_S"});
+  } else {
+    pin_map.push_back(PortKeyAlias {{buf_order_[3], "port_A_centre"}, "S3"});
+  }
+
+  if (parameters_.add_third_input_to_output_muxes) {
   }
 
   layout->SetActiveLayerByName("li.pin");
@@ -1184,12 +1223,6 @@ void LutB::RouteOutputs(
     << "Output structures must be installed and available before RouteOutputs "
     << "is called";
 
-  // TODO(aryap):
-  // bypass input pin
-  // application clock input pin
-  // combinational output pin, O
-  // registered output pin, Q
-  //
   // TODO(aryap): Pin input order matters. If the reg. output flop Q port isn't
   // a blockage when the config for its mux is routed, it might be blocked.
   //
@@ -1201,108 +1234,144 @@ void LutB::RouteOutputs(
   // buf from the flip flop that was chopped off (that should be a parameter
   // anyway).
 
-  std::string comb_input_A0 = "comb_input_A0";
-  std::string reg_input_A0 = "reg_input_A0";
   std::string bypass_input = "X";
-  std::string reg_flop_in = "reg_flop_in";
   std::string reg_flop_control = 
       GetMemoryOutputNet(reg_output_mux_config_).value_or("reg_flop_control");
   std::string comb_flop_control = 
       GetMemoryOutputNet(comb_output_mux_config_).value_or("comb_flop_control");
 
-  // LUT output to combinational and registered outputs.
-  //
-  // Connect the output of the LUT to the A0 input of the register selection
-  // mux and to the A0 input of the combinational output selection mux.
-  {
-    std::set<geometry::Port*> comb_output_mux_A0_ports =
-        comb_output_mux_->GetInstancePorts("A0");
+  std::vector<PortKeyCollection> auto_connections = {{
+      // LUT output to combinational and registered outputs.
+      //
+      // Connect the output of the LUT to the A0 input of the register selection
+      // mux and to the A0 input of the combinational output selection mux.
+      .port_keys = {{comb_output_mux_, "A0"}, {reg_output_mux_, "A0"},
+                    {active_mux2s_[0], "X"}},
+      .as_nets = EquivalentNets(std::set<std::string>({
+          "comb_input_A0", "reg_input_A0" }))
+    }, {
+      // Connect the output of the register input selection mux to the input of
+      // the flop.
+      .port_keys = {{reg_output_mux_, "X"}, {reg_output_flop_, "D"}},
+      .as_nets = EquivalentNets("reg_flop_in")
+    }, {
+      // Connect the output of the register selection mux config memory to the
+      // select line of the mux.
+      .port_keys = {{reg_output_mux_, "S"}, {reg_output_mux_config_, "Q"}},
+      .as_nets = {reg_flop_control}
+    }, {
+      // Connect the output of the combinational selection mux config memory to
+      // the select line of the mux.
+      .port_keys = {{comb_output_mux_, "S"}, {comb_output_mux_config_, "Q"}},
+      .as_nets = {comb_flop_control}
+    }
+  };
 
-    std::set<geometry::Port*> reg_output_mux_A0_ports =
-        reg_output_mux_->GetInstancePorts("A0");
+  if (parameters_.add_third_input_to_output_muxes) {
+    DCHECK(aux_comb_output_mux_ != nullptr &&
+           aux_comb_output_mux_config_ != nullptr &&
+           aux_reg_output_mux_ != nullptr &&
+           aux_reg_output_mux_config_ != nullptr);
 
-    std::set<geometry::Port*> lut_output_ports =
-        active_mux2s_[0]->GetInstancePorts("X");
+    auto_connections.push_back({
+      .port_keys = {{comb_output_mux_, "X"}, {aux_comb_output_mux_, "A0"}},
+      .as_nets = EquivalentNets("comb_output_to_aux")
+    });
+    auto_connections.push_back({
+      .port_keys = {{aux_comb_output_mux_, "S"},
+                    {aux_comb_output_mux_config_, "Q"}},
+      .as_nets = EquivalentNets("aux_comb_flop_control")
+    });
+    auto_connections.push_back({
+      .port_keys = {{aux_reg_output_mux_, "S"},
+                    {aux_reg_output_mux_config_, "Q"}},
+      .as_nets = EquivalentNets("aux_reg_flop_control")
+    });
 
-    route_manager.ConnectMultiplePorts(
-        std::vector<std::set<geometry::Port*>>({
-          lut_output_ports,
-          reg_output_mux_A0_ports,
-          comb_output_mux_A0_ports
-        }),
-        EquivalentNets(std::set<std::string>({
-          comb_input_A0,
-          reg_input_A0
-        }))).IgnoreError();
+    // This should be a port also. This is where the sum input from the carry
+    // would come in.
+    auto_connections.push_back({
+      .port_keys = {{aux_comb_output_mux_, "A1"},
+                    {aux_reg_output_mux_, "A1"}},
+      .as_nets = EquivalentNets("X2")
+    });
+    // Alternative bypass input:
+    auto_connections.push_back({
+      .port_keys = {{aux_comb_output_mux_, "A0"}, {reg_output_mux_, "A1"}},
+      .as_nets = {bypass_input}
+    });
+  } else {
+    auto_connections.push_back({
+      // The bypass input connects to both muxes.
+      //
+      // Connect the A1 inputs of the combinational output selection mux and the
+      // register selection mux to the bypass input.
+      //
+      // This should be a port also.
+      .port_keys = {{comb_output_mux_, "A1"}, {reg_output_mux_, "A1"}},
+      .as_nets = {bypass_input}
+    });
   }
-  // Connect the output of the register input selection mux to the input of the
-  // flop.
-  {
-    std::set<geometry::Port*> reg_select_output_ports =
-        reg_output_mux_->GetInstancePorts("X");
 
-    std::set<geometry::Port*> reg_input =
-        reg_output_flop_->GetInstancePorts("D");
+  for (const auto &collection : auto_connections) {
+    auto port_sets = ResolvePortKeyCollection(collection);
 
-    route_manager.Connect(
-        reg_select_output_ports,
-        reg_input,
-        reg_flop_in).IgnoreError();
-  }
-  // Connect the output of the register selection mux config memory to the
-  // select line of the mux.
-  {
-    std::set<geometry::Port*> reg_select_S_ports =
-        reg_output_mux_->GetInstancePorts("S");
+    std::string net = collection.as_nets->primary();
 
-    std::set<geometry::Port*> reg_select_mem_Q_ports =
-        reg_output_mux_config_->GetInstancePorts("Q");
+    route_manager.ConnectMultiplePorts(port_sets, net).IgnoreError();
 
-    route_manager.Connect(
-        reg_select_S_ports,
-        reg_select_mem_Q_ports,
-        reg_flop_control).IgnoreError();
-  }
-  // Connect the output of the combinational selection mux config memory to the
-  // select line of the mux.
-  {
-    std::set<geometry::Port*> comb_select_S_ports =
-        comb_output_mux_->GetInstancePorts("S");
+    // If any of these ports is already connected, we have to reuse the signal.
+    // If more than one is already connected, we have to replace one signal with
+    // another.
+    // TODO(aryap): This is a solution to a common problem that should be
+    // factored into RouteManager or some part of Circuit. It would be
+    // convenient for RouteManager to connect circuit elements at the same as it
+    // connects layout. For that to work effectively, we need to support signal
+    // replacement.
+    circuit::Signal *signal = nullptr;
+    std::vector<const PortKey*> needs_connecting;
+    for (const auto &port_key : collection.port_keys) {
+      geometry::Instance *instance = port_key.instance;
+      auto connection = instance->circuit_instance()->GetConnection(
+          port_key.port_name);
+      if (!connection) {
+        needs_connecting.push_back(&port_key);
+        continue;
+      }
+      LOG_IF(FATAL, signal != nullptr)
+          << "Can't handle more than one pre-existing connected port";
+      auto maybe_signal = connection->GetSingleReferencedSignal();
+      LOG_IF(FATAL, !maybe_signal)
+          << "Unimplemented: can't handle concatenations";
+      
+      signal = const_cast<circuit::Signal*>(*maybe_signal);
+    }
 
-    std::set<geometry::Port*> comb_select_mem_Q_ports =
-        comb_output_mux_config_->GetInstancePorts("Q");
-
-    route_manager.Connect(
-        comb_select_S_ports,
-        comb_select_mem_Q_ports,
-        comb_flop_control).IgnoreError();
-  }
-
-  // The bypass input connects to both muxes.
-  //
-  // Connect the A1 inputs of the combinational output selection mux and the
-  // register selection mux to the bypass input.
-  {
-    std::set<geometry::Port*> comb_output_mux_A1_ports =
-        comb_output_mux_->GetInstancePorts("A1");
-
-    std::set<geometry::Port*> reg_output_mux_A1_ports = 
-        reg_output_mux_->GetInstancePorts("A1");
-
-    route_manager.Connect(
-        comb_output_mux_A1_ports,
-        reg_output_mux_A1_ports,
-        bypass_input).IgnoreError();
+    if (!signal) {
+      signal = circuit->GetOrAddSignal(net, 1);
+    }
+    for (const PortKey *port_key : needs_connecting) {
+      geometry::Instance *instance = port_key->instance;
+      instance->circuit_instance()->Connect(
+          port_key->port_name, *signal);
+    }
   }
 
   route_manager.Solve().IgnoreError();
 
   // Make input/output pins.
-  const std::array<PortKeyAlias, 2> pin_map = {
+  std::vector<PortKeyAlias> pin_map = {
     // Take the output from the final 2:1 mux output (for now).
     PortKeyAlias {{active_mux2s_[0], "port_X_centre_middle"}, "Z"},
-    PortKeyAlias {{scan_order_.back(), "port_Q_centre"}, "CONFIG_OUT"}
+    PortKeyAlias {{scan_order_.back(), "port_Q_centre"}, "CONFIG_OUT"},
+    PortKeyAlias {{reg_output_flop_, "port_Q_centre"}, "Q"}
   };
+  if (aux_comb_output_mux_) {
+    pin_map.push_back({{aux_comb_output_mux_, "port_X_centre_middle"}, "MUX"});
+  } else {
+    pin_map.push_back({{comb_output_mux_, "port_X_centre_middle"}, "MUX"});
+  }
+
   layout->SetActiveLayerByName("li.pin");
   for (const auto &entry : pin_map) {
     const std::string &port_name = entry.alias;
@@ -1323,7 +1392,7 @@ absl::StatusOr<std::vector<RoutingPath*>>
                              Circuit *circuit,
                              Layout *layout) const {
   circuit::Signal *internal_signal = circuit->GetOrAddSignal(
-      collection.net_name ? *collection.net_name : "", 1);
+      collection.as_nets ? collection.as_nets->primary() : "", 1);
   std::string net = internal_signal->name();
 
   std::vector<std::vector<geometry::Port*>> route_targets;
@@ -1354,9 +1423,13 @@ absl::StatusOr<std::vector<RoutingPath*>>
       });
 
 
+  std::optional<std::string> net_name;
+  if (collection.as_nets) {
+    net_name = collection.as_nets->primary();
+  }
   return routing_grid->AddMultiPointRoute(*layout,
                                           route_targets,
-                                          collection.net_name);
+                                          net_name);
 }
 
 geometry::Group LutB::AddVerticalSpineWithFingers(
@@ -1661,41 +1734,24 @@ void LutB::AddClockAndPowerStraps(
   }
 }
 
-bfg::Cell *LutB::MakeDecapCell(uint32_t width_nm, uint32_t height_nm) {
-  std::string name = PrefixCellName(
-      absl::StrCat("decap_", width_nm, "x", height_nm));
-  Cell *cell = design_db_->FindCell("", name);
-  if (cell == nullptr) {
-    atoms::Sky130Decap::Parameters params = {
-      .width_nm = width_nm,
-      .height_nm = height_nm,
-    };
-    params.power_net = "VPWR";
-    params.ground_net = "VGND";
-    params.draw_vpwr_vias = true;
-    params.draw_vgnd_vias = true;
-    atoms::Sky130Decap decap_generator(params, design_db_);
-    cell = decap_generator.GenerateIntoDatabase(name);
-  }
-  return cell;
+void LutB::FillDecapsRight(int64_t span, RowGuide *row) {
+  atoms::Sky130Decap::Parameters base_params;
+  base_params.power_net = "VPWR";
+  base_params.ground_net = "VGND";
+  base_params.draw_vpwr_vias = true;
+  base_params.draw_vgnd_vias = true;
+  atoms::Sky130Decap::FillDecapsRight(base_params, span, row);
 }
 
-void LutB::FillDecapsRight(int64_t span, RowGuide *row) {
-  std::vector<int64_t> decap_widths = Utility::StripInUnits(
-      span,
-      atoms::Sky130Decap::Parameters::kMaxWidthNm,
-      atoms::Sky130Parameters::kStandardCellUnitWidthNm,
-      atoms::Sky130Decap::Parameters::kMinWidthNm);
-  static int num_decaps = 0;
-  uint64_t height_nm =
-      row->empty() ? parameters_.default_row_height_nm : row->Height();
-  for (int64_t width : decap_widths) {
-    Cell *decap_cell = MakeDecapCell(
-        design_db_->physical_db().ToExternalUnits(width), height_nm);
-    row->InstantiateBack(absl::StrCat(decap_cell->name(), "_i", num_decaps),
-                         decap_cell);
-    ++num_decaps;
+std::vector<std::set<geometry::Port*>> LutB::ResolvePortKeyCollection(
+    const PortKeyCollection &collection) const {
+  std::vector<std::set<geometry::Port*>> port_sets;
+  for (const auto &key : collection.port_keys) {
+    std::set<geometry::Port*> port_set =
+        key.instance->GetInstancePorts(key.port_name);
+    port_sets.push_back(port_set);
   }
+  return port_sets;
 }
 
 std::optional<std::string> LutB::GetMemoryOutputNet(
