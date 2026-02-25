@@ -622,7 +622,7 @@ Cell *LutB::Generate() {
     FillDecapsRight(right_x - left_x, &banks_[0].Row(0));
   }
 
-  //Route(circuit.get(), layout.get());
+  Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.

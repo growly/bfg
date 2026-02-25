@@ -34,6 +34,9 @@ Cell *S44::Generate() {
 
   std::string root_lut_name = "lut4";
 
+  // FIXME(aryap): I think the S44 will need a vertical routing channel like the
+  // Sky130InterconnectMuxes.
+
   // Add 2 4-LUTs.
   //
   // Because we add a row to the top LUT, we have a VPWR/VGND parity difference.
@@ -131,15 +134,17 @@ Cell *S44::Generate() {
   {
     // Elevate Sky130Carry1 pins.
     // TODO(aryap): Is there an easier way to do this?
+    // FIXME(aryap): Most of these are internal pins and need to be deleted from
+    // the "S44" cell.
     std::vector<std::string> elevated_pins = {
-      "CONFIG_IN",
-      "CONFIG_OUT",
-      "CONFIG_CLK",
+      //"CONFIG_IN",
+      //"CONFIG_OUT",
+      //"CONFIG_CLK",
       "C_I",
-      "G_0",
-      "G_1",
-      "S",
-      "P"
+      //"G_0",
+      //"G_1",
+      //"S",
+      //"P"
     };
 
     for (const std::string &pin : elevated_pins) {
