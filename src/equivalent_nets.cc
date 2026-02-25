@@ -4,6 +4,8 @@
 #include <set>
 #include <absl/strings/str_join.h>
 
+#include "geometry/port.h"
+
 namespace bfg {
 
 bool EquivalentNets::ContainsAny(const EquivalentNets &other) const {
@@ -41,6 +43,15 @@ bool EquivalentNets::Add(const std::string &name) {
     primary_ = name;
   }
   return added;
+}
+
+void EquivalentNets::AddAllConnected(const std::set<geometry::Port*> &ports) {
+  for (geometry::Port *port : ports) {
+    if (port->net() == "") {
+      continue;
+    }
+    Add(port->net());
+  }
 }
 
 bool EquivalentNets::Delete(const std::string &name) {

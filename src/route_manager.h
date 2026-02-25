@@ -42,7 +42,7 @@ namespace bfg {
 // largely obviated by more sophisticated meta-routing, like with simulated
 // annealing, an ILP, etc.
 
-struct NetRouteOrder {
+class NetRouteOrder {
  public:
   NetRouteOrder() = default;
   NetRouteOrder(const EquivalentNets &net)
@@ -50,8 +50,14 @@ struct NetRouteOrder {
 
   std::string Describe() const;
 
-  void set_net(const EquivalentNets &net) { net_ = net; }
+  void set_explicit_target(const std::optional<EquivalentNets> &net) {
+    explicit_target_ = net;
+  };
+  const std::optional<EquivalentNets> &explicit_target() const {
+    return explicit_target_;
+  }
 
+  void set_net(const EquivalentNets &net) { net_ = net; }
   EquivalentNets &net() { return net_; }
   const EquivalentNets &net() const { return net_; }
 
@@ -65,6 +71,9 @@ struct NetRouteOrder {
   // as a canonical ID.
   EquivalentNets net_;
 
+  // If set, all ports in this order are routed to these explicit target.
+  std::optional<EquivalentNets> explicit_target_;
+
   // Each node is a set of equivalent ports. In principle any node from a set
   // can be used to connect, but in practice it should only be one.
   std::vector<std::set<const geometry::Port*>> nodes_;
@@ -73,6 +82,9 @@ struct NetRouteOrder {
 // Maybe "RouteGovernor"?
 class RouteManager {
  public:
+  static absl::Status SummariseStatuses(
+      const std::vector<absl::Status> &statuses);
+
   RouteManager(Layout *layout,
                RoutingGrid *routing_grid)
       : layout_(layout),
@@ -96,6 +108,11 @@ class RouteManager {
   //    const std::vector<std::pair<std::string, std::string>> port_names,
   //    const EquivalentNets &nets,
   //    const std::optional<int64_t> priority = std::nullopt);
+
+  absl::StatusOr<int64_t> ConnectToNet(
+      const std::vector<std::set<geometry::Port*>> ports_list,
+      const EquivalentNets &target_nets,
+      const EquivalentNets &as_nets);
 
   //absl::StatusOr<int64_t> ConnectPair(
   //    const geometry::Port &from,

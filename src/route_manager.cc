@@ -3,6 +3,7 @@
 #include <thread>
 #include <functional>
 
+#include <absl/strings/str_cat.h>
 #include <sstream>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
@@ -28,6 +29,19 @@ std::string NetRouteOrder::Describe() const {
     }
   }
   return ss.str();
+}
+
+absl::Status RouteManager::SummariseStatuses(
+    const std::vector<absl::Status> &statuses) {
+  bool all_ok = true;
+  std::string message;
+  for (const absl::Status &status : statuses) {
+    if (status.ok()) {
+      continue;
+    }
+    absl::StrAppend(&message, status.message(), "; ");
+  }
+  return absl::InternalError(message);
 }
 
 std::string RouteManager::DescribeOrders() const {
@@ -89,12 +103,32 @@ absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
   return position;
 }
 
+absl::StatusOr<int64_t> RouteManager::ConnectToNet(
+    const std::vector<std::set<geometry::Port*>> ports_list,
+    const EquivalentNets &target_nets,
+    const EquivalentNets &as_nets) {
+  NetRouteOrder order(as_nets);
+  for (const std::set<geometry::Port*> &ports : ports_list) {
+    order.nodes().emplace_back();
+    for (const geometry::Port* port: ports) {
+      order.nodes().back().insert(port);
+    }
+  }
+  order.set_explicit_target(target_nets);
+  int64_t position = orders_.size();
+  orders_.push_back(order);
+  return position;
+}
+
 absl::Status RouteManager::RunAllSerial() {
+  // Accumulate errors.
+  std::vector<absl::Status> statuses;
   for (const NetRouteOrder &order : orders_) {
     LOG(INFO) << "Serial dispatch; routing " << std::endl << order.Describe();
-    RunOrder(order).IgnoreError();
+    auto status = RunOrder(order);
+    statuses.push_back(status);
   }
-  return absl::OkStatus();
+  return SummariseStatuses(statuses);
 }
 
 // TODO(aryap): This is a work in progress...
@@ -103,6 +137,11 @@ absl::Status RouteManager::RunAllParallel() {
   std::vector<std::thread> threads;
   threads.reserve(batch_size);
 
+  // Each thread should have access to its own status (indexed by order, i) and
+  // the vector's size is pre-allocated so it should not change. This should be
+  // thread safe.
+  std::vector<absl::Status> statuses(orders_.size(), absl::Status());
+
   size_t i = 0;
   while (i < orders_.size()) {
     for (size_t j = 0; j < batch_size && i < orders_.size(); ++j) {
@@ -110,7 +149,8 @@ absl::Status RouteManager::RunAllParallel() {
         const NetRouteOrder &order = orders_[i];
         LOG(INFO) << "Thread " << j << " dispatch for order " << i << std::endl
                   << order.Describe();
-        RunOrder(order).IgnoreError();
+        auto status = RunOrder(order);
+        statuses[i] = status;
       });
       ++i;
     }
@@ -119,7 +159,7 @@ absl::Status RouteManager::RunAllParallel() {
     }
     threads.clear();
   }
-  return absl::OkStatus();
+  return SummariseStatuses(statuses);
 }
 
 // Ok this is nice and is exactly what RouterSession does, but what I think I
@@ -139,7 +179,8 @@ absl::Status RouteManager::RunAllParallel() {
 // functions should implement them. Then, at dispatch time, we pick which one.
 // Intermixing them requires multiple NetRouteOrders.
 absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
-  if (order.nodes().size() < 2) {
+  if (order.nodes().size() == 0 ||
+      (!order.explicit_target() && order.nodes().size() < 2)) {
     return absl::FailedPreconditionError("Not enough nodes in NetRouteOrder");
   }
 
@@ -194,13 +235,23 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   std::vector<absl::Status> errors;
 
   bool first_pair_routed = false;
-  for (size_t i = 0; i < order.nodes().size() - 1; ++i) {
+
+  if (order.explicit_target()) {
+    // Skip routing between the first pair, override the target nets explicitly.
+    first_pair_routed = true;
+    target_nets = *order.explicit_target();
+  }
+
+  for (size_t i = 0; i < order.nodes().size(); ++i) {
     geometry::PortSet begin_ports =
-        geometry::Port::MakePortSet(order.nodes()[i + 1]);
+        geometry::Port::MakePortSet(order.nodes()[i]);
     if (!first_pair_routed) {
+      if (i == 0) {
+        continue;
+      }
       // A geometry::PortSet sorts Port*s by their cartesian coordinates.
       geometry::PortSet end_ports =
-          geometry::Port::MakePortSet(order.nodes()[i]);
+          geometry::Port::MakePortSet(order.nodes()[i - 1]);
       auto result = retry_fn([&]() {
         return routing_grid_->AddBestRouteBetween(begin_ports,
                                                   end_ports,
@@ -361,6 +412,7 @@ absl::Status RouteManager::ConsolidateOrders() {
         replacement_order = order_it->second;
       }
       replacement_order->nodes().push_back(node);
+      replacement_order->set_explicit_target(order.explicit_target());
 
       included_in_order.insert(node.begin(), node.end());
     }

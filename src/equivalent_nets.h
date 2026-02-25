@@ -6,6 +6,10 @@
 
 namespace bfg {
 
+namespace geometry {
+class Port;
+}
+
 // This is just a fancy wrapper for a set of net names (strings) which are all
 // considered to be the same net. This is a convenience for the router to
 // navigate the multiple nested names attached to ports and shapes in a layout
@@ -39,6 +43,7 @@ class EquivalentNets {
   bool Contains(const std::string &name) const;
   bool Add(const EquivalentNets &other);
   bool Add(const std::string &name);
+  void AddAllConnected(const std::set<geometry::Port*> &ports);
   bool Delete(const std::string &name);
   bool Empty() const {
     return nets_.empty();
