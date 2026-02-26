@@ -2,6 +2,10 @@
 
 An Open-Source Silicon Compiler for Reduced-Complexity Reconfigurable Fabrics
 
+BFG makes FPGAs.
+
+[Half a ReducedSlice](assets/img/reduced_slice_banner.png)
+
 ## Installation
 
 ### Via Docker
