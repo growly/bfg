@@ -812,6 +812,10 @@ class RoutingGrid {
 
   void TearDownTemporaryBlockages(const TemporaryBlockageInfo &blockage_info);
 
+  RoutingVertex *MaybeExtendToNearbyVia(
+      const EquivalentNets &usable_nets,
+      RoutingPath *path) REQUIRES(lock_);
+
   std::vector<CostedLayer> LayersReachableByVia(
       const geometry::Layer &from_layer) const;
 

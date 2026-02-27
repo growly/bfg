@@ -253,8 +253,14 @@ class RoutingVertex {
     return it->second;
   }
 
+  bool LikelyHostsVia() const;
+
   std::optional<RoutingTrackDirection> GetEncapDirection(
       const geometry::Layer &layer) const;
+
+  std::set<RoutingEdge*> SharedInstalledEdgesWith(
+      const RoutingVertex &other,
+      const std::set<RoutingPath*> &excepted_paths) const;
 
   // This is the cost of connecting through this vertex (i.e. a via).
   void set_cost(const double cost) { cost_ = cost; }

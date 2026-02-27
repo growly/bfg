@@ -60,13 +60,19 @@ class RoutingPath {
 
   void ToPolyLinesAndVias(
       std::vector<std::unique_ptr<geometry::PolyLine>> *poly_lines,
-      std::vector<std::unique_ptr<AbstractVia>> *vias) const;
+      std::vector<std::unique_ptr<AbstractVia>> *vias);
 
   void ToPointsAndLayers(
       std::vector<geometry::Point> *points,
       std::vector<geometry::Layer> *layers) const;
 
   bool Empty() const { return edges_.empty(); }
+
+  // Adds the given edge to the edges_ list, and adds the final vertex too. For
+  // this to work the given edge must be connected to the end of the path,
+  // meaning the last vertex in vertices_ must be one of the terminating
+  // vertices of that edge.
+  void AppendEdge(RoutingEdge *edge);
 
   const std::vector<RoutingVertex*> SpannedVerticesWithVias() const;
   const std::set<RoutingVertex*> SpannedVertices() const;

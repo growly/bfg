@@ -526,6 +526,10 @@ void PolyLine::InsertBulgeLater(
       DeferredBulge {point, coaxial_width, coaxial_length, angle_rads});
 }
 
+void PolyLine::DeleteLastDeferredBulge() {
+  deferred_bulges_.erase(deferred_bulges_.end() - 1);
+}
+
 void PolyLine::ApplyDeferredBulges() {
   for (const DeferredBulge &deferred : deferred_bulges_) {
     if (deferred.angle_rads) {

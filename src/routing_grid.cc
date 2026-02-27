@@ -2016,6 +2016,15 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   // Claim the pointer.
   std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
 
+  // TODO(aryap): Is the answer to this nonse to just disable vertices near vias
+  // for connection on installation? That would prevent some amount of this
+  // crap.
+  //RoutingVertex *extended_end = MaybeExtendToNearbyVia(
+  //    usable_nets, shortest_path.get());
+  // This should only ever extend to another previously-installed vertex.
+  //if (extended_end)
+  //  end_vertex = extended_end;
+
   // Remember the ports to which the path should connect.
   shortest_path->set_start_port(&begin);
   shortest_path->start_access_layers().insert(begin_connection->layer);
@@ -2051,6 +2060,58 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   shortest_path->set_nets(all_nets);
 
   return shortest_path.release();
+}
+
+// Sometimes when routing to a net, we end up connecting to a layer that
+// requires a via, right next to an existing via. In those situations we
+// explicitly continue the route to the nearby via, even if it might be higher
+// cost (but it probably wouldn't be, because vias are high cost).
+RoutingVertex *RoutingGrid::MaybeExtendToNearbyVia(
+    const EquivalentNets &usable_nets, RoutingPath *path) {
+  std::set<RoutingVertex*> spanned_vertices = path->SpannedVertices();
+  RoutingVertex *vertex = path->vertices().back();
+  std::set<RoutingVertex*> nearby = GetNearbyVertices(*vertex);
+  geometry::Layer last_edge_layer = path->edges().back()->EffectiveLayer();
+  for (RoutingVertex *other : nearby) {
+    if (other == vertex)
+      continue;
+    // Skip other vertices in newly-returned path. This might not be faster than
+    // just doing the next check, but it's a lot easier to do, so maybe.
+    if (spanned_vertices.find(other) != spanned_vertices.end())
+      continue;
+
+    auto other_net_with_layers = other->InUseBySingleNet();
+    if (!other_net_with_layers || !usable_nets.Contains(
+          other_net_with_layers->net))
+      continue;
+
+    if (!other->LikelyHostsVia())
+      continue;
+
+    // Find the routing track they have in common.
+    RoutingTrack *common_track = nullptr;
+    if (vertex->vertical_track() == other->vertical_track()) {
+      common_track = vertex->vertical_track();
+    } else if (vertex->horizontal_track() == other->horizontal_track()) {
+      common_track = vertex->horizontal_track();
+    }
+    // If this fails, as it might for off_grid edges, we need to find edges
+    // between two points more robustly.
+    LOG_IF(FATAL, common_track == nullptr)
+        << "The vertex " << *vertex << " and nearby vertex " << *other
+        << " need to be connected by an edge but do not have a track in "
+        << "common.";
+    // TODO(arya): In the unit-edge regime, this needs to be a plurality of
+    // edges.
+    RoutingEdge *extension = common_track->GetEdgeBetween(vertex, other);
+    LOG_IF(FATAL, extension == nullptr)
+        << "Could not get the single edge between vertex " << *vertex
+        << " and nearby vertex " << *other << ". Are there multiple?";
+
+    path->AppendEdge(extension);
+    return other;
+  }
+  return nullptr;
 }
 
 bool RoutingGrid::RemoveVertex(
@@ -2683,6 +2744,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
       // not directional per se, so pick the side that isn't the one we came in
       // on:
       RoutingVertex *next = edge->OtherVertexThan(current);
+      // If edge does not connect to current this can be nullptr, but we should
+      // not let that happen.
+      DCHECK_NOTNULL(next);
 
       size_t next_index = next->contextual_index();
 
@@ -3458,12 +3522,11 @@ std::optional<std::vector<RoutingViaInfo>> RoutingGrid::FindViaStack(
 void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
     PolyLineCell *cell) const {
   // Find neary by vertices that are too close but which have vias.
-  //
+
   // Iterate over vertices in installed paths because those are the only things
   // we've added that could've made the mess we're trying to climb out of.
-  auto emit_hack_fn = [&](
-      RoutingVertex *lhs,
-      RoutingVertex *rhs) {
+  auto emit_hack_fn = [&](RoutingVertex *lhs,
+                          RoutingVertex *rhs) {
     // The width of the joining rectangle is the length of the via encap on the
     // given layer.
     std::set<RoutingEdge*> candidates;
@@ -3547,8 +3610,9 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
         if (other == vertex)
           continue;
         // Skip nearby vertices that are in paths.
-        if (!other->installed_in_paths().empty())
-          continue;
+        // FIXME(aryap): Wtf? This doesn't make sense. Why did I do this?
+        //if (!other->installed_in_paths().empty())
+        //  continue;
         // Skip other vertices in this path, because we aren't going to do
         // anything about them.
         if (spanned_vertices.find(other) != spanned_vertices.end())
@@ -3559,11 +3623,24 @@ void RoutingGrid::ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(
         if (!other_net_with_layers) {
           continue;
         }
+        // Skip vertices with differing single-using-nets (they are on other
+        // paths):
+        if (other_net_with_layers->net != net_with_layers->net) {
+          continue;
+        }
         const auto &their_layers = other_net_with_layers->layers;
         if (their_layers.empty())
           continue;
-        // We actually only care that they have two layers in common with
-        // vertex, since then we will probably have a problem:
+        // TODO(aryap): We care if they have any layers in common. We need to
+        // patch the layers that are in common but not connected. To figure
+        // that, we have to ignore edges they share layers on?
+        //
+        // More and more it seems like this should be a purely geometric fix.
+        // Find any shapes that are too close _and_ on the same net. If we had
+        // an octree or something we could limit the search area and speed that
+        // up nice.
+        //
+        // TODO(aryap): Maybe < 2 works if the access layers are added?
         if (num_in_common_fn(our_layers, their_layers) < 2)
           continue;
         // EXTRA HACKLICIOUS!
@@ -3583,7 +3660,7 @@ PolyLineCell *RoutingGrid::CreatePolyLineCell() const {
     path->ToPolyLinesAndVias(&cell->poly_lines(), &cell->vias());
   }
 
-  ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(cell.get());
+  //ApplyDumbHackToPatchNearbyVerticesOnSameNetButDifferentLayer(cell.get());
 
   return cell.release();
 }

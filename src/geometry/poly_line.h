@@ -101,6 +101,7 @@ class PolyLine : public Shape {
       uint64_t coaxial_length,
       std::optional<double> angle_rads = std::nullopt);
 
+  void DeleteLastDeferredBulge();
   void ApplyDeferredBulges();
 
   void SetWidth(const uint64_t width);

@@ -575,6 +575,16 @@ void RoutingPath::Flatten(
   }
 }
 
+void RoutingPath::AppendEdge(RoutingEdge *edge) {
+  RoutingVertex *current_end = vertices_.back();
+  RoutingVertex *new_end = edge->OtherVertexThan(current_end);
+  DCHECK(new_end != nullptr)
+      << "new_end is nullptr, so likely current_end did not appear in the "
+      << "extending edge.";
+  edges_.push_back(edge);
+  vertices_.push_back(new_end);
+}
+
 const std::vector<RoutingVertex*> RoutingPath::SpannedVerticesWithVias() const {
   // Straightforward filter.
   std::vector<RoutingVertex*> vias_;
@@ -812,6 +822,22 @@ void RoutingPath::CheckForViaCrowding(
       continue;
     }
 
+    // There is an exceptional case we must accommodate in order to support
+    // extended paths that curve under an existing path (usually to avoid
+    // putting a via too close to an existing one when joining to an existing
+    // net). If a vertex is incident on the path, and the next vertex is also
+    // incident on the path, and the distance between them is too short, we do
+    // not place the first vertex.
+    if (i + 1 < spanned_vertices.size()) {
+      RoutingVertex *next = spanned_vertices.at(i + 1);
+      if (next->installed_in_paths().size() > 1 &&
+          vertices_too_close_for_vias(0, vertex, next)) {
+        LOG(INFO) << "avoiding bulge at " << *vertex
+                  << "because it is too close to" << *next;
+        continue;
+      }
+    }
+
     auto &installed_in_paths = vertex->installed_in_paths();
     VLOG(12) << "Vertex " << vertex->centre() << " is installed in "
              << installed_in_paths.size() << " paths";
@@ -899,7 +925,7 @@ void RoutingPath::CheckForViaCrowding(
   }
 }
 
-  // When a new edge comes in perpedicular to an existing edge, the presence of a
+// When a new edge comes in perpedicular to an existing edge, the presence of a
 // nearby vias, or even just wide paths, can lead to a notch:
 //             +-----------+
 // +-----------+           |
@@ -1322,7 +1348,7 @@ void RoutingPath::ToPointsAndLayers(
 
 void RoutingPath::ToPolyLinesAndVias(
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,
-    std::vector<std::unique_ptr<AbstractVia>> *vias) const {
+    std::vector<std::unique_ptr<AbstractVia>> *vias) {
   if (Empty())
     return;
 

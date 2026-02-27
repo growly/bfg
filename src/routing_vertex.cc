@@ -260,6 +260,27 @@ std::optional<std::set<geometry::Layer>> RoutingVertex::GetNetLayers(
   return layers;
 }
 
+bool RoutingVertex::LikelyHostsVia() const {
+  // A via will appear here, with some exceptions, if it appears between two
+  // edges on different layers.
+  for (const auto &entry : in_out_edges_) {
+    if (!entry.first || !entry.second) {
+      continue;
+    }
+    if (entry.first == entry.second) {
+      // This edge passing through.
+      continue;
+    }
+    if (entry.first->EffectiveLayer() != entry.second->EffectiveLayer())
+      return true;
+  }
+
+  // TODO(aryap): OR at the start/end of paths with vias needed to
+  // get to their access layers.
+
+  return false;
+}
+
 RoutingVertex::NetToLayersMap RoutingVertex::SummariseNets(
     const std::map<std::string, std::vector<NetHazardInfo>> &source,
     const std::optional<geometry::Layer> &layer) const {
@@ -282,8 +303,17 @@ RoutingVertex::NetToLayersMap RoutingVertex::SummariseNets(
     }
   }
 
-  // Replace empty sets with the set of connected layers, since that is what it
-  // implies.
+  // TODO(aryap):
+  // If we are in use by a net with no specifc layer info, we are probably only
+  // using it on the layers where we have recorded in_out_edgs (as part of the
+  // paths we're installed in).
+  //
+  // Just using the connected_layers_ to fill this is not right because
+  // "connected_layers_" implies accessibility in the routing grid, not actual
+  // use in a path.
+  //
+  // I know this makes sense for UsingNets(), but does it also work for
+  // BlockingNets()?
   for (auto &entry : nets) {
     if (entry.second.empty()) {
       entry.second.insert(connected_layers_.begin(), connected_layers_.end());
@@ -517,6 +547,40 @@ std::vector<RoutingTrack*> RoutingVertex::TracksInDirection(
     tracks.push_back(vertical_track_);
   }
   return tracks;
+}
+
+std::set<RoutingEdge*> RoutingVertex::SharedInstalledEdgesWith(
+    const RoutingVertex &other,
+    const std::set<RoutingPath*> &excepted_paths) const {
+  std::set<RoutingPath*> paths;
+  std::transform(installed_in_paths_.begin(), installed_in_paths_.end(),
+                 std::inserter(paths, paths.begin()),
+                 [](const auto &entry) { return entry.first; });
+  std::set<RoutingPath*> other_paths;
+  std::transform(
+      other.installed_in_paths().begin(), other.installed_in_paths().end(),
+      std::inserter(other_paths, other_paths.begin()),
+      [](const auto &entry) { return entry.first; });
+  std::set<RoutingPath*> shared_paths;
+  std::set_intersection(paths.begin(), paths.end(),
+                        other_paths.begin(), other_paths.end(),
+                        std::inserter(shared_paths, shared_paths.begin()));
+  for (RoutingPath *excepted : excepted_paths) {
+    shared_paths.erase(excepted);
+  }
+  std::set<RoutingEdge*> all_shared_edges;
+  for (RoutingPath *path : shared_paths) {
+    const std::set<RoutingEdge*> &edges =
+        installed_in_paths_.find(path)->second;
+    const std::set<RoutingEdge*> &other_edges =
+        other.installed_in_paths().find(path)->second;
+    std::set_intersection(
+        edges.begin(), edges.end(),
+        other_edges.begin(), other_edges.end(),
+        std::inserter(all_shared_edges, all_shared_edges.begin()));
+  }
+  // The set of all shared edges across all paths that aren't 'excepted_path';
+  return all_shared_edges;
 }
 
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
