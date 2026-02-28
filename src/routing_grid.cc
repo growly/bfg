@@ -2377,11 +2377,6 @@ absl::Status RoutingGrid::InstallPath(
   // FIXME(aryap): When multithreading, we need to re-check the validity of
   // every vertex and edge in the path before installation, under lock, in case
   // things have changed since we started the search.
-  //
-  // FIXME(aryap): The thread safety model is not very robust.
-  // ValidAgainstKnownBlockages(...) should not take its own lock. But because
-  // it does, we have to relinquish the lock before calling
-  // RoutingPath->Legalise().
 
   // Mark edges as unavailable with track which owns them.
   for (RoutingEdge *edge : path->edges()) {
