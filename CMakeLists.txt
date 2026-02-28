@@ -10,14 +10,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps")
 #   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -save-temps")
 #   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -save-temps")
+
+message(STATUS "(All compilers) Thread-sanitation is on")
 add_compile_options(-fsanitize=thread)
 add_link_options(-fsanitize=thread)
 
 if (CMAKE_CXX_COMPILER MATCHES ".*clang.*")
   # This is useful if CMAKE_CXX_COMPILER=/usr/bin/clang.
-  add_compile_options(-Wthread-safety)
-  add_compile_definitions(THREAD_SAFETY_ANNOTATIONS)
+  #message(STATUS "(clang) Thread safety annotations are on")
+  #add_compile_options(-Wthread-safety)
+  #add_compile_definitions(THREAD_SAFETY_ANNOTATIONS)
 else()
+  message(STATUS "(gcc) save-temps is on")
   add_compile_options(-save-temps)
 endif()
 

@@ -284,8 +284,6 @@ class RoutingGridGeometry {
 
   std::vector<RoutingTrack*> horizontal_tracks_by_index_;
   std::vector<RoutingTrack*> vertical_tracks_by_index_;
-
-  std::shared_mutex lock_;
 };
 
 template <typename T>

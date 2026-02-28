@@ -240,18 +240,18 @@ class RoutingGrid {
       int64_t padding = 0,
       bool is_temporary = false,
       std::set<RoutingVertex*> *blocked_vertices = nullptr,
-      std::set<RoutingEdge*> *blocked_edges = nullptr) REQUIRES(lock_);
+      std::set<RoutingEdge*> *blocked_edges = nullptr);
   RoutingGridBlockage<geometry::Polygon> *AddBlockage(
       const geometry::Polygon &polygon,
       int64_t padding = 0,
       bool is_temporary = false,
-      std::set<RoutingVertex*> *blocked_vertices = nullptr) REQUIRES(lock_);
+      std::set<RoutingVertex*> *blocked_vertices = nullptr);
   std::vector<RoutingGridBlockage<geometry::Rectangle>*> AddBlockage(
       const geometry::Port &port,
       int64_t padding = 0,
       bool is_temporary = false,
       std::set<RoutingVertex*> *blocked_vertices = nullptr,
-      std::set<RoutingEdge*> *blocked_edges = nullptr) REQUIRES(lock_);
+      std::set<RoutingEdge*> *blocked_edges = nullptr);
 
   void ClearAllBlockages();
 
@@ -281,43 +281,42 @@ class RoutingGrid {
       const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const REQUIRES_SHARED(lock_);
+          std::nullopt) const;
 
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
   absl::Status ValidAgainstKnownBlockages(
       const RoutingEdge &edge,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const REQUIRES_SHARED(lock_);
+      const;
 
   absl::Status ValidAgainstKnownBlockages(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const REQUIRES_SHARED(lock_);
+          std::nullopt) const;
 
   absl::Status ValidAgainstInstalledPaths(
       const RoutingEdge &edge,
-      const std::optional<EquivalentNets> &for_nets = std::nullopt) const
-      REQUIRES_SHARED(lock_);
+      const std::optional<EquivalentNets> &for_nets = std::nullopt) const;
 
   absl::Status ValidAgainstInstalledPaths(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &for_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const REQUIRES_SHARED(lock_);
+          std::nullopt) const;
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsForVertex(
       const RoutingVertex &vertex,
       const EquivalentNets &for_nets,
-      const RoutingBlockageCache &blockage_cache) const REQUIRES_SHARED(lock_);
+      const RoutingBlockageCache &blockage_cache) const;
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsAt(
       const geometry::Point &point,
       const geometry::Layer &other_layer,
       const geometry::Layer &footprint_layer,
       const EquivalentNets &for_nets,
-      const RoutingBlockageCache &blockage_cache) const REQUIRES_SHARED(lock_);
+      const RoutingBlockageCache &blockage_cache) const;
 
   std::optional<double> FindViaStackCost(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
@@ -575,7 +574,7 @@ class RoutingGrid {
   void AddOffGridVerticesForBlockage(
       const RoutingGridGeometry &grid_geometry,
       const RoutingGridBlockage<T> &blockage,
-      bool is_temporary) REQUIRES(lock_);
+      bool is_temporary);
 
   std::set<RoutingVertex*> BlockingOffGridVertices(
       const RoutingVertex &vertex,
@@ -589,13 +588,13 @@ class RoutingGrid {
       const geometry::Port &begin,
       const geometry::Port &end,
       const RoutingBlockageCache &blockage_cache,
-      const EquivalentNets &nets) EXCLUDES(lock_);
+      const EquivalentNets &nets);
 
   absl::StatusOr<RoutingPath*> FindRouteToNet(
       const geometry::Port &begin,
       const EquivalentNets &target_nets,
       const EquivalentNets &usable_nets,
-      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
+      const RoutingBlockageCache &blockage_cache);
 
   absl::Status ConnectToSurroundingTracks(
       const RoutingGridGeometry &grid_geometry,
@@ -605,13 +604,13 @@ class RoutingGrid {
           std::reference_wrapper<
               const std::set<RoutingTrackDirection>>> &directions,
       const RoutingBlockageCache &blockage_cache,
-      RoutingVertex *off_grid) REQUIRES(lock_);
+      RoutingVertex *off_grid);
 
   absl::Status ValidAgainstHazards(
       const geometry::Rectangle &footprint,
       const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const REQUIRES_SHARED(lock_);
+      const;
 
   absl::Status ValidAgainstInstalledPaths(
       const geometry::Rectangle &footprint,
@@ -668,7 +667,7 @@ class RoutingGrid {
       const geometry::Point &point,
       const geometry::Layer &layer,
       const EquivalentNets &connectable_nets,
-      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
+      const RoutingBlockageCache &blockage_cache);
 
   absl::StatusOr<VertexWithLayer> ConnectToNearestAvailableVertex(
       const geometry::Port &port,
@@ -679,7 +678,7 @@ class RoutingGrid {
       const geometry::Point &point,
       const geometry::Layer &target_layer,
       const EquivalentNets &connectable_nets,
-      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
+      const RoutingBlockageCache &blockage_cache);
 
   absl::Status AddRoutingGridGeometry(
       const geometry::Layer &lhs, const geometry::Layer &rhs,
@@ -773,7 +772,7 @@ class RoutingGrid {
 
   absl::Status InstallPath(
       RoutingPath *path,
-      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
+      const RoutingBlockageCache &blockage_cache);
 
   void InstallVertexInPath(
       RoutingVertex *vertex,
@@ -815,7 +814,7 @@ class RoutingGrid {
 
   RoutingVertex *MaybeExtendToNearbyVia(
       const EquivalentNets &usable_nets,
-      RoutingPath *path) REQUIRES(lock_);
+      RoutingPath *path);
 
   std::vector<CostedLayer> LayersReachableByVia(
       const geometry::Layer &from_layer) const;

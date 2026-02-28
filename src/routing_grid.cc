@@ -283,7 +283,8 @@ absl::Status RoutingGrid::ValidAgainstHazards(
     const RoutingVertex &vertex,
     const RoutingBlockageCache &blockage_cache,
     const std::optional<EquivalentNets> &exceptional_nets,
-    const std::optional<RoutingTrackDirection> &access_direction) const {
+    const std::optional<RoutingTrackDirection> &access_direction) const
+    REQUIRES_SHARED(lock_) {
   absl::Status status = blockage_cache.ValidAgainstKnownBlockages(
       vertex, exceptional_nets, access_direction);
   if (!status.ok()) {
@@ -302,7 +303,8 @@ absl::Status RoutingGrid::ValidAgainstHazards(
 absl::Status RoutingGrid::ValidAgainstHazards(
     const geometry::Rectangle &footprint,
     const RoutingBlockageCache &blockage_cache,
-    const std::optional<EquivalentNets> &exceptional_nets) const {
+    const std::optional<EquivalentNets> &exceptional_nets) const
+    REQUIRES_SHARED(lock_) {
   absl::Status status = blockage_cache.ValidAgainstKnownBlockages(
       footprint, exceptional_nets);
   if (!status.ok()) {
@@ -318,7 +320,8 @@ absl::Status RoutingGrid::ValidAgainstHazards(
 
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingEdge &edge,
-    const std::optional<EquivalentNets> &exceptional_nets) const {
+    const std::optional<EquivalentNets> &exceptional_nets) const
+    REQUIRES_SHARED(lock_) {
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
     if (blockage->Blocks(edge, exceptional_nets)) {
@@ -338,7 +341,8 @@ absl::Status RoutingGrid::ValidAgainstKnownBlockages(
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingVertex &vertex,
     const std::optional<EquivalentNets> &exceptional_nets,
-    const std::optional<RoutingTrackDirection> &access_direction) const {
+    const std::optional<RoutingTrackDirection> &access_direction) const
+    REQUIRES_SHARED(lock_) {
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
     if (blockage->Blocks(vertex, exceptional_nets, access_direction)) {
@@ -375,7 +379,8 @@ absl::Status RoutingGrid::ValidAgainstKnownBlockages(
 
 absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const RoutingEdge &edge,
-    const std::optional<EquivalentNets> &for_nets) const {
+    const std::optional<EquivalentNets> &for_nets) const
+    REQUIRES_SHARED(lock_) {
   std::shared_lock mu(lock_);
   auto edge_footprint = EdgeWireFootprint(edge);
   if (!edge_footprint) {
@@ -389,7 +394,8 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
 absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const RoutingVertex &vertex,
     const std::optional<EquivalentNets> &for_nets,
-    const std::optional<RoutingTrackDirection> &access_direction) const {
+    const std::optional<RoutingTrackDirection> &access_direction) const
+    REQUIRES_SHARED(lock_) {
   // In this case we have to do labourious check for proximity to all used paths
   // and vertices.
   std::vector<std::string> errors;
@@ -615,7 +621,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
         std::reference_wrapper<
             const std::set<RoutingTrackDirection>>> &directions,
     const RoutingBlockageCache &blockage_cache,
-    RoutingVertex *off_grid) {
+    RoutingVertex *off_grid) REQUIRES(lock_) {
   // Number of layers of tracks to connect to, outwards, from the given off-grid
   // vertex.
   static const int64_t kTrackRadius = 2;
@@ -752,7 +758,7 @@ RoutingGrid::AddAccessVerticesForPoint(
     const geometry::Point &point,
     const geometry::Layer &layer,
     const EquivalentNets &for_nets,
-    const RoutingBlockageCache &blockage_cache) {
+    const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
   std::unique_lock mu(lock_);
   // Add each of the possible on-grid access vertices for a given off-grid
   // point to the RoutingGrid. For example, given an arbitrary point O, we must
@@ -916,7 +922,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     const geometry::Point &point,
     const geometry::Layer &target_layer,
     const EquivalentNets &for_nets,
-    const RoutingBlockageCache &blockage_cache) {
+    const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
   std::unique_lock mu(lock_);
 
   // If constrained to one or two layers on a fixed grid, we can determine the
@@ -1168,7 +1174,8 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsForVertex(
     const RoutingVertex &vertex,
     const EquivalentNets &for_nets,
-    const RoutingBlockageCache &blockage_cache) const {
+    const RoutingBlockageCache &blockage_cache) const
+    REQUIRES_SHARED(lock_) {
   std::set<RoutingTrackDirection> access_directions = {
       RoutingTrackDirection::kTrackHorizontal,
       RoutingTrackDirection::kTrackVertical};
@@ -1192,7 +1199,8 @@ std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsAt(
     const geometry::Layer &other_layer,
     const geometry::Layer &footprint_layer,
     const EquivalentNets &for_nets,
-    const RoutingBlockageCache &blockage_cache) const {
+    const RoutingBlockageCache &blockage_cache) const
+    REQUIRES_SHARED(lock_) {
   std::set<RoutingTrackDirection> access_directions = {
       RoutingTrackDirection::kTrackHorizontal,
       RoutingTrackDirection::kTrackVertical};
@@ -1659,12 +1667,13 @@ bool RoutingGrid::ContainsVertex(RoutingVertex *vertex) const {
       vertices_.begin(), vertices_.end(), vertex) != vertices_.end();
 }
 
-void RoutingGrid::AddVertex(RoutingVertex *vertex) {
+void RoutingGrid::AddVertex(RoutingVertex *vertex) REQUIRES(lock_) {
   for (const geometry::Layer &layer : vertex->connected_layers()) {
     std::vector<RoutingVertex*> &available = GetAvailableVertices(layer);
     available.push_back(vertex);
   }
   DCHECK(!ContainsVertex(vertex));
+  vertex->set_contextual_index(vertices_.size());
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
@@ -1843,7 +1852,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
     const geometry::Port &begin,
     const geometry::Port &end,
     const RoutingBlockageCache &blockage_cache,
-    const EquivalentNets &nets) {
+    const EquivalentNets &nets) EXCLUDES(lock_) {
   auto begin_connection = ConnectToGrid(begin, nets, blockage_cache);
   if (!begin_connection.ok()) {
     std::stringstream ss;
@@ -1868,6 +1877,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
   LOG(INFO) << "Nearest vertex to end (" << end << ") is "
             << end_vertex->centre();
 
+  // For the remainder of the function, we need a reader lock:
+  LOG(INFO) << "In FindRouteBetween waiting for lock";
+  std::shared_lock mu(lock_);
+  LOG(INFO) << "In FindRouteBetween lock ok";
+
   auto shortest_path_result = ShortestPath(
       begin_vertex, end_vertex, nets, blockage_cache);
   if (!shortest_path_result.ok()) {
@@ -1877,11 +1891,6 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
     return absl::NotFoundError(message);
   }
   std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
-
-  // For the remainder of the function, we need a reader lock:
-  LOG(INFO) << "In FindRouteBetween waiting for lock";
-  std::shared_lock mu(lock_);
-  LOG(INFO) << "In FindRouteBetween lock ok";
 
   // Remember the ports to which the path should connect.
   //
@@ -1975,7 +1984,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
     const geometry::Port &begin,
     const EquivalentNets &target_nets,
     const EquivalentNets &usable_nets,
-    const RoutingBlockageCache &blockage_cache) {
+    const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
   auto begin_connection = ConnectToGrid(begin, usable_nets, blockage_cache);
   if (!begin_connection.ok()) {
     std::stringstream ss;
@@ -1990,6 +1999,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
 
   RoutingVertex *end_vertex;
 
+  // For the remainder of the function, we need a reader lock:
+  LOG(INFO) << "In FindRouteToNet waiting for lock";
+  std::shared_lock mu(lock_);
+  LOG(INFO) << "In FindRouteToNet lock ok";
+
   auto shortest_path_result = ShortestPath(
       begin_vertex, target_nets, blockage_cache, &end_vertex);
   if (!shortest_path_result.ok()) {
@@ -1998,11 +2012,6 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
     LOG(WARNING) << message;
     return absl::NotFoundError(message);
   }
-
-  // For the remainder of the function, we need a reader lock:
-  LOG(INFO) << "In FindRouteToNet waiting for lock";
-  std::shared_lock mu(lock_);
-  LOG(INFO) << "In FindRouteToNet lock ok";
 
   // Claim the pointer.
   std::unique_ptr<RoutingPath> shortest_path(*shortest_path_result);
@@ -2058,7 +2067,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
 // explicitly continue the route to the nearby via, even if it might be higher
 // cost (but it probably wouldn't be, because vias are high cost).
 RoutingVertex *RoutingGrid::MaybeExtendToNearbyVia(
-    const EquivalentNets &usable_nets, RoutingPath *path) {
+    const EquivalentNets &usable_nets, RoutingPath *path) REQUIRES(lock_) {
   std::set<RoutingVertex*> spanned_vertices = path->SpannedVertices();
   RoutingVertex *vertex = path->vertices().back();
   std::set<RoutingVertex*> nearby = GetNearbyVertices(*vertex);
@@ -2163,6 +2172,10 @@ bool RoutingGrid::RemoveVertex(
   vertices_.erase(pos);
   if (and_delete)
     delete vertex;
+  // Re-assign indices to all vertices.
+  for (size_t i = 0; i < vertices_.size(); ++i) {
+    vertices_[i]->set_contextual_index(i);
+  }
   return true; // TODO(aryap): Always returning true, huh...
 }
 
@@ -2331,7 +2344,7 @@ void RoutingGrid::InstallVertexInPath(
 
 absl::Status RoutingGrid::InstallPath(
     RoutingPath *path,
-    const RoutingBlockageCache &blockage_cache) {
+    const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
   LOG(INFO) << "In InstallPath waiting for lock";
   std::unique_lock mu(lock_);
   LOG(INFO) << "In InstallPath lock ok";
@@ -2579,16 +2592,15 @@ absl::StatusOr<RoutingPath*> RoutingGrid::ShortestPath(
     std::function<bool(RoutingVertex*)> usable_vertex,
     std::function<bool(RoutingVertex*)> usable_vertex_for_via,
     std::function<bool(RoutingEdge*)> usable_edge,
-    bool target_must_be_usable) {
+    bool target_must_be_usable) REQUIRES_SHARED(lock_) {
   if (!usable_vertex(begin)) {
     // NOTE(aryap): This happening is usually very bad.
     return absl::NotFoundError("Start vertex for path is not available");
   }
 
-  // Give everything its index for the duration of this algorithm.
-  for (size_t i = 0; i < vertices_.size(); ++i) {
-    vertices_[i]->set_contextual_index(i);
-  }
+  // Each vertex should have a contextual_index_ that defines its ordinal
+  // position in the vertices_ vector, which is maintained by AddVertex and
+  // RemoveVertex.
 
   // Prefer consistent C++/STLisms over e.g. bool seen[vertices_.size()];
   std::vector<double> cost(vertices_.size());
@@ -2824,7 +2836,7 @@ RoutingGridBlockage<geometry::Rectangle> *RoutingGrid::AddBlockage(
     int64_t padding,
     bool is_temporary,
     std::set<RoutingVertex*> *blocked_vertices,
-    std::set<RoutingEdge*> *blocked_edges) {
+    std::set<RoutingEdge*> *blocked_edges) REQUIRES(lock_) {
   // FIXME(aryap): We can speed this up by pre-filtering tracks that definitely
   // won't collide with the blockage, i.e, that are within the most generous
   // margin from the track's offset.
@@ -2891,7 +2903,7 @@ RoutingGridBlockage<geometry::Polygon> *RoutingGrid::AddBlockage(
     const geometry::Polygon &polygon,
     int64_t padding,
     bool is_temporary,
-    std::set<RoutingVertex*> *blocked_vertices) {
+    std::set<RoutingVertex*> *blocked_vertices) REQUIRES(lock_) {
   const geometry::Layer &layer = polygon.layer();
 
   int64_t min_separation = physical_db_.Rules(layer).min_separation;
@@ -3318,7 +3330,7 @@ std::vector<RoutingGridBlockage<geometry::Rectangle>*> RoutingGrid::AddBlockage(
     int64_t padding,
     bool is_temporary,
     std::set<RoutingVertex*> *blocked_vertices,
-    std::set<RoutingEdge*> *blocked_edges) {
+    std::set<RoutingEdge*> *blocked_edges) REQUIRES(lock_) {
   std::vector<RoutingGridBlockage<geometry::Rectangle>*> blockages;
   std::vector<std::pair<geometry::Layer, std::set<geometry::Layer>>>
       layer_access = physical_db_.FindReachableLayersByPinLayer(
