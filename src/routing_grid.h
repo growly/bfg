@@ -184,14 +184,14 @@ class RoutingGrid {
 
   void AddVertex(RoutingVertex *vertex);
 
-  void AddOffGridVertex(RoutingVertex *vertex) EXCLUDES(lock_);
+  void AddOffGridVertex(RoutingVertex *vertex);
 
   void AddOffGridEdge(RoutingEdge *edge);
 
   bool RemoveVertex(
       RoutingVertex *vertex,
       bool and_delete,
-      const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_);
+      const RoutingBlockageCache &blockage_cache);
 
   bool ContainsVertex(RoutingVertex *vertex) const;
 
@@ -223,6 +223,7 @@ class RoutingGrid {
       int64_t padding = 0,
       bool is_temporary = false,
       std::set<RoutingVertex*> *changed_out = nullptr) {
+    std::unique_lock mu(lock_);
     for (const auto &rectangle : shapes.rectangles()) {
       AddBlockage(*rectangle, padding, is_temporary, changed_out);
     }
@@ -239,18 +240,18 @@ class RoutingGrid {
       int64_t padding = 0,
       bool is_temporary = false,
       std::set<RoutingVertex*> *blocked_vertices = nullptr,
-      std::set<RoutingEdge*> *blocked_edges = nullptr);
+      std::set<RoutingEdge*> *blocked_edges = nullptr) REQUIRES(lock_);
   RoutingGridBlockage<geometry::Polygon> *AddBlockage(
       const geometry::Polygon &polygon,
       int64_t padding = 0,
       bool is_temporary = false,
-      std::set<RoutingVertex*> *blocked_vertices = nullptr);
+      std::set<RoutingVertex*> *blocked_vertices = nullptr) REQUIRES(lock_);
   std::vector<RoutingGridBlockage<geometry::Rectangle>*> AddBlockage(
       const geometry::Port &port,
       int64_t padding = 0,
       bool is_temporary = false,
       std::set<RoutingVertex*> *blocked_vertices = nullptr,
-      std::set<RoutingEdge*> *blocked_edges = nullptr);
+      std::set<RoutingEdge*> *blocked_edges = nullptr) REQUIRES(lock_);
 
   void ClearAllBlockages();
 
@@ -280,43 +281,43 @@ class RoutingGrid {
       const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const REQUIRES(lock_);
+          std::nullopt) const REQUIRES_SHARED(lock_);
 
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
   absl::Status ValidAgainstKnownBlockages(
       const RoutingEdge &edge,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const REQUIRES(lock_);
+      const REQUIRES_SHARED(lock_);
 
   absl::Status ValidAgainstKnownBlockages(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const REQUIRES(lock_);
+          std::nullopt) const REQUIRES_SHARED(lock_);
 
   absl::Status ValidAgainstInstalledPaths(
       const RoutingEdge &edge,
       const std::optional<EquivalentNets> &for_nets = std::nullopt) const
-      REQUIRES(lock_);
+      REQUIRES_SHARED(lock_);
 
   absl::Status ValidAgainstInstalledPaths(
       const RoutingVertex &vertex,
       const std::optional<EquivalentNets> &for_nets = std::nullopt,
       const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const REQUIRES(lock_);
+          std::nullopt) const REQUIRES_SHARED(lock_);
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsForVertex(
       const RoutingVertex &vertex,
       const EquivalentNets &for_nets,
-      const RoutingBlockageCache &blockage_cache) const;
+      const RoutingBlockageCache &blockage_cache) const REQUIRES_SHARED(lock_);
 
   std::set<RoutingTrackDirection> ValidAccessDirectionsAt(
       const geometry::Point &point,
       const geometry::Layer &other_layer,
       const geometry::Layer &footprint_layer,
       const EquivalentNets &for_nets,
-      const RoutingBlockageCache &blockage_cache) const;
+      const RoutingBlockageCache &blockage_cache) const REQUIRES_SHARED(lock_);
 
   std::optional<double> FindViaStackCost(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
@@ -574,7 +575,7 @@ class RoutingGrid {
   void AddOffGridVerticesForBlockage(
       const RoutingGridGeometry &grid_geometry,
       const RoutingGridBlockage<T> &blockage,
-      bool is_temporary);
+      bool is_temporary) REQUIRES(lock_);
 
   std::set<RoutingVertex*> BlockingOffGridVertices(
       const RoutingVertex &vertex,
@@ -604,13 +605,13 @@ class RoutingGrid {
           std::reference_wrapper<
               const std::set<RoutingTrackDirection>>> &directions,
       const RoutingBlockageCache &blockage_cache,
-      RoutingVertex *off_grid);
+      RoutingVertex *off_grid) REQUIRES(lock_);
 
   absl::Status ValidAgainstHazards(
       const geometry::Rectangle &footprint,
       const RoutingBlockageCache &blockage_cache,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const;
+      const REQUIRES_SHARED(lock_);
 
   absl::Status ValidAgainstInstalledPaths(
       const geometry::Rectangle &footprint,

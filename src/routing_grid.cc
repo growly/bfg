@@ -319,7 +319,6 @@ absl::Status RoutingGrid::ValidAgainstHazards(
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingEdge &edge,
     const std::optional<EquivalentNets> &exceptional_nets) const {
-  std::shared_lock mu(lock_);
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
     if (blockage->Blocks(edge, exceptional_nets)) {
@@ -340,7 +339,6 @@ absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const RoutingVertex &vertex,
     const std::optional<EquivalentNets> &exceptional_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const {
-  std::shared_lock mu(lock_);
   // *snicker* Cute opportunity for std::any_of here:
   for (const auto &blockage : rectangle_blockages_) {
     if (blockage->Blocks(vertex, exceptional_nets, access_direction)) {
@@ -360,7 +358,6 @@ absl::Status RoutingGrid::ValidAgainstKnownBlockages(
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const geometry::Rectangle &footprint,
     const std::optional<EquivalentNets> &exceptional_nets) const {
-  std::shared_lock mu(lock_);
   for (const auto &blockage : rectangle_blockages_) {
     if (blockage->Blocks(footprint, exceptional_nets)) {
       return absl::ResourceExhaustedError(
@@ -756,7 +753,7 @@ RoutingGrid::AddAccessVerticesForPoint(
     const geometry::Layer &layer,
     const EquivalentNets &for_nets,
     const RoutingBlockageCache &blockage_cache) {
-  std::shared_lock mu(lock_);
+  std::unique_lock mu(lock_);
   // Add each of the possible on-grid access vertices for a given off-grid
   // point to the RoutingGrid. For example, given an arbitrary point O, we must
   // find the four nearest on-grid points A, B, C, D:
@@ -870,7 +867,6 @@ RoutingGrid::AddAccessVerticesForPoint(
 
     // If ConnectToSurroundingTracks has any success, we move ownership of the
     // off_grid vertex to the parent RoutingGrid.
-    mu.unlock();
     // FIXME(aryap): RoutingBlockageCache must be consulted
     if (!ConnectToSurroundingTracks(grid_geometry,
                                     access_layer,
@@ -878,7 +874,6 @@ RoutingGrid::AddAccessVerticesForPoint(
                                     access_directions,
                                     blockage_cache,
                                     off_grid.get()).ok()) {
-      mu.lock();
       // TODO(aryap): Accumulate errors?
       // The off-grid vertex could not be connected to any surrounding tracks.
       continue;
@@ -890,7 +885,8 @@ RoutingGrid::AddAccessVerticesForPoint(
     return {{vertex, target_layer}};
   }
 
-  return absl::NotFoundError(absl::StrCat(error_message, "; No workable options"));
+  return absl::NotFoundError(
+      absl::StrCat(error_message, "; No workable options"));
 }
 
 absl::StatusOr<RoutingGrid::VertexWithLayer>
@@ -921,7 +917,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     const geometry::Layer &target_layer,
     const EquivalentNets &for_nets,
     const RoutingBlockageCache &blockage_cache) {
-  std::shared_lock mu(lock_);
+  std::unique_lock mu(lock_);
 
   // If constrained to one or two layers on a fixed grid, we can determine the
   // nearest vertices quickly by shortlisting those vertices whose positions
@@ -1109,9 +1105,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     // Add off_grid now that we have a viable bridging_vertex.
     RoutingVertex *off_grid_copy = off_grid.get();
 
-    mu.unlock();
     AddOffGridVertex(off_grid.release());
-    mu.lock();
 
     if (bridging_vertex == off_grid_copy) {
       // off_grid landed on the track and was subsumed and connected, we have
@@ -1126,9 +1120,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     if (bridging_vertex_is_new) {
       // If the bridging_vertex was an existing vertex on the track, we don't
       // need to add it.
-      mu.unlock();
       AddOffGridVertex(bridging_vertex);
-      mu.lock();
     }
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid_copy);
@@ -1676,16 +1668,15 @@ void RoutingGrid::AddVertex(RoutingVertex *vertex) {
   vertices_.push_back(vertex);  // The class owns all of these.
 }
 
-void RoutingGrid::AddOffGridVertex(RoutingVertex *vertex) {
+void RoutingGrid::AddOffGridVertex(RoutingVertex *vertex) REQUIRES(lock_) {
   // Off-grid vertices should be missing one track, otherwise they since they
   // have two tracks they must be an existing grid vertex.
   DCHECK(!vertex->horizontal_track() || !vertex->vertical_track());
   AddVertex(vertex);
-  std::unique_lock mu(lock_);
   off_grid_vertices_.Add(vertex);
 }
 
-void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) {
+void RoutingGrid::AddOffGridEdge(RoutingEdge *edge) REQUIRES(lock_) {
   off_grid_edges_.insert(edge);
 }
 
@@ -2117,7 +2108,7 @@ RoutingVertex *RoutingGrid::MaybeExtendToNearbyVia(
 bool RoutingGrid::RemoveVertex(
     RoutingVertex *vertex,
     bool and_delete,
-    const RoutingBlockageCache &blockage_cache) {
+    const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
   bool might_be_off_grid = false;
   if (vertex->horizontal_track()) {
     vertex->horizontal_track()->RemoveVertex(vertex, blockage_cache);

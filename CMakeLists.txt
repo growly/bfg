@@ -10,7 +10,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps")
 #   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -save-temps")
 #   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -save-temps")
-add_compile_options(-save-temps)
+add_compile_options(-fsanitize=thread)
+add_link_options(-fsanitize=thread)
+
+if (CMAKE_CXX_COMPILER MATCHES ".*clang.*")
+  # This is useful if CMAKE_CXX_COMPILER=/usr/bin/clang.
+  add_compile_options(-Wthread-safety)
+  add_compile_definitions(THREAD_SAFETY_ANNOTATIONS)
+else()
+  add_compile_options(-save-temps)
+endif()
 
 # On some systems (like the Debian ones I've developed with), --as-needed seems
 # to be a default option for ld that means the profiler lib, when unused, is

@@ -145,11 +145,12 @@ absl::Status RouteManager::RunAllParallel() {
   size_t i = 0;
   while (i < orders_.size()) {
     for (size_t j = 0; j < batch_size && i < orders_.size(); ++j) {
-      threads.emplace_back([&, i]() {
+      threads.emplace_back([&, i, j]() {
         const NetRouteOrder &order = orders_[i];
         LOG(INFO) << "Thread " << j << " dispatch for order " << i << std::endl
                   << order.Describe();
         auto status = RunOrder(order);
+
         statuses[i] = status;
       });
       ++i;
