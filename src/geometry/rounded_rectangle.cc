@@ -6,11 +6,20 @@
 #include <sstream>
 
 #include "arc.h"
+#include "rectangle.h"
 #include "point.h"
 #include "../physical_properties_database.h"
 
 namespace bfg {
 namespace geometry {
+
+RoundedRectangle RoundedRectangle::FromRectangle(
+    const Rectangle &central, int64_t corner_radius) {
+  return RoundedRectangle(
+      central.lower_left() - geometry::Point{corner_radius, corner_radius},
+      central.upper_right() + geometry::Point{corner_radius, corner_radius},
+      corner_radius);
+}
 
 // Tests if the given point is within the corner_radius_ of the given centre
 // point.
@@ -27,7 +36,8 @@ std::tuple<Point, Point, Point, Point> RoundedRectangle::GetInnerCoordinates()
   Point inner_upper_left = UpperLeft() + Point{corner_radius_, -corner_radius_};
   Point inner_upper_right = upper_right_ + Point{
       -corner_radius_, -corner_radius_};
-  Point inner_lower_right = LowerRight() + Point{-corner_radius_, corner_radius_};
+  Point inner_lower_right = LowerRight() +
+      Point{-corner_radius_, corner_radius_};
   return {inner_lower_left,
           inner_upper_left,
           inner_upper_right,

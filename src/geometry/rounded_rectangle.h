@@ -40,6 +40,9 @@ class RoundedRectangle : public Rectangle {
     Rectangle lower_right;
   };
 
+  static RoundedRectangle FromRectangle(
+      const Rectangle &central, int64_t corner_radius);
+
   //static double ClosestDistanceBetween(
   //    const RoundedRectangle &lhs, const RoundedRectangle &rhs);
 

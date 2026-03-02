@@ -1226,7 +1226,7 @@ std::set<RoutingTrackDirection> RoutingGrid::ValidAccessDirectionsAt(
   return access_directions;
 }
 
-std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
+std::optional<geometry::RoundedRectangle> RoutingGrid::ViaFootprint(
     const geometry::Point &centre,
     const geometry::Layer &other_layer,
     const geometry::Layer &footprint_layer,
@@ -1239,33 +1239,36 @@ std::optional<geometry::Rectangle> RoutingGrid::ViaFootprint(
   // Get the applicable via info for via sizing and encapsulation values:
   const RoutingViaInfo &routing_via_info = GetRoutingViaInfoOrDie(
       footprint_layer, other_layer);
-  int64_t via_width =
-      routing_via_info.EncapWidth(footprint_layer) + 2 * padding;
-  int64_t via_length =
-      routing_via_info.EncapLength(footprint_layer) + 2 * padding;
+  int64_t via_width = routing_via_info.EncapWidth(footprint_layer);
+  int64_t via_length = routing_via_info.EncapLength(footprint_layer);
 
-  geometry::Point lower_left;
-  geometry::Rectangle footprint;
+  int64_t central_width;
+  int64_t central_height;
 
   if (!direction) {
-    int64_t square_width = std::max(via_width, via_length);
-    lower_left = centre - geometry::Point(square_width / 2, square_width / 2);
-    footprint = geometry::Rectangle(lower_left, square_width, square_width);
-    footprint.set_layer(footprint_layer);
+    central_width = std::max(via_width, via_length);
+    central_height = central_width;
   } else {
     switch (*direction) {
       case RoutingTrackDirection::kTrackVertical:
-        lower_left = centre - geometry::Point(via_width / 2, via_length / 2);
-        footprint = geometry::Rectangle(lower_left, via_width, via_length);
+        central_width = via_width;
+        central_height = via_length;
         break;
       case RoutingTrackDirection::kTrackHorizontal:
-        lower_left = centre - geometry::Point(via_length / 2, via_width / 2);
-        footprint = geometry::Rectangle(lower_left, via_length, via_width);
+        central_width = via_length;
+        central_height = via_width;
         break;
       default:
         LOG(FATAL) << "Unknown RoutingTrackDirection: " << *direction;
     }
   }
+
+  geometry::Point lower_left = centre - geometry::Point{
+      central_width / 2 + padding, central_height / 2 + padding};
+  geometry::Point upper_right = centre + geometry::Point{
+      central_width / 2 + padding, central_height / 2 + padding};
+
+  geometry::RoundedRectangle footprint(lower_left, upper_right, padding);
   footprint.set_layer(footprint_layer);
   return footprint;
 }
@@ -1853,6 +1856,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
     const geometry::Port &end,
     const RoutingBlockageCache &blockage_cache,
     const EquivalentNets &nets) EXCLUDES(lock_) {
+  LOG(INFO) << "Finding route from " << begin << " to " << end;
+
   auto begin_connection = ConnectToGrid(begin, nets, blockage_cache);
   if (!begin_connection.ok()) {
     std::stringstream ss;
@@ -1878,9 +1883,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteBetween(
             << end_vertex->centre();
 
   // For the remainder of the function, we need a reader lock:
-  LOG(INFO) << "In FindRouteBetween waiting for lock";
   std::shared_lock mu(lock_);
-  LOG(INFO) << "In FindRouteBetween lock ok";
 
   auto shortest_path_result = ShortestPath(
       begin_vertex, end_vertex, nets, blockage_cache);
@@ -1985,6 +1988,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
     const EquivalentNets &target_nets,
     const EquivalentNets &usable_nets,
     const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
+  LOG(INFO) << "Finding route from " << begin << " to net " << target_nets;
+
   auto begin_connection = ConnectToGrid(begin, usable_nets, blockage_cache);
   if (!begin_connection.ok()) {
     std::stringstream ss;
@@ -2000,9 +2005,7 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   RoutingVertex *end_vertex;
 
   // For the remainder of the function, we need a reader lock:
-  LOG(INFO) << "In FindRouteToNet waiting for lock";
   std::shared_lock mu(lock_);
-  LOG(INFO) << "In FindRouteToNet lock ok";
 
   auto shortest_path_result = ShortestPath(
       begin_vertex, target_nets, blockage_cache, &end_vertex);
@@ -2345,9 +2348,7 @@ void RoutingGrid::InstallVertexInPath(
 absl::Status RoutingGrid::InstallPath(
     RoutingPath *path,
     const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
-  LOG(INFO) << "In InstallPath waiting for lock";
   std::unique_lock mu(lock_);
-  LOG(INFO) << "In InstallPath lock ok";
 
   if (path->Empty()) {
     return absl::InvalidArgumentError("Cannot install an empty path.");
