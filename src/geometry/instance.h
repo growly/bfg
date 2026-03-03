@@ -3,6 +3,8 @@
 
 #include <unordered_map>
 #include <string>
+#include <mutex>
+#include <shared_mutex>
 
 #include <absl/strings/str_cat.h>
 
@@ -99,8 +101,6 @@ class Instance : public Manipulable {
 
   bool HasPort(const std::string &name) const;
 
-  void GeneratePorts();
-
   std::string InstancePortName(const std::string &master_port_name) const {
     return absl::StrCat(name_, ".", master_port_name);
   }
@@ -134,7 +134,12 @@ class Instance : public Manipulable {
   }
 
   void GetInstancePorts(PortSet *out) {
-    if (!ports_generated_) GeneratePorts();
+    std::shared_lock mu(lock_);
+    if (!ports_generated_) {
+      mu.unlock();
+      GeneratePorts();
+      mu.lock();
+    }
     for (auto &entry : instance_ports_) {
       for (auto &uniq : entry.second) {
         out->insert(uniq.get());
@@ -223,17 +228,27 @@ class Instance : public Manipulable {
     rotation_degrees_ccw_;
   }
 
+  // TODO(aryap): This is protected by a lock internally! This is bad! Easy
+  // enough to just return a copy.
   const std::unordered_map<std::string, InternalPortSet> &instance_ports()
       const {
     return instance_ports_;
   }
 
  private:
+  void GeneratePorts();
+
+  // REQUIRES(lock_);
   void AddNamedInstancePort(
       const std::string &name, Port *instance_port);
 
   void GetInstancePorts(const std::string &name, PortSet *out) {
-    if (!ports_generated_) GeneratePorts();
+    std::shared_lock mu(lock_);
+    if (!ports_generated_) {
+      mu.unlock();
+      GeneratePorts();
+      mu.lock();
+    }
     const std::string actual_name = InstancePortName(name);
     auto it = instance_ports_.find(actual_name);
     if (it == instance_ports_.end()) {
@@ -265,7 +280,10 @@ class Instance : public Manipulable {
   // FIXME(growly): Store rotation anti-clockwise.
   int32_t rotation_degrees_ccw_;
 
+  // GUARDED_BY(lock_)
   std::unordered_map<std::string, InternalPortSet> instance_ports_;
+
+  std::shared_mutex lock_;
 };
 
 }  // namespace geometry

@@ -433,7 +433,8 @@ absl::Status RouteManager::CollectConnectedNets() {
   for (NetRouteOrder &order : orders_) {
     // Start by assuming that none of the ports in this order have been routed
     // before. Create a single union of all of their nets.
-    EquivalentNets *nets = routed_nets_.emplace_back(new EquivalentNets()).get();
+    EquivalentNets *nets = routed_nets_.emplace_back(
+        new EquivalentNets()).get();
     nets->Add(order.net());
     std::set<EquivalentNets*> to_merge;
 

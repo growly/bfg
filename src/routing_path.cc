@@ -158,7 +158,7 @@ RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
 
   auto valid = blockage_cache.ValidAgainstKnownBlockages(*new_edge, nets_);
   if (valid.ok()) {
-    valid = routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_);
+    valid = routing_grid_->ValidAgainstKnownBlockagesSync(*new_edge, nets_);
   }
   if (!valid.ok()) {
     LOG(INFO) << "Invalid off grid edge between "
@@ -833,7 +833,17 @@ void RoutingPath::CheckForViaCrowding(
       if (next->installed_in_paths().size() > 1 &&
           vertices_too_close_for_vias(0, vertex, next)) {
         LOG(INFO) << "avoiding bulge at " << *vertex
-                  << "because it is too close to" << *next;
+                  << " because it is too close to " << *next;
+        poly_line->CancelDeferredBulge(vertex->centre());
+        continue;
+      }
+    }
+    // In the other direction:
+    if (i > 0) {
+      RoutingVertex *prev = spanned_vertices.at(i - 1);
+      if (prev->installed_in_paths().size() > 1 &&
+          vertices_too_close_for_vias(0, vertex, prev)) {
+        poly_line->CancelDeferredBulge(vertex->centre());
         continue;
       }
     }
@@ -1446,6 +1456,15 @@ void RoutingPath::ToPolyLinesAndVias(
 
   if (generated_lines.empty() && !last)
     return;
+
+  // FIXME(aryap): The problem is that, as written, the second-to-last edge in a
+  // polyline can intersect with another path's polyline, but since only one
+  // edge is considered at a time, the final vertex will not be found to
+  // conflict withthe via on the next edge. The function that checks this needs
+  // to:
+  //    - Go over all edges in the all polylines in the path
+  //    - Somehow indicate to other polylines that no via will be placed at a
+  //    given point (storable on the vertex)
 
   const RoutingLayerInfo &last_info = routing_grid_->GetRoutingLayerInfoOrDie(
       next_edge->EffectiveLayer());

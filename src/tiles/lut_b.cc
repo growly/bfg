@@ -949,11 +949,15 @@ void LutB::RouteMuxInputs(
   // FIXME(aryap): These depend on the way the banks are filled, so they depend
   // on the bank arrangement! But the basic principle is to find the nearest
   // memories, right? This is the TODO above actually...
+
+  // Sometimes we have an extra row, which offset all the memory indices:
+  // TODO(aryap): Consider referencing these by name.
+  int offset = parameters_.add_third_input_to_output_muxes ? 1 : 0;
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
-    {banks_[1].instances()[4][0], mux_order_[0], "input_4"},
-    {banks_[1].instances()[2][0], mux_order_[0], "input_7"},
-    {banks_[1].instances()[5][0], mux_order_[0], "input_5"},
-    {banks_[1].instances()[3][0], mux_order_[0], "input_6"},
+    {banks_[1].instances()[4 + offset][0], mux_order_[0], "input_4"},
+    {banks_[1].instances()[2 + offset][0], mux_order_[0], "input_7"},
+    {banks_[1].instances()[5 + offset][0], mux_order_[0], "input_5"},
+    {banks_[1].instances()[3 + offset][0], mux_order_[0], "input_6"},
 
     {banks_[0].instances()[8][0], mux_order_[1], "input_5"},
     {banks_[0].instances()[6][0], mux_order_[1], "input_6"},
@@ -965,10 +969,10 @@ void LutB::RouteMuxInputs(
     {banks_[0].instances()[3][0], mux_order_[0], "input_2"},
     {banks_[0].instances()[1][0], mux_order_[0], "input_1"},
 
-    {banks_[1].instances()[7][0], mux_order_[1], "input_0"},
-    {banks_[1].instances()[8][0], mux_order_[1], "input_3"},
-    {banks_[1].instances()[8][1], mux_order_[1], "input_2"},
-    {banks_[1].instances()[6][0], mux_order_[1], "input_1"},
+    {banks_[1].instances()[7 + offset][0], mux_order_[1], "input_0"},
+    {banks_[1].instances()[8 + offset][0], mux_order_[1], "input_3"},
+    {banks_[1].instances()[8 + offset][1], mux_order_[1], "input_2"},
+    {banks_[1].instances()[6 + offset][0], mux_order_[1], "input_1"},
   };
 
   RouteManager route_manager(layout, routing_grid);

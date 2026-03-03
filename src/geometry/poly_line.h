@@ -103,6 +103,7 @@ class PolyLine : public Shape {
 
   void DeleteLastDeferredBulge();
   void ApplyDeferredBulges();
+  void CancelDeferredBulge(const Point &position);
 
   void SetWidth(const uint64_t width);
   const std::vector<Point> Vertices() const;

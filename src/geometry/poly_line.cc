@@ -530,6 +530,16 @@ void PolyLine::DeleteLastDeferredBulge() {
   deferred_bulges_.erase(deferred_bulges_.end() - 1);
 }
 
+void PolyLine::CancelDeferredBulge(const Point &position) {
+  deferred_bulges_.erase(
+      std::remove_if(deferred_bulges_.begin(),
+                     deferred_bulges_.end(),
+                     [&](const DeferredBulge &bulge) {
+                       return bulge.position == position;
+                     }),
+      deferred_bulges_.end());
+}
+
 void PolyLine::ApplyDeferredBulges() {
   for (const DeferredBulge &deferred : deferred_bulges_) {
     if (deferred.angle_rads) {

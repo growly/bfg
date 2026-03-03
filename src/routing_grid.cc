@@ -6,7 +6,7 @@
 #include <map>
 #include <map>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 #include <optional>
 #include <ostream>
 #include <queue>
@@ -361,7 +361,8 @@ absl::Status RoutingGrid::ValidAgainstKnownBlockages(
 
 absl::Status RoutingGrid::ValidAgainstKnownBlockages(
     const geometry::Rectangle &footprint,
-    const std::optional<EquivalentNets> &exceptional_nets) const {
+    const std::optional<EquivalentNets> &exceptional_nets) const
+    REQUIRES_SHARED(lock_) {
   for (const auto &blockage : rectangle_blockages_) {
     if (blockage->Blocks(footprint, exceptional_nets)) {
       return absl::ResourceExhaustedError(
@@ -2032,11 +2033,11 @@ absl::StatusOr<RoutingPath*> RoutingGrid::FindRouteToNet(
   // TODO(aryap): Is the answer to this nonse to just disable vertices near vias
   // for connection on installation? That would prevent some amount of this
   // crap.
-  //RoutingVertex *extended_end = MaybeExtendToNearbyVia(
-  //    usable_nets, shortest_path.get());
+  RoutingVertex *extended_end = MaybeExtendToNearbyVia(
+      usable_nets, shortest_path.get());
   // This should only ever extend to another previously-installed vertex.
-  //if (extended_end)
-  //  end_vertex = extended_end;
+  if (extended_end)
+    end_vertex = extended_end;
 
   // Remember the ports to which the path should connect.
   shortest_path->set_start_port(&begin);

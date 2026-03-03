@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <glog/logging.h>
+#include <shared_mutex>
 
 #include "../cell.h"
 #include "../layout.h"
@@ -145,6 +146,7 @@ bool Instance::HasPort(const std::string &name) const {
 }
 
 void Instance::GeneratePorts() {
+  std::unique_lock mu(lock_);
   int32_t rotation_ccw_degrees = (360 - (rotation_degrees_ccw_ % 360)) % 360;
   instance_ports_.clear();
   for (const auto &port : template_layout_->Ports()) {
