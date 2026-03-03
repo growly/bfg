@@ -699,8 +699,8 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   //RouteClockBuffers(&routing_grid, circuit, layout);
   RouteMuxInputs(&routing_grid, circuit, layout);
   //RouteRemainder(&routing_grid, circuit, layout);
-  //RouteInputs(&routing_grid, circuit, layout);
-  //RouteOutputs(&routing_grid, circuit, layout);
+  RouteInputs(&routing_grid, circuit, layout);
+  RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -994,6 +994,10 @@ void LutB::RouteMuxInputs(
           .IgnoreError();
     }
 
+    auto result = route_manager.Solve();
+    if (!result.ok()) {
+      AccumulateAnyErrors(result);
+    }
     //std::vector<geometry::Port*> mux_ports_on_net;
     //mux->GetInstancePorts(input_name, &mux_ports_on_net);
     //LOG_IF(
@@ -1061,11 +1065,6 @@ void LutB::RouteMuxInputs(
     //      "Could not route ", memory->name(), "/Q->",
     //      mux->name(), "/", input_name)));
     //}
-  }
-
-  auto result = route_manager.Solve();
-  if (!result.ok()) {
-    AccumulateAnyErrors(result);
   }
 }
 

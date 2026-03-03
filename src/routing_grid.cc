@@ -646,7 +646,7 @@ absl::Status RoutingGrid::ConnectToSurroundingTracks(
     RoutingVertex *bridging_vertex = nullptr;
     bool bridging_vertex_is_new = false;
     bool off_grid_already_exists = false;
-    // Thread-safe call.
+
     bool success = track->CreateNearestVertexAndConnect(
         *this,
         blockage_cache,
@@ -759,7 +759,7 @@ RoutingGrid::AddAccessVerticesForPoint(
     const geometry::Layer &layer,
     const EquivalentNets &for_nets,
     const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
-  std::unique_lock mu(lock_);
+  std::shared_lock mu(lock_);
   // Add each of the possible on-grid access vertices for a given off-grid
   // point to the RoutingGrid. For example, given an arbitrary point O, we must
   // find the four nearest on-grid points A, B, C, D:
@@ -871,6 +871,9 @@ RoutingGrid::AddAccessVerticesForPoint(
       continue;
     }
 
+    mu.unlock();
+    std::unique_lock mu_write(lock_);
+
     // If ConnectToSurroundingTracks has any success, we move ownership of the
     // off_grid vertex to the parent RoutingGrid.
     // FIXME(aryap): RoutingBlockageCache must be consulted
@@ -882,6 +885,8 @@ RoutingGrid::AddAccessVerticesForPoint(
                                     off_grid.get()).ok()) {
       // TODO(aryap): Accumulate errors?
       // The off-grid vertex could not be connected to any surrounding tracks.
+      mu_write.unlock();
+      mu.lock();
       continue;
     }
 
@@ -923,7 +928,7 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     const geometry::Layer &target_layer,
     const EquivalentNets &for_nets,
     const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
-  std::unique_lock mu(lock_);
+  std::shared_lock mu(lock_);
 
   // If constrained to one or two layers on a fixed grid, we can determine the
   // nearest vertices quickly by shortlisting those vertices whose positions
@@ -1073,6 +1078,11 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     RoutingVertex *bridging_vertex = nullptr;
     bool bridging_vertex_is_new = false;
 
+    // Release shared read lock, acquire exclusive lock to prevent data races in
+    // following code, which modifies a lot of data structures.
+    mu.unlock();
+    std::unique_lock mu_write(lock_);
+
     bool success = false;
     for (size_t i = 0; i < tracks.size(); ++i) {
       bridging_vertex = nullptr;
@@ -1105,8 +1115,11 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
     }
 
     if (!success) {
+      mu_write.unlock();
+      mu.lock();
       continue;
     }
+    // If we get here we should be holding the mu_write unique_lock.
 
     // Add off_grid now that we have a viable bridging_vertex.
     RoutingVertex *off_grid_copy = off_grid.get();
@@ -1131,7 +1144,6 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
     RoutingEdge *edge = new RoutingEdge(bridging_vertex, off_grid_copy);
     edge->set_layer(vertex_layer);
-    mu.unlock();
     if (!blockage_cache.ValidAgainstKnownBlockages(*edge, for_nets).ok() ||
         !ValidAgainstKnownBlockages(*edge, for_nets).ok() ||
         !ValidAgainstInstalledPaths(*edge, for_nets).ok()) {
@@ -1142,7 +1154,6 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
         RemoveVertex(bridging_vertex, true, blockage_cache);  // and delete!
       }
       RemoveVertex(off_grid_copy, true, blockage_cache);  // and delete!
-      mu.lock();
       delete edge;    
 
       // Have to recreate an off-grid candidate vertex for the next guy:
@@ -1154,7 +1165,6 @@ absl::StatusOr<RoutingVertex*> RoutingGrid::ConnectToNearestAvailableVertex(
 
       continue;
     }
-    mu.lock();
     LOG(INFO) << "Connected new vertex " << bridging_vertex->centre()
               << " on layer " << edge->EffectiveLayer();
     bridging_vertex->AddEdge(edge);
