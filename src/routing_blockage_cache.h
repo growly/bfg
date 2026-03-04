@@ -86,6 +86,8 @@ class RoutingBlockageCache {
     }
   }
 
+  void CancelBlockages(const EquivalentNets &on_nets);
+
   template<typename T>
   void CancelBlockages(const T &shapes) {
     for (const auto &rectangle : shapes.rectangles()) {
@@ -116,9 +118,9 @@ class RoutingBlockageCache {
 
   template<typename T>
   void CancelBlockage(const T &shape) {
-    // Find matching rectangle in blockages list. Extract a pointer to the
-    // blockage. Store that in the list of cancelled blockages. This way we only
-    // pay the rectangle-matching cost up front.
+    // Find matching rectangle/polygon in blockages list. Extract a pointer to
+    // the blockage. Store that in the list of cancelled blockages. This way we
+    // only pay the rectangle(/polygon)-matching cost up front.
     RoutingGridBlockage<T> *blockage;
     if (parent_) {
       blockage = parent_->get().FindBlockageByShape(shape);
@@ -271,6 +273,9 @@ class RoutingBlockageCache {
     // same entry.
     std::map<std::string, std::set<SourceBlockage>> sources;
   };
+
+  std::vector<SourceBlockage> BlockagesMatching(
+      const EquivalentNets &nets) const;
 
   bool IsVertexBlocked(
       const RoutingVertex &vertex,

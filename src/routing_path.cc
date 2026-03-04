@@ -752,6 +752,31 @@ void RoutingPath::FixLandingOnShortEdgeInAnotherPath(
   }
 }
 
+// This can happen:
+//      |  |
+//  B +-|--|-+
+// ---+ |  | |  <- Vertical path on met2 connects to a via one vertex below
+// ---+ |  | |     this with a met1 pour. New path, B, connects to path A, and
+//    +-|--|-+     would normally imply a new vertex there, but the met1 pour
+//      |A |       conflicts with the nearby met1 pour for path A.
+//     ++  ++
+//    +|----|+   The elegant solution in this case is to make a small jog
+// ---+|    ||   on metal1 and connect to the existing via:
+// ---+|    ||
+//    +|----|+
+//     +----+               B   |  |
+//                         -----|--|
+//                         -----|  |
+//                              |  | <- path B continues underneath.
+//                              |A |  
+//                             ++  ++
+//                            +|+--+|+
+//                         ---+|    ||
+//                         ---+|    ||
+//                            +|----|+
+//                             +----+
+//
+
 void RoutingPath::CheckEdgeInPolyLineForIncidenceOfOtherPaths(
     geometry::PolyLine *poly_line,
     RoutingEdge *edge,
@@ -828,9 +853,11 @@ void RoutingPath::CheckForViaCrowding(
     // net). If a vertex is incident on the path, and the next vertex is also
     // incident on the path, and the distance between them is too short, we do
     // not place the first vertex.
+    // TODO(aryap): How to also make sure the neighbouring vertex is going to
+    // host a via?
     if (i + 1 < spanned_vertices.size()) {
       RoutingVertex *next = spanned_vertices.at(i + 1);
-      if (next->installed_in_paths().size() > 1 &&
+      if (next->CountInstalledPathsOnNets(nets_) > 1 &&
           vertices_too_close_for_vias(0, vertex, next)) {
         LOG(INFO) << "avoiding bulge at " << *vertex
                   << " because it is too close to " << *next;
@@ -841,7 +868,7 @@ void RoutingPath::CheckForViaCrowding(
     // In the other direction:
     if (i > 0) {
       RoutingVertex *prev = spanned_vertices.at(i - 1);
-      if (prev->installed_in_paths().size() > 1 &&
+      if (prev->CountInstalledPathsOnNets(nets_) > 1 &&
           vertices_too_close_for_vias(0, vertex, prev)) {
         poly_line->CancelDeferredBulge(vertex->centre());
         continue;
@@ -1355,6 +1382,26 @@ void RoutingPath::ToPointsAndLayers(
     layers->push_back(edge->EffectiveLayer());
   }
 }
+
+// TODO(arya): There are lots of via checks all over the place that should be
+// consolidated to canonical sources of truth.
+//
+// We can't really store this on the vertex because, before installation,
+// whether or not the vertex will host a via depends on the paths it's part of.
+// So there is vertex state before installation, and there is tentative vertex
+// state before installation. Typically we use this post installation, in which
+// case the vertex could very well store the via-hosting state. But also maybe
+// sometimes not?
+//
+// If the vertex is at the start or end of the path, whether or not is has a
+// via depends on whether it's on a different layer to start/end access
+// layers.
+//
+// If a vertex is in the centre of a path, it will host a via if it is at the
+// start/end of a sequence of edges on the same layer.
+//
+// OR if it is installed in at least 2 paths with the same net, on different
+// layers.
 
 void RoutingPath::ToPolyLinesAndVias(
     std::vector<std::unique_ptr<geometry::PolyLine>> *polylines,

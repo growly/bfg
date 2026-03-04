@@ -1329,6 +1329,7 @@ void LutB::RouteOutputs(
     std::string net = collection.as_nets->primary();
 
     route_manager.ConnectMultiplePorts(port_sets, net).IgnoreError();
+    route_manager.Solve().IgnoreError();
 
     // If any of these ports is already connected, we have to reuse the signal.
     // If more than one is already connected, we have to replace one signal with
@@ -1367,7 +1368,7 @@ void LutB::RouteOutputs(
     }
   }
 
-  route_manager.Solve().IgnoreError();
+  //route_manager.Solve().IgnoreError();
 
   // Make input/output pins.
   std::vector<PortKeyAlias> pin_map = {

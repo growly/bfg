@@ -298,8 +298,10 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
 
   // On success, cancel the blockages on the root blockage cache belonging to
   // UNUSED ports, since we should be done with them.
-  //LOG(INFO) << "Cancelling blockages for nets: "
-  //          << usable_nets.Describe();
+  LOG(INFO) << "Cancelling blockages for nets: "
+            << usable_nets.Describe();
+  root_blockage_cache_.CancelBlockages(usable_nets);
+  // This did work but it was clumsy. TODO(aryap): Remove:
   //geometry::ShapeCollection usable_nets_shapes;
   //layout_->CopyConnectableShapesOnNets(usable_nets, &usable_nets_shapes);
   //root_blockage_cache_.CancelBlockages(usable_nets_shapes);

@@ -258,6 +258,8 @@ class RoutingVertex {
   std::optional<RoutingTrackDirection> GetEncapDirection(
       const geometry::Layer &layer) const;
 
+  int CountInstalledPathsOnNets(const EquivalentNets &nets) const;
+
   std::set<RoutingEdge*> SharedInstalledEdgesWith(
       const RoutingVertex &other,
       const std::set<RoutingPath*> &excepted_paths) const;

@@ -99,6 +99,33 @@ RoutingBlockageCache::RoutingBlockageCache(const RoutingGrid &grid)
     : grid_(grid),
       search_window_margin_(grid.FigureSearchWindowMargin()) {}
 
+std::vector<RoutingBlockageCache::SourceBlockage>
+RoutingBlockageCache::BlockagesMatching(const EquivalentNets &nets) const {
+  std::vector<SourceBlockage> matching = parent_ ?
+      parent_->get().BlockagesMatching(nets) : std::vector<SourceBlockage>();
+
+  for (const auto &blockage : polygon_blockages_) {
+    if (nets.ContainsAny(blockage->shape().net())) {
+      matching.push_back(blockage.get());
+    }
+  }
+  for (const auto &blockage : rectangle_blockages_) {
+    if (nets.ContainsAny(blockage->shape().net())) {
+      matching.push_back(blockage.get());
+    }
+  }
+
+  return matching;
+}
+
+void RoutingBlockageCache::CancelBlockages(const EquivalentNets &on_nets) {
+  // Retrieve all blockages pertaining to any of the given nets.
+  std::vector<SourceBlockage> matching = BlockagesMatching(on_nets);
+  for (const auto &blockage : matching) {
+    cancelled_blockages_.push_back(blockage);
+  }
+}
+
 void RoutingBlockageCache::AddBlockage(
     const geometry::Rectangle &rectangle,
     int64_t padding,

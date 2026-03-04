@@ -15,6 +15,7 @@
 #include "geometry/polygon.h"
 #include "routing_edge.h"
 #include "routing_track.h"
+#include "routing_path.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_join.h>
@@ -547,6 +548,16 @@ std::vector<RoutingTrack*> RoutingVertex::TracksInDirection(
     tracks.push_back(vertical_track_);
   }
   return tracks;
+}
+
+int RoutingVertex::CountInstalledPathsOnNets(const EquivalentNets &nets) const {
+  int count = 0;
+  for (const auto &entry : installed_in_paths_) {
+    if (entry.first->nets().ContainsAny(nets)) {
+      count++;
+    }
+  }
+  return count;
 }
 
 std::set<RoutingEdge*> RoutingVertex::SharedInstalledEdgesWith(
