@@ -382,7 +382,6 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const RoutingEdge &edge,
     const std::optional<EquivalentNets> &for_nets) const
     REQUIRES_SHARED(lock_) {
-  std::shared_lock mu(lock_);
   auto edge_footprint = EdgeWireFootprint(edge);
   if (!edge_footprint) {
     // No way to check.
