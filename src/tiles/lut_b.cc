@@ -696,9 +696,9 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   errors_.clear();
 
   RouteScanChain(&routing_grid, circuit, layout);
-  //RouteClockBuffers(&routing_grid, circuit, layout);
+  RouteClockBuffers(&routing_grid, circuit, layout);
   RouteMuxInputs(&routing_grid, circuit, layout);
-  //RouteRemainder(&routing_grid, circuit, layout);
+  RouteRemainder(&routing_grid, circuit, layout);
   RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
@@ -896,7 +896,9 @@ void LutB::RouteScanChain(
       net_names.Add(port->net());
     }
 
-    memory_output_net_names_[source] = net_names.primary();
+    // TODO(aryap): Solve() might consolidate net names, so the set of
+    // equivalent nets might be broadened.
+    memory_output_net_names_[source] = net_names;
 
     circuit::Signal *signal = circuit->GetOrAddSignal(net_names.primary(), 1);
 
@@ -915,7 +917,7 @@ void LutB::RouteScanChain(
   }
 
   auto result = route_manager.Solve();
-  AccumulateAnyErrors(result);
+  AccumulateAnyErrors(result.status());
 }
 
 void LutB::RouteMuxInputs(
@@ -955,8 +957,8 @@ void LutB::RouteMuxInputs(
   int offset = parameters_.add_third_input_to_output_muxes ? 1 : 0;
   std::vector<AutoMemoryMuxConnection> auto_mem_connections = {
     {banks_[1].instances()[4 + offset][0], mux_order_[0], "input_4"},
-    {banks_[1].instances()[2 + offset][0], mux_order_[0], "input_7"},
     {banks_[1].instances()[5 + offset][0], mux_order_[0], "input_5"},
+    {banks_[1].instances()[2 + offset][0], mux_order_[0], "input_7"},
     {banks_[1].instances()[3 + offset][0], mux_order_[0], "input_6"},
 
     {banks_[0].instances()[8][0], mux_order_[1], "input_5"},
@@ -990,7 +992,7 @@ void LutB::RouteMuxInputs(
 
     auto existing_net = GetMemoryOutputNet(memory);
     if (existing_net) {
-      all_nets.set_primary(*existing_net);
+      all_nets.Add(existing_net->get());
       route_manager.ConnectToNet({mux_ports}, {*existing_net}, all_nets)
           .IgnoreError();
     } else {
@@ -1000,7 +1002,7 @@ void LutB::RouteMuxInputs(
 
     auto result = route_manager.Solve();
     if (!result.ok()) {
-      AccumulateAnyErrors(result);
+      AccumulateAnyErrors(result.status());
     }
     //std::vector<geometry::Port*> mux_ports_on_net;
     //mux->GetInstancePorts(input_name, &mux_ports_on_net);
@@ -1244,11 +1246,18 @@ void LutB::RouteOutputs(
   // buf from the flip flop that was chopped off (that should be a parameter
   // anyway).
 
+  EquivalentNets reg_flop_control("reg_flop_control");
+  auto existing_reg_flop_control = GetMemoryOutputNet(reg_output_mux_config_);
+  if (existing_reg_flop_control) {
+    reg_flop_control = existing_reg_flop_control->get();
+  }
+  EquivalentNets comb_flop_control("comb_flop_control");
+  auto existing_comb_flop_control = GetMemoryOutputNet(comb_output_mux_config_);
+  if (existing_comb_flop_control) {
+    comb_flop_control = existing_comb_flop_control->get();
+  }
+
   std::string bypass_input = "X";
-  std::string reg_flop_control = 
-      GetMemoryOutputNet(reg_output_mux_config_).value_or("reg_flop_control");
-  std::string comb_flop_control = 
-      GetMemoryOutputNet(comb_output_mux_config_).value_or("comb_flop_control");
 
   std::vector<PortKeyCollection> auto_connections = {{
       // LUT output to combinational and registered outputs.
@@ -1268,12 +1277,12 @@ void LutB::RouteOutputs(
       // Connect the output of the register selection mux config memory to the
       // select line of the mux.
       .port_keys = {{reg_output_mux_, "S"}, {reg_output_mux_config_, "Q"}},
-      .as_nets = {reg_flop_control}
+      .as_nets = reg_flop_control
     }, {
       // Connect the output of the combinational selection mux config memory to
       // the select line of the mux.
       .port_keys = {{comb_output_mux_, "S"}, {comb_output_mux_config_, "Q"}},
-      .as_nets = {comb_flop_control}
+      .as_nets = comb_flop_control
     }
   };
 
@@ -1765,8 +1774,8 @@ std::vector<std::set<geometry::Port*>> LutB::ResolvePortKeyCollection(
   return port_sets;
 }
 
-std::optional<std::string> LutB::GetMemoryOutputNet(
-    geometry::Instance *memory) const {
+std::optional<std::reference_wrapper<const EquivalentNets>>
+LutB::GetMemoryOutputNet(geometry::Instance *memory) const {
   auto it = memory_output_net_names_.find(memory);
   if (it == memory_output_net_names_.end()) {
     return std::nullopt;

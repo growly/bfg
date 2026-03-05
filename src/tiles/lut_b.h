@@ -238,8 +238,8 @@ class LutB : public Tile {
   // Sets the scan_order_ based on memories_ and other participating flops.
   void SetScanOrder();
 
-  std::optional<std::string> GetMemoryOutputNet(
-      geometry::Instance *memory) const;
+  std::optional<std::reference_wrapper<const EquivalentNets>>
+  GetMemoryOutputNet(geometry::Instance *memory) const;
 
   void Route(Circuit *circuit, Layout *layout);
   void RouteClockBuffers(
@@ -323,7 +323,7 @@ class LutB : public Tile {
 
   std::vector<absl::Status> errors_;
 
-  std::map<geometry::Instance*, std::string> memory_output_net_names_;
+  std::map<geometry::Instance*, EquivalentNets> memory_output_net_names_;
 };
 
 }  // namespace atoms

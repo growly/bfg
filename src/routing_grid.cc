@@ -2130,7 +2130,7 @@ RoutingVertex *RoutingGrid::MaybeExtendToNearbyVia(
 bool RoutingGrid::RemoveVertex(
     RoutingVertex *vertex,
     bool and_delete,
-    const RoutingBlockageCache &blockage_cache) EXCLUDES(lock_) {
+    const RoutingBlockageCache &blockage_cache) REQUIRES(lock_) {
   bool might_be_off_grid = false;
   if (vertex->horizontal_track()) {
     vertex->horizontal_track()->RemoveVertex(vertex, blockage_cache);
@@ -2144,7 +2144,6 @@ bool RoutingGrid::RemoveVertex(
   }
 
   if (might_be_off_grid) {
-    std::unique_lock mu(lock_);
     off_grid_vertices_.Erase(vertex);
   }
 
@@ -2173,7 +2172,6 @@ bool RoutingGrid::RemoveVertex(
       // Already removed from availability list.
       continue;
     }
-    std::unique_lock mu(lock_);
     available_vertices.erase(pos);
   }
 
@@ -2181,7 +2179,6 @@ bool RoutingGrid::RemoveVertex(
   LOG_IF(WARNING, pos == vertices_.end())
       << "Did not find vertex we're removing in RoutingGrid list of "
       << "vertices: " << vertex;
-  std::unique_lock mu(lock_);
   vertices_.erase(pos);
   if (and_delete)
     delete vertex;
@@ -2381,9 +2378,7 @@ absl::Status RoutingGrid::InstallPath(
 
   // Legalise the path. This might modify the edges the path contains, which
   // smells funny, but what are you gonna do?
-  mu.unlock();
   path->Legalise(blockage_cache);
-  mu.lock();
 
   // FIXME(aryap): When multithreading, we need to re-check the validity of
   // every vertex and edge in the path before installation, under lock, in case

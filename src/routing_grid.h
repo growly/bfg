@@ -278,13 +278,16 @@ class RoutingGrid {
 
   // Check if the given routing vertex or edge clears all known explicit
   // blockages.
-  absl::Status ValidAgainstKnownBlockagesSync(
+  absl::Status ValidAgainstKnownBlockages(
       const RoutingEdge &edge,
       const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const {
-    std::shared_lock mu(lock_);
-    return ValidAgainstKnownBlockages(edge, exceptional_nets);
-  }
+      const;
+
+  absl::Status ValidAgainstKnownBlockages(
+      const RoutingVertex &vertex,
+      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
+      const std::optional<RoutingTrackDirection> &access_direction =
+          std::nullopt) const;
 
   absl::Status ValidAgainstHazards(
       const RoutingVertex &vertex,
@@ -602,19 +605,6 @@ class RoutingGrid {
               const std::set<RoutingTrackDirection>>> &directions,
       const RoutingBlockageCache &blockage_cache,
       RoutingVertex *off_grid);
-
-  // Check if the given routing vertex or edge clears all known explicit
-  // blockages.
-  absl::Status ValidAgainstKnownBlockages(
-      const RoutingEdge &edge,
-      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt)
-      const;
-
-  absl::Status ValidAgainstKnownBlockages(
-      const RoutingVertex &vertex,
-      const std::optional<EquivalentNets> &exceptional_nets = std::nullopt,
-      const std::optional<RoutingTrackDirection> &access_direction =
-          std::nullopt) const;
 
   absl::Status ValidAgainstHazards(
       const geometry::Rectangle &footprint,

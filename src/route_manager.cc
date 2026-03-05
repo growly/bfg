@@ -361,18 +361,23 @@ void RouteManager::MergeAndReplaceEquivalentNets(
   }
 }
 
-absl::Status RouteManager::Solve() {
+absl::StatusOr<std::vector<NetRouteOrder>> RouteManager::Solve(
+    bool force_serial) {
   ConsolidateOrders().IgnoreError();
 
-  if (GetConcurrency() == 1) {
+  // TODO(aryap): Solve should return consolidated orders so that callers can
+  // determine if any of their requests were merged.
+
+  if (force_serial || GetConcurrency() == 1) {
     RunAllSerial().IgnoreError();
   } else {
     RunAllParallel().IgnoreError();
   }
 
+  std::vector<NetRouteOrder> executed_orders = orders_;
   orders_.clear();
 
-  return absl::OkStatus();
+  return orders_;
 }
 
 absl::Status RouteManager::ConsolidateOrders() {
@@ -388,7 +393,8 @@ absl::Status RouteManager::ConsolidateOrders() {
   std::map<EquivalentNets*, NetRouteOrder*> orders_by_net;
   std::set<const geometry::Port*> included_in_order;
 
-  for (NetRouteOrder &order : orders_) {
+  for (size_t i = 0; i < orders_.size(); ++i) {
+    NetRouteOrder &order = orders_.at(i);
     for (const auto &node : order.nodes()) {
       // We can consider all the ports of a node as equivalent for the point of
       // finding the EquivalentNets, if CollectConnectedNets did its job.
@@ -416,6 +422,7 @@ absl::Status RouteManager::ConsolidateOrders() {
       }
       replacement_order->nodes().push_back(node);
       replacement_order->set_explicit_target(order.explicit_target());
+      replacement_order->pre_consolidation_priorities().insert(i);
 
       included_in_order.insert(node.begin(), node.end());
     }

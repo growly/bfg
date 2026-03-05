@@ -146,6 +146,7 @@ RoutingPath::GetOverlapOrSkipAbbreviation(size_t starting_index) {
       *current_line, *next_line, axis_angle);
 }
 
+// REQUIRES(routing_grid_->lock_)
 RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
     RoutingVertex *bridging_vertex,
     RoutingVertex *off_host_track,
@@ -158,7 +159,7 @@ RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
 
   auto valid = blockage_cache.ValidAgainstKnownBlockages(*new_edge, nets_);
   if (valid.ok()) {
-    valid = routing_grid_->ValidAgainstKnownBlockagesSync(*new_edge, nets_);
+    valid = routing_grid_->ValidAgainstKnownBlockages(*new_edge, nets_);
   }
   if (!valid.ok()) {
     LOG(INFO) << "Invalid off grid edge between "
@@ -686,7 +687,10 @@ void RoutingPath::ResolveTerminatingLayers(
   *picked = *costed_access_layer;
 }
 
-void RoutingPath::Legalise(
+// TODO(aryap): Abbreviate might end up calling RemoveVertex on the
+// routing_grid_, which requires synchronisation with the routing grid. So this
+// should only be called by the underlying routing grid.
+void RoutingPath::Legalise(   // REQUIRES(routing_grid_->lock_)
     const RoutingBlockageCache &blockage_cache) {
   if (legalised_)
     return;

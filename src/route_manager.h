@@ -66,6 +66,10 @@ class NetRouteOrder {
     return nodes_;
   }
 
+  std::set<int> &pre_consolidation_priorities() {
+    return pre_consolidation_priorities_;
+  }
+
  private:
   // All of the equivalent nets on this route. The net.primary() string is used
   // as a canonical ID.
@@ -77,6 +81,10 @@ class NetRouteOrder {
   // Each node is a set of equivalent ports. In principle any node from a set
   // can be used to connect, but in practice it should only be one.
   std::vector<std::set<const geometry::Port*>> nodes_;
+
+  // Indicates which orders were consolidated to form this one, if it was
+  // created on consolidation.
+  std::set<int> pre_consolidation_priorities_;
 };
 
 // Maybe "RouteGovernor"?
@@ -141,12 +149,22 @@ class RouteManager {
       const EquivalentNets &as_nets = {});
 
   // Solve for required routes:
-  absl::Status Solve();
+  absl::StatusOr<std::vector<NetRouteOrder>> Solve() {
+    return Solve(false);
+  }
+
+  // Solves, but forces serial execution.
+  absl::StatusOr<std::vector<NetRouteOrder>> SolveSerially() {
+    return Solve(true);
+  }
 
   // Inspect:
   std::string DescribeOrders() const;
 
  private:
+  // Solve for required routes:
+  absl::StatusOr<std::vector<NetRouteOrder>> Solve(bool force_serial);
+
   int32_t GetConcurrency() const;
 
   void ConfigureRoutingBlockageCache();
