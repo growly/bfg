@@ -700,7 +700,7 @@ RoutingVertex *RoutingTrack::MakeAndCheckVertexAt(
     added_vertex->AddConnectedLayer(target_layer);
   }
   absl::Status valid_against_installed_paths =
-      grid.ValidAgainstInstalledPaths(*added_vertex, for_nets);
+      grid.ValidAgainstInstalledPaths(*added_vertex, for_nets, direction_);
   if (!valid_against_installed_paths.ok()) {
     LOG(WARNING) << "New vertex " << added_vertex->centre()
                  << " on " << Describe()

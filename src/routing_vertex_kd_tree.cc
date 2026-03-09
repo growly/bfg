@@ -13,7 +13,11 @@ void RoutingVertexKDTree::Add(RoutingVertex *vertex) {
 }
 
 void RoutingVertexKDTree::Erase(RoutingVertex *vertex) {
-  tree_.erase(vertex);
+  if (tree_.find_exact(RoutingVertexKDNode(vertex)) == tree_.end()) {
+    // tree_ will die if the search value doesn't exist when removing.
+    return;
+  }
+  tree_.erase_exact(RoutingVertexKDNode(vertex));
   needs_optimise_ = true;
 }
 
@@ -43,6 +47,12 @@ void RoutingVertexKDTree::Optimise() const {
   }
   tree_.optimise();
   needs_optimise_ = false;
+}
+
+// Nodes with the same contained vertex are the same node.
+bool operator==(
+    const RoutingVertexKDNode &lhs, const RoutingVertexKDNode &rhs) {
+  return lhs.vertex() == rhs.vertex();
 }
 
 }  // namespace bfg

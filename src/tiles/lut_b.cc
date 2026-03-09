@@ -696,11 +696,11 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   errors_.clear();
 
   RouteScanChain(&routing_grid, circuit, layout);
-  RouteClockBuffers(&routing_grid, circuit, layout);
+  //RouteClockBuffers(&routing_grid, circuit, layout);
   RouteMuxInputs(&routing_grid, circuit, layout);
-  RouteRemainder(&routing_grid, circuit, layout);
-  RouteInputs(&routing_grid, circuit, layout);
-  RouteOutputs(&routing_grid, circuit, layout);
+  //RouteRemainder(&routing_grid, circuit, layout);
+  //RouteInputs(&routing_grid, circuit, layout);
+  //RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -1004,73 +1004,6 @@ void LutB::RouteMuxInputs(
     if (!result.ok()) {
       AccumulateAnyErrors(result.status());
     }
-    //std::vector<geometry::Port*> mux_ports_on_net;
-    //mux->GetInstancePorts(input_name, &mux_ports_on_net);
-    //LOG_IF(
-    //    FATAL,
-    //    std::find(mux_ports_on_net.begin(), mux_ports_on_net.end(), mux_port) ==
-    //        mux_ports_on_net.end())
-    //    << "Nearest port named " << input_name
-    //    << " did not appear in list of all ports for same name";
-
-    //// TODO(aryap): Why can't AddMultiPointRoute just replace this? Speed?
-    //bool path_found = false;
-    //while (mux_port) {
-    //  EquivalentNets net_names = EquivalentNets(
-    //      {memory_output->net(), mux_port->net()});
-    //  geometry::ShapeCollection non_net_connectables;
-    //  layout->CopyConnectableShapesNotOnNets(net_names, &non_net_connectables);
-
-    //  std::string target_net;
-    //  absl::StatusOr<RoutingPath*> route_result;
-    //  circuit::Signal *signal = nullptr;
-    //  auto named_output = GetMemoryOutputNet(memory);
-    //  if (!named_output) {
-    //    target_net = net_names.primary();
-    //    memory_output_net_names_[memory] = target_net;
-    //    LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-    //              << " to " << memory->name();
-    //    route_result = routing_grid->AddRouteBetween(
-    //        *mux_port, *memory_output, non_net_connectables, net_names);
-
-    //    signal = circuit->GetOrAddSignal(net_names.primary(), 1);
-    //    if (route_result.ok()) {
-    //      memory->circuit_instance()->Connect("Q", *signal);
-    //    }
-    //  } else {
-    //    // FIXME(aryap): I am stupid. The set of names given to the router to
-    //    // determine which shapes are connectable is different to the target
-    //    // set; in fact we must make sure that the net has a distinct name from
-    //    // either start/end port so that routed wires can be differentiated from
-    //    // start/end obstacles and ports!
-    //    const std::string &target_net = *named_output;
-    //    net_names.set_primary(target_net);
-    //    LOG(INFO) << "Connecting " << mux->name() << " port " << input_name
-    //              << " to net " << target_net;
-    //    route_result = routing_grid->AddRouteToNet(
-    //        *mux_port, target_net, net_names, non_net_connectables);
-
-    //    signal = circuit->GetOrAddSignal(target_net, 1);
-    //  }
-    //  if (route_result.ok()) {
-    //    mux->circuit_instance()->Connect(input_name, *signal);
-    //    LOG(INFO) << input_name << " <- " << signal->name();
-
-    //    path_found = true;
-    //    break;
-    //  }
-    //  mux_ports_on_net.erase(
-    //      std::remove(mux_ports_on_net.begin(),
-    //                  mux_ports_on_net.end(),
-    //                  mux_port),
-    //      mux_ports_on_net.end());
-    //  mux_port = mux_ports_on_net.empty() ? nullptr : *mux_ports_on_net.begin();
-    //}
-    //if (!path_found) {
-    //  AccumulateAnyErrors(absl::NotFoundError(absl::StrCat(
-    //      "Could not route ", memory->name(), "/Q->",
-    //      mux->name(), "/", input_name)));
-    //}
   }
 }
 

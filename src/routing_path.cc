@@ -8,6 +8,7 @@
 
 #include <absl/strings/str_join.h>
 #include <absl/status/status.h>
+#include <absl/cleanup/cleanup.h>
 
 #include "geometry/radian.h"
 #include "geometry/poly_line.h"
@@ -154,8 +155,36 @@ RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
     const RoutingBlockageCache &blockage_cache) {
   // Try to add edge between the off_host_vertex and the track. Check
   // RoutingGrid to see if this is a valid edge.
-  RoutingEdge *new_edge = new RoutingEdge(bridging_vertex, off_host_track);
+  std::unique_ptr<RoutingEdge> new_edge(
+      new RoutingEdge(bridging_vertex, off_host_track));
   new_edge->set_layer(target_layer);
+
+  absl::Cleanup cleanup = [&]() {
+    routing_grid_->RemoveVertex(bridging_vertex, true, blockage_cache);
+  };
+
+  // In addition to check if the edge is valid, we have to make sure that
+  // installing the edge doesn't result in the creation of a via (or anything
+  // else) that is invalid. That will happen if the following edge is on another
+  // layer, or if it is the start/end of the path, and the start/end access
+  // layers imply the need for a via. One easy check is if the edge layer
+  // matches the target layer:
+  bool needs_via_from_target_layer = off_host_track->connected_layers().find(
+      target_layer) == off_host_track->connected_layers().end();
+  if (needs_via_from_target_layer) {
+    LOG(INFO) << "Will not attempt abbreviating edge from "
+              << bridging_vertex->centre()
+              << " to " << off_host_track->centre() << ": "
+              << "Vertex layers do not include edge layer "
+              << target_layer << " and checking for via validity is TODO.";
+    return nullptr;
+    //// TODO(aryap): Check if a via would fit:
+    //auto via_valid = blockage_cache.ValidAgainstKnownBlockages(
+    //    *off_host_track, nets_, new_edge->Direction());
+    //if (!via_valid.ok()) {
+    //  return nullptr;
+    //}
+  }
 
   auto valid = blockage_cache.ValidAgainstKnownBlockages(*new_edge, nets_);
   if (valid.ok()) {
@@ -168,15 +197,14 @@ RoutingEdge *RoutingPath::MaybeMakeAbbreviatingEdge(
               << valid.message();
     // TODO(aryap): Don't think this gets added to RoutingGrid, only the
     // track.
-    routing_grid_->RemoveVertex(bridging_vertex, true, blockage_cache);
-    delete new_edge;
     return nullptr;
   }
 
-  bridging_vertex->AddEdge(new_edge);
-  off_host_track->AddEdge(new_edge);
-  routing_grid_->AddOffGridEdge(new_edge);
-  return new_edge;
+  bridging_vertex->AddEdge(new_edge.get());
+  off_host_track->AddEdge(new_edge.get());
+  routing_grid_->AddOffGridEdge(new_edge.get());
+  std::move(cleanup).Cancel();
+  return new_edge.release();
 }
 
 void RoutingPath::InstallAbbreviatingJog(
@@ -385,7 +413,7 @@ bool RoutingPath::MaybeAbbreviate(
   return true;
 }
 
-// Remove reundant direction switching.
+// Remove redundant direction switching.
 bool RoutingPath::AbbreviateOnce(
     const RoutingBlockageCache &blockage_cache) {
   if (vertices_.size() <= 3) {

@@ -68,6 +68,9 @@ class RoutingVertexKDTree {
   mutable KDTree::KDTree<2, RoutingVertexKDNode> tree_;
 };
 
+bool operator==(
+    const RoutingVertexKDNode &lhs, const RoutingVertexKDNode &rhs);
+
 }  // namespace bfg
 
 #endif  // ROUTING_VERTEX_KD_TREE_H_

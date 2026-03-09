@@ -396,6 +396,13 @@ absl::Status RoutingGrid::ValidAgainstInstalledPaths(
     const std::optional<EquivalentNets> &for_nets,
     const std::optional<RoutingTrackDirection> &access_direction) const
     REQUIRES_SHARED(lock_) {
+  // FIXME(aryap): Giving an access direction here doesn't make sense, we should
+  // be using the default access directions per layer, or really the direction
+  // of the calling track.
+  // ALSO! This only checks one layer, the layer of the footprint itself, not
+  // the layer of footprint on the layer we're connecting to through a via.
+  // Right?!
+  //
   // In this case we have to do labourious check for proximity to all used paths
   // and vertices.
   std::vector<std::string> errors;
@@ -876,7 +883,7 @@ RoutingGrid::AddAccessVerticesForPoint(
 
     // If ConnectToSurroundingTracks has any success, we move ownership of the
     // off_grid vertex to the parent RoutingGrid.
-    // FIXME(aryap): RoutingBlockageCache must be consulted
+    //
     if (!ConnectToSurroundingTracks(grid_geometry,
                                     access_layer,
                                     for_nets,
