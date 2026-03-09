@@ -499,7 +499,10 @@ void RoutingTrack::MarkEdgeAsUsed(
     if (vertex != edge->first() && vertex != edge->second()) {
       if (EdgeSpansVertex(*edge, *vertex)) {
         vertex->AddEdges(edge, edge);
-        vertex->AddUsingNet(net, false, &blockage_cache);   // Permanent.
+        vertex->AddUsingNet(net,
+                            false,
+                            &blockage_cache,
+                            edge->EffectiveLayer());   // Permanent.
       }
     }
   }
