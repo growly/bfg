@@ -1035,14 +1035,38 @@ void Sky130Dfxtp::DrawInputClockBuffer(
       {transistor_mid_x + 545,
           235 + db.ToInternalUnits(parameters_.nfet_11_width_nm)}));
 
-  layout->AddRectangle(Rectangle(
-      {x_min + 135, 1815},
-      {transistor_mid_x,
-          1815 + db.ToInternalUnits(parameters_.pfet_10_width_nm)}));
-  layout->AddRectangle(Rectangle(
-      {transistor_mid_x, 1815},
-      {transistor_mid_x + 545,
-          1815 + db.ToInternalUnits(parameters_.pfet_11_width_nm)}));
+  int64_t pfet_top = height - 265;
+  // NOTE(aryap): Magic complains about this and I can't figure out why. I can't
+  // see any differences to the standard cell besides 1) use of multiple cells
+  // in compositions like LutB and 2) the split transistor.
+  // Didn't work: single rectangle for both transistors like in the std. cell.
+  //layout->AddRectangle(Rectangle(
+  //    {x_min + 135, 1815},
+  //    {transistor_mid_x + 545,
+  //        1815 + db.ToInternalUnits(parameters_.pfet_11_width_nm)}));
+
+  // Didn't work: one rectangle per transistor, like elsewhere.
+  //layout->AddRectangle(Rectangle(
+  //    {x_min + 135, 1815},
+  //    {transistor_mid_x,
+  //        1815 + db.ToInternalUnits(parameters_.pfet_10_width_nm)}));
+  //layout->AddRectangle(Rectangle(
+  //    {transistor_mid_x, 1815},
+  //    {transistor_mid_x + 545,
+  //        1815 + db.ToInternalUnits(parameters_.pfet_11_width_nm)}));
+  //
+  // Didn't work but more elegant: a single polygon for both transistors.
+  layout->AddPolygon(Polygon({
+      {x_min + 135, pfet_top -
+          db.ToInternalUnits(parameters_.pfet_10_width_nm)},
+      {x_min + 135, pfet_top},
+      {transistor_mid_x + 545, pfet_top},
+      {transistor_mid_x + 545, pfet_top -
+          db.ToInternalUnits(parameters_.pfet_11_width_nm)},
+      {transistor_mid_x, pfet_top -
+          db.ToInternalUnits(parameters_.pfet_11_width_nm)},
+      {transistor_mid_x, pfet_top -
+          db.ToInternalUnits(parameters_.pfet_10_width_nm)}}));
 
   // li.drawing
   layout->SetActiveLayerByName("li.drawing");
