@@ -253,10 +253,10 @@ Cell *LutB::Generate() {
       alt_mux_params, design_db_).GenerateIntoDatabase(
           PrefixCellName("alt_sky130_mux"));
 
-  // Muxes are positioned like so:
+  // Mux placement.
   //
+  // Muxes might be positioned like so:
   // | 4-LUT | 5-LUT | 6-LUT
-  //
   // |       |   x   |   x x
   // |       | x     | x     x
   // |   x   |   x   |   x x
@@ -270,6 +270,7 @@ Cell *LutB::Generate() {
   int64_t left_bank_inside_x = banks_[0].Row(kTypicalRowLeft).Width();
 
   int64_t met1_x_pitch = db.Rules("met1.drawing").min_pitch;
+  int64_t met2_y_pitch = db.Rules("met2.drawing").min_pitch;
   int64_t mux_area_horizontal_padding =
       layout_config.mux_area_horizontal_padding +
       3 * met1_x_pitch;
@@ -277,8 +278,9 @@ Cell *LutB::Generate() {
   int64_t x_pos = left_bank_inside_x + mux_area_horizontal_padding;
 
   // This staggers the mux area below the memories on the left:
-  //int64_t y_pos = -mux_height / 2;
-  int64_t y_pos = memories_.front()->Height() / 2;
+  // Start ~half-way through the first memory (in y direction), and shift down
+  // to allow more tracks to fit between the muxes:
+  int64_t y_pos = memories_.front()->Height() / 2 - 2 * met2_y_pitch;
 
   std::vector<Cell*> mux_templates = {base_mux_cell, alt_mux_cell};
 
@@ -293,8 +295,8 @@ Cell *LutB::Generate() {
   // FIXME(aryap): This is a function of track pitch, really, it's not some
   // number I eyeballed. Except that it *is* some number I just eyeballed and it
   // should be a function of track pitch.
-  mux_grid.set_horizontal_overlap(18 * met1_x_pitch);
-  mux_grid.set_vertical_overlap(-2500);
+  mux_grid.set_horizontal_overlap(16 * met1_x_pitch);
+  mux_grid.set_vertical_overlap(-2500 - 1 * met2_y_pitch);
   const std::vector<geometry::Instance*> &mux_order = mux_grid.InstantiateAll();
   mux_order_.insert(mux_order_.begin(), mux_order.begin(), mux_order.end());
 
@@ -619,6 +621,44 @@ Cell *LutB::Generate() {
     FillDecapsRight(right_x - left_x, &banks_[0].Row(0));
   }
 
+  // Connect sky130_mux nwells to nearby nwells with taps in them.
+  // TODO(aryap): Make this parametric.
+  // TODO(aryap): Make it easier to just get the nwell shape from the instance.
+  {
+    geometry::ShapeCollection target_nwells;
+    banks_[1].Row(5).instances().front()->CopyShapesOnLayer(
+        db.GetLayer("nwell.drawing"), &target_nwells);
+    geometry::Rectangle *target_nwell =
+        target_nwells.rectangles().front().get();
+
+    geometry::ShapeCollection mux_nwells;
+    mux_order_[1]->CopyShapesOnLayer(db.GetLayer("nwell.drawing"), &mux_nwells);
+    geometry::Rectangle *mux_nwell = mux_nwells.rectangles().front().get();
+
+    ScopedLayer sl(layout.get(), "nwell.drawing");
+    layout->AddRectangle(
+        geometry::Rectangle(
+            {mux_nwell->upper_right().x(), target_nwell->lower_left().y()},
+            {target_nwell->lower_left().x(), target_nwell->upper_right().y()}));
+  }
+  {
+    geometry::ShapeCollection target_nwells;
+    banks_[1].Row(2).instances().front()->CopyShapesOnLayer(
+        db.GetLayer("nwell.drawing"), &target_nwells);
+    geometry::Rectangle *target_nwell =
+        target_nwells.rectangles().front().get();
+
+    geometry::ShapeCollection mux_nwells;
+    mux_order_[0]->CopyShapesOnLayer(db.GetLayer("nwell.drawing"), &mux_nwells);
+    geometry::Rectangle *mux_nwell = mux_nwells.rectangles().front().get();
+
+    ScopedLayer sl(layout.get(), "nwell.drawing");
+    layout->AddRectangle(
+        geometry::Rectangle(
+            {mux_nwell->upper_right().x(), target_nwell->lower_left().y()},
+            {target_nwell->lower_left().x(), target_nwell->upper_right().y()}));
+  }
+
   Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
@@ -628,14 +668,9 @@ Cell *LutB::Generate() {
       banks_[1].GetTilingBounds()->upper_right());
   layout->SetTilingBounds(tiling_bounds);
 
-  // //// FIXME(aryap): remove
-  // ///DEBUG
-  // //lut_cell->SetLayout(layout.release());
-  // //lut_cell->SetCircuit(circuit.release());
-  // //Cell *pre = lut_cell.release();
-  // //pre->set_name(name);
-  // //design_db_->ConsumeCell(pre);
-  // //return pre;
+  //layout->Flatten(true);
+  //circuit->Flatten();
+
   lut_cell->SetLayout(layout.release());
   lut_cell->SetCircuit(circuit.release());
   Cell *cell = lut_cell.release();
@@ -696,11 +731,11 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   errors_.clear();
 
   RouteScanChain(&routing_grid, circuit, layout);
-  //RouteClockBuffers(&routing_grid, circuit, layout);
+  RouteClockBuffers(&routing_grid, circuit, layout);
   RouteMuxInputs(&routing_grid, circuit, layout);
-  //RouteRemainder(&routing_grid, circuit, layout);
-  //RouteInputs(&routing_grid, circuit, layout);
-  //RouteOutputs(&routing_grid, circuit, layout);
+  RouteRemainder(&routing_grid, circuit, layout);
+  RouteInputs(&routing_grid, circuit, layout);
+  RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -788,12 +823,28 @@ void LutB::ConfigureRoutingGrid(
   routing_grid->AddGlobalNet("CLK");
 }
 
-// FIXME(aryap): The clock/power/etc straps need to connect to the left most
-// ports of the left- or right-most memories on each row of the bank, depending
-// on the bank, and they need to connect to every memory on that row.
 void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
                              Circuit *circuit,
                              Layout *layout) {
+  PortKeyCollection clk_inputs;
+  for (geometry::Instance *clk_buf : clk_buf_order_) {
+    clk_inputs.port_keys.push_back({
+        .instance = clk_buf,
+        .port_name = "A"
+    });
+
+    // This matches the input port name, so that the connecting net label
+    // matches the incoming port label.
+    clk_inputs.as_nets = {"CLK"};
+  }
+  auto result = AddMultiPointRoute(clk_inputs, routing_grid, circuit, layout);
+  if (result.ok()) {
+    for (RoutingPath *path : *result) {
+      path->AddPortMidway("CLK");
+    }
+  }
+  AccumulateAnyErrors(result.status());
+
   // Connect clock buffers to straps.
   // Connect "X" from clock buf to CLK;
   // connect "P" from clock buf to CLKI.
@@ -835,25 +886,6 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
     auto result = routing_grid->AddRouteToNet(
         *source_port, target_net, net_aliases, non_net_connectables);
   }
-
-  PortKeyCollection clk_inputs;
-  for (geometry::Instance *clk_buf : clk_buf_order_) {
-    clk_inputs.port_keys.push_back({
-        .instance = clk_buf,
-        .port_name = "A"
-    });
-
-    // This matches the input port name, so that the connecting net label
-    // matches the incoming port label.
-    clk_inputs.as_nets = {"CLK"};
-  }
-  auto result = AddMultiPointRoute(clk_inputs, routing_grid, circuit, layout);
-  if (result.ok()) {
-    for (RoutingPath *path : *result) {
-      path->AddPortMidway("CLK");
-    }
-  }
-  AccumulateAnyErrors(result.status());
 }
 
 void LutB::RouteScanChain(
@@ -1022,6 +1054,9 @@ void LutB::RouteRemainder(
   // TODO(aryap): These feel like first-class members of the RoutingGrid API
   // soon. "RouteGroup"?
   std::vector<PortKeyCollection> auto_connections = {{
+      .port_keys = {{buf_order_[1], "X"}, {mux_order_[0], "S1"},
+                    {mux_order_[1], "S1"}},
+    }, {
       .port_keys = {{buf_order_[0], "P"}, {mux_order_[0], "S0_B"},
                     {mux_order_[1], "S0_B"}},
     }, {
@@ -1030,9 +1065,6 @@ void LutB::RouteRemainder(
     }, {
       .port_keys = {{buf_order_[1], "P"}, {mux_order_[0], "S1_B"},
                     {mux_order_[1], "S1_B"}},
-    }, {
-      .port_keys = {{buf_order_[1], "X"}, {mux_order_[0], "S1"},
-                    {mux_order_[1], "S1"}},
     }, {
       .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S2_B"},
                     {mux_order_[1], "S2_B"}},
@@ -1132,10 +1164,11 @@ void LutB::RouteInputs(
   }
 
   if (parameters_.add_third_input_to_output_muxes) {
+    // TODO(aryap): ?
   }
 
-  layout->SetActiveLayerByName("li.pin");
   for (const auto &entry : pin_map) {
+    layout->SetActiveLayerByName("li.pin");
     const std::string &port_name = entry.alias;
     geometry::Point pin_centre =
         entry.key.instance->GetPointOrDie(entry.key.port_name);
@@ -1144,6 +1177,16 @@ void LutB::RouteInputs(
         db.Rules("mcon.drawing").via_width,
         port_name);
     pin->set_net(port_name);
+    layout->RestoreLastActiveLayer();
+    layout->SetActiveLayerByName("met1.drawing");
+    auto encap_info = db.TypicalViaEncap(
+        "mcon.drawing", "met1.drawing", "via1.drawing");
+    geometry::Rectangle *encap = layout->AddRectangle(
+        geometry::Rectangle::CentredAt(
+            pin_centre, encap_info.length, encap_info.width));
+    encap->set_net(port_name);
+    encap->set_is_connectable(true);
+    layout->RestoreLastActiveLayer();
   }
 }
 
