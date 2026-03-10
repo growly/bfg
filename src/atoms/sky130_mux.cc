@@ -326,9 +326,9 @@ void ConnectNamedPointsToColumns(
     bfg::Layout *layout) {
   int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
   int64_t mcon_encap_width = mcon_via_side + 2 * db.Rules(
-      "li.drawing", "mcon.drawing").via_overhang_wide;
+      "met1.drawing", "mcon.drawing").via_overhang_wide;
   int64_t mcon_encap_length = mcon_via_side + 2 * db.Rules(
-      "li.drawing", "mcon.drawing").via_overhang;
+      "met1.drawing", "mcon.drawing").via_overhang;
 
   BulgeDirection bulge_direction = BulgeDirection::LEFT;
   for (size_t i = 0; i < mapping.size(); ++i) {
@@ -367,9 +367,9 @@ void ConnectNamedPointsToColumn(
     bfg::Layout *layout) {
   int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
   int64_t mcon_encap_width = mcon_via_side + 2 * db.Rules(
-      "li.drawing", "mcon.drawing").via_overhang_wide;
+      "met1.drawing", "mcon.drawing").via_overhang_wide;
   int64_t mcon_encap_length = mcon_via_side + 2 * db.Rules(
-      "li.drawing", "mcon.drawing").via_overhang;
+      "met1.drawing", "mcon.drawing").via_overhang;
 
   bool point_up = true;
   for (const std::string &name : named_points) {
