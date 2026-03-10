@@ -891,8 +891,8 @@ void RoutingPath::CheckForViaCrowding(
       RoutingVertex *next = spanned_vertices.at(i + 1);
       if (next->CountInstalledPathsOnNets(nets_) > 1 &&
           vertices_too_close_for_vias(0, vertex, next)) {
-        LOG(INFO) << "avoiding bulge at " << *vertex
-                  << " because it is too close to " << *next;
+        VLOG(12) << "Avoiding bulge at " << *vertex
+                 << " because it is too close to " << *next;
         poly_line->CancelDeferredBulge(vertex->centre());
         continue;
       }
