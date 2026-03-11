@@ -883,7 +883,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
 
   Rectangle pin_Q_stencil = Rectangle(Point(5590, 425), Point(5760, 595));
   geometry::Rectangle *pin_Q = layout->AddRectangleAsPort(pin_Q_stencil, "Q");
-  layout->SavePoint("port_Q_centre", pin->centre());
+  layout->SavePoint("port_Q_centre", pin_Q->centre());
 
   // TODO(aryap): This will need regression testing because not all generator
   // code is discerning about which "Q" port it wants to connect to.
@@ -892,7 +892,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
       Point(5590, 425 + 5 * 340), Point(5760, 595 + 5 * 340));
   geometry::Rectangle *pin_Q_alt =
       layout->AddRectangleAsPort(pin_Q_alt_stencil, "Q");
-  layout->SavePoint("port_Q_alt_centre", pin->centre());
+  layout->SavePoint("port_Q_alt_centre", pin_Q_alt->centre());
 
   // Notes for the hero who will eventually make this more of a generator than a
   // static cell, this version:
@@ -1126,7 +1126,9 @@ void Sky130Dfxtp::DrawInputClockBuffer(
       {x_min + 90, 975}, {x_min + 440, 1625}));
   layout->MakeVia("licon.drawing", {x_min + 245, 1160});
 
-  layout->MakePin("CLK", {x_min + 230, 1190}, "li.pin");
+  Point port_clk_centre = {x_min + 230, 1190};
+  layout->MakePin("CLK", port_clk_centre, "li.pin");
+  layout->SavePoint("port_CLK_centre", port_clk_centre);
 
   // poly.drawing
   // TODO(aryap): The thickness of the poly.drawing polygons determines the

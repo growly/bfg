@@ -86,7 +86,9 @@ class RoutingBlockageCache {
     }
   }
 
-  void CancelBlockages(const EquivalentNets &on_nets);
+  void CancelBlockages(
+      const EquivalentNets &on_nets,
+      const std::optional<std::string> &restrict_to_layer = std::nullopt);
 
   template<typename T>
   void CancelBlockages(const T &shapes) {
@@ -275,7 +277,8 @@ class RoutingBlockageCache {
   };
 
   std::vector<SourceBlockage> BlockagesMatching(
-      const EquivalentNets &nets) const;
+      const EquivalentNets &nets,
+      const std::optional<std::string> &layer_name) const;
 
   bool IsVertexBlocked(
       const RoutingVertex &vertex,

@@ -1254,6 +1254,17 @@ void Layout::GetAllPortsExceptNamed(
   }
 }
 
+void Layout::RemoveLayerFromChildTemplates(const geometry::Layer &layer) {
+  // This really only makes sense when flattening.
+  // NOTE(aryap): This is destructive of a template even if it is referenced by
+  // multiple other layouts, and is therefore a bad idea in general. The actual
+  // function I want is to remove layers when flattening children.
+  for (auto &uniq : instances_) {
+    uniq->template_layout()->EraseLayer(layer);
+    uniq->template_layout()->RemoveLayerFromChildTemplates(layer);
+  }
+}
+
 bool Layout::HasPort(const std::string &name) const {
   return ports_by_net_.find(name) != ports_by_net_.end();
 }

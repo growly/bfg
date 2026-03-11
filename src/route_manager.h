@@ -97,7 +97,8 @@ class RouteManager {
                RoutingGrid *routing_grid)
       : layout_(layout),
         routing_grid_(routing_grid),
-        root_blockage_cache_(*routing_grid) {
+        root_blockage_cache_(*routing_grid),
+        auto_cancel_blockages_(false) {
     ConfigureRoutingBlockageCache();
   }
 
@@ -161,7 +162,16 @@ class RouteManager {
   // Inspect:
   std::string DescribeOrders() const;
 
+  void set_auto_cancel_blockages(bool auto_cancel_blockages) {
+    auto_cancel_blockages_ = auto_cancel_blockages;
+  }
+  std::vector<std::string> &auto_cancel_layers() {
+    return auto_cancel_layers_;
+  }
+
  private:
+  static constexpr size_t kNumRetries = 2;
+
   // Solve for required routes:
   absl::StatusOr<std::vector<NetRouteOrder>> Solve(bool force_serial);
 
@@ -182,6 +192,8 @@ class RouteManager {
   absl::Status RunAllSerial();
   absl::Status RunAllParallel();
 
+  void MaybeAutoCancelBlockages(const EquivalentNets &for_nets);
+
   Layout *layout_;
   RoutingGrid *routing_grid_;
   RoutingBlockageCache root_blockage_cache_;
@@ -195,7 +207,8 @@ class RouteManager {
 
   std::vector<NetRouteOrder> orders_;
 
-  static constexpr size_t kNumRetries = 2;
+  bool auto_cancel_blockages_;
+  std::vector<std::string> auto_cancel_layers_;
 
   FRIEND_TEST(RouteManagerTest, ConsolidateOrders);
   FRIEND_TEST(RouteManagerTest, MergeAndReplaceEquivalentNets);

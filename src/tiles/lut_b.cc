@@ -659,6 +659,9 @@ Cell *LutB::Generate() {
             {target_nwell->lower_left().x(), target_nwell->upper_right().y()}));
   }
 
+  AddInputs(circuit.get(), layout.get());
+  AddOutputs(circuit.get(), layout.get());
+
   Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
@@ -667,6 +670,9 @@ Cell *LutB::Generate() {
       banks_[0].GetTilingBounds()->lower_left(),
       banks_[1].GetTilingBounds()->upper_right());
   layout->SetTilingBounds(tiling_bounds);
+
+  // Remove internal ports.
+  //layout->RemoveLayerFromChildTemplates(db.GetLayer("li.pin"));
 
   //layout->Flatten(true);
   //circuit->Flatten();
@@ -704,6 +710,12 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   ConfigureRoutingGrid(&routing_grid, layout);
 
+  RouteManager route_manager(layout, &routing_grid);
+  route_manager.set_auto_cancel_blockages(true);
+  // TODO(aryap): It would be nice to automatically find all and cancel all pin
+  // layers for a given net, or rather, all Port objects.
+  route_manager.auto_cancel_layers().push_back("li.pin");
+
   // Debug only.
   //routing_grid.ExportVerticesAsSquares("areaid.frame", false, layout.get());
 
@@ -730,11 +742,10 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   errors_.clear();
 
-  RouteScanChain(&routing_grid, circuit, layout);
+  RouteScanChain(&route_manager, circuit, layout);
   RouteClockBuffers(&routing_grid, circuit, layout);
-  RouteMuxInputs(&routing_grid, circuit, layout);
+  RouteMuxInputs(&route_manager, circuit, layout);
   RouteRemainder(&routing_grid, circuit, layout);
-  RouteInputs(&routing_grid, circuit, layout);
   RouteOutputs(&routing_grid, circuit, layout);
 
   for (const absl::Status &error : errors_) {
@@ -840,7 +851,7 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
   auto result = AddMultiPointRoute(clk_inputs, routing_grid, circuit, layout);
   if (result.ok()) {
     for (RoutingPath *path : *result) {
-      path->AddPortMidway("CLK");
+      path->AddPortMidway("CONFIG_CLK");
     }
   }
   AccumulateAnyErrors(result.status());
@@ -889,7 +900,7 @@ void LutB::RouteClockBuffers(RoutingGrid *routing_grid,
 }
 
 void LutB::RouteScanChain(
-    RoutingGrid *routing_grid,
+    RouteManager *route_manager,
     Circuit *circuit,
     Layout *layout) {
   // For now the input/output of the first/last flip-flop (respectively) is just
@@ -908,7 +919,6 @@ void LutB::RouteScanChain(
   // FIXME(aryap): Not clear if this is a win. Avoiding _all_ other ports when
   // routing the scan chain is needlessly prohibitive. But we would benefit
   // from parallelism for sure.
-  RouteManager route_manager(layout, routing_grid);
 
   for (size_t i = 0; i < scan_order_.size() - 1; ++i) {
     geometry::Instance *source = scan_order_[i];
@@ -942,18 +952,18 @@ void LutB::RouteScanChain(
         net_names,
         &non_net_connectables);
 
-    route_manager.ConnectMultiplePorts(
+    route_manager->ConnectMultiplePorts(
         std::vector<std::set<geometry::Port*>>({
             start_ports, end_ports}),
         net_names).IgnoreError();
   }
 
-  auto result = route_manager.Solve();
+  auto result = route_manager->Solve();
   AccumulateAnyErrors(result.status());
 }
 
 void LutB::RouteMuxInputs(
-    RoutingGrid *routing_grid,
+    RouteManager *route_manager,
     Circuit *circuit,
     Layout *layout) {
   // Connect mux substrates.
@@ -1009,8 +1019,6 @@ void LutB::RouteMuxInputs(
     {banks_[1].instances()[6 + offset][0], mux_order_[1], "input_1"},
   };
 
-  RouteManager route_manager(layout, routing_grid);
-
   for (auto &auto_connection : auto_mem_connections) {
     geometry::Instance *memory = auto_connection.source_memory;
     geometry::Instance *mux = auto_connection.target_mux;
@@ -1025,14 +1033,14 @@ void LutB::RouteMuxInputs(
     auto existing_net = GetMemoryOutputNet(memory);
     if (existing_net) {
       all_nets.Add(existing_net->get());
-      route_manager.ConnectToNet({mux_ports}, {*existing_net}, all_nets)
+      route_manager->ConnectToNet({mux_ports}, {*existing_net}, all_nets)
           .IgnoreError();
     } else {
-      route_manager.ConnectMultiplePorts({memory_ports, mux_ports}, all_nets)
+      route_manager->ConnectMultiplePorts({memory_ports, mux_ports}, all_nets)
           .IgnoreError();
     }
 
-    auto result = route_manager.Solve();
+    auto result = route_manager->Solve();
     if (!result.ok()) {
       AccumulateAnyErrors(result.status());
     }
@@ -1096,6 +1104,7 @@ void LutB::RouteRemainder(
   }
 
   for (const PortKeyCollection &collection : auto_connections) {
+    // FIXME(aryap): Use RouteManager. And fix all these FIXMEs.
     auto result = AddMultiPointRoute(collection, routing_grid, circuit, layout);
     AccumulateAnyErrors(result.status());
   }
@@ -1121,18 +1130,17 @@ void LutB::RouteRemainder(
   buf_order_[3]->circuit_instance()->Connect("P", *floating_signal);
 }
 
-void LutB::RouteInputs(
-    RoutingGrid *routing_grid,
-    Circuit *circuit,
-    Layout *layout) {
+void LutB::AddInputs(Circuit *circuit, Layout *layout) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
   // buf input pin is on li.drawing, so we put a port on li.pin. This could be
   // handled automatically, since we already have a facility for finding a Via
   // stack between two layers.
 
+  // FIXME(aryap): s/CLK/CONFIG_CLK && s/APP_CLK/CLK
   // Expect buffer inputs to be on li.drawing, identified by li.pin.
   std::vector<PortKeyAlias> pin_map = {
+    PortKeyAlias {{reg_output_flop_, "port_CLK_centre"}, "APP_CLK"},
     PortKeyAlias {{buf_order_[0], "port_A_centre"}, "S0"},
     PortKeyAlias {{buf_order_[1], "port_A_centre"}, "S1"},
     PortKeyAlias {{scan_order_.front(), "port_D_centre"}, "CONFIG_IN"}
@@ -1178,6 +1186,7 @@ void LutB::RouteInputs(
         port_name);
     pin->set_net(port_name);
     layout->RestoreLastActiveLayer();
+
     layout->SetActiveLayerByName("met1.drawing");
     auto encap_info = db.TypicalViaEncap(
         "mcon.drawing", "met1.drawing", "via1.drawing");
@@ -1354,7 +1363,10 @@ void LutB::RouteOutputs(
   }
 
   //route_manager.Solve().IgnoreError();
+}
 
+void LutB::AddOutputs(Circuit *circuit, Layout *layout) {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   // Make input/output pins.
   std::vector<PortKeyAlias> pin_map = {
     // Take the output from the final 2:1 mux output (for now).
@@ -1368,8 +1380,8 @@ void LutB::RouteOutputs(
     pin_map.push_back({{comb_output_mux_, "port_X_centre_middle"}, "MUX"});
   }
 
-  layout->SetActiveLayerByName("li.pin");
   for (const auto &entry : pin_map) {
+    layout->SetActiveLayerByName("li.pin");
     const std::string &port_name = entry.alias;
     geometry::Point pin_centre =
         entry.key.instance->GetPointOrDie(entry.key.port_name);
@@ -1378,6 +1390,16 @@ void LutB::RouteOutputs(
         db.Rules("mcon.drawing").via_width,
         port_name);
     pin->set_net(port_name);
+    layout->RestoreLastActiveLayer();
+    layout->SetActiveLayerByName("met1.drawing");
+    auto encap_info = db.TypicalViaEncap(
+        "mcon.drawing", "met1.drawing", "via1.drawing");
+    geometry::Rectangle *encap = layout->AddRectangle(
+        geometry::Rectangle::CentredAt(
+            pin_centre, encap_info.length, encap_info.width));
+    encap->set_net(port_name);
+    encap->set_is_connectable(true);
+    layout->RestoreLastActiveLayer();
   }
 }
 

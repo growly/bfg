@@ -100,16 +100,31 @@ RoutingBlockageCache::RoutingBlockageCache(const RoutingGrid &grid)
       search_window_margin_(grid.FigureSearchWindowMargin()) {}
 
 std::vector<RoutingBlockageCache::SourceBlockage>
-RoutingBlockageCache::BlockagesMatching(const EquivalentNets &nets) const {
+RoutingBlockageCache::BlockagesMatching(
+    const EquivalentNets &nets,
+    const std::optional<std::string> &layer_name) const {
   std::vector<SourceBlockage> matching = parent_ ?
-      parent_->get().BlockagesMatching(nets) : std::vector<SourceBlockage>();
+      parent_->get().BlockagesMatching(nets, layer_name) :
+      std::vector<SourceBlockage>();
+
+  std::optional<geometry::Layer> layer;
+  if (layer_name) {
+    const PhysicalPropertiesDatabase &db = grid_.physical_db();
+    layer = db.GetLayer(*layer_name);
+  }
 
   for (const auto &blockage : polygon_blockages_) {
+    if (layer && blockage->shape().layer() != layer) {
+      continue;
+    }
     if (nets.ContainsAny(blockage->shape().net())) {
       matching.push_back(blockage.get());
     }
   }
   for (const auto &blockage : rectangle_blockages_) {
+    if (layer && blockage->shape().layer() != layer) {
+      continue;
+    }
     if (nets.ContainsAny(blockage->shape().net())) {
       matching.push_back(blockage.get());
     }
@@ -118,9 +133,12 @@ RoutingBlockageCache::BlockagesMatching(const EquivalentNets &nets) const {
   return matching;
 }
 
-void RoutingBlockageCache::CancelBlockages(const EquivalentNets &on_nets) {
+void RoutingBlockageCache::CancelBlockages(
+    const EquivalentNets &on_nets,
+    const std::optional<std::string> &restrict_to_layer) {
   // Retrieve all blockages pertaining to any of the given nets.
-  std::vector<SourceBlockage> matching = BlockagesMatching(on_nets);
+  std::vector<SourceBlockage> matching = BlockagesMatching(
+      on_nets, restrict_to_layer);
   for (const auto &blockage : matching) {
     cancelled_blockages_.push_back(blockage);
   }

@@ -89,6 +89,12 @@ class Layout : public geometry::Manipulable {
   }
   geometry::Polygon *AddPolyLine(const geometry::PolyLine &line);
 
+  // Remove the given layer from all child instances.
+  // TODO(aryap): Remove port objects from all child instances. We will remove
+  // pin layers as workaround for now.
+  // void RemoveChildPorts();
+  void RemoveLayerFromChildTemplates(const geometry::Layer &layer);
+
   // Add a port using the given port as a template. The port's layer is
   // overridden with the currently active layer.
   void AddPort(const geometry::Port &port,

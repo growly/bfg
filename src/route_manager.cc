@@ -222,7 +222,6 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
           return last_result.status();
         case absl::StatusCode::kUnavailable:
           // Transient error, always re-attempt.
-          break;
         default:
           attempts++;
       }
@@ -298,9 +297,8 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
 
   // On success, cancel the blockages on the root blockage cache belonging to
   // UNUSED ports, since we should be done with them.
-  LOG(INFO) << "Cancelling blockages for nets: "
-            << usable_nets.Describe();
-  root_blockage_cache_.CancelBlockages(usable_nets);
+  MaybeAutoCancelBlockages(usable_nets);
+
   // This did work but it was clumsy. TODO(aryap): Remove:
   //geometry::ShapeCollection usable_nets_shapes;
   //layout_->CopyConnectableShapesOnNets(usable_nets, &usable_nets_shapes);
@@ -469,6 +467,23 @@ absl::Status RouteManager::CollectConnectedNets() {
   }
 
   return absl::OkStatus();
+}
+
+void RouteManager::MaybeAutoCancelBlockages(const EquivalentNets &for_nets) {
+  if (!auto_cancel_blockages_) {
+    return;
+  }
+  if (auto_cancel_layers_.empty()) {
+    LOG(INFO) << "Cancelling blockages (all layers) for nets: "
+              << for_nets.Describe();
+    root_blockage_cache_.CancelBlockages(for_nets);
+    return;
+  }
+  for (const std::string &layer : auto_cancel_layers_) {
+    LOG(INFO) << "Cancelling blockages (" << layer << ") for nets: "
+              << for_nets.Describe();
+    root_blockage_cache_.CancelBlockages(for_nets, layer);
+  }
 }
 
 }  // namespace bfg

@@ -26,6 +26,7 @@ class Cell;
 class Layout;
 class Circuit;
 class RoutingGrid;
+class RouteManager;
 
 namespace geometry {
 
@@ -241,21 +242,20 @@ class LutB : public Tile {
   std::optional<std::reference_wrapper<const EquivalentNets>>
   GetMemoryOutputNet(geometry::Instance *memory) const;
 
+  void AddInputs(Circuit *circuit, Layout *layout);
+  void AddOutputs(Circuit *circuit, Layout *layout);
+
   void Route(Circuit *circuit, Layout *layout);
   void RouteClockBuffers(
       RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
   void RouteRemainder(
       RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
   void RouteMuxInputs(
-      RoutingGrid *routing_grid,
+      RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout);
   void RouteScanChain(
-      RoutingGrid *routing_grid,
-      Circuit *circuit,
-      Layout *layout);
-  void RouteInputs(
-      RoutingGrid *routing_grid,
+      RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout);
   void RouteOutputs(
