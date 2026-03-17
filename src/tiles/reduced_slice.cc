@@ -591,15 +591,145 @@ Cell *ReducedSlice::Generate() {
   return cell.release();
 }
 
+geometry::Instance *ReducedSlice::GetMux(
+    const std::string &name, std::string *side_of_mux_out) const {
+  static RE2 mux_re("(\\w+)_(\\d+)([AB]?)");
+  DCHECK(mux_re.ok());
+
+  geometry::Compass side_of_tile = geometry::Compass::WEST;
+
+  std::string mux;
+  int32_t number = 0;
+  std::string side_of_mux;
+
+  if (!RE2::FullMatch(name, mux_re, &mux, &number, &side_of_mux)) {
+    return nullptr;
+  }
+  if (side_of_mux != "") {
+    *side_of_mux_out = side_of_mux;
+  }
+
+  LOG(INFO) << name << " is group: " << mux << " number: " << number
+            << " side: " << side_of_mux;
+
+  if (mux == "IIB_S1") {
+    if (number < iib_s1_muxes_.find(side_of_tile)->second.size()) {
+      return iib_s1_muxes_.find(side_of_tile)->second[number];
+    }
+  } else if (mux == "IIB_S2") {
+    if (number < iib_s2_muxes_.find(side_of_tile)->second.size()) {
+      return iib_s2_muxes_.find(side_of_tile)->second[number];
+    }
+  } else if (mux == "OIB_S2") {
+    if (number < oib_s2_muxes_.size()) {
+      return oib_s2_muxes_[number];
+    }
+  }
+  // OIB S1 muxes are named after the interconnects they drive.
+  //else if (mux == "OIB_S1") {
+  //  if (number < oib_s1_muxes_.size()) {
+  //    return oib_s1_muxes_[number];
+  //  }
+  //}
+
+  return nullptr;
+}
+
+geometry::Instance *ReducedSlice::GetInterconnectWireIn(
+    const std::string &name) const {
+  static RE2 interconnect_re("(\\w+)(\\d+)_([EW]?)_(\\d+)_IN");
+  DCHECK(interconnect_re.ok());
+
+  std::string direction;
+  int32_t size = 0;
+  std::string side_of_tile;
+  int32_t number = 0;
+
+  if (!RE2::FullMatch(
+        name, interconnect_re, &direction, &size, &side_of_tile, &number)) {
+    return nullptr;
+  }
+
+  LOG(INFO) << name << " is direction: " << direction << " size: " << size
+            << " side of tile: " << side_of_tile << " number " << number;
+
+  if (direction == "NN") {
+  } else if (direction == "SS") {
+  } else if (direction == "WW") {
+  } else if (direction == "EE") {
+  } else {
+  }
+
+  return nullptr;
+}
+
+geometry::Instance *ReducedSlice::GetInterconnectWireOutMux(
+    const std::string &name) const {
+  static RE2 interconnect_re("(\\w+)(\\d+)_([EW]?)_(\\d+)_OUT");
+  DCHECK(interconnect_re.ok());
+
+  std::string direction;
+  int32_t size = 0;
+  std::string side_of_tile;
+  int32_t number = 0;
+
+  if (!RE2::FullMatch(
+        name, interconnect_re, &direction, &size, &side_of_tile, &number)) {
+    return nullptr;
+  }
+
+  LOG(INFO) << name << " is direction: " << direction << " size: " << size
+            << " side of tile: " << side_of_tile << " number " << number;
+
+  if (direction == "NN") {
+  } else if (direction == "SS") {
+  } else if (direction == "WW") {
+  } else if (direction == "EE") {
+  } else {
+  }
+  
+  return nullptr;
+}
+
+geometry::Instance *ReducedSlice::GetBFGEntity(const std::string &name) const {
+  std::string side_of_mux;
+  geometry::Instance *instance = GetMux(name, &side_of_mux);
+  if (instance) {
+    return instance;
+  }
+  instance = GetInterconnectWireIn(name);
+  if (instance) {
+    return instance;
+  }
+  instance = GetInterconnectWireOutMux(name);
+  return instance;
+}
+
+// FIXME(aryap): We have name to entity mapping, but we also need port mapping.
+// We need to handle muxes with two sides (OUT0 or OUT1), and we need to
+// deterministically map their inputs to the left or right (first or last N of
+// the N+1 inputs to the shared N:1 mux).
 
 void ReducedSlice::ExtractBFGInterconnectGraph() {
-  RE2 mux_re("(\\w+)_(\\d+[AB]?)");
-
   EdgeList edge_list;
   edge_list.FromCSVOrDie(parameters_.edge_list_csv);
   for (const auto &entry : edge_list.edges()) {
-    const auto &from = entry.from();
-    LOG(INFO) << from.Describe();
+    const std::string &source_name = entry.from().instance_name;
+    const std::string &destination_name = entry.to().instance_name;
+
+    geometry::Instance *from = GetBFGEntity(source_name);
+    if (from) {
+      LOG(INFO) << source_name << "(" << from->name() << ")";
+    } else {
+      LOG(INFO) << source_name << "(unmapped)";
+    }
+
+    geometry::Instance *to = GetBFGEntity(destination_name);
+    if (from) {
+      LOG(INFO) << source_name << "(" << to->name() << ")";
+    } else {
+      LOG(INFO) << source_name << "(unmapped)";
+    }
   }
 }
 
