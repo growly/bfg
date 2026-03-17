@@ -129,11 +129,20 @@ class ReducedSlice : public Tile {
       bool alternate_break_out,
       InterconnectWireBlock::Parameters *iwb_params) const;
 
-  // FIXME(aryap): Need one for E, one for W side of tile.
-  std::vector<geometry::Instance*> iib_s1_muxes_;
-  std::vector<geometry::Instance*> iib_s2_muxes_;
-  std::vector<geometry::Instance*> luts_;
+  void ExtractBFGInterconnectGraph();
+
+  // BFG routing graphs come as an edge list. Nodes in the list are identified
+  // with a name that indicates which stage of the graph they are in, which
+  // side of the tile, and (sometimes) which of two shared outputs. We need to
+  // map those names to physically-placed muxes here.
+  std::map<geometry::Compass, std::vector<geometry::Instance*>> iib_s1_muxes_;
+  std::map<geometry::Compass, std::vector<geometry::Instance*>> iib_s2_muxes_;
+  std::map<geometry::Compass, std::vector<geometry::Instance*>> luts_;
+
+  // OIB S2 is shared between the the two sides.
   std::vector<geometry::Instance*> oib_s2_muxes_;
+
+  // OIB S1 are just the interconnect drivers! They are shared by both sides.
   std::vector<geometry::Instance*> oib_s1_muxes_;
 
   Parameters parameters_;

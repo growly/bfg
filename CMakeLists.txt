@@ -44,6 +44,7 @@ find_package(absl REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
+find_package(re2 REQUIRED)
 
 # We depend on libkdtree+, but it is header only so don't think we need to do
 # anything here.
@@ -320,6 +321,7 @@ target_link_libraries(bfg PUBLIC ${tcmalloc_lib}
                                  absl::status
                                  absl::statusor
                                  vlsir_lib
+                                 re2::re2
                                  ${Protobuf_LIBRARIES})
 
 # bfg executable
@@ -340,6 +342,7 @@ target_link_libraries(bfg_bin PUBLIC bfg
                                       gflags
                                       glog::glog
                                       absl::strings
+                                      re2::re2
                                       ${Protobuf_LIBRARIES})
 
 # gRPC service generation via protobuf
@@ -515,6 +518,7 @@ target_link_libraries(bfg_test
   glog::glog
   absl::strings
   ${Protobuf_LIBRARIES}
+  re2::re2
 )
 
 include(GoogleTest)

@@ -18,6 +18,8 @@
 #include "../utility.h"
 #include "../edge_list.h"
 
+
+#include <re2/re2.h>
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_format.h>
 
@@ -65,7 +67,7 @@ void ReducedSlice::Parameters::FromProto(
 // |     |     |     |     |     |     |     |     |
 // +-----+-----+-----+-----+-----+-----+-----+-----+
 
-void FillClockwise(
+std::vector<geometry::Instance*> FillClockwise(
     int columns_left,
     int rows_top,
     int columns_right,
@@ -148,6 +150,7 @@ void FillClockwise(
   }
 
   LOG(INFO) << "Instance count: " << count;
+  return instances;
 }
 
 void ReducedSlice::GenerateInterconnectChannels(
@@ -294,7 +297,7 @@ Cell *ReducedSlice::Generate() {
   std::string iib_s2_mux_name = "iib_s2_mux";
   atoms::Sky130InterconnectMux1 iib_s2_generator(iib_s2_params, design_db_);
   Cell *iib_s2_cell = iib_s2_generator.GenerateIntoDatabase(iib_s2_mux_name);
-  FillClockwise(
+  std::vector<geometry::Instance*> iib_s2_instances = FillClockwise(
       kNumLeftSkinnyRows,
       2,
       0,
@@ -308,6 +311,10 @@ Cell *ReducedSlice::Generate() {
       1000,   // ?
       &iib);
 
+  iib_s2_muxes_[geometry::Compass::WEST].insert(
+      iib_s2_muxes_[geometry::Compass::WEST].begin(),
+      iib_s2_instances.begin(), iib_s2_instances.end());
+
   atoms::Sky130InterconnectMux1::Parameters iib_s1_params = defaults;
   iib_s1_params.num_inputs = 7;
   iib_s1_params.num_outputs = 2;
@@ -316,7 +323,7 @@ Cell *ReducedSlice::Generate() {
   atoms::Sky130InterconnectMux2 iib_s1_generator(iib_s1_params, design_db_);
   Cell *iib_s1_cell = iib_s1_generator.GenerateIntoDatabase(iib_s1_mux_name);
 
-  FillClockwise(
+  std::vector<geometry::Instance*> iib_s1_instances = FillClockwise(
       1,
       1,
       0,
@@ -329,6 +336,10 @@ Cell *ReducedSlice::Generate() {
       iib.GetTilingBounds()->Height(),
       1000,   // ?
       &iib);
+
+  iib_s1_muxes_[geometry::Compass::WEST].insert(
+      iib_s1_muxes_[geometry::Compass::WEST].begin(),
+      iib_s1_instances.begin(), iib_s1_instances.end());
 
   MemoryBank oib_s2 = MemoryBank(west_layout.get(),
                                  cell->circuit(),
@@ -349,7 +360,7 @@ Cell *ReducedSlice::Generate() {
 
   static constexpr int kNumRightSkinnyRows = 3;
 
-  FillClockwise(
+  std::vector<geometry::Instance*> oib_s2_instances = FillClockwise(
       0,
       0,
       kNumRightSkinnyRows,
@@ -362,6 +373,9 @@ Cell *ReducedSlice::Generate() {
       30000,
       30000,
       &oib_s2);
+
+  oib_s2_muxes_.insert(
+      oib_s2_muxes_.begin(), oib_s2_instances.begin(), oib_s2_instances.end());
   
   //std::string oib_s2_mux_name = "oib_s2_mux_tall";
   //atoms::Sky130InterconnectMux1::Parameters oib_s2_params = {
@@ -410,7 +424,7 @@ Cell *ReducedSlice::Generate() {
   atoms::Sky130InterconnectMux1 oib_s1_generator(oib_s1_params, design_db_);
   Cell *oib_s1_cell = oib_s1_generator.GenerateIntoDatabase(oib_s1_mux_name);
 
-  FillClockwise(
+  std::vector<geometry::Instance*> oib_s1_instances = FillClockwise(
       0,
       0,
       0,
@@ -423,6 +437,9 @@ Cell *ReducedSlice::Generate() {
       10000,
       10000,
       &oib_s1);
+
+  oib_s1_muxes_.insert(
+      oib_s1_muxes_.begin(), oib_s1_instances.begin(), oib_s1_instances.end());
 
   oib_s1.MoveTo(
       {0, 
@@ -574,14 +591,20 @@ Cell *ReducedSlice::Generate() {
   return cell.release();
 }
 
-void ReducedSlice::Route(Circuit *circuit, Layout *layout) {
 
+void ReducedSlice::ExtractBFGInterconnectGraph() {
+  RE2 mux_re("(\\w+)_(\\d+[AB]?)");
 
   EdgeList edge_list;
   edge_list.FromCSVOrDie(parameters_.edge_list_csv);
   for (const auto &entry : edge_list.edges()) {
-    LOG(INFO) << entry.Describe();
+    const auto &from = entry.from();
+    LOG(INFO) << from.Describe();
   }
+}
+
+void ReducedSlice::Route(Circuit *circuit, Layout *layout) {
+  ExtractBFGInterconnectGraph();
 }
 
 }   // namespace tiles
