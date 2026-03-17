@@ -104,6 +104,8 @@ class ReducedSlice : public Tile {
     // four directions (N, E, S, W).
     static constexpr int kNumOIBS1Shared = kBundleSize * 4;
 
+    std::string edge_list_csv = "bfg_edges.csv";
+
     void ToProto(proto::parameters::ReducedSlice *pb) const;
     void FromProto(const proto::parameters::ReducedSlice &pb); 
   };
@@ -116,9 +118,7 @@ class ReducedSlice : public Tile {
 
   Cell *Generate() override;
 
-  //void Route(
-  //    const std::vector<std::vector<geometry::Instance*>> muxes,
-  //    Layout *layout);
+  void Route(Circuit *circuit, Layout *layout);
 
  private:
   void GenerateInterconnectChannels(
@@ -128,6 +128,13 @@ class ReducedSlice : public Tile {
       bool break_out_regular_side_first,
       bool alternate_break_out,
       InterconnectWireBlock::Parameters *iwb_params) const;
+
+  // FIXME(aryap): Need one for E, one for W side of tile.
+  std::vector<geometry::Instance*> iib_s1_muxes_;
+  std::vector<geometry::Instance*> iib_s2_muxes_;
+  std::vector<geometry::Instance*> luts_;
+  std::vector<geometry::Instance*> oib_s2_muxes_;
+  std::vector<geometry::Instance*> oib_s1_muxes_;
 
   Parameters parameters_;
 };

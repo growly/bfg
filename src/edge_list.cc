@@ -13,8 +13,8 @@
 namespace bfg {
 
 std::string EdgeSpec::Endpoint::Describe() const {
-  return absl::StrCat(
-      instance_name, " {", absl::StrJoin(port_names, ", "), "}");
+  std::string ports = port_names.empty() ? "" : absl::StrJoin(port_names, ", ");
+  return absl::StrCat(instance_name, " {", ports, "}");
 }
 
 void EdgeSpec::FromProto(const proto::EdgeSpec &edge_spec_pb) {
@@ -85,6 +85,10 @@ void EdgeList::FromCSVOrDie(const std::string &path) {
   std::string line;
   size_t i = 0;
   while (std::getline(file, line)) {
+    // On linux systems, on the LF \n is needed to break the line, so the \r
+    // gets included as garbage.
+    line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
+
     std::vector<std::string> fields = absl::StrSplit(line, ",");
 
     if (fields.size() != 4) {

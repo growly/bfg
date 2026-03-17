@@ -25,6 +25,8 @@ class EdgeSpec {
     std::string Describe() const;
   };
 
+  // TODO(aryap): ToProto would be nice.
+
   void FromProto(const proto::EdgeSpec &edge_spec_pb);
   proto::EdgeSpec ToProto() const;
 

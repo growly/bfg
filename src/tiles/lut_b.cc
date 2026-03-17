@@ -662,7 +662,7 @@ Cell *LutB::Generate() {
   AddInputs(circuit.get(), layout.get());
   AddOutputs(circuit.get(), layout.get());
 
-  Route(circuit.get(), layout.get());
+  //Route(circuit.get(), layout.get());
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.

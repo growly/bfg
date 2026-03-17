@@ -16,6 +16,7 @@
 #include "proto/parameters/lut_b.pb.h"
 #include "proto/parameters/reduced_slice.pb.h"
 #include "../utility.h"
+#include "../edge_list.h"
 
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_format.h>
@@ -243,6 +244,9 @@ Cell *ReducedSlice::Generate() {
 
   std::unique_ptr<bfg::Layout> west_layout(new bfg::Layout(db));
 
+  // Maintain the mapping of logical name to local instance:
+  std::unordered_map<std::string, geometry::Instance*> instance_by_logical_name;
+
   MemoryBank luts = MemoryBank(west_layout.get(),
                                cell->circuit(),
                                design_db_,
@@ -428,6 +432,30 @@ Cell *ReducedSlice::Generate() {
   uint64_t current_height = west_layout->GetTilingBounds().Height();
   uint64_t current_width = west_layout->GetTilingBounds().Width();
 
+  // Logical names have to be associated with instances with layout awareness,
+  // so they have to be done inline, here. The BFG conventions are specific to
+  // this tile, and must be baked in:
+  //
+  // - "A"/"B" output ports denote the first or second side output of a shared
+  // mux.
+  // - For some blocks, numbering is across both sides of the tile, and for
+  // others, it is repeated between tiles. TODO(aryap): This is bad and must be
+  // fixed.
+  // - 
+  //
+  // TODO(aryap): We need a convenient way to map e.g. "OIB_S2_34B" to the B
+  // side of the 34th OIB S2 mux, and so on.
+  //
+  // TODO(aryap): I think labelling should happen separately from placement, but
+  // explicitly taking into account the expected placement.
+  //
+  // And we put the instances in the oib_s2_muxes_ fields in order, and then
+  // separately we can map names to them.
+  int count;
+  for (const auto &instances : oib_s2.instances()) {
+      
+  }
+
   InterconnectWireBlock::Parameters horizontal_wire_block_params = {
     .layout_mode =
         InterconnectWireBlock::Parameters::LayoutMode::kModestlyClever,
@@ -538,7 +566,22 @@ Cell *ReducedSlice::Generate() {
 
   cell->layout()->AddLayout(*west_layout, "west");
 
+  // FIXME(aryap): Need to map instances of muxes in each layout to their
+  // canonical names for routing.
+
+  Route(cell->circuit(), cell->layout());
+
   return cell.release();
+}
+
+void ReducedSlice::Route(Circuit *circuit, Layout *layout) {
+
+
+  EdgeList edge_list;
+  edge_list.FromCSVOrDie(parameters_.edge_list_csv);
+  for (const auto &entry : edge_list.edges()) {
+    LOG(INFO) << entry.Describe();
+  }
 }
 
 }   // namespace tiles
