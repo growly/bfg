@@ -284,8 +284,17 @@ void DesignDatabase::WriteTop(
     to_visit.pop_front();
     std::set<Cell*> direct_ancestors = cell->DirectAncestors();
     for (Cell *ancestor : direct_ancestors) {
-      if (ancestors.find(ancestor) != ancestors.end())
+      if (ancestors.find(ancestor) != ancestors.end()) {
+        // If the ancestor has already been seen, it needs to be moved to the
+        // back of the dependency order.
+        reverse_ordered_cells.erase(
+            std::remove(reverse_ordered_cells.begin(),
+                        reverse_ordered_cells.end(),
+                        ancestor),
+            reverse_ordered_cells.end());
+        reverse_ordered_cells.push_back(ancestor);
         continue;
+      }
       ancestors.insert(ancestor);
       reverse_ordered_cells.push_back(ancestor);
       to_visit.push_back(ancestor);
