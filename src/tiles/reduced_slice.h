@@ -130,12 +130,19 @@ class ReducedSlice : public Tile {
       InterconnectWireBlock::Parameters *iwb_params) const;
 
   geometry::Instance *GetMux(
-      const std::string &name, std::string *side_of_mux_out) const;
+      const std::string &name,
+      bool input_side,
+      std::vector<geometry::Port*> *ports) const;
   geometry::Instance *GetInterconnectWireIn(
       const std::string &name) const;
   geometry::Instance *GetInterconnectWireOutMux(
       const std::string &name) const;
-  geometry::Instance *GetBFGEntity(const std::string &name) const;
+
+  geometry::Instance *MapToPorts(
+      const std::string &name,
+      bool input_side,
+      std::vector<geometry::Port*> *ports) const;
+
   void ExtractBFGInterconnectGraph();
 
   // BFG routing graphs come as an edge list. Nodes in the list are identified

@@ -592,7 +592,9 @@ Cell *ReducedSlice::Generate() {
 }
 
 geometry::Instance *ReducedSlice::GetMux(
-    const std::string &name, std::string *side_of_mux_out) const {
+    const std::string &name,
+    bool input_side,
+    std::vector<geometry::Port*> *ports) const {
   static RE2 mux_re("(\\w+)_(\\d+)([AB]?)");
   DCHECK(mux_re.ok());
 
@@ -612,17 +614,18 @@ geometry::Instance *ReducedSlice::GetMux(
   LOG(INFO) << name << " is group: " << mux << " number: " << number
             << " side: " << side_of_mux;
 
+  geometry::Instance *instance = nullptr;
   if (mux == "IIB_S1") {
     if (number < iib_s1_muxes_.find(side_of_tile)->second.size()) {
-      return iib_s1_muxes_.find(side_of_tile)->second[number];
+      instance = iib_s1_muxes_.find(side_of_tile)->second[number];
     }
   } else if (mux == "IIB_S2") {
     if (number < iib_s2_muxes_.find(side_of_tile)->second.size()) {
-      return iib_s2_muxes_.find(side_of_tile)->second[number];
+      instance = iib_s2_muxes_.find(side_of_tile)->second[number];
     }
   } else if (mux == "OIB_S2") {
     if (number < oib_s2_muxes_.size()) {
-      return oib_s2_muxes_[number];
+      instance = oib_s2_muxes_[number];
     }
   }
   // OIB S1 muxes are named after the interconnects they drive.
@@ -631,6 +634,15 @@ geometry::Instance *ReducedSlice::GetMux(
   //    return oib_s1_muxes_[number];
   //  }
   //}
+
+  // Determine input or output ports on the input or output side. Need some
+  // indication passed in.
+  if (instance) {
+    if (side_of_mux != "") {
+      // All ports.
+    } else {
+    }
+  }
 
   return nullptr;
 }
@@ -691,9 +703,11 @@ geometry::Instance *ReducedSlice::GetInterconnectWireOutMux(
   return nullptr;
 }
 
-geometry::Instance *ReducedSlice::GetBFGEntity(const std::string &name) const {
-  std::string side_of_mux;
-  geometry::Instance *instance = GetMux(name, &side_of_mux);
+geometry::Instance *ReducedSlice::MapToPorts(
+    const std::string &name,
+    bool input_side,
+    std::vector<geometry::Port*> *ports) const {
+  geometry::Instance *instance = GetMux(name, input_side, ports);
   if (instance) {
     return instance;
   }
@@ -708,7 +722,8 @@ geometry::Instance *ReducedSlice::GetBFGEntity(const std::string &name) const {
 // FIXME(aryap): We have name to entity mapping, but we also need port mapping.
 // We need to handle muxes with two sides (OUT0 or OUT1), and we need to
 // deterministically map their inputs to the left or right (first or last N of
-// the N+1 inputs to the shared N:1 mux).
+// the N+1 inputs to the shared N:1 mux). So really, we need name to entity +
+// port mapping.
 
 void ReducedSlice::ExtractBFGInterconnectGraph() {
   EdgeList edge_list;
@@ -717,14 +732,17 @@ void ReducedSlice::ExtractBFGInterconnectGraph() {
     const std::string &source_name = entry.from().instance_name;
     const std::string &destination_name = entry.to().instance_name;
 
-    geometry::Instance *from = GetBFGEntity(source_name);
+    std::vector<geometry::Port*> source_ports;
+    geometry::Instance *from = MapToPorts(source_name, false, &source_ports);
     if (from) {
       LOG(INFO) << source_name << "(" << from->name() << ")";
     } else {
       LOG(INFO) << source_name << "(unmapped)";
     }
 
-    geometry::Instance *to = GetBFGEntity(destination_name);
+    std::vector<geometry::Port*> destination_ports;
+    geometry::Instance *to = MapToPorts(
+        destination_name, true, &destination_ports);
     if (from) {
       LOG(INFO) << source_name << "(" << to->name() << ")";
     } else {
