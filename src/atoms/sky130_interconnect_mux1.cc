@@ -91,12 +91,35 @@ void Sky130InterconnectMux1::Parameters::FromProto(
   }
 }
 
+std::vector<std::string> Sky130InterconnectMux1::MakeInputNames(
+    const Sky130InterconnectMux1::Parameters &parameters) {
+  std::vector<std::string> names;
+  for (int i = 0; i < parameters.num_inputs; ++i) {
+    names.push_back(absl::StrFormat("X%u", i));
+  }
+  return names;
+}
+
+std::vector<std::string> Sky130InterconnectMux1::MakeOutputNames(
+    const Sky130InterconnectMux1::Parameters &parameters) {
+  if (parameters.num_outputs == 1) {
+    return {std::string(kMuxOutputName)};
+  }
+
+  std::vector<std::string> names;
+  for (int i = 0; i < parameters.num_inputs; ++i) {
+    names.push_back(absl::StrCat(kMuxOutputName, i));
+  }
+  return names;
+}
+
 std::vector<std::vector<std::string>>
 Sky130InterconnectMux1::BuildNetSequences() const {
   std::vector<std::vector<std::string>> sequences;
   std::vector<std::string> last_sequence;
+  std::vector<std::string> input_names = MakeInputNames(parameters_);
   for (size_t i = 0; i < parameters_.num_inputs; ++i) {
-    std::string input_name = absl::StrFormat("X%u", i);
+    std::string input_name = input_names[i];
     std::string control_name = absl::StrFormat("S%u", i);
 
     if (last_sequence.size() == 0) {

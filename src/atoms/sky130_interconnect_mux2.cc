@@ -45,6 +45,8 @@ Sky130InterconnectMux2::BuildNetSequences() const {
   size_t control_num = 0;
   size_t output_num = 0;
 
+  std::vector<std::string> input_names = MakeInputNames(parameters_);
+
   size_t i = 0;
   while (input_num < parameters_.num_inputs) {
     // The odd entries are always control signals.
@@ -61,7 +63,7 @@ Sky130InterconnectMux2::BuildNetSequences() const {
       control_num++;
     } else if (i % 4 == 0) {
       // Every 4-th entry starting from 0 is an input.
-      std::string input_name = absl::StrCat("X", input_num);
+      std::string input_name = input_names[input_num];
       sequence.push_back(input_name);
       input_num++;
     } else {

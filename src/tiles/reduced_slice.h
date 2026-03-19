@@ -73,6 +73,11 @@ using namespace std::string_view_literals;
 //
 // Please see documentation for more detail.
 //
+// TODO(aryap): ReducedSliceHalf is an easier way to create the West layout,
+// tracking the logical names of all instances, and to then copy and flip it,
+// since that structure will maintain the logical names post transformation.
+// Or perhaps we just route one half, do the copy/paste whole sale, and then
+// route the globally-significant nets? Not ideal but workable.
 class ReducedSlice : public Tile {
  public:
   struct Parameters {
@@ -121,6 +126,11 @@ class ReducedSlice : public Tile {
   void Route(Circuit *circuit, Layout *layout);
 
  private:
+  struct InterconnectWireKey {
+    geometry::Compass direction;
+    int size;
+  };
+
   void GenerateInterconnectChannels(
       const std::vector<std::string> &direction_prefixes,
       int64_t long_bundle_break_out,
@@ -137,6 +147,9 @@ class ReducedSlice : public Tile {
       const std::string &name) const;
   geometry::Instance *GetInterconnectWireOutMux(
       const std::string &name) const;
+
+  std::optional<atoms::Sky130InterconnectMux1::Parameters> GetMuxParams(
+      geometry::Instance *instance) const;
 
   geometry::Instance *MapToPorts(
       const std::string &name,
@@ -157,7 +170,18 @@ class ReducedSlice : public Tile {
   std::vector<geometry::Instance*> oib_s2_muxes_;
 
   // OIB S1 are just the interconnect drivers! They are shared by both sides.
-  std::vector<geometry::Instance*> oib_s1_muxes_;
+  std::map<InterconnectWireKey, std::vector<geometry::Instance*>>
+      oib_s1_muxes_by_driven_wire_;
+
+  // TODO(aryap): It might be more convenient to equip every geometry::Instance,
+  // or bfg::Layout, with a copy of the parameters used to generate it. It might
+  // even make sense to keep a pointer to the generator itself (except that the
+  // lifetime of the generator was never meant to exceed that of the generated
+  // instance).
+  //
+  // Until then, we just keep a look up:
+  std::map<geometry::Instance*, atoms::Sky130InterconnectMux1::Parameters>
+      mux_params_;
 
   Parameters parameters_;
 };

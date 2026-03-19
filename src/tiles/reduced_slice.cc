@@ -272,7 +272,10 @@ Cell *ReducedSlice::Generate() {
         0, absl::StrCat(lut_name, "_i", i), s44_cell);
   }
 
-  std::vector<std::vector<geometry::Instance*>> muxes;
+  std::vector<std::string> iib_s1_names;
+  std::vector<std::string> iib_s2_names;
+  std::vector<std::string> oib_s2_names;
+  std::vector<std::string> oib_s1_names;
 
   MemoryBank iib = MemoryBank(west_layout.get(),
                               cell->circuit(),
@@ -311,9 +314,13 @@ Cell *ReducedSlice::Generate() {
       1000,   // ?
       &iib);
 
-  iib_s2_muxes_[geometry::Compass::WEST].insert(
-      iib_s2_muxes_[geometry::Compass::WEST].begin(),
-      iib_s2_instances.begin(), iib_s2_instances.end());
+  std::transform(iib_s2_instances.begin(), iib_s2_instances.end(),
+                 iib_s2_names.begin(), [](geometry::Instance *instance) {
+                    return instance->name();
+                 });
+  for (geometry::Instance *mux : iib_s2_instances) {
+    mux_params_[mux] = iib_s2_params;
+  }
 
   atoms::Sky130InterconnectMux1::Parameters iib_s1_params = defaults;
   iib_s1_params.num_inputs = 7;
@@ -337,9 +344,13 @@ Cell *ReducedSlice::Generate() {
       1000,   // ?
       &iib);
 
-  iib_s1_muxes_[geometry::Compass::WEST].insert(
-      iib_s1_muxes_[geometry::Compass::WEST].begin(),
-      iib_s1_instances.begin(), iib_s1_instances.end());
+  std::transform(iib_s1_instances.begin(), iib_s1_instances.end(),
+                 iib_s1_names.begin(), [](geometry::Instance *instance) {
+                    return instance->name();
+                 });
+  for (geometry::Instance *mux : iib_s1_instances) {
+    mux_params_[mux] = iib_s1_params;
+  }
 
   MemoryBank oib_s2 = MemoryBank(west_layout.get(),
                                  cell->circuit(),
@@ -374,8 +385,13 @@ Cell *ReducedSlice::Generate() {
       30000,
       &oib_s2);
 
-  oib_s2_muxes_.insert(
-      oib_s2_muxes_.begin(), oib_s2_instances.begin(), oib_s2_instances.end());
+  std::transform(oib_s2_instances.begin(), oib_s2_instances.end(),
+                 oib_s2_names.begin(), [](geometry::Instance *instance) {
+                    return instance->name();
+                 });
+  for (geometry::Instance *mux : oib_s2_instances) {
+    mux_params_[mux] = iib_s1_params;
+  }
   
   //std::string oib_s2_mux_name = "oib_s2_mux_tall";
   //atoms::Sky130InterconnectMux1::Parameters oib_s2_params = {
@@ -438,8 +454,15 @@ Cell *ReducedSlice::Generate() {
       10000,
       &oib_s1);
 
-  oib_s1_muxes_.insert(
-      oib_s1_muxes_.begin(), oib_s1_instances.begin(), oib_s1_instances.end());
+  std::transform(oib_s1_instances.begin(), oib_s1_instances.end(),
+                 oib_s1_names.begin(), [](geometry::Instance *instance) {
+                    return instance->name();
+                 });
+  for (geometry::Instance *mux : oib_s1_instances) {
+    mux_params_[mux] = oib_s1_params;
+  }
+
+  // We must here allocate the placed OIB S1 muxes to 
 
   oib_s1.MoveTo(
       {0, 
@@ -577,7 +600,9 @@ Cell *ReducedSlice::Generate() {
       central_wire_block->GetTilingBounds().upper_right().x(),
       west_layout->GetTilingBounds().lower_left().y()};
   east_layout->AlignPointTo(reference, target);
+
   //LOG(INFO) << "will align " << reference << " to target " << target;
+
   cell->layout()->AddLayout(*east_layout, "east");
 
 
@@ -607,19 +632,18 @@ geometry::Instance *ReducedSlice::GetMux(
   if (!RE2::FullMatch(name, mux_re, &mux, &number, &side_of_mux)) {
     return nullptr;
   }
-  if (side_of_mux != "") {
-    *side_of_mux_out = side_of_mux;
-  }
 
-  LOG(INFO) << name << " is group: " << mux << " number: " << number
-            << " side: " << side_of_mux;
+  //LOG(INFO) << name << " is group: " << mux << " number: " << number
+  //          << " side: " << side_of_mux;
 
   geometry::Instance *instance = nullptr;
   if (mux == "IIB_S1") {
     if (number < iib_s1_muxes_.find(side_of_tile)->second.size()) {
       instance = iib_s1_muxes_.find(side_of_tile)->second[number];
     }
-  } else if (mux == "IIB_S2") {
+  } else if (mux == "IIB_S2" ||
+             mux == "IIB_S2_BYPASS" ||
+             mux == "IIB_S2_BOUNCE") {
     if (number < iib_s2_muxes_.find(side_of_tile)->second.size()) {
       instance = iib_s2_muxes_.find(side_of_tile)->second[number];
     }
@@ -637,14 +661,60 @@ geometry::Instance *ReducedSlice::GetMux(
 
   // Determine input or output ports on the input or output side. Need some
   // indication passed in.
-  if (instance) {
-    if (side_of_mux != "") {
+  if (!instance) {
+    return nullptr;
+  }
+
+  auto mux_params = GetMuxParams(instance);
+  if (!mux_params) {
+    LOG(ERROR) << "Could not find generating parameters for "
+               << instance->name();
+    return nullptr;
+  }
+
+  std::vector<std::string> port_names;
+  if (input_side) {
+    std::vector<std::string> input_names =
+        atoms::Sky130InterconnectMux1::MakeInputNames(*mux_params);
+    if (side_of_mux == "") {
       // All ports.
+      port_names = input_names;
+    } else if (side_of_mux == "A") {
+      // First N ports.
+      for (int i = 0; i < input_names.size() - 1; ++i) {
+        port_names.push_back(input_names[i]);
+      }
+    } else if (side_of_mux == "B") {
+      // Second N ports.
+      for (int i = 1; i < input_names.size(); ++i) {
+        port_names.push_back(input_names[i]);
+      }
     } else {
+      LOG(WARNING) << "Unknown side of mux: " << side_of_mux;
+    }
+  } else {
+    // Output side.
+    std::vector<std::string> output_names =
+        atoms::Sky130InterconnectMux1::MakeOutputNames(*mux_params);
+    if (side_of_mux == "") {
+      port_names = output_names;
+    } else if (side_of_mux == "A") {
+      port_names.push_back(output_names[0]);
+    } else if (side_of_mux == "B") {
+      port_names.push_back(output_names[1]);
+    } else {
+      LOG(WARNING) << "Unknown side of mux: " << side_of_mux;
     }
   }
 
-  return nullptr;
+  //LOG(INFO) << "port names: " << absl::StrJoin(port_names, ", ");
+
+  for (const std::string &name : port_names) {
+    std::set<geometry::Port*> instance_ports = instance->GetInstancePorts(name);
+    ports->insert(ports->end(), instance_ports.begin(), instance_ports.end());
+  }
+
+  return instance;
 }
 
 geometry::Instance *ReducedSlice::GetInterconnectWireIn(
@@ -662,8 +732,8 @@ geometry::Instance *ReducedSlice::GetInterconnectWireIn(
     return nullptr;
   }
 
-  LOG(INFO) << name << " is direction: " << direction << " size: " << size
-            << " side of tile: " << side_of_tile << " number " << number;
+  //LOG(INFO) << name << " is direction: " << direction << " size: " << size
+  //          << " side of tile: " << side_of_tile << " number " << number;
 
   if (direction == "NN") {
   } else if (direction == "SS") {
@@ -690,8 +760,8 @@ geometry::Instance *ReducedSlice::GetInterconnectWireOutMux(
     return nullptr;
   }
 
-  LOG(INFO) << name << " is direction: " << direction << " size: " << size
-            << " side of tile: " << side_of_tile << " number " << number;
+  //LOG(INFO) << name << " is direction: " << direction << " size: " << size
+  //          << " side of tile: " << side_of_tile << " number " << number;
 
   if (direction == "NN") {
   } else if (direction == "SS") {
@@ -734,22 +804,36 @@ void ReducedSlice::ExtractBFGInterconnectGraph() {
 
     std::vector<geometry::Port*> source_ports;
     geometry::Instance *from = MapToPorts(source_name, false, &source_ports);
-    if (from) {
-      LOG(INFO) << source_name << "(" << from->name() << ")";
-    } else {
-      LOG(INFO) << source_name << "(unmapped)";
-    }
 
     std::vector<geometry::Port*> destination_ports;
     geometry::Instance *to = MapToPorts(
         destination_name, true, &destination_ports);
-    if (from) {
-      LOG(INFO) << source_name << "(" << to->name() << ")";
-    } else {
-      LOG(INFO) << source_name << "(unmapped)";
+
+    if (from && to) {
+      LOG(INFO) << "Mapped: " << source_name << " (" << from->name()
+                << ", " << source_ports.size() << ") -> "
+                << destination_name << " (" << to->name()
+                << ", " << destination_ports.size() << ")";
+    } else if (from) {
+      LOG(WARNING) << "Unmapped: " << source_name << " (" << from->name()
+                   << ") -> " << destination_name;
+    } else if (to) {
+      LOG(WARNING) << "Unmapped: " << source_name << " -> "
+                   << destination_name << " (" << to->name() << ")";
     }
   }
 }
+
+std::optional<atoms::Sky130InterconnectMux1::Parameters>
+ReducedSlice::GetMuxParams(
+    geometry::Instance *instance) const {
+  auto it = mux_params_.find(instance);
+  if (it == mux_params_.end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
 
 void ReducedSlice::Route(Circuit *circuit, Layout *layout) {
   ExtractBFGInterconnectGraph();

@@ -129,6 +129,11 @@ class Sky130InterconnectMux1 : public Atom {
   static constexpr char kStackOutputName[] = "Z";
   static constexpr char kMuxOutputName[] = "OUT";
 
+  static std::vector<std::string> MakeInputNames(
+      const Parameters &parameters);
+  static std::vector<std::string> MakeOutputNames(
+      const Parameters &parameters);
+
   Sky130InterconnectMux1(
       const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
