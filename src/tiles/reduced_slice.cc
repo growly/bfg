@@ -10,6 +10,8 @@
 #include "../geometry/instance.h"
 #include "../layout.h"
 #include "../memory_bank.h"
+#include "../routing_grid.h"
+#include "../route_manager.h"
 #include "s44.h"
 #include "lut_b.h"
 #include "interconnect_wire_block.h"
@@ -315,12 +317,10 @@ Cell *ReducedSlice::Generate() {
       &iib);
 
   std::transform(iib_s2_instances.begin(), iib_s2_instances.end(),
-                 iib_s2_names.begin(), [](geometry::Instance *instance) {
+                 std::back_inserter(iib_s2_names),
+                 [](geometry::Instance *instance) {
                     return instance->name();
                  });
-  for (geometry::Instance *mux : iib_s2_instances) {
-    mux_params_[mux] = iib_s2_params;
-  }
 
   atoms::Sky130InterconnectMux1::Parameters iib_s1_params = defaults;
   iib_s1_params.num_inputs = 7;
@@ -345,12 +345,10 @@ Cell *ReducedSlice::Generate() {
       &iib);
 
   std::transform(iib_s1_instances.begin(), iib_s1_instances.end(),
-                 iib_s1_names.begin(), [](geometry::Instance *instance) {
+                 std::back_inserter(iib_s1_names),
+                 [](geometry::Instance *instance) {
                     return instance->name();
                  });
-  for (geometry::Instance *mux : iib_s1_instances) {
-    mux_params_[mux] = iib_s1_params;
-  }
 
   MemoryBank oib_s2 = MemoryBank(west_layout.get(),
                                  cell->circuit(),
@@ -386,12 +384,10 @@ Cell *ReducedSlice::Generate() {
       &oib_s2);
 
   std::transform(oib_s2_instances.begin(), oib_s2_instances.end(),
-                 oib_s2_names.begin(), [](geometry::Instance *instance) {
+                 std::back_inserter(oib_s2_names),
+                 [](geometry::Instance *instance) {
                     return instance->name();
                  });
-  for (geometry::Instance *mux : oib_s2_instances) {
-    mux_params_[mux] = iib_s1_params;
-  }
   
   //std::string oib_s2_mux_name = "oib_s2_mux_tall";
   //atoms::Sky130InterconnectMux1::Parameters oib_s2_params = {
@@ -455,12 +451,10 @@ Cell *ReducedSlice::Generate() {
       &oib_s1);
 
   std::transform(oib_s1_instances.begin(), oib_s1_instances.end(),
-                 oib_s1_names.begin(), [](geometry::Instance *instance) {
+                 std::back_inserter(oib_s1_names),
+                 [](geometry::Instance *instance) {
                     return instance->name();
                  });
-  for (geometry::Instance *mux : oib_s1_instances) {
-    mux_params_[mux] = oib_s1_params;
-  }
 
   // We must here allocate the placed OIB S1 muxes to 
 
@@ -603,10 +597,55 @@ Cell *ReducedSlice::Generate() {
 
   //LOG(INFO) << "will align " << reference << " to target " << target;
 
+  cell->layout()->AddLayout(*west_layout, "west");
+
+  auto west_lookup_fn = [&](const std::string &name) {
+    std::string lookup = absl::StrCat("west.", name);
+    return cell->layout()->GetInstance(lookup);
+  };
+
   cell->layout()->AddLayout(*east_layout, "east");
 
+  auto east_lookup_fn = [&](const std::string &name) {
+    std::string lookup = absl::StrCat("east.", name);
+    return cell->layout()->GetInstance(lookup);
+  };
 
-  cell->layout()->AddLayout(*west_layout, "west");
+  // Load muxes by name, and once they're loaded store the parameter struct
+  // used to generate them.
+  std::transform(iib_s1_names.begin(), iib_s1_names.end(),
+                 std::back_inserter(iib_s1_muxes_),
+                 west_lookup_fn);
+  std::transform(iib_s1_names.begin(), iib_s1_names.end(),
+                 std::back_inserter(iib_s1_muxes_),
+                 east_lookup_fn);
+  for (geometry::Instance *mux : iib_s1_muxes_) {
+    mux_params_[mux] = iib_s1_params;
+  }
+
+  std::transform(iib_s2_names.begin(), iib_s2_names.end(),
+                 std::back_inserter(iib_s2_muxes_[geometry::Compass::WEST]),
+                 west_lookup_fn);
+  for (geometry::Instance *mux : iib_s2_muxes_[geometry::Compass::WEST]) {
+    mux_params_[mux] = iib_s2_params;
+  }
+  std::transform(iib_s2_names.begin(), iib_s2_names.end(),
+                 std::back_inserter(iib_s2_muxes_[geometry::Compass::EAST]),
+                 east_lookup_fn);
+  for (geometry::Instance *mux : iib_s2_muxes_[geometry::Compass::EAST]) {
+    mux_params_[mux] = iib_s2_params;
+  }
+
+  std::transform(oib_s2_names.begin(), oib_s2_names.end(),
+                 std::back_inserter(oib_s2_muxes_),
+                 west_lookup_fn);
+  std::transform(oib_s2_names.begin(), oib_s2_names.end(),
+                 std::back_inserter(oib_s2_muxes_),
+                 east_lookup_fn);
+  for (geometry::Instance *mux : oib_s2_muxes_) {
+    mux_params_[mux] = oib_s2_params;
+  }
+
 
   // FIXME(aryap): Need to map instances of muxes in each layout to their
   // canonical names for routing.
@@ -619,7 +658,7 @@ Cell *ReducedSlice::Generate() {
 geometry::Instance *ReducedSlice::GetMux(
     const std::string &name,
     bool input_side,
-    std::vector<geometry::Port*> *ports) const {
+    std::set<geometry::Port*> *ports) const {
   static RE2 mux_re("(\\w+)_(\\d+)([AB]?)");
   DCHECK(mux_re.ok());
 
@@ -638,8 +677,8 @@ geometry::Instance *ReducedSlice::GetMux(
 
   geometry::Instance *instance = nullptr;
   if (mux == "IIB_S1") {
-    if (number < iib_s1_muxes_.find(side_of_tile)->second.size()) {
-      instance = iib_s1_muxes_.find(side_of_tile)->second[number];
+    if (number < iib_s1_muxes_.size()) {
+      instance = iib_s1_muxes_[number];
     }
   } else if (mux == "IIB_S2" ||
              mux == "IIB_S2_BYPASS" ||
@@ -662,6 +701,7 @@ geometry::Instance *ReducedSlice::GetMux(
   // Determine input or output ports on the input or output side. Need some
   // indication passed in.
   if (!instance) {
+    LOG(ERROR) << "No mapped instance found for: " << name;
     return nullptr;
   }
 
@@ -711,7 +751,7 @@ geometry::Instance *ReducedSlice::GetMux(
 
   for (const std::string &name : port_names) {
     std::set<geometry::Port*> instance_ports = instance->GetInstancePorts(name);
-    ports->insert(ports->end(), instance_ports.begin(), instance_ports.end());
+    ports->insert(instance_ports.begin(), instance_ports.end());
   }
 
   return instance;
@@ -776,7 +816,7 @@ geometry::Instance *ReducedSlice::GetInterconnectWireOutMux(
 geometry::Instance *ReducedSlice::MapToPorts(
     const std::string &name,
     bool input_side,
-    std::vector<geometry::Port*> *ports) const {
+    std::set<geometry::Port*> *ports) const {
   geometry::Instance *instance = GetMux(name, input_side, ports);
   if (instance) {
     return instance;
@@ -795,17 +835,21 @@ geometry::Instance *ReducedSlice::MapToPorts(
 // the N+1 inputs to the shared N:1 mux). So really, we need name to entity +
 // port mapping.
 
-void ReducedSlice::ExtractBFGInterconnectGraph() {
+std::vector<std::pair<std::set<geometry::Port*>, std::set<geometry::Port*>>>
+ReducedSlice::ExtractBFGInterconnectGraph() {
+  std::vector<std::pair<std::set<geometry::Port*>, std::set<geometry::Port*>>>
+      mapped_edges;
+
   EdgeList edge_list;
   edge_list.FromCSVOrDie(parameters_.edge_list_csv);
   for (const auto &entry : edge_list.edges()) {
     const std::string &source_name = entry.from().instance_name;
     const std::string &destination_name = entry.to().instance_name;
 
-    std::vector<geometry::Port*> source_ports;
+    std::set<geometry::Port*> source_ports;
     geometry::Instance *from = MapToPorts(source_name, false, &source_ports);
 
-    std::vector<geometry::Port*> destination_ports;
+    std::set<geometry::Port*> destination_ports;
     geometry::Instance *to = MapToPorts(
         destination_name, true, &destination_ports);
 
@@ -821,7 +865,11 @@ void ReducedSlice::ExtractBFGInterconnectGraph() {
       LOG(WARNING) << "Unmapped: " << source_name << " -> "
                    << destination_name << " (" << to->name() << ")";
     }
+
+    mapped_edges.emplace_back(source_ports, destination_ports);
   }
+
+  return mapped_edges;
 }
 
 std::optional<atoms::Sky130InterconnectMux1::Parameters>
@@ -836,7 +884,111 @@ ReducedSlice::GetMuxParams(
 
 
 void ReducedSlice::Route(Circuit *circuit, Layout *layout) {
-  ExtractBFGInterconnectGraph();
+  auto mapped_ports = ExtractBFGInterconnectGraph();
+
+  RoutingGrid routing_grid(design_db_->physical_db());
+  ConfigureRoutingGrid(&routing_grid, layout);
+  RouteManager route_manager(layout, &routing_grid);
+
+  for (auto &entry : mapped_ports) {
+    if (entry.first.empty() || entry.second.empty()) {
+      continue;
+    }
+    EquivalentNets net({
+        (*entry.first.begin())->net(), (*entry.second.begin())->net()});
+    net.set_primary(
+        absl::StrCat(
+            (*entry.first.begin())->net(), "_", (*entry.second.begin())->net()));
+    route_manager.ConnectMultiplePorts(
+        {entry.first, entry.second}, net).IgnoreError();
+    LOG(INFO) << net;
+  }
+
+  route_manager.Solve().IgnoreError();
+}
+
+void ReducedSlice::ConfigureRoutingGrid(
+    RoutingGrid *routing_grid, Layout *layout) const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+
+  routing_grid->set_use_linear_cost_model(true);
+
+  geometry::Rectangle pre_route_bounds = layout->GetBoundingBox();
+  LOG(INFO) << "Pre-routing bounds: " << pre_route_bounds;
+  RoutingLayerInfo met1_layer_info =
+      db.GetRoutingLayerInfoOrDie("met1.drawing");
+  met1_layer_info.set_direction(RoutingTrackDirection::kTrackHorizontal);
+  met1_layer_info.set_area(pre_route_bounds);
+  // TODO(aryap): Need an easier way of lining this up!
+  // met1_layer_info.offset = 70;
+
+  RoutingLayerInfo met2_layer_info =
+      db.GetRoutingLayerInfoOrDie("met2.drawing");
+  met2_layer_info.set_direction(RoutingTrackDirection::kTrackVertical);
+  met2_layer_info.set_area(pre_route_bounds);
+
+  auto alignment_point = layout->GetPoint("grid_alignment_point");
+  if (alignment_point) {
+    LOG(INFO) << "Aligning grid to " << *alignment_point;
+    RoutingGridGeometry::AlignRoutingLayerInfos(
+        *alignment_point, &met1_layer_info, &met2_layer_info);
+  }
+
+  // TODO(aryap): Store connectivity information (which layers connect through
+  // which vias) in the PhysicalPropertiesDatabase's via_layers_.
+  RoutingViaInfo routing_via_info =
+      db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid->AddRoutingViaInfo(
+      met1_layer_info.layer(), met2_layer_info.layer(), routing_via_info)
+      .IgnoreError();
+
+  routing_via_info = db.GetRoutingViaInfoOrDie("li.drawing", "met1.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid->AddRoutingViaInfo(
+      met1_layer_info.layer(), db.GetLayer("li.drawing"), routing_via_info)
+      .IgnoreError();
+
+  routing_via_info = db.GetRoutingViaInfoOrDie("met2.drawing", "met3.drawing");
+  routing_via_info.set_cost(0.5);
+  routing_grid->AddRoutingViaInfo(
+      db.GetLayer("met3.drawing"), met2_layer_info.layer(), routing_via_info)
+      .IgnoreError();
+
+  //routing_grid.AddRoutingLayerInfo(li_layer_info);
+  routing_grid->AddRoutingLayerInfo(met1_layer_info).IgnoreError();
+  routing_grid->AddRoutingLayerInfo(met2_layer_info).IgnoreError();
+
+  routing_grid->ConnectLayers(met1_layer_info.layer(), met2_layer_info.layer())
+      .IgnoreError();
+
+  // TODO(aryap): We will restrict routing to routing channels so that adding
+  // blockages isn't as slow. We can also ignore met1 shapes entirely within
+  // the keep-outs.
+  //
+  // As a hack for now, we can use named saved points for the ll and ur corners
+  // of the routing keep out region.
+  //for (const auto &entry : luts_) {
+  //  for (geometry::Instance *lut : entry.second) {
+  //    
+  //  }
+  //}
+
+  {
+    // Add blockages from all existing shapes.
+    geometry::ShapeCollection shapes;
+    layout->CopyNonConnectableShapesOnLayer(
+        db.GetLayer("met1.drawing"), &shapes);
+    routing_grid->AddBlockages(shapes);
+  }
+  {
+    geometry::ShapeCollection shapes;
+    layout->CopyNonConnectableShapesOnLayer(
+        db.GetLayer("met2.drawing"), &shapes);
+    routing_grid->AddBlockages(shapes);
+  }
+
+  routing_grid->AddGlobalNet("CLK");
 }
 
 }   // namespace tiles

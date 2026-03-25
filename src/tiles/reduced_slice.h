@@ -139,10 +139,18 @@ class ReducedSlice : public Tile {
       bool alternate_break_out,
       InterconnectWireBlock::Parameters *iwb_params) const;
 
+  // TODO(aryap): This has now been repeated like four times. The default
+  // routing grid should be shipped with the technology parameters, and should
+  // be available to set up through PhysicalPropertiesDatabase. The stuff about
+  // adding blockages from layout is more interesting, but it can also go
+  // there.
+  void ConfigureRoutingGrid(
+      RoutingGrid *routing_grid, Layout *layout) const;
+
   geometry::Instance *GetMux(
       const std::string &name,
       bool input_side,
-      std::vector<geometry::Port*> *ports) const;
+      std::set<geometry::Port*> *ports) const;
   geometry::Instance *GetInterconnectWireIn(
       const std::string &name) const;
   geometry::Instance *GetInterconnectWireOutMux(
@@ -154,15 +162,17 @@ class ReducedSlice : public Tile {
   geometry::Instance *MapToPorts(
       const std::string &name,
       bool input_side,
-      std::vector<geometry::Port*> *ports) const;
+      std::set<geometry::Port*> *ports) const;
 
-  void ExtractBFGInterconnectGraph();
+  std::vector<std::pair<std::set<geometry::Port*>, std::set<geometry::Port*>>>
+      ExtractBFGInterconnectGraph();
 
   // BFG routing graphs come as an edge list. Nodes in the list are identified
   // with a name that indicates which stage of the graph they are in, which
   // side of the tile, and (sometimes) which of two shared outputs. We need to
   // map those names to physically-placed muxes here.
-  std::map<geometry::Compass, std::vector<geometry::Instance*>> iib_s1_muxes_;
+  std::vector<geometry::Instance*> iib_s1_muxes_;
+
   std::map<geometry::Compass, std::vector<geometry::Instance*>> iib_s2_muxes_;
   std::map<geometry::Compass, std::vector<geometry::Instance*>> luts_;
 

@@ -845,6 +845,9 @@ class RoutingGrid {
   RoutingVertexKDTree off_grid_vertices_;
 
   // All routing tracks (we own these).
+  //
+  // These *should* be in increasing offset per layer.
+  // TODO(aryap): Verify/ensure invariant.
   std::map<geometry::Layer, std::vector<RoutingTrack*>> tracks_by_layer_;
 
   // The list of all available vertices per layer.

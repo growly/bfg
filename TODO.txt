@@ -1,9 +1,7 @@
 Sorry, GitHub issues, I want to write a text note to myself:
 
-2/14/26
+4/24/26
 
-
-0) Fix how RoutingPath determines and makes exceptions for via positions
 
 1) Add final pre-install check to paths (that only runs in parallel path
 searches). To speed multithreading up, the phases of path search/grid update
@@ -12,8 +10,6 @@ because a lot of paths will want to use the same edges.
 
 2) AddBestRoute... should be parallelised in RouteManager.
 
-3) why do met1/mcon encaps seem too big?
-
 4) add additional OIBS2 muxes :/
 
 5) add option for top AND/OR BOTTOM dummy rows in Sky130InterconnectMux* generators
@@ -21,14 +17,32 @@ because a lot of paths will want to use the same edges.
 Sky130InterconnectMux1/2 already so it should be straightforward. Just fill a
 MemoryBank with decap, fitting to a given height/width in height/width units...
 
-10) fix LUT generator
-- routing all nets
-
 11) assign interconnect wire block break-out and break-in offsets correctly
 
 12) generate connectivity netlist based on ultrascale architecture
 
 13) route ReducedSlice
 
-15)FIXME; Or maybe the router only ever avoids one port? An unblocked one?
+15) FIXME; Or maybe the router only ever avoids one port? An unblocked one?
 Instead of all ports of a net?
+
+
+4/24/26
+
+headline tasks
+
+LUT extraction / simulation results
+
+- DRC error
+- LVS
+- comparison RTL method
+
+
+ReducedSlice extraction / simulation results
+
+- route network from interconnect generator
+  - fix complexity of adding blockages in routing grid setup
+    - quadtree?
+  - 
+- move interconnect generator to public repo
+

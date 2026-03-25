@@ -424,6 +424,17 @@ class Layout : public geometry::Manipulable {
       geometry::Instance **to,
       std::vector<geometry::Port*> *to_ports) const;
 
+  geometry::Instance *GetInstance(const std::string &name) const {
+    // O(n) search because I don't think this is worth hosting a separate data
+    // structure for.
+    for (const auto &uniq : instances_) {
+      if (uniq->name() == name) {
+        return uniq.get();
+      }
+    }
+    return nullptr;
+  }
+
   const std::string &NameOrParentName() const;
 
   const std::string &name() const { return name_; }

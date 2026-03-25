@@ -520,7 +520,10 @@ void Layout::AddLayout(const Layout &other,
     }
   }
   for (const auto &instance : other.instances_) {
-    AddInstance(*instance);
+    geometry::Instance *copy = AddInstance(*instance);
+    if (name_prefix != "") {
+      copy->set_name(absl::StrCat(name_prefix, ".", instance->name()));
+    }
   }
   for (auto &entry : other.named_points_) {
     std::string name = entry.first;
