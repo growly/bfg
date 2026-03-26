@@ -1603,9 +1603,10 @@ void LutB::AddClockAndPowerStraps(
   };
 
   // TODO(aryap): Merge into strap info above.
-  static const std::array<std::string, 2> kCircuitOnlyPorts = {"VPB", "VNB"};
-  static const std::array<std::string, 2> kCircuitOnlyPortNets = {
-    "vpwr", "vgnd"};
+  static const std::array<std::string, 4> kCircuitOnlyPorts = {
+    "VPWR", "VGND", "VPB", "VNB"};
+  static const std::array<std::string, 4> kCircuitOnlyPortNets = {
+    "vpwr", "vgnd", "vpwr", "vgnd"};
 
   constexpr int64_t kOffsetNumPitches = 0;
 
@@ -1730,33 +1731,6 @@ void LutB::AddClockAndPowerStraps(
       routing_grid->AddBlockages(new_shapes);
     }
 
-    // At this point we have connected the power/ground/clock ports of all
-    // memories, but we haven't connected the power/ground rails of all the
-    // other instances on the same rows.
-    for (size_t i = 0; i < kStrapInfo.size(); ++i) {
-      const auto &strap_info = kStrapInfo[i];
-      const std::string &port_name = strap_info.port_name;
-
-      std::string net = absl::StrCat(strap_info.net_name, "_", bank);
-      circuit::Signal *signal = circuit->GetOrAddSignal(net, 1);
-
-      for (const auto &row : banks_.at(bank).instances()) {
-        for (geometry::Instance *instance : row) {
-          circuit::Instance *circuit_instance = instance->circuit_instance();
-          if (!circuit_instance) {
-            LOG(WARNING) << "Geometric instance " << instance->name()
-                         << " does not have corresponding circuit instance.";
-            continue;
-          }
-          auto connection = circuit_instance->GetConnection(port_name);
-          if (connection) {
-            continue;
-          }
-          circuit_instance->Connect(port_name, *signal);
-        }
-      }
-    }
-
     // Connect circuit-only ports.
     for (size_t i = 0; i < kCircuitOnlyPorts.size(); ++i) {
       std::string net = absl::StrCat(kCircuitOnlyPortNets[i], "_", bank);
@@ -1767,6 +1741,12 @@ void LutB::AddClockAndPowerStraps(
         for (geometry::Instance *instance : row) {
           circuit::Instance *circuit_instance = instance->circuit_instance();
           if (!circuit_instance) {
+            LOG(WARNING) << "Geometric instance " << instance->name()
+                         << " does not have corresponding circuit instance.";
+            continue;
+          }
+          auto existing = circuit_instance->GetConnection(port_name);
+          if (existing) {
             continue;
           }
           circuit_instance->Connect(port_name, *signal);
