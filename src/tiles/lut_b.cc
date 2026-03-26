@@ -148,7 +148,8 @@ Cell *LutB::Generate() {
     circuit->AddPort(circuit->AddSignal(absl::StrCat("S", i)));
   }
   // Output.
-  circuit->AddPort(circuit->AddSignal("Z"));
+  circuit->AddPort(circuit->AddSignal("MUX"));
+  circuit->AddPort(circuit->AddSignal("Q"));
   // Scan in and out.
   circuit->AddPort(circuit->AddSignal("CONFIG_IN"));
   circuit->AddPort(circuit->AddSignal("CONFIG_OUT"));
