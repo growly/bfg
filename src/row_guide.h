@@ -10,6 +10,12 @@
 
 namespace bfg {
 
+namespace circuit {
+
+class Signal;
+
+}  // namespace circuit
+
 class Cell;
 class Layout;
 class Circuit;
@@ -149,6 +155,10 @@ class RowGuide {
     return generated_taps_;
   }
 
+  std::map<std::string, circuit::Signal*> &default_tap_connections() {
+    return default_tap_connections_;
+  }
+
   DesignDatabase *design_db() const { return design_db_; }
 
  private:
@@ -205,6 +215,8 @@ class RowGuide {
   std::vector<geometry::Instance*> instances_;
 
   std::vector<geometry::Instance*> generated_taps_;
+
+  std::map<std::string, circuit::Signal*> default_tap_connections_;
 
   bool start_with_tap_;
   int64_t num_taps_;

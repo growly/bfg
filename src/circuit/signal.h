@@ -29,6 +29,7 @@ class Signal {
 
 }  // namespace circuit
 
+bool operator==(const circuit::Signal &lhs, const circuit::Signal &rhs);
 std::ostream &operator<<(std::ostream &os, const circuit::Signal &signal);
 
 }  // namespace bfg

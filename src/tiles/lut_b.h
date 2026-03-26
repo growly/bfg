@@ -222,6 +222,9 @@ class LutB : public Tile {
   struct PortKeyAlias {
     PortKey key;
     std::string alias;
+    // If given, use this to find the port centre instead of resolving the
+    // ports first.
+    std::string saved_point;
   };
   // TODO(aryap): This can be replaced with the more generic "PortKey" structs
   // above.

@@ -37,12 +37,23 @@ bool Instance::Disconnect(const std::string &port_name) {
 void Instance::Connect(
     const std::string &port_name, const Signal &signal) {
   auto existing = GetConnection(port_name);
-  LOG_IF(FATAL, existing)
-      << "Instance \"" << name_ << "\" port \"" << port_name
-      << "\" was already connected "
-      << *existing
-      << " when trying to connect to "
-      << signal;
+  if (existing) {
+    if (existing->connection_type() != Connection::ConnectionType::SIGNAL ||
+        *existing->signal() == signal) {
+      LOG(WARNING)
+          << "Instance \"" << name_ << "\" port \"" << port_name
+          << "\" is being reconnected to " << signal;
+    } else {
+      LOG(FATAL)
+          << "Instance \"" << name_ << "\" port \"" << port_name
+          << "\" was already connected "
+          << *existing
+          << " when trying to connect to "
+          << signal;
+    }
+  }
+  LOG(INFO) << "Connecting " << name_ << "." << port_name
+            << " to " << signal;
   Connection connection;
   connection.set_signal(&signal);
   connections_.insert({port_name, connection});

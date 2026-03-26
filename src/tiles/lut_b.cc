@@ -187,6 +187,13 @@ Cell *LutB::Generate() {
                                 bank_arrangement.alternate_rotation,
                                 bank_arrangement.horizontal_alignment));
     MemoryBank &bank = banks_.back();
+    bank.default_tap_connections().insert({
+        tap_params.power_net,
+        circuit->GetOrAddSignal(absl::StrCat("VPWR_", p), 1)});
+    bank.default_tap_connections().insert({
+        tap_params.ground_net,
+        circuit->GetOrAddSignal(absl::StrCat("VGND_", p), 1)});
+
 
     // We now want to assign things to rows and have the memory bank create the
     // row if they don't exist.
@@ -1031,13 +1038,24 @@ void LutB::RouteMuxInputs(
     all_nets.AddAllConnected(memory_ports);
 
     auto existing_net = GetMemoryOutputNet(memory);
+    circuit::Signal *circuit_net;
     if (existing_net) {
       all_nets.Add(existing_net->get());
       route_manager->ConnectToNet({mux_ports}, {*existing_net}, all_nets)
           .IgnoreError();
+      
+      circuit_net = circuit->GetOrAddSignal(existing_net->get().primary(), 1);
     } else {
       route_manager->ConnectMultiplePorts({memory_ports, mux_ports}, all_nets)
           .IgnoreError();
+      memory_output_net_names_[memory] = all_nets;
+
+      circuit_net = circuit->GetOrAddSignal(all_nets.primary(), 1);
+    }
+
+    if (circuit_net) {
+      memory->circuit_instance()->Connect("Q", *circuit_net);
+      mux->circuit_instance()->Connect(input_name, *circuit_net);
     }
 
     auto result = route_manager->Solve();
@@ -1140,10 +1158,10 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
   // FIXME(aryap): s/CLK/CONFIG_CLK && s/APP_CLK/CLK
   // Expect buffer inputs to be on li.drawing, identified by li.pin.
   std::vector<PortKeyAlias> pin_map = {
-    PortKeyAlias {{reg_output_flop_, "port_CLK_centre"}, "APP_CLK"},
-    PortKeyAlias {{buf_order_[0], "port_A_centre"}, "S0"},
-    PortKeyAlias {{buf_order_[1], "port_A_centre"}, "S1"},
-    PortKeyAlias {{scan_order_.front(), "port_D_centre"}, "CONFIG_IN"}
+    PortKeyAlias {{reg_output_flop_, "CLK"}, "APP_CLK", "port_CLK_centre"},
+    PortKeyAlias {{buf_order_[0], "A"}, "S0", "port_A_centre"},
+    PortKeyAlias {{buf_order_[1], "A"}, "S1", "port_A_centre"},
+    PortKeyAlias {{scan_order_.front(), "D"}, "CONFIG_IN", "port_D_centre"}
   };
 
   if (s2_select_mux_) {
@@ -1151,24 +1169,26 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
         << "s2_select_mux_ has been set so add_s2_select_mux should have been "
         << "set";
     pin_map.push_back(
-        PortKeyAlias {{s2_select_mux_, "port_A0_centre_top"}, "S2_A"});
+        PortKeyAlias {{s2_select_mux_, "A0"}, "S2_A", "port_A0_centre_top"});
     pin_map.push_back(
-        PortKeyAlias {{s2_select_mux_, "port_A1_centre_bottom"}, "S2_B"});
+        PortKeyAlias {{s2_select_mux_, "A1"}, "S2_B", "port_A1_centre_bottom"});
     pin_map.push_back(
-        PortKeyAlias {{s2_select_mux_, "port_S_centre_left"}, "S2_S"});
+        PortKeyAlias {{s2_select_mux_, "S"}, "S2_S", "port_S_centre_left"});
   } else {
-    pin_map.push_back(PortKeyAlias {{buf_order_[2], "port_A_centre"}, "S2"});
+    pin_map.push_back(
+        PortKeyAlias {{buf_order_[2], "A"}, "S2", "port_A_centre"});
   }
 
   if (s3_select_mux_) {
     pin_map.push_back(
-        PortKeyAlias {{s3_select_mux_, "port_A0_centre_top"}, "S3_A"});
+        PortKeyAlias {{s3_select_mux_, "A0"}, "S3_A", "port_A0_centre_top"});
     pin_map.push_back(
-        PortKeyAlias {{s3_select_mux_, "port_A1_centre_bottom"}, "S3_B"});
+        PortKeyAlias {{s3_select_mux_, "A1"}, "S3_B", "port_A1_centre_bottom"});
     pin_map.push_back(
-        PortKeyAlias {{s3_select_mux_, "port_S_centre_left"}, "S3_S"});
+        PortKeyAlias {{s3_select_mux_, "S"}, "S3_S", "port_S_centre_left"});
   } else {
-    pin_map.push_back(PortKeyAlias {{buf_order_[3], "port_A_centre"}, "S3"});
+    pin_map.push_back(
+        PortKeyAlias {{buf_order_[3], "A"}, "S3", "port_A_centre"});
   }
 
   if (parameters_.add_third_input_to_output_muxes) {
@@ -1179,7 +1199,7 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
     layout->SetActiveLayerByName("li.pin");
     const std::string &port_name = entry.alias;
     geometry::Point pin_centre =
-        entry.key.instance->GetPointOrDie(entry.key.port_name);
+        entry.key.instance->GetPointOrDie(entry.saved_point);
     geometry::Rectangle *pin = layout->AddSquareAsPort(
         pin_centre,
         db.Rules("mcon.drawing").via_width,
@@ -1196,6 +1216,11 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
     encap->set_net(port_name);
     encap->set_is_connectable(true);
     layout->RestoreLastActiveLayer();
+
+    circuit::Instance *circuit_instance =
+        entry.key.instance->circuit_instance();
+    circuit::Signal *signal = circuit->GetOrAddSignal(port_name, 1);
+    circuit_instance->Connect(entry.key.port_name, *signal);
   }
 }
 
@@ -1370,21 +1395,21 @@ void LutB::AddOutputs(Circuit *circuit, Layout *layout) {
   // Make input/output pins.
   std::vector<PortKeyAlias> pin_map = {
     // Take the output from the final 2:1 mux output (for now).
-    PortKeyAlias {{active_mux2s_[0], "port_X_centre_middle"}, "Z"},
-    PortKeyAlias {{scan_order_.back(), "port_Q_centre"}, "CONFIG_OUT"},
-    PortKeyAlias {{reg_output_flop_, "port_Q_centre"}, "Q"}
+    PortKeyAlias {{active_mux2s_[0], "X"}, "Z", "port_X_centre_middle"},
+    PortKeyAlias {{scan_order_.back(), "Q"}, "CONFIG_OUT", "port_Q_centre"},
+    PortKeyAlias {{reg_output_flop_, "Q"}, "Q", "port_Q_centre"}
   };
   if (aux_comb_output_mux_) {
-    pin_map.push_back({{aux_comb_output_mux_, "port_X_centre_middle"}, "MUX"});
+    pin_map.push_back({{aux_comb_output_mux_, "X"}, "MUX", "port_X_centre_middle"});
   } else {
-    pin_map.push_back({{comb_output_mux_, "port_X_centre_middle"}, "MUX"});
+    pin_map.push_back({{comb_output_mux_, "X"}, "MUX", "port_X_centre_middle"});
   }
 
   for (const auto &entry : pin_map) {
     layout->SetActiveLayerByName("li.pin");
     const std::string &port_name = entry.alias;
     geometry::Point pin_centre =
-        entry.key.instance->GetPointOrDie(entry.key.port_name);
+        entry.key.instance->GetPointOrDie(entry.saved_point);
     geometry::Rectangle *pin = layout->AddSquareAsPort(
         pin_centre,
         db.Rules("mcon.drawing").via_width,
@@ -1400,6 +1425,11 @@ void LutB::AddOutputs(Circuit *circuit, Layout *layout) {
     encap->set_net(port_name);
     encap->set_is_connectable(true);
     layout->RestoreLastActiveLayer();
+
+    circuit::Instance *circuit_instance =
+        entry.key.instance->circuit_instance();
+    circuit::Signal *signal = circuit->GetOrAddSignal(port_name, 1);
+    circuit_instance->Connect(entry.key.port_name, *signal);
   }
 }
 
@@ -1622,7 +1652,7 @@ void LutB::AddClockAndPowerStraps(
       for (const auto &row : banks_.at(bank).instances()) {
         for (geometry::Instance *instance : row) {
           // We only care about the memories:
-          if (std::find( scan_order_.begin(), scan_order_.end(), instance)
+          if (std::find(scan_order_.begin(), scan_order_.end(), instance)
                   == scan_order_.end()) {
             continue;
           }
@@ -1646,6 +1676,9 @@ void LutB::AddClockAndPowerStraps(
           // same name?
           if (circuit_instance) {
             circuit_instance->Connect(port_name, wire);
+          } else {
+            LOG(WARNING) << "Geometric instance " << instance->name()
+                         << " does not have corresponding circuit instance.";
           }
         }
       }
@@ -1694,6 +1727,33 @@ void LutB::AddClockAndPowerStraps(
       }
 
       routing_grid->AddBlockages(new_shapes);
+    }
+
+    // At this point we have connected the power/ground/clock ports of all
+    // memories, but we haven't connected the power/ground rails of all the
+    // other instances on the same rows.
+    for (size_t i = 0; i < kStrapInfo.size(); ++i) {
+      const auto &strap_info = kStrapInfo[i];
+      const std::string &port_name = strap_info.port_name;
+
+      std::string net = absl::StrCat(strap_info.net_name, "_", bank);
+      circuit::Signal *signal = circuit->GetOrAddSignal(net, 1);
+
+      for (const auto &row : banks_.at(bank).instances()) {
+        for (geometry::Instance *instance : row) {
+          circuit::Instance *circuit_instance = instance->circuit_instance();
+          if (!circuit_instance) {
+            LOG(WARNING) << "Geometric instance " << instance->name()
+                         << " does not have corresponding circuit instance.";
+            continue;
+          }
+          auto connection = circuit_instance->GetConnection(port_name);
+          if (connection) {
+            continue;
+          }
+          circuit_instance->Connect(port_name, *signal);
+        }
+      }
     }
 
     // Connect circuit-only ports.

@@ -7,6 +7,7 @@
 #include "geometry/rectangle.h"
 #include "geometry/point.h"
 #include "layout.h"
+#include "circuit.h"
 
 namespace bfg {
 
@@ -60,6 +61,10 @@ RowGuide &MemoryBank::Row(size_t index) {
         layout_,
         circuit_,
         design_db_);
+    // Copy in default tap-cell connections.
+    row.default_tap_connections().insert(
+        default_tap_connections_.begin(),
+        default_tap_connections_.end());
 
     // There is also a corresponding vector of instances for each row.
     instances_.emplace_back();

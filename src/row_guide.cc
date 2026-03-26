@@ -7,6 +7,7 @@
 #include "geometry/instance.h"
 #include "geometry/point.h"
 #include "row_guide.h"
+#include "circuit.h"
 #include "design_database.h"
 
 namespace bfg {
@@ -135,8 +136,11 @@ geometry::Instance *RowGuide::AddTap() {
   // This is the local count (for this object).
   num_taps_++;
   
-  MakeCircuitInstance(
+  circuit::Instance *circuit_instance = MakeCircuitInstance(
       layout_instance->name(), layout_instance, tap_cell_->get().circuit());
+  for (const auto &entry : default_tap_connections_) {
+    circuit_instance->Connect(entry.first, *entry.second);
+  }
 
   generated_taps_.push_back(layout_instance);
 

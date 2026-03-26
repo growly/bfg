@@ -16,6 +16,12 @@
 
 namespace bfg {
 
+namespace circuit {
+
+class Signal;
+
+}  // namespace circuit
+
 // MemoryBank abstracts a collection of rows that together provide a
 // 2-dimensional structure for placing instances of geometry. MemoryBank isn't
 // really about memory, though it's useful for memory. We merely wrap a
@@ -125,6 +131,10 @@ class MemoryBank {
   }
   const std::vector<RowGuide> &rows() const { return rows_; }
 
+  std::map<std::string, circuit::Signal*> &default_tap_connections() {
+    return default_tap_connections_;
+  }
+
  private:
   void FixAlignments();
   void EnsureVerticalAbutment();
@@ -177,6 +187,8 @@ class MemoryBank {
   bool rotate_first_row_;
 
   std::optional<geometry::Compass> horizontal_alignment_;
+
+  std::map<std::string, circuit::Signal*> default_tap_connections_;
 };
 
 }  // namespace bfg
