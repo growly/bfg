@@ -30,12 +30,17 @@ bfg::Cell *Sky130Tap::Generate() {
 bfg::Circuit *Sky130Tap::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
-  // TODO(aryap): What is the tap circuit...?
+  // TODO(aryap): What is the SPICE model of the tap circuit...?
 
   circuit::Wire power_wire = circuit->AddSignal(parameters_.power_net);
   circuit::Wire ground_wire = circuit->AddSignal(parameters_.ground_net);
+  circuit::Wire p_substrate = circuit->AddSignal("VPB");
+  circuit::Wire n_substrate = circuit->AddSignal("VNB");
+
   circuit->AddPort(power_wire);
   circuit->AddPort(ground_wire);
+  circuit->AddPort(p_substrate);
+  circuit->AddPort(n_substrate);
 
   return circuit.release();
 }
