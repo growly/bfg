@@ -501,6 +501,9 @@ Cell *Sky130Decap::Make(const std::optional<Parameters> &base_params,
   return cell;
 }
 
+// TODO(aryap): We need a version of this function that uses the MemoryBank as
+// its interface, since MemoryBanks also track instances and this current way
+// they can't.
 void Sky130Decap::FillDecapsRight(const std::optional<Parameters> &base_params,
                                   int64_t span,
                                   RowGuide *row) {

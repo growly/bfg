@@ -187,6 +187,9 @@ Cell *LutB::Generate() {
                                 // Rotate the first row.
                                 bank_arrangement.alternate_rotation,
                                 bank_arrangement.horizontal_alignment));
+    // TODO(aryap): These are a little different from default connections to
+    // any and all newly minted instances, but not by much. Maybe a similar but
+    // separate facility?
     MemoryBank &bank = banks_.back();
     bank.default_tap_connections().insert({
         tap_params.power_net,
@@ -1743,8 +1746,8 @@ void LutB::AddClockAndPowerStraps(
       circuit::Signal *signal = circuit->GetOrAddSignal(net, 1);
       const std::string &port_name = kCircuitOnlyPorts[i];
       
-      for (const auto &row : banks_.at(bank).instances()) {
-        for (geometry::Instance *instance : row) {
+      for (const auto &row : banks_.at(bank).rows()) {
+        for (geometry::Instance *instance : row.instances()) {
           circuit::Instance *circuit_instance = instance->circuit_instance();
           if (!circuit_instance) {
             LOG(WARNING) << "Geometric instance " << instance->name()
