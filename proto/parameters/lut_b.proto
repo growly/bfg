@@ -4,4 +4,7 @@ package bfg.proto.parameters;
 
 message LutB {
   optional uint32 lut_size = 1;
+  optional bool add_s2_input_mux = 11;
+  optional bool add_s3_input_mux = 12;
+  optional bool add_third_input_to_output_muxes = 13;
 }

@@ -40,11 +40,24 @@ namespace tiles {
 
 void LutB::Parameters::ToProto(proto::parameters::LutB *pb) const {
   pb->set_lut_size(lut_size);
+  pb->set_add_s2_input_mux(add_s2_input_mux);
+  pb->set_add_s3_input_mux(add_s3_input_mux);
+  pb->set_add_third_input_to_output_muxes(
+      add_third_input_to_output_muxes);
 }
 
 void LutB::Parameters::FromProto(const proto::parameters::LutB &pb) {
   if (pb.has_lut_size()) {
     lut_size = pb.lut_size();
+  }
+  if (pb.has_add_s2_input_mux()) {
+    add_s2_input_mux = pb.add_s2_input_mux();
+  }
+  if (pb.has_add_s3_input_mux()) {
+    add_s3_input_mux = pb.add_s3_input_mux();
+  }
+  if (pb.has_add_third_input_to_output_muxes()) {
+    add_third_input_to_output_muxes = pb.add_third_input_to_output_muxes();
   }
 }
 

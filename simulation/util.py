@@ -3,7 +3,12 @@ import hdl21 as h
 
 def scale_params(module: h.Module):
     SCALE = 1E6
-    for name, instance in module.instances.items():
-        for param, value in instance.of.params.items():
+
+    if 'params' in module.__dict__:
+        for param, value in module.params.items():
             new_value = (value * SCALE).scale(m)
-            instance.of.params[param] = new_value
+            module.params[param] = new_value
+
+    if 'instances' in module.__dict__:
+        for name, instance in module.instances.items():
+            scale_params(instance.of)
