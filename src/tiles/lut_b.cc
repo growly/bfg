@@ -194,6 +194,12 @@ Cell *LutB::Generate() {
     bank.default_tap_connections().insert({
         tap_params.ground_net,
         circuit->GetOrAddSignal(absl::StrCat("VGND_", p), 1)});
+    bank.default_tap_connections().insert({
+        "VPB",
+        circuit->GetOrAddSignal(absl::StrCat("VPWR_", p), 1)});
+    bank.default_tap_connections().insert({
+        "VNB",
+        circuit->GetOrAddSignal(absl::StrCat("VGND_", p), 1)});
 
 
     // We now want to assign things to rows and have the memory bank create the

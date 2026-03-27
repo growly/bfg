@@ -111,14 +111,14 @@ bfg::Cell *Sky130Decap::Generate() {
   //     /     /  VPWR/VDD
   //     |_   _|
   //   d  |___|  s
-  //       ___    pfet_0
+  //       ___    pfet
   //        o
   //        |
   //        V     VGND/VSS
   //
   //        /     VPWR/VDD
   //       _|_
-  //       ___    nfet_0
+  //       ___    nfet
   //   d _|   |_ s
   //     |     |
   //     V     V  VGND/VSS
@@ -132,7 +132,30 @@ bfg::Cell *Sky130Decap::Generate() {
 
 bfg::Circuit *Sky130Decap::GenerateCircuit() {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
-  // TODO(aryap): This.
+
+  circuit::Wire power = circuit->AddSignal(parameters_.power_net);
+  circuit::Wire ground = circuit->AddSignal(parameters_.ground_net);
+  circuit->AddPort(power);
+  circuit->AddPort(ground);
+
+  circuit::Wire p_substrate = circuit->AddSignal("VPB");
+  circuit::Wire n_substrate = circuit->AddSignal("VNB");
+  circuit->AddPort(p_substrate);
+  circuit->AddPort(n_substrate);
+
+  Circuit *nfet_01v8 = design_db_->FindCellOrDie(
+      "sky130", "sky130_fd_pr__nfet_01v8")->circuit();
+  circuit::Instance *nfet = circuit->AddInstance("nfet", nfet_01v8);
+  nfet->Connect(
+      {{"d", ground}, {"g", power}, {"s", ground}, {"b", n_substrate}});
+
+  // These are all sky130_fd_pr__pfet_01v8_hvt:
+  Circuit *pfet_01v8_hvt = design_db_->FindCellOrDie(
+      "sky130", "sky130_fd_pr__pfet_01v8_hvt")->circuit();
+  circuit::Instance *pfet = circuit->AddInstance("pfet", pfet_01v8_hvt);
+  pfet->Connect(
+      {{"d", power}, {"g", ground}, {"s", power}, {"b", p_substrate}});
+
   return circuit.release();
 }
 
