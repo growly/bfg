@@ -1683,10 +1683,12 @@ void LutB::AddClockAndPowerStraps(
           std::vector<geometry::Port*> ports;
           instance->GetInstancePorts(port_name, &ports);
 
-          LOG(INFO) << instance->name() << "/" << port_name << ": " << absl::StrJoin(
-              ports, ", ", [](std::string *out, geometry::Port *port) {
-                  *out = port->centre().Describe();
-              });
+          LOG(INFO)
+              << instance->name() << "/" << port_name << ": "
+              << absl::StrJoin(
+                  ports, ", ", [](std::string *out, geometry::Port *port) {
+                      *out = port->centre().Describe();
+                  });
                       
 
           for (geometry::Port *port : ports) {
