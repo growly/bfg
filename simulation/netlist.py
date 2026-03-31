@@ -39,16 +39,24 @@ def main():
     #)
 
     in_file_name = sys.argv[1] if len(sys.argv) > 1 else '../build/package.pb'
-    out_file_name = 'package.sp'
+    out_file_name = sys.argv[2] if len(sys.argv) > 2 else 'package.sp'
+    spice_type = sys.argv[3] if len(sys.argv) > 3 else 'spice'
 
     package_pb = circuit_pb.Package()
     with open(in_file_name, 'rb') as in_file:
       package_pb.ParseFromString(in_file.read())
+
     with open(out_file_name, 'w') as out_file:
-      #netlister = SpectreNetlister(out_file)
-      #netlister = NgspiceNetlister(out_file)
-      netlister = SpiceNetlister(out_file)
-      #netlister = XyceNetlister(out_file)
+      if spice_type == 'spectre':
+        netlister = SpectreNetlister(out_file)
+      elif spice_type == 'ngspice':
+        netlister = NgspiceNetlister(out_file)
+      elif spice_type == 'spice':
+        netlister = SpiceNetlister(out_file)
+      elif spice_type == 'xyce':
+        netlister = XyceNetlister(out_file)
+      else:
+        print('no usable spice type specified')
       netlister.write_package(package_pb)
     
 
