@@ -56,6 +56,9 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit->AddPort(D);
   circuit->AddPort(CLK);
 
+  // FIXME(aryap): If there is an input 'CLK' port owing to the input clock
+  // buffer, we must use a different internal node for 'clk', since a
+  // case-insensitive spice sim will not differentiate them.
   if (!parameters_.input_clock_buffer) {
     circuit->AddPort(CLKI);
   }
@@ -903,11 +906,11 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   //Point pin_Q_alt_centre = Point((5590 + 5760)/2, 2720 - 510);
   //layout->SavePoint("port_Q_alt_centre", pin_Q_alt_centre);
 
-  // TODO(aryap): We also have to add a port for Q-bar, QI, complemented Q,
-  // whatever you want to call it. This is scary because it might need to be
-  // buffered. But we can always add a buffer? Also, it would be nice if the
-  // port didn't share a vertical or horizontal metal track with any other
-  // ports to simplify routing later.
+  // TODO(aryap): Adding a port for Q-bar, QI, complemented Q, whatever you
+  // want to call it, is scary because it might need to be buffered. But we can
+  // always add a buffer? Also, it would be nice if the port didn't share a
+  // vertical or horizontal metal track with any other ports to simplify
+  // routing later.
   Point offset_from_oem_Q = {-340, 680};
   //Point offset_from_oem_Q = {-2 * 340, 5 * 340};
   geometry::Rectangle pin_QI_stencil = *pin_Q;

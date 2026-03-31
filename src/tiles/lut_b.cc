@@ -147,6 +147,8 @@ Cell *LutB::Generate() {
     }
     circuit->AddPort(circuit->AddSignal(absl::StrCat("S", i)));
   }
+  // Bypass input.
+  circuit->AddPort(circuit->AddSignal("X"));
   // Output.
   circuit->AddPort(circuit->AddSignal("MUX"));
   circuit->AddPort(circuit->AddSignal("Q"));
@@ -1171,7 +1173,7 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
     PortKeyAlias {{reg_output_flop_, "CLK"}, "APP_CLK", "port_CLK_centre"},
     PortKeyAlias {{buf_order_[0], "A"}, "S0", "port_A_centre"},
     PortKeyAlias {{buf_order_[1], "A"}, "S1", "port_A_centre"},
-    PortKeyAlias {{scan_order_.front(), "D"}, "CONFIG_IN", "port_D_centre"}
+    PortKeyAlias {{scan_order_.front(), "D"}, "CONFIG_IN", "port_D_centre"},
   };
 
   if (s2_select_mux_) {
@@ -1359,6 +1361,10 @@ void LutB::RouteOutputs(
 
     route_manager.ConnectMultiplePorts(port_sets, net).IgnoreError();
     route_manager.Solve().IgnoreError();
+
+    // FIXME(aryap): We need to add ports in the layout for:
+    //  PortKeyAlias {{comb_output_mux_, "A1"}, "X", "port_A1_centre_top"},
+    //  PortKeyAlias {{reg_output_mux_, "A1"}, "X", "port_A1_centre_top"},
 
     // If any of these ports is already connected, we have to reuse the signal.
     // If more than one is already connected, we have to replace one signal with
