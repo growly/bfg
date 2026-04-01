@@ -1056,6 +1056,9 @@ void LutB::RouteMuxInputs(
     geometry::Instance *mux = auto_connection.target_mux;
     const std::string &input_name = auto_connection.mux_port_name;
 
+    LOG(INFO) << "Mux order: " << memory->name() << " -> "
+              << mux->name() << "." << input_name;
+
     std::set<geometry::Port*> memory_ports = memory->GetInstancePorts("Q");
     std::set<geometry::Port*> mux_ports = mux->GetInstancePorts(input_name);
     EquivalentNets all_nets;
