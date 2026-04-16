@@ -1,0 +1,1146 @@
+{
+  "creator": "Yosys 0.62 (git sha1 7326bb7d6641500ecb285c291a54a662cb1e76cf, clang++ 21.1.2 -fPIC -O3)",
+  "modules": {
+    "clb": {
+      "attributes": {
+        "hdlname": "clb",
+        "dynports": "00000000000000000000000000000001",
+        "top": "00000000000000000000000000000001",
+        "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:1.1-59.10"
+      },
+      "parameter_default_values": {
+        "CONFIG_WIDTH": "00000000000000000000000000000001",
+        "INPUTS": "00000000000000000000000000000100",
+        "MEM_SIZE": "00000000000000000000000000010000"
+      },
+      "ports": {
+        "clk": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "addr": {
+          "direction": "input",
+          "bits": [ 3, 4, 5, 6 ]
+        },
+        "x": {
+          "direction": "input",
+          "bits": [ 7 ]
+        },
+        "mux": {
+          "direction": "output",
+          "bits": [ 8 ]
+        },
+        "q": {
+          "direction": "output",
+          "bits": [ 9 ]
+        },
+        "scan_clk": {
+          "direction": "input",
+          "bits": [ 10 ]
+        },
+        "scan_en": {
+          "direction": "input",
+          "bits": [ 11 ]
+        },
+        "scan_in": {
+          "direction": "input",
+          "bits": [ 12 ]
+        },
+        "scan_out": {
+          "direction": "output",
+          "bits": [ 13 ]
+        }
+      },
+      "cells": {
+        "$procdff$61": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 14 ],
+            "Q": [ 15 ]
+          }
+        },
+        "$procdff$62": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 16 ],
+            "Q": [ 17 ]
+          }
+        },
+        "$procdff$63": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 18 ],
+            "Q": [ 19 ]
+          }
+        },
+        "$procdff$64": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 20 ],
+            "Q": [ 21 ]
+          }
+        },
+        "$procdff$65": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 22 ],
+            "Q": [ 23 ]
+          }
+        },
+        "$procdff$66": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 24 ],
+            "Q": [ 25 ]
+          }
+        },
+        "$procdff$67": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 26 ],
+            "Q": [ 27 ]
+          }
+        },
+        "$procdff$68": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 28 ],
+            "Q": [ 29 ]
+          }
+        },
+        "$procdff$69": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 30 ],
+            "Q": [ 31 ]
+          }
+        },
+        "$procdff$70": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 32 ],
+            "Q": [ 33 ]
+          }
+        },
+        "$procdff$71": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 34 ],
+            "Q": [ 35 ]
+          }
+        },
+        "$procdff$72": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 36 ],
+            "Q": [ 37 ]
+          }
+        },
+        "$procdff$73": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 38 ],
+            "Q": [ 39 ]
+          }
+        },
+        "$procdff$74": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 40 ],
+            "Q": [ 41 ]
+          }
+        },
+        "$procdff$75": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 42 ],
+            "Q": [ 43 ]
+          }
+        },
+        "$procdff$76": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:51.1-57.4"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 44 ],
+            "Q": [ 45 ]
+          }
+        },
+        "$procdff$77": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:51.1-57.4"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 46 ],
+            "Q": [ 47 ]
+          }
+        },
+        "$procdff$78": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:51.1-57.4"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 10 ],
+            "D": [ 48 ],
+            "Q": [ 13 ]
+          }
+        },
+        "$procdff$79": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:29.1-31.4"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 2 ],
+            "D": [ 49 ],
+            "Q": [ 9 ]
+          }
+        },
+        "$procmux$25": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 15 ],
+            "B": [ 17 ],
+            "S": [ 11 ],
+            "Y": [ 14 ]
+          }
+        },
+        "$procmux$27": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 17 ],
+            "B": [ 19 ],
+            "S": [ 11 ],
+            "Y": [ 16 ]
+          }
+        },
+        "$procmux$29": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 19 ],
+            "B": [ 21 ],
+            "S": [ 11 ],
+            "Y": [ 18 ]
+          }
+        },
+        "$procmux$31": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 21 ],
+            "B": [ 23 ],
+            "S": [ 11 ],
+            "Y": [ 20 ]
+          }
+        },
+        "$procmux$33": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 23 ],
+            "B": [ 25 ],
+            "S": [ 11 ],
+            "Y": [ 22 ]
+          }
+        },
+        "$procmux$35": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 25 ],
+            "B": [ 27 ],
+            "S": [ 11 ],
+            "Y": [ 24 ]
+          }
+        },
+        "$procmux$37": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 27 ],
+            "B": [ 29 ],
+            "S": [ 11 ],
+            "Y": [ 26 ]
+          }
+        },
+        "$procmux$39": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 29 ],
+            "B": [ 31 ],
+            "S": [ 11 ],
+            "Y": [ 28 ]
+          }
+        },
+        "$procmux$41": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 31 ],
+            "B": [ 33 ],
+            "S": [ 11 ],
+            "Y": [ 30 ]
+          }
+        },
+        "$procmux$43": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 33 ],
+            "B": [ 35 ],
+            "S": [ 11 ],
+            "Y": [ 32 ]
+          }
+        },
+        "$procmux$45": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 35 ],
+            "B": [ 37 ],
+            "S": [ 11 ],
+            "Y": [ 34 ]
+          }
+        },
+        "$procmux$47": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 37 ],
+            "B": [ 39 ],
+            "S": [ 11 ],
+            "Y": [ 36 ]
+          }
+        },
+        "$procmux$49": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 39 ],
+            "B": [ 41 ],
+            "S": [ 11 ],
+            "Y": [ 38 ]
+          }
+        },
+        "$procmux$51": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 41 ],
+            "B": [ 43 ],
+            "S": [ 11 ],
+            "Y": [ 40 ]
+          }
+        },
+        "$procmux$53": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.17-44.24|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:44.13-46.16"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 43 ],
+            "B": [ 47 ],
+            "S": [ 11 ],
+            "Y": [ 42 ]
+          }
+        },
+        "$procmux$55": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:52.9-52.16|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:52.5-56.8"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 13 ],
+            "B": [ 15 ],
+            "S": [ 11 ],
+            "Y": [ 48 ]
+          }
+        },
+        "$procmux$57": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:52.9-52.16|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:52.5-56.8"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 47 ],
+            "B": [ 45 ],
+            "S": [ 11 ],
+            "Y": [ 46 ]
+          }
+        },
+        "$procmux$59": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:52.9-52.16|/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:52.5-56.8"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 45 ],
+            "B": [ 12 ],
+            "S": [ 11 ],
+            "Y": [ 44 ]
+          }
+        },
+        "$shiftx$/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:27$1": {
+          "hide_name": 1,
+          "type": "$shiftx",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000010000",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000100",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:27.13-27.19"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 47, 43, 41, 39, 37, 35, 33, 31, 29, 27, 25, 23, 21, 19, 17, 15 ],
+            "B": [ 3, 4, 5, 6 ],
+            "Y": [ 50 ]
+          }
+        },
+        "$ternary$/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:30$3": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:30.12-30.29"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 50 ],
+            "B": [ 7 ],
+            "S": [ 45 ],
+            "Y": [ 49 ]
+          }
+        },
+        "$ternary$/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:33$4": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:33.14-33.33"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 50 ],
+            "B": [ 7 ],
+            "S": [ 13 ],
+            "Y": [ 8 ]
+          }
+        }
+      },
+      "netnames": {
+        "$0\\mem[0:0]": {
+          "hide_name": 1,
+          "bits": [ 46 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:51.1-57.4"
+          }
+        },
+        "$0\\mem[10:10]": {
+          "hide_name": 1,
+          "bits": [ 24 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[11:11]": {
+          "hide_name": 1,
+          "bits": [ 22 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[12:12]": {
+          "hide_name": 1,
+          "bits": [ 20 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[13:13]": {
+          "hide_name": 1,
+          "bits": [ 18 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[14:14]": {
+          "hide_name": 1,
+          "bits": [ 16 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[15:15]": {
+          "hide_name": 1,
+          "bits": [ 14 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[1:1]": {
+          "hide_name": 1,
+          "bits": [ 42 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[2:2]": {
+          "hide_name": 1,
+          "bits": [ 40 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[3:3]": {
+          "hide_name": 1,
+          "bits": [ 38 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[4:4]": {
+          "hide_name": 1,
+          "bits": [ 36 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[5:5]": {
+          "hide_name": 1,
+          "bits": [ 34 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[6:6]": {
+          "hide_name": 1,
+          "bits": [ 32 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[7:7]": {
+          "hide_name": 1,
+          "bits": [ 30 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[8:8]": {
+          "hide_name": 1,
+          "bits": [ 28 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mem[9:9]": {
+          "hide_name": 1,
+          "bits": [ 26 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:43.9-47.12"
+          }
+        },
+        "$0\\mux_control[0:0]": {
+          "hide_name": 1,
+          "bits": [ 48 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:51.1-57.4"
+          }
+        },
+        "$0\\q_control[0:0]": {
+          "hide_name": 1,
+          "bits": [ 44 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:51.1-57.4"
+          }
+        },
+        "$0\\q_reg[0:0]": {
+          "hide_name": 1,
+          "bits": [ 49 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:29.1-31.4"
+          }
+        },
+        "addr": {
+          "hide_name": 0,
+          "bits": [ 3, 4, 5, 6 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:6.24-6.28"
+          }
+        },
+        "clk": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:5.11-5.14"
+          }
+        },
+        "mem": {
+          "hide_name": 0,
+          "bits": [ 47, 43, 41, 39, 37, 35, 33, 31, 29, 27, 25, 23, 21, 19, 17, 15 ],
+          "attributes": {
+            "init": "0000000000000000",
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:22.20-22.23"
+          }
+        },
+        "mux": {
+          "hide_name": 0,
+          "bits": [ 8 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:10.12-10.15"
+          }
+        },
+        "q": {
+          "hide_name": 0,
+          "bits": [ 9 ],
+          "attributes": {
+            "init": "0",
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:11.12-11.13"
+          }
+        },
+        "q_control": {
+          "hide_name": 0,
+          "bits": [ 45 ],
+          "attributes": {
+            "init": "0",
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:21.5-21.14"
+          }
+        },
+        "scan_clk": {
+          "hide_name": 0,
+          "bits": [ 10 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:14.11-14.19"
+          }
+        },
+        "scan_en": {
+          "hide_name": 0,
+          "bits": [ 11 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:15.11-15.18"
+          }
+        },
+        "scan_in": {
+          "hide_name": 0,
+          "bits": [ 12 ],
+          "attributes": {
+            "single_bit_vector": "00000000000000000000000000000001",
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:16.30-16.37"
+          }
+        },
+        "scan_out": {
+          "hide_name": 0,
+          "bits": [ 13 ],
+          "attributes": {
+            "init": "0",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:17.31-17.39"
+          }
+        },
+        "x": {
+          "hide_name": 0,
+          "bits": [ 7 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:8.11-8.12"
+          }
+        },
+        "z": {
+          "hide_name": 0,
+          "bits": [ 50 ],
+          "attributes": {
+            "src": "/home/arya/src/OpenLane/designs/bfg_clb/src/clb.v:27.6-27.7"
+          }
+        }
+      }
+    }
+  }
+}
