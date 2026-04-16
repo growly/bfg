@@ -5,37 +5,37 @@ Copyright (C) 1989-2020 Cadence Design Systems, Inc. All rights reserved worldwi
 
 Includes RSA BSAFE(R) Cryptographic or Security Protocol Software from RSA Security, Inc.
 
-User: aryap   Host: eda-1.EECS.Berkeley.EDU   HostID: 2080902A   PID: 3888151
-Memory  available: 405.3895 GB  physical: 810.7755 GB
+User: aryap   Host: eda-1.EECS.Berkeley.EDU   HostID: 2080902A   PID: 3348796
+Memory  available: 309.5177 GB  physical: 810.7755 GB
 Linux   : Red Hat Enterprise Linux release 8.10 (Ootpa)
 CPU Type: AMD EPYC 9454 48-Core Processor
         Socket: Processors [Frequency] (Hyperthreaded Processor)
-        0:       0 [2360.5] (),  1 [1500.0] (),  2 [2894.5] (),  3 [1500.0] (),  4 [1500.0] ()
-                 5 [1500.0] (),  6 [1500.0] (),  7 [1500.0] (),  8 [2120.4] (),  9 [1500.0] ()
+        0:       0 [1500.0] (),  1 [1500.0] (),  2 [1500.0] (),  3 [1500.0] (),  4 [1500.0] ()
+                 5 [1500.0] (),  6 [3799.8] (),  7 [1500.0] (),  8 [1500.0] (),  9 [1500.0] ()
                 10 [1500.0] (), 11 [1500.0] (), 12 [1500.0] (), 13 [1500.0] (), 14 [1500.0] ()
-                15 [1500.0] (), 16 [1500.0] (), 17 [1500.0] (), 18 [1500.0] (), 19 [2814.8] ()
-                20 [1500.0] (), 21 [1500.0] (), 22 [2100.0] (), 23 [1500.0] (), 24 [1500.0] ()
+                15 [1500.0] (), 16 [1500.0] (), 17 [1500.0] (), 18 [1500.0] (), 19 [1500.0] ()
+                20 [1500.0] (), 21 [1500.0] (), 22 [1500.0] (), 23 [1500.0] (), 24 [1500.0] ()
                 25 [1500.0] (), 26 [1500.0] (), 27 [1500.0] (), 28 [1500.0] (), 29 [1500.0] ()
                 30 [1500.0] (), 31 [1500.0] (), 32 [1500.0] (), 33 [1500.0] (), 34 [1500.0] ()
-                35 [1500.0] (), 36 [1500.0] (), 37 [1500.0] (), 38 [3799.8] (), 39 [1500.0] ()
-                40 [1500.0] (), 41 [1500.0] (), 42 [1500.0] (), 43 [1500.0] (), 44 [1500.0] ()
+                35 [1500.0] (), 36 [3799.9] (), 37 [1500.0] (), 38 [1500.0] (), 39 [1500.0] ()
+                40 [2750.0] (), 41 [1500.0] (), 42 [3799.8] (), 43 [1500.0] (), 44 [1500.0] ()
                 45 [1500.0] (), 46 [1500.0] (), 47 [1500.0] (), 48 [1500.0] (), 49 [1500.0] ()
-                50 [2750.0] (), 51 [1500.0] (), 52 [1500.0] (), 53 [1500.0] (), 54 [1500.0] ()
-                55 [1500.0] (), 56 [1500.0] (), 57 [1577.4] (), 58 [1500.0] (), 59 [1500.0] ()
-                60 [1500.0] (), 61 [1500.0] (), 62 [1500.0] (), 63 [1500.0] (), 64 [1500.0] ()
+                50 [1500.0] (), 51 [1500.0] (), 52 [1500.0] (), 53 [1500.0] (), 54 [1500.0] ()
+                55 [1500.0] (), 56 [1500.0] (), 57 [1500.0] (), 58 [1500.0] (), 59 [1500.0] ()
+                60 [1499.8] (), 61 [1500.0] (), 62 [1500.0] (), 63 [1500.0] (), 64 [1500.0] ()
                 65 [1500.0] (), 66 [1500.0] (), 67 [1500.0] (), 68 [1500.0] (), 69 [1500.0] ()
-                70 [1500.0] (), 71 [1500.0] (), 72 [1500.0] (), 73 [1500.0] (), 74 [1500.0] ()
-                75 [1500.0] (), 76 [1500.0] (), 77 [1500.0] (), 78 [3799.9] (), 79 [1500.0] ()
-                80 [2830.1] (), 81 [1500.0] (), 82 [1500.0] (), 83 [1500.0] (), 84 [1500.0] ()
+                70 [1500.0] (), 71 [1500.0] (), 72 [3799.8] (), 73 [1500.0] (), 74 [1500.0] ()
+                75 [1500.0] (), 76 [1500.0] (), 77 [1500.0] (), 78 [1500.0] (), 79 [1500.0] ()
+                80 [1500.0] (), 81 [1500.0] (), 82 [1500.0] (), 83 [1500.0] (), 84 [1500.0] ()
                 85 [1500.0] (), 86 [1500.0] (), 87 [1500.0] (), 88 [1500.0] (), 89 [1500.0] ()
                 90 [1500.0] (), 91 [1500.0] (), 92 [1500.0] (), 93 [1500.0] (), 94 [1500.0] ()
                 95 [1500.0] ()
         
-System load averages (1min, 5min, 15min) : 6.3 %, 6.6 %, 6.4 %
+System load averages (1min, 5min, 15min) : 9.6 %, 8.5 %, 7.8 %
 Hyperthreading is enabled
 
 
-Simulating `lut_test.sp' on eda-1.EECS.Berkeley.EDU at 3:58:34 PM, Mon Apr 13, 2026 (process id: 3888151).
+Simulating `lut_test.sp' on eda-1.EECS.Berkeley.EDU at 1:13:54 PM, Thur Apr 16, 2026 (process id: 3348796).
 Current working directory: /scratch/aryap/chipyard/vlsi/manual
 Command line:
     /share/instsww/cadence/LIBERATE/tools.lnx86/bin/spectre -64  \
@@ -240,19 +240,20 @@ Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nf
 Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_nvt/sky130_fd_pr__nfet_20v0_nvt__parasitic__diode_ps2dn.model.spice
 Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_scl_9T_0.0.5/cdl/sky130_scl_9T.cdl
 Reading file:  /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/par-rundir/clb.lvs.sp
-Time for NDB Parsing: CPU = 484.196 ms, elapsed = 965.128 ms.
-Time accumulated: CPU = 543.135 ms, elapsed = 965.135 ms.
-Peak resident memory used = 122 Mbytes.
+Reading file:  /scratch/aryap/chipyard/vlsi/manual/scan_data.sp
+Time for NDB Parsing: CPU = 496.161 ms, elapsed = 990.312 ms.
+Time accumulated: CPU = 570.152 ms, elapsed = 990.319 ms.
+Peak resident memory used = 124 Mbytes.
 
-Time for Elaboration: CPU = 207.677 ms, elapsed = 209.262 ms.
-Time accumulated: CPU = 750.959 ms, elapsed = 1.17454 s.
-Peak resident memory used = 140 Mbytes.
+Time for Elaboration: CPU = 197.893 ms, elapsed = 200.496 ms.
+Time accumulated: CPU = 768.201 ms, elapsed = 1.19097 s.
+Peak resident memory used = 142 Mbytes.
 
 Loading /share/instsww/cadence/LIBERATE/tools.lnx86/spectre/lib/64bit/mdl/libSpectreEH_sh.so ...
 
-Time for EDB Visiting: CPU = 52.976 ms, elapsed = 54.785 ms.
-Time accumulated: CPU = 804.075 ms, elapsed = 1.22947 s.
-Peak resident memory used = 160 Mbytes.
+Time for EDB Visiting: CPU = 52.95 ms, elapsed = 55.7032 ms.
+Time accumulated: CPU = 821.292 ms, elapsed = 1.24681 s.
+Peak resident memory used = 161 Mbytes.
 
 
 Notice from spectre during topology check.
@@ -277,9 +278,9 @@ Output statements:
            .measure 16    
                save 0     
 
-Time for parsing: CPU = 26.308 ms, elapsed = 28.0221 ms.
-Time accumulated: CPU = 830.482 ms, elapsed = 1.25759 s.
-Peak resident memory used = 164 Mbytes.
+Time for parsing: CPU = 26.932 ms, elapsed = 28.4412 ms.
+Time accumulated: CPU = 848.337 ms, elapsed = 1.27537 s.
+Peak resident memory used = 166 Mbytes.
 
 ~~~~~~~~~~~~~~~~~~~~~~
 Pre-Simulation Summary
@@ -296,7 +297,7 @@ Notice from spectre during IC analysis, during transient analysis `timeSweep'.
         Use the `gmin_check' option to eliminate or expand this report.
     Bad pivoting is found during DC analysis. Option dc_pivot_check=yes is recommended for possible improvement of convergence.
 
-DC simulation time: CPU = 78.621 ms, elapsed = 78.9731 ms.
+DC simulation time: CPU = 77.511 ms, elapsed = 77.852 ms.
 
 Opening the PSFXL file lut_test.raw/timeSweep.tran.tran ...
 Important parameter values:
@@ -344,24 +345,13 @@ Notice from spectre at time = 1.23017 ns during transient analysis `timeSweep'.
 Notice from spectre at time = 1.24599 ns during transient analysis `timeSweep'.
     Found trapezoidal ringing on node xtop.xlut.XFE_OFC1_scan_out_0.Mmn1.msky130_fd_pr__nfet_01v8:int_b.
 
-................
+...............
 
-Notice from spectre at time = 5.5 ns during transient analysis `timeSweep'.
-    Found trapezoidal ringing on node xtop.xlut.Xmux_control_reg.Mmn40.msky130_fd_pr__nfet_01v8:int_b.
+Notice from spectre at time = 5.22222 ns during transient analysis `timeSweep'.
+    Found trapezoidal ringing on node xtop.xlut.Xmem_reg[3].Mmp57.msky130_fd_pr__pfet_01v8:int_b.
         Further occurrences of this notice will be suppressed.
 
-......................9......................8......................7......................6......................5......................4......................3......................2......................1......................0
-Number of accepted tran steps =             7320
-
-Notice from spectre during transient analysis `timeSweep'.
-    Trapezoidal ringing is detected during tran analysis.
-        Please use method=trap for better results and performance.
-
-
-Maximum value achieved for any signal of each quantity: 
-V: V(xtop.xlut.Xg496__4319.n4) = 2.187 V
-I: I(xtop.vpower:p) = 4.595 mA
-If your circuit contains signals of the same quantity that are vastly different in size (such as high voltage circuitry combined with low voltage control circuitry), you should consider specifying global option `bin_relref=yes'.
+......................9......................8.....................
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Post-Transient Simulation Summary
@@ -372,40 +362,34 @@ Post-Transient Simulation Summary
 
 
 During simulation, the CPU load for active processors is :
-         0 (9.7 %)       1 (4.3 %)       2 (2.2 %)       3 (2.0 %)
-         4 (3.5 %)       5 (3.2 %)       6 (11.1 %)      7 (2.4 %)
-         8 (4.0 %)       9 (2.3 %)      10 (4.5 %)      11 (6.0 %)
-        12 (3.9 %)      13 (3.6 %)      14 (4.1 %)      15 (3.3 %)
-        16 (5.1 %)      17 (5.5 %)      19 (2.5 %)      20 (1.6 %)
-        21 (2.8 %)      22 (97.5 %)     23 (1.2 %)      24 (2.5 %)
-        25 (2.0 %)      26 (4.9 %)      27 (1.6 %)      28 (1.6 %)
-        29 (3.4 %)      30 (1.5 %)      31 (4.0 %)      32 (5.4 %)
-        33 (1.8 %)      34 (1.5 %)      35 (1.8 %)      38 (14.7 %)
-        42 (21.1 %)     43 (2.2 %)      44 (1.5 %)      45 (3.8 %)
-        46 (2.5 %)      47 (1.2 %)      48 (2.0 %)      49 (1.8 %)
-        50 (1.8 %)      51 (1.5 %)      52 (2.3 %)      53 (1.9 %)
-        54 (24.0 %)     55 (1.9 %)      56 (1.2 %)      57 (2.2 %)
-        58 (2.7 %)      59 (1.5 %)      60 (4.3 %)      61 (1.6 %)
-        62 (2.4 %)      63 (2.1 %)      65 (2.7 %)      72 (1.8 %)
-        73 (3.0 %)      74 (1.4 %)      75 (1.9 %)      76 (4.2 %)
-        77 (3.1 %)      78 (56.3 %)     79 (1.9 %)      80 (2.3 %)
-        81 (3.2 %)      82 (6.7 %)      83 (6.5 %)      86 (85.3 %)
-        91 (1.7 %)      92 (2.0 %)      94 (1.7 %)      95 (2.9 %)
-        Total: 517.3%
-Initial condition solution time: CPU = 78.658 ms, elapsed = 79.0091 ms.
-Intrinsic tran analysis time:    CPU = 27.2607 s, elapsed = 27.4188 s.
-Total time required for tran analysis `timeSweep': CPU = 27.362 s, elapsed = 27.5217 s.
-Time accumulated: CPU = 28.4427 s, elapsed = 29.0318 s.
-Peak resident memory used = 336 Mbytes.
+         0 (11.1 %)      1 (3.8 %)       2 (4.3 %)       3 (4.7 %)
+         4 (2.0 %)       5 (2.7 %)       7 (1.2 %)       8 (1.7 %)
+         9 (100.0 %)    10 (1.2 %)      11 (4.3 %)      12 (3.8 %)
+        13 (5.8 %)      14 (4.1 %)      15 (4.4 %)      16 (5.8 %)
+        17 (1.3 %)      19 (1.8 %)      20 (92.6 %)     21 (1.7 %)
+        30 (3.8 %)      31 (2.7 %)      32 (3.1 %)      34 (1.8 %)
+        35 (4.5 %)      36 (64.3 %)     37 (11.5 %)     38 (6.6 %)
+        39 (41.8 %)     40 (2.9 %)      42 (100.0 %)    43 (2.2 %)
+        46 (1.8 %)      48 (1.9 %)      49 (2.1 %)      50 (1.4 %)
+        51 (2.1 %)      52 (1.6 %)      54 (5.8 %)      56 (5.9 %)
+        57 (2.3 %)      58 (3.4 %)      60 (4.6 %)      61 (2.2 %)
+        62 (2.3 %)      63 (1.8 %)      64 (5.9 %)      65 (4.5 %)
+        68 (3.9 %)      72 (100.0 %)    78 (2.4 %)      79 (1.9 %)
+        80 (1.6 %)      81 (3.5 %)      82 (2.3 %)      83 (3.3 %)
+        84 (1.6 %)      85 (4.3 %)      87 (1.3 %)      88 (9.7 %)
+        89 (4.5 %)      92 (3.6 %)      93 (2.6 %)      94 (2.4 %)
+        95 (1.9 %)      
+        Total: 718.4%
 
+Spectre received SIGINT.
 
-Notice from spectre.
-    31 notices suppressed.
+Saving the states into file at t=23.1963 ns...
 
+Killed by user.
 
-Aggregate audit (3:59:03 PM, Mon Apr 13, 2026):
-Time used: CPU = 28.5 s, elapsed = 29.1 s, util. = 98%.
-Time spent in licensing: elapsed = 28.8 ms.
-Peak memory used = 336 Mbytes.
-Simulation started at: 3:58:34 PM, Mon Apr 13, 2026, ended at: 3:59:03 PM, Mon Apr 13, 2026, with elapsed time (wall clock): 29.1 s.
+Aggregate audit (1:14:05 PM, Thur Apr 16, 2026):
+Time used: CPU = 10 s, elapsed = 10.5 s, util. = 95.5%.
+Time spent in licensing: elapsed = 31.4 ms.
+Peak memory used = 250 Mbytes.
+Simulation started at: 1:13:54 PM, Thur Apr 16, 2026, ended at: 1:14:05 PM, Thur Apr 16, 2026, with elapsed time (wall clock): 10.5 s.
 spectre completes with 0 errors, 0 warnings, and 11 notices.

@@ -1,0 +1,5 @@
+$ Simulator: spectre (ver. 19.1.0.455.isr11)
+.title '; test harness for luts'
+b0 t0 b1 t1 temper alter# 
+4.1573e-08 4.1075e-08 4.30133e-08 4.2575e-08 27 1 
+

@@ -1,0 +1,5 @@
+manual measurements from storage of single bit
+
+all 0s but one:
+
+B000100000000000000

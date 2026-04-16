@@ -1,0 +1,240 @@
+0
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      293.807 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      371.555 p
+y
+1
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      294.347 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      386.177 p
+y
+2
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      493.009 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n        438.9 p
+y
+3
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      494.411 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      458.468 p
+y
+4
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      497.985 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      438.265 p
+y
+5
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      459.408 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n       495.28 p
+y
+6
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      320.498 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      435.819 p
+y
+7
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      180.357 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      347.774 p
+y
+8
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      314.198 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      297.531 p
+y
+9
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n       321.98 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      435.274 p
+y
+10
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      471.073 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      466.649 p
+y
+11
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      485.415 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      507.551 p
+y
+12
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      472.616 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      466.097 p
+y
+13
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      486.878 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      506.957 p
+y
+14
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      296.859 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      385.654 p
+y
+15
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b0-t0)
+           80 n      295.949 p
+y
+* ; test harness for luts
+ ******  Transient Analysis ( timeSweep )  tnom= 27.0 temp= 27.0
+******
+x
+           time        (b1-t1)
+           80 n      370.802 p
+y

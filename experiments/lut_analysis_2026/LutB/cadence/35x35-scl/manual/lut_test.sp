@@ -18,6 +18,7 @@
 *.measure tran d1 trig v(xtop:a0)={half_vdd} fall=2 targ v(xtop:xlut:z)={half_vdd} rise={first+1}
 *.measure tran d2 trig v(xtop:a0)={half_vdd} rise=4 targ v(xtop:xlut:z)={half_vdd} fall={first+1}
 
+* first attempt(s)
 *.measure tran  d0 trig v(xtop:a0)=0.9 rise=1 targ v(xtop:mux_out)=0.9 rise={first+1}
 *.measure tran  d1 trig v(xtop:a0)=0.9 fall=1 targ v(xtop:mux_out)=0.9 fall={first+1}
 *.measure tran  d2 trig v(xtop:a0)=0.9 rise=2 targ v(xtop:mux_out)=0.9 rise={first+2}
@@ -35,6 +36,7 @@
 *.measure tran d14 trig v(xtop:a0)=0.9 rise=8 targ v(xtop:mux_out)=0.9 rise={first+8}
 *.measure tran d15 trig v(xtop:a0)=0.9 fall=8 targ v(xtop:mux_out)=0.9 fall={first+8}
 
+* better:
 .measure tran  d0 trig v(xtop:a0) val 0.9 rise=1 targ v(xtop:mux_out) val 0.9 cross='first'
 .measure tran  d1 trig v(xtop:a0) val 0.9 fall=1 targ v(xtop:mux_out) val 0.9 cross='first+1'
 .measure tran  d2 trig v(xtop:a0) val 0.9 rise=2 targ v(xtop:mux_out) val 0.9 cross='first+2'
@@ -51,5 +53,6 @@
 .measure tran d13 trig v(xtop:a0) val 0.9 fall=7 targ v(xtop:mux_out) val 0.9 cross='first+13'
 .measure tran d14 trig v(xtop:a0) val 0.9 rise=8 targ v(xtop:mux_out) val 0.9 cross='first+14'
 .measure tran d15 trig v(xtop:a0) val 0.9 fall=8 targ v(xtop:mux_out) val 0.9 cross='first+15'
+
 
 .end

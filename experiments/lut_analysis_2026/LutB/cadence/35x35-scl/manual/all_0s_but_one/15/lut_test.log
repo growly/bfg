@@ -1,0 +1,416 @@
+
+Spectre (R) Circuit Simulator
+Version 19.1.0.455.isr11 64bit -- 10 Sep 2020
+Copyright (C) 1989-2020 Cadence Design Systems, Inc. All rights reserved worldwide. Cadence and Spectre are registered trademarks of Cadence Design Systems, Inc. All others are the property of their respective holders.
+
+Includes RSA BSAFE(R) Cryptographic or Security Protocol Software from RSA Security, Inc.
+
+User: aryap   Host: eda-1.EECS.Berkeley.EDU   HostID: 2080902A   PID: 3463391
+Memory  available: 308.3164 GB  physical: 810.7755 GB
+Linux   : Red Hat Enterprise Linux release 8.10 (Ootpa)
+CPU Type: AMD EPYC 9454 48-Core Processor
+        Socket: Processors [Frequency] (Hyperthreaded Processor)
+        0:       0 [1500.0] (),  1 [1605.0] (),  2 [1500.0] (),  3 [1964.1] (),  4 [1500.0] ()
+                 5 [1399.4] (),  6 [3799.8] (),  7 [2100.0] (),  8 [1500.0] (),  9 [1500.0] ()
+                10 [1500.0] (), 11 [1500.0] (), 12 [1519.8] (), 13 [1519.6] (), 14 [1500.0] ()
+                15 [1500.0] (), 16 [1500.0] (), 17 [3799.9] (), 18 [3799.8] (), 19 [1500.0] ()
+                20 [1500.0] (), 21 [1500.0] (), 22 [1500.0] (), 23 [1519.4] (), 24 [3247.5] ()
+                25 [1500.0] (), 26 [1500.0] (), 27 [1500.0] (), 28 [1500.0] (), 29 [3101.3] ()
+                30 [1500.0] (), 31 [1500.0] (), 32 [1500.0] (), 33 [1500.0] (), 34 [1500.0] ()
+                35 [1500.0] (), 36 [1428.9] (), 37 [2100.0] (), 38 [1500.0] (), 39 [1500.0] ()
+                40 [2100.0] (), 41 [1881.7] (), 42 [2750.0] (), 43 [1500.0] (), 44 [1500.0] ()
+                45 [2906.1] (), 46 [1500.0] (), 47 [1500.0] (), 48 [1500.0] (), 49 [1500.0] ()
+                50 [1859.7] (), 51 [1763.7] (), 52 [1500.0] (), 53 [1500.0] (), 54 [1500.0] ()
+                55 [1500.0] (), 56 [1500.0] (), 57 [1500.0] (), 58 [1500.0] (), 59 [1500.0] ()
+                60 [1500.0] (), 61 [1500.0] (), 62 [2100.0] (), 63 [1519.9] (), 64 [1500.0] ()
+                65 [1500.0] (), 66 [1500.0] (), 67 [2750.0] (), 68 [2100.0] (), 69 [1500.0] ()
+                70 [1519.9] (), 71 [1500.0] (), 72 [1500.0] (), 73 [1500.0] (), 74 [1500.0] ()
+                75 [1500.0] (), 76 [1500.0] (), 77 [1500.0] (), 78 [1500.0] (), 79 [1519.9] ()
+                80 [1500.0] (), 81 [2100.0] (), 82 [2750.0] (), 83 [1494.5] (), 84 [1500.0] ()
+                85 [1500.0] (), 86 [1500.0] (), 87 [1500.0] (), 88 [1500.0] (), 89 [1500.0] ()
+                90 [1500.0] (), 91 [1519.9] (), 92 [1519.9] (), 93 [1500.0] (), 94 [1500.0] ()
+                95 [1500.0] ()
+        
+System load averages (1min, 5min, 15min) : 7.6 %, 7.4 %, 7.8 %
+Hyperthreading is enabled
+
+
+Simulating `lut_test.sp' on eda-1.EECS.Berkeley.EDU at 1:38:58 PM, Thur Apr 16, 2026 (process id: 3463391).
+Current working directory: /scratch/aryap/chipyard/vlsi/manual/all_0s_but_one/15
+Command line:
+    /share/instsww/cadence/LIBERATE/tools.lnx86/bin/spectre -64  \
+        lut_test.sp
+
+Loading /share/instsww/cadence/LIBERATE/tools.lnx86/cmi/lib/64bit/5.0/libinfineon_sh.so ...
+Loading /share/instsww/cadence/LIBERATE/tools.lnx86/cmi/lib/64bit/5.0/libphilips_o_sh.so ...
+Loading /share/instsww/cadence/LIBERATE/tools.lnx86/cmi/lib/64bit/5.0/libphilips_sh.so ...
+Loading /share/instsww/cadence/LIBERATE/tools.lnx86/cmi/lib/64bit/5.0/libsparam_sh.so ...
+Loading /share/instsww/cadence/LIBERATE/tools.lnx86/cmi/lib/64bit/5.0/libstmodels_sh.so ...
+Reading file:  /scratch/aryap/chipyard/vlsi/manual/all_0s_but_one/15/lut_test.sp
+Reading link:  /share/instsww/cadence/LIBERATE
+Reading file:  /share/instsww/cadence/LIBERATE.19.12.294/tools.lnx86/spectre/etc/configs/spectre.cfg
+Reading file:  /scratch/aryap/chipyard/vlsi/manual/all_0s_but_one/15/testbench.sp
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/sky130.lib.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_01v8/sky130_fd_pr__nfet_01v8__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_01v8/sky130_fd_pr__nfet_01v8__tt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__tt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8/sky130_fd_pr__pfet_01v8__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8/sky130_fd_pr__pfet_01v8__tt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_03v3_nvt/sky130_fd_pr__nfet_03v3_nvt__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_03v3_nvt/sky130_fd_pr__nfet_03v3_nvt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_05v0_nvt/sky130_fd_pr__nfet_05v0_nvt__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_05v0_nvt/sky130_fd_pr__nfet_05v0_nvt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/esd_nfet_01v8/sky130_fd_pr__esd_nfet_01v8__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/esd_nfet_01v8/sky130_fd_pr__esd_nfet_01v8.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8_lvt/sky130_fd_pr__pfet_01v8_lvt__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8_lvt/sky130_fd_pr__pfet_01v8_lvt__tt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__tt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/esd_pfet_g5v0d10v5/sky130_fd_pr__esd_pfet_g5v0d10v5__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/esd_pfet_g5v0d10v5/sky130_fd_pr__esd_pfet_g5v0d10v5.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_g5v0d10v5/sky130_fd_pr__pfet_g5v0d10v5__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_g5v0d10v5/sky130_fd_pr__pfet_g5v0d10v5__tt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_g5v0d16v0/sky130_fd_pr__pfet_g5v0d16v0__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_g5v0d10v5/sky130_fd_pr__nfet_g5v0d10v5__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_g5v0d10v5/sky130_fd_pr__nfet_g5v0d10v5__tt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_g5v0d16v0/sky130_fd_pr__nfet_g5v0d16v0__tt_discrete.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_g5v0d16v0/sky130_fd_pr__nfet_g5v0d16v0__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_g5v0d16v0/sky130_fd_pr__nfet_g5v0d16v0.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/esd_nfet_g5v0d10v5/sky130_fd_pr__esd_nfet_g5v0d10v5__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/esd_nfet_g5v0d10v5/sky130_fd_pr__esd_nfet_g5v0d10v5.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/corners/tt/nonfet.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_01v8/sky130_fd_pr__nfet_01v8__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8/sky130_fd_pr__pfet_01v8__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_01v8_lvt/sky130_fd_pr__nfet_01v8_lvt__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8_lvt/sky130_fd_pr__pfet_01v8_lvt__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8_hvt/sky130_fd_pr__pfet_01v8_hvt__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_g5v0d10v5/sky130_fd_pr__nfet_g5v0d10v5__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_g5v0d10v5/sky130_fd_pr__pfet_g5v0d10v5__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_05v0_nvt/sky130_fd_pr__nfet_05v0_nvt__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_03v3_nvt/sky130_fd_pr__nfet_03v3_nvt__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/r+c/res_typical__cap_typical.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/sky130_fd_pr__model__r+c.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/r+c.mrp1monte.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_generic_nd/sky130_fd_pr__res_generic_nd.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_generic_pd/sky130_fd_pr__res_generic_pd.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parameters/typical.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/r+c/res_typical__cap_typical__lin.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/capacitors/sky130_fd_pr__model__cap_vpp.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_08p6x07p8_l1m1m2_noshield/sky130_fd_pr__cap_vpp_08p6x07p8_l1m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_l1m1m2_noshield/sky130_fd_pr__cap_vpp_04p4x04p6_l1m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_l1m1m2_noshield/sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_01p8x01p8_m1m2_noshield/sky130_fd_pr__cap_vpp_01p8x01p8_m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_08p6x07p8_m1m2_shieldl1/sky130_fd_pr__cap_vpp_08p6x07p8_m1m2_shieldl1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_m1m2_shieldl1/sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_shieldl1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_m1m2_shieldl1/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_shieldl1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_08p6x07p8_l1m1m2_shieldpo_floatm3/sky130_fd_pr__cap_vpp_08p6x07p8_l1m1m2_shieldpo_floatm3.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_l1m1m2_shieldpo_floatm3/sky130_fd_pr__cap_vpp_04p4x04p6_l1m1m2_shieldpo_floatm3.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_l1m1m2_shieldpom3/sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2_shieldpom3.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_03p9x03p9_m1m2_shieldl1_floatm3/sky130_fd_pr__cap_vpp_03p9x03p9_m1m2_shieldl1_floatm3.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_l1m1m2_noshield/sky130_fd_pr__cap_vpp_04p4x04p6_l1m1m2_noshield_o1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_08p6x07p8_m1m2_noshield/sky130_fd_pr__cap_vpp_08p6x07p8_m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_m1m2_noshield/sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_noshield_o2.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_02p4x04p6_m1m2_noshield/sky130_fd_pr__cap_vpp_02p4x04p6_m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_m1m2_noshield/sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_m1m2_noshield/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/npn_05v5/sky130_fd_pr__npn_05v5__t.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/npn_05v5/sky130_fd_pr__npn_05v5_W1p00L1p00.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/npn_05v5/sky130_fd_pr__npn_05v5_W1p00L2p00.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/npn_11v0/sky130_fd_pr__npn_11v0_W1p00L1p00.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pnp_05v5/sky130_fd_pr__pnp_05v5_W3p40L3p40.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/corners/tt/specialized_cells.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_latch/sky130_fd_pr__special_nfet_latch__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_pass/sky130_fd_pr__special_nfet_pass__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_pass_flash/sky130_fd_pr__special_nfet_pass_flash__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_pfet_pass/sky130_fd_pr__special_pfet_pass__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_pass_lvt/sky130_fd_pr__special_nfet_pass_lvt__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_pass_lvt/sky130_fd_pr__special_nfet_pass_lvt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/all.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parameters/lod.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parasitics/sky130_fd_pr__model__parasitic__diode_ps2nw.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pw2nd_05v5/sky130_fd_pr__diode_pw2nd_05v5.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pd2nw_05v5/sky130_fd_pr__diode_pd2nw_05v5.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pd2nw_05v5_hvt/sky130_fd_pr__diode_pd2nw_05v5_hvt.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pw2nd_11v0/sky130_fd_pr__diode_pw2nd_11v0.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pd2nw_11v0/sky130_fd_pr__diode_pd2nw_11v0.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pw2nd_05v5_nvt/sky130_fd_pr__diode_pw2nd_05v5_nvt.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pw2nd_05v5_lvt/sky130_fd_pr__diode_pw2nd_05v5_lvt.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pd2nw_05v5_lvt/sky130_fd_pr__diode_pd2nw_05v5_lvt.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parasitics/sky130_fd_pr__model__parasitic__diode_pw2dn.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parasitics/sky130_fd_pr__model__parasitic__diode_ps2dn.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_g5v0d16v0/sky130_fd_pr__pfet_g5v0d16v0__parasitic__diode_pw2dn.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pnp_05v5/sky130_fd_pr__pnp_05v5_W0p68L0p68.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_g5v0d16v0/sky130_fd_pr__pfet_g5v0d16v0.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_g5v0d16v0/sky130_fd_pr__pfet_g5v0d16v0__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_var_lvt/sky130_fd_pr__cap_var_lvt.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_08p6x07p8_l1m1m2_noshield/sky130_fd_pr__cap_vpp_08p6x07p8_l1m1m2_noshield_o1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/capacitors/sky130_fd_pr__model__cap_mim.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_mim_m3/sky130_fd_pr__cap_mim_m3_1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_mim_m3/sky130_fd_pr__cap_mim_m3_2.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/capacitors/sky130_fd_pr__model__cap_vpp_only_mos.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_m1m2_noshield/sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_noshield_o1nhv.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_m1m2_noshield/sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_noshield_o1phv.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/sonos_p/begin_of_life/mm.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/sonos_e/begin_of_life/mm.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/head.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_pass/sky130_fd_pr__special_nfet_pass.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_latch/sky130_fd_pr__special_nfet_latch.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_pfet_pass/sky130_fd_pr__special_pfet_pass.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/special_nfet_pass_flash/sky130_fd_pr__special_nfet_pass_flash.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/capacitors/sky130_fd_pr__model__cap_vpp_only_pq.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_08p6x07p8_m1m2m3_shieldl1/sky130_fd_pr__cap_vpp_08p6x07p8_m1m2m3_shieldl1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_m1m2m3_shieldl1/sky130_fd_pr__cap_vpp_04p4x04p6_m1m2m3_shieldl1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_m1m2m3_shieldl1/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3_shieldl1.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_l1m1m2m3_shieldm4/sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3_shieldm4.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_l1m1m2m3_shieldpom4/sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3_shieldpom4.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_06p8x06p1_l1m1m2m3_shieldpom4/sky130_fd_pr__cap_vpp_06p8x06p1_l1m1m2m3_shieldpom4.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_06p8x06p1_m1m2m3_shieldl1m4/sky130_fd_pr__cap_vpp_06p8x06p1_m1m2m3_shieldl1m4.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/capacitors/sky130_fd_pr__model__cap_vpp_only_p.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_l1m1m2m3m4_shieldm5/sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3m4_shieldm5.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_l1m1m2m3m4_shieldpom5/sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3m4_shieldpom5.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_m1m2m3m4_shieldl1m5/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3m4_shieldl1m5.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_m1m4_noshield/sky130_fd_pr__cap_vpp_11p5x11p7_m1m4_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_m1m2m3m4_shieldm5/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3m4_shieldm5.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_08p6x07p8_m1m2m3_shieldl1m5_floatm4/sky130_fd_pr__cap_vpp_08p6x07p8_m1m2m3_shieldl1m5_floatm4.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_04p4x04p6_m1m2m3_shieldl1m5_floatm4/sky130_fd_pr__cap_vpp_04p4x04p6_m1m2m3_shieldl1m5_floatm4.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_m1m2m3_shieldl1m5_floatm4/sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3_shieldl1m5_floatm4.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p3x11p8_l1m1m2m3m4_shieldm5/sky130_fd_pr__cap_vpp_11p3x11p8_l1m1m2m3m4_shieldm5_nhv.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p3x11p8_l1m1m2m3m4_shieldm5/sky130_fd_pr__cap_vpp_11p3x11p8_l1m1m2m3m4_shieldm5_nhv__base.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p5x11p7_l1m1m2m3m4_shieldpom5/sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3m4_shieldpom5_x.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_02p9x06p1_m1m2m3m4_shieldl1/sky130_fd_pr__cap_vpp_02p9x06p1_m1m2m3m4_shieldl1_fingercap2.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_02p7x11p1_m1m2m3m4_shieldl1/sky130_fd_pr__cap_vpp_02p7x11p1_m1m2m3m4_shieldl1_fingercap.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_02p7x21p1_m1m2m3m4_shieldl1/sky130_fd_pr__cap_vpp_02p7x21p1_m1m2m3m4_shieldl1_fingercap.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_02p7x41p1_m1m2m3m4_shieldl1/sky130_fd_pr__cap_vpp_02p7x41p1_m1m2m3m4_shieldl1_fingercap.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_02p7x06p1_m1m2m3m4_shieldl1/sky130_fd_pr__cap_vpp_02p7x06p1_m1m2m3m4_shieldl1_fingercap.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_11p3x11p3_m1m2m3m4_shieldl1/sky130_fd_pr__cap_vpp_11p3x11p3_m1m2m3m4_shieldl1_wafflecap.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_05p9x05p9_m1m2m3m4_shieldl1/sky130_fd_pr__cap_vpp_05p9x05p9_m1m2m3m4_shieldl1_wafflecap.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/cap_vpp_44p7x23p1_pol1m1m2m3m4m5_noshield/sky130_fd_pr__cap_vpp_44p7x23p1_pol1m1m2m3m4m5_noshield.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/sky130_fd_pr__model__linear.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parasitics/sky130_fd_pr__model__parasitic__res_po.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_xhigh_po/sky130_fd_pr__res_xhigh_po.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_high_po/sky130_fd_pr__res_high_po.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_xhigh_po/sky130_fd_pr__res_xhigh_po_0p35.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_xhigh_po/sky130_fd_pr__res_xhigh_po_0p69.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_xhigh_po/sky130_fd_pr__res_xhigh_po_1p41.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_xhigh_po/sky130_fd_pr__res_xhigh_po_2p85.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_xhigh_po/sky130_fd_pr__res_xhigh_po_5p73.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_xhigh_po/sky130_fd_pr__res_xhigh_po__base.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_high_po/sky130_fd_pr__res_high_po_0p35.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_high_po/sky130_fd_pr__res_high_po_0p69.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_high_po/sky130_fd_pr__res_high_po_1p41.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_high_po/sky130_fd_pr__res_high_po_2p85.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/res_high_po/sky130_fd_pr__res_high_po_5p73.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_g5v0d10v5/sky130_fd_pr__rf_nfet_g5v0d10v5.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8_lvt/sky130_fd_pr__rf_nfet_01v8_lvt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8/sky130_fd_pr__rf_nfet_01v8.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_pfet_01v8/sky130_fd_pr__rf_pfet_01v8.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_pfet_01v8_mvt/sky130_fd_pr__rf_pfet_01v8_mvt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/corners/tt/rf.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8/sky130_fd_pr__rf_nfet_01v8_b__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8/sky130_fd_pr__rf_nfet_01v8_b.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8_lvt/sky130_fd_pr__rf_nfet_01v8_lvt_b__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8_lvt/sky130_fd_pr__rf_nfet_01v8_lvt_b.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_g5v0d10v5/sky130_fd_pr__rf_nfet_g5v0d10v5_b__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_g5v0d10v5/sky130_fd_pr__rf_nfet_g5v0d10v5_b.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_pfet_01v8/sky130_fd_pr__rf_pfet_01v8_b__tt.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_pfet_01v8/sky130_fd_pr__rf_pfet_01v8_b.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8/sky130_fd_pr__rf_nfet_01v8__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_01v8_lvt/sky130_fd_pr__rf_nfet_01v8_lvt__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_nfet_g5v0d10v5/sky130_fd_pr__rf_nfet_g5v0d10v5__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_pfet_01v8/sky130_fd_pr__rf_pfet_01v8__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_pfet_01v8_mvt/sky130_fd_pr__rf_pfet_01v8_mvt__tt_discrete.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_01v8_mvt/sky130_fd_pr__pfet_01v8_mvt.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/rf_pfet_01v8_mvt/sky130_fd_pr__rf_pfet_01v8_mvt__mismatch.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_20v0/sky130_fd_pr__pfet_20v0__tt_discrete.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_20v0/sky130_fd_pr__pfet_20v0__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/pfet_20v0/sky130_fd_pr__pfet_20v0__parasitic__diode_pw2dn.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0/sky130_fd_pr__nfet_20v0__tt_discrete.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0/sky130_fd_pr__nfet_20v0__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parasitics/sky130_fd_pr__model__parasitic__diode_pw2dn__extended_drain.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/diode_pw2nd_05v5/sky130_fd_pr__diode_pw2nd_05v5__extended_drain.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_iso/sky130_fd_pr__nfet_20v0_iso__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/models/parasitics/sky130_fd_pr__model__parasitic__diode_ps2dn__extended_drain.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_reverse_iso/sky130_fd_pr__nfet_20v0_reverse_iso__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_zvt/sky130_fd_pr__nfet_20v0_zvt__tt_discrete.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_zvt/sky130_fd_pr__nfet_20v0_zvt__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_zvt/sky130_fd_pr__nfet_20v0_zvt__parasitic__diode_ps2dn__extended_drain.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_nvt/sky130_fd_pr__nfet_20v0_nvt__tt_discrete.corner.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_nvt/sky130_fd_pr__nfet_20v0_nvt__subcircuit.pm3.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/cells/nfet_20v0_nvt/sky130_fd_pr__nfet_20v0_nvt__parasitic__diode_ps2dn.model.spice
+Reading file:  /home/ff/eecs251b/sky130/sky130_cds/sky130_scl_9T_0.0.5/cdl/sky130_scl_9T.cdl
+Reading file:  /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/par-rundir/clb.lvs.sp
+Reading file:  /scratch/aryap/chipyard/vlsi/manual/all_0s_but_one/15/scan_data.sp
+Time for NDB Parsing: CPU = 567.994 ms, elapsed = 4.12845 s.
+Time accumulated: CPU = 634.968 ms, elapsed = 4.12846 s.
+Peak resident memory used = 122 Mbytes.
+
+Time for Elaboration: CPU = 213.659 ms, elapsed = 215.322 ms.
+Time accumulated: CPU = 848.782 ms, elapsed = 4.34393 s.
+Peak resident memory used = 140 Mbytes.
+
+Loading /share/instsww/cadence/LIBERATE/tools.lnx86/spectre/lib/64bit/mdl/libSpectreEH_sh.so ...
+
+Time for EDB Visiting: CPU = 50.704 ms, elapsed = 52.345 ms.
+Time accumulated: CPU = 899.607 ms, elapsed = 4.3964 s.
+Peak resident memory used = 159 Mbytes.
+
+
+Notice from spectre during topology check.
+    No DC path from node `xtop.xlut.FE_OFNVPWR' to ground, Gmin installed to provide path.
+
+
+Global user options:
+
+Scoped user options:
+
+Circuit inventory:
+              nodes 452
+              bsim4 836   
+          capacitor 2     
+            vsource 10    
+
+Analysis and control statement inventory:
+               tran 1     
+
+Output statements:
+             .probe 3     
+           .measure 4     
+               save 0     
+
+Time for parsing: CPU = 26.663 ms, elapsed = 27.504 ms.
+Time accumulated: CPU = 926.363 ms, elapsed = 4.424 s.
+Peak resident memory used = 165 Mbytes.
+
+~~~~~~~~~~~~~~~~~~~~~~
+Pre-Simulation Summary
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+
+*****************************************************
+Transient Analysis `timeSweep': time = (0 s -> 80 ns)
+*****************************************************
+
+Notice from spectre during IC analysis, during transient analysis `timeSweep'.
+    GminDC = 1 pS is large enough to noticeably affect the DC solution.
+        dV(xtop.xlut.Xq_control_reg.net461) = -27.162 mV
+        Use the `gmin_check' option to eliminate or expand this report.
+    Bad pivoting is found during DC analysis. Option dc_pivot_check=yes is recommended for possible improvement of convergence.
+
+DC simulation time: CPU = 77.922 ms, elapsed = 78.2568 ms.
+
+Opening the PSFXL file lut_test.raw/timeSweep.tran.tran ...
+Important parameter values:
+    start = 0 s
+    outputstart = 0 s
+    stop = 80 ns
+    step = 1 ps
+    maxstep = 1.6 ns
+    ic = all
+    useprevic = no
+    skipdc = no
+    reltol = 1e-03
+    abstol(V) = 1 uV
+    abstol(I) = 1 pA
+    temp = 27 C
+    tnom = 27 C
+    tempeffects = all
+    errpreset = moderate
+    method = traponly
+    lteratio = 3.5
+    relref = sigglobal
+    cmin = 0 F
+    gmin = 1 pS
+
+
+Wildcard match summary:
+              probe i(*) :               848   
+              probe v(*) :               453   
+
+Output and IC/nodeset summary:
+                 probe  848     (current)
+                 probe  452     (voltage)
+
+...
+
+Notice from spectre at time = 1.21021 ns during transient analysis `timeSweep'.
+    Found trapezoidal ringing on node xtop.xlut.XFE_OFC1_scan_out_0.Mmn1.msky130_fd_pr__nfet_01v8:int_b.
+Notice from spectre at time = 1.21872 ns during transient analysis `timeSweep'.
+    Found trapezoidal ringing on node xtop.xlut.XFE_OFC1_scan_out_0.Mmn1.msky130_fd_pr__nfet_01v8:int_b.
+
+....
+
+Notice from spectre at time = 1.23017 ns during transient analysis `timeSweep'.
+    Found trapezoidal ringing on node xtop.xlut.XFE_OFC1_scan_out_0.Mmn1.msky130_fd_pr__nfet_01v8:int_b.
+Notice from spectre at time = 1.24599 ns during transient analysis `timeSweep'.
+    Found trapezoidal ringing on node xtop.xlut.XFE_OFC1_scan_out_0.Mmn1.msky130_fd_pr__nfet_01v8:int_b.
+
+................
+
+Notice from spectre at time = 5.5 ns during transient analysis `timeSweep'.
+    Found trapezoidal ringing on node xtop.xlut.Xmux_control_reg.Mmn40.msky130_fd_pr__nfet_01v8:int_b.
+        Further occurrences of this notice will be suppressed.
+
+......................9......................8......................7......................6......................5......................4......................3......................2......................1......................0
+Number of accepted tran steps =             4884
+
+Notice from spectre during transient analysis `timeSweep'.
+    Trapezoidal ringing is detected during tran analysis.
+        Please use method=trap for better results and performance.
+
+
+Maximum value achieved for any signal of each quantity: 
+V: V(xtop.xlut.Xg496__4319.n2) = 2.177 V
+I: I(xtop.vpower:p) = 4.595 mA
+If your circuit contains signals of the same quantity that are vastly different in size (such as high voltage circuitry combined with low voltage control circuitry), you should consider specifying global option `bin_relref=yes'.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Post-Transient Simulation Summary
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   -   To further speed up simulation, consider
+          add ++aps on command line
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+During simulation, the CPU load for active processors is :
+         0 (10.2 %)      1 (14.5 %)      2 (80.3 %)      3 (11.5 %)
+         4 (83.4 %)      5 (6.4 %)       6 (37.7 %)      7 (37.7 %)
+         8 (29.9 %)      9 (17.2 %)     10 (5.4 %)      11 (24.0 %)
+        12 (74.7 %)     13 (77.4 %)     14 (2.9 %)      15 (8.0 %)
+        16 (2.8 %)      17 (87.6 %)     18 (54.4 %)     19 (2.4 %)
+        20 (2.6 %)      21 (84.2 %)     22 (50.9 %)     23 (33.8 %)
+        24 (62.5 %)     25 (2.5 %)      26 (70.7 %)     27 (19.8 %)
+        28 (5.1 %)      29 (67.7 %)     30 (96.2 %)     31 (79.9 %)
+        32 (6.4 %)      33 (4.4 %)      34 (3.1 %)      35 (2.7 %)
+        36 (28.8 %)     37 (15.5 %)     38 (3.7 %)      39 (36.2 %)
+        40 (25.5 %)     41 (16.1 %)     42 (8.7 %)      43 (5.2 %)
+        44 (30.4 %)     45 (56.5 %)     46 (3.0 %)      47 (4.2 %)
+        48 (6.4 %)      49 (5.2 %)      50 (5.2 %)      51 (2.6 %)
+        52 (2.0 %)      53 (2.5 %)      54 (18.8 %)     55 (3.5 %)
+        56 (10.9 %)     57 (4.7 %)      58 (4.1 %)      59 (3.6 %)
+        62 (1.6 %)      65 (12.7 %)     66 (27.7 %)     68 (1.3 %)
+        69 (1.8 %)      70 (7.4 %)      71 (2.0 %)      72 (17.1 %)
+        73 (1.7 %)      74 (2.9 %)      75 (6.7 %)      76 (2.7 %)
+        77 (16.0 %)     80 (2.0 %)      81 (3.5 %)      82 (2.2 %)
+        83 (2.5 %)      84 (48.2 %)     85 (1.5 %)      86 (1.1 %)
+        87 (27.8 %)     88 (12.2 %)     89 (5.0 %)      90 (10.8 %)
+        91 (2.4 %)      92 (53.8 %)     93 (29.3 %)     94 (3.2 %)
+        95 (2.8 %)      
+        Total: 1877.0%
+Initial condition solution time: CPU = 77.957 ms, elapsed = 78.2921 ms.
+Intrinsic tran analysis time:    CPU = 18.3715 s, elapsed = 18.4671 s.
+Total time required for tran analysis `timeSweep': CPU = 18.4755 s, elapsed = 18.5723 s.
+Time accumulated: CPU = 19.5737 s, elapsed = 23.1697 s.
+Peak resident memory used = 311 Mbytes.
+
+
+Notice from spectre.
+    11 notices suppressed.
+
+
+Aggregate audit (1:39:21 PM, Thur Apr 16, 2026):
+Time used: CPU = 19.6 s, elapsed = 23.2 s, util. = 84.5%.
+Time spent in licensing: elapsed = 80.3 ms.
+Peak memory used = 311 Mbytes.
+Simulation started at: 1:38:58 PM, Thur Apr 16, 2026, ended at: 1:39:21 PM, Thur Apr 16, 2026, with elapsed time (wall clock): 23.2 s.
+spectre completes with 0 errors, 0 warnings, and 11 notices.

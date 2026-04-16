@@ -17,17 +17,18 @@
 .param scan_clock_period=2n
 .param test_start=19 * scan_clock_period + 50p
 .param read_clock=3n
+.param test_end=test_start + 17*read_clock
 .param half_vdd=1.8 / 2
 
 .subckt testbench
 + VSS
 
-* post par, not pex
+* post par, not pex ('clb.lvs.sp' above)
 xlut
 + clk a3 a2 a1 a0 bypass mux_out reg_out scan_clk scan_en scan_in scan_out VPWR VSS
 + clb
 
-* with pex
+* with pex ('clb.post.sp' above)
 *xlut
 *+ scan_in a0 scan_en a3 VPWR a2 VSS reg_out mux_out bypass scan_out scan_clk clk a1
 *+ clb
@@ -76,10 +77,7 @@ vconfig_clock
 *+ scan_in VSS
 *+ pat ("1.8" "0" "0" "50p" "50p" "scan_clock_period" B010011001100110010)
 
-vscan_data
-+ scan_in VSS
-*+ pat ("1.8" "0" "0" "50p" "50p" "scan_clock_period" B011000011110000110)
-+ pat ("1.8" "0" "0" "50p" "50p" "scan_clock_period" B000111100001111000)
+.include scan_data.sp
 
 vbypass
 + bypass VSS 0

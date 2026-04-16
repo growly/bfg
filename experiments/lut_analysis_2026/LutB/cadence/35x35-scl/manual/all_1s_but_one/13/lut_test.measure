@@ -1,0 +1,16 @@
+Exported variables from results directory:  ./lut_test.raw/
+
+date               :  1:40:39 PM, Thur Apr 16, 2026
+design             :  ; test harness for luts
+simulator          :  spectre
+version            :  19.1.0.455.isr11
+
+
+Measurement Name   :  timeSweep
+Analysis Type      :  tran
+b0                    =  4.45545e-08 
+b1                    =  4.58931e-08 
+t0                    =  4.4075e-08 
+t1                    =  4.5575e-08 
+
+
