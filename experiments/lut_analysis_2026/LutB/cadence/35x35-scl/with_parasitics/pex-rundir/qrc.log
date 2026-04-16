@@ -1,0 +1,148 @@
+
+
+  Cadence Quantus Extraction - 64-bit Parasitic Extractor - Version
+22.1.1-p041 Mon Apr 17 07:53:34 PDT 2023
+---------------------------------------------------------------------------------------------------------------
+                                  Copyright 2023 Cadence Design Systems,
+Inc.
+
+
+
+INFO (EXTQRCXLOG-128) : Quantus command line:
+ Started at: 2026-Apr-09 17:25:04 (2026-Apr-10 00:25:04 GMT)
+ Executable:
+/share/instsww/cadence/QUANTUS221/tools.lnx86/extraction/bin/64bit/quantus
+ Options:     -cmd quantus.ccl
+ Current working directory:
+/scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/pex-rundir
+
+
+INFO (EXTQRCXLOG-103) : The Command File Options for the current Quantus run are as follows:
+
+distributed_processing \
+	 -multi_cpu 1
+extract \
+	 -selection "all" \
+	 -type "rc_decoupled"
+input_db -type pegasus \
+	 -directory_name "/scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/pex-rundir/../lvs-rundir" \
+	 -run_name "clb"
+output_setup \
+	 -directory_name "/tmp/qrc_2282784" \
+	 -file_name "clb.post.sp" \
+	 -net_name_space "SCHEMATIC" \
+	 -temporary_directory_name "clb"
+process_technology \
+	 -technology_directory \
+		"/home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/quantus/extraction/typical"
+
+
+
+-------------------------------------------------------------------------------------
+Thu Apr  9 17:25:11 2026: BEGIN INPUT stage
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+Thu Apr  9 17:25:13 2026: DONE INPUT stage
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+INPUT stage summary:
+-------------------------------------------------------------------------------------
+ Number of CPUs requested:		1
+ Techfile(s):
+    /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/quantus/extraction/typical/qrcTechFile; process name: sky_typical
+
+ License(s) used:	QTS300 (x1)
+
+ Techgen compilation option(s):
+    -techdir /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/quantus/extraction/typical -inc /tmp/qrc_2282784/clb/clb.ilf -lvs /tmp/qrc_2282784/clb/clb.xcn -p2lvs /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/quantus/extraction/typical/qrcTechFile -reseqn -sw3d -cap_ground_layer pwell -p poly,allGates,diff -lvs_blocking nfet,nfet -lvs_blocking pfet,pfet -lvs_blocking hvtpfet,hvtpfet -lvs_blocking lvtpfet,lvtpfet -lvs_blocking lvtnfet,lvtnfet -lvs_blocking HV_FET_gate,HV_FET_gate -canonical_res_caps -length_units meters /tmp/qrc_2282784/clb
+
+ Input files:
+    /home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/quantus/extraction/typical/layer_setup
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.agf
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.devtab
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.gds.map
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.ixf
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.lph
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.lvsfile
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.nxf
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.ports
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb.sph
+    /scratch/aryap/chipyard/vlsi/build/bfg_clb-scl/lvs-rundir/clb_pin_xy.spi
+
+ Design data:
+    global nets:                  0
+
+ Peak memory:	116 MB
+
+ Messages:
+    INFO (CAPGEN-41199): 
+    
+    
+    Techgen -trans results will be written to directory: /tmp/qrc_2282784/clb
+    
+    INFO (CAPGEN-41737): Lvs connect layers HV_nwell HV_tap bottom_plate prec_resistor_term top_plate are not mapped in layer_setup file
+    
+    INFO (CAPGEN-41809):  Lvs connect via licon1 poly_0licon1 mcon via via2 via3 via4 are not mapped in layer_setup file.
+    
+    WARNING (LBRCXM-617): Unable to obtain 1 license(s) of QTS100 22.10
+    
+    WARNING (AGDSEXT-30124): The <design>.props file is not available. The CCL option "input_db calibre/pvs/pegasus -device_properties_file <filename>" can be used to specify the .props file. 
+    
+    INFO (AGDSEXT-30016): 
+    setting dbunit 1e-09 1 1e-09
+    
+-------------------------------------------------------------------------------------
+Thu Apr  9 17:25:13 2026: BEGIN EXTRACTION stage
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+Thu Apr  9 17:25:40 2026: DONE EXTRACTION stage
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+EXTRACTION stage summary:
+-------------------------------------------------------------------------------------
+ Design data:
+    LVS nets:                     3291
+    signal nets:                  452
+    floating nets:                2839
+    ground net name:              VSS:
+
+ Peak memory:	382 MB
+
+-------------------------------------------------------------------------------------
+Thu Apr  9 17:25:40 2026: BEGIN OUTPUT stage
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+Thu Apr  9 17:25:47 2026: DONE OUTPUT stage
+-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
+OUTPUT stage summary:
+-------------------------------------------------------------------------------------
+ Reduction statistics:
+    Dangling Rs removed:          54
+    Merged Parallel Rs:           0
+    Rs shorted by min_res option: 1879
+    Merged Parallel Self Caps:    0
+    CCs filtered by minC option:  0
+    Shorted Incomplete Nets:      0
+ Output statistics:
+    R: 4149
+    C: 3714
+    L: 0
+
+ Peak memory:	382 MB
+
+-------------------------------------------------------------------------------------
+
+INFO (LBRCXM-920): Host name and peak memory report
+ Host Name:                    eda-1.EECS.Berkeley.EDU
+ Peak memory used:             382 MB (sampled at 15s intervals)
+
+INFO (LBRCXM-702): Run ended: Thu Apr  9 17:25:47 2026
+
+
+INFO (LBRCXM-805): Quantus run took:  13s user, 40s sys, 43s elapsed
+
+
+INFO (LBRCXM-708): *****  Quantus terminated normally  *****
+
+

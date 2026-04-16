@@ -1,0 +1,10 @@
+extract -selection "all" -type "rc_decoupled"
+input_db -type pegasus \
+  -directory_name ../lvs-rundir \
+  -run_name "clb"
+output_setup \
+  -file_name "clb.post.sp" \
+  -net_name_space "SCHEMATIC" \
+  -temporary_directory_name "clb"
+process_technology \
+  -technology_directory "/home/ff/eecs251b/sky130/sky130_cds/sky130_release_0.0.4/quantus/extraction/typical"
