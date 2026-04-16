@@ -57,6 +57,7 @@ def main():
         netlister = XyceNetlister(out_file)
       else:
         print('no usable spice type specified')
+        sys.exit(1)
       netlister.write_package(package_pb)
     
 
