@@ -131,6 +131,7 @@ set(TILES_SRC
 
 set(SKY130_ATOMS_SRC
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_buf.cc
+  ${PROJECT_SOURCE_DIR}/src/atoms/sky130_double_buf.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_carry1.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_decap.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_dfxtp.cc
