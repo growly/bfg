@@ -38,8 +38,8 @@ namespace tiles {
 
 // Ideally this is what we have:
 //                +-----------+
-// LUT        k   |           |           |\        Combinational out,
-// select   --/---|   k-LUT   |--+--------| |-------------- O
+// LUT        k   |           |  Z        |\        Combinational out
+// select   --/---|   k-LUT   |--+--------| |-------------- MUX
 // S_k, S_k-1...  |           |  |   +----| |
 //                +-----------+  |   |    |/
 //                               |   |
@@ -218,6 +218,7 @@ class LutB : public Tile {
   struct PortKeyCollection {
     std::vector<PortKey> port_keys;
     std::optional<EquivalentNets> as_nets;
+    std::optional<std::string> add_midway_port;
   };
   struct PortKeyAlias {
     PortKey key;
@@ -252,7 +253,9 @@ class LutB : public Tile {
   void RouteClockBuffers(
       RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
   void RouteRemainder(
-      RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
+      RouteManager *route_manager,
+      Circuit *circuit,
+      Layout *layout);
   void RouteMuxInputs(
       RouteManager *route_manager,
       Circuit *circuit,
@@ -262,9 +265,16 @@ class LutB : public Tile {
       Circuit *circuit,
       Layout *layout);
   void RouteOutputs(
-      RoutingGrid *routing_grid,
+      RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout);
+
+  absl::StatusOr<int64_t> RoutePortKeyCollection(
+      const PortKeyCollection &collection,
+      RouteManager *route_manager,
+      Circuit *circuit,
+      Layout *layout,
+      bool solve_immediately) const;
 
   std::vector<std::set<geometry::Port*>> ResolvePortKeyCollection(
       const PortKeyCollection &collection) const;

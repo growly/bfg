@@ -41,14 +41,21 @@ namespace bfg {
 // avoid congestion when the designer is aware of where it is likely. It is also
 // largely obviated by more sophisticated meta-routing, like with simulated
 // annealing, an ILP, etc.
+//
+// FIXME(aryap): Instead of returning the position of each order, return the an
+// "id" for the order that allows the caller to reasonably distinguish results
+// from orders made over the object's lifetime.
 
 class NetRouteOrder {
  public:
   NetRouteOrder() = default;
-  NetRouteOrder(const EquivalentNets &net)
-      : net_(net) {}
+  NetRouteOrder(int64_t id, const EquivalentNets &net)
+      : id_(id), net_(net) {}
 
   std::string Describe() const;
+
+  int64_t id() const { return id_; }
+  void set_id(int64_t id) { id_ = id; }
 
   void set_explicit_target(const std::optional<EquivalentNets> &net) {
     explicit_target_ = net;
@@ -66,11 +73,13 @@ class NetRouteOrder {
     return nodes_;
   }
 
-  std::set<int> &pre_consolidation_priorities() {
-    return pre_consolidation_priorities_;
+  std::set<int> &pre_consolidation_ids() {
+    return pre_consolidation_ids_;
   }
 
  private:
+  int64_t id_;
+
   // All of the equivalent nets on this route. The net.primary() string is used
   // as a canonical ID.
   EquivalentNets net_;
@@ -84,12 +93,17 @@ class NetRouteOrder {
 
   // Indicates which orders were consolidated to form this one, if it was
   // created on consolidation.
-  std::set<int> pre_consolidation_priorities_;
+  std::set<int> pre_consolidation_ids_;
 };
 
 // Maybe "RouteGovernor"?
 class RouteManager {
  public:
+  struct OrderAndResult {
+    NetRouteOrder order;
+    absl::StatusOr<std::vector<RoutingPath*>> result;
+  };
+
   static absl::Status SummariseStatuses(
       const std::vector<absl::Status> &statuses);
 
@@ -98,7 +112,8 @@ class RouteManager {
       : layout_(layout),
         routing_grid_(routing_grid),
         root_blockage_cache_(*routing_grid),
-        auto_cancel_blockages_(false) {
+        auto_cancel_blockages_(false),
+        next_id_(0) {
     ConfigureRoutingBlockageCache();
   }
 
@@ -159,8 +174,12 @@ class RouteManager {
     return Solve(true);
   }
 
+  absl::StatusOr<OrderAndResult> GetOrderAndResult(int64_t id) const;
+
   // Inspect:
   std::string DescribeOrders() const;
+
+  std::string DescribeResults() const;
 
   void set_auto_cancel_blockages(bool auto_cancel_blockages) {
     auto_cancel_blockages_ = auto_cancel_blockages;
@@ -179,6 +198,13 @@ class RouteManager {
 
   void ConfigureRoutingBlockageCache();
 
+  int64_t GetNextID() {
+    // It's 2026, we can't just "return next_id_++;"
+    int64_t id = next_id_;
+    next_id_++;
+    return id;
+  }
+
   EquivalentNets *GetRoutedNetsByPort(const geometry::Port *port) const;
   void MergeAndReplaceEquivalentNets(
       const std::set<EquivalentNets*> to_replace,
@@ -187,7 +213,8 @@ class RouteManager {
   absl::Status ConsolidateOrders();
   absl::Status CollectConnectedNets();
 
-  absl::Status RunOrder(const NetRouteOrder &order);
+  absl::StatusOr<std::vector<RoutingPath*>> RunOrder(
+      const NetRouteOrder &order);
 
   absl::Status RunAllSerial();
   absl::Status RunAllParallel();
@@ -207,8 +234,13 @@ class RouteManager {
 
   std::vector<NetRouteOrder> orders_;
 
+  std::map<int64_t, OrderAndResult> results_;
+  mutable std::shared_mutex results_lock_;
+
   bool auto_cancel_blockages_;
   std::vector<std::string> auto_cancel_layers_;
+
+  int64_t next_id_;
 
   FRIEND_TEST(RouteManagerTest, ConsolidateOrders);
   FRIEND_TEST(RouteManagerTest, MergeAndReplaceEquivalentNets);

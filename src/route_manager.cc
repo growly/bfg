@@ -2,9 +2,9 @@
 
 #include <thread>
 #include <functional>
-
-#include <absl/strings/str_cat.h>
+#include <shared_mutex>
 #include <sstream>
+#include <absl/strings/str_cat.h>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 
@@ -20,7 +20,7 @@ namespace bfg {
 
 std::string NetRouteOrder::Describe() const {
   std::stringstream ss;
-  ss << "Nets: " << net_ << std::endl;
+  ss << "ID: " << id_ << " Nets: " << net_ << std::endl;
   for (size_t i = 0; i < nodes_.size(); ++i) {
     const auto &node = nodes_[i];
     ss << "Step " << i << ": " << std::endl;
@@ -52,62 +52,78 @@ std::string RouteManager::DescribeOrders() const {
   return ss.str();
 }
 
+std::string RouteManager::DescribeResults() const {
+  std::stringstream ss;
+  std::shared_lock mu(results_lock_);
+  for (const auto &entry : results_) {
+    int64_t id = entry.first;
+    const auto &order = entry.second.order;
+    const auto &result = entry.second.result;
+    ss << absl::StrFormat("%10d: ", id);
+    if (result.ok()) {
+      ss << "    OK " << result->size() << " path(s)";
+    } else {
+      ss << "FAILED " << order.net() << ": " << result.status();
+    }
+    ss << std::endl;
+  }
+  return ss.str();
+}
+
 absl::StatusOr<int64_t> RouteManager::Connect(
     const geometry::Port &from,
     const geometry::Port &to,
     const EquivalentNets &as_nets) {
-  NetRouteOrder order(as_nets);
+  NetRouteOrder order(GetNextID(), as_nets);
   order.nodes().emplace_back(std::set<const geometry::Port*>{&from});
   order.nodes().emplace_back(std::set<const geometry::Port*>{&to});
   orders_.push_back(order);
-  return 0;
+  return order.id();
 }
 
 absl::StatusOr<int64_t> RouteManager::Connect(
     const std::set<geometry::Port*> &from_ports,
     const std::set<geometry::Port*> &to_ports,
     const EquivalentNets &as_nets) {
-  NetRouteOrder order(as_nets);
+  NetRouteOrder order(GetNextID(), as_nets);
   order.nodes().emplace_back(from_ports.begin(), from_ports.end());
   order.nodes().emplace_back(to_ports.begin(), to_ports.end());
   orders_.push_back(order);
-  return 0;
+  return order.id();
 }
 
 absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
     const std::vector<geometry::Port*> &ports,
     const EquivalentNets &nets,
     const std::optional<int64_t> priority) {
-  NetRouteOrder order(nets);
+  NetRouteOrder order(GetNextID(), nets);
   for (geometry::Port *port : ports) {
     order.nodes().emplace_back(std::set<const geometry::Port*>{port});
   }
-  int64_t position = orders_.size();
   orders_.push_back(order);
-  return position;
+  return order.id();
 }
 
 absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
   const std::vector<std::set<geometry::Port*>> &port_sets,
   const EquivalentNets &nets,
   const std::optional<int64_t> priority) {
-  NetRouteOrder order(nets);
+  NetRouteOrder order(GetNextID(), nets);
   for (const std::set<geometry::Port*> &ports : port_sets) {
     order.nodes().emplace_back();
     for (const geometry::Port* port: ports) {
       order.nodes().back().insert(port);
     }
   }
-  int64_t position = orders_.size();
   orders_.push_back(order);
-  return position;
+  return order.id();
 }
 
 absl::StatusOr<int64_t> RouteManager::ConnectToNet(
     const std::vector<std::set<geometry::Port*>> ports_list,
     const EquivalentNets &target_nets,
     const EquivalentNets &as_nets) {
-  NetRouteOrder order(as_nets);
+  NetRouteOrder order(GetNextID(), as_nets);
   for (const std::set<geometry::Port*> &ports : ports_list) {
     order.nodes().emplace_back();
     for (const geometry::Port* port: ports) {
@@ -115,18 +131,19 @@ absl::StatusOr<int64_t> RouteManager::ConnectToNet(
     }
   }
   order.set_explicit_target(target_nets);
-  int64_t position = orders_.size();
   orders_.push_back(order);
-  return position;
+  return order.id();
 }
 
 absl::Status RouteManager::RunAllSerial() {
   // Accumulate errors.
+  std::unique_lock mu(results_lock_);
   std::vector<absl::Status> statuses;
   for (const NetRouteOrder &order : orders_) {
     LOG(INFO) << "Serial dispatch; routing " << std::endl << order.Describe();
-    auto status = RunOrder(order);
-    statuses.push_back(status);
+    auto result = RunOrder(order);
+    results_[order.id()] = { .order = order, .result = result };
+    statuses.push_back(result.status());
   }
   return SummariseStatuses(statuses);
 }
@@ -149,9 +166,10 @@ absl::Status RouteManager::RunAllParallel() {
         const NetRouteOrder &order = orders_[i];
         LOG(INFO) << "Thread " << j << " dispatch for order " << i << std::endl
                   << order.Describe();
-        auto status = RunOrder(order);
-
-        statuses[i] = status;
+        auto result = RunOrder(order);
+        statuses[i] = result.status();
+        std::unique_lock mu(results_lock_);
+        results_[order.id()] = { .order = order, .result = result };
       });
       ++i;
     }
@@ -179,7 +197,8 @@ absl::Status RouteManager::RunAllParallel() {
 // multi-point route request (a NetRouteOrder), and a suite of these types of
 // functions should implement them. Then, at dispatch time, we pick which one.
 // Intermixing them requires multiple NetRouteOrders.
-absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
+absl::StatusOr<std::vector<RoutingPath*>>
+RouteManager::RunOrder(const NetRouteOrder &order) {
   if (order.nodes().size() == 0 ||
       (!order.explicit_target() && order.nodes().size() < 2)) {
     return absl::FailedPreconditionError("Not enough nodes in NetRouteOrder");
@@ -212,24 +231,25 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
 
   auto retry_fn = [&](
       const std::function<absl::StatusOr<RoutingPath*>()> &route_fn)
-          -> absl::Status {
+          -> absl::StatusOr<RoutingPath*> {
     size_t attempts = 0;
-    absl::Status last_result;
+    std::vector<absl::Status> errors;
     while (attempts < kNumRetries) {
       auto last_result = route_fn();
       switch (last_result.status().code()) {
         case absl::StatusCode::kOk:
-          return last_result.status();
+          return last_result;
         case absl::StatusCode::kUnavailable:
           // Transient error, always re-attempt.
         default:
           attempts++;
+          errors.push_back(last_result.status());
       }
       LOG(INFO) << "Oops! Error on attempt #" << attempts  << "/"
                 << kNumRetries << "... "
                 << (attempts < kNumRetries ? "retrying." : "quitting");
     }
-    return last_result;
+    return SummariseStatuses(errors);
   };
 
   std::vector<absl::Status> errors;
@@ -241,6 +261,8 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
     first_pair_routed = true;
     target_nets = *order.explicit_target();
   }
+
+  std::vector<RoutingPath*> paths;
 
   for (size_t i = 0; i < order.nodes().size(); ++i) {
     geometry::PortSet begin_ports =
@@ -266,9 +288,10 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
         for (const geometry::Port *port : end_ports) {
           target_nets.Add(port->net());
         }
+        paths.push_back(*result);
       } else {
         // Save for later? Come back and attempt at the end?
-        errors.push_back(result);
+        errors.push_back(result.status());
       }
     } else {
       auto result = retry_fn([&]() {
@@ -281,17 +304,11 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
         for (const geometry::Port *port : begin_ports) {
           target_nets.Add(port->net());
         }
+        paths.push_back(*result);
       } else {
         // Save for later? Come back and attempt at the end?
-        errors.push_back(result);
+        errors.push_back(result.status());
       }
-    }
-  }
-
-  if (!errors.empty()) {
-    LOG(ERROR) << "Failed to route order:";
-    for (const auto &status : errors) {
-      LOG(ERROR) << status.message();
     }
   }
 
@@ -304,7 +321,16 @@ absl::Status RouteManager::RunOrder(const NetRouteOrder &order) {
   //layout_->CopyConnectableShapesOnNets(usable_nets, &usable_nets_shapes);
   //root_blockage_cache_.CancelBlockages(usable_nets_shapes);
 
-  return absl::OkStatus();
+  if (!errors.empty()) {
+    LOG(ERROR) << "Failed to route order:";
+    for (const auto &status : errors) {
+      LOG(ERROR) << status.message();
+    }
+    return SummariseStatuses(errors);
+  } else {
+    // TODO(aryap): What about partial successes?
+    return paths;
+  }
 }
 
 int32_t RouteManager::GetConcurrency() const {
@@ -413,6 +439,8 @@ absl::Status RouteManager::ConsolidateOrders() {
       NetRouteOrder *replacement_order;
       if (order_it == orders_by_net.end()) {
         replacement_order = &consolidated.emplace_back();
+        // Reuse the ID of the precipitating order.
+        replacement_order->set_id(order.id());
         replacement_order->set_net(*nets);
         orders_by_net[nets] = replacement_order;
       } else {
@@ -420,7 +448,7 @@ absl::Status RouteManager::ConsolidateOrders() {
       }
       replacement_order->nodes().push_back(node);
       replacement_order->set_explicit_target(order.explicit_target());
-      replacement_order->pre_consolidation_priorities().insert(i);
+      replacement_order->pre_consolidation_ids().insert(order.id());
 
       included_in_order.insert(node.begin(), node.end());
     }
@@ -484,6 +512,16 @@ void RouteManager::MaybeAutoCancelBlockages(const EquivalentNets &for_nets) {
               << for_nets.Describe();
     root_blockage_cache_.CancelBlockages(for_nets, layer);
   }
+}
+
+absl::StatusOr<RouteManager::OrderAndResult> RouteManager::GetOrderAndResult(
+    int64_t id) const {
+  std::shared_lock mu(results_lock_);
+  auto it = results_.find(id);
+  if (it == results_.end()) {
+    return absl::NotFoundError("No result for that ID.");
+  }
+  return it->second;
 }
 
 }  // namespace bfg

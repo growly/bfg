@@ -171,11 +171,9 @@ Cell *LutB::Generate() {
 
   // Clock, power, ground in.
   circuit->AddPort(circuit->AddSignal("CLK"));
-  // TODO(aryap): For now there's actually one of these per bank.
-  circuit->AddPort(circuit->AddSignal("VPWR_0"));
-  circuit->AddPort(circuit->AddSignal("VPWR_1"));
-  circuit->AddPort(circuit->AddSignal("VGND_0"));
-  circuit->AddPort(circuit->AddSignal("VGND_1"));
+  circuit->AddPort(circuit->AddSignal("APP_CLK"));
+  circuit->AddPort(circuit->AddSignal("VPWR"));
+  circuit->AddPort(circuit->AddSignal("VGND"));
 
   // Layout.
   // ---------------------------------------------------------------------------
@@ -208,16 +206,16 @@ Cell *LutB::Generate() {
     MemoryBank &bank = banks_.back();
     bank.default_tap_connections().insert({
         tap_params.power_net,
-        circuit->GetOrAddSignal(absl::StrCat("VPWR_", p), 1)});
+        circuit->GetOrAddSignal("VPWR", 1)});
     bank.default_tap_connections().insert({
         tap_params.ground_net,
-        circuit->GetOrAddSignal(absl::StrCat("VGND_", p), 1)});
+        circuit->GetOrAddSignal("VGND", 1)});
     bank.default_tap_connections().insert({
         "VPB",
-        circuit->GetOrAddSignal(absl::StrCat("VPWR_", p), 1)});
+        circuit->GetOrAddSignal("VPWR", 1)});
     bank.default_tap_connections().insert({
         "VNB",
-        circuit->GetOrAddSignal(absl::StrCat("VGND_", p), 1)});
+        circuit->GetOrAddSignal("VGND", 1)});
 
 
     // We now want to assign things to rows and have the memory bank create the
@@ -346,7 +344,14 @@ Cell *LutB::Generate() {
 
       std::string instance_name = absl::StrFormat("buf_%d", buf_count);
       std::string cell_name = absl::StrCat(instance_name, "_template");
-      atoms::Sky130Buf::Parameters buf_params; // Default values.
+      // FIXME(aryap): This config is only for S0, S1 and S2. S3 uses the
+      // default (smaller) buffer.
+      atoms::Sky130Buf::Parameters buf_params = {
+        .nfet_0_width_nm = 530,
+        .nfet_1_width_nm = 530,
+        .pfet_0_width_nm = 980,
+        .pfet_1_width_nm = 980
+      };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(
           PrefixCellName(cell_name));
@@ -777,8 +782,8 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   RouteScanChain(&route_manager, circuit, layout);
   RouteClockBuffers(&routing_grid, circuit, layout);
   RouteMuxInputs(&route_manager, circuit, layout);
-  RouteRemainder(&routing_grid, circuit, layout);
-  RouteOutputs(&routing_grid, circuit, layout);
+  RouteRemainder(&route_manager, circuit, layout);
+  RouteOutputs(&route_manager, circuit, layout);
 
   for (const absl::Status &error : errors_) {
     LOG(ERROR) << "Routing error: " << error;
@@ -792,6 +797,9 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
   std::unique_ptr<Layout> grid_layout;
   grid_layout.reset(routing_grid.GenerateLayout());
   layout->AddLayout(*grid_layout, "routing");
+
+  LOG(INFO) << "Routing result:"
+            << std::endl << route_manager.DescribeResults();
 }
 
 void LutB::ConfigureRoutingGrid(
@@ -1094,7 +1102,7 @@ void LutB::RouteMuxInputs(
 }
 
 void LutB::RouteRemainder(
-    RoutingGrid *routing_grid,
+    RouteManager *route_manager,
     Circuit *circuit,
     Layout *layout) {
   // Connect the input buffers on the selector lines.
@@ -1150,8 +1158,8 @@ void LutB::RouteRemainder(
   }
 
   for (const PortKeyCollection &collection : auto_connections) {
-    // FIXME(aryap): Use RouteManager. And fix all these FIXMEs.
-    auto result = AddMultiPointRoute(collection, routing_grid, circuit, layout);
+    auto result = RoutePortKeyCollection(
+        collection, route_manager, circuit, layout, true);
     AccumulateAnyErrors(result.status());
   }
 
@@ -1258,12 +1266,10 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
 //  - one which discriminates the input to the application register between the
 //  same three inputs.
 void LutB::RouteOutputs(
-    RoutingGrid *routing_grid,
+    RouteManager *route_manager,
     Circuit *circuit,
     Layout *layout) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-
-  RouteManager route_manager(layout, routing_grid);
 
   DCHECK(comb_output_mux_ != nullptr &&
          comb_output_mux_config_ != nullptr &&
@@ -1350,12 +1356,14 @@ void LutB::RouteOutputs(
     auto_connections.push_back({
       .port_keys = {{aux_comb_output_mux_, "A1"},
                     {aux_reg_output_mux_, "A1"}},
-      .as_nets = EquivalentNets("X2")
+      .as_nets = EquivalentNets("X2"),
+      .add_midway_port = "X2"
     });
     // Alternative bypass input:
     auto_connections.push_back({
       .port_keys = {{aux_comb_output_mux_, "A0"}, {reg_output_mux_, "A1"}},
-      .as_nets = {bypass_input}
+      .as_nets = {bypass_input},
+      .add_midway_port = bypass_input
     });
   } else {
     auto_connections.push_back({
@@ -1366,57 +1374,19 @@ void LutB::RouteOutputs(
       //
       // This should be a port also.
       .port_keys = {{comb_output_mux_, "A1"}, {reg_output_mux_, "A1"}},
-      .as_nets = {bypass_input}
+      .as_nets = {bypass_input},
+      .add_midway_port = bypass_input
     });
-  }
-
-  for (const auto &collection : auto_connections) {
-    auto port_sets = ResolvePortKeyCollection(collection);
-
-    std::string net = collection.as_nets->primary();
-
-    route_manager.ConnectMultiplePorts(port_sets, net).IgnoreError();
-    route_manager.Solve().IgnoreError();
-
     // FIXME(aryap): We need to add ports in the layout for:
     //  PortKeyAlias {{comb_output_mux_, "A1"}, "X", "port_A1_centre_top"},
     //  PortKeyAlias {{reg_output_mux_, "A1"}, "X", "port_A1_centre_top"},
+    // Use AddPortMidway on the path that comes out of solving for this one. I
+    // think it should be done separately as a result.
+  }
 
-    // If any of these ports is already connected, we have to reuse the signal.
-    // If more than one is already connected, we have to replace one signal with
-    // another.
-    // TODO(aryap): This is a solution to a common problem that should be
-    // factored into RouteManager or some part of Circuit. It would be
-    // convenient for RouteManager to connect circuit elements at the same as it
-    // connects layout. For that to work effectively, we need to support signal
-    // replacement.
-    circuit::Signal *signal = nullptr;
-    std::vector<const PortKey*> needs_connecting;
-    for (const auto &port_key : collection.port_keys) {
-      geometry::Instance *instance = port_key.instance;
-      auto connection = instance->circuit_instance()->GetConnection(
-          port_key.port_name);
-      if (!connection) {
-        needs_connecting.push_back(&port_key);
-        continue;
-      }
-      LOG_IF(FATAL, signal != nullptr)
-          << "Can't handle more than one pre-existing connected port";
-      auto maybe_signal = connection->GetSingleReferencedSignal();
-      LOG_IF(FATAL, !maybe_signal)
-          << "Unimplemented: can't handle concatenations";
-      
-      signal = const_cast<circuit::Signal*>(*maybe_signal);
-    }
-
-    if (!signal) {
-      signal = circuit->GetOrAddSignal(net, 1);
-    }
-    for (const PortKey *port_key : needs_connecting) {
-      geometry::Instance *instance = port_key->instance;
-      instance->circuit_instance()->Connect(
-          port_key->port_name, *signal);
-    }
+  for (const auto &collection : auto_connections) {
+    RoutePortKeyCollection(collection, route_manager, circuit, layout, true)
+        .IgnoreError();
   }
 
   //route_manager.Solve().IgnoreError();
@@ -1426,8 +1396,10 @@ void LutB::AddOutputs(Circuit *circuit, Layout *layout) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   // Make input/output pins.
   std::vector<PortKeyAlias> pin_map = {
+    // The CLB does not have an output from the mux directly, it must be
+    // negotiated by another mux between it and the bypass input.
     // Take the output from the final 2:1 mux output (for now).
-    PortKeyAlias {{active_mux2s_[0], "X"}, "Z", "port_X_centre_middle"},
+    //PortKeyAlias {{active_mux2s_[0], "X"}, "Z", "port_X_centre_middle"},
     PortKeyAlias {{scan_order_.back(), "Q"}, "CONFIG_OUT", "port_Q_centre"},
     PortKeyAlias {{reg_output_flop_, "Q"}, "Q", "port_Q_centre"}
   };
@@ -1463,6 +1435,82 @@ void LutB::AddOutputs(Circuit *circuit, Layout *layout) {
     circuit::Signal *signal = circuit->GetOrAddSignal(port_name, 1);
     circuit_instance->Connect(entry.key.port_name, *signal);
   }
+}
+
+absl::StatusOr<int64_t> LutB::RoutePortKeyCollection(
+    const PortKeyCollection &collection,
+    RouteManager *route_manager,
+    Circuit *circuit,
+    Layout *layout,
+    bool solve_immediately) const {
+  auto port_sets = ResolvePortKeyCollection(collection);
+
+  std::string net = collection.as_nets ?
+      collection.as_nets->primary() : "";
+
+  const std::optional<std::string> &add_midway_port =
+      collection.add_midway_port;
+
+  auto result = route_manager->ConnectMultiplePorts(port_sets, net);
+  if (!result.ok()) {
+    return result.status();
+  }
+  int64_t order_id = *result;
+  if (solve_immediately) {
+    auto solution_status = route_manager->Solve();
+    if (!solution_status.ok()) {
+      return solution_status.status();
+    }
+    auto order_and_result = route_manager->GetOrderAndResult(order_id);
+    if (!order_and_result.ok()) {
+      return order_and_result.status();
+    }
+    auto route_result = order_and_result->result;
+    if (!route_result.ok()) {
+      return route_result.status();
+    }
+    if (collection.add_midway_port) {
+      RoutingPath *path = route_result->front();
+      path->AddPortMidway(*collection.add_midway_port);
+    }
+  }
+
+  // If any of these ports is already connected, we have to reuse the signal.
+  // If more than one is already connected, we have to replace one signal with
+  // another.
+  // TODO(aryap): This is a solution to a common problem that should be
+  // factored into RouteManager or some part of Circuit. It would be
+  // convenient for RouteManager to connect circuit elements at the same as it
+  // connects layout. For that to work effectively, we need to support signal
+  // replacement.
+  circuit::Signal *signal = nullptr;
+  std::vector<const PortKey*> needs_connecting;
+  for (const auto &port_key : collection.port_keys) {
+    geometry::Instance *instance = port_key.instance;
+    auto connection = instance->circuit_instance()->GetConnection(
+        port_key.port_name);
+    if (!connection) {
+      needs_connecting.push_back(&port_key);
+      continue;
+    }
+    LOG_IF(FATAL, signal != nullptr)
+        << "Can't handle more than one pre-existing connected port";
+    auto maybe_signal = connection->GetSingleReferencedSignal();
+    LOG_IF(FATAL, !maybe_signal)
+        << "Unimplemented: can't handle concatenations";
+    
+    signal = const_cast<circuit::Signal*>(*maybe_signal);
+  }
+
+  if (!signal) {
+    signal = circuit->GetOrAddSignal(net, 1);
+  }
+  for (const PortKey *port_key : needs_connecting) {
+    geometry::Instance *instance = port_key->instance;
+    instance->circuit_instance()->Connect(
+        port_key->port_name, *signal);
+  }
+  return order_id;
 }
 
 // TODO(aryap): This clearly needs to be factored out of this class.
@@ -1609,27 +1657,32 @@ void LutB::AddClockAndPowerStraps(
     std::string port_name;
     std::string net_name;
     bool create_cross_bar_and_port;
+    bool add_suffix;
   };
   static const std::array<StrapInfo, 4> kStrapInfo = {
     StrapInfo {
       .port_name = "CLK",
       .net_name = "clk",
-      .create_cross_bar_and_port = false
+      .create_cross_bar_and_port = false,
+      .add_suffix = true
     },
     StrapInfo {
       .port_name = "CLKI",
       .net_name = "clk_i",
-      .create_cross_bar_and_port = false
+      .create_cross_bar_and_port = false,
+      .add_suffix = true
     },
     StrapInfo {
       .port_name = "VPWR",
-      .net_name = "vpwr",
-      .create_cross_bar_and_port = true
+      .net_name = "VPWR",
+      .create_cross_bar_and_port = true,
+      .add_suffix = false
     },
     StrapInfo {
       .port_name = "VGND",
-      .net_name = "vgnd",
-      .create_cross_bar_and_port = true
+      .net_name = "VGND",
+      .create_cross_bar_and_port = true,
+      .add_suffix = false
     }
   };
 
@@ -1637,11 +1690,17 @@ void LutB::AddClockAndPowerStraps(
   static const std::array<std::string, 4> kCircuitOnlyPorts = {
     "VPWR", "VGND", "VPB", "VNB"};
   static const std::array<std::string, 4> kCircuitOnlyPortNets = {
-    "vpwr", "vgnd", "vpwr", "vgnd"};
+    "VPWR", "VGND", "VPWR", "VGND"};
 
   constexpr int64_t kOffsetNumPitches = 0;
 
-  // FIXME(aryap): We are leaking technology-specific concerns into what was
+  // FIXME(aryap): 
+  // 2) Add bypasss port X even when the route isn't found
+  // 2b) fix the route
+  // 3) Scale LutB.sp params by 1E6 when running LVS too?!
+
+
+  // TODO(aryap): We are leaking technology-specific concerns into what was
   // previously somewhat agnostic; but was it ever really agnostic? There could
   // just be a strap configuration sction in the parameters:
   // TODO(aryap): What if we has a class SyntheticRules that created common
@@ -1678,8 +1737,9 @@ void LutB::AddClockAndPowerStraps(
       const auto &strap_info = kStrapInfo[i];
       const std::string &port_name = strap_info.port_name;
 
-      std::string net = absl::StrCat(strap_info.net_name, "_", bank);
-      circuit::Wire wire = circuit->AddSignal(net);
+      std::string net = strap_info.add_suffix ?
+          absl::StrCat(strap_info.net_name, "_", bank) : strap_info.net_name;
+      circuit::Wire wire = circuit::Wire(*circuit->GetOrAddSignal(net, 1), 0);
 
       std::vector<geometry::Point> connections;
       for (const auto &row : banks_.at(bank).instances()) {
@@ -1766,7 +1826,7 @@ void LutB::AddClockAndPowerStraps(
 
     // Connect circuit-only ports.
     for (size_t i = 0; i < kCircuitOnlyPorts.size(); ++i) {
-      std::string net = absl::StrCat(kCircuitOnlyPortNets[i], "_", bank);
+      std::string net = kCircuitOnlyPortNets[i];
       circuit::Signal *signal = circuit->GetOrAddSignal(net, 1);
       const std::string &port_name = kCircuitOnlyPorts[i];
       
