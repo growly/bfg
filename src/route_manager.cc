@@ -282,6 +282,12 @@ RouteManager::RunOrder(const NetRouteOrder &order) {
       });
       if (result.ok()) {
         first_pair_routed = true;
+        // RoutingGrid::AddBestRouteBetween will assign usable_nets to the
+        // resulting path, which should become the target of subsequent calls
+        // to AddBestRouteToNet. Since usable_nets can be a superset of the
+        // individual port nets, we have to make sure we keep the union of all
+        // possible net names this thing can have.
+        target_nets.Add(usable_nets);
         for (const geometry::Port *port : begin_ports) {
           target_nets.Add(port->net());
         }
