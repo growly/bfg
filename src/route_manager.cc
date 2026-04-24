@@ -61,7 +61,7 @@ std::string RouteManager::DescribeResults() const {
     const auto &result = entry.second.result;
     ss << absl::StrFormat("%10d: ", id);
     if (result.ok()) {
-      ss << "    OK " << result->size() << " path(s)";
+      ss << "    OK " << result->size() << " path(s) " << order.net();
     } else {
       ss << "FAILED " << order.net() << ": " << result.status();
     }
