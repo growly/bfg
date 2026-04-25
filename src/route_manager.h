@@ -107,8 +107,7 @@ class RouteManager {
   static absl::Status SummariseStatuses(
       const std::vector<absl::Status> &statuses);
 
-  RouteManager(Layout *layout,
-               RoutingGrid *routing_grid)
+  RouteManager(Layout *layout, RoutingGrid *routing_grid)
       : layout_(layout),
         routing_grid_(routing_grid),
         root_blockage_cache_(*routing_grid),
@@ -180,6 +179,8 @@ class RouteManager {
   std::string DescribeOrders() const;
 
   std::string DescribeResults() const;
+
+  RoutingGrid *routing_grid() const { return routing_grid_; }
 
   void set_auto_cancel_blockages(bool auto_cancel_blockages) {
     auto_cancel_blockages_ = auto_cancel_blockages;

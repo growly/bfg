@@ -796,7 +796,8 @@ void LutB::Route(Circuit *circuit, Layout *layout) {
 
   std::unique_ptr<Layout> grid_layout;
   grid_layout.reset(routing_grid.GenerateLayout());
-  layout->AddLayout(*grid_layout, "routing");
+  //layout->AddLayout(*grid_layout, "routing");
+  layout->AddLayout(*grid_layout);
 
   LOG(INFO) << "Routing result:"
             << std::endl << route_manager.DescribeResults();
@@ -1472,6 +1473,8 @@ absl::StatusOr<int64_t> LutB::RoutePortKeyCollection(
     if (collection.add_midway_port) {
       RoutingPath *path = route_result->front();
       path->AddPortMidway(*collection.add_midway_port);
+      // Ports should not be prefixed when the routing grid is merged.
+      route_manager->routing_grid()->AddGlobalNet(*collection.add_midway_port);
     }
   }
 
