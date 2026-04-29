@@ -60,7 +60,15 @@ bool EquivalentNets::Delete(const std::string &name) {
 
 
 std::string EquivalentNets::Describe() const {
-  return absl::StrJoin(nets_, ", ");
+  std::vector<std::string> to_print;
+  for (const std::string &net : nets_) {
+    if (primary_ != "" && net == primary_) {
+      to_print.insert(to_print.begin(), absl::StrCat(net, " (P)"));
+      continue;
+    }
+    to_print.push_back(net);
+  }
+  return absl::StrJoin(to_print, ", ");
 }
 
 std::ostream &operator<<(std::ostream &os, const EquivalentNets &nets) {

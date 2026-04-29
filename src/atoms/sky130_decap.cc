@@ -125,12 +125,14 @@ bfg::Cell *Sky130Decap::Generate() {
 
   std::unique_ptr<bfg::Cell> cell(
       new bfg::Cell(name_.empty() ? "sky130_buf": name_));
-  cell->SetLayout(GenerateLayout());
-  cell->SetCircuit(GenerateCircuit());
+
+  int64_t fet_length_nm;
+  cell->SetLayout(GenerateLayout(&fet_length_nm));
+  cell->SetCircuit(GenerateCircuit(fet_length_nm));
   return cell.release();
 }
 
-bfg::Circuit *Sky130Decap::GenerateCircuit() {
+bfg::Circuit *Sky130Decap::GenerateCircuit(int64_t fet_length_nm) {
   std::unique_ptr<bfg::Circuit> circuit(new bfg::Circuit());
 
   circuit::Wire power = circuit->AddSignal(parameters_.power_net);
@@ -149,6 +151,19 @@ bfg::Circuit *Sky130Decap::GenerateCircuit() {
   nfet->Connect(
       {{"d", ground}, {"g", power}, {"s", ground}, {"b", n_substrate}});
 
+  nfet->SetParameter(
+      parameters_.fet_model_width_parameter,
+      Parameter::FromInteger(
+          parameters_.fet_model_width_parameter,
+          NDiffHeightNm(),
+          Parameter::SIUnitPrefix::NANO));
+  nfet->SetParameter(
+      parameters_.fet_model_length_parameter,
+      Parameter::FromInteger(
+          parameters_.fet_model_length_parameter,
+          fet_length_nm,
+          Parameter::SIUnitPrefix::NANO));
+
   // These are all sky130_fd_pr__pfet_01v8_hvt:
   Circuit *pfet_01v8_hvt = design_db_->FindCellOrDie(
       "sky130", "sky130_fd_pr__pfet_01v8_hvt")->circuit();
@@ -156,10 +171,23 @@ bfg::Circuit *Sky130Decap::GenerateCircuit() {
   pfet->Connect(
       {{"d", power}, {"g", ground}, {"s", power}, {"b", p_substrate}});
 
+  pfet->SetParameter(
+      parameters_.fet_model_width_parameter,
+      Parameter::FromInteger(
+          parameters_.fet_model_width_parameter,
+          PDiffHeightNm(),
+          Parameter::SIUnitPrefix::NANO));
+  pfet->SetParameter(
+      parameters_.fet_model_length_parameter,
+      Parameter::FromInteger(
+          parameters_.fet_model_length_parameter,
+          fet_length_nm,
+          Parameter::SIUnitPrefix::NANO));
+
   return circuit.release();
 }
 
-bfg::Layout *Sky130Decap::GenerateLayout() {
+bfg::Layout *Sky130Decap::GenerateLayout(int64_t *fet_length_nm) {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   std::unique_ptr<bfg::Layout> layout(new bfg::Layout(db));
 
@@ -292,6 +320,9 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
     }});
   }
 
+  *fet_length_nm = db.ToExternalUnits(
+          upper_poly_under_diff_x_max - upper_poly_under_diff_x_min);
+
   // Add vias to connect poly and li layers.
   layout->MakeVia("polycon.drawing",
       {upper_poly_tab_x_min + ncon_width / 2 + poly_polycon_overhang,
@@ -355,8 +386,6 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
                ncon_ndiff_rules.min_enclosure_alt) +
       ncon_width / 2;
 
-  // FIXME(aryap): I think these are too close to the polys? But my magic is
-  // broken :@
   layout->DistributeVias(
       "pcon.drawing",
       {pdiff->lower_left().x() + ncon_centre_to_diff_edge_x,
@@ -467,14 +496,24 @@ bfg::Layout *Sky130Decap::GenerateLayout() {
   return layout.release();
 }
 
+int64_t Sky130Decap::NDiffHeightNm() const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  return parameters_.nfet_0_width_nm.value_or(550);
+}
+
+int64_t Sky130Decap::PDiffHeightNm() const {
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  return parameters_.pfet_0_width_nm.value_or(870);
+}
+
 int64_t Sky130Decap::NDiffHeight() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  return db.ToInternalUnits(parameters_.nfet_0_width_nm.value_or(550));
+  return db.ToInternalUnits(NDiffHeightNm());
 }
 
 int64_t Sky130Decap::PDiffHeight() const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
-  return db.ToInternalUnits(parameters_.pfet_0_width_nm.value_or(870));
+  return db.ToInternalUnits(PDiffHeightNm());
 }
 
 Cell *Sky130Decap::Make(const std::optional<Parameters> &base_params,

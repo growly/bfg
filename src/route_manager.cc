@@ -476,6 +476,9 @@ absl::Status RouteManager::CollectConnectedNets() {
     // before. Create a single union of all of their nets.
     EquivalentNets *nets = routed_nets_.emplace_back(
         new EquivalentNets()).get();
+    if (order.net().primary() != "" && nets->primary() == "") {
+      nets->set_primary(order.net().primary());
+    }
     nets->Add(order.net());
     std::set<EquivalentNets*> to_merge;
 

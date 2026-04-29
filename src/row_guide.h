@@ -38,6 +38,7 @@ class RowGuide {
         circuit_(circuit),
         design_db_(design_db),
         rotate_instances_(false),
+        add_taps_to_circuit_(false),
         start_with_tap_(true),
         num_taps_(0),
         distance_to_tap_left_(0),
@@ -218,6 +219,7 @@ class RowGuide {
 
   std::map<std::string, circuit::Signal*> default_tap_connections_;
 
+  bool add_taps_to_circuit_;
   bool start_with_tap_;
   int64_t num_taps_;
   int64_t distance_to_tap_right_;

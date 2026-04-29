@@ -346,12 +346,12 @@ Cell *LutB::Generate() {
       std::string cell_name = absl::StrCat(instance_name, "_template");
       // FIXME(aryap): This config is only for S0, S1 and S2. S3 uses the
       // default (smaller) buffer.
-      atoms::Sky130Buf::Parameters buf_params = {
-        .nfet_0_width_nm = 530,
-        .nfet_1_width_nm = 530,
-        .pfet_0_width_nm = 980,
-        .pfet_1_width_nm = 980
-      };
+      atoms::Sky130Buf::Parameters buf_params = {};
+      //  .nfet_0_width_nm = 530,
+      //  .nfet_1_width_nm = 530,
+      //  .pfet_0_width_nm = 980,
+      //  .pfet_1_width_nm = 980
+      //};
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(
           PrefixCellName(cell_name));
@@ -1119,27 +1119,36 @@ void LutB::RouteRemainder(
   std::vector<PortKeyCollection> auto_connections = {{
       .port_keys = {{buf_order_[1], "X"}, {mux_order_[0], "S1"},
                     {mux_order_[1], "S1"}},
+      .as_nets = EquivalentNets("mux_s1")
     }, {
       .port_keys = {{buf_order_[0], "P"}, {mux_order_[0], "S0_B"},
                     {mux_order_[1], "S0_B"}},
+      .as_nets = EquivalentNets("mux_s0_b")
     }, {
       .port_keys = {{buf_order_[0], "X"}, {mux_order_[0], "S0"},
                     {mux_order_[1], "S0"}},
+      .as_nets = EquivalentNets("mux_s0")
     }, {
       .port_keys = {{buf_order_[1], "P"}, {mux_order_[0], "S1_B"},
                     {mux_order_[1], "S1_B"}},
-    }, {
-      .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S2_B"},
-                    {mux_order_[1], "S2_B"}},
+      .as_nets = EquivalentNets("mux_s1_b")
     }, {
       .port_keys = {{buf_order_[2], "X"}, {mux_order_[0], "S2"},
                     {mux_order_[1], "S2"}},
+      .as_nets = EquivalentNets("mux_s2")
+    }, {
+      .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S2_B"},
+                    {mux_order_[1], "S2_B"}},
+      .as_nets = EquivalentNets("mux_s2_b")
     }, {
       .port_keys = {{buf_order_[3], "X"}, {active_mux2s_[0], "S"}},
+      .as_nets = EquivalentNets("mux_s3")
     }, {
       .port_keys = {{mux_order_[0], "Z"}, {active_mux2s_[0], "A0"}},
+      .as_nets = EquivalentNets("mux_z0")
     }, {
       .port_keys = {{mux_order_[1], "Z"}, {active_mux2s_[0], "A1"}},
+      .as_nets = EquivalentNets("mux_z1")
     }
   };
 
@@ -1172,13 +1181,11 @@ void LutB::RouteRemainder(
     buf_order_[i]->circuit_instance()->Connect("A", *signal);
   }
 
-  // The hd_mux2 output needs to be connected to the output port.
-  // (FIXME(aryap): This needs to be a a real pin.)
   circuit::Signal *output = circuit->GetOrAddSignal("Z", 1);
   active_mux2s_[0]->circuit_instance()->Connect("X", *output);
 
   // Create floating signals for unconnected ports.
-  // FIXME(aryap): This can be handled automatically. It should be a function of
+  // TODO(aryap): This can be handled automatically. It should be a function of
   // Circuits to make sure all instances have floating nets generated, if
   // needed.
   circuit::Signal *floating_signal = circuit->GetOrAddSignal("", 1);
@@ -1285,18 +1292,14 @@ void LutB::RouteOutputs(
   //
   // TODO(aryap): Why are there two sets of names for the same thing? Fucking
   // annoying.
-  //
-  // FIXME(aryap): The application flop at the output needs a clock buffer.
-  // Probably easiest (least routing congegstion) to include the original clock
-  // buf from the flip flop that was chopped off (that should be a parameter
-  // anyway).
 
   EquivalentNets reg_flop_control("reg_flop_control");
   auto existing_reg_flop_control = GetMemoryOutputNet(reg_output_mux_config_);
   if (existing_reg_flop_control) {
     reg_flop_control = existing_reg_flop_control->get();
   }
-  EquivalentNets comb_flop_control("comb_flop_control");
+  EquivalentNets comb_flop_control(
+      std::set<std::string> {"CONFIG_OUT", "comb_flop_control"});
   auto existing_comb_flop_control = GetMemoryOutputNet(comb_output_mux_config_);
   if (existing_comb_flop_control) {
     comb_flop_control = existing_comb_flop_control->get();
@@ -1311,8 +1314,7 @@ void LutB::RouteOutputs(
       // mux and to the A0 input of the combinational output selection mux.
       .port_keys = {{comb_output_mux_, "A0"}, {reg_output_mux_, "A0"},
                     {active_mux2s_[0], "X"}},
-      .as_nets = EquivalentNets(std::set<std::string>({
-          "comb_input_A0", "reg_input_A0" }))
+      .as_nets = EquivalentNets("Z")
     }, {
       // Connect the output of the register input selection mux to the input of
       // the flop.

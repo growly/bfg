@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+#include <glog/logging.h>
+
 #include "atom.h"
 #include "../circuit/wire.h"
 #include "../cell.h"
@@ -56,12 +58,18 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit->AddPort(D);
   circuit->AddPort(CLK);
 
-  // FIXME(aryap): If there is an input 'CLK' port owing to the input clock
-  // buffer, we must use a different internal node for 'clk', since a
-  // case-insensitive spice sim will not differentiate them.
+  // When the input clock buffer is present, we give the external port and its
+  // associated net the name "CLK". Then, we call the internal "CLK" by
+  // "CLK_INT".
+  std::optional<circuit::Wire> CLK_INT;
   if (!parameters_.input_clock_buffer) {
     circuit->AddPort(CLKI);
+  } else {
+    CLK_INT.emplace(circuit->AddSignal("CLK_INT"));
   }
+
+  const circuit::Wire &effective_internal_clock =
+      parameters_.input_clock_buffer ? *CLK_INT : CLK;
 
   circuit->AddPort(Q);
   circuit->AddPort(VPWR);
@@ -102,6 +110,12 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Instance *pfet_7 = circuit->AddInstance("pfet_7", pfet_01v8_hvt);
   circuit::Instance *pfet_8 = circuit->AddInstance("pfet_8", pfet_01v8_hvt);
   circuit::Instance *pfet_9 = circuit->AddInstance("pfet_9", pfet_01v8_hvt);
+
+  // For the input clock buffer, should it be added.
+  circuit::Instance *nfet_10 = nullptr;
+  circuit::Instance *nfet_11 = nullptr;
+  circuit::Instance *pfet_10 = nullptr;
+  circuit::Instance *pfet_11 = nullptr;
 
   // Assign width, length parameters from the Parameters struct for each of the
   // FETs:
@@ -172,6 +186,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
       pfet_9, parameters_.pfet_9_width_nm, parameters_.pfet_9_length_nm
     }
   };
+
   for (size_t i = 0; i < fet_parameters.size(); ++i) {
     circuit::Instance *fet = fet_parameters[i].instance;
     fet->SetParameter(
@@ -186,6 +201,44 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
             parameters_.fet_model_length_parameter,
             static_cast<int64_t>(fet_parameters[i].length_nm),
             Parameter::SIUnitPrefix::NANO));
+  }
+
+  if (parameters_.input_clock_buffer) {
+    nfet_10 = circuit->AddInstance("nfet_10", nfet_01v8);
+    nfet_11 = circuit->AddInstance("nfet_11", nfet_01v8);
+    pfet_10 = circuit->AddInstance("pfet_10", pfet_01v8_hvt);
+    pfet_11 = circuit->AddInstance("pfet_11", pfet_01v8_hvt);
+
+    std::array<FetParameters, 4> clock_fet_params = {
+      FetParameters {
+        nfet_10, parameters_.nfet_10_width_nm, parameters_.nfet_10_length_nm
+      },
+      FetParameters {
+        nfet_11, parameters_.nfet_11_width_nm, parameters_.nfet_11_length_nm
+      },
+      FetParameters {
+        pfet_10, parameters_.pfet_10_width_nm, parameters_.pfet_10_length_nm
+      },
+      FetParameters {
+        pfet_11, parameters_.pfet_11_width_nm, parameters_.pfet_11_length_nm
+      }
+    };
+
+    for (size_t i = 0; i < clock_fet_params.size(); ++i) {
+      circuit::Instance *fet = clock_fet_params[i].instance;
+      fet->SetParameter(
+          parameters_.fet_model_width_parameter,
+          Parameter::FromInteger(
+              parameters_.fet_model_width_parameter,
+              static_cast<int64_t>(clock_fet_params[i].width_nm),
+              Parameter::SIUnitPrefix::NANO));
+      fet->SetParameter(
+          parameters_.fet_model_length_parameter,
+          Parameter::FromInteger(
+              parameters_.fet_model_length_parameter,
+              static_cast<int64_t>(clock_fet_params[i].length_nm),
+              Parameter::SIUnitPrefix::NANO));
+    }
   }
 
   // For reference (and as a sanity check), this is the spice model for the
@@ -283,27 +336,11 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   //                    |                    |
   //                    V                    V
 
-  // If the input clock buffer is included, we add this circuit to generate
-  // clk and clk_i from a single CLK source. The CLKI port is then disabled,
-  // since only a CLK port is needed.
-  //
-  //              /                    /
-  //              |                    |
-  //         g   _| s             g   _| s
-  //         +-o|_ pfet_10        +-o|_  pfet_11
-  //         |    | d             |    | d
-  //  CLK ---+    +------- clk_i -+    +--- clk
-  //         |   _| d             |   _| d
-  //         +--|_ nfet_10        +--|_  nfet_11
-  //         g    | s             g    | s
-  //              |                    |
-  //              V                    V
-
   circuit::Wire a = circuit->AddSignal("a");
   circuit::Wire b = circuit->AddSignal("b");
 
   pfet_0->Connect({{"d", a}, {"g", D}, {"s", VPWR}, {"b", VPB}});
-  pfet_1->Connect({{"d", b}, {"g", CLK}, {"s", a}, {"b", VPB}});
+  pfet_1->Connect({{"d", b}, {"g", effective_internal_clock}, {"s", a}, {"b", VPB}});
   nfet_1->Connect({{"d", b}, {"g", CLKI}, {"s", a}, {"b", VNB}});
   nfet_0->Connect({{"d", a}, {"g", D}, {"s", VGND}, {"b", VNB}});
 
@@ -316,7 +353,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   pfet_2->Connect({{"d", j}, {"g", c}, {"s", VPWR}, {"b", VPB}});
   pfet_3->Connect({{"d", b}, {"g", CLKI}, {"s", j}, {"b", VPB}});
-  nfet_3->Connect({{"d", b}, {"g", CLK}, {"s", e}, {"b", VNB}});
+  nfet_3->Connect({{"d", b}, {"g", effective_internal_clock}, {"s", e}, {"b", VNB}});
   nfet_2->Connect({{"d", e}, {"g", c}, {"s", VGND}, {"b", VNB}});
 
   //                    /                    /
@@ -344,7 +381,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   pfet_4->Connect({{"d", c}, {"g", b}, {"s", VPWR}, {"b", VPB}});
   pfet_5->Connect({{"d", f}, {"g", CLKI}, {"s", c}, {"b", VPB}});
-  nfet_5->Connect({{"d", f}, {"g", CLK}, {"s", c}, {"b", VNB}});
+  nfet_5->Connect({{"d", f}, {"g", effective_internal_clock}, {"s", c}, {"b", VNB}});
   nfet_4->Connect({{"d", c}, {"g", b}, {"s", VGND}, {"b", VNB}});
 
   circuit::Wire Q_B = circuit->AddSignal("Q_B");
@@ -352,7 +389,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   circuit::Wire i = circuit->AddSignal("i");
 
   pfet_6->Connect({{"d", h}, {"g", Q_B}, {"s", VPWR}, {"b", VPB}});
-  pfet_7->Connect({{"d", f}, {"g", CLK}, {"s", h}, {"b", VPB}});
+  pfet_7->Connect({{"d", f}, {"g", effective_internal_clock}, {"s", h}, {"b", VPB}});
   nfet_7->Connect({{"d", f}, {"g", CLKI}, {"s", i}, {"b", VNB}});
   nfet_6->Connect({{"d", i}, {"g", Q_B}, {"s", VGND}, {"b", VNB}});
 
@@ -375,6 +412,37 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 
   pfet_9->Connect({{"d", Q}, {"g", Q_B}, {"s", VPWR}, {"b", VPB}});
   nfet_9->Connect({{"d", Q}, {"g", Q_B}, {"s", VGND}, {"b", VNB}});
+
+  // If the input clock buffer is included, we add this circuit to generate
+  // clk and clk_i from a single CLK source. The CLKI port is then disabled,
+  // since only a CLK port is needed.
+  //
+  //              /                    /
+  //              |                    |
+  //         g   _| s             g   _| s
+  //         +-o|_ pfet_10        +-o|_  pfet_11
+  //         |    | d             |    | d
+  //  CLK ---+    +------- clk_i -+    +--- clk_int
+  //         |   _| d             |   _| d
+  //         +--|_ nfet_10        +--|_  nfet_11
+  //         g    | s             g    | s
+  //              |                    |
+  //              V                    V
+  if (parameters_.input_clock_buffer) {
+    DCHECK_NOTNULL(nfet_10);
+    DCHECK_NOTNULL(pfet_10);
+    DCHECK_NOTNULL(nfet_11);
+    DCHECK_NOTNULL(pfet_11);
+
+    
+    pfet_10->Connect({{"d", CLKI}, {"g", CLK}, {"s", VPWR}, {"b", VPB}});
+    nfet_10->Connect({{"d", CLKI}, {"g", CLK}, {"s", VGND}, {"b", VNB}});
+
+    pfet_11->Connect({
+        {"d", effective_internal_clock}, {"g", CLKI}, {"s", VPWR}, {"b", VPB}});
+    nfet_11->Connect({
+        {"d", effective_internal_clock}, {"g", CLKI}, {"s", VGND}, {"b", VNB}});
+  }
 
   return circuit.release();
 }
@@ -495,7 +563,7 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
                //Point(0, 1600)
                }));
   clk_bar->set_is_connectable(true);
-  clk_bar->set_net("CLK");
+  clk_bar->set_net(parameters_.input_clock_buffer ?  "CLK_INT" : "CLK");
 
   // diff.drawing [DRAWING] 65/20
   layout->SetActiveLayerByName("diff.drawing");

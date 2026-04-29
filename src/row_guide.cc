@@ -136,10 +136,12 @@ geometry::Instance *RowGuide::AddTap() {
   // This is the local count (for this object).
   num_taps_++;
   
-  circuit::Instance *circuit_instance = MakeCircuitInstance(
-      layout_instance->name(), layout_instance, tap_cell_->get().circuit());
-  for (const auto &entry : default_tap_connections_) {
-    circuit_instance->Connect(entry.first, *entry.second);
+  if (add_taps_to_circuit_) {
+    circuit::Instance *circuit_instance = MakeCircuitInstance(
+        layout_instance->name(), layout_instance, tap_cell_->get().circuit());
+    for (const auto &entry : default_tap_connections_) {
+      circuit_instance->Connect(entry.first, *entry.second);
+    }
   }
 
   generated_taps_.push_back(layout_instance);

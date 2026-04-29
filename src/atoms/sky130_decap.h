@@ -82,13 +82,15 @@ class Sky130Decap: public Atom {
   Cell *Generate() override;
 
  private:
-  bfg::Layout *GenerateLayout();
-  bfg::Circuit *GenerateCircuit();
+  bfg::Layout *GenerateLayout(int64_t *fet_length_nm);
+  bfg::Circuit *GenerateCircuit(int64_t fet_length_nm);
 
   // TODO(aryap): We should be able to come up with numbers for these if none
   // are given. Just find the max size for each given their mobility ratios.
   int64_t NDiffHeight() const;
+  int64_t NDiffHeightNm() const;
   int64_t PDiffHeight() const;
+  int64_t PDiffHeightNm() const;
 
   Parameters parameters_;
 };
