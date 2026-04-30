@@ -287,7 +287,7 @@ RouteManager::RunOrder(const NetRouteOrder &order) {
         // to AddBestRouteToNet. Since usable_nets can be a superset of the
         // individual port nets, we have to make sure we keep the union of all
         // possible net names this thing can have.
-        target_nets.Add(usable_nets);
+        target_nets.Add(usable_nets.primary());
         for (const geometry::Port *port : begin_ports) {
           target_nets.Add(port->net());
         }
