@@ -6,6 +6,7 @@
 #include "atom.h"
 #include "../circuit.h"
 #include "../layout.h"
+#include "proto/parameters/sky130_mux.pb.h"
 
 namespace bfg {
 
@@ -65,6 +66,10 @@ class Sky130Mux: public Atom {
 
     bool extend_inputs_top = false;
     bool extend_inputs_bottom = false;
+
+    // TODO(aryap): Implement.
+    void ToProto(proto::parameters::Sky130Mux *pb) const {}
+    void FromProto(const proto::parameters::Sky130Mux &pb) {}
   };
 
   struct Mux2CircuitParameters {

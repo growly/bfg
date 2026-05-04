@@ -173,6 +173,12 @@ int DispatchGenerator(
         bfg::atoms::Sky130PassiveMux3::Parameters,
         bfg::atoms::Sky130PassiveMux3>(
             generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130Mux") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130Mux,
+        bfg::atoms::Sky130Mux::Parameters,
+        bfg::atoms::Sky130Mux>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Fabric") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Fabric,

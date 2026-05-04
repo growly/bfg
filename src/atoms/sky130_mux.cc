@@ -9,6 +9,7 @@
 #include <absl/strings/str_cat.h>
 
 #include "atom.h"
+#include "../scoped_layer.h"
 #include "../circuit/wire.h"
 #include "../cell.h"
 #include "../layout.h"
@@ -56,6 +57,27 @@ Polygon InflatePolyLineOrDie(const PhysicalPropertiesDatabase &db,
   LOG_IF(FATAL, !polygon) << "Could not inflate polyline: " << line;
   return *polygon;
 }
+
+void DrawNpcAroundPoints(
+    const PhysicalPropertiesDatabase &db,
+    const std::set<geometry::Point> &points,
+    bfg::Layout *layout) {
+  int64_t via_side = db.Rules("polycon.drawing").via_width;
+  geometry::Rectangle cover = geometry::Rectangle::CentredAt(
+      *points.begin(), via_side, via_side);
+  for (auto it = std::next(points.begin(), 1); it != points.end(); ++it) {
+    geometry::Rectangle via = geometry::Rectangle::CentredAt(
+        *it, via_side, via_side);
+    cover.ExpandToCover(via);
+  }
+
+  int64_t padding = db.Rules("polycon.drawing", "npc.drawing").min_enclosure;
+
+  ScopedLayer sl(layout, "npc.drawing");
+  geometry::Rectangle *npc = layout->AddRectangle(cover.WithPadding(padding));
+  LOG(INFO) << "Drew npc.drawing " << *npc;
+}
+
 
 Polygon *AddElbowPath(
     const PhysicalPropertiesDatabase &db,
@@ -323,6 +345,7 @@ void ConnectNamedPointsToColumns(
         std::tuple<std::string, PolyLine*, bool>> mapping,
     const std::string &poly_contact,
     bool point_up,
+    std::set<geometry::Point> *source_points,
     bfg::Layout *layout) {
   int64_t mcon_via_side = db.Rules("mcon.drawing").via_width;
   int64_t mcon_encap_width = mcon_via_side + 2 * db.Rules(
@@ -342,6 +365,8 @@ void ConnectNamedPointsToColumns(
 
     Point source = layout->GetPointOrDie(name);
     Point connection = {poly_line->start().x(), source.y()};
+
+    source_points->insert(source);
 
     if (point_up) {
       connection.set_y(source.y() + mcon_via_side);
@@ -947,6 +972,9 @@ void GenerateOutput2To1MuxLayout(
 
   int64_t extension_top = parameters.extend_inputs_top ? 550 : 0;
 
+  std::vector<std::set<geometry::Point>> npc_groups(
+      2, std::set<geometry::Point>());
+
   Polygon *left_right_poly_li_pour = nullptr;
   Polygon *top_poly_connector = nullptr;
   metal_column_x_values = {
@@ -997,10 +1025,12 @@ void GenerateOutput2To1MuxLayout(
         main_layout);
     top_poly_connector->set_net(net_names[target]);
 
+    geometry::Point poly_contact = Point(poly_x, p_1.y());
+
     main_layout->SetActiveLayerByName("li.drawing");
     left_right_poly_li_pour = ConnectPolyToMet1(
         db,
-        Point(poly_x, p_1.y()),
+        poly_contact,
         p_1,
         "polycon.drawing",
         main_layout);
@@ -1011,11 +1041,15 @@ void GenerateOutput2To1MuxLayout(
         absl::StrCat(name, "_selector_column_bottom"),
         p_1);
 
+    npc_groups[0].insert(poly_contact);
+
     main_layout->SetActiveLayerByName("met1.pin");
     geometry::Rectangle *pin = main_layout->AddSquareAsPort(
         p_0, met1_rules.min_width, net_names[target]);
     pin->set_net(net_names[target]);
   }
+
+  DrawNpcAroundPoints(db, npc_groups[0], main_layout);
 
   int64_t extension_bottom = parameters.extend_inputs_bottom ? 550 : 0;
 
@@ -1070,13 +1104,17 @@ void GenerateOutput2To1MuxLayout(
         main_layout);
     bottom_poly_connector->set_net(net_names[target]);
 
+    geometry::Point poly_contact = Point(poly_x, met1_p0.y());
+
     main_layout->SetActiveLayerByName("li.drawing");
     ConnectPolyToMet1(
         db,
-        Point(poly_x, met1_p0.y()),
+        poly_contact,
         met1_p0,
         "polycon.drawing",
         main_layout);
+
+    npc_groups[1].insert(poly_contact);
 
     const std::string &name = poly_names[target];
     main_layout->SavePoint(
@@ -1091,6 +1129,8 @@ void GenerateOutput2To1MuxLayout(
         met1_p1, met1_rules.min_width, net_names[target]);
     pin->set_net(net_names[target]);
   }
+
+  DrawNpcAroundPoints(db, npc_groups[1], main_layout);
 
   // Add the first side of the mux back to the main layout.
   Rectangle bb = layout->GetBoundingBox();
@@ -2160,6 +2200,11 @@ void BuildMet1Columns(
   // ConnectNamedPointsToColumns. It would be far less general as a result, but
   // is it needed to be general? It's only used here for now.  Connect poly to
   // metal columns.
+ 
+  // We have to collect clusters of points where poly connects to li, because
+  // we need to draw an npc.drawing enclosure around them.
+  std::vector<std::set<geometry::Point>> npc_groups(
+      2, std::set<geometry::Point>());
 
   // Along the top of the mux:
   //
@@ -2207,6 +2252,7 @@ void BuildMet1Columns(
       },
       poly_contact,
       true,  // point up
+      &npc_groups[0],
       layout);
 
   // Along the bottom of the mux:
@@ -2240,7 +2286,11 @@ void BuildMet1Columns(
       },
       poly_contact,
       false,  // point down
+      &npc_groups[1],
       layout);
+
+  DrawNpcAroundPoints(db, npc_groups[0], layout);
+  DrawNpcAroundPoints(db, npc_groups[1], layout);
 }
 
 }  // namespace
