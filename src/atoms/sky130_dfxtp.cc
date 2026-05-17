@@ -988,11 +988,17 @@ bfg::Layout *Sky130Dfxtp::GenerateLayout() {
     layout->SavePoint("port_QI_centre", pin->centre());
   }
 
-  // nwell.pin [PIN] 64/16
-  layout->SetActiveLayerByName("nwell.pin");
+  const PhysicalPropertiesDatabase &db = design_db_->physical_db();
+  int64_t height = db.ToInternalUnits(parameters_.height_nm);
 
-  // pwell.pin [PIN] 122/16
-  layout->SetActiveLayerByName("pwell.pin");
+  // nwell.pin 64/16
+  //layout->MakePin("VPB", {230, static_cast<int64_t>(height)}, "nwell.pin");
+  // FIXME(aryap): There's a bug with proto2gds because pwell.labels have a
+  // wacky layer/purpose type (the label subtype doesn't match pwell's layer).
+  // So we can't label these. But we can draw them?
+
+  // pwell.pin 122/16
+  //layout->MakePin("VNB", {230, 0}, "pwell.pin");
 
   int64_t x_min = parameters_.input_clock_buffer ?
       x_start - 920 : x_start;
@@ -1092,7 +1098,7 @@ void Sky130Dfxtp::DrawInputClockBuffer(
     bfg::Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
-  int64_t height = 2720;
+  int64_t height = db.ToInternalUnits(parameters_.height_nm);
   int64_t transistor_mid_x = x_min + 135 + 545;
 
   // diff.drawing
@@ -1196,6 +1202,8 @@ void Sky130Dfxtp::DrawInputClockBuffer(
   layout->AddRectangle(Rectangle(
       {x_min + 90, 975}, {x_min + 440, 1625}));
   layout->MakeVia("licon.drawing", {x_min + 245, 1160});
+
+  layout->MakeVia("licon.drawing", {x_min + 725, 1235});
 
   Point port_clk_centre = {x_min + 230, 1190};
   layout->MakePin("CLK", port_clk_centre, "li.pin");

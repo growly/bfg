@@ -19,7 +19,7 @@ class Sky130Dfxtp: public Atom {
  public:
   struct Parameters : public Sky130Parameters {
     uint64_t width_nm;
-    uint64_t height_nm;
+    uint64_t height_nm = 2720;
 
     uint64_t pfet_0_width_nm = 420;
     uint64_t pfet_1_width_nm = 420;

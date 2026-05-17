@@ -140,6 +140,13 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   };
   db->AddRules("nwell.drawing", intra_constraints);
 
+  intra_constraints = {
+    .via_width = db->ToInternalUnits(170),
+    .via_height = db->ToInternalUnits(170)
+  };
+  db->AddRules("nwell.pin", intra_constraints);
+  db->AddRules("pwell.pin", intra_constraints);
+
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = db->ToInternalUnits(55),
     // licon.8a

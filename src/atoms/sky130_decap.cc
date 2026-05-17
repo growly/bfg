@@ -324,12 +324,22 @@ bfg::Layout *Sky130Decap::GenerateLayout(int64_t *fet_length_nm) {
           upper_poly_under_diff_x_max - upper_poly_under_diff_x_min);
 
   // Add vias to connect poly and li layers.
-  layout->MakeVia("polycon.drawing",
+  geometry::Rectangle *polycon_0 = layout->MakeVia("polycon.drawing",
       {upper_poly_tab_x_min + ncon_width / 2 + poly_polycon_overhang,
        upper_poly_tab_y_min + ncon_width / 2 + poly_polycon_overhang});
-  layout->MakeVia("polycon.drawing",
+  geometry::Rectangle *polycon_1 = layout->MakeVia("polycon.drawing",
       {lower_poly_tab_x_max - ncon_width / 2 - poly_polycon_overhang,
        lower_poly_tab_y_max - ncon_width / 2 - poly_polycon_overhang});
+
+  {
+    int64_t padding = db.Rules("polycon.drawing", "npc.drawing").min_enclosure;
+    ScopedLayer scoped_layer(layout.get(), "npc.drawing");
+
+    auto npc_box = geometry::Rectangle::AccumulatedOver({polycon_0, polycon_1});
+    if (npc_box) {
+      layout->AddRectangle(npc_box->WithPadding(padding));
+    }
+  }
 
   int64_t bottom_li_rail_y_high = li_rail_width / 2;
   int64_t top_li_rail_y_low = height - li_rail_width / 2;

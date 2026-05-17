@@ -1240,7 +1240,7 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
   }
 
   for (const auto &entry : pin_map) {
-    layout->SetActiveLayerByName("li.pin");
+    layout->SetActiveLayerByName("met1.pin");
     const std::string &port_name = entry.alias;
     geometry::Point pin_centre =
         entry.key.instance->GetPointOrDie(entry.saved_point);
@@ -1250,6 +1250,8 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
         port_name);
     pin->set_net(port_name);
     layout->RestoreLastActiveLayer();
+
+    layout->MakeVia("mcon.drawing", pin_centre, port_name);
 
     layout->SetActiveLayerByName("met1.drawing");
     auto encap_info = db.TypicalViaEncap(
@@ -1413,7 +1415,7 @@ void LutB::AddOutputs(Circuit *circuit, Layout *layout) {
   }
 
   for (const auto &entry : pin_map) {
-    layout->SetActiveLayerByName("li.pin");
+    layout->SetActiveLayerByName("met1.pin");
     const std::string &port_name = entry.alias;
     geometry::Point pin_centre =
         entry.key.instance->GetPointOrDie(entry.saved_point);
@@ -1423,6 +1425,9 @@ void LutB::AddOutputs(Circuit *circuit, Layout *layout) {
         port_name);
     pin->set_net(port_name);
     layout->RestoreLastActiveLayer();
+
+    layout->MakeVia("mcon.drawing", pin_centre, port_name);
+
     layout->SetActiveLayerByName("met1.drawing");
     auto encap_info = db.TypicalViaEncap(
         "mcon.drawing", "met1.drawing", "via1.drawing");

@@ -270,10 +270,12 @@ bfg::Layout *Sky130Buf::GenerateLayout() {
     }
 
     // nwell.pin 64/16
+    //layout->MakePin("VPB", {230, static_cast<int64_t>(height)}, "nwell.pin");
     layout->SetActiveLayerByName("nwell.pin");
     layout->AddSquare({230, static_cast<int64_t>(height)}, 170);
 
     // pwell.pin 122/16
+    //layout->MakePin("VNB", {230, 0}, "pwell.pin");
     layout->SetActiveLayerByName("pwell.pin");
     layout->AddSquare({240, 0}, 170);
   }
