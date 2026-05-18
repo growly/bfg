@@ -17,6 +17,7 @@
 #include "physical_properties_database.h"
 #include "cell.h"
 #include "layout.h"
+#include "atoms/sky130_split_buffer.h"
 #include "atoms/sky130_carry1.h"
 #include "atoms/sky130_switch_complex.h"
 #include "atoms/sky130_interconnect_mux1.h"
@@ -51,6 +52,7 @@
 #include "proto/parameters/sky130_decap.pb.h"
 #include "proto/parameters/sky130_dfxtp.pb.h"
 #include "proto/parameters/sky130_xor2.pb.h"
+#include "proto/parameters/sky130_split_buffer.pb.h"
 #include "proto/parameters/sky130_interconnect_mux1.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
@@ -167,6 +169,12 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130Carry1,
         bfg::atoms::Sky130Carry1::Parameters,
         bfg::atoms::Sky130Carry1>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130SplitBuffer") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130SplitBuffer,
+        bfg::atoms::Sky130SplitBuffer::Parameters,
+        bfg::atoms::Sky130SplitBuffer>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130PassiveMux3") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Sky130PassiveMux3,

@@ -8,6 +8,9 @@
 #include "../circuit.h"
 #include "../layout.h"
 
+#include "sky130_simple_transistor.h"
+#include "proto/parameters/sky130_split_buffer.pb.h"
+
 namespace bfg {
 
 class DesignDatabase;
@@ -94,47 +97,18 @@ class Sky130SplitBuffer: public Atom {
     uint64_t pfet_1_length_nm = 150;
     uint64_t pfet_2_length_nm = 150;
 
-    bool double_nfet0 = true;
-    bool double_nfet2 = true;
+    bool double_fet0 = true;
+    bool double_fet2 = true;
+
+    void ToProto(proto::parameters::Sky130SplitBuffer *pb) const;
+    void FromProto(const proto::parameters::Sky130SplitBuffer &pb);
   };
 
   Sky130SplitBuffer(const Parameters &parameters, DesignDatabase *design_db)
       : Atom(design_db),
         parameters_(parameters) {
 
-    Sky130SimpleTransistor::Parameters nfet_params = {
-      .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
-      .width_nm = parameters_.n_width_nm,
-      .length_nm = parameters_.n_length_nm,
-      .stacks_left = parameters_.stacks_left,
-      .stacks_right = parameters_.stacks_right,
-      .poly_overhang_top_nm =
-          (parameters_.n_tab_position &&
-              geometry::CompassHasNorth(*parameters_.n_tab_position)) ?
-              parameters_.min_n_tab_diff_separation_nm : std::nullopt,
-      .poly_overhang_bottom_nm = 
-          (parameters_.n_tab_position &&
-              geometry::CompassHasSouth(*parameters_.n_tab_position)) ?
-              parameters_.min_n_tab_diff_separation_nm : std::nullopt,
-      .stacking_pitch_nm = parameters_.poly_pitch_nm
-    };
-
-    Sky130SimpleTransistor::Parameters pfet_params = {
-      .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
-      .width_nm = parameters_.p_width_nm,
-      .length_nm = parameters_.p_length_nm,
-      .stacks_left = parameters_.stacks_left,
-      .stacks_right = parameters_.stacks_right,
-      .poly_overhang_top_nm =
-          (parameters_.p_tab_position &&
-              geometry::CompassHasNorth(*parameters_.p_tab_position)) ?
-              parameters_.min_p_tab_diff_separation_nm : std::nullopt,
-      .poly_overhang_bottom_nm = 
-          (parameters_.p_tab_position &&
-              geometry::CompassHasSouth(*parameters_.p_tab_position)) ?
-              parameters_.min_p_tab_diff_separation_nm : std::nullopt,
-      .stacking_pitch_nm = parameters_.poly_pitch_nm
-    }; 
+    SetUpTransistors();
   }
 
   // Caller takes ownership!
@@ -144,7 +118,19 @@ class Sky130SplitBuffer: public Atom {
   bfg::Layout *GenerateLayout();
   bfg::Circuit *GenerateCircuit();
 
-  Sky130SimpleTransistor Make
+  void SetUpTransistors();
+
+  std::unique_ptr<Sky130SimpleTransistor> nfet_0a_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> nfet_0b_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> nfet_1_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> nfet_2a_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> nfet_2b_gen_;
+
+  std::unique_ptr<Sky130SimpleTransistor> pfet_0a_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> pfet_0b_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> pfet_1_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> pfet_2a_gen_;
+  std::unique_ptr<Sky130SimpleTransistor> pfet_2b_gen_;
 
   Parameters parameters_;
 };

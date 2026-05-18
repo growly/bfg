@@ -24,8 +24,8 @@ message Sky130SplitBuffer {
 
   // If true, nfet_0/pfet_0 (bottom branch first inverter) are doubled, i.e.
   // two parallel transistors are used to increase drive strength.
-  optional bool double_nfet0 = 17;
+  optional bool double_fet0 = 17;
 
   // If true, nfet_2/pfet_2 (top branch second inverter) are doubled.
-  optional bool double_nfet2 = 18;
+  optional bool double_fet2 = 18;
 }
