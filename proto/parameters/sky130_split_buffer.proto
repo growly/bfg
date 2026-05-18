@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package bfg.proto.parameters;
+
+message Sky130SplitBuffer {
+  optional uint64 width_nm = 1;
+  optional uint64 height_nm = 2;
+
+  // 3, 4 reserved for fet_model_{length,width}_parameter.
+
+  optional uint64 nfet_0_width_nm = 5;
+  optional uint64 nfet_1_width_nm = 6;
+  optional uint64 nfet_2_width_nm = 7;
+  optional uint64 pfet_0_width_nm = 8;
+  optional uint64 pfet_1_width_nm = 9;
+  optional uint64 pfet_2_width_nm = 10;
+
+  optional uint64 nfet_0_length_nm = 11;
+  optional uint64 nfet_1_length_nm = 12;
+  optional uint64 nfet_2_length_nm = 13;
+  optional uint64 pfet_0_length_nm = 14;
+  optional uint64 pfet_1_length_nm = 15;
+  optional uint64 pfet_2_length_nm = 16;
+
+  // If true, nfet_0/pfet_0 (bottom branch first inverter) are doubled, i.e.
+  // two parallel transistors are used to increase drive strength.
+  optional bool double_nfet0 = 17;
+
+  // If true, nfet_2/pfet_2 (top branch second inverter) are doubled.
+  optional bool double_nfet2 = 18;
+}
