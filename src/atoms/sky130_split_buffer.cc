@@ -836,6 +836,7 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
 
   // Add port P.
   layout->MakePin("P", port_P_centre, "li.pin");
+  layout->SavePoint("port_P_centre", port_P_centre);
 
   Point port_X_centre;
   int64_t li_X_left_x = 0;
@@ -921,6 +922,7 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
   }
 
   layout->MakePin("X", port_X_centre, "li.pin");
+  layout->SavePoint("port_X_centre", port_X_centre);
 
   // Draw the li.drawing encap and port A:
   // Now we want an li pour with an li pin on it for the A port.
@@ -930,6 +932,7 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
     int64_t port_y = MapToTrackY(polycon_via_A.y(), 1);
     Point port_A_centre = {polycon_via_A.x(), port_y};
     layout->MakePin("A", port_A_centre, "li.pin");
+    layout->SavePoint("port_A_centre", port_A_centre);
     
     Rectangle encap = Rectangle::CentredAt(
         polycon_via_A,

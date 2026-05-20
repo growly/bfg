@@ -14,6 +14,7 @@
 #include "../atoms/sky130_hd_mux2_1.h"
 #include "../atoms/sky130_mux.h"
 #include "../atoms/sky130_tap.h"
+#include "../atoms/sky130_split_buffer.h"
 #include "../checkerboard_guide.h"
 #include "../equivalent_nets.h"
 #include "../geometry/compass.h"
@@ -342,8 +343,25 @@ Cell *LutB::Generate() {
       size_t assigned_row = bank_arrangement.buffer_rows[i];
       size_t buf_count = buf_order_.size();
 
-      std::string instance_name = absl::StrFormat("buf_%d", buf_count);
-      std::string cell_name = absl::StrCat(instance_name, "_template");
+      std::string cell_name = absl::StrFormat("buf_%d", buf_count);
+      std::string instance_name = absl::StrCat(cell_name, "_i");
+
+      if (buf_count == 2) {
+        atoms::Sky130SplitBuffer::Parameters split_buf_params = {
+        };
+        std::string cell_name = absl::StrFormat("buf_%d", buf_count);
+        std::string instance_name = absl::StrCat(cell_name, "_i");
+
+        atoms::Sky130SplitBuffer buf_generator(split_buf_params, design_db_);
+        Cell *buf_cell = buf_generator.GenerateIntoDatabase(
+            PrefixCellName(cell_name));
+        buf_cell->layout()->ResetY();
+        geometry::Instance *installed = bank.InstantiateInside(
+            assigned_row, instance_name, buf_cell);
+        buf_order_.push_back(installed);
+        continue;
+      }
+
       // FIXME(aryap): This config is only for S0, S1 and S2. S3 uses the
       // default (smaller) buffer.
       atoms::Sky130Buf::Parameters buf_params = {};
@@ -359,10 +377,6 @@ Cell *LutB::Generate() {
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell);
       buf_order_.push_back(installed);
-
-      //circuit::Instance *circuit_instance = circuit->AddInstance(
-      //    instance_name, buf_cell->circuit());
-      //Cell::TieInstances(circuit_instance, installed);
     }
 
     for (size_t i = 0; i < bank_arrangement.clk_buf_rows.size(); ++i) {
@@ -379,10 +393,6 @@ Cell *LutB::Generate() {
       geometry::Instance *installed = bank.InstantiateInside(
           assigned_row, instance_name, buf_cell);
       clk_buf_order_.push_back(installed);
-
-      //circuit::Instance *circuit_instance = circuit->AddInstance(
-      //    instance_name, buf_cell->circuit());
-      //Cell::TieInstances(circuit_instance, installed);
     }
 
     for (size_t i = 0; i < bank_arrangement.active_mux2_rows.size(); ++i) {
@@ -397,10 +407,6 @@ Cell *LutB::Generate() {
       geometry::Instance *instance = bank.InstantiateInside(
           assigned_row, instance_name, active_mux2_cell);
       active_mux2s_.push_back(instance);
-
-      //circuit::Instance *circuit_instance = circuit->AddInstance(
-      //    instance_name, active_mux2_cell->circuit());
-      //Cell::TieInstances(circuit_instance, instance);
     }
   }
 
@@ -1121,11 +1127,11 @@ void LutB::RouteRemainder(
                     {mux_order_[1], "S1"}},
       .as_nets = EquivalentNets("mux_s1")
     }, {
-      .port_keys = {{buf_order_[0], "P"}, {mux_order_[0], "S0_B"},
+      .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S0_B"},
                     {mux_order_[1], "S0_B"}},
       .as_nets = EquivalentNets("mux_s0_b")
     }, {
-      .port_keys = {{buf_order_[0], "X"}, {mux_order_[0], "S0"},
+      .port_keys = {{buf_order_[2], "X"}, {mux_order_[0], "S0"},
                     {mux_order_[1], "S0"}},
       .as_nets = EquivalentNets("mux_s0")
     }, {
@@ -1133,11 +1139,11 @@ void LutB::RouteRemainder(
                     {mux_order_[1], "S1_B"}},
       .as_nets = EquivalentNets("mux_s1_b")
     }, {
-      .port_keys = {{buf_order_[2], "X"}, {mux_order_[0], "S2"},
+      .port_keys = {{buf_order_[0], "X"}, {mux_order_[0], "S2"},
                     {mux_order_[1], "S2"}},
       .as_nets = EquivalentNets("mux_s2")
     }, {
-      .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S2_B"},
+      .port_keys = {{buf_order_[0], "P"}, {mux_order_[0], "S2_B"},
                     {mux_order_[1], "S2_B"}},
       .as_nets = EquivalentNets("mux_s2_b")
     }, {
@@ -1158,7 +1164,7 @@ void LutB::RouteRemainder(
   }
   if (s2_select_mux_) {
     auto_connections.push_back(PortKeyCollection {
-      .port_keys = {{buf_order_[2], "A"}, {s2_select_mux_, "X"}}
+      .port_keys = {{buf_order_[0], "A"}, {s2_select_mux_, "X"}}
     });
   }
   if (s3_select_mux_) {
@@ -1173,13 +1179,18 @@ void LutB::RouteRemainder(
     AccumulateAnyErrors(result.status());
   }
 
-  // FIXME(aryap): Make circuit-only connections (this is fake).
-  for (size_t i = 0; i < buf_order_.size(); ++i) {
-    std::string port_name = absl::StrCat("S", i);
-    circuit::Signal *signal = circuit->GetOrAddSignal(port_name, 1);
-
-    buf_order_[i]->circuit_instance()->Connect("A", *signal);
-  }
+  // buf_order_[0] -> S2
+  // buf_order_[1] -> S1
+  // buf_order_[2] -> S0
+  // buf_order_[3] -> S3
+  buf_order_[0]->circuit_instance()->Connect("A", 
+      *circuit->GetOrAddSignal("S2", 1));
+  buf_order_[1]->circuit_instance()->Connect("A", 
+      *circuit->GetOrAddSignal("S1", 1));
+  buf_order_[2]->circuit_instance()->Connect("A", 
+      *circuit->GetOrAddSignal("S0", 1));
+  buf_order_[3]->circuit_instance()->Connect("A", 
+      *circuit->GetOrAddSignal("S3", 1));
 
   circuit::Signal *output = circuit->GetOrAddSignal("Z", 1);
   active_mux2s_[0]->circuit_instance()->Connect("X", *output);
@@ -1203,7 +1214,7 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
   // Expect buffer inputs to be on li.drawing, identified by li.pin.
   std::vector<PortKeyAlias> pin_map = {
     PortKeyAlias {{reg_output_flop_, "CLK"}, "APP_CLK", "port_CLK_centre"},
-    PortKeyAlias {{buf_order_[0], "A"}, "S0", "port_A_centre"},
+    PortKeyAlias {{buf_order_[2], "A"}, "S0", "port_A_centre"},
     PortKeyAlias {{buf_order_[1], "A"}, "S1", "port_A_centre"},
     PortKeyAlias {{scan_order_.front(), "D"}, "CONFIG_IN", "port_D_centre"},
   };
@@ -1220,7 +1231,7 @@ void LutB::AddInputs(Circuit *circuit, Layout *layout) {
         PortKeyAlias {{s2_select_mux_, "S"}, "S2_S", "port_S_centre_left"});
   } else {
     pin_map.push_back(
-        PortKeyAlias {{buf_order_[2], "A"}, "S2", "port_A_centre"});
+        PortKeyAlias {{buf_order_[0], "A"}, "S2", "port_A_centre"});
   }
 
   if (s3_select_mux_) {
