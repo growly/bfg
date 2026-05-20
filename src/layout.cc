@@ -589,7 +589,8 @@ geometry::Rectangle *Layout::MakeViaEncap(
 void Layout::DistributeVias(const geometry::Layer &via_layer,
                             const geometry::Point &start,
                             const geometry::Point &end,
-                            const std::optional<std::string> &net) {
+                            const std::optional<std::string> &net,
+                            bool assume_centres) {
   const PhysicalPropertiesDatabase &db = physical_db_;
   const auto &rules = db.Rules(via_layer);
 
@@ -600,9 +601,24 @@ void Layout::DistributeVias(const geometry::Layer &via_layer,
   int64_t nominal_pitch = side + min_separation;
 
   geometry::Line axis(start, end);
+
+  if (assume_centres) {
+    // This is cowboy shit. Check arithmetic errors! Off by one here is painful!
+    geometry::Point new_start = axis.PointOnLineAtDistance(-side / 2);
+    geometry::Point new_end = axis.PointOnLineAtDistance(
+        axis.Length() + side / 2);
+    axis = geometry::Line(new_start, new_end);
+  }
+
   int64_t length = axis.Length();
   // Rely on std::floor behaviour (truncating integer division).
   int64_t num_vias = length / nominal_pitch;
+  if (num_vias == 0) {
+    LOG(WARNING) << "Can't fit a single vias in this distribution. Start: "
+                 << start << ", end: " << end << ", length: " << length
+                 << ", side: " << side << ", nominal pitch: " << nominal_pitch;
+    return;
+  }
   int64_t spacing = (length - (num_vias * side)) / num_vias;
 
   double distance = spacing / 2 + side / 2;

@@ -193,6 +193,8 @@ class Sky130SimpleTransistor : public Atom {
   bfg::Layout *GenerateLayout(
       geometry::Polygon **poly, geometry::Rectangle **diff);
   bfg::Circuit *GenerateCircuit();
+
+  const Parameters &parameters() { return parameters_; }
   const geometry::Point &origin() const { return origin_; }
 
  private:

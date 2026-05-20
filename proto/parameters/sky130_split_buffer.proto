@@ -3,7 +3,7 @@ syntax = "proto3";
 package bfg.proto.parameters;
 
 message Sky130SplitBuffer {
-  optional uint64 width_nm = 1;
+  //optional uint64 width_nm = 1;
   optional uint64 height_nm = 2;
 
   // 3, 4 reserved for fet_model_{length,width}_parameter.

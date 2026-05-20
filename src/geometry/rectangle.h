@@ -74,6 +74,8 @@ class Rectangle : public Shape {
   bool Intersects(const Point &point) const;
   bool Intersects(const Point &point, int64_t margin) const;
 
+  int64_t Area() const { return Width() * Height(); }
+
   // Returns the intersections of the _infinite line_ 'line' with this
   // Rectangle.
   std::vector<PointPair> IntersectingPoints(const Line &line) const;

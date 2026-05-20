@@ -161,18 +161,23 @@ class Layout : public geometry::Manipulable {
       int64_t spine_width,
       Layout *layout);
 
+  // The span of [start, end] must include the total space for the via sides,
+  // not just their centres, unless assume_centres is true.
   void DistributeVias(
       const std::string &via_layer,
       const geometry::Point &start,
       const geometry::Point &end,
-      const std::optional<std::string> &net = std::nullopt) {
-    return DistributeVias(physical_db_.GetLayer(via_layer), start, end, net);
+      const std::optional<std::string> &net = std::nullopt,
+      bool assume_centres = false) {
+    return DistributeVias(
+        physical_db_.GetLayer(via_layer), start, end, net, assume_centres);
   }
   void DistributeVias(
       const geometry::Layer &via_layer,
       const geometry::Point &start,
       const geometry::Point &end,
-      const std::optional<std::string> &net = std::nullopt);
+      const std::optional<std::string> &net = std::nullopt,
+      bool assume_centres = false);
 
   // Stamps out vias every given pitch, starting half that pitch in from the
   // starting point, until the end.

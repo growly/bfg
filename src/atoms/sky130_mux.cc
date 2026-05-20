@@ -58,6 +58,8 @@ Polygon InflatePolyLineOrDie(const PhysicalPropertiesDatabase &db,
   return *polygon;
 }
 
+// TODO(aryap): This is a useful general purpose function! Maybe we have a
+// helper class for particular PDKs?
 void DrawNpcAroundPoints(
     const PhysicalPropertiesDatabase &db,
     const std::set<geometry::Point> &points,

@@ -8,6 +8,7 @@
 #include "../circuit.h"
 #include "../layout.h"
 
+#include "../geometry/rectangle.h"
 #include "sky130_simple_transistor.h"
 #include "proto/parameters/sky130_split_buffer.pb.h"
 
@@ -59,36 +60,55 @@ namespace atoms {
 // The layout should be straightforward. On the right hand side of the cell we
 // put the top branch, with nfet1/2a and optionally nfet2b:
 //
-//                | VDD |                           |VDD|
-// +--------------|     |--------------+------------|   |+
-// |              +-----+              |            +---+|
-// | pfet_1          | pfet_2a         | pfet_2b         |
-// |      +---+      |      +---+      |      +---+      |
-// +------|   |------+------|   |------+------|   |------+
-//        |   |             |   +-------------+   |
-//        |   |             |                     |
-//        |   |             |   +-------------+   |
-// +------|   |------+------|   |------+------|   |------+
-// |      +---+      |      +---+      |      +---+      |
-// | nfet_1          | nfet_2a         | nfet_2b         |
-// |              +-----+              |            +---+|
-// +--------------|     |--------------+------------|   |+
-//                |VGND |                           |VGND
+//                | V     DD |                           |VDD|
+// +--------------|          |--------------+------------|   |+
+// |              +--     ---+              |            +---+|
+// | pfet_1               | pfet_2a         | pfet_2b         |
+// |      +---+           |      +---+      |      +---+      |
+// +------|   |------     +------|   |------+------|   |------+
+//        |   |                  |   +-------------+   |
+//        |   |                  |                     |
+//        |   |                  |   +-------------+   |
+// +------|   |------     +------|   |------+------|   |------+
+// |      +---+           |      +---+      |      +---+      |
+// | nfet_1               | nfet_2a         | nfet_2b         |
+// |              +--     ---+              |            +---+|
+// +--------------|          |--------------+------------|   |+
+//                |VGND |                                |VGND
 //
 // On the left we put the bottom branch, which is optionally double-wide.
+//
+//  |   |                         |VDD     |
+// +|VDD|------------+------------|        |
+// |+---+            |            +--------+
+// | pfet_0b         | pfet_0a         |
+// |      +---+      |      +---+      |
+// +------|   |------+------|   |------+-----------------
+//        |   +-------------+   |
+//        |                     |
+//        |   +-------------+   |
+// +------|   |------+------|   |------+-----------------
+// |      +---+      |      +---+      
+// | nfet_0a         | nfet_0b         
+// |+---+            |            +-------+
+// +|VGND------------+------------|       |
+//  |   |                         | VGND  |
+//
 //
 class Sky130SplitBuffer: public Atom {
  public:
   struct Parameters : public Sky130Parameters {
-    uint64_t width_nm = 1380;
     uint64_t height_nm = 2720;
 
-    uint64_t nfet_0_width_nm = 520;
-    uint64_t nfet_1_width_nm = 520;
-    uint64_t nfet_2_width_nm = 520;
-    uint64_t pfet_0_width_nm = 790;
-    uint64_t pfet_1_width_nm = 790;
-    uint64_t pfet_2_width_nm = 790;
+    // FIXME(aryap): We currently have a problem when p/nfet 2a/b widths total
+    // more than 1600 nm. The Xb connection to their gate poly needs to be moved
+    // I think, so that the poly encap of licon is sufficient.
+    uint64_t nfet_0_width_nm = 600;
+    uint64_t nfet_1_width_nm = 600;
+    uint64_t nfet_2_width_nm = 600;
+    uint64_t pfet_0_width_nm = 1000;
+    uint64_t pfet_1_width_nm = 1000;
+    uint64_t pfet_2_width_nm = 1000;
 
     uint64_t nfet_0_length_nm = 150;
     uint64_t nfet_1_length_nm = 150;
@@ -99,6 +119,26 @@ class Sky130SplitBuffer: public Atom {
 
     bool double_fet0 = true;
     bool double_fet2 = true;
+
+    // This is db.Rules("poly.drawing").min_separation / 2.
+    uint64_t min_poly_boundary_separation_nm = 105;
+
+    // TODO(aryap): Diff extension from poly has a minimum value, so be careful
+    // reducing the poly pitch. Sky130SimpleTransistor will only draw minimum
+    // value and you will get an overlapping diff region. Either enable override
+    // of the overlap or explicitly ignore it somehow.
+    uint64_t split_poly_pitch_nm = 420;
+    uint64_t poly_pitch_nm = 440;
+
+    bool draw_overflowing_vias_and_pins = true;
+    bool draw_vpwr_vias = true;
+    bool draw_vgnd_vias = true;
+    uint64_t mcon_via_pitch_nm = 460;
+    bool expand_wells_to_horizontal_bounds = true;
+
+    // Assumes an offset of half the given pitch from y = 0. A value of 0
+    // disables.
+    int64_t snap_ports_to_vertical_pitch_nm = 340;
 
     void ToProto(proto::parameters::Sky130SplitBuffer *pb) const;
     void FromProto(const proto::parameters::Sky130SplitBuffer &pb);
@@ -115,10 +155,29 @@ class Sky130SplitBuffer: public Atom {
   bfg::Cell *Generate() override;
 
  private:
+  struct TransistorAndViaLocation {
+    Sky130SimpleTransistor *transistor;
+    Sky130SimpleTransistor::ViaPosition location;
+  };
+
   bfg::Layout *GenerateLayout();
   bfg::Circuit *GenerateCircuit();
 
   void SetUpTransistors();
+
+  int64_t FirstPolyX() const;
+  int64_t MapToTrackY(int64_t target_y, int64_t add_pitches) const;
+
+  void DrawPolyA(geometry::Point *polycon_via, bfg::Layout *layout) const;
+  void DrawPolyXb(geometry::Point *polycon_via, bfg::Layout *layout) const;
+  std::vector<geometry::Point> AssemblePoly(
+      std::vector<std::pair<geometry::Point, uint64_t>> tops,
+      std::vector<std::pair<geometry::Point, uint64_t>> bottoms,
+      int64_t add_left,
+      geometry::Point *mid_left) const;
+
+  std::optional<geometry::Point> AverageViaLocations(
+      const std::vector<TransistorAndViaLocation> &lookups) const;
 
   std::unique_ptr<Sky130SimpleTransistor> nfet_0a_gen_;
   std::unique_ptr<Sky130SimpleTransistor> nfet_0b_gen_;

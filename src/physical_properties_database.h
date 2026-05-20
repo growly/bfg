@@ -103,6 +103,15 @@ struct ViaEncapInfo {
   int64_t length;
   // Size of the encap in the direction across the wire.
   int64_t width;
+
+  // TODO(aryap): This should probably be a class now that I'm slapping
+  // functions on it. But they are _only_ lookup helpers...
+  int64_t MaxSide() const {
+    return std::max(length, width);
+  };
+  int64_t MinSide() const {
+    return std::min(length, width);
+  }
 };
 
 // TODO(aryap): We have primitive rules, like those above, and we have
