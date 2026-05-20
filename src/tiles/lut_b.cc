@@ -15,6 +15,7 @@
 #include "../atoms/sky130_mux.h"
 #include "../atoms/sky130_tap.h"
 #include "../atoms/sky130_split_buffer.h"
+#include "../atoms/sky130_parameters.h"
 #include "../checkerboard_guide.h"
 #include "../equivalent_nets.h"
 #include "../geometry/compass.h"
@@ -66,7 +67,7 @@ const std::pair<size_t, LutB::LayoutConfig> LutB::kLayoutConfigurations[] = {
   {4, LutB::LayoutConfig {
     .left = LutB::BankArrangement {
       .memory_rows = {1, 2, 3, 4, 5, 6, 7, 8},
-      .buffer_rows = {8, 8, 8},
+      .buffer_rows = {7, 8, 8},
       .clk_buf_rows = {5},
       .horizontal_alignment = geometry::Compass::LEFT,
       .strap_alignment = geometry::Compass::RIGHT,
@@ -346,8 +347,9 @@ Cell *LutB::Generate() {
       std::string cell_name = absl::StrFormat("buf_%d", buf_count);
       std::string instance_name = absl::StrCat(cell_name, "_i");
 
-      if (buf_count == 2) {
+      if (buf_count == 2 || buf_count == 1) {
         atoms::Sky130SplitBuffer::Parameters split_buf_params = {
+          .unit_width_nm = atoms::Sky130Parameters::kStandardCellUnitWidthNm / 2
         };
         std::string cell_name = absl::StrFormat("buf_%d", buf_count);
         std::string instance_name = absl::StrCat(cell_name, "_i");
@@ -362,14 +364,15 @@ Cell *LutB::Generate() {
         continue;
       }
 
-      // FIXME(aryap): This config is only for S0, S1 and S2. S3 uses the
-      // default (smaller) buffer.
-      atoms::Sky130Buf::Parameters buf_params = {};
-      //  .nfet_0_width_nm = 530,
-      //  .nfet_1_width_nm = 530,
-      //  .pfet_0_width_nm = 980,
-      //  .pfet_1_width_nm = 980
-      //};
+      // FIXME(aryap): The sky130_buf we imported doesn't actually scale to much
+      // larger values! We need a different layout.
+      atoms::Sky130Buf::Parameters buf_params = {
+        // These are the max that fit, and also the defaults.
+        //.nfet_0_width_nm = 520,
+        //.nfet_1_width_nm = 520,
+        //.pfet_0_width_nm = 790,
+        //.pfet_1_width_nm = 790
+      };
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(
           PrefixCellName(cell_name));
@@ -1123,21 +1126,21 @@ void LutB::RouteRemainder(
   // TODO(aryap): These feel like first-class members of the RoutingGrid API
   // soon. "RouteGroup"?
   std::vector<PortKeyCollection> auto_connections = {{
-      .port_keys = {{buf_order_[1], "X"}, {mux_order_[0], "S1"},
-                    {mux_order_[1], "S1"}},
-      .as_nets = EquivalentNets("mux_s1")
-    }, {
-      .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S0_B"},
-                    {mux_order_[1], "S0_B"}},
-      .as_nets = EquivalentNets("mux_s0_b")
-    }, {
       .port_keys = {{buf_order_[2], "X"}, {mux_order_[0], "S0"},
                     {mux_order_[1], "S0"}},
       .as_nets = EquivalentNets("mux_s0")
     }, {
+      .port_keys = {{buf_order_[1], "X"}, {mux_order_[0], "S1"},
+                    {mux_order_[1], "S1"}},
+      .as_nets = EquivalentNets("mux_s1")
+    }, {
       .port_keys = {{buf_order_[1], "P"}, {mux_order_[0], "S1_B"},
                     {mux_order_[1], "S1_B"}},
       .as_nets = EquivalentNets("mux_s1_b")
+    }, {
+      .port_keys = {{buf_order_[2], "P"}, {mux_order_[0], "S0_B"},
+                    {mux_order_[1], "S0_B"}},
+      .as_nets = EquivalentNets("mux_s0_b")
     }, {
       .port_keys = {{buf_order_[0], "X"}, {mux_order_[0], "S2"},
                     {mux_order_[1], "S2"}},

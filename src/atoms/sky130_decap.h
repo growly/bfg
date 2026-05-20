@@ -67,7 +67,7 @@ class Sky130Decap: public Atom {
         << "maximum possible (" << Parameters::kMaxWidthNm << " nm)";
     LOG_IF(FATAL, parameters.width_nm < Parameters::kMinWidthNm)
         << "Requested width (" << parameters.width_nm << " nm) is less than "
-        << "the minimum needed (" << Parameters::kMaxWidthNm << " nm)";
+        << "the minimum needed (" << Parameters::kMinWidthNm << " nm)";
   }
 
   static Cell *Make(const std::optional<Parameters> &base_params,

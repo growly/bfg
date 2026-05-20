@@ -748,10 +748,13 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
       db.TypicalViaEncap("li.drawing", "ncon.drawing");
   const auto &li_rules = db.Rules("li.drawing");
 
+  int64_t mcon_via_pitch = db.ToInternalUnits(parameters_.mcon_via_pitch_nm);
+
   int64_t li_P_bulge_y_max = 0;
   int64_t li_P_bulge_y_min = 0;
   int64_t li_P_left_x = 0;
   int64_t li_P_right_x = 0;
+  int64_t port_P_alt_x = 0;
   Point port_P_centre;
   // Connect output of {p,n}fet0{a,b}:
   {
@@ -795,7 +798,8 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
 
     // Find port P's centre y.
     int64_t port_P_y = MapToTrackY((p0.y() + p3.y()) / 2, 0);
-    int64_t left_bounds_x = p3.x() - mcon_encap_info.MaxSide();
+    int64_t left_bounds_x = p3.x() - std::max(
+        mcon_encap_info.MaxSide(), mcon_via_pitch / 2);
 
     // TODO(aryap): This is the minimum cover... but we want to fatten this up
     // as much as possible.
@@ -827,6 +831,31 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
     ScopedLayer sl(layout.get(), "li.drawing");
     layout->AddPolygon(Polygon(vertices));
 
+    int64_t available_width = p1.x() - p0.x();
+
+    port_P_alt_x = (p0.x() + p1.x()) / 2;
+    int64_t port_P_alt_upper_y = MapToTrackY(port_P_y, 2);
+
+    if ((p0.y() >= port_P_alt_upper_y + mcon_encap_info.MaxSide() / 2 &&
+         available_width >= mcon_encap_info.MinSide()) ||
+        (p0.y() >= port_P_alt_upper_y + mcon_encap_info.MinSide() / 2 &&
+         available_width >= mcon_encap_info.MaxSide())) {
+      Point port_P_alt_upper_centre = {
+          (p0.x() + p1.x()) / 2, port_P_alt_upper_y};
+      layout->MakePin("P", port_P_alt_upper_centre, "li.pin");
+    }
+
+    int64_t port_P_alt_lower_y = MapToTrackY(port_P_y, -1);
+
+    if ((p2.y() <= port_P_alt_lower_y - mcon_encap_info.MaxSide() / 2 &&
+         available_width >= mcon_encap_info.MinSide()) ||
+        (p2.y() <= port_P_alt_lower_y - mcon_encap_info.MinSide() / 2 &&
+         available_width >= mcon_encap_info.MaxSide())) {
+      Point port_P_alt_lower_centre = {
+          (p0.x() + p1.x()) / 2, port_P_alt_lower_y};
+      layout->MakePin("P", port_P_alt_lower_centre, "li.pin");
+    }
+
     li_P_right_x = p1.x();
     li_P_left_x = p0.x();
     li_P_bulge_y_max = p7.y();
@@ -843,6 +872,7 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
   int64_t li_X_right_x = 0;
   int64_t li_X_bulge_y_max = 0;
   int64_t li_X_bulge_y_min = 0;
+  int64_t port_X_alt_x = 0;
   // Connect output of {p,n}fet2{a,b}:
   {
     auto via_encap = db.TypicalViaEncap("li.drawing", "pcon.drawing");
@@ -894,7 +924,8 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
         "ncon.drawing", bottom_drain, bottom_drain_high, std::nullopt, true);
 
     int64_t port_X_y = MapToTrackY((p0.y() + p7.y()) / 2, 0);
-    int64_t right_bounds_x = p1.x() + mcon_encap_info.MaxSide();
+    int64_t right_bounds_x = p1.x() + std::max(
+        mcon_encap_info.MaxSide(), mcon_via_pitch / 2);
 
     int64_t li_bulge_max_y = pfet_2a_gen_->ViaLocation(
             Sky130SimpleTransistor::ViaPosition::LEFT_DIFF_LOWER).y() -
@@ -913,6 +944,31 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
     std::vector<Point> vertices = {p0, p1, p2, p3, p4, p5, p6, p7};
     ScopedLayer sl(layout.get(), "li.drawing");
     layout->AddPolygon(Polygon(vertices));
+
+    int64_t available_width = p1.x() - p0.x();
+
+    port_X_alt_x = (p0.x() + p1.x()) / 2;
+    int64_t port_X_alt_upper_y = MapToTrackY(port_X_y, 2);
+
+    if ((p0.y() >= port_X_alt_upper_y + mcon_encap_info.MaxSide() / 2 &&
+         available_width >= mcon_encap_info.MinSide()) ||
+        (p0.y() >= port_X_alt_upper_y + mcon_encap_info.MinSide() / 2 &&
+         available_width >= mcon_encap_info.MaxSide())) {
+      Point port_X_alt_upper_centre = {
+          (p0.x() + p1.x()) / 2, port_X_alt_upper_y};
+      layout->MakePin("X", port_X_alt_upper_centre, "li.pin");
+    }
+
+    int64_t port_X_alt_lower_y = MapToTrackY(port_X_y, -1);
+
+    if ((p7.y() <= port_X_alt_lower_y - mcon_encap_info.MaxSide() / 2 &&
+         available_width >= mcon_encap_info.MinSide()) ||
+        (p7.y() <= port_X_alt_lower_y - mcon_encap_info.MinSide() / 2 &&
+         available_width >= mcon_encap_info.MaxSide())) {
+      Point port_X_alt_lower_centre = {
+          (p0.x() + p1.x()) / 2, port_X_alt_lower_y};
+      layout->MakePin("X", port_X_alt_lower_centre, "li.pin");
+    }
 
     li_X_left_x = p0.x();
     li_X_right_x = p1.x();
@@ -967,7 +1023,8 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
 
   int64_t width = Utility::NextMultiple(
       min_width,
-      db.ToInternalUnits(Sky130Parameters::kStandardCellUnitWidthNm));
+      db.ToInternalUnits(parameters_.unit_width_nm.value_or(
+          Sky130Parameters::kStandardCellUnitWidthNm)));
 
   // met1.drawing power rails.
   layout->SetActiveLayerByName("met1.drawing");
@@ -1170,10 +1227,6 @@ bfg::Layout *Sky130SplitBuffer::GenerateLayout() {
   }
   //
   // Connect VSS.
-
-  // TODO(aryap): Add npc.
-
-  int64_t mcon_via_pitch = db.ToInternalUnits(parameters_.mcon_via_pitch_nm);
 
   Rectangle *nwell_pin = nullptr;
   Rectangle *pwell_pin = nullptr;

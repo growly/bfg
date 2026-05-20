@@ -29,33 +29,33 @@ namespace atoms {
 //
 // The circuit is:
 //                                        
-//                               /               /                /
-//                               |               |                |
-//                          g   _| s        g   _| s         g   _| s
-//                          +-o|_ pfet_1    +-o|_  pfet_2a   +-o|_  pfet_2b
-//                          |    | d        |    | d         |    | d
-//                       +--+    +-----Xb---+----|-----------+    |
-//                       |  |   _| d        |    +-----------|----+--- X
-//                       |  +--|_ nfet_1    |    |           |    |
-//                       |  g    | s        |   _| d         |   _| d
-//                       |       |          +--|_  nfet_2a   +--|_  nfet_2b
-//                       |       V          g    | s         g    | s
-//                       |                       |                |
-//                   A --+                       V                V
-//                       |
-//                       |         /                /
-//                       |         |                |
-//                       |    g   _| s         g   _| s
-//                       |    +-o|_  pfet_0a   +-o|_  pfet_0b
-//                       |    |    | d         |    | d
-//                       +----+----|-----------+    |
-//                            |    +-----------|----+--- P
-//                            |    |           |    |
-//                            |   _| d         |   _| d
-//                            +--|_  nfet_0a   +--|_  nfet_0b
-//                            g    | s         g    | s
-//                                 |                |
-//                                 V                V
+//                 /               /                /
+//                 |               |                |
+//            g   _| s        g   _| s         g   _| s
+//            +-o|_ pfet_1    +-o|_  pfet_2a   +-o|_  pfet_2b
+//            |    | d        |    | d         |    | d
+//         +--+    +-----Xb---+----|-----------+    |
+//         |  |   _| d        |    +-----------|----+--- X
+//         |  +--|_ nfet_1    |    |           |    |
+//         |  g    | s        |   _| d         |   _| d
+//         |       |          +--|_  nfet_2a   +--|_  nfet_2b
+//         |       V          g    | s         g    | s
+//         |                       |                |
+//     A --+                       V                V
+//         |
+//         |         /                /
+//         |         |                |
+//         |    g   _| s         g   _| s
+//         |    +-o|_  pfet_0a   +-o|_  pfet_0b
+//         |    |    | d         |    | d
+//         +----+----|-----------+    |
+//              |    +-----------|----+--- P
+//              |    |           |    |
+//              |   _| d         |   _| d
+//              +--|_  nfet_0a   +--|_  nfet_0b
+//              g    | s         g    | s
+//                   |                |
+//                   V                V
 //
 // The layout should be straightforward. On the right hand side of the cell we
 // put the top branch, with nfet1/2a and optionally nfet2b:
@@ -79,9 +79,9 @@ namespace atoms {
 // On the left we put the bottom branch, which is optionally double-wide.
 //
 //  |   |                         |VDD     |
-// +|VDD|------------+------------|        |
+// +|VDD|------------+------------|        |------------+
 // |+---+            |            +--------+
-// | pfet_0b         | pfet_0a         |
+// | pfet_0b         | pfet_0a         | pfet_1
 // |      +---+      |      +---+      |
 // +------|   |------+------|   |------+-----------------
 //        |   +-------------+   |
@@ -99,6 +99,7 @@ class Sky130SplitBuffer: public Atom {
  public:
   struct Parameters : public Sky130Parameters {
     uint64_t height_nm = 2720;
+    std::optional<uint64_t> unit_width_nm;
 
     // FIXME(aryap): We currently have a problem when p/nfet 2a/b widths total
     // more than 1600 nm. The Xb connection to their gate poly needs to be moved

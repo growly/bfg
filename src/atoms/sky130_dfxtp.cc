@@ -310,10 +310,6 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   //
   // If the input clock buffer is included, we X16, X18, X19, X20 are included
   // back in.
-  //
-  // FIXME(aryap): Complete spice model when input clock buffer included.
-  // FIXME(aryap): Also, CLK/CLKI are the external ports. The internal net
-  // names should be clk/clk_i respectively.
 
   //                    /                    /
   //                   _|                   _|
@@ -450,10 +446,6 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
 bfg::Layout *Sky130Dfxtp::GenerateLayout() {
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
-
-  // TODO(aryap): The layout below must be parameterised according to the
-  // parameters in our Parameters struct. At the very least, the pertinent ones
-  // we want to mess with (output buffer?)
 
   // TODO(aryap): A fundamental problem with how these standard cells are
   // constructed is that the mcon vias from met1 down to li need to overlap

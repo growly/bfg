@@ -1352,7 +1352,7 @@ std::optional<geometry::Rectangle> RoutingGrid::EdgeWireFootprint(
   // middle section of the edge.
   auto wire_only_bounds = edge.AsRectangle(width);
   if (!wire_only_bounds) {
-    LOG(FATAL) << "Edge does not have simple rectangle form!";
+    LOG(FATAL) << "Edge " << edge << " does not have simple rectangle form!";
     return std::nullopt;
   }
   return *wire_only_bounds;

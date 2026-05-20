@@ -556,7 +556,7 @@ Cell *Sky130Decap::Make(const std::optional<Parameters> &base_params,
 void Sky130Decap::FillDecapsRight(const std::optional<Parameters> &base_params,
                                   int64_t span,
                                   RowGuide *row) {
-  if (span <= 0) {
+  if (span < Parameters::kMinWidthNm) {
     return;
   }
   const PhysicalPropertiesDatabase &db = row->design_db()->physical_db();
