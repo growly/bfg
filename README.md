@@ -2,6 +2,8 @@
 
 An Open-Source Silicon Compiler for Reduced-Complexity Reconfigurable Fabrics
 
+[![DOI](https://zenodo.org/badge/499658756.svg)](https://doi.org/10.5281/zenodo.20349466)
+
 BFG makes FPGAs.
 
 ![Half a ReducedSlice](assets/img/reduced_slice_banner.png)
