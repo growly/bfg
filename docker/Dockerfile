@@ -31,7 +31,7 @@ RUN make -j $(nproc) && make install
 WORKDIR /src
 RUN git clone -b v2.2.2 --depth 1 https://github.com/gflags/gflags.git
 WORKDIR /src/gflags/build
-RUN cmake .. -DBUILD_SHARED_LIBS=ON
+RUN cmake .. -DBUILD_SHARED_LIBS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 RUN make -j $(nproc) && make install
 
 WORKDIR /src
