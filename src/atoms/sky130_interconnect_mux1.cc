@@ -953,12 +953,14 @@ void Sky130InterconnectMux1::DrawPowerAndGround(
         ground_y.insert(port->centre().y());
       }
 
-      instance->circuit_instance()->Connect({
-          {parameters_.power_net, power_wire},
-          {parameters_.ground_net, ground_wire},
-          {"VPB", power_wire},
-          {"VNB", ground_wire}
-      });
+      if (instance->circuit_instance()) {
+        instance->circuit_instance()->Connect({
+            {parameters_.power_net, power_wire},
+            {parameters_.ground_net, ground_wire},
+            {"VPB", power_wire},
+            {"VNB", ground_wire}
+        });
+      }
     }
   }
  

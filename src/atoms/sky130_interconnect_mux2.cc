@@ -218,9 +218,12 @@ void Sky130InterconnectMux2::DrawRoutes(
                                 layout,
                                 circuit);
 
-  LOG_IF(FATAL, !left_most_vertical_x || !right_most_vertical_x)
-      << "Expected vertical_x bounds to be set by this point - are there any "
-      << "connections?";
+  if (!left_most_vertical_x || !right_most_vertical_x) {
+    LOG(ERROR)
+        << "Expected vertical_x bounds to be set by this point - are there any "
+        << "connections? Will give up on routing.";
+    return;
+  }
 
   std::vector<int64_t> columns_right_x;
   for (int64_t x = *right_most_vertical_x + met2_pitch;
