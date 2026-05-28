@@ -673,6 +673,12 @@ void RoutingPath::AddPortMidway(const std::optional<std::string> &port_name) {
 
   RoutingVertex *target = find_unskipped_via_by_index(index);
 
+  if (!target) {
+    LOG(ERROR) << "Could not add port \"" << port_name.value_or("")
+               << "\" midway in path, no unskipped via found";
+    return;
+  }
+
   target->set_hosts_port(
       port_name && *port_name != "" ? *port_name : nets_.primary());
 }

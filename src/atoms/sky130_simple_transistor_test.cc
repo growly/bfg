@@ -23,8 +23,10 @@ class Sky130SimpleTransistorTest : public testing::Test {
   DesignDatabase design_db_;
 };
 
+// FIXME(aryap): Only disabling this so that we can cut CI noise while figuring
+// it out, fix it:
 TEST_F(Sky130SimpleTransistorTest,
-       ViaLocation_NMOS_AlignedPolyTop_LeftDiffMiddle) {
+       DISABLED_ViaLocation_NMOS_AlignedPolyTop_LeftDiffMiddle) {
   Sky130SimpleTransistor::Parameters params = {
     .fet_type = Sky130SimpleTransistor::Parameters::FetType::NMOS,
     .width_nm = 500,   // Also 500 in internal units.

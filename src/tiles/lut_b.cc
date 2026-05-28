@@ -499,8 +499,8 @@ Cell *LutB::Generate() {
     atoms::Sky130HdMux21 s2_select_generator({}, design_db_);
     Cell *s2_select_cell = s2_select_generator.GenerateIntoDatabase(
         PrefixCellName(template_name));
-    s2_select_mux_ = banks_[1].InstantiateLeft(
-        banks_[1].NumRows() - 1, instance_name, s2_select_cell);
+    s2_select_mux_ = banks_[0].InstantiateRight(
+        banks_[0].NumRows() - 3, instance_name, s2_select_cell);
   }
 
   // TODO(aryap): Factor this out. This function is ridiculous.
@@ -1169,11 +1169,17 @@ void LutB::RouteRemainder(
     auto_connections.push_back(PortKeyCollection {
       .port_keys = {{buf_order_[0], "A"}, {s2_select_mux_, "X"}}
     });
+  } else {
+    buf_order_[0]->circuit_instance()->Connect("A", 
+        *circuit->GetOrAddSignal("S2", 1));
   }
   if (s3_select_mux_) {
     auto_connections.push_back(PortKeyCollection {
       .port_keys = {{buf_order_[3], "A"}, {s3_select_mux_, "X"}}
     });
+  } else {
+    buf_order_[3]->circuit_instance()->Connect("A", 
+        *circuit->GetOrAddSignal("S3", 1));
   }
 
   for (const PortKeyCollection &collection : auto_connections) {
@@ -1186,14 +1192,10 @@ void LutB::RouteRemainder(
   // buf_order_[1] -> S1
   // buf_order_[2] -> S0
   // buf_order_[3] -> S3
-  buf_order_[0]->circuit_instance()->Connect("A", 
-      *circuit->GetOrAddSignal("S2", 1));
   buf_order_[1]->circuit_instance()->Connect("A", 
       *circuit->GetOrAddSignal("S1", 1));
   buf_order_[2]->circuit_instance()->Connect("A", 
       *circuit->GetOrAddSignal("S0", 1));
-  buf_order_[3]->circuit_instance()->Connect("A", 
-      *circuit->GetOrAddSignal("S3", 1));
 
   circuit::Signal *output = circuit->GetOrAddSignal("Z", 1);
   active_mux2s_[0]->circuit_instance()->Connect("X", *output);
