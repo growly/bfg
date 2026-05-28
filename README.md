@@ -1,10 +1,10 @@
 # BFG
 
-An Open-Source Silicon Compiler for Reduced-Complexity Reconfigurable Fabrics
+A Silicon Compiler for High-Performance Reconfigurable Fabrics
 
 [![DOI](https://zenodo.org/badge/499658756.svg)](https://doi.org/10.5281/zenodo.20349466)
 
-BFG makes FPGAs.
+BFG makes FPGAs. It works by hierarchically composing parametrisable cell generators.
 
 ![Half a ReducedSlice](assets/img/reduced_slice_banner.png)
 
