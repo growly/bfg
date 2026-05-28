@@ -3,7 +3,7 @@
 # Base image for router code.
 # This downloads and builds all the supporting modules.
 # A separate base image is used to avoid redownloading and rebuilding
-FROM ubuntu:latest AS base
+FROM debian:13.5 AS base
 
 # Add timezone data and certs
 RUN apt update -y
