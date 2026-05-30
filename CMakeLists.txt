@@ -476,6 +476,7 @@ set(ATOMS_TEST_SRC
 
 set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/arc_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/group_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/radian_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/line_test.cc
