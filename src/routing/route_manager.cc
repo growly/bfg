@@ -1,0 +1,536 @@
+#include "route_manager.h"
+
+#include <thread>
+#include <functional>
+#include <shared_mutex>
+#include <sstream>
+#include <absl/strings/str_cat.h>
+#include <glog/logging.h>
+#include <gflags/gflags.h>
+
+#include "../layout.h"
+#include "../geometry/shape_collection.h"
+
+// Parallelism, multithreading, etc.
+DEFINE_int32(jobs, 1,
+    "Max. number of parallel threads to use, when possible. If less than "
+    " equal to 0, the number of hardware threads available will be used.");
+
+namespace bfg {
+
+std::string NetRouteOrder::Describe() const {
+  std::stringstream ss;
+  ss << "ID: " << id_ << " Nets: " << net_ << std::endl;
+  for (size_t i = 0; i < nodes_.size(); ++i) {
+    const auto &node = nodes_[i];
+    ss << "Step " << i << ": " << std::endl;
+    for (const geometry::Port *port : node) {
+      ss << "  " << *port << std::endl;
+    }
+  }
+  return ss.str();
+}
+
+absl::Status RouteManager::SummariseStatuses(
+    const std::vector<absl::Status> &statuses) {
+  bool all_ok = true;
+  std::string message;
+  for (const absl::Status &status : statuses) {
+    if (status.ok()) {
+      continue;
+    }
+    absl::StrAppend(&message, status.message(), "; ");
+  }
+  return absl::InternalError(message);
+}
+
+std::string RouteManager::DescribeOrders() const {
+  std::stringstream ss;
+  for (const auto &order : orders_) {
+    ss << order.Describe();
+  }
+  return ss.str();
+}
+
+std::string RouteManager::DescribeResults() const {
+  std::stringstream ss;
+  std::shared_lock mu(results_lock_);
+  for (const auto &entry : results_) {
+    int64_t id = entry.first;
+    const auto &order = entry.second.order;
+    const auto &result = entry.second.result;
+    ss << absl::StrFormat("%10d: ", id);
+    if (result.ok()) {
+      ss << "    OK " << result->size() << " path(s) " << order.net();
+    } else {
+      ss << "FAILED " << order.net() << ": " << result.status();
+    }
+    ss << std::endl;
+  }
+  return ss.str();
+}
+
+absl::StatusOr<int64_t> RouteManager::Connect(
+    const geometry::Port &from,
+    const geometry::Port &to,
+    const EquivalentNets &as_nets) {
+  NetRouteOrder order(GetNextID(), as_nets);
+  order.nodes().emplace_back(std::set<const geometry::Port*>{&from});
+  order.nodes().emplace_back(std::set<const geometry::Port*>{&to});
+  orders_.push_back(order);
+  return order.id();
+}
+
+absl::StatusOr<int64_t> RouteManager::Connect(
+    const std::set<geometry::Port*> &from_ports,
+    const std::set<geometry::Port*> &to_ports,
+    const EquivalentNets &as_nets) {
+  NetRouteOrder order(GetNextID(), as_nets);
+  order.nodes().emplace_back(from_ports.begin(), from_ports.end());
+  order.nodes().emplace_back(to_ports.begin(), to_ports.end());
+  orders_.push_back(order);
+  return order.id();
+}
+
+absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
+    const std::vector<geometry::Port*> &ports,
+    const EquivalentNets &nets,
+    const std::optional<int64_t> priority) {
+  NetRouteOrder order(GetNextID(), nets);
+  for (geometry::Port *port : ports) {
+    order.nodes().emplace_back(std::set<const geometry::Port*>{port});
+  }
+  orders_.push_back(order);
+  return order.id();
+}
+
+absl::StatusOr<int64_t> RouteManager::ConnectMultiplePorts(
+  const std::vector<std::set<geometry::Port*>> &port_sets,
+  const EquivalentNets &nets,
+  const std::optional<int64_t> priority) {
+  NetRouteOrder order(GetNextID(), nets);
+  for (const std::set<geometry::Port*> &ports : port_sets) {
+    order.nodes().emplace_back();
+    for (const geometry::Port* port: ports) {
+      order.nodes().back().insert(port);
+    }
+  }
+  orders_.push_back(order);
+  return order.id();
+}
+
+absl::StatusOr<int64_t> RouteManager::ConnectToNet(
+    const std::vector<std::set<geometry::Port*>> ports_list,
+    const EquivalentNets &target_nets,
+    const EquivalentNets &as_nets) {
+  NetRouteOrder order(GetNextID(), as_nets);
+  for (const std::set<geometry::Port*> &ports : ports_list) {
+    order.nodes().emplace_back();
+    for (const geometry::Port* port: ports) {
+      order.nodes().back().insert(port);
+    }
+  }
+  order.set_explicit_target(target_nets);
+  orders_.push_back(order);
+  return order.id();
+}
+
+absl::Status RouteManager::RunAllSerial() {
+  // Accumulate errors.
+  std::unique_lock mu(results_lock_);
+  std::vector<absl::Status> statuses;
+  for (const NetRouteOrder &order : orders_) {
+    LOG(INFO) << "Serial dispatch; routing " << std::endl << order.Describe();
+    auto result = RunOrder(order);
+    results_[order.id()] = { .order = order, .result = result };
+    statuses.push_back(result.status());
+  }
+  return SummariseStatuses(statuses);
+}
+
+// TODO(aryap): This is a work in progress...
+absl::Status RouteManager::RunAllParallel() {
+  int32_t batch_size = GetConcurrency();
+  std::vector<std::thread> threads;
+  threads.reserve(batch_size);
+
+  // Each thread should have access to its own status (indexed by order, i) and
+  // the vector's size is pre-allocated so it should not change. This should be
+  // thread safe.
+  std::vector<absl::Status> statuses(orders_.size(), absl::Status());
+
+  size_t i = 0;
+  while (i < orders_.size()) {
+    for (size_t j = 0; j < batch_size && i < orders_.size(); ++j) {
+      threads.emplace_back([&, i, j]() {
+        const NetRouteOrder &order = orders_[i];
+        LOG(INFO) << "Thread " << j << " dispatch for order " << i << std::endl
+                  << order.Describe();
+        auto result = RunOrder(order);
+        statuses[i] = result.status();
+        std::unique_lock mu(results_lock_);
+        results_[order.id()] = { .order = order, .result = result };
+      });
+      ++i;
+    }
+    for (size_t j = 0; j < threads.size(); ++j) {
+      threads[j].join();
+    }
+    threads.clear();
+  }
+  return SummariseStatuses(statuses);
+}
+
+// Ok this is nice and is exactly what RouterSession does, but what I think I
+// wanted in Interconnect::RouteComplete was to be able specify ports by
+// instance/name and for something to automatically figure out whether those had
+// been routed, and if not, route them and store the nets; and if so, just route
+// to the nets. That isn't compatible with multithreading exactly, because order
+// really matters. But if the first step is to factor out what I do there, maybe
+// that's what this should b
+//
+// Are there different kinds of order? A higher level function that converts the
+// instance/name things into these orders. That makes sense, since that is just
+// what's happening inline in the RouteComplete function.
+//
+// Seems like there are many different strategies for running a particular
+// multi-point route request (a NetRouteOrder), and a suite of these types of
+// functions should implement them. Then, at dispatch time, we pick which one.
+// Intermixing them requires multiple NetRouteOrders.
+absl::StatusOr<std::vector<RoutingPath*>>
+RouteManager::RunOrder(const NetRouteOrder &order) {
+  if (order.nodes().size() == 0 ||
+      (!order.explicit_target() && order.nodes().size() < 2)) {
+    return absl::FailedPreconditionError("Not enough nodes in NetRouteOrder");
+  }
+
+  // Copy.
+  EquivalentNets usable_nets = order.net();
+  for (const auto &node : order.nodes()) {
+    // Add a net from the every port in each set, since although they're
+    // usually all the same, we don't need to enforce that.
+    for (const geometry::Port *port : node) {
+      usable_nets.Add(port->net());
+    }
+  }
+
+  RoutingBlockageCache child_blockage_cache(*routing_grid_,
+                                            root_blockage_cache_);
+
+  // Another copy, so we can extract the shapes that aren't blocked.
+  EquivalentNets ok_nets = usable_nets;
+  // TODO(aryap): Not sure why I'm doing this:
+  ok_nets.Add(layout_->global_nets());
+  geometry::ShapeCollection ok_shapes;
+  layout_->CopyConnectableShapesOnNets(ok_nets, &ok_shapes);
+  child_blockage_cache.CancelBlockages(ok_shapes);
+
+  // Targets are the set of nets that have already been routed, as opposed to
+  // usable nets, which are the set of all the nets that will *be* routed.
+  EquivalentNets target_nets;
+
+  auto retry_fn = [&](
+      const std::function<absl::StatusOr<RoutingPath*>()> &route_fn)
+          -> absl::StatusOr<RoutingPath*> {
+    size_t attempts = 0;
+    std::vector<absl::Status> errors;
+    while (attempts < kNumRetries) {
+      auto last_result = route_fn();
+      switch (last_result.status().code()) {
+        case absl::StatusCode::kOk:
+          return last_result;
+        case absl::StatusCode::kUnavailable:
+          // Transient error, always re-attempt.
+        default:
+          attempts++;
+          errors.push_back(last_result.status());
+      }
+      LOG(INFO) << "Oops! Error on attempt #" << attempts  << "/"
+                << kNumRetries << "... "
+                << (attempts < kNumRetries ? "retrying." : "quitting");
+    }
+    return SummariseStatuses(errors);
+  };
+
+  std::vector<absl::Status> errors;
+
+  bool first_pair_routed = false;
+
+  if (order.explicit_target()) {
+    // Skip routing between the first pair, override the target nets explicitly.
+    first_pair_routed = true;
+    target_nets = *order.explicit_target();
+  }
+
+  std::vector<RoutingPath*> paths;
+
+  for (size_t i = 0; i < order.nodes().size(); ++i) {
+    geometry::PortSet begin_ports =
+        geometry::Port::MakePortSet(order.nodes()[i]);
+    if (!first_pair_routed) {
+      if (i == 0) {
+        continue;
+      }
+      // A geometry::PortSet sorts Port*s by their cartesian coordinates.
+      geometry::PortSet end_ports =
+          geometry::Port::MakePortSet(order.nodes()[i - 1]);
+      auto result = retry_fn([&]() {
+        return routing_grid_->AddBestRouteBetween(begin_ports,
+                                                  end_ports,
+                                                  child_blockage_cache,
+                                                  usable_nets);
+      });
+      if (result.ok()) {
+        first_pair_routed = true;
+        // RoutingGrid::AddBestRouteBetween will assign usable_nets to the
+        // resulting path, which should become the target of subsequent calls
+        // to AddBestRouteToNet. Since usable_nets can be a superset of the
+        // individual port nets, we have to make sure we keep the union of all
+        // possible net names this thing can have.
+        target_nets.Add(usable_nets.primary());
+        for (const geometry::Port *port : begin_ports) {
+          target_nets.Add(port->net());
+        }
+        for (const geometry::Port *port : end_ports) {
+          target_nets.Add(port->net());
+        }
+        paths.push_back(*result);
+      } else {
+        // Save for later? Come back and attempt at the end?
+        errors.push_back(result.status());
+      }
+    } else {
+      auto result = retry_fn([&]() {
+          return routing_grid_->AddBestRouteToNet(begin_ports,
+                                                  target_nets,
+                                                  child_blockage_cache,
+                                                  usable_nets);
+      });
+      if (result.ok()) {
+        for (const geometry::Port *port : begin_ports) {
+          target_nets.Add(port->net());
+        }
+        paths.push_back(*result);
+      } else {
+        // Save for later? Come back and attempt at the end?
+        errors.push_back(result.status());
+      }
+    }
+  }
+
+  // On success, cancel the blockages on the root blockage cache belonging to
+  // UNUSED ports, since we should be done with them.
+  MaybeAutoCancelBlockages(usable_nets);
+
+  // This did work but it was clumsy. TODO(aryap): Remove:
+  //geometry::ShapeCollection usable_nets_shapes;
+  //layout_->CopyConnectableShapesOnNets(usable_nets, &usable_nets_shapes);
+  //root_blockage_cache_.CancelBlockages(usable_nets_shapes);
+
+  if (!errors.empty()) {
+    LOG(ERROR) << "Failed to route order:";
+    for (const auto &status : errors) {
+      LOG(ERROR) << status.message();
+    }
+    return SummariseStatuses(errors);
+  } else {
+    // TODO(aryap): What about partial successes?
+    return paths;
+  }
+}
+
+int32_t RouteManager::GetConcurrency() const {
+  return FLAGS_jobs <= 0 ? std::thread::hardware_concurrency() : FLAGS_jobs;
+}
+
+// The default configuration of the RoutingBlockageCache is to stage all
+// connectable shapes as blockages, so that each NetRouteOrder can operate under
+// a child RoutingBlockageCache with its net objects as exceptions.
+//
+// TODO(aryap): Optionally, we should only avoid the union of nets specified
+// in all current orders_, with the exception of those in this order.
+void RouteManager::ConfigureRoutingBlockageCache() {
+  geometry::ShapeCollection connectables;
+  layout_->CopyConnectableShapes(&connectables);
+  root_blockage_cache_.AddBlockages(connectables);
+}
+
+EquivalentNets *RouteManager::GetRoutedNetsByPort(
+    const geometry::Port *port) const {
+  auto it = routed_nets_by_port_.find(port);
+  if (it == routed_nets_by_port_.end()) {
+    return nullptr;
+  }
+  return it->second;
+}
+
+void RouteManager::MergeAndReplaceEquivalentNets(
+    const std::set<EquivalentNets*> to_replace,
+    EquivalentNets *replacement) {
+  for (EquivalentNets *nets : to_replace) {
+    replacement->Add(*nets);
+  }
+
+  // This being slow is solved by maintaining a structure with the reverse
+  // relationship:
+  for (auto &entry : routed_nets_by_port_) {
+    EquivalentNets *existing = entry.second;
+    if (to_replace.find(existing) == to_replace.end()) {
+      continue;
+    }
+    entry.second = replacement;
+  }
+  // Delete the old objects, now that they have been merged into the
+  // replacement.
+  for (auto it = routed_nets_.begin(); it != routed_nets_.end();) {
+    if (to_replace.find(it->get()) == to_replace.end()) {
+      ++it;
+    } else {
+      it = routed_nets_.erase(it);
+    }
+  }
+}
+
+absl::StatusOr<std::vector<NetRouteOrder>> RouteManager::Solve(
+    bool force_serial) {
+  ConsolidateOrders().IgnoreError();
+
+  // TODO(aryap): Solve should return consolidated orders so that callers can
+  // determine if any of their requests were merged.
+
+  if (force_serial || GetConcurrency() == 1) {
+    RunAllSerial().IgnoreError();
+  } else {
+    RunAllParallel().IgnoreError();
+  }
+
+  std::vector<NetRouteOrder> executed_orders = orders_;
+  orders_.clear();
+
+  return orders_;
+}
+
+absl::Status RouteManager::ConsolidateOrders() {
+  CollectConnectedNets().IgnoreError();
+
+  std::vector<NetRouteOrder> consolidated;
+  consolidated.reserve(orders_.size());
+
+  // We only really need to store a reference to the NetRouteOrder here, but
+  // for that to happen the order needs to exist somewhere with a stable
+  // position. If we size the consolidated order vector so that it never grows,
+  // we can rely on the pointers into that.
+  std::map<EquivalentNets*, NetRouteOrder*> orders_by_net;
+  std::set<const geometry::Port*> included_in_order;
+
+  for (size_t i = 0; i < orders_.size(); ++i) {
+    NetRouteOrder &order = orders_.at(i);
+    for (const auto &node : order.nodes()) {
+      // We can consider all the ports of a node as equivalent for the point of
+      // finding the EquivalentNets, if CollectConnectedNets did its job.
+      const geometry::Port *port = *node.begin();
+
+      if (included_in_order.find(port) != included_in_order.end()) {
+        // This node was already moved to a new NetRouteOrder.
+        continue;
+      }
+
+      auto nets_it = routed_nets_by_port_.find(port);
+      LOG_IF(FATAL, nets_it == routed_nets_by_port_.end())
+          << "By this stage all ports must appear in the "
+          << "routed_nets_by_port_ map.";
+      EquivalentNets *nets = nets_it->second;
+
+      auto order_it = orders_by_net.find(nets);
+      NetRouteOrder *replacement_order;
+      if (order_it == orders_by_net.end()) {
+        replacement_order = &consolidated.emplace_back();
+        // Reuse the ID of the precipitating order.
+        replacement_order->set_id(order.id());
+        replacement_order->set_net(*nets);
+        orders_by_net[nets] = replacement_order;
+      } else {
+        replacement_order = order_it->second;
+      }
+      replacement_order->nodes().push_back(node);
+      replacement_order->set_explicit_target(order.explicit_target());
+      replacement_order->pre_consolidation_ids().insert(order.id());
+
+      included_in_order.insert(node.begin(), node.end());
+    }
+  }
+
+  // Replace!
+  orders_ = consolidated;
+
+  return absl::OkStatus();
+}
+
+absl::Status RouteManager::CollectConnectedNets() {
+  routed_nets_by_port_.clear();
+  routed_nets_.clear();
+
+  // Join all connections that are on the same net into one NetRouteOrder.
+  for (NetRouteOrder &order : orders_) {
+    // Start by assuming that none of the ports in this order have been routed
+    // before. Create a single union of all of their nets.
+    EquivalentNets *nets = routed_nets_.emplace_back(
+        new EquivalentNets()).get();
+    if (order.net().primary() != "" && nets->primary() == "") {
+      nets->set_primary(order.net().primary());
+    }
+    nets->Add(order.net());
+    std::set<EquivalentNets*> to_merge;
+
+    for (const auto &node : order.nodes()) {
+      // The ports in a node should all be the same net. But for completeness:
+      for (const geometry::Port *port : node) {
+        nets->Add(port->net());
+
+        // If the port is found to take part in some nets already, mark them for
+        // merger:
+        EquivalentNets *existing = GetRoutedNetsByPort(port);
+        if (existing) {
+          to_merge.insert(existing);
+        } else {
+          routed_nets_by_port_[port] = nets;
+        }
+      }
+    }
+
+    // If any of the ports in the are associated with an existing merger, we
+    // have to merge them, and delete all but one.
+    MergeAndReplaceEquivalentNets(to_merge, nets);
+  }
+
+  return absl::OkStatus();
+}
+
+void RouteManager::MaybeAutoCancelBlockages(const EquivalentNets &for_nets) {
+  if (!auto_cancel_blockages_) {
+    return;
+  }
+  if (auto_cancel_layers_.empty()) {
+    LOG(INFO) << "Cancelling blockages (all layers) for nets: "
+              << for_nets.Describe();
+    root_blockage_cache_.CancelBlockages(for_nets);
+    return;
+  }
+  for (const std::string &layer : auto_cancel_layers_) {
+    LOG(INFO) << "Cancelling blockages (" << layer << ") for nets: "
+              << for_nets.Describe();
+    root_blockage_cache_.CancelBlockages(for_nets, layer);
+  }
+}
+
+absl::StatusOr<RouteManager::OrderAndResult> RouteManager::GetOrderAndResult(
+    int64_t id) const {
+  std::shared_lock mu(results_lock_);
+  auto it = results_.find(id);
+  if (it == results_.end()) {
+    return absl::NotFoundError("No result for that ID.");
+  }
+  return it->second;
+}
+
+}  // namespace bfg

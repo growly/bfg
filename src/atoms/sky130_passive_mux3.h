@@ -9,7 +9,7 @@
 #include "../geometry/point.h"
 #include "../layout.h"
 #include "../memory_bank.h"
-#include "../routing_grid.h"
+#include "../routing/routing_grid.h"
 #include "../cell.h"
 #include "sky130_parameters.h"
 #include "proto/parameters/sky130_passive_mux3.pb.h"

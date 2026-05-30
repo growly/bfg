@@ -10,11 +10,11 @@
 #include "../geometry/instance.h"
 #include "../layout.h"
 #include "../memory_bank.h"
-#include "../route_manager.h"
-#include "../routing_grid.h"
-#include "../routing_blockage_cache.h"
-#include "../routing_layer_info.h"
-#include "../routing_via_info.h"
+#include "../routing/route_manager.h"
+#include "../routing/routing_grid.h"
+#include "../routing/routing_blockage_cache.h"
+#include "../routing/routing_layer_info.h"
+#include "../routing/routing_via_info.h"
 #include "proto/parameters/interconnect.pb.h"
 
 namespace bfg {

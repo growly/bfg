@@ -7,7 +7,7 @@
 #include "../geometry/instance.h"
 #include "../layout.h"
 #include "../memory_bank.h"
-#include "../routing_grid.h"
+#include "../routing/routing_grid.h"
 #include "proto/parameters/slice.pb.h"
 #include "tile.h"
 

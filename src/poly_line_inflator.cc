@@ -7,8 +7,8 @@
 
 #include "layout.h"
 #include "poly_line_cell.h"
-#include "routing_grid.h"
-#include "routing_via_info.h"
+#include "routing/routing_grid.h"
+#include "routing/routing_via_info.h"
 #include "geometry/point.h"
 #include "geometry/line.h"
 #include "geometry/poly_line.h"

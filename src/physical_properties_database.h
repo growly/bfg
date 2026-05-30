@@ -7,9 +7,9 @@
 #include <functional>
 #include <optional>
 
-#include "routing_track_direction.h"
+#include "routing/routing_track_direction.h"
 #include "geometry/layer.h"
-#include "routing_via_info.h"
+#include "routing/routing_via_info.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {

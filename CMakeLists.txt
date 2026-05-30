@@ -100,20 +100,20 @@ set(SRC
   ${PROJECT_SOURCE_DIR}/src/physical_properties_database.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_cell.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator.cc
-  ${PROJECT_SOURCE_DIR}/src/route_manager.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_blockage_cache.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_edge.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_grid.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_grid_blockage.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_path.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_track.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_track_blockage.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_track_direction.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_vertex.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_vertex_kd_tree.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_via_info.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/route_manager.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_blockage_cache.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_edge.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_grid.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_grid_blockage.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_grid_geometry.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_path.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_track.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_track_blockage.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_track_direction.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_collector.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_kd_tree.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_via_info.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide.cc
   ${PROJECT_SOURCE_DIR}/src/scoped_layer.cc
 )
@@ -504,14 +504,14 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
-  ${PROJECT_SOURCE_DIR}/src/route_manager_test.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_blockage_cache_test.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_grid_geometry_test.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_edge_test.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_vertex_test.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_vertex_kd_tree_test.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_track_test.cc
-  ${PROJECT_SOURCE_DIR}/src/routing_vertex_collector_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/route_manager_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_blockage_cache_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_grid_geometry_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_edge_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_kd_tree_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_track_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_collector_test.cc
   ${PROJECT_SOURCE_DIR}/src/utility_test.cc
 )
 
