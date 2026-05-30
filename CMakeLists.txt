@@ -487,8 +487,18 @@ set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/rounded_rectangle_test.cc
 )
 
+set(CIRCUIT_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/circuit/connection_test.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/instance_test.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/port_test.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/signal_test.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/slice_test.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/wire_test.cc
+)
+
 set(TEST_SRC
   ${ATOMS_TEST_SRC}
+  ${CIRCUIT_TEST_SRC}
   ${GEOMETRY_TEST_SRC}
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
