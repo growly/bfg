@@ -1166,9 +1166,12 @@ void LutB::RouteRemainder(
         << "add_s2_input_mux is true but s2_select_mux_ is nullptr";
   }
   if (s2_select_mux_) {
-    auto_connections.push_back(PortKeyCollection {
-      .port_keys = {{buf_order_[0], "A"}, {s2_select_mux_, "X"}}
-    });
+    // This should be before the mux_s2 connection.
+    auto_connections.insert(
+        auto_connections.begin() + 4,
+        PortKeyCollection {
+            .port_keys = {{buf_order_[0], "A"}, {s2_select_mux_, "X"}}
+        });
   } else {
     buf_order_[0]->circuit_instance()->Connect("A", 
         *circuit->GetOrAddSignal("S2", 1));
