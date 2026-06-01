@@ -24,7 +24,7 @@ class Signal {
   ::vlsir::circuit::Signal ToVLSIRSignal() const;
  private:
   std::string name_;
-  uint64_t width_;
+  uint64_t width_ = 0;
 };
 
 }  // namespace circuit

@@ -19,8 +19,8 @@
 #include <absl/strings/str_split.h>
 
 #include "geometry/layer.h"
-#include "routing_layer_info.h"
-#include "routing_via_info.h"
+#include "routing/routing_layer_info.h"
+#include "routing/routing_via_info.h"
 #include "vlsir/tech.pb.h"
 
 namespace bfg {

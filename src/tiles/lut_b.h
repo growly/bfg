@@ -14,7 +14,7 @@
 #include "../geometry/group.h"
 #include "../design_database.h"
 #include "../row_guide.h"
-#include "../routing_path.h"
+#include "../routing/routing_path.h"
 #include "../memory_bank.h"
 #include "../layout.h"
 

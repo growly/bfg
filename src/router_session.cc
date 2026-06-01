@@ -13,8 +13,8 @@
 #include "geometry/point.h"
 #include "geometry/port.h"
 #include "router_session.h"
-#include "routing_path.h"
-#include "routing_blockage_cache.h"
+#include "routing/routing_path.h"
+#include "routing/routing_blockage_cache.h"
 
 #include "services/router_service.grpc.pb.h"
 

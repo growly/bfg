@@ -9,7 +9,7 @@
 
 #include "geometry/port.h"
 
-#include "routing_grid.h"
+#include "routing/routing_grid.h"
 #include "physical_properties_database.h"
 
 #include "vlsir/tech.pb.h"

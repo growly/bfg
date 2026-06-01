@@ -9,7 +9,7 @@
 #include <grpcpp/health_check_service_interface.h>
 
 #include "router_session.h"
-#include "routing_grid.h"
+#include "routing/routing_grid.h"
 #include "physical_properties_database.h"
 
 #include "vlsir/tech.pb.h"

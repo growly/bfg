@@ -29,10 +29,10 @@
 #include "../memory_bank.h"
 #include "../poly_line_cell.h"
 #include "../poly_line_inflator.h"
-#include "../route_manager.h"
-#include "../routing_grid.h"
-#include "../routing_layer_info.h"
-#include "../routing_via_info.h"
+#include "../routing/route_manager.h"
+#include "../routing/routing_grid.h"
+#include "../routing/routing_layer_info.h"
+#include "../routing/routing_via_info.h"
 #include "../row_guide.h"
 #include "../utility.h"
 #include "proto/parameters/lut_b.pb.h"
@@ -1166,9 +1166,12 @@ void LutB::RouteRemainder(
         << "add_s2_input_mux is true but s2_select_mux_ is nullptr";
   }
   if (s2_select_mux_) {
-    auto_connections.push_back(PortKeyCollection {
-      .port_keys = {{buf_order_[0], "A"}, {s2_select_mux_, "X"}}
-    });
+    // This should be before the mux_s2 connection.
+    auto_connections.insert(
+        auto_connections.begin() + 4,
+        PortKeyCollection {
+            .port_keys = {{buf_order_[0], "A"}, {s2_select_mux_, "X"}}
+        });
   } else {
     buf_order_[0]->circuit_instance()->Connect("A", 
         *circuit->GetOrAddSignal("S2", 1));

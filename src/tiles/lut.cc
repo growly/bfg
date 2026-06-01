@@ -19,9 +19,9 @@
 #include "../memory_bank.h"
 #include "../poly_line_cell.h"
 #include "../poly_line_inflator.h"
-#include "../routing_grid.h"
-#include "../routing_layer_info.h"
-#include "../routing_via_info.h"
+#include "../routing/routing_grid.h"
+#include "../routing/routing_layer_info.h"
+#include "../routing/routing_via_info.h"
 #include "../row_guide.h"
 
 namespace bfg {

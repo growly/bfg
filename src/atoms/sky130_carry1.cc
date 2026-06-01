@@ -6,7 +6,7 @@
 #include "../atoms/sky130_dfxtp.h"
 #include "../atoms/sky130_tap.h"
 #include "../atoms/sky130_xor2.h"
-#include "../routing_track_direction.h"
+#include "../routing/routing_track_direction.h"
 
 namespace bfg {
 namespace atoms {

@@ -5,7 +5,7 @@
 #include <absl/strings/str_format.h>
 
 #include "proto/parameters/interconnect_wire_block.pb.h"
-#include "../routing_track_direction.h"
+#include "../routing/routing_track_direction.h"
 #include "../geometry/point.h"
 #include "../geometry/poly_line.h"
 #include "../geometry/polygon.h"

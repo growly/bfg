@@ -13,7 +13,7 @@
 #include "geometry/rectangle.h"
 #include "geometry/polygon.h"
 #include "poly_line_inflator.h"
-#include "routing_track_direction.h"
+#include "routing/routing_track_direction.h"
 
 #include "vlsir/layout/raw.pb.h"
 

@@ -9,7 +9,7 @@
 #include "../geometry/point.h"
 #include "../layout.h"
 #include "../memory_bank.h"
-#include "../routing_grid.h"
+#include "../routing/routing_grid.h"
 #include "../cell.h"
 #include "proto/parameters/sky130_carry1.pb.h"
 #include "atom.h"
