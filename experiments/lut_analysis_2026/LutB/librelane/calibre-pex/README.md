@@ -20,3 +20,7 @@ Then to simulate with Spectre, I had to:
   divide by 1E6
 - replace the PEX models with the Calibre ones (nfet_01v8, pfet_01v8,
   pfet_01v8_hvt)
+
+```
+./bigspicy.py --import --spice_header ~/src/pdk-root/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__pfet_01v8_hvt.pm3.spice --spice_header ~/src/pdk-root/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__nfet_01v8.pm3.spice --spice_header ~/src/pdk-root/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__pfet_01v8.pm3.spice --spice /tmp/clb.spice --spice ~/src/pdk-root/share/pdk/sky130A/libs.ref/sky130_fd_sc_hd/spice/sky130_fd_sc_hd.spice  --flatten --top clb --dump_spice clb.dump.sp
+```
