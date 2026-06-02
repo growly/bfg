@@ -8,7 +8,7 @@ Here is a Configurable Logic Block based around a 4-LUT for Skywater 130nm, prod
 
 <img src="assets/img/LutB.20260602.png" alt="CLB" width="70%">
 
-It has a bypass input and can register either the LUT output or the by pass. A combinational output pin also lets you select between the LUT output and the bypass, as in:
+It can register either the LUT output or its bypass input. A combinational output pin also lets you select between the LUT output and the bypass, as in:
 
 <img src="assets/img/bfg_clb.drawio.png" width="50%">'
 
