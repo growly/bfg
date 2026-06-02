@@ -2,7 +2,6 @@ Sorry, GitHub issues, I want to write a text note to myself:
 
 4/24/26
 
-
 1) Add final pre-install check to paths (that only runs in parallel path
 searches). To speed multithreading up, the phases of path search/grid update
 need to be more clearly separated. There's a big problem around congested ports
@@ -26,19 +25,7 @@ MemoryBank with decap, fitting to a given height/width in height/width units...
 15) FIXME; Or maybe the router only ever avoids one port? An unblocked one?
 Instead of all ports of a net?
 
-
-4/24/26
-
-headline tasks
-
-LUT extraction / simulation results
-
-- DRC error
-- LVS
-- comparison RTL method
-
-
-ReducedSlice extraction / simulation results
+16) ReducedSlice extraction / simulation results
 
 - route network from interconnect generator
   - fix complexity of adding blockages in routing grid setup
