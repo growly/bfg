@@ -16,9 +16,6 @@
 
 .include LutB.sp
 
-;.include lut.sp
-;.include lut.spef.sp
-
 .param num_bits=18
 .param scan_clock_period=2n
 .param test_start={19 * scan_clock_period + 50p}
@@ -37,7 +34,7 @@
 ; for fake_lut use:
 ; a0 a1 a2 a3 out config_in config_out config_clk VPWR VSS
 
-* FIXME(aryap): CLK PORT IS MISSING!
+*WHERE IS CLK?
 xlut
 + a0 a1 a2 a3 bypass mux_out reg_out scan_in scan_out scan_clk VPWR VPWR VSS VSS
 + LutB
