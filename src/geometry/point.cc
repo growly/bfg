@@ -292,11 +292,10 @@ bool operator!=(const Point &lhs, const Point &rhs) {
   return !(lhs == rhs);
 }
 
-}  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Point &point) {
+std::ostream &operator<<(std::ostream &os, const Point &point) {
   os << point.Describe();
   return os;
 }
 
+}  // namespace geometry
 }  // namespace bfg

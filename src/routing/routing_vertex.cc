@@ -21,6 +21,7 @@
 #include <absl/strings/str_join.h>
 
 namespace bfg {
+namespace routing {
 
 bool RoutingVertex::Compare(
     const RoutingVertex &lhs, const RoutingVertex &rhs) {
@@ -619,4 +620,5 @@ std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex) {
   return os;
 }
 
+}  // namespace routing
 }  // namespace bfg

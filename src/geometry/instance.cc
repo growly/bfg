@@ -314,12 +314,11 @@ Port *Instance::GetFirstPortNamed(const std::string &name) {
   return *matching_ports.begin();
 }
 
-}  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Instance &instance) {
+std::ostream &operator<<(std::ostream &os, const Instance &instance) {
   os << "[Instance " << instance.name() << " of "
      << instance.template_layout()->parent_cell()->name() << "]";
   return os;
 }
 
+}  // namespace geometry
 }  // namespace bfg

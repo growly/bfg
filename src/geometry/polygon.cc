@@ -856,9 +856,7 @@ bool operator==(const Polygon &lhs, const Polygon &rhs) {
   return false;
 }
 
-}  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Polygon &polygon) {
+std::ostream &operator<<(std::ostream &os, const Polygon &polygon) {
   for (size_t i = 0; i < polygon.vertices().size(); ++i) {
     os << polygon.vertices().at(i);
     if (i != polygon.vertices().size() - 1) {
@@ -868,4 +866,5 @@ std::ostream &operator<<(std::ostream &os, const geometry::Polygon &polygon) {
   return os;
 }
 
+}  // namespace geometry
 }  // namespace bfg

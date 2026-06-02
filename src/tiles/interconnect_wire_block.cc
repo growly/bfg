@@ -11,6 +11,9 @@
 #include "../geometry/polygon.h"
 
 namespace bfg {
+
+using routing::RoutingTrackDirection;
+
 namespace tiles {
 
 void InterconnectWireBlock::Parameters::ToProto(

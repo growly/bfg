@@ -26,6 +26,10 @@
 namespace bfg {
 
 using geometry::Layer;
+using routing::CostedLayer;
+using routing::RoutingLayerInfo;
+using routing::RoutingViaEncapInfo;
+using routing::RoutingViaInfo;
 
 namespace {
 

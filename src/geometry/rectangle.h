@@ -189,12 +189,11 @@ class Rectangle : public Shape {
 
 bool operator==(const Rectangle &lhs, const Rectangle &rhs);
 
-}  // namespace geometry
-
 std::ostream &operator<<(
     std::ostream &os,
-    const geometry::Rectangle &rectangle);
+    const Rectangle &rectangle);
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // GEOMETRY_RECTANGLE_H_

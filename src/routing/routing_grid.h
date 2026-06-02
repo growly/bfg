@@ -84,6 +84,7 @@
 // TearDownTemporaryBlockages, for example.
 
 namespace bfg {
+namespace routing {
 
 using geometry::Layer;
 using geometry::PolyLine;
@@ -886,6 +887,7 @@ class RoutingGrid {
 };
 
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_GRID_H_

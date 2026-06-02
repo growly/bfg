@@ -21,6 +21,7 @@
 #include "../physical_properties_database.h"
 
 namespace bfg {
+namespace routing {
 
 // FIXME(growly): Instead of assigning spanned/spanned by sets (expensive given
 // model we have), assign net labels when a path is installed to all all
@@ -507,6 +508,7 @@ class RoutingTrack {
 
 std::ostream &operator<<(std::ostream &os, const RoutingTrack &track);
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_TRACK_H_

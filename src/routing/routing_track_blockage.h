@@ -5,6 +5,7 @@
 #include <glog/logging.h>
 
 namespace bfg {
+namespace routing {
 
 class RoutingTrackBlockage {
  public:
@@ -48,6 +49,7 @@ class RoutingTrackBlockage {
   // duplicate containers in RoutingTrack.
 };
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_TRACK_BLOCKAGE_H_

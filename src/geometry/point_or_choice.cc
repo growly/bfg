@@ -69,12 +69,11 @@ const Point PointOrChoice::MinOrMaxPoint(const Point &reference, bool use_max)
   return *it;
 }
 
-}  // namespace bfg
-
 std::ostream &operator<<(std::ostream &os,
-                         const geometry::PointOrChoice &choice) {
+                         const PointOrChoice &choice) {
   os << choice.Describe();
   return os;
 }
 
 }  // namespace geometry
+}  // namespace bfg

@@ -37,12 +37,11 @@ Compass ProtoCompassDirectionToCompass(
 bool CompassHasNorth(const Compass &compass);
 bool CompassHasSouth(const Compass &compass);
 
-}  // namespace geometry
-
 std::ostream &operator<<(
     std::ostream &os,
-    const geometry::Compass &compass);
+    const Compass &compass);
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // GEOMETRY_COMPASS_H_

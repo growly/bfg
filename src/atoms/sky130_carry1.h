@@ -18,7 +18,10 @@
 namespace bfg {
 
 class DesignDatabase;
+
+namespace routing {
 class RouteManager;
+}  // namespace routing
 
 namespace atoms {
 

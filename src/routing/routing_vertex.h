@@ -22,6 +22,8 @@ class Polygon;
 class Rectangle;
 }
 
+namespace routing {
+
 class RoutingBlockageCache;
 class RoutingEdge;
 class RoutingTrack;
@@ -492,6 +494,7 @@ class RoutingVertex {
 
 std::ostream &operator<<(std::ostream &os, const RoutingVertex &vertex);
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_VERTEX_H_

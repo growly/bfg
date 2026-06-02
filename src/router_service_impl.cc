@@ -142,7 +142,7 @@ RouterSession *RouterServiceImpl::GetSession(
   return it->second.get();
 }
 
-RoutingGrid *RouterServiceImpl::GetGrid(
+routing::RoutingGrid *RouterServiceImpl::GetGrid(
     const RouterServiceImpl::UUID &uuid) {
   RouterSession *session = GetSession(uuid);
   if (!session) {

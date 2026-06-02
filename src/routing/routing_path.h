@@ -20,6 +20,9 @@
 namespace bfg {
 
 class AbstractVia;
+
+namespace routing {
+
 class RoutingGrid;
 
 // Edges are NOT directed.
@@ -313,6 +316,7 @@ class RoutingPath {
 
 std::ostream &operator<<(std::ostream &os, const RoutingPath &path);
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_PATH_H_

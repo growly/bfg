@@ -11,6 +11,7 @@
 #include "../physical_properties_database.h"
 
 namespace bfg {
+namespace routing {
 
 class RoutingTrack;
 class RoutingVertex;
@@ -125,6 +126,7 @@ class RoutingEdge {
 
 std::ostream &operator<<(std::ostream &os, const RoutingEdge &edge);
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_EDGE_H_

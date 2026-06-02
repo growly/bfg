@@ -219,10 +219,9 @@ class PolyLine : public Shape {
   FRIEND_TEST(PolyLineTest, NotchAroundCorner_Backwards);
 };
 
+std::ostream &operator<<(std::ostream &os, const PolyLine &poly_line);
+
 }  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::PolyLine &poly_line);
-
 }  // namespace bfg
 
 #endif  // GEOMETRY_POLY_LINE_H_

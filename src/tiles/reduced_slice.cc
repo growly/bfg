@@ -26,6 +26,14 @@
 #include <absl/strings/str_format.h>
 
 namespace bfg {
+
+using routing::RouteManager;
+using routing::RoutingGrid;
+using routing::RoutingGridGeometry;
+using routing::RoutingLayerInfo;
+using routing::RoutingTrackDirection;
+using routing::RoutingViaInfo;
+
 namespace tiles {
 
 void ReducedSlice::Parameters::ToProto(proto::parameters::ReducedSlice *pb)

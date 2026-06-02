@@ -59,7 +59,7 @@ class RouterServiceImpl final :
 
   // Other.
   RouterSession *GetSession(const UUID &uuid);
-  RoutingGrid *GetGrid(const UUID &uuid);
+  routing::RoutingGrid *GetGrid(const UUID &uuid);
 
  private:
   const UUID NextUUID() const;

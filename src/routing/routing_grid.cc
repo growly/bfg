@@ -60,6 +60,7 @@
 using bfg::geometry::Compass;
 
 namespace bfg {
+namespace routing {
 
 template<typename T>
 void RoutingGrid::ApplyBlockage(
@@ -3756,4 +3757,5 @@ RoutingGrid::FindRoutingGridGeometriesUsingLayers(
   return grid_geometries;
 }
 
-} // namespace bfg
+}  // namespace routing
+}  // namespace bfg

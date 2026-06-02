@@ -693,11 +693,10 @@ int64_t Line::DotProduct(const Line &with) const {
   return a.DotProduct(b);
 }
 
-}  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Line &point) {
+std::ostream &operator<<(std::ostream &os, const Line &point) {
   os << point.start() << " -> " << point.end();
   return os;
 }
 
+}  // namespace geometry
 }  // namespace bfg

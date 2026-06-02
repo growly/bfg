@@ -29,10 +29,9 @@ class Label {
   std::string text_;
 };
 
+std::ostream &operator<<(std::ostream &os, const Label &label);
+
 }  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Label &label);
-
 }  // namespace bfg
 
 #endif  // GEOMETRY_LABEL_H_

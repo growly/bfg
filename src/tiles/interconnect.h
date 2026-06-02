@@ -16,7 +16,11 @@
 namespace bfg {
 
 class DesignDatabase;
+
+namespace routing {
 class RouteManager;
+class RoutingGrid;
+}  // namespace routing
 
 namespace tiles {
 
@@ -50,7 +54,7 @@ class Interconnect : public Tile {
 
   Cell *Generate() override;
 
-  void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
+  void ConfigureRoutingGrid(routing::RoutingGrid *grid, Layout *layout) const;
 
  private:
   // TODO(aryap): Is this const?
@@ -62,13 +66,13 @@ class Interconnect : public Tile {
   void RouteComplete(
       const InputPortCollection &mux_inputs,
       const OutputPortCollection &mux_outputs,
-      RouteManager *routing_grid,
+      routing::RouteManager *routing_grid,
       Layout *layout,
       Circuit *circuit);
 
   void RouteScanChain(
       const MemoryBank &bank,
-      RouteManager *routing_grid,
+      routing::RouteManager *routing_grid,
       Layout *layout,
       Circuit *circuit);
 

@@ -93,11 +93,10 @@ class PointOrChoice {
   std::optional<std::set<Point>> choose_one_;
 };
 
-}  // namespace bfg
-
 std::ostream &operator<<(std::ostream &os,
-                         const geometry::PointOrChoice &choice);
+                         const PointOrChoice &choice);
 
 }  // namespace geometry
+}  // namespace bfg
 
 #endif  // GEOMETRY_POINT_OR_CHOICE_H_

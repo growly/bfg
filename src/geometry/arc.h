@@ -104,10 +104,9 @@ class Arc : public Shape {
   int32_t start_angle_deg_;
   int32_t end_angle_deg_;
 };
+std::ostream &operator<<(std::ostream &os, const Arc &arc);
+
 }  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Arc &arc);
-
 }  // namespace bfg
 
 #endif  // GEOMETRY_ARC_H_

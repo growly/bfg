@@ -25,8 +25,12 @@ namespace bfg {
 class Cell;
 class Layout;
 class Circuit;
+
+namespace routing {
 class RoutingGrid;
 class RouteManager;
+class RoutingPath;
+}  // namespace routing
 
 namespace geometry {
 
@@ -236,9 +240,9 @@ class LutB : public Tile {
   };
 
   void AddClockAndPowerStraps(
-      RoutingGrid *routing_grid, Circuit *circuit, Layout *layout) const;
+      routing::RoutingGrid *routing_grid, Circuit *circuit, Layout *layout) const;
 
-  void ConfigureRoutingGrid(RoutingGrid *grid, Layout *layout) const;
+  void ConfigureRoutingGrid(routing::RoutingGrid *grid, Layout *layout) const;
 
   // Sets the scan_order_ based on memories_ and other participating flops.
   void SetScanOrder();
@@ -251,27 +255,27 @@ class LutB : public Tile {
 
   void Route(Circuit *circuit, Layout *layout);
   void RouteClockBuffers(
-      RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
+      routing::RoutingGrid *routing_grid, Circuit *circuit, Layout *layout);
   void RouteRemainder(
-      RouteManager *route_manager,
+      routing::RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout);
   void RouteMuxInputs(
-      RouteManager *route_manager,
+      routing::RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout);
   void RouteScanChain(
-      RouteManager *route_manager,
+      routing::RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout);
   void RouteOutputs(
-      RouteManager *route_manager,
+      routing::RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout);
 
   absl::StatusOr<int64_t> RoutePortKeyCollection(
       const PortKeyCollection &collection,
-      RouteManager *route_manager,
+      routing::RouteManager *route_manager,
       Circuit *circuit,
       Layout *layout,
       bool solve_immediately) const;
@@ -279,9 +283,9 @@ class LutB : public Tile {
   std::vector<std::set<geometry::Port*>> ResolvePortKeyCollection(
       const PortKeyCollection &collection) const;
 
-  absl::StatusOr<std::vector<RoutingPath*>> AddMultiPointRoute(
+  absl::StatusOr<std::vector<routing::RoutingPath*>> AddMultiPointRoute(
       const PortKeyCollection &collection,
-      RoutingGrid *routing_grid,
+      routing::RoutingGrid *routing_grid,
       Circuit *circuit,
       Layout *layout) const;
 

@@ -176,10 +176,9 @@ bool operator!=(const Point &lhs, const Point &rhs);
 
 typedef std::pair<Point, Point> PointPair;
 
+std::ostream &operator<<(std::ostream &os, const Point &point);
+
 }  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Point &point);
-
 }  // namespace bfg
 
 #endif  // GEOMETRY_POINT_H_

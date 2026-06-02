@@ -6,6 +6,7 @@
 #include "absl/strings/str_join.h"
 
 namespace bfg {
+namespace routing {
 
 void RoutingVertexCollector::Offer(RoutingVertex *offer) {
   LOG_IF(FATAL, !offer) << "Offering nullptr doesn't make any sense.";
@@ -85,4 +86,5 @@ std::string RoutingVertexCollector::Describe() const {
   return ss.str();
 }
 
+}  // namespace routing
 }  // namespace bfg

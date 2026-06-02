@@ -7,6 +7,7 @@
 #include "../geometry/point.h"
 
 namespace bfg {
+namespace routing {
 namespace {
 
 using testing::ElementsAre;
@@ -231,4 +232,5 @@ TEST(RoutingVertex, AvailableForNetsOnAnyLayer) {
 }
 
 }  // namespace
+}  // namespace routing
 }  // namespace bfg

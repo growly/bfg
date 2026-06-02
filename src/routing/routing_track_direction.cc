@@ -5,6 +5,7 @@
 #include <set>
 
 namespace bfg {
+namespace routing {
 
 const std::set<RoutingTrackDirection>
 RoutingTrackDirectionUtility::kAllDirections = {
@@ -41,4 +42,5 @@ std::ostream &operator<<(
   return os;
 }
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg

@@ -14,7 +14,9 @@
 
 namespace bfg {
 
+namespace routing {
 class RoutingLayerInfo;
+}  // namespace routing
 
 struct LayerInfo {
   enum class Purpose {
@@ -141,17 +143,17 @@ struct ViaEncapInfo {
 class PhysicalPropertiesDatabase {
  public:
   // lambdas really are much nicer than this std::bind kerfuffle.
-  static std::optional<std::vector<RoutingViaInfo>> FindViaStackImpl(
+  static std::optional<std::vector<routing::RoutingViaInfo>> FindViaStackImpl(
       const geometry::Layer &lhs,
       const geometry::Layer &rhs,
       // TODO(aryap): If I put the const in these function types to signify a
       // const member function (i.e. at the end of the signature), these don't
       // work. Huh?
       const std::function<
-          std::vector<CostedLayer>(const geometry::Layer&)>
+          std::vector<routing::CostedLayer>(const geometry::Layer&)>
               &reachable_layers_fn,
       const std::function<
-          RoutingViaInfo(
+          routing::RoutingViaInfo(
               const geometry::Layer&, const geometry::Layer&)>
                   &routing_via_info_fn);
 
@@ -236,18 +238,18 @@ class PhysicalPropertiesDatabase {
   const IntraLayerConstraints &Rules(const std::string &layer_name) const;
   const IntraLayerConstraints &Rules(const geometry::Layer &layer) const;
 
-  RoutingLayerInfo GetRoutingLayerInfoOrDie(
+  routing::RoutingLayerInfo GetRoutingLayerInfoOrDie(
       const std::string &routing_layer_name) const;
-  std::optional<RoutingLayerInfo> GetRoutingLayerInfo(
+  std::optional<routing::RoutingLayerInfo> GetRoutingLayerInfo(
       const std::string &routing_layer_name) const;
 
-  std::optional<RoutingViaInfo> GetRoutingViaInfo(
+  std::optional<routing::RoutingViaInfo> GetRoutingViaInfo(
       const std::string &routing_layer,
       const std::string &other_routing_layer) const;
-  RoutingViaInfo GetRoutingViaInfoOrDie(
+  routing::RoutingViaInfo GetRoutingViaInfoOrDie(
       const std::string &routing_layer,
       const std::string &other_routing_layer) const;
-  RoutingViaInfo GetRoutingViaInfoOrDie(
+  routing::RoutingViaInfo GetRoutingViaInfoOrDie(
       const geometry::Layer &first_layer,
       const geometry::Layer &second_layer) const;
 
@@ -284,7 +286,7 @@ class PhysicalPropertiesDatabase {
   //
   // TODO(aryap): You should at least make the costed-reachability function a
   // parameter and factor the rest out into a reusable static function.
-  std::optional<std::vector<RoutingViaInfo>> FindViaStack(
+  std::optional<std::vector<routing::RoutingViaInfo>> FindViaStack(
       const geometry::Layer &lhs, const geometry::Layer &rhs) const;
 
   // For a given pin layer, find the layers which can access it. The pin layer
@@ -297,9 +299,9 @@ class PhysicalPropertiesDatabase {
       FindLayersReachableThroughOneVia(const geometry::Layer &source_layer)
       const;
 
-  const CostedLayer GetCostedLayer(const geometry::Layer &via_layer) const;
+  const routing::CostedLayer GetCostedLayer(const geometry::Layer &via_layer) const;
 
-  const std::vector<CostedLayer> FindCostedLayersReachableThroughOneVia(
+  const std::vector<routing::CostedLayer> FindCostedLayersReachableThroughOneVia(
       const geometry::Layer &source_layer) const;
 
   const std::set<geometry::Layer> GetPinLayersFor(

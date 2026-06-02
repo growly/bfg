@@ -80,10 +80,9 @@ class Port : public Rectangle {
   }
 };
 
+std::ostream &operator<<(std::ostream &os, const Port &port);
+
 }  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Port &port);
-
 }  // namespace bfg
 
 #endif  // GEOMETRY_PORT_H_

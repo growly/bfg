@@ -15,7 +15,7 @@
 #include "../physical_properties_database.h"
 
 namespace bfg {
-namespace geometry {
+namespace routing {
 namespace {
 
 using ::testing::ContainerEq;
@@ -23,7 +23,7 @@ using ::testing::ContainerEq;
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
   RoutingLayerInfo horizontal;
   horizontal.set_layer(0);
-  horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+  horizontal.set_area(geometry::Rectangle({0, 0}, {200, 200}));
   horizontal.set_wire_width(1);
   horizontal.set_offset(10);
   horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
@@ -31,7 +31,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
 
   RoutingLayerInfo vertical;
   vertical.set_layer(1);
-  vertical.set_area(Rectangle({0, 0}, {200, 200}));
+  vertical.set_area(geometry::Rectangle({0, 0}, {200, 200}));
   vertical.set_wire_width(1);
   vertical.set_offset(10);
   vertical.set_direction(RoutingTrackDirection::kTrackVertical);
@@ -134,7 +134,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point) {
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point_2ConcentricLayers) {
   RoutingLayerInfo horizontal;
   horizontal.set_layer(0);
-  horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+  horizontal.set_area(geometry::Rectangle({0, 0}, {200, 200}));
   horizontal.set_wire_width(1);
   horizontal.set_offset(10);
   horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
@@ -142,7 +142,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point_2ConcentricLayers) {
 
   RoutingLayerInfo vertical;
   vertical.set_layer(1);
-  vertical.set_area(Rectangle({0, 0}, {200, 200}));
+  vertical.set_area(geometry::Rectangle({0, 0}, {200, 200}));
   vertical.set_wire_width(1);
   vertical.set_offset(10);
   vertical.set_direction(RoutingTrackDirection::kTrackVertical);
@@ -314,7 +314,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Point_2ConcentricLayers) {
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
   RoutingLayerInfo horizontal;
   horizontal.set_layer(0);
-  horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+  horizontal.set_area(geometry::Rectangle({0, 0}, {200, 200}));
   horizontal.set_wire_width(1);
   horizontal.set_offset(10);
   horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
@@ -322,7 +322,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
 
   RoutingLayerInfo vertical;
   vertical.set_layer(1);
-  vertical.set_area(Rectangle({0, 0}, {200, 200}));
+  vertical.set_area(geometry::Rectangle({0, 0}, {200, 200}));
   vertical.set_wire_width(1);
   vertical.set_offset(10);
   vertical.set_direction(RoutingTrackDirection::kTrackVertical);
@@ -360,7 +360,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
       {4, 5},
   };
   grid_geometry.EnvelopingVertexIndices(
-      Rectangle({25, 15}, {42, 53}), &nearest_vertices);
+      geometry::Rectangle({25, 15}, {42, 53}), &nearest_vertices);
   EXPECT_THAT(nearest_vertices, ContainerEq(expected));
   nearest_vertices.clear();
 }
@@ -368,7 +368,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle) {
 TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
   RoutingLayerInfo horizontal;
   horizontal.set_layer(244);
-  horizontal.set_area(Rectangle({0, -600}, {39840, 11600}));
+  horizontal.set_area(geometry::Rectangle({0, -600}, {39840, 11600}));
   horizontal.set_wire_width(140);
   horizontal.set_offset(50);
   horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
@@ -376,7 +376,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
 
   RoutingLayerInfo vertical;
   vertical.set_layer(220);
-  vertical.set_area(Rectangle({0, -600}, {39840, 11600}));
+  vertical.set_area(geometry::Rectangle({0, -600}, {39840, 11600}));
   vertical.set_wire_width(140);
   vertical.set_offset(50);
   vertical.set_direction(RoutingTrackDirection::kTrackVertical);
@@ -395,7 +395,7 @@ TEST(RoutingGridGeometry, EnvelopingVertexIndices_Rectangle_2) {
   }
 
   grid_geometry.EnvelopingVertexIndices(
-      Rectangle({0, 10640}, {6000, 11120}), &nearest_vertices);
+      geometry::Rectangle({0, 10640}, {6000, 11120}), &nearest_vertices);
   EXPECT_THAT(nearest_vertices, ContainerEq(expected));
   nearest_vertices.clear();
 }
@@ -405,7 +405,7 @@ class RoutingGridGeometryTestFixture : public testing::Test {
   void SetUp() override {
     RoutingLayerInfo horizontal;
     horizontal.set_layer(0);
-    horizontal.set_area(Rectangle({0, 0}, {200, 200}));
+    horizontal.set_area(geometry::Rectangle({0, 0}, {200, 200}));
     horizontal.set_wire_width(1);
     horizontal.set_offset(10);
     horizontal.set_direction(RoutingTrackDirection::kTrackHorizontal);
@@ -413,7 +413,7 @@ class RoutingGridGeometryTestFixture : public testing::Test {
 
     RoutingLayerInfo vertical;
     vertical.set_layer(1);
-    vertical.set_area(Rectangle({0, 0}, {200, 200}));
+    vertical.set_area(geometry::Rectangle({0, 0}, {200, 200}));
     vertical.set_wire_width(1);
     vertical.set_offset(10);
     vertical.set_direction(RoutingTrackDirection::kTrackVertical);
@@ -782,5 +782,5 @@ TEST_F(RoutingGridGeometryTestFixture,
 }
 
 }  // namespace
-}  // namespace geometry
+}  // namespace routing
 }  // namespace bfg

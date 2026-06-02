@@ -14,6 +14,7 @@
 #include "../dev_pdk_setup.h"
 
 namespace bfg {
+namespace routing {
 namespace {
 
 class RouteManagerTest : public testing::Test {
@@ -24,13 +25,13 @@ class RouteManagerTest : public testing::Test {
     route_manager_.reset(new RouteManager(layout_.get(), grid_.get()));
   }
 
-  PhysicalPropertiesDatabase physical_db_;
+  bfg::PhysicalPropertiesDatabase physical_db_;
   std::unique_ptr<Layout> layout_;
   std::unique_ptr<RoutingGrid> grid_;
   std::unique_ptr<RouteManager> route_manager_;
 };
 
-}   // namespace
+}  // namespace
 
 // These fixtures are not nested in an anonymous namespace to enable them to be
 // a friend for private access.
@@ -149,4 +150,5 @@ TEST_F(RouteManagerTest, MergeAndReplaceEquivalentNets) {
   EXPECT_EQ(d, route_manager_->routed_nets_by_port_[p4.get()]);
 }
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg

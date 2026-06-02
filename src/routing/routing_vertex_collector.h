@@ -9,6 +9,7 @@
 #include "routing_vertex.h"
 
 namespace bfg {
+namespace routing {
 
 // This class automatically creates groups of vertices from successively added
 // vertices based on some function that determines whether a given vertex
@@ -66,6 +67,7 @@ class LayeredRoutingVertexCollectors {
   std::map<geometry::Layer, RoutingVertexCollector> collectors_by_layer_;
 };
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_VERTEX_COLLECTOR_H_

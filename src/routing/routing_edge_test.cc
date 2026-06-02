@@ -8,6 +8,7 @@
 #include "../geometry/point.h"
 
 namespace bfg {
+namespace routing {
 namespace {
 
 using testing::ElementsAre;
@@ -82,4 +83,5 @@ TEST(RoutingEdge, AsRectangle_NotRectilinear) {
 }
 
 }  // namespace
+}  // namespace routing
 }  // namespace bfg

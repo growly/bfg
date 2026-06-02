@@ -17,6 +17,7 @@
 #include "routing_path.h"
 
 namespace bfg {
+namespace routing {
 
 // TODO(aryap): There's a chance this repeats some of the work of RouterSession,
 // which presents a similar interface over RPC. You should consolidate them.
@@ -247,6 +248,7 @@ class RouteManager {
   FRIEND_TEST(RouteManagerTest, MergeAndReplaceEquivalentNets);
 };
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTE_MANAGER_H_

@@ -23,6 +23,7 @@
 #include "../physical_properties_database.h"
 
 namespace bfg {
+namespace routing {
 
 template<>
 std::optional<std::vector<RoutingEdge*>> RoutingTrack::EdgesBlockedByShape(
@@ -1506,4 +1507,5 @@ std::ostream &operator<<(std::ostream &os, const RoutingTrack &track) {
   return os;
 }
 
+}  // namespace routing
 }  // namespace bfg

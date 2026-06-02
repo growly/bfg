@@ -781,12 +781,11 @@ std::optional<Rectangle> PolyLine::SegmentAsRectangle(
   return Rectangle::FromCentralAxis(centre_start, centre_end, width);
 }
 
-}  // namespace geometry
-
 std::ostream &operator<<(std::ostream &os,
-                         const geometry::PolyLine &poly_line) {
+                         const PolyLine &poly_line) {
   os << poly_line.Describe();
   return os;
 }
 
+}  // namespace geometry
 }  // namespace bfg

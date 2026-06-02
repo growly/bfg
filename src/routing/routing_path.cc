@@ -24,6 +24,7 @@
 #include "../physical_properties_database.h"
 
 namespace bfg {
+namespace routing {
 
 RoutingPath::RoutingPath(
     RoutingVertex *start,
@@ -1625,4 +1626,5 @@ std::ostream &operator<<(std::ostream &os, const RoutingPath &path) {
   return os;
 }
 
+}  // namespace routing
 }  // namespace bfg

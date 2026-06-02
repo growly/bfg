@@ -16,6 +16,7 @@
 #include "routing_track_direction.h"
 
 namespace bfg {
+namespace routing {
 
 class RoutingGridGeometry {
  public:
@@ -333,6 +334,7 @@ std::map<RoutingTrack*, std::vector<geometry::Point>>
   return positions_by_track;
 }
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg
 
 #endif  // ROUTING_GRID_GEOMETRY_H_

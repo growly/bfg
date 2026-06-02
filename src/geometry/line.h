@@ -216,10 +216,9 @@ class Line {
   Point end_;
 };
 
+std::ostream &operator<<(std::ostream &os, const Line &point);
+
 }  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Line &point);
-
 }  // namespace bfg
 
 #endif  // GEOMETRY_LINE_H_

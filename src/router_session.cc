@@ -70,7 +70,7 @@ absl::Status RouterSession::AddRoutes(
 }
 
 void RouterSession::ExportRoutes(router_service::AddRoutesReply *reply) const {
-  for (RoutingPath *path : routing_grid_->paths()) {
+  for (routing::RoutingPath *path : routing_grid_->paths()) {
     router_service::Route *route = reply->add_routes();
     route->set_net(path->nets().primary());
 
@@ -115,10 +115,10 @@ absl::Status RouterSession::PerformNetRouteOrder(
     return next.status();
   }
 
-  RoutingBlockageCache blockage_cache(*routing_grid_);
+  routing::RoutingBlockageCache blockage_cache(*routing_grid_);
 
   LOG(INFO) << "Routing " << *start << " to " << *next;
-  absl::StatusOr<RoutingPath*> initial = routing_grid_->AddRouteBetween(
+  absl::StatusOr<routing::RoutingPath*> initial = routing_grid_->AddRouteBetween(
       *start, *next, blockage_cache, request.net());
   if (!initial.ok()) {
     return initial.status();
@@ -133,7 +133,7 @@ absl::Status RouterSession::PerformNetRouteOrder(
     LOG(INFO) << "Routing " << *next << " to net "
               << std::quoted(request.net());
     EquivalentNets nets = EquivalentNets({request.net()});
-    absl::StatusOr<RoutingPath*> subsequent = routing_grid_->AddRouteToNet(
+    absl::StatusOr<routing::RoutingPath*> subsequent = routing_grid_->AddRouteToNet(
         *next, request.net(), nets, blockage_cache);
     if (!subsequent.ok()) {
       // TODO(aryap): Should probably assemble these into a single status like
@@ -155,7 +155,7 @@ absl::Status RouterSession::SetUpRoutingGrid(
 
   const PhysicalPropertiesDatabase &db = routing_grid_->physical_db();
 
-  std::vector<RoutingLayerInfo> layer_infos;
+  std::vector<routing::RoutingLayerInfo> layer_infos;
   for (const router_service::RoutingLayerDefinition &layer_pb :
        grid_definition.layers()) {
     auto maybe_layer_info = db.GetRoutingLayerInfo(layer_pb.name());
@@ -163,14 +163,14 @@ absl::Status RouterSession::SetUpRoutingGrid(
       return absl::InvalidArgumentError(
           absl::StrFormat("Missing info for layer: \"%s\"", layer_pb.name()));
     }
-    RoutingLayerInfo layer_info = *maybe_layer_info;
+    routing::RoutingLayerInfo layer_info = *maybe_layer_info;
 
     switch (layer_pb.direction()) {
       case router_service::RoutingLayerDirection::TRACK_DIRECTION_VERTICAL:
-        layer_info.set_direction(RoutingTrackDirection::kTrackVertical);
+        layer_info.set_direction(routing::RoutingTrackDirection::kTrackVertical);
         break;
       case router_service::RoutingLayerDirection::TRACK_DIRECTION_HORIZONTAL:
-        layer_info.set_direction(RoutingTrackDirection::kTrackHorizontal);
+        layer_info.set_direction(routing::RoutingTrackDirection::kTrackHorizontal);
         break;
       case router_service::RoutingLayerDirection::TRACK_DIRECTION_NONE:
         // Fallthrough intended.
@@ -218,7 +218,7 @@ absl::Status RouterSession::SetUpRoutingGrid(
       return absl::InvalidArgumentError(
           "Routing via info unavailable for given layers");
     }
-    RoutingViaInfo routing_via_info = *maybe_routing_via_info;
+    routing::RoutingViaInfo routing_via_info = *maybe_routing_via_info;
 
     routing_via_info.set_cost(via_pb.cost());
 

@@ -14,6 +14,7 @@
 #include "routing_vertex.h"
 
 namespace bfg {
+namespace routing {
 
 // Forward declarations
 class RoutingGrid;
@@ -129,6 +130,7 @@ class RoutingGridBlockage {
       child_track_blockages_;
 };
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_GRID_BLOCKAGE_H_

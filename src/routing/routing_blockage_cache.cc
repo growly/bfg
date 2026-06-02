@@ -15,6 +15,7 @@
 #include "../geometry/polygon.h"
 
 namespace bfg {
+namespace routing {
 
 size_t RoutingBlockageCache::CountCancellations(
     const std::set<SourceBlockage> blockage_set,
@@ -643,4 +644,5 @@ RoutingBlockageCache::DetermineAffectedEdges(
     const std::set<geometry::Layer> &blocked_layers,
     int64_t padding) const;
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg

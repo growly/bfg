@@ -15,6 +15,7 @@
 #include "../geometry/polygon.h"
 
 namespace bfg {
+namespace routing {
 
 class RoutingGrid;
 
@@ -357,6 +358,7 @@ class RoutingBlockageCache {
       rectangle_blockages_;
 };
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg
 
 #endif  // ROUTING_BLOCKAGE_CACHE_H_

@@ -21,6 +21,8 @@ namespace bfg {
 
 using geometry::Point;
 using geometry::ShapeCollection;
+using routing::RoutingTrackDirection;
+using routing::RoutingTrackDirectionUtility;
 
 geometry::Polygon *Layout::AddPolyLine(const geometry::PolyLine &line) {
   PolyLineInflator inflator(physical_db_);

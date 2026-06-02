@@ -13,6 +13,7 @@
 #include "routing_track_blockage.h"
 
 namespace bfg {
+namespace routing {
 namespace {
 
 // Fixtures in the anonymous namespace cannot be friended by the class under
@@ -190,7 +191,7 @@ TEST(RoutingTrackTest, GetImmediateNeighbours) {
     vertices.emplace_back(vertex);
   }
 
-  PhysicalPropertiesDatabase physical_db;
+  bfg::PhysicalPropertiesDatabase physical_db;
   RoutingGrid routing_grid(physical_db);
   RoutingBlockageCache empty_blockage_cache(routing_grid);
 
@@ -278,4 +279,5 @@ TEST(RoutingTrackTest, GetImmediateNeighbours) {
   EXPECT_TRUE(track.GetImmediateNeighbours(*test, true).empty());
 }
 
+}  // namespace routing
 }  // namespace bfg

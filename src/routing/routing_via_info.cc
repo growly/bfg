@@ -8,6 +8,7 @@
 #include "routing_via_info.h"
 
 namespace bfg {
+namespace routing {
 
 const std::vector<geometry::Layer> RoutingViaInfo::ConnectedLayers() const {
   std::vector<geometry::Layer> connected_layers;
@@ -79,4 +80,5 @@ int64_t RoutingViaInfo::EncapWidth(const geometry::Layer &layer) const {
   return MaxViaSide() + 2 * encap_info.overhang_width;
 }
   
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg

@@ -21,10 +21,10 @@ class RouterSession {
  public:
   RouterSession(PhysicalPropertiesDatabase &physical_db)
       : physical_db_(physical_db) {
-    routing_grid_.reset(new RoutingGrid(physical_db_));
+    routing_grid_.reset(new routing::RoutingGrid(physical_db_));
   }
 
-  RoutingGrid *routing_grid() { return routing_grid_.get(); }
+  routing::RoutingGrid *routing_grid() { return routing_grid_.get(); }
 
   absl::Status AddRoutes(const router_service::AddRoutesRequest &request);
 
@@ -42,7 +42,7 @@ class RouterSession {
       const router_service::PointOnLayer &point_on_layer) const;
 
   PhysicalPropertiesDatabase physical_db_;
-  std::unique_ptr<RoutingGrid> routing_grid_;
+  std::unique_ptr<routing::RoutingGrid> routing_grid_;
 };
 
 }  // namespace bfg

@@ -18,6 +18,7 @@
 #include "routing_track.h"
 
 namespace bfg {
+namespace routing {
 
 bool RoutingEdge::Blocked() const {
   return blocked_ || temporarily_blocked_;
@@ -219,4 +220,5 @@ std::ostream &operator<<(std::ostream &os, const RoutingEdge &edge) {
   return os;
 }
 
+}  // namespace routing
 }  // namespace bfg

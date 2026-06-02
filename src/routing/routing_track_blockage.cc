@@ -1,6 +1,7 @@
 #include "routing_track_blockage.h"
 
 namespace bfg {
+namespace routing {
 
 bool RoutingTrackBlockage::Contains(int64_t position) const {
   return position >= start_ && position <= end_;
@@ -19,4 +20,5 @@ bool RoutingTrackBlockage::Blocks(int64_t low, int64_t high) const {
   return Contains(low) || Contains(high) || (low <= start_ && high >= end_);
 }
 
+}  // namespace routing
 }  // namespace bfg

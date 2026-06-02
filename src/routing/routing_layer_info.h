@@ -8,6 +8,7 @@
 #include "../geometry/rectangle.h"
 
 namespace bfg {
+namespace routing {
 
 class RoutingLayerInfo {
  public:
@@ -54,6 +55,7 @@ class RoutingLayerInfo {
   int64_t min_separation_;
 };
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg
 
 #endif  // ROUTING_LAYER_INFO_H_

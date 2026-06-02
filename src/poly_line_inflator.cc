@@ -22,9 +22,10 @@ using geometry::PolyLine;
 using geometry::Polygon;
 using geometry::Point;
 using geometry::Rectangle;
+using routing::RoutingViaInfo;
 
 Layout *PolyLineInflator::Inflate(
-    const RoutingGrid &routing_grid,
+    const routing::RoutingGrid &routing_grid,
     const PolyLineCell &poly_line_cell) {
   std::unique_ptr<Layout> layout(new Layout(physical_db_));
   for (const auto &poly_line : poly_line_cell.poly_lines()) {

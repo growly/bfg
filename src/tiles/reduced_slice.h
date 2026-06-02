@@ -145,7 +145,7 @@ class ReducedSlice : public Tile {
   // adding blockages from layout is more interesting, but it can also go
   // there.
   void ConfigureRoutingGrid(
-      RoutingGrid *routing_grid, Layout *layout) const;
+      routing::RoutingGrid *routing_grid, Layout *layout) const;
 
   geometry::Instance *GetMux(
       const std::string &name,

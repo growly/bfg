@@ -18,6 +18,15 @@
 #include "proto/parameters/interconnect.pb.h"
 
 namespace bfg {
+
+using routing::RoutingBlockageCache;
+using routing::RoutingGrid;
+using routing::RoutingGridGeometry;
+using routing::RoutingLayerInfo;
+using routing::RouteManager;
+using routing::RoutingTrackDirection;
+using routing::RoutingViaInfo;
+
 namespace tiles {
 
 void Interconnect::Parameters::ToProto(

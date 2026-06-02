@@ -68,10 +68,9 @@ std::string Port::DescribePorts(const PortSet &ports) {
   return DescribePorts(sorted_ports);
 }
 
-}  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Port &port) {
+std::ostream &operator<<(std::ostream &os, const Port &port) {
   return os << port.Describe();
 }
 
+}  // namespace geometry
 }  // namespace bfg

@@ -286,11 +286,11 @@ class Instance : public Manipulable {
   std::shared_mutex lock_;
 };
 
-}  // namespace geometry
-
 std::ostream &operator<<(
     std::ostream &os,
-    const geometry::Instance &instance);
+    const Instance &instance);
+
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // GEOMETRY_INSTANCE_H_

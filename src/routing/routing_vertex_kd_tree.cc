@@ -6,6 +6,7 @@
 // FIXME(aryap): This puppy severely needs a unit test (or many).
 
 namespace bfg {
+namespace routing {
 
 void RoutingVertexKDTree::Add(RoutingVertex *vertex) {
   tree_.insert(vertex);
@@ -55,4 +56,5 @@ bool operator==(
   return lhs.vertex() == rhs.vertex();
 }
 
+}  // namespace routing
 }  // namespace bfg

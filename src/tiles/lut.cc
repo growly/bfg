@@ -25,6 +25,12 @@
 #include "../row_guide.h"
 
 namespace bfg {
+
+using routing::RoutingGrid;
+using routing::RoutingLayerInfo;
+using routing::RoutingTrackDirection;
+using routing::RoutingViaInfo;
+
 namespace tiles {
 
 const Lut::LayoutConfig *Lut::GetLayoutConfiguration(size_t lut_size) {
@@ -380,15 +386,15 @@ bfg::Cell *Lut::Generate() {
   RoutingGrid alt_routing_grid(db);
 
   // Set every property the RoutingGrid needs.
-  //bfg::RoutingLayerInfo li_layer_info;
+  //RoutingLayerInfoli_layer_info;
   //db.GetRoutingLayerInfo("li.drawing", &li_layer_info);
-  //li_layer_info.direction = bfg::RoutingTrackDirection::kTrackHorizontal;
+  //li_layer_info.direction = RoutingTrackDirection::kTrackHorizontal;
   //li_layer_info.area = pre_route_bounds;
   //li_layer_info.offset = 50;
 
-  bfg::RoutingLayerInfo met1_layer_info =
+  RoutingLayerInfo met1_layer_info =
       db.GetRoutingLayerInfoOrDie("met1.drawing");
-  met1_layer_info.set_direction(bfg::RoutingTrackDirection::kTrackHorizontal);
+  met1_layer_info.set_direction(RoutingTrackDirection::kTrackHorizontal);
   met1_layer_info.set_area(pre_route_bounds);
   // TODO(aryap): If we want y = 735 to be on the grid, and we know the offset
   // is relative to the pre_route_bounds lower-left y = -600, 
@@ -397,15 +403,15 @@ bfg::Cell *Lut::Generate() {
   //           = 315
   met1_layer_info.set_offset(330);
 
-  bfg::RoutingLayerInfo met2_layer_info =
+  RoutingLayerInfo met2_layer_info =
       db.GetRoutingLayerInfoOrDie("met2.drawing");
-  met2_layer_info.set_direction(bfg::RoutingTrackDirection::kTrackVertical);
+  met2_layer_info.set_direction(RoutingTrackDirection::kTrackVertical);
   met2_layer_info.set_area(pre_route_bounds);
   met2_layer_info.set_offset(50);
 
   // TODO(aryap): Store connectivity information (which layers connect through
   // which vias) in the PhysicalPropertiesDatabase's via_layers_.
-  bfg::RoutingViaInfo routing_via_info =
+  RoutingViaInfo routing_via_info =
       db.GetRoutingViaInfoOrDie("met1.drawing", "met2.drawing");
   routing_via_info.set_cost(0.5);
   routing_grid.AddRoutingViaInfo(

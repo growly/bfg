@@ -9,6 +9,7 @@
 #include "../geometry/layer.h"
 
 namespace bfg {
+namespace routing {
 
 struct CostedLayer {
   geometry::Layer layer;
@@ -75,6 +76,7 @@ class RoutingViaInfo {
   std::map<geometry::Layer, RoutingViaEncapInfo> connected_layers_;
 };
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg
 
 #endif  // ROUTING_VIA_INFO_H_

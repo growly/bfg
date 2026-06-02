@@ -8,6 +8,7 @@
 #include "routing_track.h"
 
 namespace bfg {
+namespace routing {
 
 template<>
 bool RoutingGridBlockage<geometry::Rectangle>::IntersectsPoint(
@@ -162,4 +163,5 @@ RoutingGridBlockage<T>::~RoutingGridBlockage() {
 template class RoutingGridBlockage<geometry::Rectangle>;
 template class RoutingGridBlockage<geometry::Polygon>;
 
+}  // namespace routing
 }  // namespace bfg

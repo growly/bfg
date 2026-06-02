@@ -254,11 +254,10 @@ std::string Arc::Describe() const {
   return ss.str();
 }
 
-}  // namespace geometry
-
-std::ostream &operator<<(std::ostream &os, const geometry::Arc &arc) {
+std::ostream &operator<<(std::ostream &os, const Arc &arc) {
   os << arc.Describe();
   return os;
 }
 
+}  // namespace geometry
 }  // namespace bfg

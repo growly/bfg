@@ -118,12 +118,11 @@ class RoundedRectangle : public Rectangle {
   bool WithinRadius(const Point &centre, const Point &test_point) const;
 };
 
-}  // namespace geometry
-
 std::ostream &operator<<(
     std::ostream &os,
-    const geometry::RoundedRectangle &rounded_rectangle);
+    const RoundedRectangle &rounded_rectangle);
 
+}  // namespace geometry
 }  // namespace bfg
 
 #endif  // GEOMETRY_ROUNDED_RECTANGLE_H_

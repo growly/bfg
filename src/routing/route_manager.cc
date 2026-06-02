@@ -17,6 +17,7 @@ DEFINE_int32(jobs, 1,
     " equal to 0, the number of hardware threads available will be used.");
 
 namespace bfg {
+namespace routing {
 
 std::string NetRouteOrder::Describe() const {
   std::stringstream ss;
@@ -533,4 +534,5 @@ absl::StatusOr<RouteManager::OrderAndResult> RouteManager::GetOrderAndResult(
   return it->second;
 }
 
+}  // namespace routing
 }  // namespace bfg

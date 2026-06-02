@@ -6,6 +6,7 @@
 #include "../geometry/point.h"
 
 namespace bfg {
+namespace routing {
 
 // A key for something like a KD tree.
 class RoutingVertexKDNode {
@@ -71,6 +72,7 @@ class RoutingVertexKDTree {
 bool operator==(
     const RoutingVertexKDNode &lhs, const RoutingVertexKDNode &rhs);
 
+}  // namespace routing
 }  // namespace bfg
 
 #endif  // ROUTING_VERTEX_KD_TREE_H_

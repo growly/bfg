@@ -24,6 +24,7 @@
 namespace bfg {
 
 using geometry::ShapeCollection;
+using routing::RoutingTrackDirection;
 
 class Cell;
 

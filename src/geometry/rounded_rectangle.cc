@@ -205,12 +205,11 @@ const std::string RoundedRectangle::Describe() const {
   return ss.str();
 }
 
-}   // namespace geometry
-
 std::ostream &operator<<(
-    std::ostream &os, const geometry::RoundedRectangle &rounded_rectangle) {
+    std::ostream &os, const RoundedRectangle &rounded_rectangle) {
   os << rounded_rectangle.Describe();
   return os;
 }
 
+}   // namespace geometry
 }   // namespace bfg

@@ -11,6 +11,7 @@
 #include "../dev_pdk_setup.h"
 
 namespace bfg {
+namespace routing {
 namespace {
 
 class RoutingBlockageCacheTest : public testing::Test {
@@ -28,7 +29,7 @@ class RoutingBlockageCacheTest : public testing::Test {
   }
 
   void ConfigureRoutingGrid() const {
-    const PhysicalPropertiesDatabase &db = design_db_.physical_db();
+    const bfg::PhysicalPropertiesDatabase &db = design_db_.physical_db();
     const auto &met1_rules = db.Rules("met1.drawing");
     const auto &met2_rules = db.Rules("met2.drawing");
 
@@ -74,7 +75,7 @@ class RoutingBlockageCacheTest : public testing::Test {
   std::unique_ptr<RoutingBlockageCache> cache_;
 
   std::unique_ptr<RoutingGrid> routing_grid_;
-  DesignDatabase design_db_;
+  bfg::DesignDatabase design_db_;
 };
 
 TEST_F(RoutingBlockageCacheTest, RectangleBlockageParityWithRoutingGrid_1) {
@@ -243,5 +244,6 @@ TEST_F(RoutingBlockageCacheTest, RectangleBlockageCancelled_1) {
   }
 }
 
-}   // namespace
-}   // namespace bfg
+}  // namespace
+}  // namespace routing
+}  // namespace bfg

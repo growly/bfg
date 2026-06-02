@@ -16,6 +16,7 @@
 #include "routing_track_direction.h"
 
 namespace bfg {
+namespace routing {
 
 template<typename T>
 void RoutingGridGeometry::NearestTracks(
@@ -642,4 +643,5 @@ RoutingVertex *RoutingGridGeometry::VertexAt(
   return vertex;
 }
 
-}   // namespace bfg
+}  // namespace routing
+}  // namespace bfg

@@ -10,6 +10,7 @@
 #include "../geometry/point.h"
 
 namespace bfg {
+namespace routing {
 namespace {
 
 using testing::IsEmpty;
@@ -271,4 +272,5 @@ TEST(RoutingVertexKDNodeTest, Vertex_ReturnsOriginalPointer) {
 }
 
 }  // namespace
+}  // namespace routing
 }  // namespace bfg

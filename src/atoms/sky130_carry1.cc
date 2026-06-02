@@ -9,6 +9,9 @@
 #include "../routing/routing_track_direction.h"
 
 namespace bfg {
+
+using routing::RoutingTrackDirection;
+
 namespace atoms {
 
 void Sky130Carry1::Parameters::ToProto(

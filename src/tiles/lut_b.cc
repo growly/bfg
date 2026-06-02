@@ -38,6 +38,15 @@
 #include "proto/parameters/lut_b.pb.h"
 
 namespace bfg {
+
+using routing::RouteManager;
+using routing::RoutingGrid;
+using routing::RoutingGridGeometry;
+using routing::RoutingLayerInfo;
+using routing::RoutingPath;
+using routing::RoutingTrackDirection;
+using routing::RoutingViaInfo;
+
 namespace tiles {
 
 void LutB::Parameters::ToProto(proto::parameters::LutB *pb) const {

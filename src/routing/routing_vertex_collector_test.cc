@@ -10,6 +10,7 @@
 #include "routing_vertex_collector.h"
 
 namespace bfg {
+namespace routing {
 namespace {
 
 TEST(RoutingVertexCollectorTest, OfferSameX) {
@@ -172,5 +173,6 @@ TEST(LayeredRoutingVertexCollectors, GroupsByLayer) {
   }
 }
 
-}   // namespace
-}   // namespace bfg
+}  // namespace
+}  // namespace routing
+}  // namespace bfg

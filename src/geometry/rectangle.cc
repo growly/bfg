@@ -419,12 +419,11 @@ bool operator==(const Rectangle &lhs, const Rectangle &rhs) {
          lhs.upper_right() == rhs.upper_right();
 }
 
-}  // namespace geometry
-
 std::ostream &operator<<(
-    std::ostream &os, const geometry::Rectangle &rectangle) {
+    std::ostream &os, const Rectangle &rectangle) {
   os << rectangle.Describe();
   return os;
 }
 
+}  // namespace geometry
 }  // namespace bfg
