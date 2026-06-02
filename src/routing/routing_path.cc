@@ -741,20 +741,25 @@ void RoutingPath::Legalise(   // REQUIRES(routing_grid_->lock_)
 //
 // This isn't the same as a full legality (DRC) check, and is only intended to
 // detect collisions when multiple paths are set to use the same elements:
+//
+// TODO(aryap): Newer versions of absl::Status have .WithSourceLocation(). And
+// C++20 introduced std::source_location to make this less painful.
 absl::Status RoutingPath::CheckStillAvailable() const {
   for (RoutingVertex *vertex : vertices_) {
     auto using_net = vertex->InUseBySingleNet();
     if (using_net && !nets_.Contains(using_net->net)) {
-      return absl::UnavailableError(absl::StrCat(
-            "Vertex ", vertex->centre().Describe(), " already assigned to ",
+      return absl::FailedPreconditionError(absl::StrCat(
+            "(", __FILE__, ":", __LINE__, ")",
+            " Vertex ", vertex->centre().Describe(), " already assigned to ",
             using_net->net));
     }
   }
   for (RoutingEdge *edge : edges_) {
     auto using_net = edge->PermanentNet();
     if (using_net && !nets_.Contains(*using_net)) {
-      return absl::UnavailableError(absl::StrCat(
-            "Edge ", edge->Describe(), " already assigned to ",
+      return absl::FailedPreconditionError(absl::StrCat(
+            "(", __FILE__, ":", __LINE__, ")",
+            " Edge ", edge->Describe(), " already assigned to ",
             *using_net));
     }
   }

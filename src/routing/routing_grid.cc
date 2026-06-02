@@ -1801,19 +1801,41 @@ absl::StatusOr<RoutingPath*> RoutingGrid::InstallBestPath(
     LOG(INFO) << "Cost: " << path->Cost() << " option: " << path->Describe();
   }
 
-  RoutingPath *cheapest = options.front();
+  RoutingPath *success = nullptr;
+  absl::Status last_status;
+  std::vector<std::string> messages;
 
-  // Install lowest-cost path. The RoutingGrid takes ownership of this one. The
-  // rest must be deleted.
-  absl::Status install_status = InstallPath(cheapest, blockage_cache);
+  auto it = options.begin();
+  for (; it != options.end(); it++) {
+    RoutingPath *next_cheapest = *it;
 
-  for (auto it = options.begin() + 1; it != options.end(); ++it) {
+    // Install next lowest-cost path. The RoutingGrid takes ownership of this
+    // one. The rest must be deleted.
+    last_status = InstallPath(next_cheapest, blockage_cache);
+
+    if (last_status.ok()) {
+      success = next_cheapest;
+
+      // The remainder should be deleted.
+      break;
+    }
+
+    LOG(ERROR) << "Failed to install path: " << next_cheapest->Describe()
+               << " because: " << last_status.ToString();
+    messages.push_back(last_status.ToString());
+    delete next_cheapest;
+  }
+
+  for (it = it + 1; it != options.end(); it++) {
     delete *it;
   }
-  if (install_status.ok()) {
-    return cheapest;
+
+  if (success) {
+    return success;
   }
-  return install_status;
+
+  return absl::Status(
+      last_status.code(), absl::StrJoin(messages, "; "));
 }
 
 absl::StatusOr<RoutingPath*> RoutingGrid::AddBestRouteBetween(
@@ -2371,12 +2393,17 @@ absl::Status RoutingGrid::InstallPath(
   // Before proceeding, check if the path is still legal under the lock.
   auto still_good = path->CheckStillAvailable();
   if (!still_good.ok()) {
-    // Use the Unavailable code to indicate that the path search should be
-    // re-attempted.
+    // Use the FailedPrecondition code to indicate that the path search should
+    // be re-attempted.
     //
-    // "There was a transient error"
+    // "Unavailable" might be a more suitable error code, since it indicates
+    // that "there was a transient error". But we need to differentiate it and
+    // it needs to be kinda obvious.
     //   - // https://abseil.io/docs/cpp/guides/status-codes
-    return absl::UnavailableError(still_good.ToString());
+    return absl::Status(
+        still_good.code(),
+        absl::StrCat("While checking if path is still available: ",
+                      still_good.ToString()));
   }
 
   const std::string &net = path->nets().primary();
