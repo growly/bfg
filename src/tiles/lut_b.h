@@ -187,6 +187,8 @@ class LutB : public Tile {
 
     uint64_t default_row_height_nm = 2720;
 
+    bool disable_routing = false;
+
     void ToProto(proto::parameters::LutB *pb) const;
     void FromProto(const proto::parameters::LutB &pb); 
   };

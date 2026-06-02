@@ -7,4 +7,5 @@ message LutB {
   optional bool add_s2_input_mux = 11;
   optional bool add_s3_input_mux = 12;
   optional bool add_third_input_to_output_muxes = 13;
+  optional bool disable_routing = 100;
 }

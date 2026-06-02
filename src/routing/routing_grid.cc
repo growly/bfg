@@ -1806,9 +1806,9 @@ absl::StatusOr<RoutingPath*> RoutingGrid::InstallBestPath(
   absl::Status last_status;
   std::vector<std::string> messages;
 
-  auto it = options.begin();
-  for (; it != options.end(); it++) {
-    RoutingPath *next_cheapest = *it;
+  size_t i = 0;
+  for (; i < options.size(); ++i) {
+    RoutingPath *next_cheapest = options[i];
 
     // Install next lowest-cost path. The RoutingGrid takes ownership of this
     // one. The rest must be deleted.
@@ -1827,8 +1827,8 @@ absl::StatusOr<RoutingPath*> RoutingGrid::InstallBestPath(
     delete next_cheapest;
   }
 
-  for (it = it + 1; it != options.end(); it++) {
-    delete *it;
+  for (i = i + 1; i < options.size(); ++i) {
+    delete options[i];
   }
 
   if (success) {

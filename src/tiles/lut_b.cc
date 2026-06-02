@@ -55,6 +55,9 @@ void LutB::Parameters::ToProto(proto::parameters::LutB *pb) const {
   pb->set_add_s3_input_mux(add_s3_input_mux);
   pb->set_add_third_input_to_output_muxes(
       add_third_input_to_output_muxes);
+  if (disable_routing) {
+    pb->set_disable_routing(disable_routing);
+  }
 }
 
 void LutB::Parameters::FromProto(const proto::parameters::LutB &pb) {
@@ -69,6 +72,9 @@ void LutB::Parameters::FromProto(const proto::parameters::LutB &pb) {
   }
   if (pb.has_add_third_input_to_output_muxes()) {
     add_third_input_to_output_muxes = pb.add_third_input_to_output_muxes();
+  }
+  if (pb.has_disable_routing()) {
+    disable_routing = pb.disable_routing();
   }
 }
 
@@ -382,6 +388,11 @@ Cell *LutB::Generate() {
         //.pfet_0_width_nm = 790,
         //.pfet_1_width_nm = 790
       };
+
+      if (buf_count == 0) {
+        buf_params.draw_vpwr_vias = false;
+      }
+
       atoms::Sky130Buf buf_generator(buf_params, design_db_);
       Cell *buf_cell = buf_generator.GenerateIntoDatabase(
           PrefixCellName(cell_name));
@@ -717,7 +728,9 @@ Cell *LutB::Generate() {
   AddInputs(circuit.get(), layout.get());
   AddOutputs(circuit.get(), layout.get());
 
-  Route(circuit.get(), layout.get());
+  if (!parameters_.disable_routing) {
+    Route(circuit.get(), layout.get());
+  }
 
   // Because there is a lot of spurious crap in this cell, we explicitly set
   // the tiling bounds to what we expect.

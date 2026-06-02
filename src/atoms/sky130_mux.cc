@@ -2512,6 +2512,8 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   const auto &pdiff_psdm_rules = db.Rules("pdiff.drawing", "psdm.drawing");
   const auto &pdiff_nwell_rules = db.Rules("pdiff.drawing", "nwell.drawing");
   const auto &nsdm_nwell_rules = db.Rules("nsdm.drawing", "nwell.drawing");
+  const auto &met1_via_rules = db.Rules("met1.drawing", "via1.drawing");
+  const auto &via_rules = db.Rules("via1.drawing");
 
   std::unique_ptr<bfg::Layout> layout(
       new bfg::Layout(design_db_->physical_db()));
@@ -2626,18 +2628,21 @@ bfg::Layout *Sky130Mux::GenerateLayout() {
   //
   // The second half of the list is right-hand-side columns. They should be
   // moved one over depending on the overall width of the mux.
-  int64_t column_pitch_std = std::max(
-      met1_rules.min_width / 2 + met1_rules.min_separation + std::max(
-          met1_rules.min_width / 2,
+  int64_t column_pitch_std = std::max({
+      met1_rules.min_width / 2 + met1_rules.min_separation + std::max( met1_rules.min_width / 2,
           mcon_rules.via_width / 2 + met1_mcon_rules.via_overhang_wide
       ),
       mcon_rules.via_width + (
           li_mcon_rules.via_overhang_wide +
           li_mcon_rules.via_overhang +
           li_rules.min_separation
-      )
-  );
-  
+      ),
+      // 420 nm works. That's this. Also it makes sense: it's the minimum
+      // repeated pitch of met1/via1 encaps.
+      via_rules.min_width + met1_via_rules.via_overhang_wide * 2 +
+        met1_rules.min_separation
+  });
+
   // TODO(aryap): Why not fully specify columns in the BuildMet1Columns
   // function?
 

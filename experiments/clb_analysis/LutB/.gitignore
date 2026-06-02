@@ -1,4 +1,6 @@
+**/__pycache__
 **/run_*
 **/lut_test.print
 **/lut_test.raw
 **/lut_test.csv
+!**/collected.csv
