@@ -24,6 +24,10 @@ BFG works, but has sharp edges. Because it is gradware and I am but one man. Als
 
 We think this is how open-source FPGAs should be built, even if it is hard. So I implore you to use, criticise, and contribute to this software!
 
+## Performance
+
+<img width="60%" alt="latest results" src="https://github.com/user-attachments/assets/b7e250e7-f824-4e8b-b945-128334890b02" />
+
 ## Usage
 
 BFG relies on [VLSIR](https://github.com/Vlsir/Vlsir) for producing common formats like LEF/DEF, GDS and (the various) Spices. 
@@ -64,3 +68,7 @@ $ ./netlist.py /path/to/LutB.package.pb LutB.sp
 ## Installation
 
 See [INSTALL.md](INSTALL.md).
+
+## Citation
+
+One day.
