@@ -26,6 +26,8 @@ We think this is how open-source FPGAs should be built, even if it is hard. So I
 
 ## Performance
 
+Here is the latest comparison of (post parasitic extraction) performance against standard-cell synthesis of the CLB (all targeting Skywater 130nm):
+
 <img width="60%" alt="latest results" src="https://github.com/user-attachments/assets/b7e250e7-f824-4e8b-b945-128334890b02" />
 
 ## Usage
