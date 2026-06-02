@@ -38,7 +38,7 @@ We think this is how open-source FPGAs should be built, even if it is hard. So I
 
 BFG relies on [VLSIR](https://github.com/Vlsir/Vlsir) for producing common formats like LEF/DEF, GDS and (the various) Spices. 
 
-Once BFG and the prerequisites are [installed](INSTALL.md)) with:
+Once BFG and the prerequisites are [installed](INSTALL.md):
 
 ```
 $ cd build
