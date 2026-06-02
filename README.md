@@ -14,7 +14,7 @@ It can register either the LUT output or its bypass input. A combinational outpu
 
 The CLB itself is made up of generators for [flip-flops](src/atoms/sky130_dfxtp.h), a [hierarchical transmission-gate mux](src/atoms/sky130_mux.h), two [different](src/atoms/sky130_buf.h) [buffer](src/atoms/sky130_split_buffer.h) topologies and [active 2:1 muxes](src/atoms/sky130_hd_mux2_1.h). Some of these are taken from the open-source [sky130_fd_sc_hd](https://sky130-unofficial.readthedocs.io/en/latest/contents/libraries/sky130_fd_sc_hd/README.html) library and then parameterised, others were made from scratch.
 
-BFG can then [assemble](src/tiles/s44.h) an S-44 LUT based around this CLB and a [carry chain](src/atoms/sky130_carry1.h). Together with N:1 and N:2 (shared) multiplexer generators for interconnect wiring, and wire buses with configurable break-outs, this is enough to assemble a whole FPGA tile:
+BFG can then [assemble](src/tiles/s44.h) an S-44 LUT based around this CLB and a [carry chain](src/atoms/sky130_carry1.h). Together with [N:1](src/atoms/sky130_interconnect_mux1.h) and [N:2 (shared) multiplexer generators](src/atoms/sky130_interconnect_mux2.h) for interconnect wiring, and wire buses with configurable break-outs, this is enough to assemble a whole FPGA tile:
 
 ![ReducedSlice](assets/img/reduced_slice_banner.png)
 
