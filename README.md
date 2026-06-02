@@ -58,10 +58,10 @@ This will produce `LutB.library.pb`, a binary-format protocol buffer [describing
 
 The generator parameter file (`LutB.params.pb.txt`) is a text-format protocol buffer specifying the options for a particular generator according to the definitions in the [parameter proto file](proto/parameters/lut_b.proto).
 
-To get a GDS, you need [proto2gds]([https://github.com/](https://github.com/dan-fritchman/Layout21/blob/52f5be0414cc724bac44b74ab2ae5bfcee75b233/layout21converters/src/bin/proto2gds.rs) from Layout21:
+To get a GDS, you need [proto2gds](https://github.com/dan-fritchman/Layout21/blob/52f5be0414cc724bac44b74ab2ae5bfcee75b233/layout21converters/src/bin/proto2gds.rs) from Layout21:
 
 ```
-$ /path/to/Layout21/target/debug/proto2gds --verbose -i /path/to/LutB.library.pb -t /home/arya/src/bfg/sky130.technology.pb -o ${GENERATOR}.gds
+$ /path/to/Layout21/target/debug/proto2gds --verbose -i /path/to/LutB.library.pb -t /home/arya/src/bfg/sky130.technology.pb -o LutB.gds
 ```
 
 To get spice, run `simulation/netlist.py`:
