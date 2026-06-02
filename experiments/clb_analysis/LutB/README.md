@@ -3,6 +3,13 @@
 This folder contains the comparison scripts and data for measuring the
 performance of the BFG Sky130 LutB cell, which is a CLB based on a 4-LUT.
 
+## Structure
+
+Common python scripts and Spice testbenches are in `src/`. To avoid
+dealing with python packaging and Spice variable scoping these are generally
+symlinked directly into each run folder.
+
+Numbered subdirectories represent individual experiments.
 
 
 ### To extract signal names post spice simulation:
