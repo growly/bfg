@@ -1,3 +1,10 @@
+# CLB experiments
+
+This folder contains the comparison scripts and data for measuring the
+performance of the BFG Sky130 LutB cell, which is a CLB based on a 4-LUT.
+
+
+
 ### To extract signal names post spice simulation:
 
 ```
@@ -31,6 +38,31 @@ cd vlsi
 ./bfg-vlsi par -e env.yml -p build/bfg_clb/par-input.json --obj_dir build/bfg_clb
 ./bfg-vlsi par-to-lvs -e env.yml -p build/bfg_clb/par-rundir/par-output-full.json -o build/bfg_clb/lvs-input.json
 ./bfg-vlsi lvs -e env.yml -p tools.yml -p build/bfg_clb/lvs-input.json --obj_dir build/bfg_clb
+```
 
+### To enable Innovus to synthesise a scan chain
+
+and therefore not complain about there being an undeclared scan chain, add this
+hook to insert
+
+```
 create_scan_chain -name test -start scan_in[0] -stop scan_out[0]
+```
+
+```python
+def scan_chain(x: HammerTool) -> bool:
+    x.append('''
+# what an absolute pain in the dick
+create_scan_chain -name test -start scan_in[0] -stop scan_out[0]
+''')
+    return True
+
+class BFGExperimentDriver(CLIDriver):
+    def get_extra_par_hooks(self) -> List[HammerToolHookAction]:
+        extra_hooks = [
+            HammerTool.make_removal_hook("clock_tree"),
+            HammerTool.make_removal_hook("place_bumps"),
+            HammerTool.make_pre_insertion_hook("place_opt_design", scan_chain)
+        ]
+        return extra_hooks
 ```

@@ -1,0 +1,1 @@
+../src/xyce/LutB.sp
