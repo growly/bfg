@@ -20,7 +20,7 @@ BFG can then [assemble](src/tiles/s44.h) an S-44 LUT based around this CLB and a
 
 ## Status
 
-BFG works, but has sharp edges. Designs are DRC-clean enough to pass LVS, so we can measure their performance and compare it to the popular method of synthesising FPGAs from standard cells.
+BFG works, but has sharp edges. Because it is gradware and I am but one man. Also, even now that we have magical AI, it is bad a lot of the hard parts. Designs are DRC-clean enough to pass LVS, so we can measure their performance and compare it to the popular method of synthesising FPGAs from standard cells.
 
 ## Usage
 
