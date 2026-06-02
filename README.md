@@ -4,6 +4,10 @@ BFG is an open-source full-custom silicon compiler for high-performance FPGA fab
 
 [![DOI](https://zenodo.org/badge/499658756.svg)](https://doi.org/10.5281/zenodo.20349466)
 
+Silicon compilers are not novel, but using them for generating FPGAs outside of large companies apparently is.
+
+## Generators
+
 Here is a Configurable Logic Block based around a 4-LUT for Skywater 130nm, produced by the [LutB](src/tiles/lut_b.h) generator:
 
 <img src="assets/img/LutB.20260602.png" alt="CLB" width="70%">
@@ -18,17 +22,17 @@ BFG can then [assemble](src/tiles/s44.h) an S-44 LUT based around this CLB and a
 
 ![ReducedSlice](assets/img/reduced_slice_banner.png)
 
-## Status
-
-BFG works, but has sharp edges. Because it is gradware and I am but one man. Also, even now that we have magical AI, it is bad a lot of the hard parts. Designs are DRC-clean enough to pass LVS, so we can measure their performance and compare it to the popular method of synthesising FPGAs from standard cells.
-
-We think this is how open-source FPGAs should be built, even if it is hard. So I implore you to use, criticise, and contribute to this software!
-
 ## Performance
 
 Here is the latest comparison of (post parasitic extraction) performance against standard-cell synthesis of the CLB (all targeting Skywater 130nm):
 
 <img alt="latest results" src="https://github.com/user-attachments/assets/b7e250e7-f824-4e8b-b945-128334890b02" />
+
+## Status
+
+BFG works, but has sharp edges. Because it is gradware and I am but one man. Also, even now that we have magical AI, it is bad a lot of the hard parts. Designs are DRC-clean enough to pass LVS, so we can measure their performance and compare it to the popular method of synthesising FPGAs from standard cells.
+
+We think this is how open-source FPGAs should be built, even if it is hard. So I implore you to use, criticise, and contribute to this software!
 
 ## Usage
 
