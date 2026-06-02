@@ -275,30 +275,47 @@ RouteManager::RunOrder(const NetRouteOrder &order) {
       // A geometry::PortSet sorts Port*s by their cartesian coordinates.
       geometry::PortSet end_ports =
           geometry::Port::MakePortSet(order.nodes()[i - 1]);
-      auto result = retry_fn([&]() {
-        return routing_grid_->AddBestRouteBetween(begin_ports,
-                                                  end_ports,
-                                                  child_blockage_cache,
-                                                  usable_nets);
-      });
-      if (result.ok()) {
-        first_pair_routed = true;
-        // RoutingGrid::AddBestRouteBetween will assign usable_nets to the
-        // resulting path, which should become the target of subsequent calls
-        // to AddBestRouteToNet. Since usable_nets can be a superset of the
-        // individual port nets, we have to make sure we keep the union of all
-        // possible net names this thing can have.
-        target_nets.Add(usable_nets.primary());
-        for (const geometry::Port *port : begin_ports) {
-          target_nets.Add(port->net());
+
+      size_t attempts = 0;
+      while (attempts < kNumRetries) {
+        auto result = retry_fn([&]() {
+          return routing_grid_->AddBestRouteBetween(begin_ports,
+                                                    end_ports,
+                                                    child_blockage_cache,
+                                                    usable_nets);
+        });
+        if (result.ok()) {
+          first_pair_routed = true;
+          // RoutingGrid::AddBestRouteBetween will assign usable_nets to the
+          // resulting path, which should become the target of subsequent calls
+          // to AddBestRouteToNet. Since usable_nets can be a superset of the
+          // individual port nets, we have to make sure we keep the union of all
+          // possible net names this thing can have.
+          target_nets.Add(usable_nets.primary());
+          for (const geometry::Port *port : begin_ports) {
+            target_nets.Add(port->net());
+          }
+          for (const geometry::Port *port : end_ports) {
+            target_nets.Add(port->net());
+          }
+          paths.push_back(*result);
+          break;
+        } else if (absl::IsFailedPrecondition(result.status())) {
+          // Try to run this order again.
+          LOG(INFO) << "Oops! Error on attempt #" << attempts  << "/"
+                    << kNumRetries << "... "
+                    << (attempts < kNumRetries ? "retrying." : "quitting");
+          attempts++;
+
+          if (attempts >= kNumRetries) {
+            errors.push_back(result.status());
+          }
+        } else {
+          // Save for later? Come back and attempt at the end?
+          errors.push_back(result.status());
+          // Don't bother retrying.
+          break;
         }
-        for (const geometry::Port *port : end_ports) {
-          target_nets.Add(port->net());
-        }
-        paths.push_back(*result);
-      } else {
-        // Save for later? Come back and attempt at the end?
-        errors.push_back(result.status());
       }
     } else {
       auto result = retry_fn([&]() {
