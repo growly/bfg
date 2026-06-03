@@ -26,7 +26,7 @@ BFG can then [assemble](src/tiles/s44.h) an S-44 LUT based around this CLB and a
 
 ## Performance
 
-The only other option we know of for open-source FPGA generation is to synthesise fabrics from standard cells. Here is the latest comparison of (post parasitic extraction) performance against standard-cell synthesis of the above CLB (all targeting Skywater 130nm):
+The current paradigm for open-source FPGA generation centres on synthesising fabrics from standard cells. Here is the latest comparison of (post parasitic extraction) performance against standard-cell synthesis of the above CLB (all targeting Skywater 130nm):
 
 <img alt="latest results" src="https://github.com/user-attachments/assets/b7e250e7-f824-4e8b-b945-128334890b02" />
 
