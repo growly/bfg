@@ -8,9 +8,11 @@ Silicon compilers are not novel, but using them for generating FPGAs outside of 
 
 ## Generators
 
-Here is a Configurable Logic Block based around a 4-LUT for Skywater 130nm, produced by the [LutB](src/tiles/lut_b.h) generator:
+As an example of what BFG can produce, here is a Configurable Logic Block based around a 4-LUT for Skywater 130nm. It's produced by the [LutB](src/tiles/lut_b.h) generator:
 
 <img src="assets/img/LutB.20260602.png" alt="CLB" width="70%">
+
+(LutA was full of ~bad ideas~ learning.)
 
 It can register either the LUT output or its bypass input. A combinational output pin also lets you select between the LUT output and the bypass, as in:
 
@@ -24,15 +26,21 @@ BFG can then [assemble](src/tiles/s44.h) an S-44 LUT based around this CLB and a
 
 ## Performance
 
-Here is the latest comparison of (post parasitic extraction) performance against standard-cell synthesis of the CLB (all targeting Skywater 130nm):
+The only other option we know of for open-source FPGA generation is to synthesise fabrics from standard cells. Here is the latest comparison of (post parasitic extraction) performance against standard-cell synthesis of the above CLB (all targeting Skywater 130nm):
 
 <img alt="latest results" src="https://github.com/user-attachments/assets/b7e250e7-f824-4e8b-b945-128334890b02" />
+
+A 59% reduction in power-delay-area product is, we claim, worth the effort to encode circuit and layout knowledge as code.
+
+## Process Portability
+
+Certain classes of process share _types_ of layout rules, which means designs are trivially portable by just changing the values for each of the various rules: minimum spacing, area, width, and so on. As an example of this, the [Gf180McuMux](src/atoms/gf180mcu_mux.h) uses [Sky130Mux](src/atoms/sky130_mux.h) code to generate a GF 180 MCU-valid mux, when handed a [rulebook](src/physical_properties_database.h) with GF 180 MCU values instead. Other clases of process require different layout strategies altogether, and new generators to be written.
 
 ## Status
 
 BFG works, but has sharp edges. Because it is gradware and I am but one man. Also, even now that we have magical AI, it is bad a lot of the hard parts. Designs are DRC-clean enough to pass LVS, so we can measure their performance and compare it to the popular method of synthesising FPGAs from standard cells.
 
-We think this is how open-source FPGAs should be built, even if it is hard. So I implore you to use, criticise, and contribute to this software!
+We think this is how open-source FPGAs should be built, even if it is hard. So we implore you to use, criticise, and contribute to this software!
 
 ## Usage
 
