@@ -273,6 +273,7 @@ void Sky130InterconnectMux2::DrawRoutes(
                 bottom_memories.size() - 1,
                 columns_left_x[kScanChainLeftIndex] + met2_pitch / 2,
                 columns_right_x[kScanChainRightIndex],
+                0,
                 layout,
                 circuit);
 
@@ -314,6 +315,7 @@ void Sky130InterconnectMux2::DrawScanChain(
     int64_t num_ff_rows_bottom,
     int64_t vertical_x_left,
     int64_t vertical_x_right,
+    int64_t central_y,
     Layout *layout,
     Circuit *circuit) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();

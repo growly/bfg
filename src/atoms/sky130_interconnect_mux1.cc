@@ -696,6 +696,9 @@ void Sky130InterconnectMux1::DrawRoutes(
       );
   int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
 
+  geometry::Point landmark = stack->GetTilingBounds().centre();
+  int64_t central_y = landmark.y();
+
   // Scan chain connections on the left side can be connected on metal 2, and
   // this should effectively only take up one channel width over the tap cells
   // and not detract from the routing channels in the left-most block.
@@ -751,7 +754,7 @@ void Sky130InterconnectMux1::DrawRoutes(
     memory->circuit_instance()->Connect(memory_port, control_wire);
   };
 
-  size_t c = 0;
+  int c = 0;
   for (auto it = bottom_memories.rbegin(); it != bottom_memories.rend(); ++it) {
     geometry::Instance *memory = *it;
     size_t gate_number = 2 * c;
@@ -761,7 +764,11 @@ void Sky130InterconnectMux1::DrawRoutes(
     geometry::Point n_tab_centre = stack->GetPointOrDie(
         absl::StrFormat("gate_%u_n_tab_centre", gate_number));
 
-    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    LOG(INFO) << "c=" << c << " " << memory->GetTilingBounds().centre();
+    geometry::Port *mem_Q = c % 2 == 0 ? 
+        memory->GetNearestPortNamed(landmark, "Q") :
+        memory->GetFurthestPortNamed(landmark, "Q");
+
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
     int64_t vertical_x = p_tab_centre.x() + max_offset_from_first_poly_x;
@@ -809,7 +816,10 @@ void Sky130InterconnectMux1::DrawRoutes(
     geometry::Point n_tab_centre = stack->GetPointOrDie(
         absl::StrFormat("gate_%u_n_tab_centre", gate_number));
 
-    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    geometry::Port *mem_Q = c % 2 == 1 ? 
+        memory->GetNearestPortNamed(landmark, "Q") :
+        memory->GetFurthestPortNamed(landmark, "Q");
+
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
     int64_t vertical_x = p_tab_centre.x() - max_offset_from_first_poly_x;
@@ -887,6 +897,7 @@ void Sky130InterconnectMux1::DrawRoutes(
                 bottom_memories.size() - 1,
                 columns_left_x[kScanChainLeftIndex],
                 columns_right_x[kScanChainRightIndex],
+                central_y,
                 layout,
                 circuit);
 
@@ -1362,9 +1373,12 @@ void Sky130InterconnectMux1::DrawScanChain(
     int64_t num_ff_rows_bottom,
     int64_t vertical_x_left,
     int64_t vertical_x_right,
+    int64_t central_y,
     Layout *layout,
     Circuit *circuit) const {
-  size_t row = 0;
+  int row = 0;
+  geometry::Point landmark =
+      {(vertical_x_right + vertical_x_left) / 2, central_y};
   for (auto it = scan_order.begin(); it < scan_order.end() - 1; ++it) {
     // As a reminder, the flip flop latched the value at input D on a clock
     // edge, and then it appears at output Q.
@@ -1374,10 +1388,22 @@ void Sky130InterconnectMux1::DrawScanChain(
 
     std::string net = absl::StrCat(memory->name(), ".Q");
 
-    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
     geometry::Port *mem_D = memory->GetFirstPortNamed("D");
 
-    geometry::Port *next_D = next->GetFirstPortNamed("D");
+    int rows_to_central = std::abs(num_ff_rows_bottom - row);
+    geometry::Port *mem_Q = rows_to_central % 2 == 0 ? 
+        memory->GetNearestPortNamed(landmark, "Q") :
+        memory->GetFurthestPortNamed(landmark, "Q");
+
+    // Pick middle D each time:
+    std::set<geometry::Port*> next_D_ports = next->GetInstancePorts("D");
+    if (next_D_ports.size() > 1) {
+      next_D_ports.erase(next->GetNearestPortNamed(landmark, "D"));
+    }
+    if (next_D_ports.size() > 1) {
+      next_D_ports.erase(next->GetFurthestPortNamed(landmark, "D"));
+    }
+    geometry::Port *next_D = *next_D_ports.begin();
 
     layout->MakePin(memory->name() + "/Q", mem_Q->centre(), "li.pin");
     layout->MakePin(memory->name() + "/D", mem_D->centre(), "li.pin");

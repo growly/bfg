@@ -255,6 +255,7 @@ class Sky130InterconnectMux1 : public Atom {
       int64_t num_ff_bottom,
       int64_t vertical_x_left,
       int64_t vertical_x_right,
+      int64_t central_y,
       Layout *layout,
       Circuit *circuit) const;
 
