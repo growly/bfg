@@ -811,7 +811,8 @@ Sky130InterconnectMux2::AssignRow(
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   int64_t met2_pitch = db.Rules("met2.drawing").min_pitch;
 
-  // Assign gates to memories in the row and test for conflict.
+  // Assign gates from the transmission gate stack to memories in the row and
+  // test for conflict.
   std::vector<GateAssignment> gate_assignments;
 
   for (size_t i = 0; i < sorted_memories.size(); ++i) {
@@ -884,12 +885,16 @@ Sky130InterconnectMux2::FindGateAssignment(
         bool incident;
         geometry::Point point;
         if (a_p.IntersectsInMutualBounds(b_p, &incident, &point)) {
+          LOG(INFO) << "PMOS line " << i << " intersects line " << j << ": "
+                    << a_p << "; " << b_p;
           return true;
         }
 
         geometry::Line &a_n = n_tests[i];
         geometry::Line &b_n = n_tests[j];
         if (a_n.IntersectsInMutualBounds(b_n, &incident, &point)) {
+          LOG(INFO) << "NMOS line " << i << " intersects line " << j << ": "
+                    << a_n << "; " << b_n;
           return true;
         }
       }
