@@ -744,7 +744,7 @@ void Sky130InterconnectMux1::DrawRoutes(
         "S", gate_number, complement ? "_B" : "");
     std::string memory_port = complement ? "QI" : "Q";
     std::string wire_name = absl::StrCat(
-        memory->name(), "_", memory_port, "_out");
+        memory->name(), ".", memory_port);
     // For the scan chain, later:
     if (!complement) {
       memory_output_nets.insert({memory, wire_name});

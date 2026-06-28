@@ -1,2 +1,7 @@
+# This file is typically a symlink, e.g. to
+#   ${PDK_ROOT}/sky130A/libs.tech/magic/sky130A.magicrc
+# magic will crash if your rc file has bogus file paths (or something else is
+# wrong) - this can happen if you point to the magicrc file in the FOSS Sky130
+# libraries and, for example, don't have PDK_ROOT set.
 source sky130A.magicrc
 #source gf180mcuC.magicrc
