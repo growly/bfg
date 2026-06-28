@@ -750,7 +750,7 @@ void Sky130InterconnectMux1::DrawRoutes(
     std::string control_name = absl::StrCat(
         "S", gate_number, complement ? "_B" : "");
 
-    std::string memory_port = complement ? "QI" : "Q";
+    std::string memory_port = complement ? "Q" : "QI";
     std::string wire_name = absl::StrCat(memory->name(), ".", memory_port);
 
     // For the scan chain, later:
@@ -762,7 +762,12 @@ void Sky130InterconnectMux1::DrawRoutes(
     }
     circuit::Signal *control_signal = circuit->GetOrAddSignal(control_name, 1);
     stack->circuit_instance()->Connect(control_name, *control_signal);
-    memory->circuit_instance()->Connect(memory_port, *control_signal);
+
+    circuit::Signal *memory_signal = circuit->GetOrAddSignal(wire_name, 1);
+    memory->circuit_instance()->Connect(memory_port, *memory_signal);
+
+    LOG(INFO) << memory->name() << ": " << memory_port << " ["
+              << memory_signal->name() << "] -> " << control_name;
   };
 
   int c = 0;
@@ -775,7 +780,6 @@ void Sky130InterconnectMux1::DrawRoutes(
     geometry::Point n_tab_centre = stack->GetPointOrDie(
         absl::StrFormat("gate_%u_n_tab_centre", gate_number));
 
-    LOG(INFO) << "c=" << c << " " << memory->GetTilingBounds().centre();
     geometry::Port *mem_Q = c % 2 == 0 ? 
         memory->GetNearestPortNamed(landmark, "Q") :
         memory->GetFurthestPortNamed(landmark, "Q");
@@ -783,6 +787,11 @@ void Sky130InterconnectMux1::DrawRoutes(
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
     int64_t vertical_x = p_tab_centre.x() + max_offset_from_first_poly_x;
+
+    // Memory storage in this cell is INVERTED. You store a 1 to turn turn the
+    // gate OFF. We connect the output Q output (stored bit) to the pfet and
+    // the inverted output QI to the nfet, therefore a stored Q=0 (QI=1) will
+    // turn the gate on.
 
     // The Q port is always the outer port. We know that from the layout of the
     // flip-flop, but we could also sort by their x positions if we had to.
