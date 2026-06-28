@@ -276,6 +276,17 @@ circuit::Port *Circuit::AddPort(
 circuit::Port *Circuit::AddPort(
     const circuit::Signal &signal,
     const circuit::Port::PortDirection &direction) {
+  // Check for port name conflicts:
+  for (auto &uniq : ports_) {
+    if (uniq->signal().name() == signal.name()) {
+      LOG_IF(WARNING, uniq->signal().width() == signal.width())
+          << "Duplicate port being added with different signal width: " << signal.name()
+          << " but existing width: " << uniq->signal().width()
+          << " and new width: " << signal.width();
+      return uniq.get();
+    }
+  }
+
   // Ports map 1-1 to signals?
   circuit::Port *port = new circuit::Port(signal, direction);
   ports_.emplace_back(port);

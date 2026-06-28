@@ -4,6 +4,13 @@
 namespace bfg {
 namespace circuit {
 
+bool Signal::CompareByName(const Signal &lhs, const Signal &rhs) {
+  return lhs.name() < rhs.name();
+}
+bool Signal::ComparePtrByName(Signal *lhs, Signal *rhs) {
+  return CompareByName(*lhs, *rhs);
+}
+
 ::vlsir::circuit::Signal Signal::ToVLSIRSignal() const {
   ::vlsir::circuit::Signal signal_pb;
   signal_pb.set_name(name_);

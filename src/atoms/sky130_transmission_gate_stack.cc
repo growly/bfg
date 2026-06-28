@@ -192,6 +192,7 @@ void Sky130TransmissionGateStack::BuildSequence(
     std::map<std::string, size_t> *net_counts,
     bfg::Cell *cell,
     RowGuide *row,
+    std::vector<circuit::Signal*> *new_ports,
     std::optional<geometry::Rectangle> *pdiff_cover,
     std::optional<geometry::Rectangle> *ndiff_cover,
     std::optional<geometry::Rectangle> *p_poly_via_cover,
@@ -220,10 +221,6 @@ void Sky130TransmissionGateStack::BuildSequence(
       GapInYFromNMOSDiffLowerLeftToMconViaCentre();
 
   std::set<circuit::Signal*> signals_to_become_ports;
-  signals_to_become_ports.insert(
-      circuit->GetOrAddSignal(parameters_.power_net, 1));
-  signals_to_become_ports.insert(
-      circuit->GetOrAddSignal(parameters_.ground_net, 1));
 
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
@@ -363,9 +360,9 @@ void Sky130TransmissionGateStack::BuildSequence(
         (*n_via_ll + *n_via_ur) / 2);
   }
 
-  for (circuit::Signal *signal : signals_to_become_ports) {
-    circuit->AddPort(*signal);
-  }
+  new_ports->insert(new_ports->end(),
+                    signals_to_become_ports.begin(),
+                    signals_to_become_ports.end());
 
   *gates_so_far += num_gates;
 }
@@ -397,6 +394,8 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
 
   std::map<std::string, size_t> net_counts;
 
+  std::vector<circuit::Signal*> new_ports;
+
   row.AddBlankSpaceBack(min_spacing / 2);
   for (size_t i = 0; i < parameters_.sequences.size(); ++i) {
     BuildSequence(parameters_.sequences[i],
@@ -404,6 +403,7 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
                   &net_counts,
                   cell.get(),
                   &row,
+                  &new_ports,
                   &pdiff_cover,
                   &ndiff_cover,
                   &p_poly_via_cover,
@@ -431,6 +431,17 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   }
   // Force at least enough space to a nearby cell.
   row.AddBlankSpaceBack(min_spacing / 2);
+
+  std::sort(new_ports.begin(),
+            new_ports.end(),
+            circuit::Signal::ComparePtrByName);
+  for (circuit::Signal *signal : new_ports) {
+    cell->circuit()->AddPort(*signal);
+  }
+  new_ports.push_back(
+      cell->circuit()->GetOrAddSignal(parameters_.power_net, 1));
+  new_ports.push_back(
+      cell->circuit()->GetOrAddSignal(parameters_.ground_net, 1));
 
   geometry::Rectangle tiling_bounds = cell->layout()->GetTilingBounds();
 

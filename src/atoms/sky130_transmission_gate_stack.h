@@ -132,6 +132,7 @@ class Sky130TransmissionGateStack : public Atom {
       std::map<std::string, size_t> *net_counts,
       bfg::Cell *cell,
       RowGuide *row,
+      std::vector<circuit::Signal*> *new_ports,
       std::optional<geometry::Rectangle> *pdiff_cover,
       std::optional<geometry::Rectangle> *ndiff_cover,
       std::optional<geometry::Rectangle> *p_poly_via_cover,

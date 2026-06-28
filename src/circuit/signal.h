@@ -10,6 +10,9 @@ namespace circuit {
 
 class Signal {
  public:
+  static bool CompareByName(const Signal &lhs, const Signal &rhs);
+  static bool ComparePtrByName(Signal *lhs, Signal *rhs);
+
   Signal() = default;
   Signal(const std::string &name, uint64_t width)
       : name_(name),
