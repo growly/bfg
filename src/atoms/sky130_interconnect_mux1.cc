@@ -1176,6 +1176,9 @@ void Sky130InterconnectMux1::DrawClock(
         input_clk_x,
         db.Rules("met2.drawing").min_width,
         layout);
+  for (const geometry::Point &buf_A_centre : buf_A_centres) {
+    layout->MakeVia("mcon.drawing", buf_A_centre);
+  }
 
   // Lastly, we want a pad around a via for met3 to be the CLK port for this
   // mux. Put it right in the middle, between the other two connection points.
