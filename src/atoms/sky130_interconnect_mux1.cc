@@ -731,8 +731,15 @@ void Sky130InterconnectMux1::DrawRoutes(
   // the scan chain) and the mux control inputs.
   std::map<geometry::Instance*, std::string> memory_output_nets;
 
+  // If we're going to connect the last output memory's output to the SCAN_OUT
+  // port, we can do that here.
+  int num_memories = top_memories.size() + bottom_memories.size();
+
   auto connect_memory_to_control_fn = [&](
-      geometry::Instance *memory, size_t gate_number, bool complement) {
+      geometry::Instance *memory,
+      size_t gate_number,
+      bool complement,
+      bool is_final_memory) {
     // To associate these points with the control signals they require, consider
     // that for gate n, the positive control signal connects to the NMOS FET
     // and the inverted control signal connects to the PMOS FET. Then follow the
@@ -742,16 +749,20 @@ void Sky130InterconnectMux1::DrawRoutes(
     // association an explicit feature of the (TransmissionGateStack) Cell?
     std::string control_name = absl::StrCat(
         "S", gate_number, complement ? "_B" : "");
+
     std::string memory_port = complement ? "QI" : "Q";
-    std::string wire_name = absl::StrCat(
-        memory->name(), ".", memory_port);
+    std::string wire_name = absl::StrCat(memory->name(), ".", memory_port);
+
     // For the scan chain, later:
     if (!complement) {
+      if (is_final_memory) {
+        wire_name = "SCAN_OUT";
+      }
       memory_output_nets.insert({memory, wire_name});
     }
-    circuit::Wire control_wire = circuit->AddSignal(wire_name);
-    stack->circuit_instance()->Connect(control_name, control_wire);
-    memory->circuit_instance()->Connect(memory_port, control_wire);
+    circuit::Signal *control_signal = circuit->GetOrAddSignal(wire_name, 1);
+    stack->circuit_instance()->Connect(control_name, *control_signal);
+    memory->circuit_instance()->Connect(memory_port, *control_signal);
   };
 
   int c = 0;
@@ -800,8 +811,8 @@ void Sky130InterconnectMux1::DrawRoutes(
     // We also use this opportunity to make scan-chain connections from memory Q
     // outputs to the D inputs on the next memory up. We only do this when the
     // output Q is on the left, since they will always line up with a single 
-    connect_memory_to_control_fn(memory, gate_number, true);
-    connect_memory_to_control_fn(memory, gate_number, false);
+    connect_memory_to_control_fn(memory, gate_number, true, false);
+    connect_memory_to_control_fn(memory, gate_number, false, false);
 
     ++c;
   }
@@ -845,8 +856,13 @@ void Sky130InterconnectMux1::DrawRoutes(
     AddPolyconAndLi(p_tab_centre, true, layout);
     AddPolyconAndLi(n_tab_centre, false, layout);
 
-    connect_memory_to_control_fn(memory, gate_number, true);
-    connect_memory_to_control_fn(memory, gate_number, false);
+    connect_memory_to_control_fn(memory, gate_number, true, false);
+
+    bool is_last_memory = memory == scan_order.back();
+
+    connect_memory_to_control_fn(memory, gate_number, false, is_last_memory);
+
+    layout->MakePin("SCAN_OUT", mem_Q->centre(), "met1.pin");
 
     ++c;
   }
@@ -1385,7 +1401,6 @@ void Sky130InterconnectMux1::DrawScanChain(
   for (auto it = scan_order.begin(); it < scan_order.end() - 1; ++it) {
     // As a reminder, the flip flop latched the value at input D on a clock
     // edge, and then it appears at output Q.
- 
     geometry::Instance *memory = *it;
     geometry::Instance *next = *(it + 1);
 
@@ -1399,17 +1414,7 @@ void Sky130InterconnectMux1::DrawScanChain(
         memory->GetFurthestPortNamed(landmark, "Q");
 
     // Pick middle D each time:
-    std::set<geometry::Port*> next_D_ports = next->GetInstancePorts("D");
-    if (next_D_ports.size() > 1) {
-      next_D_ports.erase(next->GetNearestPortNamed(landmark, "D"));
-    }
-    if (next_D_ports.size() > 1) {
-      next_D_ports.erase(next->GetFurthestPortNamed(landmark, "D"));
-    }
-    geometry::Port *next_D = *next_D_ports.begin();
-
-    layout->MakePin(memory->name() + "/Q", mem_Q->centre(), "li.pin");
-    layout->MakePin(memory->name() + "/D", mem_D->centre(), "li.pin");
+    geometry::Port *next_D = next->GetMidwayPortNamed(landmark, "D");
   
     // We check to see which way around the FF is. If input is left of output,
     // it's oriented normally, and we connect using a metal bar on the left of
@@ -1455,22 +1460,20 @@ void Sky130InterconnectMux1::DrawScanChain(
     next->circuit_instance()->Connect("D", wire);
   }
 
-  layout->MakePin("SCAN_IN",
-                  scan_order.front()->GetFirstPortNamed("D")->centre(),
-                  "li.pin");
-  layout->MakePin("SCAN_OUT",
-                  scan_order.back()->GetFirstPortNamed("D")->centre(),
-                  "li.pin");
+  layout->MakePin(
+      "SCAN_IN",
+      scan_order.front()->GetMidwayPortNamed(landmark, "D")->centre(),
+      "li.pin");
 
   circuit::Wire scan_in = circuit->AddSignal("SCAN_IN");
-  circuit::Wire scan_out = circuit->AddSignal("SCAN_OUT");
+  circuit::Signal *scan_out = circuit->GetOrAddSignal("SCAN_OUT", 1);
 
   scan_order.front()->circuit_instance()->Connect("D", scan_in);
 
   DCHECK(scan_order.back()->circuit_instance()->GetConnection("Q"));
 
   circuit->AddPort(scan_in);
-  circuit->AddPort(scan_out);
+  circuit->AddPort(*scan_out);
 }
 
 

@@ -149,6 +149,7 @@ class Instance : public Manipulable {
 
   Port *GetNearestPortNamed(const Port &to_port, const std::string &name);
   Port *GetNearestPortNamed(const Point &to_point, const std::string &name);
+  Port *GetMidwayPortNamed(const Point &landmark, const std::string &name);
   Port *GetFurthestPortNamed(const Point &from_point, const std::string &name);
   Port *GetFirstPortNamed(const std::string &name);
 

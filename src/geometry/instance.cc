@@ -305,6 +305,18 @@ Port *Instance::GetNearestPortNamed(
   return GetNearestPortNamed(to_port.centre(), name);
 }
 
+Port *Instance::GetMidwayPortNamed(
+    const Point &landmark, const std::string &name) {
+  std::set<geometry::Port*> ports = GetInstancePorts("D");
+  if (ports.size() > 1) {
+    ports.erase(GetNearestPortNamed(landmark, "D"));
+  }
+  if (ports.size() > 1) {
+    ports.erase(GetFurthestPortNamed(landmark, "D"));
+  }
+  return *ports.begin();
+}
+
 Port *Instance::GetFurthestPortNamed(
     const Point &from_point, const std::string &name) {
   std::vector<Port*> matching_ports;
