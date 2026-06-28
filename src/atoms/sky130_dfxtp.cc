@@ -296,16 +296,16 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   // X13 c CLK f VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u        ; nfet5
   // X7 VGND b c VNB sky130_gd_pr__nfet_01v8 w=640000u l=150000u        ; nfet4
   //
-  // X22 h Q_B VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u ; pfet6 
+  // X22 h QI VPWR VPB sky130_fd_pr__pfet_01v8_hvt w=420000u l=150000u ; pfet6 
   // X0 f CLK h VPB sky130_gd_pr__pfet_01v8_hvt w=420000u l=150000u     ; pfet7
   // X12 f CLKI i VNB sky130_gd_pr__nfet_01v8 w=360000u l=150000u       ; nfet7
-  // X8 i Q_B VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u      ; nfet6
+  // X8 i QI VGND VNB sky130_gd_pr__nfet_01v8 w=420000u l=150000u      ; nfet6
   //
-  // X9 Q_B f VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=1e+06u l=150000u   ; pfet8
-  // X1 Q_B f VGND VNB sky130_gd_pr__nfet_01v8 w=650000u l=150000u      ; nfet8
+  // X9 QI f VPWR VPB sky130_gd_pr__pfet_01v8_hvt w=1e+06u l=150000u   ; pfet8
+  // X1 QI f VGND VNB sky130_gd_pr__nfet_01v8 w=650000u l=150000u      ; nfet8
   //
-  // X11 VPWR Q_B Q VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u  ; pfet9
-  // X23 VGND Q_B Q VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u     ; pfet8
+  // X11 VPWR QI Q VPB sky130_fd_pr__pfet_01v8_hvt w=1e+06u l=150000u  ; pfet9
+  // X23 VGND QI Q VNB sky130_fd_pr__nfet_01v8 w=650000u l=150000u     ; pfet8
   // .ends
   //
   // If the input clock buffer is included, we X16, X18, X19, X20 are included
@@ -360,7 +360,7 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   //      |  |         _|        g          _|
   //      |  | CLKI -o|_ pfet5   |   CLK -o|_  pfet7
   //      |  |          |        |           |
-  //   c ----+          |        +--------------------- Q_B
+  //   c ----+          |        +--------------------- QI
   //      |  |          |        |           |
   //   b -+  |          +--- f --------------+--------- f
   //      |  |          |        |           |
@@ -380,14 +380,13 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   nfet_5->Connect({{"d", f}, {"g", effective_internal_clock}, {"s", c}, {"b", VNB}});
   nfet_4->Connect({{"d", c}, {"g", b}, {"s", VGND}, {"b", VNB}});
 
-  circuit::Wire Q_B = circuit->AddSignal("Q_B");
   circuit::Wire h = circuit->AddSignal("h");
   circuit::Wire i = circuit->AddSignal("i");
 
-  pfet_6->Connect({{"d", h}, {"g", Q_B}, {"s", VPWR}, {"b", VPB}});
+  pfet_6->Connect({{"d", h}, {"g", QI}, {"s", VPWR}, {"b", VPB}});
   pfet_7->Connect({{"d", f}, {"g", effective_internal_clock}, {"s", h}, {"b", VPB}});
   nfet_7->Connect({{"d", f}, {"g", CLKI}, {"s", i}, {"b", VNB}});
-  nfet_6->Connect({{"d", i}, {"g", Q_B}, {"s", VGND}, {"b", VNB}});
+  nfet_6->Connect({{"d", i}, {"g", QI}, {"s", VGND}, {"b", VNB}});
 
   //               /                    /
   //              _|                   _|
@@ -396,18 +395,18 @@ bfg::Circuit *Sky130Dfxtp::GenerateCircuit() {
   //      |        |        |           |
   //   f -+        |        |           |
   //      |        |        |           +-- Q
-  // Q_B ----------+-- Q_B -+           |
+  // QI ----------+-- QI -+           |
   //      |        |        |           |
   //      |       _|        |          _|
   //      +------|_ nfet8   +---------|_  nfet9
   //               |                    |
   //               V                    V
 
-  pfet_8->Connect({{"d", Q_B}, {"g", f}, {"s", VPWR}, {"b", VPB}});
-  nfet_8->Connect({{"d", Q_B}, {"g", f}, {"s", VGND}, {"b", VNB}});
+  pfet_8->Connect({{"d", QI}, {"g", f}, {"s", VPWR}, {"b", VPB}});
+  nfet_8->Connect({{"d", QI}, {"g", f}, {"s", VGND}, {"b", VNB}});
 
-  pfet_9->Connect({{"d", Q}, {"g", Q_B}, {"s", VPWR}, {"b", VPB}});
-  nfet_9->Connect({{"d", Q}, {"g", Q_B}, {"s", VGND}, {"b", VNB}});
+  pfet_9->Connect({{"d", Q}, {"g", QI}, {"s", VPWR}, {"b", VPB}});
+  nfet_9->Connect({{"d", Q}, {"g", QI}, {"s", VGND}, {"b", VNB}});
 
   // If the input clock buffer is included, we add this circuit to generate
   // clk and clk_i from a single CLK source. The CLKI port is then disabled,
