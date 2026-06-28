@@ -760,11 +760,9 @@ void Sky130InterconnectMux1::DrawRoutes(
       }
       memory_output_nets.insert({memory, wire_name});
     }
-    circuit::Signal *control_signal = circuit->GetOrAddSignal(control_name, 1);
-    stack->circuit_instance()->Connect(control_name, *control_signal);
-
-    circuit::Signal *memory_signal = circuit->GetOrAddSignal(wire_name, 1);
-    memory->circuit_instance()->Connect(memory_port, *memory_signal);
+    circuit::Signal *signal = circuit->GetOrAddSignal(wire_name, 1);
+    stack->circuit_instance()->Connect(control_name, *signal);
+    memory->circuit_instance()->Connect(memory_port, *signal);
 
     LOG(INFO) << memory->name() << ": " << memory_port << " ["
               << memory_signal->name() << "] -> " << control_name;
