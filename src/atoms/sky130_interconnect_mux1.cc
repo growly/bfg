@@ -754,7 +754,8 @@ void Sky130InterconnectMux1::DrawRoutes(
     std::string wire_name = absl::StrCat(memory->name(), ".", memory_port);
 
     // For the scan chain, later:
-    if (!complement) {
+    if (complement) {
+      // Memory port Q on last flip flop is called SCAN_OUT.
       if (is_final_memory) {
         wire_name = "SCAN_OUT";
       }
