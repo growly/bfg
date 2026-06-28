@@ -256,10 +256,9 @@ void Sky130TransmissionGateStack::BuildSequence(
     Sky130TransmissionGate generator =
         Sky130TransmissionGate(gate_params, design_db_);
 
-    std::string instance_name =
-        absl::StrFormat("stack_%d_gate_%u", *gates_so_far, i);
     Cell *transmission_gate = generator.GenerateIntoDatabase(
-        absl::StrCat(instance_name, "_template"));
+        absl::StrFormat("stack_%d_gate_%u", *gates_so_far, i));
+    std::string instance_name = absl::StrCat(transmission_gate->name(), "_i");
 
     // LOG(INFO) << transmission_gate->layout()->GetBoundingBox().Width();
 

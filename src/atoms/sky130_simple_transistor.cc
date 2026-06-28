@@ -475,6 +475,19 @@ bfg::Circuit *Sky130SimpleTransistor::GenerateCircuit() {
       {TerminalPortName(Terminal::GATE), gate},
       {TerminalPortName(Terminal::SUBSTRATE), substrate}});
 
+  fet->SetParameter(
+      parameters_.fet_model_width_parameter,
+      Parameter::FromInteger(
+          parameters_.fet_model_width_parameter,
+          static_cast<int64_t>(parameters_.width_nm),
+          Parameter::SIUnitPrefix::NANO));
+  fet->SetParameter(
+      parameters_.fet_model_length_parameter,
+      Parameter::FromInteger(
+          parameters_.fet_model_length_parameter,
+          static_cast<int64_t>(parameters_.length_nm),
+          Parameter::SIUnitPrefix::NANO));
+
   return circuit.release();
 }
 

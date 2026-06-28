@@ -342,6 +342,9 @@ void Circuit::Flatten(bool add_prefixes) {
  
     // TODO(aryap): Parameters on the instance must also be applied everywhere
     // they would have been applied?
+    LOG_IF(WARNING, !parameters_.empty())
+        << "You are flattening a circuit with whole-circuit parameters, but "
+        << "we're not sure what to do with these!";
 
     AddCircuit(staging, prefix, signal_rewrites);
   }
@@ -385,7 +388,7 @@ std::string Circuit::Describe() const {
     *mod_pb.add_instances() = instance->ToVLSIRInstance();
   }
 
-  // TODO(aryap): Add parameters.
+  // TODO(aryap): Add whole-circuit parameters.
 
   return mod_pb;
 }
@@ -405,7 +408,7 @@ std::string Circuit::Describe() const {
     *mod_pb.add_ports() = port->ToVLSIRPort();
   }
 
-  // TODO(aryap): Add parameters.
+  // TODO(aryap): Add whole-circuit parameters.
   // TODO(aryap): Add spicetype.
 
   return mod_pb;

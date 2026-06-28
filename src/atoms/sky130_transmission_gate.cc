@@ -369,8 +369,6 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
 
   std::unique_ptr<bfg::Circuit> pfet_circuit(
       pfet_generator_->GenerateCircuit());
-  std::unique_ptr<bfg::Circuit> nfet_circuit(
-      nfet_generator_->GenerateCircuit());
 
   circuit::Instance *pfet = circuit->AddInstance("pfet", pfet_circuit.get());
 
@@ -383,6 +381,9 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
           Sky130SimpleTransistor::Terminal::GATE), s_b},
       {pfet_generator_->TerminalPortName(
           Sky130SimpleTransistor::Terminal::SUBSTRATE), vpb}});
+
+  std::unique_ptr<bfg::Circuit> nfet_circuit(
+      nfet_generator_->GenerateCircuit());
 
   circuit::Instance *nfet = circuit->AddInstance("nfet", nfet_circuit.get());
   nfet->Connect({

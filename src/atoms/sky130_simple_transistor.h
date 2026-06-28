@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "atom.h"
+#include "sky130_parameters.h"
 #include "../circuit.h"
 #include "../layout.h"
 #include "../geometry/compass.h"
@@ -24,7 +25,7 @@ namespace atoms {
 // It will be worth factoring out eventually.
 class Sky130SimpleTransistor : public Atom {
  public:
-  struct Parameters {
+  struct Parameters : public Sky130Parameters {
     enum FetType {
       PMOS,
       PMOS_HVT,
