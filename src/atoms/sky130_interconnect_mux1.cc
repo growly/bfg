@@ -1458,7 +1458,7 @@ void Sky130InterconnectMux1::DrawScanChain(
     auto out_name_it = memory_output_nets.find(memory);
     DCHECK(out_name_it != memory_output_nets.end());
     const std::string &wire_name = out_name_it->second;
-    circuit::Wire wire(*circuit->GetSignal(wire_name), 0);
+    circuit::Wire wire(*circuit->GetOrAddSignal(wire_name, 1), 0);
     DCHECK(memory->circuit_instance()->GetConnection("Q"));
     next->circuit_instance()->Connect("D", wire);
   }
