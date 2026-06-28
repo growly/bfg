@@ -864,11 +864,10 @@ void Sky130InterconnectMux1::DrawRoutes(
     AddPolyconAndLi(p_tab_centre, true, layout);
     AddPolyconAndLi(n_tab_centre, false, layout);
 
-    connect_memory_to_control_fn(memory, gate_number, true, false);
-
     bool is_last_memory = memory == scan_order.back();
 
-    connect_memory_to_control_fn(memory, gate_number, false, is_last_memory);
+    connect_memory_to_control_fn(memory, gate_number, true, is_last_memory);
+    connect_memory_to_control_fn(memory, gate_number, false, false);
 
     layout->MakePin("SCAN_OUT", mem_Q->centre(), "met1.pin");
 
