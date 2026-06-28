@@ -765,7 +765,7 @@ void Sky130InterconnectMux1::DrawRoutes(
     memory->circuit_instance()->Connect(memory_port, *signal);
 
     LOG(INFO) << memory->name() << ": " << memory_port << " ["
-              << memory_signal->name() << "] -> " << control_name;
+              << signal->name() << "] -> " << control_name;
   };
 
   int c = 0;
