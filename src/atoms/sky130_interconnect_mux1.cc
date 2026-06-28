@@ -738,8 +738,7 @@ void Sky130InterconnectMux1::DrawRoutes(
   auto connect_memory_to_control_fn = [&](
       geometry::Instance *memory,
       size_t gate_number,
-      bool complement,
-      bool is_final_memory) {
+      bool complement) {
     // To associate these points with the control signals they require, consider
     // that for gate n, the positive control signal connects to the NMOS FET
     // and the inverted control signal connects to the PMOS FET. Then follow the
@@ -751,16 +750,15 @@ void Sky130InterconnectMux1::DrawRoutes(
         "S", gate_number, complement ? "_B" : "");
 
     std::string memory_port = complement ? "Q" : "QI";
-    std::string wire_name = absl::StrCat(memory->name(), ".", memory_port);
 
-    // For the scan chain, later:
-    if (complement) {
-      // Memory port Q on last flip flop is called SCAN_OUT.
-      if (is_final_memory) {
-        wire_name = "SCAN_OUT";
+    std::string wire_name = absl::StrCat(memory->name(), ".", memory_port);
+    if (memory_port == "Q") {
+      auto it = memory_output_nets.find(memory);
+      if (it != memory_output_nets.end()) {
+        wire_name = it->second;
       }
-      memory_output_nets.insert({memory, wire_name});
     }
+
     circuit::Signal *signal = circuit->GetOrAddSignal(wire_name, 1);
     stack->circuit_instance()->Connect(control_name, *signal);
     memory->circuit_instance()->Connect(memory_port, *signal);
@@ -787,6 +785,9 @@ void Sky130InterconnectMux1::DrawRoutes(
 
     int64_t vertical_x = p_tab_centre.x() + max_offset_from_first_poly_x;
 
+    std::string wire_name = absl::StrCat(memory->name(), ".Q");
+    memory_output_nets.insert({memory, wire_name});
+
     // Memory storage in this cell is INVERTED. You store a 1 to turn turn the
     // gate OFF. We connect the output Q output (stored bit) to the pfet and
     // the inverted output QI to the nfet, therefore a stored Q=0 (QI=1) will
@@ -798,7 +799,7 @@ void Sky130InterconnectMux1::DrawRoutes(
                       p_tab_centre,
                       vertical_x - met2_pitch,
                       layout,
-                      absl::StrCat(memory->name(), ".Q"));
+                      wire_name);
 
     update_bounds_fn(vertical_x - met2_pitch);
 
@@ -819,8 +820,8 @@ void Sky130InterconnectMux1::DrawRoutes(
     // We also use this opportunity to make scan-chain connections from memory Q
     // outputs to the D inputs on the next memory up. We only do this when the
     // output Q is on the left, since they will always line up with a single 
-    connect_memory_to_control_fn(memory, gate_number, true, false);
-    connect_memory_to_control_fn(memory, gate_number, false, false);
+    connect_memory_to_control_fn(memory, gate_number, true);
+    connect_memory_to_control_fn(memory, gate_number, false);
 
     ++c;
   }
@@ -843,13 +844,20 @@ void Sky130InterconnectMux1::DrawRoutes(
 
     int64_t vertical_x = p_tab_centre.x() - max_offset_from_first_poly_x;
 
+    std::string wire_name = absl::StrCat(memory->name(), ".Q");
+    if (memory == scan_order.back()) {
+      wire_name = "SCAN_OUT";
+    }
+    memory_output_nets.insert({memory, wire_name});
+
+
     // The Q port is always the outer port. We know that from the layout of the
     // flip-flop, but we could also sort by their x positions if we had to.
     ConnectVertically(mem_Q->centre(),
                       p_tab_centre,
                       vertical_x,
                       layout,
-                      absl::StrCat(memory->name(), ".Q"));
+                      wire_name);
     
     update_bounds_fn(vertical_x);
 
@@ -864,10 +872,8 @@ void Sky130InterconnectMux1::DrawRoutes(
     AddPolyconAndLi(p_tab_centre, true, layout);
     AddPolyconAndLi(n_tab_centre, false, layout);
 
-    bool is_last_memory = memory == scan_order.back();
-
-    connect_memory_to_control_fn(memory, gate_number, true, is_last_memory);
-    connect_memory_to_control_fn(memory, gate_number, false, false);
+    connect_memory_to_control_fn(memory, gate_number, true);
+    connect_memory_to_control_fn(memory, gate_number, false);
 
     layout->MakePin("SCAN_OUT", mem_Q->centre(), "met1.pin");
 
