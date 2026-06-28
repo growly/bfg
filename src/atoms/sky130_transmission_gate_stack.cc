@@ -219,6 +219,12 @@ void Sky130TransmissionGateStack::BuildSequence(
   int64_t diff_ll_to_bottom_via_centre_y =
       GapInYFromNMOSDiffLowerLeftToMconViaCentre();
 
+  std::set<circuit::Signal*> signals_to_become_ports;
+  signals_to_become_ports.insert(
+      circuit->GetOrAddSignal(parameters_.power_net, 1));
+  signals_to_become_ports.insert(
+      circuit->GetOrAddSignal(parameters_.ground_net, 1));
+
   for (size_t i = 0; i < num_gates; ++i) {
     Sky130TransmissionGate::Parameters gate_params = {
       .p_width_nm = parameters_.p_width_nm,
@@ -282,15 +288,25 @@ void Sky130TransmissionGateStack::BuildSequence(
     const std::string &gate_net = net_sequence[2 * i + 1];
     const std::string &right_net = net_sequence[2 * i + 2];
 
-    circuit_instance->Connect("IN", *circuit->GetOrAddSignal(left_net, 1));
-    circuit_instance->Connect("OUT", *circuit->GetOrAddSignal(right_net, 1));
-    circuit_instance->Connect("S", *circuit->GetOrAddSignal(gate_net, 1));
-    circuit_instance->Connect(
-        "S_B", *circuit->GetOrAddSignal(absl::StrCat(gate_net, "_B"), 1));
+    circuit::Signal *left_net_signal = circuit->GetOrAddSignal(left_net, 1);
+    circuit::Signal *right_net_signal = circuit->GetOrAddSignal(right_net, 1);
+    circuit::Signal *control_signal = circuit->GetOrAddSignal(gate_net, 1);
+    circuit::Signal *control_b_signal = circuit->GetOrAddSignal(
+        absl::StrCat(gate_net, "_B"), 1);
+
+    circuit_instance->Connect("IN", *left_net_signal);
+    circuit_instance->Connect("OUT", *right_net_signal);
+    circuit_instance->Connect("S", *control_signal);
+    circuit_instance->Connect("S_B", *control_b_signal);
     circuit_instance->Connect(
         "VPB", *circuit->GetOrAddSignal(parameters_.power_net, 1));
     circuit_instance->Connect(
         "VNB", *circuit->GetOrAddSignal(parameters_.ground_net, 1));
+
+    signals_to_become_ports.insert(left_net_signal);
+    signals_to_become_ports.insert(right_net_signal);
+    signals_to_become_ports.insert(control_signal);
+    signals_to_become_ports.insert(control_b_signal);
 
     geometry::Point pmos_ll = layout_instance->GetPointOrDie(
         "pmos.diff_lower_left");
@@ -345,6 +361,10 @@ void Sky130TransmissionGateStack::BuildSequence(
     cell->layout()->SavePoint(
         absl::StrFormat("gate_%u_n_tab_centre", k),
         (*n_via_ll + *n_via_ur) / 2);
+  }
+
+  for (circuit::Signal *signal : signals_to_become_ports) {
+    circuit->AddPort(*signal);
   }
 
   *gates_so_far += num_gates;
