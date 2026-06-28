@@ -101,7 +101,7 @@ class Sky130TransmissionGate : public Atom {
     nfet_generator_->set_name("nmos");
 
     Sky130SimpleTransistor::Parameters pfet_params = {
-      .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS,
+      .fet_type = Sky130SimpleTransistor::Parameters::FetType::PMOS_HVT,
       .width_nm = parameters_.p_width_nm,
       .length_nm = parameters_.p_length_nm,
       .stacks_left = parameters_.stacks_left,

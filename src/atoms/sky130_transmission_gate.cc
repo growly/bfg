@@ -350,7 +350,6 @@ bfg::Circuit *Sky130TransmissionGate::GenerateCircuit() {
   //
   // There is 1 substrate connection per fet (not shown).
 
- 
   circuit::Wire s = circuit->AddSignal("S");
   circuit::Wire s_b = circuit->AddSignal("S_B");
   circuit::Wire in = circuit->AddSignal("IN");

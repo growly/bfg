@@ -420,13 +420,13 @@ std::string Sky130SimpleTransistor::CircuitCellName() const {
       return "sky130_fd_pr__pfet_01v8_hvt";
     case Parameters::FetType::PMOS_LVT:
       return "sky130_fd_pr__pfet_01v8_lvt";
-    case Parameters::FetType::NMOS:
-      return "sky130_fd_pr__nfet_01v8";
     case Parameters::FetType::NMOS_HVT:
       return "sky130_fd_pr__nfet_01v8_hvt";
     case Parameters::FetType::NMOS_LVT:
-    default:
       return "sky130_fd_pr__nfet_01v8_lvt";
+    case Parameters::FetType::NMOS:
+    default:
+      return "sky130_fd_pr__nfet_01v8";
   }
 }
 
