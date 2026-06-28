@@ -695,6 +695,7 @@ geometry::Group Layout::MakeVerticalSpineWithFingers(
     const std::string &finger_layer_name,
     const std::string &net,
     const std::vector<geometry::Point> &connections,
+    const std::optional<std::string> &encap_layer_at_finger,
     int64_t spine_x,
     int64_t spine_width,
     Layout *layout) {
@@ -779,6 +780,12 @@ geometry::Group Layout::MakeVerticalSpineWithFingers(
     finger.set_min_separation(finger_rules.min_separation);
     finger.InsertBulge(spine_via, finger_bulge_width, finger_bulge_length);
     finger.set_net(net);
+
+    if (encap_layer_at_finger) {
+      const auto &finger_encap = db.TypicalViaEncap(
+          finger_layer_name, *encap_layer_at_finger);
+      finger.InsertBulge(point, finger_encap.width, finger_encap.length);
+    }
 
     {
       ScopedLayer sl(this, finger_layer);

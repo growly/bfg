@@ -1131,6 +1131,7 @@ void Sky130InterconnectMux1::DrawClock(
         "met1.drawing",
         clk_internal_name,
         memory_CLK_centres,
+        std::nullopt,
         clk_x,
         db.Rules("met2.drawing").min_width,
         layout);
@@ -1140,6 +1141,7 @@ void Sky130InterconnectMux1::DrawClock(
         "met1.drawing",
         clk_i_internal_name,
         memory_CLKI_centres,
+        std::nullopt,
         clk_i_x,
         db.Rules("met2.drawing").min_width,
         layout);
@@ -1189,6 +1191,7 @@ void Sky130InterconnectMux1::DrawClock(
         "met1.drawing",
         "CLK",            // TODO(aryap): Parameterise.
         buf_A_centres,
+        "mcon.drawing",
         input_clk_x,
         db.Rules("met2.drawing").min_width,
         layout);

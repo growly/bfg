@@ -158,6 +158,7 @@ class Layout : public geometry::Manipulable {
       const std::string &finger_layer_name,
       const std::string &net,
       const std::vector<geometry::Point> &connections,
+      const std::optional<std::string> &encap_layer_at_finger,
       int64_t spine_x,
       int64_t spine_width,
       Layout *layout);
