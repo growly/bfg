@@ -481,6 +481,19 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
         cell->layout());
   }
 
+  // psdm cannot overlap licon vias to poly (rule licon.9). We have to cut out
+  // a hole for these connections. The surrounding psdm area needs to meet
+  // minimum width and spacing rules, and the hole area has to be a minimum
+  // area. This is an issue when the tab position for the PMOS is above _and_
+  // parameters_.expand_wells_to_vertical_bounds is set.
+  //int64_t psdm_hole_min_area = db.Rules("psdm.drawing").min_hole_area;
+
+  geometry::Point p_tab_centre =
+      row.instances().front()->GetPointOrDie("pmos.poly_tab_centre");
+  int64_t psdm_max_y = p_tab_centre.y() -
+      db.Rules("polycon.drawing").via_height -
+      db.Rules("psdm.drawing", "polycon.drawing").min_separation;
+
   // Add nwell.
   if (pdiff_cover) {
     // FIXME(aryap): These need an nwell.pin and the nwell.drawing has to cover
@@ -492,7 +505,8 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
       geometry::Rectangle psdm_rectangle =
           pdiff_cover->WithPadding(psdm_margin);
       if (parameters_.expand_wells_to_vertical_bounds) {
-        psdm_rectangle.ExpandUpToCover(new_tiling_bounds);
+        psdm_rectangle.set_upper_right(
+            {psdm_rectangle.upper_right().x(), psdm_max_y});
       }
       if (parameters_.expand_wells_to_horizontal_bounds) {
         psdm_rectangle.ExpandHorizontallyToCover(new_tiling_bounds);

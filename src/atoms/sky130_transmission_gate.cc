@@ -315,6 +315,9 @@ geometry::Polygon *Sky130TransmissionGate::AddPolyTab(
       absl::StrCat(fet_generator.name(), ".", "poly_tab_ll"), final_tab_ll);
   layout->SavePoint(
       absl::StrCat(fet_generator.name(), ".", "poly_tab_ur"), final_tab_ur);
+  layout->SavePoint(
+      absl::StrCat(fet_generator.name(), ".", "poly_tab_centre"),
+      (final_tab_ur + final_tab_ll) / 2);
 
   return layout->AddPolygon(geometry::Polygon(vertices));
 }

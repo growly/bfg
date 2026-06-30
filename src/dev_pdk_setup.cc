@@ -147,6 +147,16 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("nwell.pin", intra_constraints);
   db->AddRules("pwell.pin", intra_constraints);
 
+  intra_constraints = {
+    .min_separation = db->ToInternalUnits(380),
+    .min_width = db->ToInternalUnits(380),
+    // 0.265 um^2 = 265,000 nm^2.
+    .min_area = db->ToSquareInternalUnits(265000),
+    .min_hole_area = db->ToSquareInternalUnits(265000)
+  };
+  db->AddRules("nsdm.drawing", intra_constraints);
+  db->AddRules("psdm.drawing", intra_constraints);
+
   bfg::InterLayerConstraints inter_constraints = {
     .min_separation = db->ToInternalUnits(55),
     // licon.8a
@@ -258,6 +268,16 @@ void SetUpSky130(bfg::PhysicalPropertiesDatabase *db) {
   db->AddRules("ndiff.drawing", "nsdm.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "psdm.drawing", inter_constraints);
   db->AddRules("pdiff.drawing", "nwell.drawing", inter_constraints);
+
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(380)
+  };
+  db->AddRules("psdm.drawing", "nsdm.drawing", inter_constraints);
+
+  inter_constraints = {
+    .min_separation = db->ToInternalUnits(110)
+  };
+  db->AddRules("polycon.drawing", "psdm.drawing", inter_constraints);
 
   inter_constraints = {
     .min_separation = db->ToInternalUnits(340)
