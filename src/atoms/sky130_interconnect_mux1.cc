@@ -875,7 +875,7 @@ void Sky130InterconnectMux1::DrawRoutes(
     connect_memory_to_control_fn(memory, gate_number, true);
     connect_memory_to_control_fn(memory, gate_number, false);
 
-    layout->MakePin("SCAN_OUT", mem_Q->centre(), "met1.pin");
+    layout->MakePin(wire_name, mem_Q->centre(), "met1.pin");
 
     ++c;
   }
