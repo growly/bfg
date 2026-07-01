@@ -320,7 +320,9 @@ void Sky130InterconnectMux2::DrawScanChain(
     Circuit *circuit) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
-  size_t row = 0;
+  int row = 0;
+  geometry::Point landmark =
+      {(vertical_x_right + vertical_x_left) / 2, central_y};
   for (auto it = scan_order.begin(); it < scan_order.end() - 1; ++it) {
     // As a reminder, the flip flop latched the value at input D on a clock
     // edge, and then it appears at output Q.
@@ -328,12 +330,17 @@ void Sky130InterconnectMux2::DrawScanChain(
     geometry::Instance *memory = *it;
     geometry::Instance *next = *(it + 1);
 
-    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    std::string net = absl::StrCat(memory->name(), ".Q");
+
     geometry::Port *mem_D = memory->GetFirstPortNamed("D");
 
-    geometry::Port *next_D = next->GetFirstPortNamed("D");
+    int rows_to_central = std::abs(num_ff_rows_bottom - row);
+    geometry::Port *mem_Q = rows_to_central % 2 == 0 ? 
+        memory->GetNearestPortNamed(landmark, "Q") :
+        memory->GetFurthestPortNamed(landmark, "Q");
 
-    std::string net = absl::StrCat(memory->name(), ".Q");
+    // Pick middle D each time:
+    geometry::Port *next_D = next->GetMidwayPortNamed(landmark, "D");
 
     int64_t vertical_x = 0;
     // There are three cases for scan chain links:
@@ -471,12 +478,12 @@ void Sky130InterconnectMux2::DrawScanChain(
     next->circuit_instance()->Connect("D", wire);
   }
 
-  layout->MakePin("SCAN_IN",
-                  scan_order.front()->GetFirstPortNamed("D")->centre(),
-                  "li.pin");
-  layout->MakePin("SCAN_OUT",
-                  scan_order.back()->GetFirstPortNamed("Q")->centre(),
-                  "li.pin");
+  // Place SCAN_IN port at the D of the first scan chain memory. As with
+  // SCAN_OUT, this will probably need to be drawn to an edge eventually.
+  layout->MakePin(
+      "SCAN_IN",
+      scan_order.front()->GetMidwayPortNamed(landmark, "D")->centre(),
+      "li.pin");
 
   circuit::Wire scan_in = circuit->AddSignal("SCAN_IN");
   circuit::Wire scan_out = circuit->AddSignal("SCAN_OUT");
