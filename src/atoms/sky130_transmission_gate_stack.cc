@@ -434,13 +434,13 @@ bfg::Cell *Sky130TransmissionGateStack::Generate() {
   std::sort(new_ports.begin(),
             new_ports.end(),
             circuit::Signal::ComparePtrByName);
-  for (circuit::Signal *signal : new_ports) {
-    cell->circuit()->AddPort(*signal);
-  }
   new_ports.push_back(
       cell->circuit()->GetOrAddSignal(parameters_.power_net, 1));
   new_ports.push_back(
       cell->circuit()->GetOrAddSignal(parameters_.ground_net, 1));
+  for (circuit::Signal *signal : new_ports) {
+    cell->circuit()->AddPort(*signal);
+  }
 
   geometry::Rectangle tiling_bounds = cell->layout()->GetTilingBounds();
 
