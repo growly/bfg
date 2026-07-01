@@ -847,6 +847,15 @@ void Sky130InterconnectMux1::DrawRoutes(
     std::string wire_name = absl::StrCat(memory->name(), ".Q");
     if (memory == scan_order.back()) {
       wire_name = "SCAN_OUT";
+
+      // Place the SCAN_OUT pin here, since we know which Q port on 'memory'
+      // we're using.
+      //
+      // TODO(aryap): I think this will need to be extended to a pin at the end
+      // of the cell, likely through a buffer. There should always be enough
+      // room for a buffer above/below the output buffer and input clock
+      // buffers.
+      layout->MakePin(wire_name, mem_Q->centre(), "met1.pin");
     }
     memory_output_nets.insert({memory, wire_name});
 
@@ -874,8 +883,6 @@ void Sky130InterconnectMux1::DrawRoutes(
 
     connect_memory_to_control_fn(memory, gate_number, true);
     connect_memory_to_control_fn(memory, gate_number, false);
-
-    layout->MakePin(wire_name, mem_Q->centre(), "met1.pin");
 
     ++c;
   }
@@ -1476,6 +1483,8 @@ void Sky130InterconnectMux1::DrawScanChain(
     next->circuit_instance()->Connect("D", wire);
   }
 
+  // Place SCAN_IN port at the D of the first scan chain memory. As with
+  // SCAN_OUT, this will probably need to be drawn to an edge eventually.
   layout->MakePin(
       "SCAN_IN",
       scan_order.front()->GetMidwayPortNamed(landmark, "D")->centre(),
