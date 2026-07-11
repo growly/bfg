@@ -18,8 +18,9 @@ class Concatenation {
  public:
   Concatenation() {}
 
-  Concatenation(const std::vector<Catenable> &members)
-      : members_(members) {}
+  Concatenation(const std::string &name, const std::vector<Catenable> &members)
+      : name_(name),
+        members_(members) {}
 
   ::vlsir::circuit::Concat ToVLSIRConcatenation() const {
     ::vlsir::circuit::Concat concat_pb;
@@ -29,7 +30,10 @@ class Concatenation {
   // TODO(aryap): Needs to sum over the widths of all members_.
   uint64_t Width() const { return 0; }
 
+  const std::string &name() const { return name_; }
+
  private:
+  std::string name_;
   std::vector<Catenable> members_;
 };
 
