@@ -182,6 +182,7 @@ set(CIRCUIT_SRC
   ${PROJECT_SOURCE_DIR}/src/circuit/signal.cc
   ${PROJECT_SOURCE_DIR}/src/circuit/slice.cc
   ${PROJECT_SOURCE_DIR}/src/circuit/connection.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit/concatenation.cc
 )
 
 
