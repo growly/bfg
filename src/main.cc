@@ -30,6 +30,7 @@
 #include "atoms/sky130_xor2.h"
 #include "atoms/sky130_passive_mux3.h"
 #include "atoms/gf180mcu_mux.h"
+#include "atoms/layout_demo.h"
 #include "tiles/lut.h"
 #include "tiles/lut_b.h"
 #include "tiles/s44.h"
@@ -56,6 +57,7 @@
 #include "proto/parameters/sky130_interconnect_mux1.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
+#include "proto/parameters/layout_demo.pb.h"
 
 #include "vlsir/tech.pb.h"
 #include "vlsir/layout/raw.pb.h"
@@ -159,6 +161,12 @@ int DispatchGenerator(
         bfg::proto::parameters::Sky130Dfxtp,
         bfg::atoms::Sky130Dfxtp::Parameters,
         bfg::atoms::Sky130Dfxtp>(generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "LayoutDemo") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::LayoutDemo,
+        bfg::atoms::LayoutDemo::Parameters,
+        bfg::atoms::LayoutDemo>(
+            generator_name, parameter_pb_path, design_db);
   } else if (generator_name == "Sky130Xor2") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Sky130Xor2,
