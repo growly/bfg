@@ -145,8 +145,7 @@ class Utility {
 
     // The last length is the smallest, by construction. But we might need to
     // borrow from several previous lengths to get it up to the minimum size.
-    if (min &&
-        lengths.back() < *min) {
+    if (min && lengths.back() < *min) {
       DCHECK(*min <= max);
 
       int64_t real_min = unit * ((*min) / unit);

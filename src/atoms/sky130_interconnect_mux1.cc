@@ -538,7 +538,7 @@ bfg::Cell *Sky130InterconnectMux1::Generate() {
         static_cast<uint64_t>(db.ToExternalUnits(mux_row_height)));
     geometry::Instance *decap = bank.InstantiateRight(
         num_ff_rows_bottom,
-        absl::StrCat(optional_decap_cell->name(), "_i0"),
+        absl::StrCat(optional_decap_cell->name(), "_ir"),
         optional_decap_cell);
   }
 

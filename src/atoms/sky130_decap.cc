@@ -565,7 +565,7 @@ void Sky130Decap::FillDecapsRight(const std::optional<Parameters> &base_params,
       Parameters::kMaxWidthNm,
       Sky130Parameters::kStandardCellUnitWidthNm,
       Parameters::kMinWidthNm);
-  static int num_decaps = 0;
+  static int num_decaps = 0;  // TODO(aryap): Why did I make this static?
   if (row->empty()) {
     // Maybe we need to be able to specify a default height.
     return;
