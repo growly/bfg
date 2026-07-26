@@ -1,5 +1,7 @@
 #include "sky130_simple_transistor.h"
 
+#include <glog/logging.h>
+
 #include "../circuit.h"
 #include "../layout.h"
 #include "../scoped_layer.h"
@@ -12,6 +14,114 @@
 
 namespace bfg {
 namespace atoms {
+
+proto::parameters::Sky130SimpleTransistor::FetType
+Sky130SimpleTransistor::FetTypeToProto(
+    const Sky130SimpleTransistor::Parameters::FetType &fet_type) {
+  switch (fet_type) {
+    case Parameters::FetType::PMOS:
+      return proto::parameters::Sky130SimpleTransistor::PMOS;
+    case Parameters::FetType::PMOS_HVT:
+      return proto::parameters::Sky130SimpleTransistor::PMOS_HVT;
+    case Parameters::FetType::PMOS_LVT:
+      return proto::parameters::Sky130SimpleTransistor::PMOS_LVT;
+    case Parameters::FetType::NMOS:
+      return proto::parameters::Sky130SimpleTransistor::NMOS;
+    case Parameters::FetType::NMOS_HVT:
+      return proto::parameters::Sky130SimpleTransistor::NMOS_HVT;
+    case Parameters::FetType::NMOS_LVT:
+      return proto::parameters::Sky130SimpleTransistor::NMOS_LVT;
+    default:
+      LOG(FATAL) << "Unknown FetType: " << fet_type;
+  }
+  return proto::parameters::Sky130SimpleTransistor::FET_TYPE_UNKNOWN;
+}
+
+Sky130SimpleTransistor::Parameters::FetType
+Sky130SimpleTransistor::FetTypeFromProto(
+    const proto::parameters::Sky130SimpleTransistor::FetType &fet_type) {
+  switch (fet_type) {
+    case proto::parameters::Sky130SimpleTransistor::PMOS:
+      return Parameters::FetType::PMOS;
+    case proto::parameters::Sky130SimpleTransistor::PMOS_HVT:
+      return Parameters::FetType::PMOS_HVT;
+    case proto::parameters::Sky130SimpleTransistor::PMOS_LVT:
+      return Parameters::FetType::PMOS_LVT;
+    case proto::parameters::Sky130SimpleTransistor::NMOS:
+      return Parameters::FetType::NMOS;
+    case proto::parameters::Sky130SimpleTransistor::NMOS_HVT:
+      return Parameters::FetType::NMOS_HVT;
+    case proto::parameters::Sky130SimpleTransistor::NMOS_LVT:
+      return Parameters::FetType::NMOS_LVT;
+    default:
+      LOG(FATAL) << "Unknown proto FetType: " << fet_type;
+  }
+  return Parameters::FetType::NMOS;
+}
+
+void Sky130SimpleTransistor::Parameters::ToProto(
+    proto::parameters::Sky130SimpleTransistor *pb) const {
+  pb->set_fet_type(Sky130SimpleTransistor::FetTypeToProto(fet_type));
+
+  pb->set_width_nm(width_nm);
+  pb->set_length_nm(length_nm);
+
+  pb->set_stacks_left(stacks_left);
+  pb->set_stacks_right(stacks_right);
+
+  if (poly_overhang_top_nm) {
+    pb->set_poly_overhang_top_nm(*poly_overhang_top_nm);
+  } else {
+    pb->clear_poly_overhang_top_nm();
+  }
+
+  if (poly_overhang_bottom_nm) {
+    pb->set_poly_overhang_bottom_nm(*poly_overhang_bottom_nm);
+  } else {
+    pb->clear_poly_overhang_bottom_nm();
+  }
+
+  if (stacking_pitch_nm) {
+    pb->set_stacking_pitch_nm(*stacking_pitch_nm);
+  } else {
+    pb->clear_stacking_pitch_nm();
+  }
+}
+
+void Sky130SimpleTransistor::Parameters::FromProto(
+    const proto::parameters::Sky130SimpleTransistor &pb) {
+  if (pb.has_fet_type()) {
+    fet_type = Sky130SimpleTransistor::FetTypeFromProto(pb.fet_type());
+  }
+
+  if (pb.has_width_nm()) {
+    width_nm = pb.width_nm();
+  }
+
+  if (pb.has_length_nm()) {
+    length_nm = pb.length_nm();
+  }
+
+  if (pb.has_stacks_left()) {
+    stacks_left = pb.stacks_left();
+  }
+
+  if (pb.has_stacks_right()) {
+    stacks_right = pb.stacks_right();
+  }
+
+  if (pb.has_poly_overhang_top_nm()) {
+    poly_overhang_top_nm = pb.poly_overhang_top_nm();
+  }
+
+  if (pb.has_poly_overhang_bottom_nm()) {
+    poly_overhang_bottom_nm = pb.poly_overhang_bottom_nm();
+  }
+
+  if (pb.has_stacking_pitch_nm()) {
+    stacking_pitch_nm = pb.stacking_pitch_nm();
+  }
+}
 
 std::string Sky130SimpleTransistor::LandmarkName(
     const Sky130SimpleTransistor::Landmark &landmark) {

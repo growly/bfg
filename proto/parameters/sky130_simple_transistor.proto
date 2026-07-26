@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package bfg.proto.parameters;
+
+message Sky130SimpleTransistor {
+  enum FetType {
+    FET_TYPE_UNKNOWN = 0;
+    PMOS = 1;
+    PMOS_HVT = 2;
+    PMOS_LVT = 3;
+    NMOS = 4;
+    NMOS_HVT = 5;
+    NMOS_LVT = 6;
+  }
+
+  optional FetType fet_type = 1;
+
+  optional uint64 width_nm = 2;
+  optional uint64 length_nm = 3;
+
+  optional bool stacks_left = 4;
+  optional bool stacks_right = 5;
+
+  optional uint64 poly_overhang_top_nm = 6;
+  optional uint64 poly_overhang_bottom_nm = 7;
+
+  optional uint64 stacking_pitch_nm = 8;
+}

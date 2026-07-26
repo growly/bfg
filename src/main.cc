@@ -22,6 +22,7 @@
 #include "atoms/sky130_switch_complex.h"
 #include "atoms/sky130_interconnect_mux1.h"
 #include "atoms/sky130_interconnect_mux2.h"
+#include "atoms/sky130_simple_transistor.h"
 #include "atoms/sky130_transmission_gate.h"
 #include "atoms/sky130_transmission_gate_stack.h"
 #include "atoms/sky130_mux.h"
@@ -55,6 +56,7 @@
 #include "proto/parameters/sky130_xor2.pb.h"
 #include "proto/parameters/sky130_split_buffer.pb.h"
 #include "proto/parameters/sky130_interconnect_mux1.pb.h"
+#include "proto/parameters/sky130_simple_transistor.pb.h"
 #include "proto/parameters/sky130_transmission_gate.pb.h"
 #include "proto/parameters/sky130_transmission_gate_stack.pb.h"
 #include "proto/parameters/layout_demo.pb.h"
@@ -127,7 +129,13 @@ int DispatchGenerator(
     const std::string &output_prefix,
     bfg::DesignDatabase *design_db) {
   bfg::Cell *cell;
-  if (generator_name == "Sky130TransmissionGate") {
+  if (generator_name == "Sky130SimpleTransistor") {
+    cell = ReadParamsAndGenerate<
+        bfg::proto::parameters::Sky130SimpleTransistor,
+        bfg::atoms::Sky130SimpleTransistor::Parameters,
+        bfg::atoms::Sky130SimpleTransistor>(
+            generator_name, parameter_pb_path, design_db);
+  } else if (generator_name == "Sky130TransmissionGate") {
     cell = ReadParamsAndGenerate<
         bfg::proto::parameters::Sky130TransmissionGate,
         bfg::atoms::Sky130TransmissionGate::Parameters,

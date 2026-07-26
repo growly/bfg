@@ -12,6 +12,7 @@
 #include "../geometry/polygon.h"
 #include "../geometry/rectangle.h"
 #include "../physical_properties_database.h"
+#include "proto/parameters/sky130_simple_transistor.pb.h"
 
 namespace bfg {
 
@@ -53,7 +54,15 @@ class Sky130SimpleTransistor : public Atom {
     // TODO(aryap): Should have the option of forcing the diff width either side
     // (left and right) of the poly, since that isn't standard in at least
     // Sky130.
+
+    void ToProto(proto::parameters::Sky130SimpleTransistor *pb) const;
+    void FromProto(const proto::parameters::Sky130SimpleTransistor &pb);
   };
+
+  static proto::parameters::Sky130SimpleTransistor::FetType FetTypeToProto(
+      const Parameters::FetType &fet_type);
+  static Parameters::FetType FetTypeFromProto(
+      const proto::parameters::Sky130SimpleTransistor::FetType &fet_type);
 
   enum Terminal {
     SOURCE,
