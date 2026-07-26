@@ -905,17 +905,25 @@ void Sky130InterconnectMux1::DrawRoutes(
     columns_left_x.push_back(x);
   }
 
+  auto get_right_column_fn = [&](int index) {
+    if (index >= 0) {
+      return columns_right_x[index];
+    }
+    // Index is already negative!
+    return columns_right_x[columns_right_x.size() + index];
+  };
+
   // Allocate left columns so that they don't interfere with each other (or
   // cause problems for met1 connections below):
-  constexpr size_t kScanChainLeftIndex = 0;
-  constexpr size_t kInterconnectLeftStartIndex = 1;
+  constexpr int kScanChainLeftIndex = 0;
+  constexpr int kInterconnectLeftStartIndex = 1;
 
   // Allocate right columns:
-  constexpr size_t kScanChainRightIndex = 4;
-  constexpr size_t kClockRightIndex = 1;
-  constexpr size_t kClockIRightIndex = 3;
-  constexpr size_t kInputClockRightIndex = 6;
-  constexpr size_t kVPWRVGNDStartRightIndex = 7;
+  constexpr int kScanChainRightIndex = -6;
+  constexpr int kClockRightIndex = -9;
+  constexpr int kClockIRightIndex = -7;
+  constexpr int kInputClockRightIndex = -4;
+  constexpr int kVPWRVGNDStartRightIndex = -3;
 
   // TODO(aryap): We can save a vertical met2 channel by squeezing the scan
   // chain connections on the right in (index 2), possible if the connection to
@@ -932,7 +940,7 @@ void Sky130InterconnectMux1::DrawRoutes(
                 memory_output_nets,
                 bottom_memories.size() - 1,
                 columns_left_x[kScanChainLeftIndex],
-                columns_right_x[kScanChainRightIndex],
+                get_right_column_fn(kScanChainRightIndex),
                 central_y,
                 layout,
                 circuit);
@@ -957,14 +965,14 @@ void Sky130InterconnectMux1::DrawRoutes(
             top_memories,
             bottom_memories,
             clk_bufs,
-            columns_right_x[kInputClockRightIndex],
-            columns_right_x[kClockRightIndex],
-            columns_right_x[kClockIRightIndex],
+            get_right_column_fn(kInputClockRightIndex),
+            get_right_column_fn(kClockRightIndex),
+            get_right_column_fn(kClockIRightIndex),
             layout,
             circuit);
 
   DrawPowerAndGround(bank,
-                     columns_right_x[kVPWRVGNDStartRightIndex],
+                     get_right_column_fn(kVPWRVGNDStartRightIndex),
                      layout,
                      circuit);
 }
