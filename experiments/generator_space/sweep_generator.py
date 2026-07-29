@@ -87,6 +87,10 @@ def make_gif(png_paths: str, gif_name, all_params,
              centred_crop: bool = False):
     sources = [Image.open(png) for png in png_paths]
 
+    if not sources:
+        print(f'no usable GDS images')
+        sys.exit(1)
+
     max_width = max(image.size[0] for image in sources)
     max_height = max(image.size[1] for image in sources)
 
@@ -112,12 +116,16 @@ def make_gif(png_paths: str, gif_name, all_params,
             cropped = source.crop((0, 0, max_width, max_height))
 
         image = Image.alpha_composite(white_background, cropped)
-        image = image.convert("P", palette=Image.WEB)
+        #image = image.convert("P", palette=Image.WEB)
+        image = image.convert("RGBA")
+
+        # scale down
+        image = image.resize((image.width // 2, image.height // 2))
 
         params = get_params(i)
         if params:
             draw = ImageDraw.Draw(image)
-            draw.text((0, 0), params, (0, 0, 0), font=PNG_FONT)
+            draw.text((0, 0), params, (0, 0, 0, 255), font=PNG_FONT)
             
         images.append(image)
 
@@ -168,9 +176,10 @@ def make_for_params(generator_name: str, name: str, params: str, svgs, pngs):
 
     
     if bfg_result.returncode != 0:
-        print(param_path)
-        print(bfg_stdout)
-        sys.exit(1)
+        print('error running bfg on: ', param_path)
+        print('bfg stdout:\n', bfg_stdout)
+        return
+        #sys.exit(1)
 
     gds_path = f'gds/{name}.gds'
 
@@ -242,10 +251,14 @@ def sweep_transmission_gate_stack():
     pngs = []
     all_params = []
 
-    def make(sequence, p_width_n, n_width_nm, vertical_pitch):
-        params = 'sequences:\n'
-        params += '\n'.join(f'  nets: "{net}"'
-                           for net in sequence)
+    def make(i, sequence, other_sequence, p_width_n, n_width_nm, vertical_pitch):
+        params = 'sequences {\n'
+        params += '\n'.join(f'  nets: "{net}"' for net in sequence)
+        params += '\n}\n'
+        if other_sequence:
+          params += 'sequences {\n'
+          params += '\n'.join(f'  nets: "{net}"' for net in other_sequence)
+          params += '\n}\n'
         params += f'''
 p_width_nm: {p_width_nm}
 p_length_nm: 150
@@ -267,13 +280,17 @@ horizontal_pitch_nm: {vertical_pitch}
     for i in range(2):
         vertical_pitch = None if i == 0 else random.randrange(300, 401, 20)
         for j in range(2, int(len(net_sequence) / 2)):
-            sequence = net_sequence[0:2*j + 1]
-            for k in range(10):
-                add = random.randrange(0, 351, 50)
-                p_width_nm = 650 + add
-                n_width_nm = 350 + add
-                make(sequence, p_width_nm, n_width_nm, vertical_pitch)
-                i = i + 1
+            for q in range(2):
+                other_sequence = None if q == 0 else net_sequence[2*j + 1:]
+                if other_sequence and len(other_sequence) < 3:
+                    other_sequence = None
+                sequence = net_sequence[0:2*j + 1]
+                for k in range(10):
+                    add = random.randrange(0, 351, 50)
+                    p_width_nm = 650 + add
+                    n_width_nm = 350 + add
+                    make(i, sequence, other_sequence, p_width_nm, n_width_nm, vertical_pitch)
+                    i = i + 1
 
     for svg_path in svgs:
         png_path = svg_path.replace('.svg', '.png').replace('svg/', 'png/')
