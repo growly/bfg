@@ -28,6 +28,16 @@
 namespace bfg {
 namespace atoms {
 
+bool Sky130InterconnectMux2::UseNearestMemoryOut(
+    int central_row, int current_row) {
+  int rows_to_central = std::abs(central_row - current_row);
+  bool use_nearest = rows_to_central % 2 == 0;
+  if (current_row > central_row) {
+    return !use_nearest;
+  }
+  return use_nearest;
+}
+
 bool Sky130InterconnectMux2::CompareInstancesByQPortX(
     geometry::Instance *const lhs,
     geometry::Instance *const rhs) {
@@ -334,8 +344,7 @@ void Sky130InterconnectMux2::DrawScanChain(
 
     geometry::Port *mem_D = memory->GetFirstPortNamed("D");
 
-    int rows_to_central = std::abs(num_ff_rows_bottom - row);
-    geometry::Port *mem_Q = rows_to_central % 2 == 0 ? 
+    geometry::Port *mem_Q = UseNearestMemoryOut(num_ff_rows_bottom, row) ?
         memory->GetNearestPortNamed(landmark, "Q") :
         memory->GetFurthestPortNamed(landmark, "Q");
 
@@ -401,6 +410,7 @@ void Sky130InterconnectMux2::DrawScanChain(
                         vertical_x,
                         layout,
                         net);
+      ++row;
     } else if (parameters_.inside_out) {
       //vertical_x = mem_Q->centre().IsStrictlyLeftOf(mem_D->centre()) &&
       //    row != num_ff_rows_bottom ? vertical_x_left : vertical_x_right;
@@ -823,7 +833,13 @@ Sky130InterconnectMux2::AssignRow(
   std::vector<GateAssignment> gate_assignments;
 
   for (size_t i = 0; i < sorted_memories.size(); ++i) {
+    LOG_IF(WARNING, gates->empty())
+        << "Cannot assign memory " << i
+        << " on this row, there are no gates left";
+
     geometry::Instance *memory = sorted_memories[i];
+    // This is ok because all the memories have the same x-coordinate, but
+    // really it should be the port we plan to connect to.
     geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
@@ -885,6 +901,7 @@ Sky130InterconnectMux2::FindGateAssignment(
     for (size_t i = 0; i < p_tests.size(); ++i) {
       for (size_t j = 0; j < p_tests.size(); ++j) {
         if (i <= j) {
+          // TODO(aryap): Why haven't I just tweaked the loop range?
           continue;
         }
         geometry::Line &a_p = p_tests[i];
@@ -1022,7 +1039,7 @@ bool Sky130InterconnectMux2::VerticalWireWouldCollideWithOthers(
   layout->CopyConnectableShapesOnNets({net}, &same_net_shapes);
   same_net_shapes.KeepOnlyLayers({db.GetLayer("met2.drawing")});
 
-  LOG(INFO) << same_net_shapes.Describe();
+  // LOG(INFO) << same_net_shapes.Describe();
 
   auto encap_info = db.TypicalViaEncap("met2.drawing", "via1.drawing");
   geometry::Rectangle bottom_encap = geometry::Rectangle::CentredAt(

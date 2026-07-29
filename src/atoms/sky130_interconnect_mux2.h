@@ -43,9 +43,14 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
  public:
   Sky130InterconnectMux2(
       const Parameters &parameters, DesignDatabase *design_db)
-      : Sky130InterconnectMux1(parameters, design_db) {}
+      : Sky130InterconnectMux1(parameters, design_db) {
+    LOG_IF(FATAL, parameters.num_outputs != 2)
+        << "This class can only support num_outputs == 2.";
+  }
 
  private:
+  static bool UseNearestMemoryOut(int central_row, int current_row);
+
   struct GateContacts {
     size_t number;
     geometry::Point p_contact;
@@ -112,6 +117,14 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
       std::vector<std::vector<geometry::Instance*>> *sorted_memories_per_row,
       std::vector<GateContacts> *gates) const;
 
+  // TODO(aryap): Instead of acknowledging the utility of giving the generator
+  // state, I am forced to pass around a beeelion arguments on everything. This
+  // time I'm adding the row number to this so that somewhere down the stack we
+  // can determine if an instance should be using the nearest or the furthest
+  // memory port. That could just be decided upfront and used throughout, and
+  // it would be easy to do that if the decision were stored as a field of the
+  // object. I also had to add central_row to this and to
+  // ConnectControlWireWithEffort. UGH.
   bool ConnectMemoryRowToStack(
       const std::vector<geometry::Instance*> &sorted_memories,
       const std::vector<GateAssignment> &gate_assignments,
