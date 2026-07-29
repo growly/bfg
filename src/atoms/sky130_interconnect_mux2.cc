@@ -31,7 +31,7 @@ namespace atoms {
 bool Sky130InterconnectMux2::UseNearestMemoryOut(
     int central_row, int current_row) {
   int rows_to_central = std::abs(central_row - current_row);
-  bool use_nearest = rows_to_central % 2 == 0;
+  bool use_nearest = rows_to_central % 2 != 0;
   if (current_row > central_row) {
     return !use_nearest;
   }
@@ -204,8 +204,38 @@ void Sky130InterconnectMux2::DrawRoutes(
     }
   }
 
+  // This is a hack. See large note in header. This class needs to be
+  // refactored, allowed to store state, and then we won't have to keep trying
+  // to re-construct properties of things all over the place. Here we're just
+  // trying to figure out which row each memory is in so we can decide which
+  // output port to use for it; the bank should have that already.
+  std::map<int64_t, std::vector<geometry::Instance*>> memories_by_y;
+  for (geometry::Instance *memory : scan_order) {
+    memories_by_y[memory->GetTilingBounds().lower_left().y()].push_back(memory);
+  }
+  std::map<geometry::Instance*, geometry::Port*> memory_output_ports;
+  // Our map should have sorted the memories in y now, so by iterating through
+  // it we're iterating through the rows:
+  int central_row = bottom_memories.size() / 2;
+  int row = 0;
+  geometry::Point landmark = bank.rows().at(central_row).GetTilingBounds()->centre();
+  for (const auto &entry : memories_by_y) {
+    for (geometry::Instance *memory : entry.second) {
+      geometry::Port *mem_Q = UseNearestMemoryOut(central_row, row) ?
+          memory->GetNearestPortNamed(landmark, "Q") :
+          memory->GetFurthestPortNamed(landmark, "Q");
+      memory_output_ports[memory] = mem_Q;
+    }
+    row++;
+    if (row == central_row) row++;
+  }
+
+  // FIXME(aryap): The clock buffer outputs we use have to be on the opposite
+  // side (nearest or furthest) to the memory out ports we use on the same row.
+  // This has to be codified; currently 7:2 is broken.
 
   ConnectControlWiresWithEffort(bottom_memories, 
+                                memory_output_ports,
                                 rows,
                                 num_columns,
                                 max_offset_from_first_poly_x,
@@ -217,6 +247,7 @@ void Sky130InterconnectMux2::DrawRoutes(
                                 layout,
                                 circuit);
   ConnectControlWiresWithEffort(top_memories,
+                                memory_output_ports,
                                 rows,
                                 num_columns,
                                 max_offset_from_first_poly_x,
@@ -237,12 +268,12 @@ void Sky130InterconnectMux2::DrawRoutes(
 
   std::vector<int64_t> columns_right_x;
   for (int64_t x = *right_most_vertical_x + met2_pitch;
-       x < bank.GetTilingBounds()->upper_right().x();
+       x < bank.GetTilingBounds()->upper_right().x() - met2_pitch/2;
        x += met2_pitch) {
     columns_right_x.push_back(x);
   }
 
-  int64_t left_edge_x = bank.GetTilingBounds()->lower_left().x();
+  int64_t left_edge_x = bank.GetTilingBounds()->lower_left().x() + met2_pitch / 2;
 
   // Left columns should be counted from the left-most edge of the tile, i.e.
   // the left edge of the vertical routing column.
@@ -253,6 +284,14 @@ void Sky130InterconnectMux2::DrawRoutes(
     columns_left_x.push_back(x);
   }
 
+  auto get_right_column_fn = [&](int index) {
+    if (index >= 0) {
+      return columns_right_x[index];
+    }
+    // Index is already negative!
+    return columns_right_x[columns_right_x.size() + index];
+  };
+
   // Allocate left columns so that they don't interfere with each other (or
   // cause problems for met1 connections below):
   const size_t kLastLeftMet2ColumnIndex = db.ToInternalUnits(
@@ -261,11 +300,11 @@ void Sky130InterconnectMux2::DrawRoutes(
   const size_t kInterconnectLeftStartIndex = kLastLeftMet2ColumnIndex;
 
   // Allocate right columns:
-  constexpr size_t kScanChainRightIndex = 10;
-  constexpr size_t kClockRightIndex = 3;
-  constexpr size_t kClockIRightIndex = 5;
-  constexpr size_t kInputClockRightIndex = 12;
-  constexpr size_t kVPWRVGNDStartRightIndex = 13;
+  constexpr int kScanChainRightIndex = -6; 
+  constexpr int kClockRightIndex = 3;
+  constexpr int kClockIRightIndex = 5;
+  constexpr int kInputClockRightIndex = -4;
+  constexpr int kVPWRVGNDStartRightIndex = -3;
 
   // TODO(aryap): We can save a vertical met2 channel by squeezing the scan
   // chain connections on the right in (index 2), possible if the connection to
@@ -279,10 +318,11 @@ void Sky130InterconnectMux2::DrawRoutes(
   //     |   + flip flop D input
   //     |
   DrawScanChain(scan_order,
+                memory_output_ports,
                 memory_output_nets,
                 bottom_memories.size() - 1,
                 columns_left_x[kScanChainLeftIndex] + met2_pitch / 2,
-                columns_right_x[kScanChainRightIndex],
+                get_right_column_fn(kScanChainRightIndex),
                 0,
                 layout,
                 circuit);
@@ -307,20 +347,21 @@ void Sky130InterconnectMux2::DrawRoutes(
             top_memories,
             bottom_memories,
             clk_bufs,
-            columns_right_x[kInputClockRightIndex],
-            columns_right_x[kClockRightIndex] + met2_pitch / 2,
-            columns_right_x[kClockIRightIndex],
+            get_right_column_fn(kInputClockRightIndex),
+            get_right_column_fn(kClockRightIndex) + met2_pitch / 2,
+            get_right_column_fn(kClockIRightIndex),
             layout,
             circuit);
 
   DrawPowerAndGround(bank,
-                     columns_right_x[kVPWRVGNDStartRightIndex],
+                     get_right_column_fn(kVPWRVGNDStartRightIndex),
                      layout,
                      circuit);
 }
 
 void Sky130InterconnectMux2::DrawScanChain(
     const std::vector<geometry::Instance*> &scan_order,
+    const std::map<geometry::Instance*, geometry::Port*> memory_output_ports,
     const std::map<geometry::Instance*, std::string> &memory_output_nets,
     int64_t num_ff_rows_bottom,
     int64_t vertical_x_left,
@@ -343,10 +384,8 @@ void Sky130InterconnectMux2::DrawScanChain(
     std::string net = absl::StrCat(memory->name(), ".Q");
 
     geometry::Port *mem_D = memory->GetFirstPortNamed("D");
-
-    geometry::Port *mem_Q = UseNearestMemoryOut(num_ff_rows_bottom, row) ?
-        memory->GetNearestPortNamed(landmark, "Q") :
-        memory->GetFurthestPortNamed(landmark, "Q");
+    // Crash if nothing is found.
+    geometry::Port *mem_Q = memory_output_ports.find(memory)->second;
 
     // Pick middle D each time:
     geometry::Port *next_D = next->GetMidwayPortNamed(landmark, "D");
@@ -602,6 +641,7 @@ void Sky130InterconnectMux2::AssembleOutputRow(
 
 bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
     const std::vector<geometry::Instance*> &sorted_memories,
+    const std::map<geometry::Instance*, geometry::Port*> memory_output_ports,
     const std::vector<GateAssignment> &gate_assignments,
     int64_t max_offset_from_first_poly_x,
     std::vector<GateContacts> *gates,
@@ -658,7 +698,7 @@ bool Sky130InterconnectMux2::ConnectMemoryRowToStack(
   for (size_t i = 0; i < sorted_memories.size(); ++i) {
     const GateAssignment &assignment = gate_assignments[i];
     geometry::Instance *memory = sorted_memories[i];
-    geometry::Port *mem_Q = memory->GetFirstPortNamed("Q");
+    geometry::Port *mem_Q = memory_output_ports.find(memory)->second;
     geometry::Port *mem_QI = memory->GetFirstPortNamed("QI");
 
     std::string net_Q = absl::StrCat(memory->name(), ".Q");
@@ -990,6 +1030,7 @@ Sky130InterconnectMux2::FindGateAssignment(
 
 void Sky130InterconnectMux2::ConnectControlWiresWithEffort(
     const std::vector<geometry::Instance*> scan_order,
+    const std::map<geometry::Instance*, geometry::Port*> memory_output_ports,
     size_t num_rows,
     size_t num_columns,
     int64_t max_offset_from_first_poly_x,
@@ -1014,6 +1055,7 @@ void Sky130InterconnectMux2::ConnectControlWiresWithEffort(
 
   for (size_t r = 0; r < num_rows; ++r) {
     ConnectMemoryRowToStack(sorted_memories_per_row[r],
+                            memory_output_ports,
                             (*assignment)[r],
                             max_offset_from_first_poly_x,
                             gates,

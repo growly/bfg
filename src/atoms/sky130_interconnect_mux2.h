@@ -119,14 +119,13 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
 
   // TODO(aryap): Instead of acknowledging the utility of giving the generator
   // state, I am forced to pass around a beeelion arguments on everything. This
-  // time I'm adding the row number to this so that somewhere down the stack we
-  // can determine if an instance should be using the nearest or the furthest
-  // memory port. That could just be decided upfront and used throughout, and
-  // it would be easy to do that if the decision were stored as a field of the
+  // time I'm adding the a map of the output ports used for each memory. It
+  // would easier to do that if the decision were stored as a field of the
   // object. I also had to add central_row to this and to
   // ConnectControlWireWithEffort. UGH.
   bool ConnectMemoryRowToStack(
       const std::vector<geometry::Instance*> &sorted_memories,
+      const std::map<geometry::Instance*, geometry::Port*> memory_output_ports,
       const std::vector<GateAssignment> &gate_assignments,
       int64_t max_offset_from_first_poly_x,
       std::vector<GateContacts> *gates,
@@ -139,6 +138,7 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
 
   void ConnectControlWiresWithEffort(
       const std::vector<geometry::Instance*> scan_order,
+      const std::map<geometry::Instance*, geometry::Port*> memory_output_ports,
       size_t num_rows,
       size_t num_columns,
       int64_t max_offset_from_first_poly_x,
@@ -167,15 +167,17 @@ class Sky130InterconnectMux2 : public Sky130InterconnectMux1 {
       Layout *layout,
       Circuit *circuit) const override;
 
+  // No longer an override!
   void DrawScanChain(
       const std::vector<geometry::Instance*> &all_memories,
+      const std::map<geometry::Instance*, geometry::Port*> memory_output_ports,
       const std::map<geometry::Instance*, std::string> &memory_output_nets,
       int64_t num_ff_bottom,
       int64_t vertical_x_left,
       int64_t vertical_x_right,
       int64_t central_y,
       Layout *layout,
-      Circuit *circuit) const override;
+      Circuit *circuit) const;
 
   void DrawOutput(
       const std::vector<geometry::Instance*> &output_buffers,
