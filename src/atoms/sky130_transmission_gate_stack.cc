@@ -202,7 +202,13 @@ void Sky130TransmissionGateStack::BuildSequence(
   // Get a handle to the circuit so we can output the circuit simultaneously.
   bfg::Circuit *circuit = cell->circuit();
 
-  const size_t num_gates = net_sequence.empty() ?
+  // TODO(aryap): This should be handled gracefully so we can use BFG in crazy
+  // sweeps that don't make sense.
+  LOG_IF(FATAL, net_sequence.size() < 3)
+      << "Cannot build a transmission gate stack from less than 3 terminal "
+      << "names. This net sequence contains " << net_sequence.size();
+
+  const size_t num_gates = net_sequence.size() < 3 ?
       0 : (net_sequence.size() - 1) / 2;
 
   std::optional<uint64_t> min_via_distance_nm;
