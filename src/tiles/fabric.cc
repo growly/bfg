@@ -3,7 +3,7 @@
 #include "../circuit.h"
 #include "../layout.h"
 #include "../memory_bank.h"
-#include "reduced_slice.h"
+#include "reduced_tile.h"
 
 namespace bfg {
 namespace tiles {
@@ -27,13 +27,13 @@ Cell *Fabric::Generate() {
                                geometry::Compass::LEFT);
 
 
-  ReducedSlice slice_generator({}, design_db_);
-  Cell *slice_cell = slice_generator.GenerateIntoDatabase("reduced_slice");
+  ReducedTile tile_generator({}, design_db_);
+  Cell *tile_cell = tile_generator.GenerateIntoDatabase("reduced_tile");
 
   for (int i = 0; i < 10; ++i) {
     for (int j = 0; j < 10; ++j) {
-      std::string name = absl::StrCat(slice_cell->name(), "_i", i, "-", j);
-      bank.InstantiateRight(i, name, slice_cell);
+      std::string name = absl::StrCat(tile_cell->name(), "_i", i, "-", j);
+      bank.InstantiateRight(i, name, tile_cell);
     }
   }
 

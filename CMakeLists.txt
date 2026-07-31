@@ -124,7 +124,7 @@ set(TILES_SRC
   ${PROJECT_SOURCE_DIR}/src/tiles/interconnect_wire_block.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/lut_b.cc
-  ${PROJECT_SOURCE_DIR}/src/tiles/reduced_slice.cc
+  ${PROJECT_SOURCE_DIR}/src/tiles/reduced_tile.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/s44.cc
   ${PROJECT_SOURCE_DIR}/src/tiles/slice.cc
 )

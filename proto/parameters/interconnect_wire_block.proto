@@ -14,18 +14,41 @@ message InterconnectWireBlock {
   }
 
   message Break {
+    // Default side (false) or the other one (span of off-axis).
+    optional bool alternate_side = 1;
 
+    // Offset along main axis.
+    optional int64 offset = 2;
   }
 
   message Bundle {
     optional int32 num_wires = 1;
+
+    // If true, the wires in this bundle are broken out (or in) with orthogonal
+    // wires running to the parallel edge of the block. If false, the wires in
+    // the bundle are drawn straight through from the start of the block to the
+    // end.
+    optional bool tap = 2;
+
+    // If tap is true and break_out is specified, the starting wires in the
+    // block are drawn and broken out according to the details in the Break
+    // message. If tap is true and break_out is missing, the starting wires are
+    // not drawn.
+    optional Break break_out = 3;
+
+    // If tap is true and break_in is specified, the ending wires in the block
+    // are drawn and broken out according to the details in the Break message.
+    // If tap is true and break_in is missing, the ending wires are not drawn.
+    optional Break break_in = 4;
   }
 
   message Channel {
     optional string name = 1;
-    repeated int32 break_out = 2;
-    optional int32 num_bundles = 3;
-    optional Bundle bundle = 4;
+
+    // 2, 3, 4 reserved for the old break_out, num_bundles, bundle fields.
+    reserved 2, 3, 4;
+
+    repeated Bundle bundles = 5;
   }
 
   optional RoutingTrackDirection direction = 1;
@@ -45,4 +68,7 @@ message InterconnectWireBlock {
   optional uint64 length = 13;
 
   repeated Channel channels = 14;
+
+  optional int64 first_break_out_start_nm = 15;
+  optional int64 second_break_out_start_nm = 16;
 }

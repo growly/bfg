@@ -1,5 +1,5 @@
-#ifndef TILES_REDUCED_SLICE_H_
-#define TILES_REDUCED_SLICE_H_
+#ifndef TILES_REDUCED_TILE_H_
+#define TILES_REDUCED_TILE_H_
 
 #include <string_view>
 #include <string>
@@ -11,7 +11,7 @@
 #include "../layout.h"
 #include "../memory_bank.h"
 #include "../routing/routing_grid.h"
-#include "proto/parameters/reduced_slice.pb.h"
+#include "proto/parameters/reduced_tile.pb.h"
 #include "tile.h"
 #include "interconnect_wire_block.h"
 
@@ -23,7 +23,7 @@ namespace tiles {
 
 using namespace std::string_view_literals;
 
-// The BFG ReducedSlice is an example of a complete FPGA slice built around a
+// The BFG ReducedTile is an example of a complete FPGA tile built around a
 // fixed number of LUTs and Interconnect muxes. The interconnectivity of these
 // blocks is an input parameter.
 //
@@ -34,9 +34,9 @@ using namespace std::string_view_literals;
 //
 // Overview:
 //
-// Each ReducedSlice has two sides. Each side has interconnect muxes and
+// Each ReducedTile has two sides. Each side has interconnect muxes and
 // connectivity to independent and shared interconnect wires, which connect to
-// pins at the edge of the ReducedSlice.
+// pins at the edge of the ReducedTile.
 //
 // +------------------+-------+------------------+
 // |                  |       |                  |
@@ -73,12 +73,12 @@ using namespace std::string_view_literals;
 //
 // Please see documentation for more detail.
 //
-// TODO(aryap): ReducedSliceHalf is an easier way to create the West layout,
+// TODO(aryap): ReducedTileHalf is an easier way to create the West layout,
 // tracking the logical names of all instances, and to then copy and flip it,
 // since that structure will maintain the logical names post transformation.
 // Or perhaps we just route one half, do the copy/paste whole sale, and then
 // route the globally-significant nets? Not ideal but workable.
-class ReducedSlice : public Tile {
+class ReducedTile : public Tile {
  public:
   struct Parameters {
     static constexpr int kBundleSize = 4;
@@ -111,11 +111,11 @@ class ReducedSlice : public Tile {
 
     std::string edge_list_csv = "bfg_edges.csv";
 
-    void ToProto(proto::parameters::ReducedSlice *pb) const;
-    void FromProto(const proto::parameters::ReducedSlice &pb); 
+    void ToProto(proto::parameters::ReducedTile *pb) const;
+    void FromProto(const proto::parameters::ReducedTile &pb); 
   };
 
-  ReducedSlice(
+  ReducedTile(
       const Parameters &parameters, DesignDatabase *design_db)
       : Tile(design_db),
         parameters_(parameters) {
@@ -199,4 +199,4 @@ class ReducedSlice : public Tile {
 }  // namespace atoms
 }  // namespace bfg
 
-#endif  // TILES_REDUCED_SLICE_H_
+#endif  // TILES_REDUCED_TILE_H_

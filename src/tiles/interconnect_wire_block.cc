@@ -16,6 +16,31 @@ using routing::RoutingTrackDirection;
 
 namespace tiles {
 
+namespace {
+
+void BreakToProto(
+    const InterconnectWireBlock::Parameters::Break &spec,
+    proto::parameters::InterconnectWireBlock::Break *pb) {
+  pb->set_alternate_side(spec.alternate_side);
+  if (spec.offset) {
+    pb->set_offset(*spec.offset);
+  }
+}
+
+InterconnectWireBlock::Parameters::Break BreakFromProto(
+    const proto::parameters::InterconnectWireBlock::Break &pb) {
+  InterconnectWireBlock::Parameters::Break spec = {};
+  if (pb.has_alternate_side()) {
+    spec.alternate_side = pb.alternate_side();
+  }
+  if (pb.has_offset()) {
+    spec.offset = pb.offset();
+  }
+  return spec;
+}
+
+}  // namespace
+
 void InterconnectWireBlock::Parameters::ToProto(
     proto::parameters::InterconnectWireBlock *pb) const {
   switch (direction) {
@@ -65,16 +90,28 @@ void InterconnectWireBlock::Parameters::ToProto(
 
   pb->set_length(length);
 
-  // TODO(aryap): Complete.
-  //for (const Channel &channel : channels) {
-  //  auto *pb_channel = pb->add_channels();
-  //  pb_channel->set_name(channel.name);
-  //  for (int break_out_idx : channel.break_out) {
-  //    pb_channel->add_break_out(break_out_idx);
-  //  }
-  //  pb_channel->set_num_bundles(channel.num_bundles);
-  //  pb_channel->mutable_bundle()->set_num_wires(channel.bundle.num_wires);
-  //}
+  if (first_break_out_start_nm) {
+    pb->set_first_break_out_start_nm(*first_break_out_start_nm);
+  }
+  if (second_break_out_start_nm) {
+    pb->set_second_break_out_start_nm(*second_break_out_start_nm);
+  }
+
+  for (const Channel &channel : channels) {
+    auto *pb_channel = pb->add_channels();
+    pb_channel->set_name(channel.name);
+    for (const Bundle &bundle : channel.bundles) {
+      auto *pb_bundle = pb_channel->add_bundles();
+      pb_bundle->set_num_wires(bundle.num_wires);
+      pb_bundle->set_tap(bundle.tap);
+      if (bundle.break_out) {
+        BreakToProto(*bundle.break_out, pb_bundle->mutable_break_out());
+      }
+      if (bundle.break_in) {
+        BreakToProto(*bundle.break_in, pb_bundle->mutable_break_in());
+      }
+    }
+  }
 }
 
 void InterconnectWireBlock::Parameters::FromProto(
@@ -138,24 +175,41 @@ void InterconnectWireBlock::Parameters::FromProto(
     length = pb.length();
   }
 
-  channels.clear();
-  // TODO(aryap): Complete.
-  //for (const auto &pb_channel : pb.channels()) {
-  //  Channel channel;
-  //  if (pb_channel.has_name()) {
-  //    channel.name = pb_channel.name();
-  //  }
-  //  for (int break_out_idx : pb_channel.break_out()) {
-  //    channel.break_out.insert(break_out_idx);
-  //  }
-  //  if (pb_channel.has_num_bundles()) {
-  //    channel.num_bundles = pb_channel.num_bundles();
-  //  }
-  //  if (pb_channel.has_bundle() && pb_channel.bundle().has_num_wires()) {
-  //    channel.bundle.num_wires = pb_channel.bundle().num_wires();
-  //  }
-  //  channels.push_back(channel);
-  //}
+  if (pb.has_first_break_out_start_nm()) {
+    first_break_out_start_nm = pb.first_break_out_start_nm();
+  }
+  if (pb.has_second_break_out_start_nm()) {
+    second_break_out_start_nm = pb.second_break_out_start_nm();
+  }
+
+  // An empty list of channels in the proto leaves the existing (default)
+  // channels alone; a block with no channels would be pointless anyway.
+  if (!pb.channels().empty()) {
+    channels.clear();
+  }
+  for (const auto &pb_channel : pb.channels()) {
+    Channel channel;
+    if (pb_channel.has_name()) {
+      channel.name = pb_channel.name();
+    }
+    for (const auto &pb_bundle : pb_channel.bundles()) {
+      Bundle bundle = {};
+      if (pb_bundle.has_num_wires()) {
+        bundle.num_wires = pb_bundle.num_wires();
+      }
+      if (pb_bundle.has_tap()) {
+        bundle.tap = pb_bundle.tap();
+      }
+      if (pb_bundle.has_break_out()) {
+        bundle.break_out = BreakFromProto(pb_bundle.break_out());
+      }
+      if (pb_bundle.has_break_in()) {
+        bundle.break_in = BreakFromProto(pb_bundle.break_in());
+      }
+      channel.bundles.push_back(bundle);
+    }
+    channels.push_back(channel);
+  }
 }
 
 void InterconnectWireBlock::ResolveParameters(

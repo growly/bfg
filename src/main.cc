@@ -37,7 +37,7 @@
 #include "tiles/s44.h"
 #include "tiles/slice.h"
 #include "tiles/fabric.h"
-#include "tiles/reduced_slice.h"
+#include "tiles/reduced_tile.h"
 #include "tiles/interconnect.h"
 #include "tiles/interconnect_wire_block.h"
 #include "utility.h"
@@ -48,7 +48,7 @@
 #include "proto/parameters/interconnect_wire_block.pb.h"
 #include "proto/parameters/lut_b.pb.h"
 #include "proto/parameters/slice.pb.h"
-#include "proto/parameters/reduced_slice.pb.h"
+#include "proto/parameters/reduced_tile.pb.h"
 #include "proto/parameters/fabric.pb.h"
 #include "proto/parameters/s44.pb.h"
 #include "proto/parameters/sky130_decap.pb.h"
@@ -234,11 +234,11 @@ int DispatchGenerator(
         bfg::proto::parameters::Slice,
         bfg::tiles::Slice::Parameters,
         bfg::tiles::Slice>(generator_name, parameter_pb_path, design_db);
-  } else if (generator_name == "ReducedSlice") {
+  } else if (generator_name == "ReducedTile") {
     cell = ReadParamsAndGenerate<
-        bfg::proto::parameters::ReducedSlice,
-        bfg::tiles::ReducedSlice::Parameters,
-        bfg::tiles::ReducedSlice>(generator_name, parameter_pb_path, design_db);
+        bfg::proto::parameters::ReducedTile,
+        bfg::tiles::ReducedTile::Parameters,
+        bfg::tiles::ReducedTile>(generator_name, parameter_pb_path, design_db);
   } else {
     LOG(ERROR) << "Unrecognised generator name: " << generator_name;
     return EXIT_FAILURE;

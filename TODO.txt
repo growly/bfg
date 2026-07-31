@@ -20,12 +20,12 @@ MemoryBank with decap, fitting to a given height/width in height/width units...
 
 12) generate connectivity netlist based on ultrascale architecture
 
-13) route ReducedSlice
+13) route ReducedTile
 
 15) FIXME; Or maybe the router only ever avoids one port? An unblocked one?
 Instead of all ports of a net?
 
-16) ReducedSlice extraction / simulation results
+16) ReducedTile extraction / simulation results
 
 - route network from interconnect generator
   - fix complexity of adding blockages in routing grid setup

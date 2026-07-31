@@ -1,4 +1,4 @@
-#include "reduced_slice.h"
+#include "reduced_tile.h"
 
 #include <string>
 
@@ -16,7 +16,7 @@
 #include "lut_b.h"
 #include "interconnect_wire_block.h"
 #include "proto/parameters/lut_b.pb.h"
-#include "proto/parameters/reduced_slice.pb.h"
+#include "proto/parameters/reduced_tile.pb.h"
 #include "../utility.h"
 #include "../edge_list.h"
 
@@ -36,13 +36,13 @@ using routing::RoutingViaInfo;
 
 namespace tiles {
 
-void ReducedSlice::Parameters::ToProto(proto::parameters::ReducedSlice *pb)
+void ReducedTile::Parameters::ToProto(proto::parameters::ReducedTile *pb)
     const {
   // TODO(aryap): Complete.
 }
 
-void ReducedSlice::Parameters::FromProto(
-    const proto::parameters::ReducedSlice &pb) {
+void ReducedTile::Parameters::FromProto(
+    const proto::parameters::ReducedTile &pb) {
   // TODO(aryap): Complete.
 }
 
@@ -163,7 +163,7 @@ std::vector<geometry::Instance*> FillClockwise(
   return instances;
 }
 
-void ReducedSlice::GenerateInterconnectChannels(
+void ReducedTile::GenerateInterconnectChannels(
     const std::vector<std::string> &direction_prefixes,
     int64_t long_bundle_break_out,
     int64_t long_bundle_break_in,
@@ -249,7 +249,7 @@ void ReducedSlice::GenerateInterconnectChannels(
   iwb_params->channels.push_back(channel);
 }
 
-Cell *ReducedSlice::Generate() {
+Cell *ReducedTile::Generate() {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
   std::unique_ptr<Cell> cell(new Cell(name_));
   cell->SetCircuit(new bfg::Circuit());
@@ -663,7 +663,7 @@ Cell *ReducedSlice::Generate() {
   return cell.release();
 }
 
-geometry::Instance *ReducedSlice::GetMux(
+geometry::Instance *ReducedTile::GetMux(
     const std::string &name,
     bool input_side,
     std::set<geometry::Port*> *ports) const {
@@ -765,7 +765,7 @@ geometry::Instance *ReducedSlice::GetMux(
   return instance;
 }
 
-geometry::Instance *ReducedSlice::GetInterconnectWireIn(
+geometry::Instance *ReducedTile::GetInterconnectWireIn(
     const std::string &name) const {
   static RE2 interconnect_re("(\\w+)(\\d+)_([EW]?)_(\\d+)_IN");
   DCHECK(interconnect_re.ok());
@@ -793,7 +793,7 @@ geometry::Instance *ReducedSlice::GetInterconnectWireIn(
   return nullptr;
 }
 
-geometry::Instance *ReducedSlice::GetInterconnectWireOutMux(
+geometry::Instance *ReducedTile::GetInterconnectWireOutMux(
     const std::string &name) const {
   static RE2 interconnect_re("(\\w+)(\\d+)_([EW]?)_(\\d+)_OUT");
   DCHECK(interconnect_re.ok());
@@ -821,7 +821,7 @@ geometry::Instance *ReducedSlice::GetInterconnectWireOutMux(
   return nullptr;
 }
 
-geometry::Instance *ReducedSlice::MapToPorts(
+geometry::Instance *ReducedTile::MapToPorts(
     const std::string &name,
     bool input_side,
     std::set<geometry::Port*> *ports) const {
@@ -844,7 +844,7 @@ geometry::Instance *ReducedSlice::MapToPorts(
 // port mapping.
 
 std::vector<std::pair<std::set<geometry::Port*>, std::set<geometry::Port*>>>
-ReducedSlice::ExtractBFGInterconnectGraph() {
+ReducedTile::ExtractBFGInterconnectGraph() {
   std::vector<std::pair<std::set<geometry::Port*>, std::set<geometry::Port*>>>
       mapped_edges;
 
@@ -881,7 +881,7 @@ ReducedSlice::ExtractBFGInterconnectGraph() {
 }
 
 std::optional<atoms::Sky130InterconnectMux1::Parameters>
-ReducedSlice::GetMuxParams(
+ReducedTile::GetMuxParams(
     geometry::Instance *instance) const {
   auto it = mux_params_.find(instance);
   if (it == mux_params_.end()) {
@@ -891,7 +891,7 @@ ReducedSlice::GetMuxParams(
 }
 
 
-void ReducedSlice::Route(Circuit *circuit, Layout *layout) {
+void ReducedTile::Route(Circuit *circuit, Layout *layout) {
   auto mapped_ports = ExtractBFGInterconnectGraph();
 
   RoutingGrid routing_grid(design_db_->physical_db());
@@ -915,7 +915,7 @@ void ReducedSlice::Route(Circuit *circuit, Layout *layout) {
   route_manager.Solve().IgnoreError();
 }
 
-void ReducedSlice::ConfigureRoutingGrid(
+void ReducedTile::ConfigureRoutingGrid(
     RoutingGrid *routing_grid, Layout *layout) const {
   const PhysicalPropertiesDatabase &db = design_db_->physical_db();
 
