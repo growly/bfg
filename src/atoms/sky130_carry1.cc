@@ -401,6 +401,9 @@ void Sky130Carry1::GenerateCircuit(const std::vector<geometry::Instance*> &taps,
   }
 
   for (geometry::Instance *tap : taps) {
+    if (!tap->circuit_instance()) {
+      continue;
+    }
     tap->circuit_instance()->Connect("VPWR", VPWR);
     tap->circuit_instance()->Connect("VGND", VGND);
   }

@@ -2391,6 +2391,7 @@ absl::Status RoutingGrid::InstallPath(
     return absl::InvalidArgumentError("Cannot install an empty path.");
   }
 
+  // TODO(aryap): Do this AFTER legalising the path.
   // Before proceeding, check if the path is still legal under the lock.
   auto still_good = path->CheckStillAvailable();
   if (!still_good.ok()) {

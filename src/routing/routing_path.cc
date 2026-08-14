@@ -746,9 +746,32 @@ void RoutingPath::Legalise(   // REQUIRES(routing_grid_->lock_)
 // TODO(aryap): Newer versions of absl::Status have .WithSourceLocation(). And
 // C++20 introduced std::source_location to make this less painful.
 absl::Status RoutingPath::CheckStillAvailable() const {
-  for (RoutingVertex *vertex : vertices_) {
+  for (int k = 0; k < vertices_.size(); ++k) {
+    RoutingVertex *vertex = vertices_[k];
     auto using_net = vertex->InUseBySingleNet();
-    if (using_net && !nets_.Contains(using_net->net)) {
+    if (!using_net)
+      continue;
+
+    const auto &layers = using_net->layers;
+
+    std::set<geometry::Layer> involved_layers;
+    // Vertex k is between edge k-1 and edge k.
+    if (k > 0) {
+      involved_layers.insert(edges_[k - 1]->EffectiveLayer());
+    }
+    if (k < vertices_.size() - 1) {
+      involved_layers.insert(edges_[k]->EffectiveLayer());
+    }
+
+    std::set<geometry::Layer> intersection;
+    std::set_intersection(layers.begin(), layers.end(),
+                          involved_layers.begin(), involved_layers.end(),
+                          std::inserter(intersection, intersection.begin()));
+    if (intersection.empty()) {
+      continue;
+    }
+
+    if (!nets_.Contains(using_net->net)) {
       return absl::FailedPreconditionError(absl::StrCat(
             "(", __FILE__, ":", __LINE__, ")",
             " Vertex ", vertex->centre().Describe(), " already assigned to ",

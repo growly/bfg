@@ -480,6 +480,11 @@ class RoutingVertex {
   // RoutingPath.
   std::set<geometry::Layer> connected_layers_;
 
+  // NOTE(aryap): The non-determinism of this container makes it hard to debug
+  // things. On the other hand, we know that resorting the edges can creating
+  // routing solutions where previous none where found, since it is effectively
+  // scrambles the search order. To make it deterministic we should sort this
+  // set according to the coordinates of the edge terminals.
   std::set<RoutingEdge*> edges_;
 
   std::map<geometry::Layer, RoutingTrackDirection> forced_encap_directions_;

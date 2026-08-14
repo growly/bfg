@@ -30,6 +30,14 @@ from vlsirtools.netlist.spice import XyceNetlister
 #    model_ref=""    # NOTE(aryap): This seems unused.
 #)
 
+#parser = argparse.ArgumentParser()
+#parser.add_argument('--scale', action='store', type=float, default=None)
+#args = parser.parse_args()
+# This way requires adding Hdl21 as a dependency, whereas it's more
+# straightforward to just modify the parameters on all the proto fields.
+#import util
+#if args.scale:
+#    util.scale_params(
 
 def main():
     #options = spice.SimOptions(
