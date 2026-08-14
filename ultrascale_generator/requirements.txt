@@ -1,0 +1,7 @@
+natsort
+numpy
+pandas
+pygtrie
+pytest
+pytest-assume
+tabulate
