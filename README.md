@@ -85,4 +85,16 @@ See [INSTALL.md](INSTALL.md).
 
 ## Citation
 
-One day.
+```bibtex
+@phdthesis{Reais-Parsi:EECS-2026-283,
+    Author= {Reais-Parsi, Arya},
+    Title= {BFG: An Open-Source Silicon Compiler for High-Performance Reconfigurable Fabrics},
+    School= {EECS Department, University of California, Berkeley},
+    Year= {2026},
+    Month= {Aug},
+    Url= {http://www2.eecs.berkeley.edu/Pubs/TechRpts/2026/EECS-2026-283.html},
+    Number= {UCB/EECS-2026-283},
+    Note= {Revised 21 August 2026.},
+    Abstract= {Synthesisable eFPGA generators have enabled considerable innovation and access to FPGA architecture research in recent years. By generating RTL descriptions of FPGA fabrics, these tools leverage established digital design flows to meaningfully reduce the time taken to tape-out a validated FPGA fabric. Unfortunately, the convenience of employing standard-cells over custom layout comes at the cost of reduced circuit performance. Research architectures lag their commercial counterparts in terms of performance, power and area. At the same time, the end of Moore’s Law and Dennard Scaling is contributing to unprecedented demand for domain-specific accelerators. Performant, easy-to-use and cheaper reconfigurable architectures are needed from the research community to meet this demand. This work presents BFG, an alternative approach to FPGA generation that programmatically generates all circuits together with custom layout. In SkyWater 130 nm, BFG’s cells achieve up to 59% lower power-delay-area product than equivalent logic synthesized with standard cells. In this work we present each of BFG’s four contributions: an unencumbered open-source C++ AMS design framework; a collection of parametric IP generators for FPGA components; a study reverse-engineering a modern commercial architecture; and, a modern columnar fabric architecture together with an example of how BFG might be used to build it. Though our study reveals significant complexity to this approach, we conclude that the performance benefits are justified by the shared development model. BFG provides researchers, enthusiasts and entrepreneurs a repository of fast circuitry and corresponding layout for the development of better FPGA IP.},
+}
+```
