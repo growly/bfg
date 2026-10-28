@@ -157,7 +157,7 @@ sudo ldconfig
 
 
 ```
-git clone https://github.com/google/re2.git
+git clone -b 2025-07-22 https://github.com/google/re2.git
 pushd re2
 mkdir build && pushd build
 cmake ../
