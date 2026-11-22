@@ -192,9 +192,7 @@ TEST_F(PhysicalPropertiesDatabaseTest, GetRoutingViaInfo) {
   EXPECT_FALSE(db_.GetRoutingViaInfo("met1.drawing", "nonexistent.drawing"));
 }
 
-// TODO(aryap): GetRoutingViaInfo calls GetRoutingViaInfoOrDie once both layers
-// exist, so it crashes instead of returning nullopt when no via connects them.
-TEST_F(PhysicalPropertiesDatabaseTest, DISABLED_GetRoutingViaInfo_Unconnected) {
+TEST_F(PhysicalPropertiesDatabaseTest, GetRoutingViaInfo_Unconnected) {
   EXPECT_FALSE(db_.GetRoutingViaInfo("met1.drawing", "met3.drawing"));
 }
 

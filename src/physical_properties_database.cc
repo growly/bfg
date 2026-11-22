@@ -408,6 +408,9 @@ std::optional<RoutingViaInfo> PhysicalPropertiesDatabase::GetRoutingViaInfo(
   if (!first_layer || !second_layer) {
     return std::nullopt;
   }
+  if (!GetViaLayer(*first_layer, *second_layer)) {
+    return std::nullopt;
+  }
   return GetRoutingViaInfoOrDie(*first_layer, *second_layer);
 }
 
