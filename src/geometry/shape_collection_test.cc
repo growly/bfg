@@ -60,12 +60,7 @@ void PopulateCollection(ShapeCollection *collection) {
 }
 
 // Collects the net names of every shape in the collection, in order.
-//
-// PolyLine's copy constructor currently drops the net (see
-// DISABLED_CopiedPolyLinesKeepNet below), so tests of the methods that copy
-// shapes leave poly lines out with include_poly_lines = false.
-std::vector<std::string> AllNets(const ShapeCollection &collection,
-                                 bool include_poly_lines = true) {
+std::vector<std::string> AllNets(const ShapeCollection &collection) {
   std::vector<std::string> nets;
   for (const auto &shape : collection.rectangles()) {
     nets.push_back(shape->net());
@@ -75,9 +70,6 @@ std::vector<std::string> AllNets(const ShapeCollection &collection,
   }
   for (const auto &shape : collection.ports()) {
     nets.push_back(shape->net());
-  }
-  if (!include_poly_lines) {
-    return nets;
   }
   for (const auto &shape : collection.poly_lines()) {
     nets.push_back(shape->net());
@@ -115,8 +107,7 @@ TEST(ShapeCollectionTest, CopyConstructor) {
   PopulateCollection(&source);
 
   ShapeCollection copy(source);
-  EXPECT_EQ(AllNets(source, false), AllNets(copy, false));
-  EXPECT_EQ(source.poly_lines().size(), copy.poly_lines().size());
+  EXPECT_EQ(AllNets(source), AllNets(copy));
 }
 
 TEST(ShapeCollectionTest, AddConnectableShapes) {
@@ -125,9 +116,8 @@ TEST(ShapeCollectionTest, AddConnectableShapes) {
 
   ShapeCollection connectable;
   connectable.AddConnectableShapes(source);
-  std::vector<std::string> expected = {"a", "a", "a", "b"};
-  EXPECT_EQ(expected, AllNets(connectable, false));
-  EXPECT_EQ(1, connectable.poly_lines().size());
+  std::vector<std::string> expected = {"a", "a", "a", "b", "a"};
+  EXPECT_EQ(expected, AllNets(connectable));
 }
 
 TEST(ShapeCollectionTest, AddNonConnectableShapes) {
@@ -136,9 +126,8 @@ TEST(ShapeCollectionTest, AddNonConnectableShapes) {
 
   ShapeCollection non_connectable;
   non_connectable.AddNonConnectableShapes(source);
-  std::vector<std::string> expected = {"b", "", "b"};
-  EXPECT_EQ(expected, AllNets(non_connectable, false));
-  EXPECT_EQ(1, non_connectable.poly_lines().size());
+  std::vector<std::string> expected = {"b", "", "b", "b"};
+  EXPECT_EQ(expected, AllNets(non_connectable));
 }
 
 TEST(ShapeCollectionTest, AddConnectableShapesOnNets) {
@@ -158,14 +147,11 @@ TEST(ShapeCollectionTest, AddConnectableShapesNotOnNets) {
 
   ShapeCollection not_on_nets;
   not_on_nets.AddConnectableShapesNotOnNets(source, EquivalentNets("b"));
-  std::vector<std::string> expected = {"a", "a", "a"};
-  EXPECT_EQ(expected, AllNets(not_on_nets, false));
-  EXPECT_EQ(1, not_on_nets.poly_lines().size());
+  std::vector<std::string> expected = {"a", "a", "a", "a"};
+  EXPECT_EQ(expected, AllNets(not_on_nets));
 }
 
-// TODO(aryap): PolyLine's copy constructor does not copy the Shape base, so
-// copies lose their layer, net and connectability. Enable once fixed.
-TEST(ShapeCollectionTest, DISABLED_CopiedPolyLinesKeepNet) {
+TEST(ShapeCollectionTest, CopiedPolyLinesKeepNet) {
   ShapeCollection source;
   PopulateCollection(&source);
 
