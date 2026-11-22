@@ -232,6 +232,12 @@ const Rectangle ShapeCollection::GetBoundingBox() const {
   } else if (!ports_.empty()) {
     start = ports_.front()->GetBoundingBox().lower_left();
   }
+  if (!start) {
+    // Nothing with bounds. Match Layout::GetBoundingBox for empty layouts.
+    LOG_IF(WARNING, !poly_lines_.empty())
+        << "PolyLines are not accounted for in bounding boxes yet";
+    return Rectangle({0, 0}, {0, 0});
+  }
 
   int64_t min_x = start.value().x();
   int64_t max_x = start.value().x();

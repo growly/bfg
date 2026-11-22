@@ -254,6 +254,20 @@ TEST(ShapeCollectionTest, GetBoundingBox) {
   EXPECT_EQ(Rectangle({-5, -7}, {20, 30}), collection.GetBoundingBox());
 }
 
+TEST(ShapeCollectionTest, GetBoundingBox_Empty) {
+  ShapeCollection collection;
+  EXPECT_EQ(Rectangle({0, 0}, {0, 0}), collection.GetBoundingBox());
+}
+
+TEST(ShapeCollectionTest, GetBoundingBox_OnlyPolyLines) {
+  // Poly lines are not yet included in bounding boxes, so this is treated as
+  // empty.
+  ShapeCollection collection;
+  collection.poly_lines().emplace_back(
+      new PolyLine(std::vector<Point>{{10, 10}, {20, 10}}));
+  EXPECT_EQ(Rectangle({0, 0}, {0, 0}), collection.GetBoundingBox());
+}
+
 TEST(ShapeCollectionTest, Describe) {
   ShapeCollection collection;
   EXPECT_EQ("", collection.Describe());

@@ -507,6 +507,7 @@ set(TEST_SRC
   ${GEOMETRY_TEST_SRC}
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
+  ${PROJECT_SOURCE_DIR}/src/layout_test.cc
   ${PROJECT_SOURCE_DIR}/src/parameter_test.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/route_manager_test.cc

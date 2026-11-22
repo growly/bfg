@@ -165,6 +165,11 @@ const geometry::Rectangle Layout::GetBoundingBox(
 
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
+    if (shapes->rectangles().empty() && shapes->polygons().empty() &&
+        shapes->ports().empty()) {
+      // Nothing with bounds, so nothing to include.
+      continue;
+    }
     const geometry::Rectangle bb = shapes->GetBoundingBox();
     min_x = std::min(bb.lower_left().x(), min_x);
     min_y = std::min(bb.lower_left().y(), min_y);
