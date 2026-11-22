@@ -2,7 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cstring>
 #include <memory>
+#include <new>
 #include <optional>
 #include <set>
 #include <string>
@@ -72,6 +74,16 @@ class LayoutSky130Test : public testing::Test {
 
   PhysicalPropertiesDatabase physical_db_;
 };
+
+// TODO(aryap): Layout's constructor does not initialise parent_cell_, which
+// NameOrParentName (and so ToVLSIRLayout) reads when the layout has no name.
+TEST_F(LayoutTest, DISABLED_ParentCellIsInitialised) {
+  alignas(Layout) unsigned char storage[sizeof(Layout)];
+  std::memset(storage, 0xab, sizeof(storage));
+  Layout *layout = new (storage) Layout(physical_db_);
+  EXPECT_EQ(nullptr, layout->parent_cell());
+  layout->~Layout();
+}
 
 TEST_F(LayoutTest, GetBoundingBox_Empty) {
   std::unique_ptr<Layout> layout = MakeLayout();

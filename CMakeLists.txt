@@ -517,6 +517,8 @@ set(TEST_SRC
   ${CIRCUIT_TEST_SRC}
   ${GEOMETRY_TEST_SRC}
   ${PROJECT_SOURCE_DIR}/src/checkerboard_guide_test.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit_test.cc
+  ${PROJECT_SOURCE_DIR}/src/design_database_test.cc
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/layout_test.cc
