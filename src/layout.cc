@@ -1316,7 +1316,7 @@ bool Layout::ResolveEdgeSpec(
     if (test_instance->name() != endpoint.instance_name) {
       return false;
     }
-    *from = test_instance;
+    *matched_instance = test_instance;
     size_t port_count = 0;
     for (const std::string &port_name : endpoint.port_names) {
       std::vector<geometry::Port*> ports;
@@ -1328,9 +1328,17 @@ bool Layout::ResolveEdgeSpec(
     return port_count > 0;
   };
 
+  // The endpoints are usually on different instances, so remember a match on
+  // either across iterations.
+  bool matched_from = false;
+  bool matched_to = false;
   for (auto &uniq : instances_) {
-    bool matched_from = extract_fn(spec.from(), uniq.get(), from, from_ports);
-    bool matched_to = extract_fn(spec.to(), uniq.get(), to, to_ports);
+    if (!matched_from) {
+      matched_from = extract_fn(spec.from(), uniq.get(), from, from_ports);
+    }
+    if (!matched_to) {
+      matched_to = extract_fn(spec.to(), uniq.get(), to, to_ports);
+    }
     if (matched_from && matched_to) {
       return true;
     }

@@ -494,9 +494,7 @@ class LayoutEdgeSpecTest : public LayoutTest {
   Instance *b_;
 };
 
-// TODO(aryap): ResolveEdgeSpec always writes the matched instance to *from,
-// and only succeeds if one instance matches both endpoints.
-TEST_F(LayoutEdgeSpecTest, DISABLED_ResolvesDifferentInstances) {
+TEST_F(LayoutEdgeSpecTest, ResolvesDifferentInstances) {
   EdgeSpec spec;
   spec.set_from("a", {"x"});
   spec.set_to("b", {"x"});
@@ -513,6 +511,21 @@ TEST_F(LayoutEdgeSpecTest, DISABLED_ResolvesDifferentInstances) {
   ASSERT_EQ(1, to_ports.size());
   EXPECT_EQ("a.x", from_ports.front()->net());
   EXPECT_EQ("b.x", to_ports.front()->net());
+}
+
+TEST_F(LayoutEdgeSpecTest, ResolvesSameInstance) {
+  EdgeSpec spec;
+  spec.set_from("a", {"x"});
+  spec.set_to("a", {"x"});
+
+  Instance *from = nullptr;
+  Instance *to = nullptr;
+  std::vector<Port*> from_ports;
+  std::vector<Port*> to_ports;
+  ASSERT_TRUE(
+      parent_->ResolveEdgeSpec(spec, &from, &from_ports, &to, &to_ports));
+  EXPECT_EQ(a_, from);
+  EXPECT_EQ(a_, to);
 }
 
 TEST_F(LayoutEdgeSpecTest, NoMatch) {
