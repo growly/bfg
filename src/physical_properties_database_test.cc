@@ -85,10 +85,7 @@ TEST(FindViaStackImplTest, Disconnected) {
   EXPECT_FALSE(graph.FindStack(1, 4));
 }
 
-// TODO(aryap): FindViaStackImpl keeps a reference to queue.top() across
-// queue.pop(), after which it refers to the next layer in the queue. When the
-// queue holds more than one layer, the wrong layer is expanded.
-TEST(FindViaStackImplTest, DISABLED_PicksCheapestRoute) {
+TEST(FindViaStackImplTest, PicksCheapestRoute) {
   // 1 -- 2 -- 4 costs 2; 1 -- 3 -- 4 costs 10.
   ViaGraph graph;
   graph.Connect(1, 2, 1.0);
@@ -114,7 +111,7 @@ TEST(FindViaStackImplTest, CheaperRouteFoundLater) {
   EXPECT_EQ((std::vector<Layer>{102, 203, 304}), ViaGraph::Ids(*stack));
 }
 
-TEST(FindViaStackImplTest, DISABLED_Branching) {
+TEST(FindViaStackImplTest, Branching) {
   // Layer 2 has two onward neighbours, so the queue holds more than one layer
   // at a time.
   ViaGraph graph;
@@ -152,7 +149,7 @@ TEST_F(PhysicalPropertiesDatabaseTest, FindLayersReachableThroughOneVia) {
             db_.FindLayersReachableThroughOneVia(L("met2.drawing")));
 }
 
-TEST_F(PhysicalPropertiesDatabaseTest, DISABLED_FindViaStack) {
+TEST_F(PhysicalPropertiesDatabaseTest, FindViaStack) {
   auto stack = db_.FindViaStack(L("met1.drawing"), L("met2.drawing"));
   ASSERT_TRUE(stack);
   ASSERT_EQ(1, stack->size());

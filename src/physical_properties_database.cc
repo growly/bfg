@@ -553,7 +553,8 @@ PhysicalPropertiesDatabase::FindViaStackImpl(
   queue.push(from);
 
   while (!queue.empty()) {
-    const geometry::Layer &current = queue.top();
+    // Copy: pop() reuses the storage that top() refers to.
+    const geometry::Layer current = queue.top();
     queue.pop();
 
     if (current == to) {
