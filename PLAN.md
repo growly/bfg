@@ -69,24 +69,45 @@ Overall: 18.8% -> 20.9% of lines, 34.7% -> 38.2% of functions. 479 tests pass.
 
 Overall: 20.9% -> 24.8% of lines, 38.2% -> 44.7% of functions. 549 tests pass.
 
-## Phase 3: routing
+## Phase 3: routing (done 2026-11-22)
 
-- [ ] New `routing_grid_test.cc`: `ShortestPath` (open and blocked),
-      `AddRouteBetween`, `AddRouteToNet`, `AddMultiPointRoute`,
-      `VerticesAreTooCloseForVias` at the spacing boundary, `FindViaStack`,
-      `LayersReachableByVia`, temporary blockage setup/teardown
-- [ ] New `routing_path_test.cc`: `Cost`, `SpannedVertices*`, `Legalise`,
-      `AbbreviateOnce`, `CheckStillAvailable` (characterise first; see commit
-      c3f6292), `CheckForNotchesToPerpendicularEdges` near min-spacing
-- [ ] `route_manager_test.cc`: `Solve`, `Connect`, `ConnectMultiplePorts`,
-      `ConnectToNet`
-- [ ] `routing_track_test.cc`: `MarkEdgeAsUsed`, `AddTemporaryBlockage`,
-      `RemoveTemporaryBlockage`, `CreateNewVertexAndConnect`, `VerticesInSpan`
-- [ ] `routing_blockage_cache_test.cc`: `IsEdgeBlocked`, `BlockagesMatching`,
-      `ValidAgainstKnownBlockages`
-- [ ] `physical_properties_database`: `FindViaStackImpl`,
-      `FindLayersReachableThroughOneVia`, `TypicalViaEncap`,
-      `GetAccessibleLayersForPin`
+- [x] New `routing/routing_grid_test.cc` with a shared met1/met2 Sky130 grid
+      fixture (`routing/routing_grid_test_fixture.h`): `ConnectLayers`,
+      `FindViaStack(Cost)`, `LayersReachableByVia`,
+      `VerticesAreTooCloseForVias`, `ShortestPath`, `AddRouteBetween`
+      (crossing nets, walled-in failure), `AddRouteToNet`, `AddBlockage`,
+      `GenerateLayout`. `RoutingGridTest` is a friend of `RoutingGrid`.
+- [x] New `routing/routing_path_test.cc`: construction, `Cost`,
+      `SpannedVertices*`, `AddPortMidway`, legalisation and edge merging,
+      `ToPointsAndLayers`, `CheckStillAvailable` (other-layer crossing is fine;
+      same-layer use by another net fails; same net is fine), `Describe`
+- [x] `route_manager_test.cc`: `Connect`, `ConnectMultiplePorts` (ports and
+      sets), `ConnectToNet`, `Solve` (serial and parallel),
+      `GetOrderAndResult`, `SummariseStatuses`, descriptions
+- [x] `routing_track_test.cc`: vertex lookup, edges, `VerticesInSpan`,
+      `RemoveEdge`, `RemoveVertex`, temporary blockages, `Describe`
+- [x] `routing_blockage_cache_test.cc`: net exceptions, `IsEdgeBlocked`,
+      `CancelBlockages` by net and layer, child caches,
+      `ValidAgainstKnownBlockages`, `Summary`
+- [x] New `physical_properties_database_test.cc`: `FindViaStackImpl` on
+      hand-built graphs, Sky130 via stacks, reachability, encaps, routing
+      layer/via info, pin layers
+- [x] New `routing/routing_track_direction_test.cc`
+- [ ] Still untested directly: `RoutingPath` notch checks
+      (`CheckForNotchesToPerpendicularEdges`) and abbreviation
+      (`AbbreviateOnce`, `InstallAbbreviatingJog`), which need hand-built
+      layouts that provoke them; `RoutingTrack::HealEdges` (never called)
+
+| File | Lines before | Lines after |
+|---|---|---|
+| `routing/routing_grid.cc` | 18% | 42% |
+| `routing/routing_path.cc` | 0% | 46% |
+| `routing/route_manager.cc` | 26% | 80% |
+| `routing/routing_track.cc` | 47% | 66% |
+| `routing/routing_blockage_cache.cc` | 54% | 84% |
+| `physical_properties_database.cc` | 42% | 83% |
+
+Overall: 24.8% -> 32.6% of lines, 44.7% -> 56.9% of functions. 622 tests pass.
 
 ## Phase 4: generator smoke tests
 
@@ -145,6 +166,27 @@ Fixed on branch `test-coverage`, with their tests enabled:
 - [x] `Instance::GetMidwayPortNamed` ignored its name and used `"D"`.
       (b390991)
 
+## Bugs found in phase 3
+
+Fixed on branch `test-coverage`, with their tests enabled:
+
+- [x] `RoutingPath::SpannedVerticesWithoutVias` passed unsorted input to
+      `std::set_difference`. Feeds layout-generation patching, so output may
+      change. (1ed065c)
+- [x] `RouteManager::SummariseStatuses` always returned an error. (febe11f)
+- [x] `RouteManager::Solve` returned an empty list. (0b4f019)
+- [x] `FindViaStackImpl` read a dangling reference after `queue.pop()`, so it
+      expanded the wrong layer and could return bad stacks or crash. Used by
+      both `PhysicalPropertiesDatabase` and `RoutingGrid`. (675dc81)
+- [x] `PhysicalPropertiesDatabase::GetRoutingViaInfo` crashed instead of
+      returning nullopt for unconnected layers (reachable from
+      `RouterSession`). (d125de7)
+- [x] `GetRoutingLayerInfoOrDie` dereferenced an empty optional. (cfc5377)
+- [x] `RoutingTrack::ReportAvailableEdges` wrote past the end of its output
+      vector. No callers yet. (2694d19)
+- [x] `RoutingTrack::RemoveTemporaryBlockage` returned true when nothing was
+      removed. (8865641)
+
 ## Open questions (need a decision before fixing)
 
 Instance rotation and reflection are applied inconsistently. Disabled tests in
@@ -185,6 +227,24 @@ output, so it is a larger change than the other fixes here.
 - `Layout::FlipHorizontal`/`FlipVertical` and the `ShapeCollection` versions
   only flip in place when the bounding box starts at the origin; `PolyLine`'s
   version flips in place anywhere.
+- `RouteManager::Solve` ignores the statuses from running the orders and
+  always returns OK, though `LutB` checks it to collect routing errors.
+  Propagating them would change generator behaviour.
+- `GetRoutingViaInfoOrDie` sets the via height from `via_width`. Sky130 vias
+  are square; the GF180 setup only sets `via_width` (`via_height` is 0), so
+  switching to `via_height` would break GF180.
+- `FindCostedLayersReachableThroughOneVia` takes `via_cost` from the rules of
+  the destination metal layer rather than the via layer between them. No
+  layer sets `via_cost` today, so all costs are 0 either way.
+- `FindViaStackImpl` uses a `std::priority_queue` whose comparator reads costs
+  that change while elements are queued, and never re-queues a layer whose
+  cost improves. Results are right on every graph tested.
+- `RoutingBlockageCache::IsVertexBlocked` exempts `for_nets` from blockage
+  users but not from direction inhibition, so a same-net rail still blocks a
+  vertex on it.
+- `RoutingTrack::MergeNewBlockage` erases merged blockages from its container
+  without deleting them.
+
 
 ## Later
 
@@ -207,3 +267,4 @@ output, so it is a larger change than the other fixes here.
 - 2026-11-22: Noted rotation/reflection contradictions in the code; deferred
   fixing them until the other low-hanging fruit are done.
 - 2026-11-22: Phase 0 done: `BFG_COVERAGE` option and `scripts/coverage.sh`.
+- 2026-11-22: Phase 3 done: 73 new tests; fixed 8 bugs. 622 tests pass.
