@@ -70,7 +70,13 @@ void Layout::MirrorX() {
     ShapeCollection *shapes = entry.second.get();
     shapes->MirrorX();
   }
-  for (const auto &instance : instances_) { instance->MirrorX(); }
+  // As in MirrorY, the instance's position has to be mirrored as well as its
+  // orientation.
+  for (const auto &instance : instances_) {
+    instance->MirrorX();
+    instance->set_lower_left(geometry::Point(
+        instance->lower_left().x(), -instance->lower_left().y()));
+  }
   for (auto &entry : named_points_) { entry.second.MirrorX(); }
   if (tiling_bounds_) {
     tiling_bounds_->MirrorX();

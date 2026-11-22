@@ -179,9 +179,7 @@ TEST_F(LayoutTest, MirrorY_MovesInstances) {
   EXPECT_EQ(Rectangle({-12, 0}, {-10, 2}), instance->GetBoundingBox());
 }
 
-// TODO(aryap): MirrorX reflects instances about their own origin but, unlike
-// MirrorY, does not mirror their position.
-TEST_F(LayoutTest, DISABLED_MirrorX_MovesInstances) {
+TEST_F(LayoutTest, MirrorX_MovesInstances) {
   std::unique_ptr<Layout> child = MakeLayout();
   child->AddRectangle(Rectangle({0, 0}, {2, 2}));
 
