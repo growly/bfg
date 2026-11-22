@@ -40,16 +40,32 @@ Status key: `[ ]` todo, `[x]` done, `[~]` in progress.
 
 Overall: 18.8% -> 20.9% of lines, 34.7% -> 38.2% of functions. 479 tests pass.
 
-## Phase 2: layout and instance transforms
+## Phase 2: layout and instance transforms (done 2026-11-21)
 
-- [ ] `layout.cc`: `Translate`, `Rotate`, `MirrorX`, `MirrorY` (shapes and
-      ports), `Flatten`, `ConsumeLayout`
-- [ ] `layout.cc`: `MakeWire`, `MakeAlternatingWire`, `StampVias`,
-      `MakeVerticalSpineWithFingers`, `ResolveEdgeSpec`, `Copy*Shapes*`
-- [ ] `geometry/instance.cc`: `GeneratePorts`, `GetNearestPortNamed`,
-      `GetFurthestPortNamed`, `GetMidwayPortNamed`, `Copy*Shapes*`,
-      `GetTilingBounds`
-- [ ] `geometry/port.cc`
+- [x] `layout.cc`: `Translate`, `Rotate`, `MirrorX`, `MirrorY` (shapes,
+      points and instances), `ResetOrigin`, `Flatten`, `ConsumeLayout`,
+      `AddLayout` (new `layout_test.cc`)
+- [x] `layout.cc`: `MakeVia`, `StampVias`, `MakePin`, `MakeWire`,
+      `MakeAlternatingWire`, `MakeVerticalSpineWithFingers`,
+      `ResolveEdgeSpec`, `Copy*Shapes*`, ports, `GetInstancesByName`,
+      `EraseLayer`, `RemoveLayerFromChildTemplates`
+- [x] `geometry/instance.cc`: `GeneratePorts`, `GetNearestPortNamed`,
+      `GetFurthestPortNamed`, `GetMidwayPortNamed`, `GetFirstPortNamed`,
+      `Copy*Shapes*`, `GetPoint`, `GetTilingBounds`, `MoveTilingLowerLeft`
+      (extended `geometry/instance_test.cc`)
+- [x] `geometry/port.cc` (new `geometry/port_test.cc`)
+- [ ] Still untested: `Layout::ToVLSIRLayout`, `Describe`, `MakeViaEncap`,
+      `DistributeVias`, `FlipHorizontal`/`FlipVertical` (layout, instance and
+      shape collection)
+
+| File | Lines before | Lines after | Functions before | Functions after |
+|---|---|---|---|---|
+| `layout.cc` | 5% | 65% | 4/68 | 45/68 |
+| `geometry/instance.cc` | 4% | 83% | 1/36 | 28/36 |
+| `geometry/port.cc` | 0% | 97% | 0/9 | 9/9 |
+| `geometry/shape_collection.cc` | 59% | 67% | 32/44 | 36/44 |
+
+Overall: 20.9% -> 24.8% of lines, 38.2% -> 44.7% of functions. 549 tests pass.
 
 ## Phase 3: routing
 
@@ -112,6 +128,55 @@ All fixed on branch `test-coverage`, with their tests enabled:
       rectangles, polygons or ports, which `Layout::GetBoundingBox` would hit
       for any such layer. (f02da50)
 
+## Bugs found in phase 2
+
+Fixed on branch `test-coverage`, with their tests enabled:
+
+- [x] `Layout::DeletePorts` (and `Sky130InterconnectMux1`) default-constructed
+      a `PortSet`, whose comparator is a null function pointer: crash on the
+      second port. (dd83de7)
+- [x] `Layout::ResolveEdgeSpec` wrote every match to `*from` and could only
+      match both endpoints on one instance. No callers yet. (14149f4)
+- [x] `ShapeCollection::Consume` left null entries in the source. (4493487)
+- [x] `Layout::ConsumeLayout` did not index consumed ports by net. (3fe04e6)
+- [x] `Layout::MirrorX` did not mirror instance positions. (9a1e261)
+- [x] `Instance::GetMidwayPortNamed` ignored its name and used `"D"`.
+      (b390991)
+
+## Open questions (need a decision before fixing)
+
+Instance rotation and reflection are applied inconsistently. Disabled tests in
+`geometry/instance_test.cc` describe the behaviour that would be consistent
+with `Instance::GetBoundingBox` and `Layout::Flatten`:
+
+- [ ] `Instance::GeneratePorts` converts the rotation to clockwise before
+      passing it to a counter-clockwise function, so ports on instances
+      rotated 90 or 270 degrees turn the opposite way to the instance's
+      shapes. `Layout::ToVLSIRLayout` also passes the ccw value as VLSIR's
+      `rotation_clockwise_degrees` (see the FIXME there), so which one matches
+      the GDS depends on how VLSIR interprets it. Only 180-degree rotations are
+      used in generators today, where the two agree.
+      `DISABLED_Ports_Rotated90MatchBoundingBox`
+- [ ] `GeneratePorts`, `ApplyInstanceTransforms(ShapeCollection*)` (used by
+      all `Copy*Shapes*`) and `ApplyInstanceTransforms(Point*)` (used by
+      `GetPoint`) ignore `reflect_vertical_`, which `GetBoundingBox` and
+      `Flatten` apply. VLSIR also says rotation applies after reflection,
+      while BFG reflects after rotating.
+      `DISABLED_Ports_ReflectedMatchBoundingBox`,
+      `DISABLED_CopyAllShapes_ReflectedMatchesBoundingBox`,
+      `DISABLED_GetPoint_Reflected`
+
+## Observations (not yet confirmed as bugs)
+
+- `Port::Compare` orders by `lower_left` only, so a `PortSet` silently keeps
+  just one of several ports at the same position, even on different nets or
+  layers.
+- `Layout::CopyConnectableShapes` never stops at `max_depth` 0, unlike the
+  other `Copy*` methods, so its depth is effectively off by one.
+- `Layout::FlipHorizontal`/`FlipVertical` and the `ShapeCollection` versions
+  only flip in place when the bounding box starts at the origin; `PolyLine`'s
+  version flips in place anywhere.
+
 ## Out of scope
 
 `main.cc`, `router_service_*`, `router_session.cc`: not linked into
@@ -122,3 +187,5 @@ All fixed on branch `test-coverage`, with their tests enabled:
 - 2026-11-21: Measured baseline coverage. Wrote this plan.
 - 2026-11-21: Phase 1 done: 60 new tests, 6 disabled tests marking bugs.
 - 2026-11-21: Fixed the 6 bugs found in phase 1. 490 tests pass.
+- 2026-11-21: Phase 2 done: 59 new tests; fixed 6 bugs; rotation/reflection
+  questions left open. 549 tests pass.
