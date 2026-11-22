@@ -530,6 +530,7 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_kd_tree_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_track_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_track_direction_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_collector_test.cc
   ${PROJECT_SOURCE_DIR}/src/utility_test.cc
 )
