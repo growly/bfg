@@ -345,9 +345,7 @@ TEST_F(RoutingTrackWithVerticesTest, EdgesConnectNeighbours) {
   EXPECT_EQ(vertices_.size(), available.size());
 }
 
-// TODO(aryap): ReportAvailableEdges copies into edges_out->begin() instead of
-// appending, writing past the end of the vector.
-TEST_F(RoutingTrackWithVerticesTest, DISABLED_ReportAvailableEdges) {
+TEST_F(RoutingTrackWithVerticesTest, ReportAvailableEdges) {
   std::vector<RoutingEdge*> edges;
   track_.ReportAvailableEdges(&edges);
   EXPECT_EQ(track_.edges().size(), edges.size());

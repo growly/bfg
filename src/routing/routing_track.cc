@@ -1,6 +1,7 @@
 #include "routing_track.h"
 
 #include <algorithm>
+#include <iterator>
 #include <queue>
 #include <set>
 #include <vector>
@@ -720,7 +721,7 @@ void RoutingTrack::ReportAvailableEdges(
   std::copy_if(
       edges_.begin(),
       edges_.end(),
-      edges_out->begin(),
+      std::back_inserter(*edges_out),
       [](RoutingEdge* edge) { return edge->Available(); });
 }
 
