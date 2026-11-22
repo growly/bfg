@@ -302,12 +302,12 @@ TEST_F(InstancePortSearchTest, GetFirstPortNamed) {
   EXPECT_EQ(nullptr, instance_->GetFirstPortNamed("y"));
 }
 
-// TODO(aryap): GetMidwayPortNamed ignores its name argument and always looks
-// up ports named "D", dereferencing an empty set if there are none.
-TEST_F(InstancePortSearchTest, DISABLED_GetMidwayPortNamed) {
+TEST_F(InstancePortSearchTest, GetMidwayPortNamed) {
   Port *port = instance_->GetMidwayPortNamed(Point(0, 0), "x");
   ASSERT_NE(nullptr, port);
   EXPECT_EQ(Point(10, 0), port->lower_left());
+
+  EXPECT_EQ(nullptr, instance_->GetMidwayPortNamed(Point(0, 0), "y"));
 }
 
 }  // namespace
