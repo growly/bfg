@@ -204,11 +204,10 @@ TEST_F(PhysicalPropertiesDatabaseTest, GetRoutingLayerInfo) {
   EXPECT_FALSE(db_.GetRoutingLayerInfo("nonexistent.drawing"));
 }
 
-// TODO(aryap): GetRoutingLayerInfoOrDie dereferences an empty optional instead
-// of dying when the layer is unknown.
 TEST_F(PhysicalPropertiesDatabaseTest,
-       DISABLED_GetRoutingLayerInfoOrDie_DiesForUnknownLayer) {
-  EXPECT_DEATH(db_.GetRoutingLayerInfoOrDie("nonexistent.drawing"), "");
+       GetRoutingLayerInfoOrDie_DiesForUnknownLayer) {
+  EXPECT_DEATH(db_.GetRoutingLayerInfoOrDie("nonexistent.drawing"),
+               "No routing layer info");
 }
 
 TEST_F(PhysicalPropertiesDatabaseTest, PinLayers) {

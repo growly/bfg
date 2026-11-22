@@ -397,6 +397,8 @@ std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
 RoutingLayerInfo PhysicalPropertiesDatabase::GetRoutingLayerInfoOrDie(
     const std::string &routing_layer_name) const {
   auto routing_info = GetRoutingLayerInfo(routing_layer_name);
+  LOG_IF(FATAL, !routing_info)
+      << "No routing layer info for layer " << routing_layer_name;
   return *routing_info;
 }
 
