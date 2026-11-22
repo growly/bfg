@@ -209,9 +209,7 @@ TEST_F(RouteManagerRoutingTest, ConnectAndSolve) {
             route_manager_->DescribeResults().find("OK"));
 }
 
-// TODO(aryap): Solve copies orders_ to executed_orders, clears orders_ and then
-// returns the now-empty orders_.
-TEST_F(RouteManagerRoutingTest, DISABLED_Solve_ReturnsExecutedOrders) {
+TEST_F(RouteManagerRoutingTest, Solve_ReturnsExecutedOrders) {
   geometry::Port *a0 = AddPort({500, 500}, "a");
   geometry::Port *a1 = AddPort({4000, 3000}, "a");
   ASSERT_TRUE(route_manager_->Connect(*a0, *a1, EquivalentNets("a")).ok());

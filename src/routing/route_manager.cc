@@ -429,7 +429,7 @@ absl::StatusOr<std::vector<NetRouteOrder>> RouteManager::Solve(
   std::vector<NetRouteOrder> executed_orders = orders_;
   orders_.clear();
 
-  return orders_;
+  return executed_orders;
 }
 
 absl::Status RouteManager::ConsolidateOrders() {
