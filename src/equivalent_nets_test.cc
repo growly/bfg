@@ -85,12 +85,24 @@ TEST(EquivalentNets, Delete) {
   EXPECT_FALSE(nets.Delete("b"));
 }
 
-// TODO(aryap): The class promises that the primary is always in the set, but
-// Delete() does not clear or reassign primary_ when the primary is removed.
-TEST(EquivalentNets, DISABLED_DeletePrimaryKeepsInvariant) {
-  EquivalentNets nets = EquivalentNets("a", {"b"});
+TEST(EquivalentNets, DeletePrimaryKeepsInvariant) {
+  EquivalentNets nets = EquivalentNets("a", {"c", "b"});
   EXPECT_TRUE(nets.Delete("a"));
-  EXPECT_TRUE(nets.primary() == "" || nets.Contains(nets.primary()));
+  // The first remaining name is promoted, as when constructing from a set.
+  EXPECT_EQ("b", nets.primary());
+
+  EXPECT_TRUE(nets.Delete("b"));
+  EXPECT_EQ("c", nets.primary());
+
+  EXPECT_TRUE(nets.Delete("c"));
+  EXPECT_EQ("", nets.primary());
+  EXPECT_TRUE(nets.Empty());
+}
+
+TEST(EquivalentNets, DeleteNonPrimaryKeepsPrimary) {
+  EquivalentNets nets = EquivalentNets("a", {"b"});
+  EXPECT_TRUE(nets.Delete("b"));
+  EXPECT_EQ("a", nets.primary());
 }
 
 TEST(EquivalentNets, Describe) {

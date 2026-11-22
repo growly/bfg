@@ -55,7 +55,14 @@ void EquivalentNets::AddAllConnected(const std::set<geometry::Port*> &ports) {
 }
 
 bool EquivalentNets::Delete(const std::string &name) {
-  return nets_.erase(name) > 0;
+  if (nets_.erase(name) == 0) {
+    return false;
+  }
+  // Maintain the invariant that the primary is in the set.
+  if (name == primary_) {
+    primary_ = nets_.empty() ? "" : *nets_.begin();
+  }
+  return true;
 }
 
 
