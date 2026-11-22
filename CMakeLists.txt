@@ -533,6 +533,7 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/routing/routing_track_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_track_direction_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_collector_test.cc
+  ${PROJECT_SOURCE_DIR}/src/memory_bank_test.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide_test.cc
   ${PROJECT_SOURCE_DIR}/src/utility_test.cc
 )
