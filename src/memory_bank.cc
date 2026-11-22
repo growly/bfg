@@ -156,8 +156,9 @@ void MemoryBank::EnsureVerticalAbutment() {
 // aligns with the previous row's left- or right-most x position, based on
 // horizontal_alignment_.
 void MemoryBank::AlignRight() {
-  int64_t right_x = 0;
-  for (size_t i = 0; i < rows_.size(); ++i) {
+  // Start from a row, not 0, so that a bank away from the origin stays put.
+  int64_t right_x = rows_.front().LowerRight().x();
+  for (size_t i = 1; i < rows_.size(); ++i) {
     right_x = std::max(right_x, rows_[i].LowerRight().x());
   }
   for (size_t i = 0; i < rows_.size(); ++i) {
@@ -167,8 +168,8 @@ void MemoryBank::AlignRight() {
   }
 }
 void MemoryBank::AlignLeft() {
-  int64_t left_x = 0;
-  for (size_t i = 0; i < rows_.size(); ++i) {
+  int64_t left_x = rows_.front().LowerLeft().x();
+  for (size_t i = 1; i < rows_.size(); ++i) {
     left_x = std::min(left_x, rows_[i].LowerLeft().x());
   }
   for (size_t i = 0; i < rows_.size(); ++i) {

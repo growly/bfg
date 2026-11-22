@@ -129,17 +129,25 @@ TEST_F(MemoryBankTest, MoveTo) {
   EXPECT_EQ(Point(0, 0), bank.Origin());
 }
 
-// TODO(aryap): AlignLeft and AlignRight start their search for the extreme x
-// at 0 instead of at the first row, so an aligned bank that has been moved
-// away from the origin snaps back to x = 0 the next time something is
-// instantiated.
-TEST_F(MemoryBankTest, DISABLED_AlignLeftAfterMove) {
+// MoveTo only moves rows that already exist, so both are created first.
+TEST_F(MemoryBankTest, AlignLeftAfterMove) {
   MemoryBank bank = MakeBank(Compass::LEFT);
   bank.InstantiateRight(0, "a", narrow_.get());
+  bank.Row(1);
   bank.MoveTo({1000, 0});
   bank.InstantiateRight(1, "b", narrow_.get());
   EXPECT_EQ(1000, bank.Row(0).LowerLeft().x());
   EXPECT_EQ(1000, bank.Row(1).LowerLeft().x());
+}
+
+TEST_F(MemoryBankTest, AlignRightAfterMove) {
+  MemoryBank bank = MakeBank(Compass::RIGHT);
+  bank.InstantiateRight(0, "a", narrow_.get());
+  bank.Row(1);
+  bank.MoveTo({-1000, 0});
+  bank.InstantiateRight(1, "b", narrow_.get());
+  EXPECT_EQ(-900, bank.Row(0).LowerRight().x());
+  EXPECT_EQ(-900, bank.Row(1).LowerRight().x());
 }
 
 TEST_F(MemoryBankTest, InsertRowZero) {
