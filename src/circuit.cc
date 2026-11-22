@@ -279,8 +279,9 @@ circuit::Port *Circuit::AddPort(
   // Check for port name conflicts:
   for (auto &uniq : ports_) {
     if (uniq->signal().name() == signal.name()) {
-      LOG_IF(WARNING, uniq->signal().width() == signal.width())
-          << "Duplicate port being added with different signal width: " << signal.name()
+      LOG_IF(WARNING, uniq->signal().width() != signal.width())
+          << "Duplicate port being added with different signal width: "
+          << signal.name()
           << " but existing width: " << uniq->signal().width()
           << " and new width: " << signal.width();
       return uniq.get();
