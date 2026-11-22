@@ -162,10 +162,7 @@ TEST(ParameterTest, RoundTripPrefixed) {
   EXPECT_EQ(original.value, copy.value);
 }
 
-// TODO(aryap): FromVLSIRParameter leaves unit_prefix uninitialised when the
-// value is not prefixed, so this reads an indeterminate value. Enable once
-// unit_prefix defaults to NONE.
-TEST(ParameterTest, DISABLED_FromVLSIRParameter_UnprefixedHasNoUnit) {
+TEST(ParameterTest, FromVLSIRParameter_UnprefixedHasNoUnit) {
   vlsir::utils::Param param_pb;
   param_pb.set_name("nf");
   param_pb.mutable_value()->set_int64_value(2);

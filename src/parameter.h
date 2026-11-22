@@ -99,7 +99,7 @@ struct Parameter {
   std::string name;
   std::string description;
 
-  SIUnitPrefix unit_prefix;
+  SIUnitPrefix unit_prefix = SIUnitPrefix::NONE;
   std::variant<int64_t, double, std::string> value;
 };
 
