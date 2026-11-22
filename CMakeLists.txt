@@ -481,6 +481,7 @@ target_link_libraries(router_service_bin PUBLIC router_service
 # Tests
 # -----
 set(ATOMS_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/atoms/generators_test.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor_test.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate_test.cc
 )
@@ -586,3 +587,10 @@ foreach(data_file ${test_data_files})
   configure_file("${data_file}" "${data_file_out}" COPYONLY)
   # Thanks I hate it.
 endforeach(data_file)
+
+# Generator tests also need the Sky130 circuit packages, which are too big to
+# keep a second copy of in test_data.
+foreach(package sky130.primitives.pb sky130hd.pb)
+  configure_file("${PROJECT_SOURCE_DIR}/${package}"
+                 "${OUTPUT_TEST_DATA_DIR}/${package}" COPYONLY)
+endforeach(package)
