@@ -138,7 +138,9 @@ named ports.
       `-O2`, so they are run by hand. At `-O2`: `LutB` passes (~80 s); `S44`
       generates (~200 s; layout only, its circuit has no ports);
       `Interconnect` takes over 4 minutes; `Lut` aborts in routing
-      (disabled); `Slice` hit a naming bug (see below).
+      (disabled); `Slice` hit a naming bug (see below); `ReducedTile` and
+      `Fabric` need an edge list CSV that is not in the repository
+      (disabled).
 - [ ] `Gf180McuMux` (needs a GF180 fixture)
 - [ ] Device-count checks against parameters
 - [x] `Sky130TransmissionGateTest.ViaLocations` (empty) and the 3 disabled

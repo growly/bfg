@@ -50,11 +50,14 @@ TEST_F(TileTest, Interconnect) {
   ExpectWellFormed(Generate<Interconnect>({}, "interconnect"), {});
 }
 
-TEST_F(TileTest, ReducedTile) {
+// ReducedTile (and so Fabric) reads its interconnect from an edge list CSV
+// (bfg_edges.csv by default) that is generated outside BFG and is not in the
+// repository. Enable these once a test edge list is checked in.
+TEST_F(TileTest, DISABLED_ReducedTile) {
   ExpectWellFormed(Generate<ReducedTile>({}, "reduced_tile"), {});
 }
 
-TEST_F(TileTest, Fabric) {
+TEST_F(TileTest, DISABLED_Fabric) {
   ExpectWellFormed(Generate<Fabric>({}, "fabric"), {});
 }
 
