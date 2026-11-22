@@ -477,12 +477,21 @@ void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix) {
       other_collection->PrefixNetNames(name_prefix, ".");
     }
 
+    // Ports keep their addresses when moved, so index them by their (possibly
+    // prefixed) nets before they go.
+    for (const auto &port : other_collection->ports()) {
+      AddPortByNet(port->net(), port.get());
+    }
+
     ShapeCollection *layer_shapes = GetOrInsertLayerShapes(active_layer_);
     layer_shapes->Consume(other_collection);
   }
+  // These now point to ports we own.
+  other->ports_by_net_.clear();
   for (auto &instance : other->instances_) {
     instances_.push_back(std::move(instance));
   }
+  other->instances_.clear();
 
   // Points are copied since they are not stored by pointer.
   for (auto &entry : other->named_points_) {

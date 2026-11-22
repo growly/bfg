@@ -252,6 +252,8 @@ TEST_F(LayoutTest, ConsumeLayout) {
   EXPECT_EQ("x.a", shapes->rectangles().front()->net());
   EXPECT_EQ(Point(1, 1), layout->GetPointOrDie("x.pt"));
   EXPECT_EQ(1, layout->instances().size());
+  // Instances were moved, too.
+  EXPECT_TRUE(other->instances().empty());
 }
 
 TEST_F(LayoutTest, ConsumeLayout_EmptiesSource) {
@@ -263,9 +265,7 @@ TEST_F(LayoutTest, ConsumeLayout_EmptiesSource) {
   EXPECT_TRUE(other->GetShapeCollection(0)->Empty());
 }
 
-// TODO(aryap): ConsumeLayout moves ports but not ports_by_net_, so they can't
-// be found by net in the new layout.
-TEST_F(LayoutTest, DISABLED_ConsumeLayout_KeepsPortsByNet) {
+TEST_F(LayoutTest, ConsumeLayout_KeepsPortsByNet) {
   std::unique_ptr<Layout> other = MakeLayout();
   other->AddPort(Port({0, 0}, {1, 1}, 0, "a"));
 
@@ -273,6 +273,7 @@ TEST_F(LayoutTest, DISABLED_ConsumeLayout_KeepsPortsByNet) {
   layout->ConsumeLayout(other.get(), "x");
   EXPECT_EQ(1, layout->Ports().size());
   EXPECT_TRUE(layout->HasPort("x.a"));
+  EXPECT_FALSE(other->HasPort("a"));
 }
 
 TEST_F(LayoutTest, Flatten) {
