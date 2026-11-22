@@ -103,10 +103,10 @@ std::ostream &operator<<(std::ostream &os, const Compass &compass) {
       os << "LOWER_RIGHT";
       break;
     case Compass::LOWER:
-      os << "LOWER:";
+      os << "LOWER";
       break;
     case Compass::LOWER_LEFT:
-      os << "LOWER_LEFT:";
+      os << "LOWER_LEFT";
       break;
   }
   return os;

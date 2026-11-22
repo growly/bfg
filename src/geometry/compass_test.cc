@@ -100,11 +100,6 @@ TEST(CompassTest, Print) {
   EXPECT_EQ("UPPER_RIGHT", ToString(Compass::UPPER_RIGHT));
   EXPECT_EQ("RIGHT", ToString(Compass::RIGHT));
   EXPECT_EQ("LOWER_RIGHT", ToString(Compass::LOWER_RIGHT));
-}
-
-// TODO(aryap): operator<< prints "LOWER:" and "LOWER_LEFT:" with a trailing
-// colon, unlike every other direction. Enable once fixed.
-TEST(CompassTest, DISABLED_PrintLower) {
   EXPECT_EQ("LOWER", ToString(Compass::LOWER));
   EXPECT_EQ("LOWER_LEFT", ToString(Compass::LOWER_LEFT));
 }
