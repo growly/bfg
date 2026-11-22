@@ -244,6 +244,123 @@ TEST_F(RoutingBlockageCacheTest, RectangleBlockageCancelled_1) {
   }
 }
 
+// A met1 rail on net "vdd" covering the vertices at y = 170.
+class RoutingBlockageCacheNetTest : public RoutingBlockageCacheTest {
+ protected:
+  void SetUp() override {
+    RoutingBlockageCacheTest::SetUp();
+    met1_ = design_db_.physical_db().GetLayer("met1.drawing");
+    rail_ = geometry::Rectangle({0, -240}, {1500, 240}, met1_, "vdd");
+    cache_->AddBlockage(rail_, 0);
+  }
+
+  RoutingVertex *VertexAt(const geometry::Point &point) {
+    for (RoutingVertex *vertex : routing_grid_->vertices()) {
+      if (vertex->centre() == point) {
+        return vertex;
+      }
+    }
+    return nullptr;
+  }
+
+  // A met1 edge along the rail.
+  RoutingEdge *EdgeOnRail() {
+    RoutingVertex *vertex = VertexAt({0, 170});
+    for (RoutingEdge *edge : vertex->edges()) {
+      if (edge->EffectiveLayer() == met1_) {
+        return edge;
+      }
+    }
+    return nullptr;
+  }
+
+  geometry::Layer met1_;
+  geometry::Rectangle rail_;
+};
+
+TEST_F(RoutingBlockageCacheNetTest, VertexOnRailIsBlocked) {
+  RoutingVertex *on_rail = VertexAt({0, 170});
+  RoutingVertex *off_rail = VertexAt({0, 1190});
+  ASSERT_NE(nullptr, on_rail);
+  ASSERT_NE(nullptr, off_rail);
+  EXPECT_TRUE(cache_->IsVertexBlocked(*on_rail, {}, std::nullopt, std::nullopt));
+  EXPECT_FALSE(cache_->AvailableForAll(*on_rail));
+  EXPECT_TRUE(cache_->AvailableForAll(*off_rail));
+  // Vertex blockages on the vertex's own net still inhibit via directions, so
+  // the vertex is not freed for "vdd" (see PLAN.md observations).
+}
+
+TEST_F(RoutingBlockageCacheNetTest, IsEdgeBlocked) {
+  RoutingEdge *edge = EdgeOnRail();
+  ASSERT_NE(nullptr, edge);
+  EXPECT_TRUE(cache_->IsEdgeBlocked(*edge, {}));
+  EXPECT_FALSE(cache_->IsEdgeBlocked(*edge, EquivalentNets("vdd")));
+  EXPECT_TRUE(cache_->IsEdgeBlocked(*edge, EquivalentNets("other")));
+}
+
+TEST_F(RoutingBlockageCacheNetTest, CancelBlockagesByNet) {
+  RoutingVertex *on_rail = VertexAt({0, 170});
+  ASSERT_NE(nullptr, on_rail);
+
+  cache_->CancelBlockages(EquivalentNets("other"));
+  EXPECT_TRUE(cache_->IsVertexBlocked(*on_rail, {}, std::nullopt, std::nullopt));
+
+  // Restricting cancellation to another layer leaves the rail in place.
+  cache_->CancelBlockages(EquivalentNets("vdd"), "met2.drawing");
+  EXPECT_TRUE(cache_->IsVertexBlocked(*on_rail, {}, std::nullopt, std::nullopt));
+
+  cache_->CancelBlockages(EquivalentNets("vdd"), "met1.drawing");
+  EXPECT_FALSE(
+      cache_->IsVertexBlocked(*on_rail, {}, std::nullopt, std::nullopt));
+  EXPECT_FALSE(cache_->IsEdgeBlocked(*EdgeOnRail(), {}));
+}
+
+TEST_F(RoutingBlockageCacheNetTest, ChildCacheCancellationsDoNotAffectParent) {
+  RoutingVertex *on_rail = VertexAt({0, 170});
+  ASSERT_NE(nullptr, on_rail);
+
+  RoutingBlockageCache child(*routing_grid_, *cache_);
+  EXPECT_TRUE(child.IsVertexBlocked(*on_rail, {}, std::nullopt, std::nullopt));
+
+  child.CancelBlockages(EquivalentNets("vdd"));
+  EXPECT_FALSE(child.IsVertexBlocked(*on_rail, {}, std::nullopt, std::nullopt));
+  EXPECT_TRUE(cache_->IsVertexBlocked(*on_rail, {}, std::nullopt, std::nullopt));
+}
+
+TEST_F(RoutingBlockageCacheNetTest, ValidAgainstKnownBlockages) {
+  geometry::Rectangle overlapping({100, 0}, {200, 100}, met1_, "");
+  geometry::Rectangle far_away({100, 1200}, {200, 1300}, met1_, "");
+
+  absl::Status status = cache_->ValidAgainstKnownBlockages(overlapping);
+  EXPECT_EQ(absl::StatusCode::kResourceExhausted, status.code()) << status;
+  EXPECT_TRUE(cache_->ValidAgainstKnownBlockages(far_away).ok());
+  EXPECT_TRUE(cache_->ValidAgainstKnownBlockages(
+      overlapping, EquivalentNets("vdd")).ok());
+
+  RoutingVertex *on_rail = VertexAt({0, 170});
+  RoutingVertex *off_rail = VertexAt({0, 1190});
+  ASSERT_NE(nullptr, on_rail);
+  ASSERT_NE(nullptr, off_rail);
+  EXPECT_FALSE(cache_->ValidAgainstKnownBlockages(*on_rail).ok());
+  EXPECT_TRUE(cache_->ValidAgainstKnownBlockages(*off_rail).ok());
+}
+
+TEST_F(RoutingBlockageCacheNetTest, ValidAgainstKnownBlockages_Child) {
+  // Hazards in the parent apply to the child.
+  RoutingBlockageCache child(*routing_grid_, *cache_);
+  geometry::Rectangle overlapping({100, 0}, {200, 100}, met1_, "");
+  EXPECT_FALSE(child.ValidAgainstKnownBlockages(overlapping).ok());
+}
+
+TEST_F(RoutingBlockageCacheNetTest, Summary) {
+  std::string summary = cache_->Summary();
+  EXPECT_NE(std::string::npos, summary.find("1 rectangles"));
+  EXPECT_NE(std::string::npos, summary.find("parent: none"));
+
+  RoutingBlockageCache child(*routing_grid_, *cache_);
+  EXPECT_NE(std::string::npos, child.Summary().find("parent: [Routing"));
+}
+
 }  // namespace
 }  // namespace routing
 }  // namespace bfg
