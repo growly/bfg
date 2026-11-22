@@ -912,26 +912,24 @@ TEST(PolyLineTest, ExtendToInclude_PastEnd) {
   EXPECT_EQ(expected, line.Vertices());
 }
 
-// TODO(aryap): ExtendToInclude has two bugs:
-//  - The last line is built from (segments_.end() - 1)->end to itself, which is
-//    degenerate; it should start at (segments_.end() - 2)->end. Extending past
-//    the end only works above because the degenerate line looks vertical.
-//  - With a single segment, both candidate lines are the same and the point is
-//    on both, so the distance comparison is always a tie and the end is always
-//    moved, even when the point is past the start.
-// Enable these once fixed.
-TEST(PolyLineTest, DISABLED_ExtendToInclude_PastHorizontalEnd) {
+TEST(PolyLineTest, ExtendToInclude_PastHorizontalEnd) {
   PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, 10}, {20, 10}});
   line.ExtendToInclude({25, 10});
   std::vector<Point> expected = {{0, 0}, {10, 0}, {10, 10}, {25, 10}};
   EXPECT_EQ(expected, line.Vertices());
 }
 
-TEST(PolyLineTest, DISABLED_ExtendToInclude_SingleSegmentPastStart) {
+TEST(PolyLineTest, ExtendToInclude_SingleSegmentPastStart) {
   PolyLine line = PolyLine(std::vector<Point>{{0, 0}, {10, 0}});
   line.ExtendToInclude({-5, 0});
   std::vector<Point> expected = {{-5, 0}, {10, 0}};
   EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, ExtendToInclude_Empty) {
+  PolyLine line;
+  line.ExtendToInclude({5, 0});
+  EXPECT_TRUE(line.segments().empty());
 }
 
 TEST(PolyLineTest, InsertBulgeLater_MatchesInsertBulge) {
