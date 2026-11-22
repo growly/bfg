@@ -1,13 +1,19 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include <algorithm>
+#include <memory>
+#include <set>
 #include <utility>
+#include <vector>
 #include <glog/logging.h>
 
 #include "../geometry/point.h"
 #include "../geometry/rectangle.h"
 #include "../geometry/polygon.h"
 #include "../physical_properties_database.h"
+#include "routing_blockage_cache.h"
+#include "routing_edge.h"
 #include "routing_grid.h"
 #include "routing_track.h"
 #include "routing_track_blockage.h"
@@ -277,6 +283,156 @@ TEST(RoutingTrackTest, GetImmediateNeighbours) {
   // Block 9. Now they're all blocked:
   vertices.back()->AddBlockingNet("asdf4", false);
   EXPECT_TRUE(track.GetImmediateNeighbours(*test, true).empty());
+}
+
+// A horizontal track at y = 50 with vertices every 200 units from x = 0.
+class RoutingTrackWithVerticesTest : public testing::Test {
+ protected:
+  static constexpr int64_t kY = 50;
+  static constexpr int64_t kPitch = 200;
+
+  RoutingTrackWithVerticesTest()
+      : track_(0,                                        // Layer
+               RoutingTrackDirection::kTrackHorizontal,  // Direction
+               100,                                      // Pitch
+               50,                                       // Width
+               25,                                       // Vertex via width
+               25,                                       // Vertex via length
+               50,                                       // Min. separation
+               kY,                                       // Offset
+               false),                                   // Neighbours only
+        routing_grid_(physical_db_),
+        cache_(routing_grid_) {}
+
+  void SetUp() override {
+    for (int64_t i = 0; i < 10; ++i) {
+      vertices_.emplace_back(new RoutingVertex({i * kPitch, kY}));
+      ASSERT_TRUE(track_.AddVertex(vertices_.back().get(), cache_));
+    }
+  }
+
+  RoutingVertex *V(size_t i) { return vertices_.at(i).get(); }
+
+  // Declared first so that it outlives the track's edges, which refer to it.
+  std::vector<std::unique_ptr<RoutingVertex>> vertices_;
+  RoutingTrack track_;
+  bfg::PhysicalPropertiesDatabase physical_db_;
+  RoutingGrid routing_grid_;
+  RoutingBlockageCache cache_;
+};
+
+TEST_F(RoutingTrackWithVerticesTest, VertexLookup) {
+  EXPECT_TRUE(track_.ContainsVertex(V(3)));
+  EXPECT_EQ(V(3), track_.GetVertexAt({3 * kPitch, kY}));
+  EXPECT_EQ(V(3), track_.GetVertexAtOffset(3 * kPitch));
+  EXPECT_EQ(nullptr, track_.GetVertexAt({3 * kPitch + 1, kY}));
+
+  EXPECT_TRUE(track_.IsPointOnTrack({123, kY}));
+  EXPECT_FALSE(track_.IsPointOnTrack({123, kY + 1}));
+
+  RoutingVertex elsewhere({0, 0});
+  EXPECT_FALSE(track_.ContainsVertex(&elsewhere));
+}
+
+TEST_F(RoutingTrackWithVerticesTest, EdgesConnectNeighbours) {
+  RoutingEdge *edge = track_.GetEdgeBetween(V(4), V(5));
+  ASSERT_NE(nullptr, edge);
+  EXPECT_EQ(edge, track_.GetEdgeBetween(V(5), V(4)));
+  EXPECT_EQ(&track_, edge->track());
+
+  std::vector<RoutingVertex*> available;
+  track_.ReportAvailableVertices(&available);
+  EXPECT_EQ(vertices_.size(), available.size());
+}
+
+// TODO(aryap): ReportAvailableEdges copies into edges_out->begin() instead of
+// appending, writing past the end of the vector.
+TEST_F(RoutingTrackWithVerticesTest, DISABLED_ReportAvailableEdges) {
+  std::vector<RoutingEdge*> edges;
+  track_.ReportAvailableEdges(&edges);
+  EXPECT_EQ(track_.edges().size(), edges.size());
+  EXPECT_GE(edges.size(), vertices_.size() - 1);
+}
+
+TEST_F(RoutingTrackWithVerticesTest, VerticesInSpan) {
+  // Vertices are in track order, but the direction is not guaranteed.
+  auto in_order = [](std::vector<RoutingVertex*> vertices) {
+    if (!vertices.empty() &&
+        vertices.front()->centre().x() > vertices.back()->centre().x()) {
+      std::reverse(vertices.begin(), vertices.end());
+    }
+    return vertices;
+  };
+  std::vector<RoutingVertex*> expected = {V(1), V(2), V(3)};
+  EXPECT_EQ(expected,
+            in_order(track_.VerticesInSpan({kPitch, kY}, {3 * kPitch, kY})));
+  EXPECT_EQ(expected,
+            in_order(track_.VerticesInSpan({3 * kPitch, kY}, {kPitch, kY})));
+  EXPECT_TRUE(track_.VerticesInSpan({10, kY}, {20, kY}).empty());
+}
+
+TEST_F(RoutingTrackWithVerticesTest, RemoveEdge) {
+  RoutingEdge *edge = track_.GetEdgeBetween(V(4), V(5));
+  ASSERT_NE(nullptr, edge);
+  EXPECT_TRUE(track_.RemoveEdge(edge, false));
+  EXPECT_EQ(nullptr, track_.GetEdgeBetween(V(4), V(5)));
+  EXPECT_FALSE(track_.RemoveEdge(edge, false));
+  delete edge;
+}
+
+TEST_F(RoutingTrackWithVerticesTest, RemoveVertex) {
+  ASSERT_TRUE(track_.RemoveVertex(V(5), cache_));
+  EXPECT_FALSE(track_.ContainsVertex(V(5)));
+  EXPECT_EQ(nullptr, track_.GetEdgeBetween(V(4), V(5)));
+  EXPECT_EQ(nullptr, track_.GetEdgeBetween(V(5), V(6)));
+  // The neighbours are still connected around the gap.
+  EXPECT_NE(nullptr, track_.GetEdgeBetween(V(4), V(6)));
+  EXPECT_FALSE(track_.RemoveVertex(V(5), cache_));
+}
+
+TEST_F(RoutingTrackWithVerticesTest, TemporaryBlockage) {
+  geometry::Rectangle over_v5 = geometry::Rectangle::CentredAt(
+      V(5)->centre(), 10, 10);
+  RoutingTrackBlockage *vertex_blockage = nullptr;
+  RoutingTrackBlockage *edge_blockage = nullptr;
+  std::set<RoutingVertex*> blocked_vertices;
+  std::set<RoutingEdge*> blocked_edges;
+  track_.AddTemporaryBlockage(over_v5, 0, "", &vertex_blockage,
+                              &edge_blockage, &blocked_vertices,
+                              &blocked_edges);
+  ASSERT_NE(nullptr, vertex_blockage);
+  EXPECT_EQ(1, blocked_vertices.count(V(5)));
+  EXPECT_FALSE(V(5)->Available());
+  EXPECT_TRUE(V(4)->Available());
+
+  EXPECT_TRUE(track_.RemoveTemporaryBlockage(vertex_blockage));
+  delete vertex_blockage;
+  if (edge_blockage) {
+    EXPECT_TRUE(track_.RemoveTemporaryBlockage(edge_blockage));
+    delete edge_blockage;
+  }
+}
+
+TEST_F(RoutingTrackWithVerticesTest, TemporaryBlockageAwayFromTrack) {
+  geometry::Rectangle far_away({0, 1000}, {10, 1010});
+  RoutingTrackBlockage *vertex_blockage = nullptr;
+  RoutingTrackBlockage *edge_blockage = nullptr;
+  track_.AddTemporaryBlockage(far_away, 0, "", &vertex_blockage,
+                              &edge_blockage, nullptr, nullptr);
+  EXPECT_EQ(nullptr, vertex_blockage);
+  EXPECT_EQ(nullptr, edge_blockage);
+}
+
+// TODO(aryap): RemoveTemporaryBlockage returns true even when the blockage
+// was not found.
+TEST_F(RoutingTrackWithVerticesTest,
+       DISABLED_RemoveTemporaryBlockage_NotFound) {
+  RoutingTrackBlockage unknown(0, 10, "");
+  EXPECT_FALSE(track_.RemoveTemporaryBlockage(&unknown));
+}
+
+TEST_F(RoutingTrackWithVerticesTest, Describe) {
+  EXPECT_FALSE(track_.Describe().empty());
 }
 
 }  // namespace routing
