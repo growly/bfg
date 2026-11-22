@@ -173,9 +173,7 @@ class RouteManagerRoutingTest : public RoutingGridTest {
 
 namespace {
 
-// TODO(aryap): SummariseStatuses returns an InternalError even when every
-// status is OK.
-TEST(RouteManagerStaticTest, DISABLED_SummariseStatuses_AllOk) {
+TEST(RouteManagerStaticTest, SummariseStatuses_AllOk) {
   EXPECT_TRUE(RouteManager::SummariseStatuses({}).ok());
   EXPECT_TRUE(RouteManager::SummariseStatuses(
       {absl::OkStatus(), absl::OkStatus()}).ok());

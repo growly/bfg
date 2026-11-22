@@ -40,7 +40,11 @@ absl::Status RouteManager::SummariseStatuses(
     if (status.ok()) {
       continue;
     }
+    all_ok = false;
     absl::StrAppend(&message, status.message(), "; ");
+  }
+  if (all_ok) {
+    return absl::OkStatus();
   }
   return absl::InternalError(message);
 }
