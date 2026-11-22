@@ -120,10 +120,7 @@ TEST_F(CheckerboardGuideTest, EmptyBeforeInstantiation) {
   EXPECT_FALSE(guide.GetBoundingBox());
 }
 
-// TODO(aryap): With an odd number of columns the row-to-row alternation of
-// (i * num_columns + j) and the per-row flip cancel out, producing stripes
-// instead of the checkerboard drawn in the class comment.
-TEST_F(CheckerboardGuideTest, DISABLED_ThreeByThree) {
+TEST_F(CheckerboardGuideTest, ThreeByThree) {
   std::vector<Cell*> templates = {small_.get()};
   CheckerboardGuide guide({0, 0}, "m", 3, 3, layout_.get(), nullptr,
                           &design_db_);
