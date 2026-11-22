@@ -219,9 +219,7 @@ TEST_F(RowGuideTest, AvailableRightSpanUpTo) {
   EXPECT_EQ(20000 - 350 - 50, row.AvailableRightSpanUpTo(20000));
 }
 
-// TODO(aryap): AvailableRightSpanUpTo dereferences tap_cell_ without checking
-// that one was set.
-TEST_F(RowGuideTest, DISABLED_AvailableRightSpanUpTo_NoTapCell) {
+TEST_F(RowGuideTest, AvailableRightSpanUpTo_NoTapCell) {
   RowGuide row = MakeRow({0, 0});
   row.InstantiateBack("a", wide_.get());
   EXPECT_EQ(700, row.AvailableRightSpanUpTo(1000));

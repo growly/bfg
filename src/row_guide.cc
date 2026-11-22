@@ -152,7 +152,7 @@ geometry::Instance *RowGuide::AddTap() {
 int64_t RowGuide::AvailableRightSpanUpTo(uint64_t max) const {
   int64_t current_span = static_cast<int64_t>(Width());
   int64_t to_cover = static_cast<int64_t>(max) - current_span;
-  if (to_cover < 0) {
+  if (to_cover < 0 || !tap_cell_) {
     return to_cover;
   }
   int64_t tap_width = tap_cell_->get().layout()->GetTilingBounds().Width();
