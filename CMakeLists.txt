@@ -519,6 +519,7 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
   ${PROJECT_SOURCE_DIR}/src/layout_test.cc
   ${PROJECT_SOURCE_DIR}/src/parameter_test.cc
+  ${PROJECT_SOURCE_DIR}/src/physical_properties_database_test.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/route_manager_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_blockage_cache_test.cc
