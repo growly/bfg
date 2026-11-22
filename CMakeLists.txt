@@ -35,6 +35,15 @@ endif()
 # https://stackoverflow.com/questions/49095153/cmake-failing-to-link-against-google-profiler-gperftools
 add_link_options(-Wl,-no-as-needed)
 
+# Build with gcov instrumentation, for measuring test coverage. See
+# scripts/coverage.sh.
+option(BFG_COVERAGE "Build with gcov coverage instrumentation" OFF)
+if (BFG_COVERAGE)
+  message(STATUS "Coverage instrumentation is on")
+  add_compile_options(--coverage -O0)
+  add_link_options(--coverage)
+endif()
+
 # For googletest on Windows.
 #set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 

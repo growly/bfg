@@ -5,12 +5,14 @@ Baseline (2026-11-21, gcov, `bfg_test` only): 18.8% of lines (4207/22430) and
 
 Status key: `[ ]` todo, `[x]` done, `[~]` in progress.
 
-## Phase 0: make coverage measurable
+## Phase 0: make coverage measurable (done 2026-11-22)
 
-- [ ] `BFG_COVERAGE` CMake option adding `--coverage`
-- [ ] Script to run `bfg_test` and aggregate gcov output (use
-      `--preserve-paths`; basenames like `instance.cc` collide otherwise)
-- [ ] Optional: report coverage in CI
+- [x] `BFG_COVERAGE` CMake option adding `--coverage`
+- [x] `scripts/coverage.sh` builds, runs and summarises (via
+      `scripts/coverage_summary.py`, which can also list unexecuted
+      functions per file)
+- [ ] Optional: report coverage in CI (skipped for now: CI builds in Docker
+      without the option)
 
 ## Phase 1: pure-logic units (done 2026-11-21)
 
@@ -204,3 +206,4 @@ output, so it is a larger change than the other fixes here.
   questions left open. 549 tests pass.
 - 2026-11-22: Noted rotation/reflection contradictions in the code; deferred
   fixing them until the other low-hanging fruit are done.
+- 2026-11-22: Phase 0 done: `BFG_COVERAGE` option and `scripts/coverage.sh`.
