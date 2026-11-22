@@ -831,5 +831,150 @@ TEST(PolyLineTest, NotchAroundCorner_Backwards) {
   line.RemoveNotchesAroundCorners();
 }
 
+TEST(PolyLineTest, GetBoundingBox) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, -5}, {3, -5}});
+  line.set_layer(3);
+  Rectangle bounding_box = line.GetBoundingBox();
+  EXPECT_EQ(Point(0, -5), bounding_box.lower_left());
+  EXPECT_EQ(Point(10, 0), bounding_box.upper_right());
+  EXPECT_EQ(3, bounding_box.layer());
+}
+
+TEST(PolyLineTest, FlipHorizontal) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, -5}, {3, -5}});
+  line.FlipHorizontal();
+  std::vector<Point> expected = {{10, 0}, {0, 0}, {0, -5}, {7, -5}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, FlipVertical) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, -5}, {3, -5}});
+  line.FlipVertical();
+  std::vector<Point> expected = {{0, -5}, {10, -5}, {10, 0}, {3, 0}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, LineAtPoint) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, 10}});
+
+  std::optional<Line> found = line.LineAtPoint({5, 0});
+  ASSERT_TRUE(found);
+  EXPECT_EQ(Point(0, 0), found->start());
+  EXPECT_EQ(Point(10, 0), found->end());
+
+  found = line.LineAtPoint({10, 5});
+  ASSERT_TRUE(found);
+  EXPECT_EQ(Point(10, 0), found->start());
+  EXPECT_EQ(Point(10, 10), found->end());
+
+  // A shared vertex belongs to the first segment that contains it.
+  found = line.LineAtPoint({10, 0});
+  ASSERT_TRUE(found);
+  EXPECT_EQ(Point(0, 0), found->start());
+
+  // On the infinite extension of a segment, but not within it.
+  EXPECT_FALSE(line.LineAtPoint({20, 0}));
+  EXPECT_FALSE(line.LineAtPoint({5, 5}));
+}
+
+TEST(PolyLineTest, ExtendToInclude_PointAlreadyOnLine) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, 10}});
+  line.ExtendToInclude({5, 0});
+  std::vector<Point> expected = {{0, 0}, {10, 0}, {10, 10}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, ExtendToInclude_PointOffLine) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, 10}});
+  line.ExtendToInclude({5, 5});
+  std::vector<Point> expected = {{0, 0}, {10, 0}, {10, 10}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, ExtendToInclude_SingleSegmentPastEnd) {
+  PolyLine line = PolyLine(std::vector<Point>{{0, 0}, {10, 0}});
+  line.ExtendToInclude({15, 0});
+  std::vector<Point> expected = {{0, 0}, {15, 0}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, ExtendToInclude_PastStart) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, 10}});
+  line.ExtendToInclude({-5, 0});
+  std::vector<Point> expected = {{-5, 0}, {10, 0}, {10, 10}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, ExtendToInclude_PastEnd) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, 10}});
+  line.ExtendToInclude({10, 15});
+  std::vector<Point> expected = {{0, 0}, {10, 0}, {10, 15}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+// TODO(aryap): ExtendToInclude has two bugs:
+//  - The last line is built from (segments_.end() - 1)->end to itself, which is
+//    degenerate; it should start at (segments_.end() - 2)->end. Extending past
+//    the end only works above because the degenerate line looks vertical.
+//  - With a single segment, both candidate lines are the same and the point is
+//    on both, so the distance comparison is always a tie and the end is always
+//    moved, even when the point is past the start.
+// Enable these once fixed.
+TEST(PolyLineTest, DISABLED_ExtendToInclude_PastHorizontalEnd) {
+  PolyLine line = PolyLine({{0, 0}, {10, 0}, {10, 10}, {20, 10}});
+  line.ExtendToInclude({25, 10});
+  std::vector<Point> expected = {{0, 0}, {10, 0}, {10, 10}, {25, 10}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, DISABLED_ExtendToInclude_SingleSegmentPastStart) {
+  PolyLine line = PolyLine(std::vector<Point>{{0, 0}, {10, 0}});
+  line.ExtendToInclude({-5, 0});
+  std::vector<Point> expected = {{-5, 0}, {10, 0}};
+  EXPECT_EQ(expected, line.Vertices());
+}
+
+TEST(PolyLineTest, InsertBulgeLater_MatchesInsertBulge) {
+  PolyLine immediate = PolyLine({{0, 9}, {12, 9}, {12, 0}});
+  immediate.InsertBulge(Point(12, 5), 2, 2);
+
+  PolyLine deferred = PolyLine({{0, 9}, {12, 9}, {12, 0}});
+  deferred.InsertBulgeLater(Point(12, 5), 2, 2);
+  // Nothing changes until the bulges are applied.
+  std::vector<Point> original = {{0, 9}, {12, 9}, {12, 0}};
+  EXPECT_EQ(original, deferred.Vertices());
+
+  deferred.ApplyDeferredBulges();
+  EXPECT_EQ(immediate.Vertices(), deferred.Vertices());
+
+  // Applying again is a no-op since the deferred list is cleared.
+  deferred.ApplyDeferredBulges();
+  EXPECT_EQ(immediate.Vertices(), deferred.Vertices());
+}
+
+TEST(PolyLineTest, CancelDeferredBulge) {
+  PolyLine line = PolyLine({{0, 9}, {12, 9}, {12, 0}});
+  line.InsertBulgeLater(Point(12, 5), 2, 2);
+  line.InsertBulgeLater(Point(4, 9), 2, 2);
+  line.CancelDeferredBulge(Point(12, 5));
+  line.ApplyDeferredBulges();
+
+  PolyLine expected = PolyLine({{0, 9}, {12, 9}, {12, 0}});
+  expected.InsertBulge(Point(4, 9), 2, 2);
+  EXPECT_EQ(expected.Vertices(), line.Vertices());
+}
+
+TEST(PolyLineTest, DeleteLastDeferredBulge) {
+  PolyLine line = PolyLine({{0, 9}, {12, 9}, {12, 0}});
+  line.InsertBulgeLater(Point(4, 9), 2, 2);
+  line.InsertBulgeLater(Point(12, 5), 2, 2);
+  line.DeleteLastDeferredBulge();
+  line.ApplyDeferredBulges();
+
+  PolyLine expected = PolyLine({{0, 9}, {12, 9}, {12, 0}});
+  expected.InsertBulge(Point(4, 9), 2, 2);
+  EXPECT_EQ(expected.Vertices(), line.Vertices());
+}
+
 }  // namespace geometry
 }  // namespace bfg

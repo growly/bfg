@@ -1,7 +1,12 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
+#include <optional>
+#include <vector>
+
 #include "rectangle.h"
+#include "../dev_pdk_setup.h"
+#include "../physical_properties_database.h"
 
 namespace bfg {
 namespace geometry {
@@ -360,6 +365,61 @@ TEST(RectangleTest, CombinedOperations_MirrorXThenMirrorY) {
   rect1.MirrorY();
   rect2.Rotate(180);
   EXPECT_TRUE(rect1 == rect2);
+}
+
+TEST(RectangleTest, AccumulatedOver_Empty) {
+  EXPECT_FALSE(Rectangle::AccumulatedOver({}));
+}
+
+TEST(RectangleTest, AccumulatedOver_Single) {
+  Rectangle only(Point(1, 2), Point(3, 4));
+  std::optional<Rectangle> cover = Rectangle::AccumulatedOver({&only});
+  ASSERT_TRUE(cover);
+  EXPECT_EQ(only, *cover);
+}
+
+TEST(RectangleTest, AccumulatedOver_Many) {
+  Rectangle a(Point(0, 0), Point(10, 10));
+  Rectangle b(Point(-5, 3), Point(2, 4));
+  Rectangle c(Point(7, -2), Point(20, 15));
+  std::optional<Rectangle> cover = Rectangle::AccumulatedOver({&a, &b, &c});
+  ASSERT_TRUE(cover);
+  EXPECT_EQ(Rectangle(Point(-5, -2), Point(20, 15)), *cover);
+}
+
+class RectangleWithKeepoutTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    physical_db_.LoadTechnologyFromFile("test_data/sky130.technology.pb");
+    bfg::SetUpSky130(&physical_db_);
+  }
+
+  bfg::PhysicalPropertiesDatabase physical_db_;
+};
+
+TEST_F(RectangleWithKeepoutTest, UsesOwnLayer) {
+  Layer met1 = physical_db_.GetLayer("met1.drawing");
+  int64_t min_separation = physical_db_.Rules("met1.drawing").min_separation;
+  ASSERT_GT(min_separation, 0);
+
+  Rectangle rect(Point(0, 0), Point(100, 50), met1, "");
+  Rectangle keepout = rect.WithKeepout(physical_db_, std::nullopt);
+
+  // Shapes exactly min_separation away are allowed, so the keepout stops one
+  // unit short of that.
+  EXPECT_EQ(rect.WithPadding(min_separation - 1), keepout);
+  EXPECT_EQ(Point(-(min_separation - 1), -(min_separation - 1)),
+            keepout.lower_left());
+}
+
+TEST_F(RectangleWithKeepoutTest, UsesNamedLayer) {
+  Layer met1 = physical_db_.GetLayer("met1.drawing");
+  int64_t li_separation = physical_db_.Rules("li.drawing").min_separation;
+  ASSERT_NE(li_separation, physical_db_.Rules("met1.drawing").min_separation);
+
+  Rectangle rect(Point(0, 0), Point(100, 50), met1, "");
+  EXPECT_EQ(rect.WithPadding(li_separation - 1),
+            rect.WithKeepout(physical_db_, "li.drawing"));
 }
 
 }  // namespace

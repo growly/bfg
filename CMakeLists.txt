@@ -478,6 +478,7 @@ set(ATOMS_TEST_SRC
 
 set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/arc_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/compass_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/group_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/radian_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance_test.cc
@@ -488,6 +489,7 @@ set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rounded_rectangle_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/shape_collection_test.cc
 )
 
 set(CIRCUIT_TEST_SRC
@@ -505,6 +507,7 @@ set(TEST_SRC
   ${GEOMETRY_TEST_SRC}
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
+  ${PROJECT_SOURCE_DIR}/src/parameter_test.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/route_manager_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_blockage_cache_test.cc
