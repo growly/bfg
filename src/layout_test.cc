@@ -254,9 +254,7 @@ TEST_F(LayoutTest, ConsumeLayout) {
   EXPECT_EQ(1, layout->instances().size());
 }
 
-// TODO(aryap): ShapeCollection::Consume moves the unique_ptrs out but leaves
-// the (now null) entries behind in the source collection.
-TEST_F(LayoutTest, DISABLED_ConsumeLayout_EmptiesSource) {
+TEST_F(LayoutTest, ConsumeLayout_EmptiesSource) {
   std::unique_ptr<Layout> other = MakeLayout();
   other->AddRectangle(Rectangle({0, 0}, {1, 1}));
 

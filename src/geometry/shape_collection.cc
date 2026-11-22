@@ -142,6 +142,11 @@ void ShapeCollection::Consume(ShapeCollection *other) {
   for (auto &poly_line : other->poly_lines_) {
     poly_lines_.emplace_back(std::move(poly_line));
   }
+  // Don't leave moved-from nullptrs behind.
+  other->rectangles_.clear();
+  other->polygons_.clear();
+  other->ports_.clear();
+  other->poly_lines_.clear();
 }
 
 void ShapeCollection::Add(

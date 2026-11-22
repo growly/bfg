@@ -180,6 +180,8 @@ TEST(ShapeCollectionTest, Consume) {
   EXPECT_EQ(2, target.poly_lines().size());
   EXPECT_EQ("c", target.rectangles().front()->net());
   EXPECT_EQ("a", target.rectangles().at(1)->net());
+
+  EXPECT_TRUE(source.Empty());
 }
 
 TEST(ShapeCollectionTest, KeepOnlyNets) {
