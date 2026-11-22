@@ -75,9 +75,7 @@ class LayoutSky130Test : public testing::Test {
   PhysicalPropertiesDatabase physical_db_;
 };
 
-// TODO(aryap): Layout's constructor does not initialise parent_cell_, which
-// NameOrParentName (and so ToVLSIRLayout) reads when the layout has no name.
-TEST_F(LayoutTest, DISABLED_ParentCellIsInitialised) {
+TEST_F(LayoutTest, ParentCellIsInitialised) {
   alignas(Layout) unsigned char storage[sizeof(Layout)];
   std::memset(storage, 0xab, sizeof(storage));
   Layout *layout = new (storage) Layout(physical_db_);

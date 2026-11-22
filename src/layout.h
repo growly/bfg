@@ -483,7 +483,7 @@ class Layout : public geometry::Manipulable {
   const geometry::Rectangle GetBoundingBox(
       bool use_tiling_bounds_for_children) const;
 
-  bfg::Cell *parent_cell_;
+  bfg::Cell *parent_cell_ = nullptr;
 
   std::string name_;
 
