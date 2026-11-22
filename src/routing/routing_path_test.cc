@@ -106,10 +106,7 @@ TEST_F(RoutingPathTest, SpannedVertices) {
   EXPECT_EQ(path->vertices(), with_vias);
 }
 
-// TODO(aryap): SpannedVerticesWithoutVias passes the path-ordered vector from
-// SpannedVerticesWithVias to std::set_difference, which needs sorted input, so
-// vertices with vias can leak into the result.
-TEST_F(RoutingPathTest, DISABLED_SpannedVerticesWithoutVias) {
+TEST_F(RoutingPathTest, SpannedVerticesWithoutVias) {
   std::unique_ptr<RoutingPath> path = FindPath({0, 0}, {kSize, kSize}, "a");
   ASSERT_NE(nullptr, path);
   std::set<RoutingVertex*> spanned = path->SpannedVertices();
