@@ -109,29 +109,65 @@ Overall: 20.9% -> 24.8% of lines, 38.2% -> 44.7% of functions. 549 tests pass.
 
 Overall: 24.8% -> 32.6% of lines, 44.7% -> 56.9% of functions. 622 tests pass.
 
-## Phase 4: generator smoke tests
+## Phase 4: generator smoke tests (done 2026-11-22; to be revisited)
 
-For each atom/tile, `Generate()` with default and edge parameters, then check
-the cell has layout and circuit, expected ports exist, circuit ports match
-layout pins, the bounding box is sane, and device counts match parameters.
+**Revisit:** generator tests (atoms and tiles) need to be higher level than
+unit tests, running external tools: DRC, LVS and simulation. The smoke tests
+below only check that generation completes and produces something
+plausible; it is not yet clear how useful they are as unit tests. Decide
+what to keep once the higher-level flow exists.
 
-- [ ] Atoms: `sky130_mux`, `sky130_split_buffer`, `sky130_interconnect_mux1`,
-      `sky130_interconnect_mux2`, `sky130_transmission_gate`,
-      `sky130_transmission_gate_stack`, `sky130_dfxtp`, `sky130_decap`,
-      `sky130_carry1`, `sky130_buf`, `sky130_hd_mux2_1`, `sky130_xor2`,
-      `sky130_tap`, `sky130_switch_complex`, `sky130_passive_mux3`,
-      `gf180mcu_mux`
-- [ ] Tiles: `lut_b`, `lut`, `s44`, `reduced_tile`, `interconnect`,
-      `interconnect_wire_block`, `slice`, `fabric`
-- [ ] Fill in or delete the empty `Sky130TransmissionGateTest.ViaLocations`
-- [ ] Revisit the 3 disabled tests
+`atoms/generator_test_fixture.h` sets up a `DesignDatabase` the way `main()`
+does (Sky130 technology, primitives and standard cells; CMake copies the
+packages into the test data directory) and checks that a generated cell has a
+non-empty layout and, where circuits are implemented, ports, with pins for
+named ports.
 
-## Phase 5: placement helpers and databases
+- [x] Atoms (`atoms/generators_test.cc`, in `bfg_test`): `Sky130Buf`,
+      `Sky130Carry1`, `Sky130Decap`, `Sky130Dfxtp`, `Sky130HdMux21`,
+      `Sky130InterconnectMux1`, `Sky130InterconnectMux2` (the two
+      configurations `ReducedTile` uses), `Sky130Mux`, `Sky130PassiveMux3`
+      and `Sky130SwitchComplex` (layout only; their circuits are
+      unimplemented), `Sky130SplitBuffer`, `Sky130Tap`,
+      `Sky130TransmissionGate`, `Sky130TransmissionGateStack`, `Sky130Xor2`,
+      `LayoutDemo`. Together under 2 s.
+- [x] `InterconnectWireBlock` (`tiles/interconnect_wire_block_test.cc`, in
+      `bfg_test`): the default has no wires, so a one-bundle channel is used.
+- [x] Other tiles (`tiles/slow_generators_test.cc`, in the new
+      `bfg_slow_test`, which ctest does not run): each takes minutes even at
+      `-O2`, so they are run by hand. At `-O2`: `LutB` passes (~80 s); `S44`
+      generates (~200 s; layout only, its circuit has no ports);
+      `Interconnect` takes over 4 minutes; `Lut` aborts in routing
+      (disabled); `Slice` hit a naming bug (see below).
+- [ ] `Gf180McuMux` (needs a GF180 fixture)
+- [ ] Device-count checks against parameters
+- [x] `Sky130TransmissionGateTest.ViaLocations` (empty) and the 3 disabled
+      tests from before this work: left as they were
 
-- [ ] `row_guide.cc`
-- [ ] `memory_bank.cc`
-- [ ] `checkerboard_guide.cc`
-- [ ] `circuit.cc`, `design_database.cc`
+## Phase 5: placement helpers and databases (done 2026-11-22)
+
+- [x] `row_guide.cc` (new `row_guide_test.cc`): placement front and back,
+      blank space, vertical centring, rotation, moves, taps, span, circuit
+      instances
+- [x] `memory_bank.cc` (new `memory_bank_test.cc`): row creation and rotation,
+      vertical abutment, left/right alignment, moves, `InsertRowZero`, taps
+- [x] `checkerboard_guide.cc` (new `checkerboard_guide_test.cc`)
+- [x] `circuit.cc` (new `circuit_test.cc`), `design_database.cc` (new
+      `design_database_test.cc`)
+
+| File | Lines before | Lines after |
+|---|---|---|
+| `row_guide.cc` | 0% | 93% |
+| `memory_bank.cc` | 0% | 92% |
+| `checkerboard_guide.cc` | 0% | 99% |
+| `circuit.cc` | 0% | 79% |
+| `design_database.cc` | 0% | 78% |
+| `atoms/sky130_mux.cc` | 0% | 92% |
+| `atoms/sky130_interconnect_mux1.cc` | 0% | 92% |
+| `atoms/sky130_split_buffer.cc` | 0% | 94% |
+
+Overall (`bfg_test` only): 32.6% -> 67.5% of lines, 56.9% -> 78.7% of
+functions. 693 tests pass.
 
 ## Bugs found by new tests
 
@@ -186,6 +222,26 @@ Fixed on branch `test-coverage`, with their tests enabled:
       vector. No callers yet. (2694d19)
 - [x] `RoutingTrack::RemoveTemporaryBlockage` returned true when nothing was
       removed. (8865641)
+
+## Bugs found in phases 4 and 5
+
+Fixed on branch `test-coverage`, with their tests enabled:
+
+- [x] `RowGuide::GetBoundingBox` ignored all but the first and last instance.
+      (2884c3f)
+- [x] `RowGuide::AvailableRightSpanUpTo` dereferenced an unset tap cell.
+      (a75f6d0)
+- [x] `MemoryBank::AlignLeft`/`AlignRight` started from x = 0, so moved banks
+      snapped back. (ff6f870)
+- [x] `CheckerboardGuide` made stripes, not a checkerboard, for odd column
+      counts. (8122ca7)
+- [x] `Circuit` left `parent_cell_`, `type_` and `unnamed_net_count_`
+      uninitialised; unnamed circuits dereferenced garbage. (cc98f67)
+- [x] `Layout` left `parent_cell_` uninitialised. (abe2ec7)
+- [x] `Circuit::AddPort` warned about width mismatches only when widths
+      matched. (950cd2e)
+- [ ] `Slice` names every LUT instance `lut_i`, a fatal duplicate. Fix
+      (`"_", i`) being verified in `bfg_slow_test`.
 
 ## Open questions (need a decision before fixing)
 
@@ -244,10 +300,26 @@ output, so it is a larger change than the other fixes here.
   vertex on it.
 - `RoutingTrack::MergeNewBlockage` erases merged blockages from its container
   without deleting them.
+- `Sky130InterconnectMux2` aborts with the default `num_inputs` (6): a gate
+  stack select port is connected twice. The configurations in use (7, and 5
+  inside out) work; 3 hits an explicit check.
+- `CheckerboardGuide` computes column widths assuming a template for every
+  grid cell, but assigns templates only to occupied cells, so with several
+  templates of different widths the columns can be sized from the wrong
+  cells. It happens to be right for `LutB`'s 2 x 2 grid.
+- `MemoryBank` creates new rows at x = 0 regardless of where the bank was
+  moved (documented in the header as a TODO).
+- `DesignDatabase::OrderCells` (private, unused) sorts with a comparator that
+  is not a strict weak ordering. `LoadModule` builds and leaks a second
+  `Circuit`. `Tile::GenerateIntoDatabase` ignores `ConsumeCell` failing on a
+  duplicate name, leaking the new cell.
+- `Lut` (the older LUT design) aborts in routing with default parameters.
 
 
 ## Later
 
+- [ ] Replace or supplement the generator smoke tests with DRC, LVS and
+      simulation checks (see Phase 4).
 - [ ] Resolve the instance rotation and reflection contradictions (see Open
       questions), then enable the 4 disabled tests in
       `geometry/instance_test.cc`.
@@ -268,3 +340,4 @@ output, so it is a larger change than the other fixes here.
   fixing them until the other low-hanging fruit are done.
 - 2026-11-22: Phase 0 done: `BFG_COVERAGE` option and `scripts/coverage.sh`.
 - 2026-11-22: Phase 3 done: 73 new tests; fixed 8 bugs. 622 tests pass.
+- 2026-11-22: Phases 4 and 5 done; fixed 7 more bugs.

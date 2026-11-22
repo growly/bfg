@@ -537,6 +537,7 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/routing/routing_track_direction_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_collector_test.cc
   ${PROJECT_SOURCE_DIR}/src/memory_bank_test.cc
+  ${PROJECT_SOURCE_DIR}/src/tiles/interconnect_wire_block_test.cc
   ${PROJECT_SOURCE_DIR}/src/row_guide_test.cc
   ${PROJECT_SOURCE_DIR}/src/utility_test.cc
 )
@@ -563,6 +564,30 @@ target_link_libraries(bfg_test
 
 include(GoogleTest)
 gtest_discover_tests(bfg_test)
+
+# Smoke tests that generate whole tiles. Each takes minutes even in an
+# optimised build, so they are kept out of bfg_test and ctest; run
+# ./bfg_slow_test by hand.
+set(SLOW_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/tiles/slow_generators_test.cc
+)
+add_executable(bfg_slow_test
+  ${SLOW_TEST_SRC}
+  src/dev_pdk_setup.cc)   # Temporary hack to set up PDK data.
+target_link_libraries(bfg_slow_test
+  bfg
+  Threads::Threads
+  gtest
+  gtest_main
+  GTest::gmock
+  ${tcmalloc_lib}
+  ${profiler_lib}
+  gflags
+  glog::glog
+  absl::strings
+  ${Protobuf_LIBRARIES}
+  re2::re2
+)
 
 # Test data
 # ---------
