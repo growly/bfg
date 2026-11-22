@@ -429,7 +429,7 @@ void Layout::AddPortByNet(const std::string &name, geometry::Port *port) {
 
 void Layout::DeletePorts(const std::string &name) {
   // Get the set of ports.
-  geometry::PortSet matching_ports;
+  geometry::PortSet matching_ports = geometry::Port::MakePortSet();
   GetPorts(name, &matching_ports);
   for (const geometry::Port *port : matching_ports) {
     ShapeCollection *collection = GetShapeCollection(port->layer());

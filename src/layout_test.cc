@@ -407,9 +407,7 @@ TEST_F(LayoutTest, CopyShapesOnLayer) {
   EXPECT_EQ("i.b", shapes.rectangles().at(1)->net());
 }
 
-// TODO(aryap): DeletePorts default-constructs a PortSet, whose comparator is
-// then a null function pointer; inserting a second port crashes.
-TEST_F(LayoutTest, DISABLED_PortsAndDeletePorts) {
+TEST_F(LayoutTest, PortsAndDeletePorts) {
   std::unique_ptr<Layout> layout = MakeLayout();
   layout->AddPort(Port({0, 0}, {1, 1}, 0, "a"));
   layout->AddPort(Port({2, 0}, {3, 1}, 0, "a"));
