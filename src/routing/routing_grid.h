@@ -884,6 +884,9 @@ class RoutingGrid {
   friend class RoutingGridBlockage;
 
   friend class RoutingPath;
+
+  // For testing private search helpers.
+  friend class RoutingGridTest;
 };
 
 

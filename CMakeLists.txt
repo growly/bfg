@@ -522,6 +522,8 @@ set(TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/route_manager_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_blockage_cache_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_grid_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_path_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_edge_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_test.cc
