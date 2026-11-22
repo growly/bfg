@@ -421,10 +421,7 @@ TEST_F(RoutingTrackWithVerticesTest, TemporaryBlockageAwayFromTrack) {
   EXPECT_EQ(nullptr, edge_blockage);
 }
 
-// TODO(aryap): RemoveTemporaryBlockage returns true even when the blockage
-// was not found.
-TEST_F(RoutingTrackWithVerticesTest,
-       DISABLED_RemoveTemporaryBlockage_NotFound) {
+TEST_F(RoutingTrackWithVerticesTest, RemoveTemporaryBlockage_NotFound) {
   RoutingTrackBlockage unknown(0, 10, "");
   EXPECT_FALSE(track_.RemoveTemporaryBlockage(&unknown));
 }

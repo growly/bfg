@@ -1426,7 +1426,7 @@ bool RoutingTrack::RemoveTemporaryBlockage(RoutingTrackBlockage *blockage) {
     edge_blockages.erase(it);
     return true;
   }
-  return true;
+  return false;
 }
 
 bool RoutingTrack::ApplyVertexBlockageToSingleVertex(
