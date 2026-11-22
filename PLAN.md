@@ -147,7 +147,14 @@ Fixed on branch `test-coverage`, with their tests enabled:
 
 Instance rotation and reflection are applied inconsistently. Disabled tests in
 `geometry/instance_test.cc` describe the behaviour that would be consistent
-with `Instance::GetBoundingBox` and `Layout::Flatten`:
+with `Instance::GetBoundingBox` and `Layout::Flatten`. The contradictions are
+also noted in the code, beside the transform members in
+`geometry/instance.h`.
+
+**Deferred:** revisit this after the other low-hanging fruit in this plan are
+done (phases 0 and 3-5). Resolving it means choosing one convention, checking
+it against how VLSIR writes GDS rotations, and possibly changing generator
+output, so it is a larger change than the other fixes here.
 
 - [ ] `Instance::GeneratePorts` converts the rotation to clockwise before
       passing it to a counter-clockwise function, so ports on instances
@@ -177,6 +184,12 @@ with `Instance::GetBoundingBox` and `Layout::Flatten`:
   only flip in place when the bounding box starts at the origin; `PolyLine`'s
   version flips in place anywhere.
 
+## Later
+
+- [ ] Resolve the instance rotation and reflection contradictions (see Open
+      questions), then enable the 4 disabled tests in
+      `geometry/instance_test.cc`.
+
 ## Out of scope
 
 `main.cc`, `router_service_*`, `router_session.cc`: not linked into
@@ -189,3 +202,5 @@ with `Instance::GetBoundingBox` and `Layout::Flatten`:
 - 2026-11-21: Fixed the 6 bugs found in phase 1. 490 tests pass.
 - 2026-11-21: Phase 2 done: 59 new tests; fixed 6 bugs; rotation/reflection
   questions left open. 549 tests pass.
+- 2026-11-22: Noted rotation/reflection contradictions in the code; deferred
+  fixing them until the other low-hanging fruit are done.

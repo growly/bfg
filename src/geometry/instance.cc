@@ -147,6 +147,9 @@ bool Instance::HasPort(const std::string &name) const {
 
 void Instance::GeneratePorts() {
   std::unique_lock mu(lock_);
+  // TODO(aryap): This turns ports the opposite way to the instance's shapes
+  // for 90 and 270 degrees, and ignores reflect_vertical_. See the note on the
+  // transform members in instance.h.
   int32_t rotation_ccw_degrees = (360 - (rotation_degrees_ccw_ % 360)) % 360;
   instance_ports_.clear();
   for (const auto &port : template_layout_->Ports()) {

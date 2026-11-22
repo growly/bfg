@@ -363,7 +363,9 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     *instance_pb->mutable_origin_location() =
         instance->lower_left().ToVLSIRPoint(physical_db_);
     instance_pb->set_reflect_vert(instance->reflect_vertical());
-    // FIXME(aryap): VLSIR needs to make this ccw:
+    // FIXME(aryap): VLSIR needs to make this ccw. See the note on the
+    // transform members in geometry/instance.h for how this relates to the
+    // rest of BFG.
     instance_pb->set_rotation_clockwise_degrees(
         instance->rotation_degrees_ccw());
   }
