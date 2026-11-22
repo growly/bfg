@@ -152,10 +152,7 @@ TEST_F(RowGuideTest, GetBoundingBox) {
   EXPECT_EQ(Rectangle({0, 0}, {400, 200}), *row.GetBoundingBox());
 }
 
-// TODO(aryap): GetBoundingBox uses the lower left of the front instance and the
-// upper right of the back instance, which is wrong when instances differ in
-// height.
-TEST_F(RowGuideTest, DISABLED_GetBoundingBox_DifferentHeights) {
+TEST_F(RowGuideTest, GetBoundingBox_DifferentHeights) {
   RowGuide row = MakeRow({0, 0});
   row.InstantiateBack("narrow", narrow_.get());
   row.InstantiateBack("tall", tall_.get());

@@ -360,9 +360,12 @@ std::optional<geometry::Rectangle> RowGuide::GetBoundingBox() const {
   if (instances_.empty()) {
     return std::nullopt;
   }
-  return {{
-      instances_.front()->GetBoundingBox().lower_left(),
-      instances_.back()->GetBoundingBox().upper_right()}};
+  // Instances can differ in height, so every one has to be considered.
+  geometry::Rectangle bounding_box = instances_.front()->GetBoundingBox();
+  for (auto it = instances_.begin() + 1; it != instances_.end(); ++it) {
+    bounding_box.ExpandToCover((*it)->GetBoundingBox());
+  }
+  return bounding_box;
 }
 
 std::optional<geometry::Rectangle> RowGuide::GetTilingBounds() const {
