@@ -487,6 +487,7 @@ set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/vector_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/port_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rounded_rectangle_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/shape_collection_test.cc
