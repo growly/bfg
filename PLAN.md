@@ -96,26 +96,21 @@ layout pins, the bounding box is sane, and device counts match parameters.
 
 ## Bugs found by new tests
 
-Each has a `DISABLED_` test that fails against the current code and should be
-enabled once the bug is fixed. Production code has not been changed.
+All fixed on branch `test-coverage`, with their tests enabled:
 
-- [ ] `PolyLine(const PolyLine&)` does not copy the `Shape` base: copies lose
-      layer, net and `is_connectable`. Affects every `ShapeCollection` copy.
-      `ShapeCollectionTest.DISABLED_CopiedPolyLinesKeepNet`
-- [ ] `Parameter::FromVLSIRParameter` leaves `unit_prefix` uninitialised for
-      unprefixed values. `ParameterTest.DISABLED_FromVLSIRParameter_UnprefixedHasNoUnit`
-- [ ] `PolyLine::ExtendToInclude` builds the last line from
-      `(segments_.end() - 1)->end` to itself (should be `end() - 2`), and with
-      one segment always moves the end. No callers yet.
-      `PolyLineTest.DISABLED_ExtendToInclude_*`
-- [ ] `EquivalentNets::Delete` of the primary leaves `primary_` pointing at a
-      name not in the set, breaking the class invariant.
-      `EquivalentNets.DISABLED_DeletePrimaryKeepsInvariant`
-- [ ] `operator<<(Compass)` prints `LOWER:` and `LOWER_LEFT:` with a stray
-      colon. `CompassTest.DISABLED_PrintLower`
-- [ ] Not tested yet: `ShapeCollection::GetBoundingBox` throws
-      `bad_optional_access` on a collection that is empty or holds only poly
-      lines.
+- [x] `PolyLine(const PolyLine&)` did not copy the `Shape` base: copies lost
+      layer, net and `is_connectable`. Affected every `ShapeCollection` copy.
+      (c3b8d66)
+- [x] `Parameter::FromVLSIRParameter` left `unit_prefix` uninitialised for
+      unprefixed values. (77963ee)
+- [x] `PolyLine::ExtendToInclude` built the last line from the last vertex to
+      itself, and with one segment always moved the end. (71ea093)
+- [x] `EquivalentNets::Delete` of the primary left `primary_` naming a net not
+      in the set; now the first remaining name is promoted. (ce84157)
+- [x] `operator<<(Compass)` printed `LOWER:` and `LOWER_LEFT:`. (4a79a6d)
+- [x] `ShapeCollection::GetBoundingBox` threw `bad_optional_access` with no
+      rectangles, polygons or ports, which `Layout::GetBoundingBox` would hit
+      for any such layer. (f02da50)
 
 ## Out of scope
 
@@ -126,3 +121,4 @@ enabled once the bug is fixed. Production code has not been changed.
 
 - 2026-11-21: Measured baseline coverage. Wrote this plan.
 - 2026-11-21: Phase 1 done: 60 new tests, 6 disabled tests marking bugs.
+- 2026-11-21: Fixed the 6 bugs found in phase 1. 490 tests pass.
