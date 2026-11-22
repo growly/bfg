@@ -31,11 +31,8 @@ std::set<std::string> SignalNames(const vlsir::circuit::Module &module_pb) {
   return names;
 }
 
-// Circuits below are value-initialised ({}) until
-// DISABLED_DefaultMembersAreInitialised is fixed.
-
 TEST(CircuitTest, Signals) {
-  Circuit circuit{};
+  Circuit circuit;
   circuit::Signal *a = circuit.AddSignal("a", 4);
   EXPECT_EQ("a", a->name());
   EXPECT_EQ(4, a->width());
@@ -50,13 +47,13 @@ TEST(CircuitTest, Signals) {
 }
 
 TEST(CircuitTest, AddSignal_DuplicateDies) {
-  Circuit circuit{};
+  Circuit circuit;
   circuit.AddSignal("a", 1);
   EXPECT_DEATH(circuit.AddSignal("a", 1), "Duplicate signal name");
 }
 
 TEST(CircuitTest, PortsAreUniqueBySignal) {
-  Circuit circuit{};
+  Circuit circuit;
   circuit::Signal *a = circuit.AddSignal("a", 1);
   circuit::Port *port = circuit.AddPort(*a, circuit::Port::INPUT);
   EXPECT_EQ(port, circuit.AddPort(*a, circuit::Port::OUTPUT));
@@ -67,8 +64,8 @@ TEST(CircuitTest, PortsAreUniqueBySignal) {
 }
 
 TEST(CircuitTest, Instances) {
-  Circuit child{};
-  Circuit circuit{};
+  Circuit child;
+  Circuit circuit;
   circuit::Instance *instance = circuit.AddInstance("i", &child);
   EXPECT_EQ("i", instance->name());
   EXPECT_EQ(&child, instance->module());
@@ -77,12 +74,12 @@ TEST(CircuitTest, Instances) {
 }
 
 TEST(CircuitTest, ToVLSIRModule) {
-  Circuit circuit{};
+  Circuit circuit;
   circuit.set_name("top");
   circuit::Signal *a = circuit.AddSignal("a", 1);
   circuit.AddSignal("internal", 1);
   circuit.AddPort(*a);
-  Circuit child{};
+  Circuit child;
   child.set_name("child");
   circuit.AddInstance("i", &child);
 
@@ -134,13 +131,13 @@ TEST(CircuitTest, VLSIRExternalModuleRoundTrip) {
 }
 
 TEST(CircuitTest, AddCircuit) {
-  Circuit other{};
+  Circuit other;
   circuit::Signal *x = other.AddSignal("x", 1);
   circuit::Signal *vdd = other.AddSignal("vdd", 1);
   other.AddGlobal(vdd);
   other.AddPort(*x);
 
-  Circuit circuit{};
+  Circuit circuit;
   circuit.AddCircuit(other, "p");
   EXPECT_NE(nullptr, circuit.GetSignal("p__x"));
   // Globals are not prefixed.
@@ -150,13 +147,13 @@ TEST(CircuitTest, AddCircuit) {
 }
 
 TEST(CircuitTest, Flatten) {
-  Circuit child{};
+  Circuit child;
   child.set_name("child");
   circuit::Signal *in = child.AddSignal("in", 1);
   child.AddSignal("mid", 1);
   child.AddPort(*in);
 
-  Circuit parent{};
+  Circuit parent;
   circuit::Signal *net = parent.AddSignal("net", 1);
   circuit::Instance *instance = parent.AddInstance("i", &child);
   instance->Connect("in", *net);
@@ -171,7 +168,7 @@ TEST(CircuitTest, Flatten) {
 }
 
 TEST(CircuitTest, Describe) {
-  Circuit circuit{};
+  Circuit circuit;
   circuit.set_name("c");
   circuit.AddSignal("a", 1);
   EXPECT_NE(std::string::npos, circuit.Describe().find("1 signals"));
@@ -194,9 +191,7 @@ class OverGarbage {
   T *object_;
 };
 
-// TODO(aryap): Circuit's parent_cell_ (read by NameOrParentName when the
-// circuit has no name) and unnamed_net_count_ are not initialised.
-TEST(CircuitTest, DISABLED_DefaultMembersAreInitialised) {
+TEST(CircuitTest, DefaultMembersAreInitialised) {
   OverGarbage<Circuit> circuit;
   EXPECT_EQ(nullptr, circuit->parent_cell());
   EXPECT_EQ("n_0", circuit->AddSignal("", 1)->name());
