@@ -50,7 +50,7 @@ Cell *Slice::Generate() {
 
   for (size_t i = 0; i < parameters_.num_luts_left; ++i) {
     geometry::Instance *instance = left_luts.InstantiateRight(
-        i / 2, absl::StrCat(lut_name, "_i"), default_lut_cell);
+        i / 2, absl::StrCat(lut_name, "_", i), default_lut_cell);
   }
 
   std::unique_ptr<bfg::Layout> middle_layout(new bfg::Layout(db));
