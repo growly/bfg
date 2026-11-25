@@ -10,6 +10,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # For publishing test results as a check run and a PR comment.
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,7 +35,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Results are written as JUnit XML to a mounted directory so that they
+      # survive the container.
       - name: Run tests
         run: |
-          docker run --rm bfg-builder \
-            sh -c "ldconfig && cd /src/bfg/build && ctest --output-on-failure -j\$(nproc)"
+          mkdir -p test-results
+          docker run --rm -v "$PWD/test-results:/test-results" bfg-builder \
+            sh -c "ldconfig && cd /src/bfg/build && ctest --output-on-failure --output-junit /test-results/ctest.xml -j\$(nproc)"
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: (!cancelled())
+        with:
+          files: test-results/**/*.xml
