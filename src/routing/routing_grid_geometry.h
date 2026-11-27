@@ -1,6 +1,7 @@
 #ifndef ROUTING_GRID_GEOMETRY_H_
 #define ROUTING_GRID_GEOMETRY_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <shared_mutex>
 #include <utility>
@@ -296,7 +297,11 @@ std::map<RoutingTrack*, std::vector<geometry::Point>>
   auto [i_lower, i_upper, j_lower, j_upper] = MapToBoundingGridIndices(shape);
 
   // Iterate over columns:
-  for (int64_t i = i_lower; i <= i_upper; ++i) {
+  // The shape may extend beyond the grid, so its indices may be out of range.
+  int64_t num_columns = vertical_tracks_by_index_.size();
+  for (int64_t i = std::max(i_lower, 0L);
+       i <= std::min(i_upper, num_columns - 1);
+       ++i) {
     geometry::Line vertical_line = VerticalLineThrough(i);
     RoutingTrack *track = vertical_tracks_by_index_[i];
     if (!track) {
@@ -315,7 +320,10 @@ std::map<RoutingTrack*, std::vector<geometry::Point>>
     }
   }
   // Iterate over rows:
-  for (int64_t j = j_lower; j <= j_upper; ++j) {
+  int64_t num_rows = horizontal_tracks_by_index_.size();
+  for (int64_t j = std::max(j_lower, 0L);
+       j <= std::min(j_upper, num_rows - 1);
+       ++j) {
     geometry::Line horizontal_line = HorizontalLineThrough(j);
     RoutingTrack *track = horizontal_tracks_by_index_[j];
     if (!track) {
