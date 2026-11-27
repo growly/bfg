@@ -8,6 +8,7 @@
 #include "../layout.h"
 #include "../memory_bank.h"
 #include "../routing/routing_grid.h"
+#include "interconnect.h"
 #include "proto/parameters/slice.pb.h"
 #include "tile.h"
 
@@ -35,6 +36,8 @@ class Slice : public Tile {
   struct Parameters {
     size_t num_luts_left = 12;
     size_t num_luts_right = 12;
+
+    Interconnect::Parameters interconnect;
 
     // TODO(aryap): Complete.
 

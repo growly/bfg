@@ -54,8 +54,7 @@ Cell *Slice::Generate() {
   }
 
   std::unique_ptr<bfg::Layout> middle_layout(new bfg::Layout(db));
-  Interconnect::Parameters interconnect_params;
-  Interconnect interconnect_gen(interconnect_params, design_db_);
+  Interconnect interconnect_gen(parameters_.interconnect, design_db_);
   Cell *interconnect_cell =
       interconnect_gen.GenerateIntoDatabase("interconnect");
   geometry::Instance interconnect_instance(

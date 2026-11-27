@@ -137,8 +137,10 @@ named ports.
       `bfg_slow_test`, which ctest does not run): each takes minutes even at
       `-O2`, so they are run by hand. At `-O2`: `LutB` passes (~80 s); `S44`
       generates (~200 s; layout only, its circuit has no ports);
-      `Interconnect` takes over 4 minutes; `Lut` aborts in routing
-      (disabled); `Slice` hit a naming bug (see below); `ReducedTile` and
+      `Interconnect` and `Slice` run with a 2 x 4 interconnect (`Slice`
+      parameterised to take one) in ~30 s and ~115 s, ~2 GB peak, layout
+      only (no circuit ports yet); `Lut` aborts in routing
+      (disabled); `ReducedTile` and
       `Fabric` need an edge list CSV that is not in the repository
       (disabled).
 - [ ] `Gf180McuMux` (needs a GF180 fixture)
@@ -242,8 +244,11 @@ Fixed on branch `test-coverage`, with their tests enabled:
 - [x] `Layout` left `parent_cell_` uninitialised. (abe2ec7)
 - [x] `Circuit::AddPort` warned about width mismatches only when widths
       matched. (950cd2e)
-- [ ] `Slice` names every LUT instance `lut_i`, a fatal duplicate. Fix
-      (`"_", i`) being verified in `bfg_slow_test`.
+- [x] `Slice` named every LUT instance `lut_i`, a fatal duplicate. (46797e0)
+- [x] `RoutingGridGeometry::CandidateVertexPositionsOnCrossedTracks` indexed
+      the track vectors with unbounded indices for shapes extending beyond
+      the grid, returning garbage tracks; `Interconnect` segfaulted
+      depending on heap contents. (8ebf346)
 
 ## Open questions (need a decision before fixing)
 
@@ -316,6 +321,17 @@ output, so it is a larger change than the other fixes here.
   `Circuit`. `Tile::GenerateIntoDatabase` ignores `ConsumeCell` failing on a
   duplicate name, leaking the new cell.
 - `Lut` (the older LUT design) aborts in routing with default parameters.
+- The default `Interconnect` (8 x 16 muxes) needs ~54 GB: under the default
+  cost model every routing track connects every pair of its vertices
+  (`RoutingGrid::ConnectLayers` passes `use_linear_cost_model_` as
+  `edges_only_to_neighbours`), giving ~173M edges for its 530 x 586 tracks
+  against 0.6M neighbour-only. The linear cost model is left off so the
+  default model stays tested; the slow tests use a 2 x 4 interconnect.
+  Run `bfg_slow_test` under a memory cap, e.g.
+  `systemd-run --user --scope -p MemoryMax=8G -p MemorySwapMax=0`.
+- `Interconnect::RouteComplete` reads `mux_inputs[..][input_index]` before
+  checking `input_index` against the 6 inputs, so it reads past the vector
+  once a mux has 6 inputs assigned (the pointer is not used).
 
 
 ## Later
@@ -343,3 +359,7 @@ output, so it is a larger change than the other fixes here.
 - 2026-11-22: Phase 0 done: `BFG_COVERAGE` option and `scripts/coverage.sh`.
 - 2026-11-22: Phase 3 done: 73 new tests; fixed 8 bugs. 622 tests pass.
 - 2026-11-22: Phases 4 and 5 done; fixed 7 more bugs.
+- 2026-11-27: Diagnosed the OOM in the default `Interconnect`; shrank the
+  `Interconnect` and `Slice` slow tests to a 2 x 4 interconnect and enabled
+  `Slice`. Fixed an out-of-bounds track lookup found on the way. 694 tests
+  pass.

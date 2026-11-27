@@ -40,14 +40,29 @@ TEST_F(TileTest, S44) {
   ExpectLayout(Generate<S44>({}, "s44"));
 }
 
-// TODO(aryap): Slice names every LUT instance "lut_i", so the second one is
-// a fatal duplicate instance name.
-TEST_F(TileTest, DISABLED_Slice) {
-  ExpectWellFormed(Generate<Slice>({}, "slice"), {});
+// The default Interconnect (8 x 16 muxes) builds a routing grid with ~173M
+// edges under the default (all-pairs-per-track) cost model and needs ~54 GB.
+// These tests use a 2 x 4 interconnect to keep the grid small while still
+// exercising that cost model. Neither adds ports to its circuit yet.
+Interconnect::Parameters SmallInterconnectParameters() {
+  return Interconnect::Parameters {
+      .num_rows = 2,
+      .num_columns = 4
+  };
+}
+
+TEST_F(TileTest, Slice) {
+  Slice::Parameters parameters = {
+      .num_luts_left = 2,
+      .num_luts_right = 2,
+      .interconnect = SmallInterconnectParameters()
+  };
+  ExpectLayout(Generate<Slice>(parameters, "slice"));
 }
 
 TEST_F(TileTest, Interconnect) {
-  ExpectWellFormed(Generate<Interconnect>({}, "interconnect"), {});
+  ExpectLayout(
+      Generate<Interconnect>(SmallInterconnectParameters(), "interconnect"));
 }
 
 // ReducedTile (and so Fabric) reads its interconnect from an edge list CSV
