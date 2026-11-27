@@ -249,6 +249,9 @@ Fixed on branch `test-coverage`, with their tests enabled:
       the track vectors with unbounded indices for shapes extending beyond
       the grid, returning garbage tracks; `Interconnect` segfaulted
       depending on heap contents. (8ebf346)
+- [x] `Interconnect::RouteComplete` read a mux's input port before checking
+      it was in range, reading past the vector once all 6 were used, and its
+      `> 5` check skipped the sixth input.
 
 ## Open questions (need a decision before fixing)
 
@@ -329,9 +332,10 @@ output, so it is a larger change than the other fixes here.
   default model stays tested; the slow tests use a 2 x 4 interconnect.
   Run `bfg_slow_test` under a memory cap, e.g.
   `systemd-run --user --scope -p MemoryMax=8G -p MemorySwapMax=0`.
-- `Interconnect::RouteComplete` reads `mux_inputs[..][input_index]` before
-  checking `input_index` against the 6 inputs, so it reads past the vector
-  once a mux has 6 inputs assigned (the pointer is not used).
+- `Interconnect::RouteComplete` (not called; commented out in `Generate`)
+  aborts in `RouteManager::Solve` on a 2 x 4 interconnect: two vertices on
+  the same net "need to be connected by an edge but do not have a track in
+  common" (`routing_grid.cc:2143`).
 
 
 ## Later
