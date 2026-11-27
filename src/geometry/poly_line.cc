@@ -107,16 +107,13 @@ void PolyLine::AddSegment(const Point &to, const uint64_t width) {
 
 void PolyLine::ExtendToInclude(const Point &point) {
   // Check if the point lands within any segment.
-  if (LineAtPoint(point)) {
+  if (segments_.empty() || LineAtPoint(point)) {
     return;
   }
   Line begin_line = Line(start_, segments_.front().end);
   Line end_line = Line(
-      segments_.size() > 1 ? (segments_.end() - 1)->end : start_,
+      segments_.size() > 1 ? (segments_.end() - 2)->end : start_,
       segments_.back().end);
-  std::vector<Line> lines = {begin_line, end_line};
-  Point nearest_begin = begin_line.PointOnLineClosestTo(point);
-  Point nearest_end = end_line.PointOnLineClosestTo(point);
   bool intersects_begin = begin_line.Intersects(point);
   bool intersects_end = end_line.Intersects(point);
   if (!intersects_begin && !intersects_end) {
@@ -131,8 +128,9 @@ void PolyLine::ExtendToInclude(const Point &point) {
     segments_.back().end = point;
     return;
   }
-  // Intersects both.
-  if (nearest_begin.L2DistanceTo(point) < nearest_end.L2DistanceTo(point)) {
+  // Intersects both. The point is on both lines, so the distance to each line
+  // is zero; extend whichever end is closer instead.
+  if (start_.L2DistanceTo(point) < End().L2DistanceTo(point)) {
     start_ = point;
   } else {
     segments_.back().end = point;

@@ -781,6 +781,39 @@ TEST_F(RoutingGridGeometryTestFixture,
   }
 }
 
+TEST_F(RoutingGridGeometryTestFixture,
+       CandidateVertexPositionsOnCrossedTracks_ShapeBeyondGrid) {
+  std::set<RoutingTrack*> all_tracks;
+  for (int64_t i = 0; i <= grid_geometry_.max_column_index(); ++i) {
+    RoutingTrack *track = new RoutingTrack(
+        0, RoutingTrackDirection::kTrackVertical, 1, 1, 1, 1, 1, i);
+    grid_geometry_.vertical_tracks_by_index().push_back(track);
+    all_tracks.insert(track);
+  }
+  for (int64_t j = 0; j <= grid_geometry_.max_row_index(); ++j) {
+    RoutingTrack *track = new RoutingTrack(
+        0, RoutingTrackDirection::kTrackHorizontal, 1, 1, 1, 1, 1, j);
+    grid_geometry_.horizontal_tracks_by_index().push_back(track);
+    all_tracks.insert(track);
+  }
+
+  // Overhangs the grid on every side, so its bounding grid indices are below 0
+  // and above the maximum. Only real tracks should be returned.
+  geometry::Rectangle rectangle({-100, -100}, {300, 300});
+
+  auto positions_by_track =
+      grid_geometry_.CandidateVertexPositionsOnCrossedTracks(rectangle);
+
+  EXPECT_EQ(all_tracks.size(), positions_by_track.size());
+  for (const auto &entry : positions_by_track) {
+    EXPECT_EQ(1, all_tracks.count(entry.first));
+  }
+
+  for (RoutingTrack *track : all_tracks) {
+    delete track;
+  }
+}
+
 }  // namespace
 }  // namespace routing
 }  // namespace bfg

@@ -35,7 +35,8 @@ class PolyLine : public Shape {
   }
 
   PolyLine(const PolyLine &other)
-      : enable_narrowing_extensions_(false),
+      : Shape(other),
+        enable_narrowing_extensions_(false),
         start_(other.start_),
         overhang_start_(other.overhang_start_),
         overhang_end_(other.overhang_end_),

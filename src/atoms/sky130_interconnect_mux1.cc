@@ -1067,7 +1067,7 @@ void Sky130InterconnectMux1::DrawPowerAndGround(
   geometry::Polygon *vgnd_strap = draw_strap_fn(ground_y, vgnd_x);
   vgnd_strap->SetConnectableNet(parameters_.ground_net);
 
-  geometry::PortSet clock_ports;
+  geometry::PortSet clock_ports = geometry::Port::MakePortSet();
   layout->GetPorts("CLK", &clock_ports);
   int64_t vpwr_port_y = 0;
   int64_t vgnd_port_y = 0;

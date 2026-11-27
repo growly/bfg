@@ -35,6 +35,15 @@ endif()
 # https://stackoverflow.com/questions/49095153/cmake-failing-to-link-against-google-profiler-gperftools
 add_link_options(-Wl,-no-as-needed)
 
+# Build with gcov instrumentation, for measuring test coverage. See
+# scripts/coverage.sh.
+option(BFG_COVERAGE "Build with gcov coverage instrumentation" OFF)
+if (BFG_COVERAGE)
+  message(STATUS "Coverage instrumentation is on")
+  add_compile_options(--coverage -O0)
+  add_link_options(--coverage)
+endif()
+
 # For googletest on Windows.
 #set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
@@ -472,12 +481,14 @@ target_link_libraries(router_service_bin PUBLIC router_service
 # Tests
 # -----
 set(ATOMS_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/atoms/generators_test.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_simple_transistor_test.cc
   ${PROJECT_SOURCE_DIR}/src/atoms/sky130_transmission_gate_test.cc
 )
 
 set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/arc_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/compass_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/group_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/radian_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/instance_test.cc
@@ -486,8 +497,10 @@ set(GEOMETRY_TEST_SRC
   ${PROJECT_SOURCE_DIR}/src/geometry/vector_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/poly_line_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/polygon_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/port_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rectangle_test.cc
   ${PROJECT_SOURCE_DIR}/src/geometry/rounded_rectangle_test.cc
+  ${PROJECT_SOURCE_DIR}/src/geometry/shape_collection_test.cc
 )
 
 set(CIRCUIT_TEST_SRC
@@ -503,17 +516,29 @@ set(TEST_SRC
   ${ATOMS_TEST_SRC}
   ${CIRCUIT_TEST_SRC}
   ${GEOMETRY_TEST_SRC}
+  ${PROJECT_SOURCE_DIR}/src/checkerboard_guide_test.cc
+  ${PROJECT_SOURCE_DIR}/src/circuit_test.cc
+  ${PROJECT_SOURCE_DIR}/src/design_database_test.cc
   ${PROJECT_SOURCE_DIR}/src/edge_list_test.cc
   ${PROJECT_SOURCE_DIR}/src/equivalent_nets_test.cc
+  ${PROJECT_SOURCE_DIR}/src/layout_test.cc
+  ${PROJECT_SOURCE_DIR}/src/parameter_test.cc
+  ${PROJECT_SOURCE_DIR}/src/physical_properties_database_test.cc
   ${PROJECT_SOURCE_DIR}/src/poly_line_inflator_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/route_manager_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_blockage_cache_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_grid_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_path_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_grid_geometry_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_edge_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_kd_tree_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_track_test.cc
+  ${PROJECT_SOURCE_DIR}/src/routing/routing_track_direction_test.cc
   ${PROJECT_SOURCE_DIR}/src/routing/routing_vertex_collector_test.cc
+  ${PROJECT_SOURCE_DIR}/src/memory_bank_test.cc
+  ${PROJECT_SOURCE_DIR}/src/tiles/interconnect_wire_block_test.cc
+  ${PROJECT_SOURCE_DIR}/src/row_guide_test.cc
   ${PROJECT_SOURCE_DIR}/src/utility_test.cc
 )
 
@@ -539,6 +564,30 @@ target_link_libraries(bfg_test
 
 include(GoogleTest)
 gtest_discover_tests(bfg_test)
+
+# Smoke tests that generate whole tiles. Each takes minutes even in an
+# optimised build, so they are kept out of bfg_test and ctest; run
+# ./bfg_slow_test by hand.
+set(SLOW_TEST_SRC
+  ${PROJECT_SOURCE_DIR}/src/tiles/slow_generators_test.cc
+)
+add_executable(bfg_slow_test
+  ${SLOW_TEST_SRC}
+  src/dev_pdk_setup.cc)   # Temporary hack to set up PDK data.
+target_link_libraries(bfg_slow_test
+  bfg
+  Threads::Threads
+  gtest
+  gtest_main
+  GTest::gmock
+  ${tcmalloc_lib}
+  ${profiler_lib}
+  gflags
+  glog::glog
+  absl::strings
+  ${Protobuf_LIBRARIES}
+  re2::re2
+)
 
 # Test data
 # ---------
@@ -568,3 +617,10 @@ foreach(data_file ${test_data_files})
   configure_file("${data_file}" "${data_file_out}" COPYONLY)
   # Thanks I hate it.
 endforeach(data_file)
+
+# Generator tests also need the Sky130 circuit packages, which are too big to
+# keep a second copy of in test_data.
+foreach(package sky130.primitives.pb sky130hd.pb)
+  configure_file("${PROJECT_SOURCE_DIR}/${package}"
+                 "${OUTPUT_TEST_DATA_DIR}/${package}" COPYONLY)
+endforeach(package)

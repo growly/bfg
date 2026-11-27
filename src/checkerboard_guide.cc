@@ -51,7 +51,6 @@ const std::vector<geometry::Instance*> &CheckerboardGuide::InstantiateAll() {
 
   layout_instances_.clear();
   int64_t y_pos = origin_.y();
-  bool flip = flip_horizontal_;
   k = 0;
   for (size_t i = 0; i < num_rows_; ++i) {
     uint64_t max_row_height = 0;
@@ -64,8 +63,9 @@ const std::vector<geometry::Instance*> &CheckerboardGuide::InstantiateAll() {
         // which seems like a gotcha. This is cleaner:
         x_pos += max_column_widths[j] - horizontal_overlap_;
       };
-      // Check if this cell gets an instance.
-      if (((i * num_columns_ + j) % 2 == 0) == flip) {
+      // Check if this cell gets an instance. Alternating on i + j gives a
+      // checkerboard for any number of columns.
+      if (((i + j) % 2 == 0) == flip_horizontal_) {
         LOG(INFO) << "Checkerboard (" << i << ", " << j << ") cell empty";
         continue;
       }
@@ -96,7 +96,6 @@ const std::vector<geometry::Instance*> &CheckerboardGuide::InstantiateAll() {
       ++k;
     }
     y_pos += max_row_height - vertical_overlap_;
-    flip = !flip;
   }
   instance_count_ = k;
   return layout_instances_;

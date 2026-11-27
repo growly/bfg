@@ -70,7 +70,13 @@ void Layout::MirrorX() {
     ShapeCollection *shapes = entry.second.get();
     shapes->MirrorX();
   }
-  for (const auto &instance : instances_) { instance->MirrorX(); }
+  // As in MirrorY, the instance's position has to be mirrored as well as its
+  // orientation.
+  for (const auto &instance : instances_) {
+    instance->MirrorX();
+    instance->set_lower_left(geometry::Point(
+        instance->lower_left().x(), -instance->lower_left().y()));
+  }
   for (auto &entry : named_points_) { entry.second.MirrorX(); }
   if (tiling_bounds_) {
     tiling_bounds_->MirrorX();
@@ -165,6 +171,11 @@ const geometry::Rectangle Layout::GetBoundingBox(
 
   for (const auto &entry : shapes_) {
     ShapeCollection *shapes = entry.second.get();
+    if (shapes->rectangles().empty() && shapes->polygons().empty() &&
+        shapes->ports().empty()) {
+      // Nothing with bounds, so nothing to include.
+      continue;
+    }
     const geometry::Rectangle bb = shapes->GetBoundingBox();
     min_x = std::min(bb.lower_left().x(), min_x);
     min_y = std::min(bb.lower_left().y(), min_y);
@@ -352,7 +363,9 @@ void Layout::SetActiveLayerByName(const std::string &name) {
     *instance_pb->mutable_origin_location() =
         instance->lower_left().ToVLSIRPoint(physical_db_);
     instance_pb->set_reflect_vert(instance->reflect_vertical());
-    // FIXME(aryap): VLSIR needs to make this ccw:
+    // FIXME(aryap): VLSIR needs to make this ccw. See the note on the
+    // transform members in geometry/instance.h for how this relates to the
+    // rest of BFG.
     instance_pb->set_rotation_clockwise_degrees(
         instance->rotation_degrees_ccw());
   }
@@ -424,7 +437,7 @@ void Layout::AddPortByNet(const std::string &name, geometry::Port *port) {
 
 void Layout::DeletePorts(const std::string &name) {
   // Get the set of ports.
-  geometry::PortSet matching_ports;
+  geometry::PortSet matching_ports = geometry::Port::MakePortSet();
   GetPorts(name, &matching_ports);
   for (const geometry::Port *port : matching_ports) {
     ShapeCollection *collection = GetShapeCollection(port->layer());
@@ -472,12 +485,21 @@ void Layout::ConsumeLayout(Layout *other, const std::string &name_prefix) {
       other_collection->PrefixNetNames(name_prefix, ".");
     }
 
+    // Ports keep their addresses when moved, so index them by their (possibly
+    // prefixed) nets before they go.
+    for (const auto &port : other_collection->ports()) {
+      AddPortByNet(port->net(), port.get());
+    }
+
     ShapeCollection *layer_shapes = GetOrInsertLayerShapes(active_layer_);
     layer_shapes->Consume(other_collection);
   }
+  // These now point to ports we own.
+  other->ports_by_net_.clear();
   for (auto &instance : other->instances_) {
     instances_.push_back(std::move(instance));
   }
+  other->instances_.clear();
 
   // Points are copied since they are not stored by pointer.
   for (auto &entry : other->named_points_) {
@@ -1311,7 +1333,7 @@ bool Layout::ResolveEdgeSpec(
     if (test_instance->name() != endpoint.instance_name) {
       return false;
     }
-    *from = test_instance;
+    *matched_instance = test_instance;
     size_t port_count = 0;
     for (const std::string &port_name : endpoint.port_names) {
       std::vector<geometry::Port*> ports;
@@ -1323,9 +1345,17 @@ bool Layout::ResolveEdgeSpec(
     return port_count > 0;
   };
 
+  // The endpoints are usually on different instances, so remember a match on
+  // either across iterations.
+  bool matched_from = false;
+  bool matched_to = false;
   for (auto &uniq : instances_) {
-    bool matched_from = extract_fn(spec.from(), uniq.get(), from, from_ports);
-    bool matched_to = extract_fn(spec.to(), uniq.get(), to, to_ports);
+    if (!matched_from) {
+      matched_from = extract_fn(spec.from(), uniq.get(), from, from_ports);
+    }
+    if (!matched_to) {
+      matched_to = extract_fn(spec.to(), uniq.get(), to, to_ports);
+    }
     if (matched_from && matched_to) {
       return true;
     }

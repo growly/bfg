@@ -397,6 +397,8 @@ std::optional<RoutingLayerInfo> PhysicalPropertiesDatabase::GetRoutingLayerInfo(
 RoutingLayerInfo PhysicalPropertiesDatabase::GetRoutingLayerInfoOrDie(
     const std::string &routing_layer_name) const {
   auto routing_info = GetRoutingLayerInfo(routing_layer_name);
+  LOG_IF(FATAL, !routing_info)
+      << "No routing layer info for layer " << routing_layer_name;
   return *routing_info;
 }
 
@@ -406,6 +408,9 @@ std::optional<RoutingViaInfo> PhysicalPropertiesDatabase::GetRoutingViaInfo(
   auto first_layer = FindLayer(routing_layer);
   auto second_layer = FindLayer(other_routing_layer);
   if (!first_layer || !second_layer) {
+    return std::nullopt;
+  }
+  if (!GetViaLayer(*first_layer, *second_layer)) {
     return std::nullopt;
   }
   return GetRoutingViaInfoOrDie(*first_layer, *second_layer);
@@ -553,7 +558,8 @@ PhysicalPropertiesDatabase::FindViaStackImpl(
   queue.push(from);
 
   while (!queue.empty()) {
-    const geometry::Layer &current = queue.top();
+    // Copy: pop() reuses the storage that top() refers to.
+    const geometry::Layer current = queue.top();
     queue.pop();
 
     if (current == to) {

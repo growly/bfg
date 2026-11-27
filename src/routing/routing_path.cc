@@ -643,7 +643,11 @@ const std::set<RoutingVertex*> RoutingPath::SpannedVertices() const {
 
 const std::set<RoutingVertex*> RoutingPath::SpannedVerticesWithoutVias() const {
   std::set<RoutingVertex*> all = SpannedVertices();
-  std::vector<RoutingVertex*> with_vias = SpannedVerticesWithVias();
+  // std::set_difference needs both ranges sorted the same way.
+  std::vector<RoutingVertex*> with_vias_in_path_order =
+      SpannedVerticesWithVias();
+  std::set<RoutingVertex*> with_vias(
+      with_vias_in_path_order.begin(), with_vias_in_path_order.end());
   std::set<RoutingVertex*> all_without_vias;
   std::set_difference(all.begin(), all.end(),
                       with_vias.begin(), with_vias.end(),

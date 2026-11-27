@@ -129,9 +129,9 @@ class Circuit {
 
   std::string GenerateDefaultName();
 
-  bfg::Cell *parent_cell_;
+  bfg::Cell *parent_cell_ = nullptr;
 
-  Type type_;
+  Type type_ = INTERNAL;
 
   std::string domain_;
   std::string name_;
@@ -160,7 +160,7 @@ class Circuit {
 
   std::unordered_map<std::string, Parameter> parameters_;
 
-  uint64_t unnamed_net_count_;
+  uint64_t unnamed_net_count_ = 0;
 };
 
 

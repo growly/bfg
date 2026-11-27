@@ -142,6 +142,11 @@ void ShapeCollection::Consume(ShapeCollection *other) {
   for (auto &poly_line : other->poly_lines_) {
     poly_lines_.emplace_back(std::move(poly_line));
   }
+  // Don't leave moved-from nullptrs behind.
+  other->rectangles_.clear();
+  other->polygons_.clear();
+  other->ports_.clear();
+  other->poly_lines_.clear();
 }
 
 void ShapeCollection::Add(
@@ -231,6 +236,12 @@ const Rectangle ShapeCollection::GetBoundingBox() const {
     start = polygons_.front()->GetBoundingBox().lower_left();
   } else if (!ports_.empty()) {
     start = ports_.front()->GetBoundingBox().lower_left();
+  }
+  if (!start) {
+    // Nothing with bounds. Match Layout::GetBoundingBox for empty layouts.
+    LOG_IF(WARNING, !poly_lines_.empty())
+        << "PolyLines are not accounted for in bounding boxes yet";
+    return Rectangle({0, 0}, {0, 0});
   }
 
   int64_t min_x = start.value().x();

@@ -313,13 +313,15 @@ void Interconnect::RouteComplete(
       geometry::Instance *destination = muxes_[dest_row][dest_col];
 
       // TODO(aryap): Have to find unused inputs:
+      // Connect each destination input at most once; stop when they run out.
+      const std::vector<geometry::Port*> &inputs =
+          mux_inputs[dest_row][dest_col];
       size_t &input_index = next_free_input[dest_row][dest_col];
-      geometry::Port *to = mux_inputs[dest_row][dest_col][input_index];
-      // Only connect up to 6 inputs per destination.
-      input_index = input_index + 1;
-      if (input_index > 5) {
+      if (input_index >= inputs.size()) {
         continue;
       }
+      geometry::Port *to = inputs[input_index];
+      ++input_index;
 
       route_manager->Connect(*from, *to).IgnoreError();
     }

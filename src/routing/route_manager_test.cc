@@ -12,6 +12,8 @@
 #include "../geometry/port.h"
 #include "../geometry/point.h"
 #include "../dev_pdk_setup.h"
+#include "../layout.h"
+#include "routing_grid_test_fixture.h"
 
 namespace bfg {
 namespace routing {
@@ -149,6 +151,180 @@ TEST_F(RouteManagerTest, MergeAndReplaceEquivalentNets) {
   EXPECT_EQ(d, route_manager_->routed_nets_by_port_[p3.get()]);
   EXPECT_EQ(d, route_manager_->routed_nets_by_port_[p4.get()]);
 }
+
+// RouteManager on a real met1/met2 grid.
+class RouteManagerRoutingTest : public RoutingGridTest {
+ protected:
+  void SetUp() override {
+    RoutingGridTest::SetUp();
+    layout_.reset(new Layout(physical_db_));
+    route_manager_.reset(new RouteManager(layout_.get(), grid_.get()));
+  }
+
+  geometry::Port *AddPort(const geometry::Point &near, const std::string &net) {
+    ports_.push_back(MakePort(near, net));
+    return ports_.back().get();
+  }
+
+  std::unique_ptr<Layout> layout_;
+  std::unique_ptr<RouteManager> route_manager_;
+  std::vector<std::unique_ptr<geometry::Port>> ports_;
+};
+
+namespace {
+
+TEST(RouteManagerStaticTest, SummariseStatuses_AllOk) {
+  EXPECT_TRUE(RouteManager::SummariseStatuses({}).ok());
+  EXPECT_TRUE(RouteManager::SummariseStatuses(
+      {absl::OkStatus(), absl::OkStatus()}).ok());
+}
+
+TEST(RouteManagerStaticTest, SummariseStatuses_SomeFailed) {
+  absl::Status summary = RouteManager::SummariseStatuses({
+      absl::OkStatus(),
+      absl::NotFoundError("no path"),
+      absl::InternalError("broken")});
+  EXPECT_FALSE(summary.ok());
+  EXPECT_NE(std::string::npos, summary.message().find("no path"));
+  EXPECT_NE(std::string::npos, summary.message().find("broken"));
+}
+
+TEST_F(RouteManagerRoutingTest, ConnectAndSolve) {
+  geometry::Port *a0 = AddPort({500, 500}, "a");
+  geometry::Port *a1 = AddPort({4000, 3000}, "a");
+
+  auto id = route_manager_->Connect(*a0, *a1, EquivalentNets("a"));
+  ASSERT_TRUE(id.ok());
+  EXPECT_FALSE(route_manager_->DescribeOrders().empty());
+
+  auto solved = route_manager_->SolveSerially();
+  ASSERT_TRUE(solved.ok()) << solved.status();
+
+  auto order_and_result = route_manager_->GetOrderAndResult(*id);
+  ASSERT_TRUE(order_and_result.ok()) << order_and_result.status();
+  ASSERT_TRUE(order_and_result->result.ok()) << order_and_result->result.status();
+  EXPECT_EQ(1, order_and_result->result->size());
+  EXPECT_EQ(1, grid_->paths().size());
+  EXPECT_NE(std::string::npos,
+            route_manager_->DescribeResults().find("OK"));
+}
+
+TEST_F(RouteManagerRoutingTest, Solve_ReturnsExecutedOrders) {
+  geometry::Port *a0 = AddPort({500, 500}, "a");
+  geometry::Port *a1 = AddPort({4000, 3000}, "a");
+  ASSERT_TRUE(route_manager_->Connect(*a0, *a1, EquivalentNets("a")).ok());
+
+  auto solved = route_manager_->SolveSerially();
+  ASSERT_TRUE(solved.ok()) << solved.status();
+  ASSERT_EQ(1, solved->size());
+  EXPECT_EQ(2, solved->front().nodes().size());
+
+  // Orders are consumed by solving.
+  EXPECT_TRUE(route_manager_->DescribeOrders().empty());
+}
+
+TEST_F(RouteManagerRoutingTest, ConnectMultiplePorts) {
+  geometry::Port *a0 = AddPort({500, 500}, "a");
+  geometry::Port *a1 = AddPort({4500, 500}, "a");
+  geometry::Port *a2 = AddPort({2500, 4500}, "a");
+
+  auto id = route_manager_->ConnectMultiplePorts(
+      std::vector<geometry::Port*>{a0, a1, a2}, EquivalentNets("a"));
+  ASSERT_TRUE(id.ok());
+  ASSERT_TRUE(route_manager_->SolveSerially().ok());
+
+  auto order_and_result = route_manager_->GetOrderAndResult(*id);
+  ASSERT_TRUE(order_and_result.ok());
+  ASSERT_TRUE(order_and_result->result.ok()) << order_and_result->result.status();
+  // Three ports need two paths.
+  EXPECT_EQ(2, order_and_result->result->size());
+}
+
+TEST_F(RouteManagerRoutingTest, ConnectMultiplePorts_Sets) {
+  geometry::Port *a0 = AddPort({500, 500}, "a");
+  geometry::Port *a0_alt = AddPort({500, 1500}, "a");
+  geometry::Port *a1 = AddPort({4500, 4500}, "a");
+
+  auto id = route_manager_->ConnectMultiplePorts(
+      std::vector<std::set<geometry::Port*>>{{a0, a0_alt}, {a1}},
+      EquivalentNets("a"));
+  ASSERT_TRUE(id.ok());
+  ASSERT_TRUE(route_manager_->SolveSerially().ok());
+
+  auto order_and_result = route_manager_->GetOrderAndResult(*id);
+  ASSERT_TRUE(order_and_result.ok());
+  ASSERT_TRUE(order_and_result->result.ok()) << order_and_result->result.status();
+  // Only one port from each set needs connecting.
+  EXPECT_EQ(1, order_and_result->result->size());
+}
+
+TEST_F(RouteManagerRoutingTest, ConnectToNet) {
+  geometry::Port *a0 = AddPort({500, 500}, "a");
+  geometry::Port *a1 = AddPort({4500, 500}, "a");
+  geometry::Port *b0 = AddPort({2500, 4500}, "b");
+  ASSERT_TRUE(route_manager_->Connect(*a0, *a1, EquivalentNets("a")).ok());
+  ASSERT_TRUE(route_manager_->SolveSerially().ok());
+
+  auto id = route_manager_->ConnectToNet(
+      {{b0}}, EquivalentNets("a"), EquivalentNets("a"));
+  ASSERT_TRUE(id.ok());
+  ASSERT_TRUE(route_manager_->SolveSerially().ok());
+
+  auto order_and_result = route_manager_->GetOrderAndResult(*id);
+  ASSERT_TRUE(order_and_result.ok());
+  ASSERT_TRUE(order_and_result->result.ok()) << order_and_result->result.status();
+  EXPECT_EQ(2, grid_->paths().size());
+}
+
+TEST_F(RouteManagerRoutingTest, GetOrderAndResult_Unknown) {
+  auto order_and_result = route_manager_->GetOrderAndResult(12345);
+  EXPECT_EQ(absl::StatusCode::kNotFound, order_and_result.status().code());
+}
+
+TEST_F(RouteManagerRoutingTest, OrderWithOneNodeFails) {
+  geometry::Port *a0 = AddPort({500, 500}, "a");
+  auto id = route_manager_->ConnectMultiplePorts(
+      std::vector<geometry::Port*>{a0}, EquivalentNets("a"));
+  ASSERT_TRUE(id.ok());
+  route_manager_->SolveSerially().IgnoreError();
+
+  auto order_and_result = route_manager_->GetOrderAndResult(*id);
+  ASSERT_TRUE(order_and_result.ok());
+  EXPECT_FALSE(order_and_result->result.ok());
+  EXPECT_NE(std::string::npos,
+            route_manager_->DescribeResults().find("FAILED"));
+}
+
+TEST_F(RouteManagerRoutingTest, SolveInParallel) {
+  geometry::Port *a0 = AddPort({0, 500}, "a");
+  geometry::Port *a1 = AddPort({kSize, 500}, "a");
+  geometry::Port *b0 = AddPort({0, 4500}, "b");
+  geometry::Port *b1 = AddPort({kSize, 4500}, "b");
+  auto a = route_manager_->Connect(*a0, *a1, EquivalentNets("a"));
+  auto b = route_manager_->Connect(*b0, *b1, EquivalentNets("b"));
+  ASSERT_TRUE(a.ok());
+  ASSERT_TRUE(b.ok());
+
+  ASSERT_TRUE(route_manager_->Solve().ok());
+  for (int64_t id : {*a, *b}) {
+    auto order_and_result = route_manager_->GetOrderAndResult(id);
+    ASSERT_TRUE(order_and_result.ok());
+    EXPECT_TRUE(order_and_result->result.ok())
+        << order_and_result->result.status();
+  }
+  EXPECT_EQ(2, grid_->paths().size());
+}
+
+TEST(NetRouteOrderTest, Describe) {
+  geometry::Port port({0, 0}, {1, 1}, 0, "p");
+  NetRouteOrder order(7, EquivalentNets("n"));
+  order.nodes().push_back({&port});
+  std::string description = order.Describe();
+  EXPECT_NE(std::string::npos, description.find("ID: 7"));
+  EXPECT_NE(std::string::npos, description.find("Step 0"));
+}
+
+}  // namespace
 
 }  // namespace routing
 }  // namespace bfg

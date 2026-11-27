@@ -65,6 +65,9 @@ class Instance : public Manipulable {
   void ApplyInstanceTransforms(Layout *layout) const;
 
   // Apply the transforms from the template layout to the instance layout.
+  //
+  // TODO(aryap): These two overloads ignore reflect_vertical_; see the note on
+  // the transform members below.
   void ApplyInstanceTransforms(ShapeCollection *shape_collection) const {
     shape_collection->Rotate(rotation_degrees_ccw_);
     shape_collection->Translate(lower_left_);
@@ -277,6 +280,28 @@ class Instance : public Manipulable {
   // If you want the effecitve lower left point of the instance after all
   // transformations, use GetBoundingBox().lower_left().
   Point lower_left_;
+
+  // TODO(aryap): Rotation and reflection are not applied consistently. Pick
+  // one convention and use it everywhere:
+  //
+  //  - Direction. GetBoundingBox, GetTilingBounds, ApplyInstanceTransforms and
+  //    Layout::Flatten rotate counter-clockwise by rotation_degrees_ccw_.
+  //    GeneratePorts converts it to clockwise first, so ports on instances
+  //    rotated by 90 or 270 degrees turn the other way. Layout::ToVLSIRLayout
+  //    passes the ccw value as VLSIR's rotation_clockwise_degrees; which of
+  //    these matches the GDS depends on how VLSIR interprets that field.
+  //  - Reflection. GetBoundingBox, GetTilingBounds and
+  //    ApplyInstanceTransforms(Layout*) (and so Layout::Flatten) apply
+  //    reflect_vertical_. GeneratePorts and the ShapeCollection and Point
+  //    overloads of ApplyInstanceTransforms (and so every Copy*Shapes* method
+  //    and GetPoint) ignore it.
+  //  - Order. BFG rotates and then reflects. VLSIR documents rotation as
+  //    applied after reflection.
+  //
+  // Generators only rotate by 180 degrees today, where the two directions
+  // agree. The disabled tests in instance_test.cc describe the behaviour
+  // consistent with GetBoundingBox. See also PLAN.md.
+
   // This is mirroring in the X axis.
   bool reflect_vertical_;
   // FIXME(growly): Store rotation anti-clockwise.
